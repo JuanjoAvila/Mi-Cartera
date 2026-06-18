@@ -16,22 +16,24 @@ Imprescindible para que el PWA en el móvil reciba siempre el último deploy. La
 ### 4. Migraciones de datos versionadas
 `_dataVer` en `localStorage` permite cambiar la forma de los datos sembrados sin borrar los del usuario.
 
-## Flujo de datos
+## Flujo de datos (Fase 1: Supabase)
 
 ```
 [Notificación TR en Android]
         │  MacroDroid detecta "Gastaste X€ en Comercio"
         ▼
-[POST → Apps Script doPost]
-        │  parsea importe/comercio/fecha + categoriza
+[POST → Edge Function `ingest`]   (protegida con INGEST_TOKEN)
+        │  parsea importe/comercio/fecha + categoriza + service role
         ▼
-[Google Sheet "Hoja 1"]   ← buzón de entrada
-        │  la app llama doGet (botón Sincronizar)
+[Postgres: tabla `expenses`]   ← buzón de entrada (RLS por usuario)
+        │  la app la lee al Sincronizar (estando logueada)
         ▼
-[App: dedup + render]      → localStorage "micartera_v3"
+[App: dedup + render]   → estado en `app_state` (JSONB) + caché localStorage
 ```
 
-Cotizaciones: la app llama `doGet?prices=1` → Apps Script consulta Finnhub server-side (evita CORS) → devuelve precios → la app calcula valor = acciones × precio.
+Cotizaciones: la app llama a la Edge Function `prices` → consulta Finnhub server-side (key oculta, evita CORS) → devuelve precios → la app calcula valor = acciones × precio.
+
+> **Apps Script: jubilado (2026-06-18).** El backend antiguo (Google Apps Script + Google Sheet) se reemplazó por Supabase. Se retiró su carpeta del repo y la implementación se archivó en Google.
 
 ## Aprendizajes clave
 
