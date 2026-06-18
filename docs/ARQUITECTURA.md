@@ -8,6 +8,8 @@ La app usa `React.createElement` directo. Meter JSX + Babel en el navegador prov
 ### 2. Un único artefacto desplegable
 `public/index.html` lleva React, ReactDOM, CSS y lógica **inlineados**. Es el artefacto que ha demostrado ser fiable. Cualquier modularización futura del *código fuente* debe seguir produciendo este mismo archivo único.
 
+> ⚠️ **No crear un `index.html` en la raíz.** GitHub Actions solo despliega `public/`. Hubo un duplicado en la raíz que se editaba por error y dejaba `public/` atrasado (un fix de TR no llegó al móvil). `public/index.html` es la **única fuente**: edítalo ahí directamente.
+
 ### 3. Service Worker network-first
 Imprescindible para que el PWA en el móvil reciba siempre el último deploy. La cadena de versión del SW se sella en CI (`scripts/stamp-version.mjs`) para invalidar caché sin trabajo manual.
 
