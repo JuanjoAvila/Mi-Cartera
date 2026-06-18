@@ -1,0 +1,90 @@
+# Setup Supabase — Fase 1 (Mi Cartera)
+
+Guía paso a paso para arrancar las tripas en la nube. Lo que tú haces (una vez) va marcado con 👤.
+El código (esquema, funciones, CI) ya está en el repo dentro de `supabase/`.
+
+## Arquitectura objetivo
+
+```
+[Notificación TR en Android]
+        │ MacroDroid
+        ▼
+[Edge Function: ingest]  ──►  [Postgres: tabla expenses]
+                                      ▲
+[App PWA] ── @supabase/supabase-js ───┤  (login magic-link, RLS por usuario)
+        │                             ▼
+        └──► [Edge Function: prices] ──► Finnhub   [Postgres: tabla app_state (JSONB)]
+```
+
+- **Auth:** magic link por email (Supabase Auth).
+- **Datos:** gastos en `expenses` (relacional) + resto del estado en `app_state` (JSONB, una fila por usuario).
+- **RLS activado:** cada usuario solo ve lo suyo. La función `ingest` usa la service role key para escribir tus gastos sin sesión.
+
+---
+
+## Paso 1 — Crear el proyecto 👤
+
+1. Entra en https://supabase.com → **Start your project** (gratis, sin tarjeta).
+2. **New project**: nombre `mi-cartera`, región Europa (ej. *West EU / Ireland*), genera una **Database Password** y **guárdala** (la necesitas para CI).
+3. Cuando termine de provisionar, ve a **Project Settings → API** y apunta:
+   - **Project URL** → ej. `https://xxxxxxxx.supabase.co`
+   - **anon public key** (clave pública, va en el cliente)
+   - **service_role key** (SECRETA, solo backend)
+   - El **Project Ref** es el `xxxxxxxx` de la URL.
+
+## Paso 2 — Crear el esquema 👤
+
+Opción rápida (recomendada la primera vez): **SQL Editor → New query**, pega el contenido de
+[`supabase/migrations/0001_init.sql`](../supabase/migrations/0001_init.sql) y dale a **Run**.
+
+(Más adelante, si configuras `SUPABASE_DB_PASSWORD` en CI, las migraciones se aplican solas con `supabase db push`.)
+
+## Paso 3 — Crear tu usuario y obtener tu UUID 👤
+
+1. **Authentication → Providers → Email**: deja activado *Email*. Para magic link, activa *Enable email confirmations* (o magic link).
+2. **Authentication → Users → Add user** (o entra una vez desde la app con tu email).
+3. Copia el **User UID** (uuid) de tu usuario → lo necesitas como `INGEST_USER_ID`.
+
+## Paso 4 — Configurar los secretos de las funciones 👤
+
+En **Project Settings → Edge Functions → Secrets** (o con la CLI), añade:
+
+| Secreto | Valor |
+|---|---|
+| `FINNHUB_KEY` | tu key de finnhub.io |
+| `INGEST_TOKEN` | un token largo aleatorio que invente (lo usará MacroDroid) |
+| `INGEST_USER_ID` | el UUID de tu usuario del Paso 3 |
+
+> `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` ya las inyecta Supabase en las funciones; no las pongas a mano.
+
+## Paso 5 — Activar el deploy automático desde GitHub 👤
+
+En el repo: **Settings → Secrets and variables → Actions**:
+
+- **Secrets** → New repository secret:
+  - `SUPABASE_ACCESS_TOKEN` → genera uno en https://supabase.com/dashboard/account/tokens
+  - `SUPABASE_DB_PASSWORD` *(opcional)* → la Database Password del Paso 1 (para migraciones automáticas)
+- **Variables** → New repository variable:
+  - `SUPABASE_PROJECT_REF` → el Project Ref del Paso 1
+
+A partir de aquí, cualquier cambio en `supabase/**` despliega las funciones solo (workflow `Deploy Supabase`).
+Mientras no estén configurados, el workflow se salta el deploy sin fallar.
+
+## Paso 6 — Repuntar MacroDroid (cuando esté probado) 👤
+
+Cambia la URL del POST de MacroDroid del Apps Script a:
+
+```
+https://<PROJECT_REF>.supabase.co/functions/v1/ingest?token=<INGEST_TOKEN>
+```
+
+Mantén el Apps Script activo hasta confirmar que entran gastos por Supabase; luego se jubila.
+
+---
+
+## Lo que falta (lo hago yo en el repo tras tener tus claves)
+
+- Integrar `@supabase/supabase-js` en `public/index.html`: login magic-link, carga/guardado de `app_state`, lectura de `expenses` y `fetchPrices` apuntando a la función `prices`.
+- Script de importación única: volcar los gastos del Google Sheet actual + el estado de `localStorage` a Supabase.
+
+**Para continuar, pásame:** Project URL y la **anon key** (esas dos no son secretas, van en el cliente). Con eso cableo el frontend.

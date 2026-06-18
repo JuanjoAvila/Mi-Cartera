@@ -1,0 +1,12 @@
+# Configuración de Supabase para Mi Cartera (Fase 1)
+# El project_id local es solo una etiqueta; el proyecto real se referencia por --project-ref en CI.
+project_id = "mi-cartera"
+
+# --- Edge Functions ---
+# prices: la llama la app (usuario logueado) → exige JWT.
+[functions.prices]
+verify_jwt = true
+
+# ingest: la llama MacroDroid (sin sesión) → sin JWT; se protege con INGEST_TOKEN propio.
+[functions.ingest]
+verify_jwt = false

@@ -3,6 +3,10 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Unreleased]
+### En progreso — Fase 1: Supabase
+- 🏗️ **Backend en la nube (BD + funciones + login):** scaffolding en `supabase/`. Esquema (`expenses` relacional + `app_state` JSONB con RLS), Edge Functions `ingest` (reemplaza MacroDroid→Sheet) y `prices` (reemplaza el proxy Finnhub del Apps Script), y workflow de CI que las despliega solas. Auth por magic-link, multi-dispositivo. Guía: [docs/SETUP-SUPABASE.md](docs/SETUP-SUPABASE.md).
+- ⏭️ **Pendiente:** crear el proyecto Supabase (manual), integrar `@supabase/supabase-js` en el frontend e importar los datos actuales (Sheet + localStorage).
+
 ### Por hacer (próximos pasos)
 - 🐛 **Precios USD (causa raíz):** Finnhub devuelve `prices:{}` vacío. La app y el Apps Script ya lo reportan claro; falta **redeployar el Apps Script** (Nueva versión) y revisar `FINNHUB_KEY` con el campo `errors`/`keyLen` que ahora trae la respuesta.
 - 🎨 **Barra de distribución de activos:** el amarillo choca al abrir; usar paleta del sistema.
