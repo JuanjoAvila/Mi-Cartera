@@ -1,0 +1,9 @@
+{
+  "appId": "com.micartera.app",
+  "appName": "Mi Cartera",
+  "webDir": "public",
+  "server": {
+    "url": "https://juanjoavila.github.io/Mi-Cartera/",
+    "androidScheme": "https"
+  }
+}
