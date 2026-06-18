@@ -667,7 +667,8 @@ function expenseFromRow(r){
     date: new Date(r.fecha).toISOString(),
     merchant: r.comercio || "Gasto",
     amount: Number(r.importe) || 0,
-    category: r.cat || "otros",
+    // misma autodetección que el path del Sheet: si la cat es genérica, la deduce por comercio
+    category: resolveCategory(r.cat, r.comercio || ""),
     source: "supabase",
   };
 }
