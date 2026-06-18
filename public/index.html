@@ -1589,11 +1589,18 @@ function LockScreen({onUnlock}){
   useEffect(function(){ const t=setTimeout(tryUnlock,350); return function(){ clearTimeout(t); }; },[]);
   const wrap={position:"fixed",inset:0,background:"#0B1410",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:100,color:"#E8F0EB",gap:"16px",padding:"24px",textAlign:"center"};
   const btn={padding:"14px 22px",borderRadius:"14px",border:"none",background:"#5FD08A",color:"#06120C",fontWeight:700,fontSize:"15px",cursor:"pointer"};
+  const escape=function(){
+    if(window.confirm("¿Quitar el candado de huella en este dispositivo? Podrás volver a activarlo desde tu cuenta.")){
+      bio.disable(); onUnlock();
+    }
+  };
+  const link={background:"none",border:"none",color:"#6f8579",cursor:"pointer",fontSize:"12px",marginTop:"10px",textDecoration:"underline"};
   return React.createElement("div",{style:wrap},
     React.createElement("div",{style:{width:64,height:64,borderRadius:"50%",background:"#5FD08A22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"30px"}},"🔒"),
     React.createElement("div",{style:{fontWeight:700,fontSize:"22px",fontFamily:"Fraunces, serif"}},"Mi cartera"),
     React.createElement("div",{style:{color:"#9fb3a8",fontSize:"14px"}}, err?"No se pudo verificar. Inténtalo de nuevo.":"Desbloquea para continuar"),
-    React.createElement("button",{style:btn,onClick:tryUnlock},"Desbloquear con huella")
+    React.createElement("button",{style:btn,onClick:tryUnlock},"Desbloquear con huella"),
+    React.createElement("button",{style:link,onClick:escape},"No puedo desbloquear")
   );
 }
 
