@@ -670,18 +670,15 @@ function expenseFromRow(r){
   };
 }
 
-/* Mezcla gastos remotos en la lista local con dedup (misma lógica que el viejo Sync del Sheet).
-   Los gastos de origen remoto (supabase/sheet) se reemplazan; los manuales se conservan. */
+/* Une gastos en la lista local con dedup por clave (fecha|importe|comercio).
+   ADITIVO: nunca borra los que ya tenías; solo añade los nuevos. Esto evita perder
+   datos durante la migración (la tabla de la nube puede estar aún vacía). */
 function mergeExpenses(prevList, incoming){
   const keyOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
-  const remote={supabase:1, sheet:1};
-  const oldKeys={}; prevList.forEach(function(e){ if(remote[e.source]) oldKeys[keyOf(e)]=1; });
-  let nuevos=0; const seenIn={};
-  incoming.forEach(function(e){ const k=keyOf(e); if(!seenIn[k]){ seenIn[k]=1; if(!oldKeys[k]) nuevos++; } });
-  const keep=prevList.filter(function(e){ return !remote[e.source]; });
-  const merged=keep.concat(incoming);
   const seen={}; const list=[];
-  merged.forEach(function(e){ const k=keyOf(e); if(!seen[k]){ seen[k]=1; list.push(e); } });
+  (prevList||[]).forEach(function(e){ const k=keyOf(e); if(!seen[k]){ seen[k]=1; list.push(e); } });
+  let nuevos=0;
+  (incoming||[]).forEach(function(e){ const k=keyOf(e); if(!seen[k]){ seen[k]=1; list.push(e); nuevos++; } });
   return { list:list, nuevos:nuevos };
 }
 
@@ -1579,8 +1576,13 @@ function App(){
     if(!s || !s.user) return;
     const u=s.user.id;
     cloud.pullState().then(function(cloudState){
-      if(cloudState){ set(function(prev){ return reconcileTR(Object.assign({},prev,cloudState)); }); }
-      else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
+      if(cloudState){
+        // adopta el estado de la nube pero UNE los gastos (nunca pierde los locales)
+        set(function(prev){
+          const u=mergeExpenses(prev.expenses, cloudState.expenses||[]);
+          return reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list}));
+        });
+      } else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
       .then(function(){ showToast("✓ Sincronizado con la nube"); })
       .catch(function(e){ showToast("✕ Nube: "+((e&&e.message)||e)); });
