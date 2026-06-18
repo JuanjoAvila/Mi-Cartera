@@ -1105,9 +1105,9 @@ function Dashboard({state, totals}){
     /* DISTRIBUCIÓN */
     React.createElement(CollapsibleCard,{title:"Distribución de activos",dot:"#5FD08A",storageKey:"d_dist"},
       React.createElement(StackedBar,{segments:[
-        {label:"Liquidez",value:t.liquid,color:"#5FD08A"},
-        {label:"Inversiones",value:t.invested,color:"#7FB5E8"},
-        {label:"Bienes",value:t.assetsTotal,color:"#E6C36A"},
+        {label:"Liquidez",value:t.liquid,color:"var(--mint)"},
+        {label:"Inversiones",value:t.invested,color:"var(--blue)"},
+        {label:"Bienes",value:t.assetsTotal,color:"var(--cream)"},
       ]})
     ),
     /* RING + RACHA */
@@ -1918,7 +1918,7 @@ function App(){
     ),
     React.createElement("div",{className:"tabbar-wrap"},
       React.createElement("div",{className:"tabbar",ref:tabbarRef},
-        TABS.map((t,i)=>React.createElement("button",{key:t.id,className:"tab"+(tab===i?" active":""),onClick:()=>setTab(i)},React.createElement(t.icon,null),t.label))
+        TABS.map((t,i)=>React.createElement("button",{key:t.id,className:"tab"+(tab===i?" active":""),onClick:()=>setTab(i)},React.createElement(t.icon,null),tab===i?t.label:null))
       )
     ),
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
