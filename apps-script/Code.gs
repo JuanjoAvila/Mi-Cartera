@@ -163,20 +163,30 @@ function doGetPrices() {
       .setMimeType(ContentService.MimeType.JSON);
   }
   const prices = {};
+  const errors = [];   // por qué falta cada cotización (NO contiene la key: solo va en la URL, no en el body)
   for (var i = 0; i < TICKERS.length; i++) {
     const sym = TICKERS[i];
     try {
       const url = "https://finnhub.io/api/v1/quote?symbol=" + sym + "&token=" + FINNHUB_KEY;
-      const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
-      const data = JSON.parse(res.getContentText());
-      if (data && typeof data.c === "number" && data.c > 0) prices[sym] = data.c;  // c = precio actual
+      const res  = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+      const code = res.getResponseCode();
+      const body = res.getContentText();
+      const data = JSON.parse(body);
+      if (data && typeof data.c === "number" && data.c > 0) {
+        prices[sym] = data.c;  // c = precio actual
+      } else {
+        // 200 con c=0, o 401/403/429 con mensaje de error de Finnhub
+        errors.push({ sym: sym, status: code, body: String(body).slice(0, 200) });
+      }
     } catch (err) {
-      // si una falla, seguimos con las demás
+      errors.push({ sym: sym, status: "exception", body: String((err && err.message) || err).slice(0, 200) });
     }
     Utilities.sleep(120);
   }
+  const out = { ok: true, prices: prices, ts: Date.now(), keyLen: FINNHUB_KEY.length };
+  if (errors.length) out.errors = errors;   // diagnóstico: aparece solo cuando algún ticker no cotizó
   return ContentService
-    .createTextOutput(JSON.stringify({ ok: true, prices: prices, ts: Date.now() }))
+    .createTextOutput(JSON.stringify(out))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

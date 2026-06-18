@@ -539,6 +539,7 @@ const CONFIG = {
   FIELDS: { date: "fecha", amount: "importe", merchant: "comercio", category: "cat" },
   PAGE_SIZE: 12,
   PRICES_PARAM: "?prices=1",   // el GAS devuelve {ok:true, prices:{NVDA:207.18,...}} con este parámetro
+  TR_INJECTION: 1500,          // €/mes que entran al efectivo de TR con la nómina (1000 caprichos + 500 colchón). Los 50 del FTSE van aparte (manual).
 };
 
 /* ---------- Categorías de gasto variable ---------- */
@@ -623,6 +624,44 @@ function relDay(d){
   return d.getDate()+" "+MONTHS[d.getMonth()].slice(0,3);
 }
 const startOfMonth=(d)=>{ d=d||new Date(); return new Date(d.getFullYear(),d.getMonth(),1); };
+
+/* ---------- Lógica del efectivo de Trade Republic ----------
+   El "value" de la cuenta de gasto = saldo al INICIO del mes en curso
+   (después de inyecciones de meses anteriores, antes del gasto de este mes).
+   Saldo mostrado = value + inyección(si ya pasó el último día laborable) − gasto del mes.
+   La nómina entra el último día LABORABLE del mes (sin falta). */
+const mk=(y,m)=> y+"-"+String(m+1).padStart(2,"0");                 // "2026-06"
+const mkOf=(d)=> mk(d.getFullYear(), d.getMonth());
+function lastWorkingDay(y,m){                                        // último lun-vie del mes
+  const d=new Date(y, m+1, 0);                                      // último día del mes
+  while(d.getDay()===0 || d.getDay()===6) d.setDate(d.getDate()-1);  // retrocede si cae finde
+  return d;
+}
+function nominaYaEntro(now){                                        // ¿ya pasó el último día laborable?
+  now=now||new Date();
+  return now.getDate() >= lastWorkingDay(now.getFullYear(), now.getMonth()).getDate();
+}
+// Al cargar: arrastra meses ya cerrados al saldo base (les mete su inyección y les resta su gasto)
+function reconcileTR(s){
+  if(!s.accounts || !s.expenses) return s;
+  const acc=s.accounts.find(a=>a.spendFrom);
+  if(!acc) return s;
+  const now=new Date();
+  const cmKey=mkOf(now);
+  let anchor=s.trAnchor || cmKey;
+  let [ay,am]=anchor.split("-").map(Number); am=am-1;
+  let guard=0;
+  while(mk(ay,am) < cmKey && guard<120){
+    const key=mk(ay,am);
+    const spent=s.expenses.filter(e=> mkOf(parseDate(e.date))===key).reduce((a,e)=>a+e.amount,0);
+    acc.value = acc.value + CONFIG.TR_INJECTION - spent;            // mes cerrado: + nómina − gasto
+    am++; if(am>11){am=0;ay++;}
+    guard++;
+  }
+  s.trAnchor=cmKey;
+  return s;
+}
+
 const uid=()=> Math.random().toString(36).slice(2,10);
 const FREQ_M = { mes:1, mensual:1, bimestral:1/2, trimestral:1/3, semestral:1/6, "año":1/12, anual:1/12, semana:4.345 };
 
@@ -758,16 +797,27 @@ function migrate(s){
   }
   if(!s.settings) s.settings={ autoPrices:false };
   s._dataVer = 5;
+  // v6: ancla de mes para el efectivo de TR (la inyección mensual y el arrastre se calculan desde aquí)
+  if(s._dataVer<6){
+    if(!s.trAnchor) s.trAnchor = mkOf(new Date());
+  }
+  s._dataVer = 6;
   store.set("micartera_v3", s);
   return s;
 }
 function loadState(){
   const saved = store.get("micartera_v3");
-  if(saved && saved.accounts) return (saved._dataVer>=5) ? saved : migrate(saved);
+  if(saved && saved.accounts){
+    const s = reconcileTR((saved._dataVer>=6) ? saved : migrate(saved));
+    store.set("micartera_v3", s);
+    return s;
+  }
   const init = buildInitial();
-  init._dataVer = 5;
-  store.set("micartera_v3", init);
-  return init;
+  init._dataVer = 6;
+  init.trAnchor = mkOf(new Date());
+  const r = reconcileTR(init);
+  store.set("micartera_v3", r);
+  return r;
 }
 
 /* ============================================================
@@ -892,11 +942,14 @@ function MiniPie({slices}){
 }
 
 /* lista editable genérica; valFmt recibe el item entero */
-function useEditable(items, onChange){
+function useEditable(items, onChange, opts){
+  opts = opts || {};
+  const disp     = opts.display  || (i=>i.value);                  // qué número se muestra al editar
+  const toStored = opts.toStored || ((i,typed)=>typed);            // cómo se guarda lo tecleado
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState({});
-  const start=()=>{ const d={}; items.forEach(i=>d[i.id]=i.value); setDraft(d); setEditing(true); };
-  const save=()=>{ onChange(items.map(i=>Object.assign({},i,{value: parseFloat(String(draft[i.id]).replace(',','.'))||0 }))); setEditing(false); };
+  const start=()=>{ const d={}; items.forEach(i=>d[i.id]=disp(i)); setDraft(d); setEditing(true); };
+  const save=()=>{ onChange(items.map(i=>{ const typed=parseFloat(String(draft[i.id]).replace(',','.'))||0; return Object.assign({},i,{value: toStored(i,typed) }); })); setEditing(false); };
   return { editing, start, save, draft, setDraft };
 }
 
@@ -1212,7 +1265,11 @@ function Investments({state, set, fetchPrices, pricing}){
    TAB: PATRIMONIO
    ============================================================ */
 function Wealth({state, set, totals}){
-  const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})));
+  const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})),{
+    // En la cuenta de gasto (TR) editas el SALDO REAL; por dentro se guarda la base correcta.
+    display:  i => i.spendFrom ? (i.value + totals.injTR - totals.thisMonthSpent) : i.value,
+    toStored: (i,typed) => i.spendFrom ? (typed - totals.injTR + totals.thisMonthSpent) : typed
+  });
   const astEd=useEditable(state.assets,it=>set(s=>Object.assign({},s,{assets:it})));
   const accSum=totals.liquid;
   const astSum=state.assets.reduce((a,i)=>a+i.value,0);
@@ -1230,10 +1287,10 @@ function Wealth({state, set, totals}){
       right:React.createElement("button",{className:"edit-link"+(accEd.editing?" save":""),onClick:e=>{e.stopPropagation();accEd.editing?accEd.save():accEd.start();}},accEd.editing?"Guardar":"Editar")},
       state.accounts.map(a=>React.createElement("div",{className:"row",key:a.id},
         React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:a.ent,size:38}),
-          React.createElement("div",null,React.createElement("div",{className:"rname"},entOf(a.ent).label),React.createElement("div",{className:"rsub"}, a.spendFrom?"Gasto del mes: −"+eur0(totals.thisMonthSpent):a.name))),
+          React.createElement("div",null,React.createElement("div",{className:"rname"},entOf(a.ent).label),React.createElement("div",{className:"rsub"}, a.spendFrom?("Gasto del mes: −"+eur0(totals.thisMonthSpent)+(totals.injTR?" · nómina +"+eur0(totals.injTR):"")):a.name))),
         accEd.editing
           ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
-          : React.createElement("div",{className:"rval num"},eur(a.spendFrom? a.value-totals.thisMonthSpent : a.value))
+          : React.createElement("div",{className:"rval num"},eur(a.spendFrom? a.value + totals.injTR - totals.thisMonthSpent : a.value))
       )),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total líquido"),React.createElement("span",{className:"num"},eur(accSum)))
     ),
@@ -1421,8 +1478,9 @@ function App(){
   const totals=useMemo(()=>{
     const fx=state.fx;
     const thisMonthSpent=state.expenses.filter(e=>parseDate(e.date)>=startOfMonth()).reduce((a,e)=>a+e.amount,0);
-    // el efectivo de la cuenta de gasto (Trade Republic) baja según lo gastado este mes
-    const liquid=state.accounts.reduce((a,i)=> a + (i.spendFrom ? (i.value - thisMonthSpent) : i.value), 0);
+    // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
+    const injTR = nominaYaEntro() ? CONFIG.TR_INJECTION : 0;
+    const liquid=state.accounts.reduce((a,i)=> a + (i.spendFrom ? (i.value + injTR - thisMonthSpent) : i.value), 0);
     const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+d.value,0);
@@ -1434,7 +1492,7 @@ function App(){
     const cuotas=state.debts.reduce((a,d)=>a+(d.monthly||0),0);
     const fijosMensual=fijosVar+cuotas;
     const ahorroMensual=state.aportaciones.reduce((a,x)=>a+x.amount,0);
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,fijosMensual,ahorroMensual};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
@@ -1445,21 +1503,31 @@ function App(){
     return fetch(CONFIG.GAS_URL+CONFIG.PRICES_PARAM,{method:"GET"}).then(function(res){
       if(!res.ok) throw new Error("HTTP "+res.status); return res.json();
     }).then(function(data){
+      if(data && data.ok===false) throw new Error(data.error||"el servidor devolvió un error");
       const prices = data && (data.prices||data.quotes||data); // admite {prices:{...}} o {...}
-      let n=0;
+      // si el servidor responde OK pero sin cotizaciones, no es "sin cambios": es un fallo de Finnhub
+      if(!prices || Object.keys(prices).length===0){
+        if(!silent) showToast("✕ Finnhub no devolvió cotizaciones");
+        return;
+      }
+      // cuántos tickers nuestros llegan con precio válido (se calcula desde el estado actual,
+      // no dentro del updater de set() que corre en diferido y dejaría el conteo en 0)
+      const matched=state.investments.filter(function(i){
+        return i.ticker && i.shares && prices[i.ticker]!=null && parseFloat(prices[i.ticker])>0;
+      });
       set(function(prev){
         const inv=prev.investments.map(function(i){
-          if(i.ticker && prices && prices[i.ticker]!=null){
-            const price=parseFloat(prices[i.ticker]); 
-            if(price>0 && i.shares){ n++; return Object.assign({},i,{value:+(i.shares*price).toFixed(2)}); }
+          if(i.ticker && prices[i.ticker]!=null){
+            const price=parseFloat(prices[i.ticker]);
+            if(price>0 && i.shares){ return Object.assign({},i,{value:+(i.shares*price).toFixed(2)}); }
           }
           return i;
         });
         return Object.assign({},prev,{investments:inv,lastPriceSync:Date.now()});
       });
-      if(!silent) showToast(n>0?("✓ "+n+" precios actualizados"):"Sin cambios");
-    }).catch(function(){
-      if(!silent) showToast("✕ No se pudieron traer precios");
+      if(!silent) showToast(matched.length>0?("✓ "+matched.length+" precios actualizados"):"Sin cambios");
+    }).catch(function(err){
+      if(!silent) showToast("✕ "+((err&&err.message)?err.message:"No se pudieron traer precios"));
     }).then(function(){ if(!silent) setPricing(false); });
   };
 
