@@ -14,6 +14,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+<!-- Supabase (sincronización en la nube). Si falla (offline), la app sigue funcionando con localStorage. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>/* React */
 /**
  * @license React
@@ -540,6 +543,9 @@ const CONFIG = {
   PAGE_SIZE: 12,
   PRICES_PARAM: "?prices=1",   // el GAS devuelve {ok:true, prices:{NVDA:207.18,...}} con este parámetro
   TR_INJECTION: 1500,          // €/mes que entran al efectivo de TR con la nómina (1000 caprichos + 500 colchón). Los 50 del FTSE van aparte (manual).
+  // --- Supabase (Fase 1). La anon key es pública por diseño (va protegida con RLS). ---
+  SUPABASE_URL: "https://sfyfjagbnhbplrljpbvh.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeWZqYWdibmhicGxybGpwYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NzYyODAsImV4cCI6MjA5NzM1MjI4MH0.umMHOZanC4aRSBqiNAjsegyXxcZ-Q-g2oTQtS1JXzZk",
 };
 
 /* ---------- Categorías de gasto variable ---------- */
@@ -600,6 +606,84 @@ const store = {
   get(k){ try{ const v=localStorage.getItem(k); return v==null?null:JSON.parse(v);}catch(e){ return (k in _mem)?_mem[k]:null; } },
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ _mem[k]=v; } },
 };
+
+/* ---------- Supabase: sincronización en la nube (Fase 1) ----------
+   Offline-first: si no hay librería/red o no hay sesión, la app funciona igual con localStorage.
+   Al iniciar sesión (magic link) se sincroniza el estado entre dispositivos.
+   - app_state (JSONB): todo el estado de la app (cuentas, inversiones, gastos…).
+   - tabla expenses: buzón donde MacroDroid (y la app) escriben gastos; la app los lee al sincronizar. */
+const cloud = (function(){
+  let sb = null;
+  try {
+    if (window.supabase && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
+      sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    }
+  } catch(e){ sb = null; }
+  return {
+    enabled(){ return !!sb; },
+    async session(){ if(!sb) return null; const {data}=await sb.auth.getSession(); return data.session; },
+    onAuth(cb){ if(sb) sb.auth.onAuthStateChange(function(_e,session){ cb(session); }); },
+    async signIn(email){
+      if(!sb) throw new Error("nube no disponible");
+      const {error}=await sb.auth.signInWithOtp({ email:email, options:{ emailRedirectTo: location.href.split('#')[0] } });
+      if(error) throw error;
+    },
+    async signOut(){ if(sb) await sb.auth.signOut(); },
+    async pullState(){
+      if(!sb) return null;
+      const {data,error}=await sb.from('app_state').select('data').maybeSingle();
+      if(error) throw error;
+      return data ? data.data : null;
+    },
+    async pushState(uid, data){
+      if(!sb || !uid) return;
+      const {error}=await sb.from('app_state').upsert(
+        { user_id:uid, data:data, updated_at:new Date().toISOString() },
+        { onConflict:'user_id' }
+      );
+      if(error) throw error;
+    },
+    async pullExpenses(){
+      if(!sb) return [];
+      const {data,error}=await sb.from('expenses').select('*').order('fecha',{ascending:false}).limit(2000);
+      if(error) throw error;
+      return data || [];
+    },
+    async prices(){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('prices');
+      if(error) throw error;
+      return data;
+    },
+  };
+})();
+
+/* Convierte una fila de la tabla `expenses` al formato interno de la app. */
+function expenseFromRow(r){
+  return {
+    id: r.id,
+    date: new Date(r.fecha).toISOString(),
+    merchant: r.comercio || "Gasto",
+    amount: Number(r.importe) || 0,
+    category: r.cat || "otros",
+    source: "supabase",
+  };
+}
+
+/* Mezcla gastos remotos en la lista local con dedup (misma lógica que el viejo Sync del Sheet).
+   Los gastos de origen remoto (supabase/sheet) se reemplazan; los manuales se conservan. */
+function mergeExpenses(prevList, incoming){
+  const keyOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
+  const remote={supabase:1, sheet:1};
+  const oldKeys={}; prevList.forEach(function(e){ if(remote[e.source]) oldKeys[keyOf(e)]=1; });
+  let nuevos=0; const seenIn={};
+  incoming.forEach(function(e){ const k=keyOf(e); if(!seenIn[k]){ seenIn[k]=1; if(!oldKeys[k]) nuevos++; } });
+  const keep=prevList.filter(function(e){ return !remote[e.source]; });
+  const merged=keep.concat(incoming);
+  const seen={}; const list=[];
+  merged.forEach(function(e){ const k=keyOf(e); if(!seen[k]){ seen[k]=1; list.push(e); } });
+  return { list:list, nuevos:nuevos };
+}
 
 /* ---------- Helpers ---------- */
 const NF  = new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -836,6 +920,8 @@ const I = {
   up:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.6",width:"13",height:"13"},p),React.createElement("path",{d:"M12 19V5M5 12l7-7 7 7"})),
   down:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.6",width:"13",height:"13"},p),React.createElement("path",{d:"M12 5v14M5 12l7 7 7-7"})),
   logo:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"#0B1410",strokeWidth:"2.1"},p),React.createElement("path",{d:"M3 8.5A2.5 2.5 0 0 1 5.5 6H19a1 1 0 0 1 1 1v2"}),React.createElement("path",{d:"M3 8.5V17a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-3.5"}),React.createElement("path",{d:"M16 12.5h4.5v3H16a1.5 1.5 0 0 1 0-3z"})),
+  cloud:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("path",{d:"M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.2 4 4 0 0 0 6.5 19z"})),
+  cloudOff:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("path",{d:"M17.5 19a4.5 4.5 0 0 0 1.9-8.58M9 5.2A6 6 0 0 1 18 9.2M6.5 19a4 4 0 0 1-.3-7.8"}),React.createElement("path",{d:"M3 3l18 18"})),
 };
 
 /* ============================================================
@@ -1471,6 +1557,65 @@ function App(){
 
   const set=useCallback((updater)=>{ setStateRaw(prev=>{ const next=typeof updater==="function"?updater(prev):updater; store.set("micartera_v3",next); return next; }); },[]);
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(null),2200); };
+
+  /* ---------- Sincronización en la nube (Supabase) ---------- */
+  const [session,setSession]=useState(null);
+  const uid = session && session.user ? session.user.id : null;
+  const stateRef=useRef(state); useEffect(function(){ stateRef.current=state; });
+  const sessionRef=useRef(null);
+
+  // Trae los gastos de la tabla y los mezcla en el estado (dedup).
+  const syncCloudExpenses=function(){
+    return cloud.pullExpenses().then(function(rows){
+      const incoming=rows.map(expenseFromRow).filter(function(e){ return e.amount>0; });
+      const count=mergeExpenses(stateRef.current.expenses, incoming).nuevos;  // conteo síncrono y fiable
+      set(function(prev){ const m=mergeExpenses(prev.expenses,incoming); return Object.assign({},prev,{expenses:m.list,lastSync:Date.now()}); });
+      return { total:incoming.length, nuevos:count };
+    });
+  };
+
+  // Al iniciar sesión: adopta el estado de la nube (o sube el local la 1ª vez) y trae gastos.
+  const syncFromCloud=function(s){
+    if(!s || !s.user) return;
+    const u=s.user.id;
+    cloud.pullState().then(function(cloudState){
+      if(cloudState){ set(function(prev){ return reconcileTR(Object.assign({},prev,cloudState)); }); }
+      else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
+    }).then(function(){ return syncCloudExpenses(); })
+      .then(function(){ showToast("✓ Sincronizado con la nube"); })
+      .catch(function(e){ showToast("✕ Nube: "+((e&&e.message)||e)); });
+  };
+
+  // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
+  useEffect(function(){
+    if(!cloud.enabled()) return;
+    cloud.session().then(function(s){ sessionRef.current=s; setSession(s); if(s) syncFromCloud(s); });
+    cloud.onAuth(function(s){
+      const prev=sessionRef.current;
+      const changed=(!prev&&s)||(prev&&!s)||(prev&&s&&prev.user.id!==s.user.id);
+      sessionRef.current=s; setSession(s);
+      if(changed && s) syncFromCloud(s);
+    });
+  },[]);
+
+  // Empuja el estado a la nube (debounced) cuando cambie y haya sesión.
+  useEffect(function(){
+    if(!uid) return;
+    const t=setTimeout(function(){ cloud.pushState(uid, state).catch(function(){}); }, 1200);
+    return function(){ clearTimeout(t); };
+  },[state,uid]);
+
+  const onCloudClick=function(){
+    if(!cloud.enabled()){ showToast("Nube no disponible"); return; }
+    if(uid){
+      if(window.confirm("Sesión: "+((session.user&&session.user.email)||"")+"\n\n¿Cerrar sesión en este dispositivo?"))
+        cloud.signOut().then(function(){ setSession(null); sessionRef.current=null; showToast("Sesión cerrada"); });
+      return;
+    }
+    const email=window.prompt("Tu email para recibir el enlace de acceso:");
+    if(!email) return;
+    cloud.signIn(email.trim()).then(function(){ showToast("✓ Revisa tu email"); }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+  };
   const [showDots,setShowDots]=useState(false);
   const dotsTimer=useRef(null);
   const tabbarRef=useRef(null);
@@ -1500,9 +1645,11 @@ function App(){
     const withTicker=state.investments.filter(function(i){ return i.ticker; });
     if(withTicker.length===0){ if(!silent) showToast("No hay tickers configurados"); return Promise.resolve(); }
     if(!silent){ setPricing(true); showToast("Actualizando precios…"); }
-    return fetch(CONFIG.GAS_URL+CONFIG.PRICES_PARAM,{method:"GET"}).then(function(res){
-      if(!res.ok) throw new Error("HTTP "+res.status); return res.json();
-    }).then(function(data){
+    // Con sesión → función Edge de Supabase (key oculta). Sin sesión → fallback al Apps Script.
+    const source = (cloud.enabled() && uid)
+      ? cloud.prices()
+      : fetch(CONFIG.GAS_URL+CONFIG.PRICES_PARAM,{method:"GET"}).then(function(res){ if(!res.ok) throw new Error("HTTP "+res.status); return res.json(); });
+    return Promise.resolve(source).then(function(data){
       if(data && data.ok===false) throw new Error(data.error||"el servidor devolvió un error");
       const prices = data && (data.prices||data.quotes||data); // admite {prices:{...}} o {...}
       // si el servidor responde OK pero sin cotizaciones, no es "sin cambios": es un fallo de Finnhub
@@ -1532,6 +1679,14 @@ function App(){
   };
 
   const onSync=function(){
+    if(cloud.enabled() && uid){
+      setSyncing(true); setSyncStatus({type:"idle",msg:"Conectando con Supabase…"});
+      syncCloudExpenses().then(function(r){
+        if(r.nuevos>0){ const m="✓ "+r.nuevos+(r.nuevos===1?" gasto nuevo":" gastos nuevos"); setSyncStatus({type:"",msg:m}); showToast(m); }
+        else { setSyncStatus({type:"",msg:"Ya estás al día · "+r.total+" gastos en la nube"}); showToast("✓ Ya estás al día"); }
+      }).catch(function(e){ setSyncStatus({type:"err",msg:"No se pudo conectar con Supabase: "+((e&&e.message)||e)}); showToast("✕ Error al sincronizar"); }).then(function(){ setSyncing(false); });
+      return;
+    }
     setSyncing(true); setSyncStatus({type:"idle",msg:"Conectando con el Sheet…"});
     fetch(CONFIG.GAS_URL,{method:"GET"}).then(function(res){
       if(!res.ok) throw new Error("HTTP "+res.status); return res.json();
@@ -1634,7 +1789,10 @@ function App(){
           React.createElement("div",{className:"brand-sub"},new Date().toLocaleDateString('es-ES',{month:'long',year:'numeric'}))
         )
       ),
-      React.createElement("button",{className:"icon-btn",onClick:()=>{ setTab(1); onSync(); }},React.createElement(I.sync,{width:18,height:18}))
+      React.createElement("div",{style:{display:"flex",gap:"8px"}},
+        React.createElement("button",{className:"icon-btn",onClick:onCloudClick,title:uid?"Cuenta / sincronización":"Iniciar sesión",style:uid?{color:"var(--accent, #5FD08A)"}:null},React.createElement(uid?I.cloud:I.cloudOff,{width:18,height:18})),
+        React.createElement("button",{className:"icon-btn",onClick:()=>{ setTab(1); onSync(); }},React.createElement(I.sync,{width:18,height:18}))
+      )
     ),
     React.createElement("div",{className:"tabbar-wrap"},
       React.createElement("div",{className:"tabbar",ref:tabbarRef},
