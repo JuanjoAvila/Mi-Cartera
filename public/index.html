@@ -332,7 +332,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
     --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);overscroll-behavior:none;}
   body{
     font-family:'Manrope',system-ui,sans-serif;font-size:15px;line-height:1.45;overscroll-behavior-y:none;
     background:
@@ -359,7 +359,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .icon-btn{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line-soft);color:var(--mint);}
   .icon-btn:active{background:var(--surface-2);}
 
-  .tabbar-wrap{flex:0 0 auto;padding:0 14px 10px;}
+  .tabbar-wrap{position:relative;flex:0 0 auto;padding:0 14px 10px;}
+  .tabbar-wrap::after{content:"";position:absolute;top:0;right:15px;bottom:10px;width:34px;pointer-events:none;border-radius:0 16px 16px 0;background:linear-gradient(to right,rgba(14,26,20,0),var(--bg-2));}
   .tabbar{position:relative;display:flex;gap:4px;background:var(--bg-2);border:1px solid var(--line-soft);border-radius:16px;padding:5px;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth;}
   .tab{flex:0 0 auto;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:7px;transition:color .2s;}
   .tab.active{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));box-shadow:0 4px 12px -4px rgba(95,208,138,.5);}
@@ -368,7 +369,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .viewport{flex:1 1 auto;overflow:hidden;min-height:0;}
   .track{display:flex;height:100%;transition:transform .34s cubic-bezier(.22,.61,.36,1);will-change:transform;}
   .track.dragging{transition:none;}
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 16px calc(96px + var(--safe-bottom));}
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 16px calc(96px + var(--safe-bottom));}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
   .card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line-soft);border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;}
@@ -538,10 +539,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
-  GAS_URL: "https://script.google.com/macros/s/AKfycbzNSrGOLCb_ATOemesh62PCUeudpknM_g9Rfd_uusms-4fwzFM29D-ISrHu3LpcvlyN/exec",
-  FIELDS: { date: "fecha", amount: "importe", merchant: "comercio", category: "cat" },
   PAGE_SIZE: 12,
-  PRICES_PARAM: "?prices=1",   // el GAS devuelve {ok:true, prices:{NVDA:207.18,...}} con este parámetro
   TR_INJECTION: 1500,          // €/mes que entran al efectivo de TR con la nómina (1000 caprichos + 500 colchón). Los 50 del FTSE van aparte (manual).
   // --- Supabase (Fase 1). La anon key es pública por diseño (va protegida con RLS). ---
   SUPABASE_URL: "https://sfyfjagbnhbplrljpbvh.supabase.co",
@@ -1836,12 +1834,9 @@ function App(){
   const fetchPrices=function(silent){
     const withTicker=state.investments.filter(function(i){ return i.ticker; });
     if(withTicker.length===0){ if(!silent) showToast("No hay tickers configurados"); return Promise.resolve(); }
+    if(!(cloud.enabled() && uid)){ if(!silent) showToast("Inicia sesión para actualizar precios"); return Promise.resolve(); }
     if(!silent){ setPricing(true); showToast("Actualizando precios…"); }
-    // Con sesión → función Edge de Supabase (key oculta). Sin sesión → fallback al Apps Script.
-    const source = (cloud.enabled() && uid)
-      ? cloud.prices()
-      : fetch(CONFIG.GAS_URL+CONFIG.PRICES_PARAM,{method:"GET"}).then(function(res){ if(!res.ok) throw new Error("HTTP "+res.status); return res.json(); });
-    return Promise.resolve(source).then(function(data){
+    return Promise.resolve(cloud.prices()).then(function(data){
       if(data && data.ok===false) throw new Error(data.error||"el servidor devolvió un error");
       const prices = data && (data.prices||data.quotes||data); // admite {prices:{...}} o {...}
       // si el servidor responde OK pero sin cotizaciones, no es "sin cambios": es un fallo de Finnhub
@@ -1871,49 +1866,12 @@ function App(){
   };
 
   const onSync=function(){
-    if(cloud.enabled() && uid){
-      setSyncing(true); setSyncStatus({type:"idle",msg:"Conectando con Supabase…"});
-      syncCloudExpenses().then(function(r){
-        if(r.nuevos>0){ const m="✓ "+r.nuevos+(r.nuevos===1?" gasto nuevo":" gastos nuevos"); setSyncStatus({type:"",msg:m}); showToast(m); }
-        else { setSyncStatus({type:"",msg:"Ya estás al día · "+r.total+" gastos en la nube"}); showToast("✓ Ya estás al día"); }
-      }).catch(function(e){ setSyncStatus({type:"err",msg:"No se pudo conectar con Supabase: "+((e&&e.message)||e)}); showToast("✕ Error al sincronizar"); }).then(function(){ setSyncing(false); });
-      return;
-    }
-    setSyncing(true); setSyncStatus({type:"idle",msg:"Conectando con el Sheet…"});
-    fetch(CONFIG.GAS_URL,{method:"GET"}).then(function(res){
-      if(!res.ok) throw new Error("HTTP "+res.status); return res.json();
-    }).then(function(data){
-      const rows=Array.isArray(data)?data:(data.gastos||data.data||data.rows||[]);
-      const F=CONFIG.FIELDS;
-      const incoming=rows.map(function(r){
-        const amount=parseFloat(String(r[F.amount]).replace(',','.'))||0;
-        const merchant=r[F.merchant]||r.merchant||"Gasto";
-        const category=resolveCategory(r[F.category], merchant);
-        const date=parseDate(r[F.date]||r.date||Date.now());
-        return { id:(r.id||uid()), date:date.toISOString(), merchant:merchant, amount:amount, category:category, source:"sheet" };
-      }).filter(function(e){ return e.amount>0; });
-      const keyOf=function(e){ return e.date.slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
-      // ¿cuántos del Sheet son realmente nuevos respecto a lo que ya tenías?
-      const oldSheetKeys={}; state.expenses.forEach(function(e){ if(e.source==="sheet") oldSheetKeys[keyOf(e)]=1; });
-      let nuevos=0; const seenIn={}; incoming.forEach(function(e){ const k=keyOf(e); if(!seenIn[k]){ seenIn[k]=1; if(!oldSheetKeys[k]) nuevos++; } });
-      set(function(prev){
-        const keep=prev.expenses.filter(function(e){ return e.source!=="sheet"; });
-        const merged=keep.concat(incoming);
-        const seen={}; const dedup=[];
-        merged.forEach(function(e){ const k=keyOf(e); if(!seen[k]){seen[k]=1;dedup.push(e);} });
-        return Object.assign({},prev,{expenses:dedup,lastSync:Date.now()});
-      });
-      if(nuevos>0){
-        setSyncStatus({type:"",msg:"✓ "+nuevos+(nuevos===1?" gasto nuevo":" gastos nuevos")+" añadido"+(nuevos===1?"":"s")});
-        showToast("✓ "+nuevos+(nuevos===1?" gasto nuevo":" gastos nuevos"));
-      } else {
-        setSyncStatus({type:"",msg:"Ya estás al día · "+incoming.length+" gastos en el Sheet"});
-        showToast("✓ Ya estás al día");
-      }
-    }).catch(function(){
-      setSyncStatus({type:"err",msg:"No se pudo conectar con el Sheet. Revisa la URL o tu conexión."});
-      showToast("✕ Error al sincronizar");
-    }).then(function(){ setSyncing(false); });
+    if(!(cloud.enabled() && uid)){ setSyncStatus({type:"err",msg:"Inicia sesión para sincronizar"}); showToast("Inicia sesión para sincronizar"); return; }
+    setSyncing(true); setSyncStatus({type:"idle",msg:"Conectando con Supabase…"});
+    syncCloudExpenses().then(function(r){
+      if(r.nuevos>0){ const m="✓ "+r.nuevos+(r.nuevos===1?" gasto nuevo":" gastos nuevos"); setSyncStatus({type:"",msg:m}); showToast(m); }
+      else { setSyncStatus({type:"",msg:"Ya estás al día · "+r.total+" gastos en la nube"}); showToast("✓ Ya estás al día"); }
+    }).catch(function(e){ setSyncStatus({type:"err",msg:"No se pudo conectar con Supabase: "+((e&&e.message)||e)}); showToast("✕ Error al sincronizar"); }).then(function(){ setSyncing(false); });
   };
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */

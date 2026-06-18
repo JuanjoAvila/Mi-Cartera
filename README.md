@@ -11,9 +11,9 @@ PWA de finanzas personales: patrimonio neto, gastos variables, costes fijos, inv
 - **Frontend:** React 18 (inlineado, **sin paso de build en navegador**, usando `React.createElement` directo — NO JSX, NO Babel)
 - **Persistencia local:** `localStorage` con sistema de migraciones versionado (`_dataVer`)
 - **PWA:** Service Worker *network-first* + manifest
-- **Backend de datos:** Google Apps Script + Google Sheets (buzón de entrada de gastos)
-- **Captura automática:** MacroDroid (Android) lee la notificación de Trade Republic → POST al Apps Script
-- **Cotizaciones:** Finnhub (vía Apps Script para evitar CORS)
+- **Backend de datos:** Supabase (Postgres + Auth + Edge Functions). Login email+contraseña + desbloqueo biométrico
+- **Captura automática:** MacroDroid (Android) lee la notificación de Trade Republic → POST a la Edge Function `ingest`
+- **Cotizaciones:** Finnhub (vía Edge Function `prices` para ocultar la key y evitar CORS)
 - **Hosting:** GitHub Pages
 - **CI/CD:** GitHub Actions (build + deploy en cada push a `main`)
 
@@ -27,9 +27,9 @@ mi-cartera/
 │   ├── sw.js               #     Service Worker (la versión se sella en CI)
 │   ├── icon-192.png · icon-512.png · apple-touch-icon.png
 │   └── .nojekyll           #     Evita que GH Pages procese con Jekyll
-├── apps-script/
-│   ├── Code.gs             # Backend GAS (la API key NO va aquí, va en Script Properties)
-│   └── README.md           # Instrucciones de despliegue/republicación del GAS
+├── supabase/                # Backend en la nube (Fase 1)
+│   ├── migrations/          #     Esquema SQL (expenses, app_state, RLS, grants)
+│   └── functions/           #     Edge Functions: ingest (MacroDroid) y prices (Finnhub)
 ├── scripts/
 │   └── stamp-version.mjs   # Sella la versión del SW antes del deploy
 ├── docs/
@@ -56,8 +56,9 @@ Push a `main` → GitHub Actions sella la versión del SW y publica `public/` en
 
 ## 🔐 Secretos
 
-- La **API key de Finnhub NO está en el repo**. Vive en *Script Properties* del Apps Script. Ver `apps-script/README.md`.
-- La URL del Apps Script (`GAS_URL`) sí está en `index.html`. Es un endpoint público (un sitio estático es "view source" igualmente). Endurecerlo con un token compartido está en el backlog.
+- La **API key de Finnhub NO está en el repo**. Vive como secreto del proyecto Supabase (Edge Functions → Secrets), junto con `INGEST_TOKEN` e `INGEST_USER_ID`.
+- En `public/index.html` solo va la **anon key** de Supabase, que es pública por diseño (los datos están protegidos con Row Level Security). La función `ingest` se protege con `INGEST_TOKEN`.
+- Setup completo del backend en [docs/SETUP-SUPABASE.md](docs/SETUP-SUPABASE.md).
 
 ## 🗺️ Roadmap
 
