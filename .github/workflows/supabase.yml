@@ -1,0 +1,54 @@
+name: Deploy Supabase
+
+# Despliega las Edge Functions (y aplica migraciones si das la contraseña de BD)
+# cada vez que cambian los archivos de supabase/. Reemplaza el deploy manual del Apps Script.
+on:
+  push:
+    branches: [main]
+    paths: ["supabase/**"]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Si aún no has configurado el token, salta el deploy sin marcar el job en rojo.
+      - name: Comprobar configuración
+        id: gate
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$REF" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Falta SUPABASE_ACCESS_TOKEN (secret) o SUPABASE_PROJECT_REF (variable). Salto el deploy; configúralos en Settings del repo."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$DB_PASSWORD" ]; then echo "migrate=true" >> "$GITHUB_OUTPUT"; else echo "migrate=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Instalar Supabase CLI
+        if: steps.gate.outputs.skip != 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Migraciones: solo si das la contraseña de la BD como secret (si no, aplícalas a mano una vez en el SQL Editor).
+      - name: Aplicar migraciones
+        if: steps.gate.outputs.skip != 'true' && steps.gate.outputs.migrate == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}" --password "$DB_PASSWORD"
+          supabase db push --password "$DB_PASSWORD"
+
+      - name: Desplegar Edge Functions
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase functions deploy --project-ref "${{ vars.SUPABASE_PROJECT_REF }}"
