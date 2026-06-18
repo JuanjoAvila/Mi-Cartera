@@ -50,5 +50,12 @@ create policy "app_state_own" on public.app_state
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- Nota: la función ingest usa la SERVICE_ROLE_KEY, que salta RLS, para insertar
+-- ---------- GRANTS ----------
+-- Necesarios porque el proyecto se creó con "Automatically expose new tables" DESACTIVADO.
+-- Sin esto, el rol `authenticated` no puede tocar las tablas (error "permission denied for table")
+-- aunque existan las políticas RLS. RLS sigue limitando a cada usuario a sus propias filas.
+grant select, insert, update, delete on table public.expenses  to authenticated;
+grant select, insert, update, delete on table public.app_state to authenticated;
+
+-- Nota: la función ingest usa la SERVICE_ROLE_KEY, que salta RLS y grants, para insertar
 -- gastos del usuario configurado (INGEST_USER_ID) sin necesidad de sesión.
