@@ -1676,8 +1676,20 @@ function App(){
   const syncCloudExpenses=function(){
     return cloud.pullExpenses().then(function(rows){
       const incoming=rows.map(expenseFromRow).filter(function(e){ return e.amount>0; });
-      const count=mergeExpenses(stateRef.current.expenses, incoming).nuevos;  // conteo síncrono y fiable
-      set(function(prev){ const m=mergeExpenses(prev.expenses,incoming); return Object.assign({},prev,{expenses:m.list,lastSync:Date.now()}); });
+      const keyOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
+      // La tabla `expenses` es la FUENTE DE VERDAD de los gastos de la nube: se reemplazan los
+      // de origen "supabase" con lo que hay en la tabla (refresca categorías, importes y borrados).
+      // Los manuales/sheet locales NO se tocan nunca (por eso esto es seguro y no borra datos).
+      const prevSupaKeys={}; (stateRef.current.expenses||[]).forEach(function(e){ if(e.source==="supabase") prevSupaKeys[keyOf(e)]=1; });
+      let count=0; const seenC={};
+      incoming.forEach(function(e){ const k=keyOf(e); if(!seenC[k]){ seenC[k]=1; if(!prevSupaKeys[k]) count++; } });
+      set(function(prev){
+        const keep=prev.expenses.filter(function(e){ return e.source!=="supabase"; });
+        const keepKeys={}; keep.forEach(function(e){ keepKeys[keyOf(e)]=1; });
+        const seen={}; const add=[];
+        incoming.forEach(function(e){ const k=keyOf(e); if(!keepKeys[k] && !seen[k]){ seen[k]=1; add.push(e); } });
+        return Object.assign({},prev,{expenses:keep.concat(add),lastSync:Date.now()});
+      });
       return { total:incoming.length, nuevos:count };
     });
   };
