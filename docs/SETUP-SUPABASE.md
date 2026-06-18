@@ -45,6 +45,14 @@ Opción rápida (recomendada la primera vez): **SQL Editor → New query**, pega
 2. **Authentication → Users → Add user** (o entra una vez desde la app con tu email).
 3. Copia el **User UID** (uuid) de tu usuario → lo necesitas como `INGEST_USER_ID`.
 
+## Paso 3b — Configurar las URLs de Auth (CRÍTICO para el magic link) 👤
+
+En **Authentication → URL Configuration**:
+- **Site URL:** la URL de tu app en GitHub Pages (cópiala de Settings → Pages del repo; normalmente `https://juanjoavila.github.io/Mi-Cartera/`).
+- **Redirect URLs:** añade la misma URL y, por comodidad, un comodín: `https://juanjoavila.github.io/Mi-Cartera/**`.
+
+> Sin esto, el enlace del email redirige a `localhost` y el login falla. Si pruebas también en local, añade `http://localhost` a las Redirect URLs.
+
 ## Paso 4 — Configurar los secretos de las funciones 👤
 
 En **Project Settings → Edge Functions → Secrets** (o con la CLI), añade:
@@ -82,9 +90,16 @@ Mantén el Apps Script activo hasta confirmar que entran gastos por Supabase; lu
 
 ---
 
-## Lo que falta (lo hago yo en el repo tras tener tus claves)
+## Estado del frontend
 
-- Integrar `@supabase/supabase-js` en `public/index.html`: login magic-link, carga/guardado de `app_state`, lectura de `expenses` y `fetchPrices` apuntando a la función `prices`.
-- Script de importación única: volcar los gastos del Google Sheet actual + el estado de `localStorage` a Supabase.
+✅ **Ya cableado** en `public/index.html` (v3.4.0): cliente Supabase, login magic-link (botón de nube arriba), sincronización de `app_state`, lectura de `expenses` y precios vía la función `prices`. Offline-first: sin sesión, todo sigue con `localStorage`.
 
-**Para continuar, pásame:** Project URL y la **anon key** (esas dos no son secretas, van en el cliente). Con eso cableo el frontend.
+### Cómo probarlo (cuando termines los pasos 1–5)
+1. Abre la app en el móvil (o GitHub Pages), pulsa el **icono de nube** arriba a la derecha.
+2. Mete tu email → te llega el enlace → al abrirlo, vuelves a la app ya con sesión.
+3. La primera vez sube tu estado actual a la nube. En otro dispositivo, inicia sesión y verás lo mismo.
+4. El botón **Sincronizar** trae los gastos de la tabla `expenses`; **Precios USD** usa la función `prices`.
+
+### Pendiente (futuro)
+- Repuntar MacroDroid a la función `ingest` (Paso 6) y jubilar el Apps Script.
+- Pantalla de login más cuidada (ahora usa el prompt nativo del navegador) e importación de los gastos históricos del Google Sheet.

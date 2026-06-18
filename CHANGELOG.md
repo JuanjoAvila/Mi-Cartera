@@ -4,8 +4,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 
 ## [Unreleased]
 ### En progreso — Fase 1: Supabase
-- 🏗️ **Backend en la nube (BD + funciones + login):** scaffolding en `supabase/`. Esquema (`expenses` relacional + `app_state` JSONB con RLS), Edge Functions `ingest` (reemplaza MacroDroid→Sheet) y `prices` (reemplaza el proxy Finnhub del Apps Script), y workflow de CI que las despliega solas. Auth por magic-link, multi-dispositivo. Guía: [docs/SETUP-SUPABASE.md](docs/SETUP-SUPABASE.md).
-- ⏭️ **Pendiente:** crear el proyecto Supabase (manual), integrar `@supabase/supabase-js` en el frontend e importar los datos actuales (Sheet + localStorage).
+- ⏭️ **Pendiente de configurar (manual):** aplicar el SQL del esquema, secretos de GitHub para el deploy del CI, y **URLs de Auth** (Site URL + Redirect) con la URL de GitHub Pages para que funcione el magic link. Ver [docs/SETUP-SUPABASE.md](docs/SETUP-SUPABASE.md).
+- ⏭️ **Pendiente (futuro):** repuntar MacroDroid a la función `ingest` y jubilar el Apps Script; pantalla de login más cuidada (ahora usa prompt nativo).
 
 ### Por hacer (próximos pasos)
 - 🐛 **Precios USD (causa raíz):** Finnhub devuelve `prices:{}` vacío. La app y el Apps Script ya lo reportan claro; falta **redeployar el Apps Script** (Nueva versión) y revisar `FINNHUB_KEY` con el campo `errors`/`keyLen` que ahora trae la respuesta.
@@ -14,6 +14,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - 🔁 Migración de Netlify a GitHub Pages (este commit inicial).
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
+
+## [3.4.0] — 2026-06-18
+### Added
+- **Sincronización en la nube (Fase 1 Supabase) — frontend cableado:**
+  - Carga de `@supabase/supabase-js` y cliente con la anon key (RLS protege los datos).
+  - **Login por magic link** (botón de nube en la barra superior): al iniciar sesión se adopta el estado de la nube o se sube el local la primera vez.
+  - **Multi-dispositivo:** el estado completo se sincroniza vía `app_state` (push debounced al cambiar, pull al entrar).
+  - El botón **Sincronizar** lee los gastos de la tabla `expenses` de Supabase cuando hay sesión (con dedup); sin sesión sigue usando el Google Sheet.
+  - **Precios USD** usan la Edge Function `prices` cuando hay sesión (key de Finnhub oculta server-side); sin sesión, fallback al Apps Script.
+- **Offline-first:** si no hay red/sesión, la app funciona igual con `localStorage` (sin cambios de comportamiento).
 
 ## [3.3.1] — 2026-06-18
 ### Fixed
