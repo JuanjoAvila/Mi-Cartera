@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.10.0] — 2026-06-18
+### Changed
+- **Ajustes con gesto (estilo Revolut):** se abren deslizando desde el borde derecho de la pantalla; el cajón sigue el dedo y hace snap con animación. Una franja "edge-catcher" captura el gesto sin pisar el swipe de pestañas. El botón de engranaje se mantiene como alternativa.
+
 ## [3.9.0] — 2026-06-18
 ### Changed
 - **Ajustes como cajón lateral** (estilo Revolut): entra deslizando desde la derecha.
