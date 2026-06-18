@@ -629,6 +629,8 @@ const cloud = (function(){
       if(error) throw error;
     },
     async signOut(){ if(sb) await sb.auth.signOut(); },
+    async signInPassword(email,password){ if(!sb) throw new Error("nube no disponible"); const {error}=await sb.auth.signInWithPassword({email:email,password:password}); if(error) throw error; },
+    async signUpPassword(email,password){ if(!sb) throw new Error("nube no disponible"); const {data,error}=await sb.auth.signUp({email:email,password:password}); if(error) throw error; return data; },
     async pullState(){
       if(!sb) return null;
       const {data,error}=await sb.from('app_state').select('data').maybeSingle();
@@ -681,6 +683,41 @@ function mergeExpenses(prevList, incoming){
   (incoming||[]).forEach(function(e){ const k=keyOf(e); if(!seen[k]){ seen[k]=1; list.push(e); nuevos++; } });
   return { list:list, nuevos:nuevos };
 }
+
+/* ---------- Desbloqueo biométrico (huella / Face ID vía WebAuthn) ----------
+   Candado LOCAL por dispositivo: tras iniciar sesión una vez, la app pide huella al abrir.
+   No verifica en servidor (suficiente para uso personal); es una capa de UX tipo app de banco. */
+function bufToB64(buf){ const b=new Uint8Array(buf); let s=""; for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
+function b64ToBuf(b64){ const s=atob(b64); const a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a.buffer; }
+const bio = {
+  supported(){ return !!(window.PublicKeyCredential && navigator.credentials && location.protocol==="https:"); },
+  enabled(){ return !!store.get("bio_cred"); },
+  async enable(uid, email){
+    if(!this.supported()) throw new Error("Este dispositivo/navegador no soporta huella");
+    const cred = await navigator.credentials.create({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp:{ id: location.hostname, name:"Mi Cartera" },
+      user:{ id: new TextEncoder().encode(String(uid||email||"user")), name: email||"usuario", displayName: email||"Mi Cartera" },
+      pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],
+      authenticatorSelection:{ authenticatorAttachment:"platform", userVerification:"required", residentKey:"preferred" },
+      timeout:60000,
+    }});
+    store.set("bio_cred", { id: bufToB64(cred.rawId) });
+    return true;
+  },
+  disable(){ try{ localStorage.removeItem("bio_cred"); }catch(e){} store.set("bio_cred", null); },
+  async unlock(){
+    const c = store.get("bio_cred"); if(!c) return true;
+    await navigator.credentials.get({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rpId: location.hostname,
+      allowCredentials:[{ type:"public-key", id: b64ToBuf(c.id) }],
+      userVerification:"required",
+      timeout:60000,
+    }});
+    return true;  // si no lanza, la huella se verificó
+  },
+};
 
 /* ---------- Helpers ---------- */
 const NF  = new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1545,6 +1582,72 @@ const TABS=[
   {id:"debt",label:"Deudas",icon:I.debt},
 ];
 
+/* Pantalla de bloqueo: pide huella al abrir la app cuando el candado está activado. */
+function LockScreen({onUnlock}){
+  const [err,setErr]=useState(false);
+  const tryUnlock=function(){ setErr(false); bio.unlock().then(onUnlock).catch(function(){ setErr(true); }); };
+  useEffect(function(){ const t=setTimeout(tryUnlock,350); return function(){ clearTimeout(t); }; },[]);
+  const wrap={position:"fixed",inset:0,background:"#0B1410",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",zIndex:100,color:"#E8F0EB",gap:"16px",padding:"24px",textAlign:"center"};
+  const btn={padding:"14px 22px",borderRadius:"14px",border:"none",background:"#5FD08A",color:"#06120C",fontWeight:700,fontSize:"15px",cursor:"pointer"};
+  return React.createElement("div",{style:wrap},
+    React.createElement("div",{style:{width:64,height:64,borderRadius:"50%",background:"#5FD08A22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"30px"}},"🔒"),
+    React.createElement("div",{style:{fontWeight:700,fontSize:"22px",fontFamily:"Fraunces, serif"}},"Mi cartera"),
+    React.createElement("div",{style:{color:"#9fb3a8",fontSize:"14px"}}, err?"No se pudo verificar. Inténtalo de nuevo.":"Desbloquea para continuar"),
+    React.createElement("button",{style:btn,onClick:tryUnlock},"Desbloquear con huella")
+  );
+}
+
+/* Panel de cuenta: login/registro con contraseña y toggle de huella. */
+function AuthPanel({session, onClose, showToast}){
+  const uid = session && session.user ? session.user.id : null;
+  const [mode,setMode]=useState("in");
+  const [email,setEmail]=useState((session&&session.user&&session.user.email)||"");
+  const [pass,setPass]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [bioOn,setBioOn]=useState(bio.enabled());
+  const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:"20px"};
+  const card={background:"#0F1A15",border:"1px solid #1e2b24",borderRadius:"18px",padding:"22px",width:"100%",maxWidth:"360px",color:"#E8F0EB",fontFamily:"Manrope, sans-serif"};
+  const inp={width:"100%",padding:"12px 14px",margin:"6px 0",borderRadius:"12px",border:"1px solid #2a3a31",background:"#0B1410",color:"#fff",fontSize:"16px",boxSizing:"border-box"};
+  const btn={width:"100%",padding:"12px",borderRadius:"12px",border:"none",background:"#5FD08A",color:"#06120C",fontWeight:700,fontSize:"15px",marginTop:"8px",cursor:"pointer"};
+  const link={background:"none",border:"none",color:"#9BD0E0",cursor:"pointer",fontSize:"13px",marginTop:"12px",padding:"4px",width:"100%"};
+  const submit=function(){
+    if(!email||!pass){ showToast("Pon email y contraseña"); return; }
+    setBusy(true);
+    const p = mode==="in" ? cloud.signInPassword(email.trim(),pass) : cloud.signUpPassword(email.trim(),pass);
+    p.then(function(){ showToast(mode==="in"?"✓ Sesión iniciada":"✓ Cuenta creada"); onClose(); })
+     .catch(function(e){ showToast("✕ "+((e&&e.message)||e)); })
+     .then(function(){ setBusy(false); });
+  };
+  const toggleBio=function(){
+    if(bioOn){ bio.disable(); setBioOn(false); showToast("Huella desactivada"); return; }
+    bio.enable(uid, (session&&session.user&&session.user.email)).then(function(){ setBioOn(true); showToast("✓ Huella activada"); }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+  };
+  const stop=function(e){ e.stopPropagation(); };
+  if(uid){
+    return React.createElement("div",{style:overlay,onClick:onClose},
+      React.createElement("div",{style:card,onClick:stop},
+        React.createElement("div",{style:{fontWeight:700,fontSize:"17px"}},"Tu cuenta"),
+        React.createElement("div",{style:{color:"#9fb3a8",fontSize:"13px",marginBottom:"16px"}},(session.user.email||"")),
+        bio.supported()
+          ? React.createElement("button",{style:Object.assign({},btn,{background:bioOn?"#243b30":"#5FD08A",color:bioOn?"#cfe9da":"#06120C"}),onClick:toggleBio}, bioOn?"🔒 Desactivar desbloqueo con huella":"🔓 Activar desbloqueo con huella")
+          : React.createElement("div",{style:{color:"#E6C36A",fontSize:"12px",margin:"6px 0"}},"Este dispositivo/navegador no soporta huella."),
+        React.createElement("button",{style:Object.assign({},btn,{background:"#3a2430",color:"#f3d0d8"}),onClick:function(){ cloud.signOut().then(function(){ showToast("Sesión cerrada"); onClose(); }); }},"Cerrar sesión"),
+        React.createElement("button",{style:link,onClick:onClose},"Cerrar")
+      )
+    );
+  }
+  return React.createElement("div",{style:overlay,onClick:onClose},
+    React.createElement("div",{style:card,onClick:stop},
+      React.createElement("div",{style:{fontWeight:700,fontSize:"17px",marginBottom:"14px"}}, mode==="in"?"Iniciar sesión":"Crear cuenta"),
+      React.createElement("input",{style:inp,type:"email",placeholder:"Email",value:email,autoComplete:"username",onChange:function(e){ setEmail(e.target.value); }}),
+      React.createElement("input",{style:inp,type:"password",placeholder:"Contraseña",value:pass,autoComplete:mode==="in"?"current-password":"new-password",onChange:function(e){ setPass(e.target.value); }}),
+      React.createElement("button",{style:btn,disabled:busy,onClick:submit}, busy?"…":(mode==="in"?"Entrar":"Crear cuenta")),
+      React.createElement("button",{style:link,onClick:function(){ setMode(mode==="in"?"up":"in"); }}, mode==="in"?"¿No tienes cuenta? Crear una":"¿Ya tienes cuenta? Inicia sesión"),
+      React.createElement("button",{style:link,onClick:onClose},"Cancelar")
+    )
+  );
+}
+
 function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
@@ -1607,16 +1710,11 @@ function App(){
     return function(){ clearTimeout(t); };
   },[state,uid]);
 
+  const [showAuth,setShowAuth]=useState(false);
+  const [locked,setLocked]=useState(function(){ return bio.enabled(); });
   const onCloudClick=function(){
     if(!cloud.enabled()){ showToast("Nube no disponible"); return; }
-    if(uid){
-      if(window.confirm("Sesión: "+((session.user&&session.user.email)||"")+"\n\n¿Cerrar sesión en este dispositivo?"))
-        cloud.signOut().then(function(){ setSession(null); sessionRef.current=null; showToast("Sesión cerrada"); });
-      return;
-    }
-    const email=window.prompt("Tu email para recibir el enlace de acceso:");
-    if(!email) return;
-    cloud.signIn(email.trim()).then(function(){ showToast("✓ Revisa tu email"); }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+    setShowAuth(true);
   };
   const [showDots,setShowDots]=useState(false);
   const dotsTimer=useRef(null);
@@ -1782,6 +1880,8 @@ function App(){
   },[tab]);
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
+  if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
+
   return React.createElement("div",{className:"app"},
     React.createElement("div",{className:"topbar"},
       React.createElement("div",{className:"brand"},
@@ -1812,7 +1912,8 @@ function App(){
       )
     ),
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, TABS.map((t,i)=>React.createElement("div",{key:t.id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
-    toast && React.createElement("div",{className:"toast"},toast)
+    toast && React.createElement("div",{className:"toast"},toast),
+    showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); },showToast:showToast})
   );
 }
 
