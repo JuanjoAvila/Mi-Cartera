@@ -57,5 +57,7 @@ create policy "app_state_own" on public.app_state
 grant select, insert, update, delete on table public.expenses  to authenticated;
 grant select, insert, update, delete on table public.app_state to authenticated;
 
--- Nota: la función ingest usa la SERVICE_ROLE_KEY, que salta RLS y grants, para insertar
--- gastos del usuario configurado (INGEST_USER_ID) sin necesidad de sesión.
+-- service_role: lo usa la función ingest para escribir gastos. Con "expose new tables"
+-- desactivado, este rol tampoco recibe grants automáticos, así que se los damos aquí.
+grant select, insert, update, delete on table public.expenses  to service_role;
+grant select, insert, update, delete on table public.app_state to service_role;
