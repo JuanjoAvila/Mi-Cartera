@@ -15,6 +15,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.9.0] — 2026-06-18
+### Changed
+- **Ajustes como cajón lateral** (estilo Revolut): entra deslizando desde la derecha.
+- Quitado el **objetivo de ahorro** (redundante con "ahorro al mes" del resumen).
+- Quitado el **botón de refrescar** de la barra superior (ya está el Sincronizar grande en Gastos).
+### Added
+- **Auto-sincronización** de gastos al abrir la app o volver a primer plano (visibilitychange).
+### Fixed
+- El toast de confirmación (p. ej. "Presupuesto guardado") ahora se ve por encima de los paneles (z-index).
+
 ## [3.8.0] — 2026-06-18
 ### Changed
 - **Apps Script jubilado:** eliminado el fallback al Google Sheet/Apps Script en `onSync` y `fetchPrices` (ahora todo va por Supabase con sesión), quitadas las constantes `GAS_URL`/`PRICES_PARAM`/`FIELDS`, borrada la carpeta `apps-script/` y actualizada la documentación.
