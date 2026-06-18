@@ -19,9 +19,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.10.1] — 2026-06-18
+### Changed
+- **Gesto de Ajustes corregido:** Ajustes es ahora una "página oculta a la izquierda" del Resumen. En la 1ª pestaña, arrastrar de **izquierda a derecha** abre el cajón desde la izquierda (siguiendo el dedo, con snap); de derecha a izquierda sigue yendo a Gastos. Integrado en el swipe de pestañas (sin franja aparte). El engranaje se mantiene como alternativa.
+
 ## [3.10.0] — 2026-06-18
 ### Changed
-- **Ajustes con gesto (estilo Revolut):** se abren deslizando desde el borde derecho de la pantalla; el cajón sigue el dedo y hace snap con animación. Una franja "edge-catcher" captura el gesto sin pisar el swipe de pestañas. El botón de engranaje se mantiene como alternativa.
+- **Ajustes con gesto (1er intento):** cajón lateral con gesto desde el borde derecho (corregido en 3.10.1: el sentido natural es desde la izquierda).
 
 ## [3.9.0] — 2026-06-18
 ### Changed
