@@ -43,3 +43,15 @@ if (sw === before) {
 
 writeFileSync(swPath, sw);
 console.log(`✅ Service Worker sellado: VERSION = "${stamp}"`);
+
+// Sella también la versión visible en la app (CONFIG.APP_VERSION)
+const idxPath = join(root, "public", "index.html");
+let idx = readFileSync(idxPath, "utf8");
+const idxBefore = idx;
+idx = idx.replace(/APP_VERSION: ".*?"/, `APP_VERSION: "${version}"`);
+if (idx === idxBefore) {
+  console.error('⚠️  No se encontró `APP_VERSION: "..."` en public/index.html');
+} else {
+  writeFileSync(idxPath, idx);
+  console.log(`✅ App sellada: APP_VERSION = "${version}"`);
+}
