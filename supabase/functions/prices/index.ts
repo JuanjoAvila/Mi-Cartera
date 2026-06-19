@@ -1,11 +1,14 @@
 // ============================================================
 // Edge Function: prices
-// Proxy de cotizaciones Finnhub. La API key vive como secreto del proyecto
-// (FINNHUB_KEY), nunca en el cliente. Reemplaza a doGetPrices del Apps Script.
-// La llama la app con el JWT del usuario (verify_jwt = true en config.toml).
+// Cotizaciones server-side (key oculta, sin CORS). Reemplaza a doGetPrices del Apps Script.
+// - Acciones US: Finnhub (FINNHUB_KEY).
+// - ETF europeo (FTSE All-World / VWCE) y oro (XAU): Yahoo Finance (no necesita key;
+//   Finnhub gratis no cubre Xetra ni materias). Devuelve un mapa { TICKER_APP: precio }.
 // ============================================================
 
-const TICKERS = ["NVDA", "GOOG", "TSM", "AVGO", "MU", "AMD"];
+const FINNHUB = ["NVDA", "GOOG", "TSM", "AVGO", "MU", "AMD"];
+// clave usada en la app -> símbolo en Yahoo Finance
+const YAHOO: Record<string, string> = { VWCE: "VWCE.DE", GOLD: "GC=F" };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -15,27 +18,49 @@ const cors = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
-  const key = Deno.env.get("FINNHUB_KEY");
-  if (!key) return json({ ok: false, error: "FINNHUB_KEY no configurada en el proyecto" }, 500);
-
   const prices: Record<string, number> = {};
   const errors: Array<Record<string, unknown>> = [];
 
-  for (const sym of TICKERS) {
-    try {
-      const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${key}`);
-      const body = await res.text();
-      const data = JSON.parse(body);
-      if (typeof data.c === "number" && data.c > 0) prices[sym] = data.c; // c = precio actual
-      else errors.push({ sym, status: res.status, body: body.slice(0, 200) });
-    } catch (e) {
-      errors.push({ sym, status: "exception", body: String(e).slice(0, 200) });
+  // --- Acciones US vía Finnhub ---
+  const key = Deno.env.get("FINNHUB_KEY");
+  if (key) {
+    for (const sym of FINNHUB) {
+      try {
+        const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${key}`);
+        const body = await res.text();
+        const data = JSON.parse(body);
+        if (typeof data.c === "number" && data.c > 0) prices[sym] = data.c;
+        else errors.push({ sym, status: res.status, body: body.slice(0, 150) });
+      } catch (e) {
+        errors.push({ sym, status: "exception", body: String(e).slice(0, 150) });
+      }
+      await new Promise((r) => setTimeout(r, 120));
     }
-    await new Promise((r) => setTimeout(r, 120)); // respeta el rate limit de Finnhub
+  } else {
+    errors.push({ finnhub: "FINNHUB_KEY no configurada" });
   }
 
-  const out: Record<string, unknown> = { ok: true, prices, ts: Date.now() };
-  if (errors.length) out.errors = errors; // diagnóstico: aparece solo si algún ticker no cotizó
+  // --- ETF europeo + oro vía Yahoo Finance ---
+  for (const appKey of Object.keys(YAHOO)) {
+    const ySym = YAHOO[appKey];
+    try {
+      const res = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym)}?interval=1d&range=1d`,
+        { headers: { "User-Agent": "Mozilla/5.0" } },
+      );
+      const body = await res.text();
+      const data = JSON.parse(body);
+      const p = data && data.chart && data.chart.result && data.chart.result[0] &&
+        data.chart.result[0].meta && data.chart.result[0].meta.regularMarketPrice;
+      if (typeof p === "number" && p > 0) prices[appKey] = p;
+      else errors.push({ sym: appKey, status: res.status, body: body.slice(0, 150) });
+    } catch (e) {
+      errors.push({ sym: appKey, status: "exception", body: String(e).slice(0, 150) });
+    }
+  }
+
+  const out: Record<string, unknown> = { ok: true, prices: prices, ts: Date.now() };
+  if (errors.length) out.errors = errors;
   return json(out, 200);
 });
 
