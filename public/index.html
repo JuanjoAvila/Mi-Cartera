@@ -656,6 +656,13 @@ const cloud = (function(){
       if(error) throw error;
       return data || [];
     },
+    async addExpense(e){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      const {error}=await sb.from('expenses').insert({ user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:e.source||'manual' });
+      if(error) throw error;
+    },
     async prices(){
       if(!sb) throw new Error("nube no disponible");
       const {data,error}=await sb.functions.invoke('prices');
@@ -1201,7 +1208,7 @@ function inPreset(d,preset,range){
 function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
-  const [cat,setCat]=useState("all");
+  const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super"});
@@ -1209,12 +1216,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 
   const filtered=useMemo(()=> state.expenses
     .filter(e=>inPreset(parseDate(e.date),preset,range))
-    .filter(e=> cat==="all"||e.category===cat)
+    .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
     .sort((a,b)=>parseDate(b.date)-parseDate(a.date))
-  ,[state.expenses,preset,range,cat]);
+  ,[state.expenses,preset,range,sel]);
 
   const total=useMemo(()=>filtered.reduce((a,e)=>a+e.amount,0),[filtered]);
-  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,cat]);
+  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel]);
   useEffect(()=>{
     const el=sentinelRef.current; if(!el) return;
     const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting) setVisible(v=> v<filtered.length?v+CONFIG.PAGE_SIZE:v); },{rootMargin:"120px"});
@@ -1230,6 +1237,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(amt<=0){ showToast("Pon un importe válido"); return; }
     const ex={ id:uid(), date:new Date().toISOString(), merchant:form.merchant||"Gasto", amount:amt, category:form.category, source:"manual" };
     set(s=>Object.assign({},s,{expenses:[ex].concat(s.expenses)}));
+    if(cloud.enabled()) cloud.addExpense(ex).catch(function(){});   // lo guarda también en la BD
     setForm({merchant:"",amount:"",category:form.category}); setAdding(false); showToast("✓ Gasto apuntado");
   };
 
@@ -1242,8 +1250,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
       React.createElement("div",Object.assign({className:"cat-select"},stopSwipe),
-        React.createElement("button",{className:"chip"+(cat==="all"?" active":""),onClick:()=>setCat("all")},"Todas"),
-        CATEGORIES.map(c=>React.createElement("button",{key:c.id,className:"chip"+(cat===c.id?" active":""),onClick:()=>setCat(c.id)},c.icon+" "+c.name.split(" ")[0]))
+        React.createElement("button",{className:"chip"+(sel.length===0?" active":""),onClick:()=>setSel([])},"Todas"),
+        CATEGORIES.map(c=>React.createElement("button",{key:c.id,className:"chip"+(sel.indexOf(c.id)!==-1?" active":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+c.name.split(" ")[0]))
       )
     ),
     React.createElement("div",{className:"total-bar"},
@@ -1700,11 +1708,6 @@ function SettingsPanel({state, set, onClose, showToast}){
     };
     r.readAsText(f);
   };
-  const doReset=function(){
-    if(!window.confirm("⚠️ Borrar los datos LOCALES de este dispositivo. Si tienes sesión, se vuelven a bajar de la nube. ¿Continuar?")) return;
-    try{ localStorage.removeItem("micartera_v3"); }catch(e){}
-    window.location.reload();
-  };
   return React.createElement(React.Fragment,null,
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
       React.createElement("div",{style:{fontWeight:700,fontSize:"18px"}},"Ajustes"),
@@ -1718,9 +1721,7 @@ function SettingsPanel({state, set, onClose, showToast}){
     React.createElement("button",{style:btnGhost,onClick:doExport},"⬇️ Exportar datos (JSON)"),
     React.createElement("button",{style:btnGhost,onClick:function(){ fileRef.current&&fileRef.current.click(); }},"⬆️ Importar datos (JSON)"),
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
-    React.createElement("div",{style:{height:"1px",background:"#1e2b24",margin:"18px 0 4px"}}),
-    React.createElement("button",{style:Object.assign({},btnGhost,{color:"#E2705F",borderColor:"#5c322c"}),onClick:doReset},"Borrar datos locales"),
-    React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"18px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
+    React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
   );
 }
 
@@ -1812,6 +1813,29 @@ function App(){
 
   // Cajón de Ajustes: se abre arrastrando de izquierda a derecha en la 1ª pestaña (integrado en el swipe)
   const drawerRef=useRef(null), backRef=useRef(null), gestureMode=useRef(null);
+  const dW=()=>Math.min(360,(window.innerWidth||360)*0.86);
+  // Cerrar el cajón arrastrando de derecha a izquierda sobre él
+  const dSX=useRef(0), dSY=useRef(0), dAx=useRef(null), dDrag=useRef(false), dDX=useRef(0);
+  const drawerStart=function(e){ const t=e.touches[0]; dSX.current=t.clientX; dSY.current=t.clientY; dAx.current=null; dDrag.current=true; dDX.current=0; };
+  const drawerMove=function(e){
+    if(!dDrag.current) return;
+    const t=e.touches[0], ddx=t.clientX-dSX.current, ddy=t.clientY-dSY.current;
+    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current) drawerRef.current.classList.add("dragging"); }
+    if(dAx.current!=="x") return;
+    dDX.current=ddx;
+    const closeProg=Math.min(1,Math.max(0,(-ddx)/dW()));   // a la izquierda = cerrar
+    if(drawerRef.current) drawerRef.current.style.transform="translateX("+(-closeProg*100)+"%)";
+    if(backRef.current) backRef.current.style.opacity=String(1-closeProg);
+  };
+  const drawerEnd=function(){
+    if(!dDrag.current) return; dDrag.current=false;
+    if(drawerRef.current) drawerRef.current.classList.remove("dragging");
+    const closeProg=Math.min(1,Math.max(0,(-dDX.current)/dW()));
+    if(drawerRef.current) drawerRef.current.style.transform="";
+    if(backRef.current) backRef.current.style.opacity="";
+    setDrawerOpen(closeProg<0.4);   // arrastró >40% a la izquierda → cierra
+    dAx.current=null;
+  };
 
   const onCloudClick=function(){
     if(!cloud.enabled()){ showToast("Nube no disponible"); return; }
@@ -1998,7 +2022,7 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); },showToast:showToast}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
-    React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":"")},
+    React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
       React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast})
     )
   );
