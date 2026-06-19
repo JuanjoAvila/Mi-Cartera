@@ -1866,7 +1866,16 @@ function App(){
   },[state]);
 
   const [pricing,setPricing]=useState(false);
+  // Cambio USD→EUR dinámico (tipos de referencia del BCE vía frankfurter.app, gratis y sin key).
+  const refreshFx=function(){
+    fetch("https://api.frankfurter.app/latest?from=USD&to=EUR").then(function(r){ return r.json(); }).then(function(d){
+      const r=d&&d.rates&&d.rates.EUR;
+      if(r>0) set(function(s){ return Math.abs((s.fx||0)-r)<0.0001 ? s : Object.assign({},s,{fx:+(+r).toFixed(4)}); });
+    }).catch(function(){});
+  };
+  useEffect(function(){ refreshFx(); },[]);   // refresca el cambio al abrir la app
   const fetchPrices=function(silent){
+    refreshFx();   // y también al pulsar "Precios USD"
     const withTicker=state.investments.filter(function(i){ return i.ticker; });
     if(withTicker.length===0){ if(!silent) showToast("No hay tickers configurados"); return Promise.resolve(); }
     if(!(cloud.enabled() && uid)){ if(!silent) showToast("Inicia sesión para actualizar precios"); return Promise.resolve(); }
