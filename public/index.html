@@ -948,17 +948,29 @@ function fixInvSold(s){
   s._invFixSold = true;
   return s;
 }
+// Auto-precio de ETF (VWCE) y oro (GOLD): les añade ticker+participaciones; corrige el fondo de MyInvestor (manual).
+function fixInvAuto(s){
+  if(!s || s._invFixAuto || !s.investments) return s;
+  const fix={
+    "0mrszi5":{ ticker:"GOLD", shares:0.25, value:1055.42, cost:1165.32 },           // Oro (Revolup, USD)
+    "7zjaw0y":{ ticker:"VWCE", shares:6.289227, value:1038.10, cost:967.66 },         // FTSE All-World (TR, EUR)
+    "0itlr5k":{ shares:36.944, value:514.50, cost:510.00 }                            // Fidelity MSCI World (MyInvestor, manual)
+  };
+  s.investments = s.investments.map(function(i){ return fix[i.id]?Object.assign({},i,fix[i.id]):i; });
+  s._invFixAuto = true;
+  return s;
+}
 function loadState(){
   const saved = store.get("micartera_v3");
   if(saved && saved.accounts){
-    const s = fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)));
+    const s = fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))));
     store.set("micartera_v3", s);
     return s;
   }
   const init = buildInitial();
   init._dataVer = 6;
   init.trAnchor = mkOf(new Date());
-  const r = fixInvSold(reconcileTR(init));
+  const r = fixInvAuto(fixInvSold(reconcileTR(init)));
   store.set("micartera_v3", r);
   return r;
 }
@@ -1896,7 +1908,7 @@ function App(){
         // adopta el estado de la nube pero UNE los gastos (nunca pierde los locales)
         set(function(prev){
           const u=mergeExpenses(prev.expenses, cloudState.expenses||[]);
-          return fixInvSold(reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list})));
+          return fixInvAuto(fixInvSold(reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list}))));
         });
       } else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
