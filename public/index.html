@@ -1331,6 +1331,50 @@ function InvRows({items, fx, editing, showCost, draft, setF}){
   });
 }
 
+/* Calculadora de proyección: interés compuesto sobre lo invertido + aportación mensual. */
+function Projection({invested, defMonthly}){
+  const [monthly,setMonthly]=useState(String(defMonthly||500));
+  const [rate,setRate]=useState("7");
+  const [years,setYears]=useState("15");
+  const calc=useMemo(function(){
+    const P=parseFloat(String(monthly).replace(',','.'))||0;
+    const ann=parseFloat(String(rate).replace(',','.'))||0;
+    const Y=Math.max(1,Math.min(60,parseInt(years)||1));
+    const r=ann/100/12, init=invested||0; const pts=[];
+    for(let yy=0;yy<=Y;yy++){ const m=yy*12; const fv=init*Math.pow(1+r,m)+(r>0?P*((Math.pow(1+r,m)-1)/r):P*m); pts.push({fv:fv, ap:init+P*m}); }
+    const last=pts[pts.length-1];
+    return {pts:pts, Y:Y, fv:last.fv, aportado:last.ap, ganancia:last.fv-last.ap};
+  },[monthly,rate,years,invested]);
+  const W=300,H=120,pad=4, max=calc.fv||1, N=calc.pts.length;
+  const x=function(i){ return pad+(i/(N-1))*(W-2*pad); };
+  const y=function(v){ return H-pad-(v/max)*(H-2*pad); };
+  const lineFV=calc.pts.map(function(p,i){ return x(i)+","+y(p.fv); }).join(" ");
+  const lineAP=calc.pts.map(function(p,i){ return x(i)+","+y(p.ap); }).join(" ");
+  const areaFV="M "+x(0)+","+(H-pad)+" L "+calc.pts.map(function(p,i){return x(i)+","+y(p.fv);}).join(" L ")+" L "+x(N-1)+","+(H-pad)+" Z";
+  const inp={width:"100%",padding:"9px 8px",borderRadius:"10px",border:"1px solid var(--line-soft)",background:"var(--bg)",color:"var(--text)",fontSize:"15px",boxSizing:"border-box",textAlign:"center"};
+  const lbl={fontSize:11,color:"var(--muted-2)",fontWeight:700,marginBottom:3,textAlign:"center"};
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"€/mes"),React.createElement("input",{style:inp,inputMode:"decimal",value:monthly,onChange:function(e){setMonthly(e.target.value);}})),
+      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"Interés %"),React.createElement("input",{style:inp,inputMode:"decimal",value:rate,onChange:function(e){setRate(e.target.value);}})),
+      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"Años"),React.createElement("input",{style:inp,inputMode:"numeric",value:years,onChange:function(e){setYears(e.target.value);}}))
+    ),
+    React.createElement("svg",{viewBox:"0 0 "+W+" "+H,style:{width:"100%",height:"auto",display:"block"}},
+      React.createElement("path",{d:areaFV,fill:"rgba(95,208,138,.15)"}),
+      React.createElement("polyline",{points:lineAP,fill:"none",stroke:"var(--muted-2)",strokeWidth:"1.5",strokeDasharray:"4 4"}),
+      React.createElement("polyline",{points:lineFV,fill:"none",stroke:"var(--mint)",strokeWidth:"2.5"})
+    ),
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:12,gap:8}},
+      React.createElement("div",null,React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",fontWeight:700}},"En "+calc.Y+" años"),React.createElement("div",{className:"serif num",style:{fontSize:26,color:"var(--mint)"}},eur0(calc.fv))),
+      React.createElement("div",{style:{textAlign:"right"}},
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}},"Aportado "+eur0(calc.aportado)),
+        React.createElement("div",{style:{fontSize:13,color:"var(--mint)",fontWeight:700}},"Ganancia +"+eur0(calc.ganancia))
+      )
+    ),
+    React.createElement("div",{className:"hint",style:{marginTop:8}},"Sobre tu inversión actual ("+eur0(invested||0)+") + aportaciones. Estimación a interés compuesto, no garantía.")
+  );
+}
+
 function Investments({state, set, fetchPrices, pricing}){
   const fx=state.fx;
   const [editing,setEditing]=useState(false);
@@ -1393,6 +1437,9 @@ function Investments({state, set, fetchPrices, pricing}){
         React.createElement(InvRows,{items:items,fx:fx,editing:editing,showCost:showCost,draft:draft,setF:setF})
       );
     }),
+    React.createElement(CollapsibleCard,{title:"Proyección de tu ahorro",sub:"Interés compuesto",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_proj"},
+      React.createElement(Projection,{invested:total, defMonthly: state.aportaciones.reduce(function(a,x){ return a+x.amount; },0)})
+    ),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
       ? "Escribe el valor actual de cada posici\u00f3n (al tocar se selecciona solo). El % de ganancia se calcula autom\u00e1ticamente."
       : "\u0022Precios USD\u0022 trae solas las cotizaciones de las acciones de Revolut. El oro, el ETF de TR y el fondo de MyInvestor se editan a mano con \u0022Editar a mano\u0022. Cambio d\u00f3lar\u2192euro: "+fx+" \u00b7 BCE en vivo.")
@@ -1756,9 +1803,10 @@ function App(){
       // (p. ej. los apuntados antes de que existiera el guardado en BD). Upsert idempotente.
       const tableKeys={}; incoming.forEach(function(e){ tableKeys[keyOf(e)]=1; });
       (stateRef.current.expenses||[]).forEach(function(e){ if(e.source==="manual" && !tableKeys[keyOf(e)]) cloud.addExpense(e).catch(function(){}); });
-      const prevSupaKeys={}; (stateRef.current.expenses||[]).forEach(function(e){ if(e.source==="supabase") prevSupaKeys[keyOf(e)]=1; });
+      // "nuevo" = no lo teníamos en NINGÚN origen local (así, ya sincronizado → 0 → "Ya estás al día")
+      const prevKeys={}; (stateRef.current.expenses||[]).forEach(function(e){ prevKeys[keyOf(e)]=1; });
       let count=0; const seenC={};
-      incoming.forEach(function(e){ const k=keyOf(e); if(!seenC[k]){ seenC[k]=1; if(!prevSupaKeys[k]) count++; } });
+      incoming.forEach(function(e){ const k=keyOf(e); if(!seenC[k]){ seenC[k]=1; if(!prevKeys[k]) count++; } });
       set(function(prev){
         const keep=prev.expenses.filter(function(e){ return e.source!=="supabase"; });
         const keepKeys={}; keep.forEach(function(e){ keepKeys[keyOf(e)]=1; });
