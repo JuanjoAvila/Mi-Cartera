@@ -660,7 +660,10 @@ const cloud = (function(){
       if(!sb) return;
       const {data:{session}}=await sb.auth.getSession();
       if(!session) return;
-      const {error}=await sb.from('expenses').insert({ user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:e.source||'manual' });
+      const {error}=await sb.from('expenses').upsert(
+        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:e.source||'manual' },
+        { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
+      );
       if(error) throw error;
     },
     async prices(){
@@ -1392,7 +1395,7 @@ function Investments({state, set, fetchPrices, pricing}){
     }),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
       ? "Escribe el valor actual de cada posici\u00f3n (al tocar se selecciona solo). El % de ganancia se calcula autom\u00e1ticamente."
-      : "\u0022Precios USD\u0022 trae solas las cotizaciones de las acciones de Revolut. El oro, el ETF de TR y el fondo de MyInvestor se editan a mano con \u0022Editar a mano\u0022. Cambio d\u00f3lar\u2192euro: "+fx+".")
+      : "\u0022Precios USD\u0022 trae solas las cotizaciones de las acciones de Revolut. El oro, el ETF de TR y el fondo de MyInvestor se editan a mano con \u0022Editar a mano\u0022. Cambio d\u00f3lar\u2192euro: "+fx+" \u00b7 BCE en vivo.")
   );
 }
 
@@ -1749,6 +1752,10 @@ function App(){
       // La tabla `expenses` es la FUENTE DE VERDAD de los gastos de la nube: se reemplazan los
       // de origen "supabase" con lo que hay en la tabla (refresca categorías, importes y borrados).
       // Los manuales/sheet locales NO se tocan nunca (por eso esto es seguro y no borra datos).
+      // Backfill: sube a la tabla los gastos manuales locales que aún no estén en ella
+      // (p. ej. los apuntados antes de que existiera el guardado en BD). Upsert idempotente.
+      const tableKeys={}; incoming.forEach(function(e){ tableKeys[keyOf(e)]=1; });
+      (stateRef.current.expenses||[]).forEach(function(e){ if(e.source==="manual" && !tableKeys[keyOf(e)]) cloud.addExpense(e).catch(function(){}); });
       const prevSupaKeys={}; (stateRef.current.expenses||[]).forEach(function(e){ if(e.source==="supabase") prevSupaKeys[keyOf(e)]=1; });
       let count=0; const seenC={};
       incoming.forEach(function(e){ const k=keyOf(e); if(!seenC[k]){ seenC[k]=1; if(!prevSupaKeys[k]) count++; } });
@@ -1815,8 +1822,8 @@ function App(){
   const drawerRef=useRef(null), backRef=useRef(null), gestureMode=useRef(null);
   const dW=()=>Math.min(360,(window.innerWidth||360)*0.86);
   // Cerrar el cajón arrastrando de derecha a izquierda sobre él
-  const dSX=useRef(0), dSY=useRef(0), dAx=useRef(null), dDrag=useRef(false), dDX=useRef(0);
-  const drawerStart=function(e){ const t=e.touches[0]; dSX.current=t.clientX; dSY.current=t.clientY; dAx.current=null; dDrag.current=true; dDX.current=0; };
+  const dSX=useRef(0), dSY=useRef(0), dAx=useRef(null), dDrag=useRef(false), dDX=useRef(0), dT=useRef(0);
+  const drawerStart=function(e){ const t=e.touches[0]; dSX.current=t.clientX; dSY.current=t.clientY; dAx.current=null; dDrag.current=true; dDX.current=0; dT.current=Date.now(); };
   const drawerMove=function(e){
     if(!dDrag.current) return;
     const t=e.touches[0], ddx=t.clientX-dSX.current, ddy=t.clientY-dSY.current;
@@ -1830,10 +1837,14 @@ function App(){
   const drawerEnd=function(){
     if(!dDrag.current) return; dDrag.current=false;
     if(drawerRef.current) drawerRef.current.classList.remove("dragging");
-    const closeProg=Math.min(1,Math.max(0,(-dDX.current)/dW()));
+    const dist=dDX.current;                                  // negativo = hacia la izquierda
+    const dt=Math.max(1,Date.now()-dT.current);
+    const vel=dist/dt;                                       // px/ms
+    const closeProg=Math.min(1,Math.max(0,(-dist)/dW()));
+    const flick=vel<-0.35 && dist<-24;                       // gesto rápido a la izquierda
     if(drawerRef.current) drawerRef.current.style.transform="";
     if(backRef.current) backRef.current.style.opacity="";
-    setDrawerOpen(closeProg<0.4);   // arrastró >40% a la izquierda → cierra
+    setDrawerOpen(!(closeProg>0.2 || flick));                // ~20% o flick → cierra
     dAx.current=null;
   };
 
