@@ -1458,6 +1458,13 @@ function Investments({state, set, fetchPrices, pricing}){
   const total=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
   const costTotal=state.investments.reduce((a,i)=>a+(i.cur==="USD"?(i.cost||0)*fx:(i.cost||0)),0);
   const plTotal=costTotal>0?(total-costTotal)/costTotal*100:0;
+  // Desglose por tipo de activo (clasificación por id conocido, con respaldo por nombre)
+  const TYPE_BY_ID={ "0mrszi5":"materias", "7zjaw0y":"etf", "0itlr5k":"fondo" };
+  const invType=function(it){ if(TYPE_BY_ID[it.id]) return TYPE_BY_ID[it.id]; if(/oro|xau|materia|plata/i.test(it.name)) return "materias"; if(/etf|all.?world|s&p|amundi/i.test(it.name)) return "etf"; if(/fondo|indexad|fidelity|msci world/i.test(it.name)) return "fondo"; return "acciones"; };
+  const byType={acciones:0,etf:0,fondo:0,materias:0};
+  state.investments.forEach(function(i){ byType[invType(i)]+=(i.cur==="USD"?i.value*fx:i.value); });
+  const typeMeta=[["acciones","Acciones","var(--mint)"],["etf","ETF","var(--blue)"],["fondo","Fondo indexado","#C9A0E0"],["materias","Materias primas","#E6C36A"]];
+  const typeSegs=typeMeta.filter(function(t){ return byType[t[0]]>0; }).map(function(t){ return {label:t[1]+" · "+(total>0?Math.round(byType[t[0]]/total*100):0)+"%", value:byType[t[0]], color:t[2]}; });
 
   return React.createElement("div",null,
     React.createElement("div",{className:"total-bar"},
@@ -1483,6 +1490,9 @@ function Investments({state, set, fetchPrices, pricing}){
     editing && React.createElement("div",{className:"costtoggle",onClick:()=>setShowCost(!showCost)},
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,"Tambi\u00e9n ajustar lo invertido (si he comprado o vendido)")
+    ),
+    React.createElement(CollapsibleCard,{title:"Distribución por tipo",sub:eur0(total),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_tipo"},
+      React.createElement(StackedBar,{segments:typeSegs})
     ),
     groups.map(function(g){
       const items=state.investments.filter(i=>i.ent===g[0]);
