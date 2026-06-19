@@ -1307,7 +1307,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 /* ============================================================
    TAB: INVERSIONES
    ============================================================ */
-function InvRows({items, fx, editing, showCost, draft, setF}){
+function InvRows({items, fx, editing, showCost, draft, setF, onSell}){
   const eurVal=(it)=> it.cur==="USD"? it.value*fx : it.value;
   return items.map(function(it){
     return React.createElement("div",{className:"row",key:it.id},
@@ -1315,7 +1315,8 @@ function InvRows({items, fx, editing, showCost, draft, setF}){
         React.createElement(Mono,{ent:it.ent,size:38}),
         React.createElement("div",null,
           React.createElement("div",{className:"rname"},it.name),
-          React.createElement("div",{className:"rsub"}, entOf(it.ent).label + (it.cur==="USD"?" \u00b7 USD":""))
+          React.createElement("div",{className:"rsub"}, entOf(it.ent).label + (it.cur==="USD"?" \u00b7 USD":"")),
+          editing && React.createElement("button",{style:{background:"none",border:"none",color:"#9BD0E0",cursor:"pointer",fontSize:11,fontWeight:700,padding:"4px 0 0"},onClick:function(){ onSell(it); }},"Vend\u00ed parte \u2192")
         )
       ),
       editing
@@ -1331,47 +1332,72 @@ function InvRows({items, fx, editing, showCost, draft, setF}){
   });
 }
 
-/* Calculadora de proyección: interés compuesto sobre lo invertido + aportación mensual. */
+/* Calculadora de proyección estilo TR/Revolut: slider de aporte + banda de rango. */
 function Projection({invested, defMonthly}){
-  const [monthly,setMonthly]=useState(String(defMonthly||500));
+  const [monthly,setMonthly]=useState(Math.max(0,Math.min(3000,Math.round((defMonthly||500)/50)*50)));
   const [rate,setRate]=useState("7");
-  const [years,setYears]=useState("15");
+  const [years,setYears]=useState("20");
   const calc=useMemo(function(){
-    const P=parseFloat(String(monthly).replace(',','.'))||0;
+    const P=monthly;
     const ann=parseFloat(String(rate).replace(',','.'))||0;
-    const Y=Math.max(1,Math.min(60,parseInt(years)||1));
-    const r=ann/100/12, init=invested||0; const pts=[];
-    for(let yy=0;yy<=Y;yy++){ const m=yy*12; const fv=init*Math.pow(1+r,m)+(r>0?P*((Math.pow(1+r,m)-1)/r):P*m); pts.push({fv:fv, ap:init+P*m}); }
-    const last=pts[pts.length-1];
-    return {pts:pts, Y:Y, fv:last.fv, aportado:last.ap, ganancia:last.fv-last.ap};
+    const Y=Math.max(1,Math.min(50,parseInt(years)||1));
+    const init=invested||0;
+    const serie=function(a){ const r=a/100/12, out=[]; for(let yy=0;yy<=Y;yy++){ const m=yy*12; out.push(init*Math.pow(1+r,m)+(r>0?P*((Math.pow(1+r,m)-1)/r):P*m)); } return out; };
+    const mid=serie(ann), opt=serie(ann+2), pes=serie(Math.max(0,ann-2)), ap=[];
+    for(let yy=0;yy<=Y;yy++) ap.push(init+P*12*yy);
+    return {Y:Y, mid:mid, opt:opt, pes:pes, ap:ap, fv:mid[mid.length-1], aportado:ap[ap.length-1]};
   },[monthly,rate,years,invested]);
-  const W=300,H=120,pad=4, max=calc.fv||1, N=calc.pts.length;
-  const x=function(i){ return pad+(i/(N-1))*(W-2*pad); };
-  const y=function(v){ return H-pad-(v/max)*(H-2*pad); };
-  const lineFV=calc.pts.map(function(p,i){ return x(i)+","+y(p.fv); }).join(" ");
-  const lineAP=calc.pts.map(function(p,i){ return x(i)+","+y(p.ap); }).join(" ");
-  const areaFV="M "+x(0)+","+(H-pad)+" L "+calc.pts.map(function(p,i){return x(i)+","+y(p.fv);}).join(" L ")+" L "+x(N-1)+","+(H-pad)+" Z";
+
+  const W=340,H=176, mL=4,mR=46,mT=10,mB=22, N=calc.mid.length, pw=W-mL-mR, ph=H-mT-mB;
+  const max=calc.opt[calc.opt.length-1]||1;
+  const X=function(i){ return mL+(i/(N-1))*pw; };
+  const Yc=function(v){ return mT+ph-(v/max)*ph; };
+  const poly=function(arr){ return arr.map(function(v,i){ return X(i)+","+Yc(v); }).join(" "); };
+  let bandTop=calc.opt.map(function(v,i){ return X(i)+","+Yc(v); }).join(" L ");
+  let bandBot=[]; for(let i=N-1;i>=0;i--) bandBot.push(X(i)+","+Yc(calc.pes[i]));
+  const band="M "+bandTop+" L "+bandBot.join(" L ")+" Z";
+  const startYear=new Date().getFullYear();
+  const kfmt=function(v){ return v>=1000?(Math.round(v/1000)+"K €"):(Math.round(v)+" €"); };
+  const ticks=[]; for(let i=1;i<=5;i++) ticks.push(max*i/5);
+  const xl=[]; const st=4; for(let i=0;i<=st;i++){ const yi=Math.round(calc.Y/st*i); xl.push({i:yi,t:String(startYear+yi)}); }
   const inp={width:"100%",padding:"9px 8px",borderRadius:"10px",border:"1px solid var(--line-soft)",background:"var(--bg)",color:"var(--text)",fontSize:"15px",boxSizing:"border-box",textAlign:"center"};
   const lbl={fontSize:11,color:"var(--muted-2)",fontWeight:700,marginBottom:3,textAlign:"center"};
+  const dot=function(c){ return React.createElement("span",{style:{width:9,height:9,borderRadius:2,background:c,display:"inline-block",marginRight:5}}); };
+
   return React.createElement("div",null,
-    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
-      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"€/mes"),React.createElement("input",{style:inp,inputMode:"decimal",value:monthly,onChange:function(e){setMonthly(e.target.value);}})),
-      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"Interés %"),React.createElement("input",{style:inp,inputMode:"decimal",value:rate,onChange:function(e){setRate(e.target.value);}})),
-      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"Años"),React.createElement("input",{style:inp,inputMode:"numeric",value:years,onChange:function(e){setYears(e.target.value);}}))
+    React.createElement("div",{style:{display:"flex",gap:20,marginBottom:10}},
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}}, dot("var(--mint)"),"Valor proyectado"),
+        React.createElement("div",{className:"serif num",style:{fontSize:22}}, eur0(calc.fv))),
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}}, dot("#2f6b4a"),"Tu contribución"),
+        React.createElement("div",{className:"serif num",style:{fontSize:22,color:"var(--muted)"}}, eur0(calc.aportado)))
     ),
     React.createElement("svg",{viewBox:"0 0 "+W+" "+H,style:{width:"100%",height:"auto",display:"block"}},
-      React.createElement("path",{d:areaFV,fill:"rgba(95,208,138,.15)"}),
-      React.createElement("polyline",{points:lineAP,fill:"none",stroke:"var(--muted-2)",strokeWidth:"1.5",strokeDasharray:"4 4"}),
-      React.createElement("polyline",{points:lineFV,fill:"none",stroke:"var(--mint)",strokeWidth:"2.5"})
+      ticks.map(function(t,i){ return React.createElement("g",{key:i},
+        React.createElement("line",{x1:mL,y1:Yc(t),x2:mL+pw,y2:Yc(t),stroke:"var(--line-soft)",strokeWidth:"1"}),
+        React.createElement("text",{x:mL+pw+5,y:Yc(t)+3,fontSize:"9",fill:"var(--muted-2)"}, kfmt(t))); }),
+      React.createElement("path",{d:band,fill:"rgba(95,208,138,.13)"}),
+      React.createElement("polyline",{points:poly(calc.ap),fill:"none",stroke:"#2f6b4a",strokeWidth:"2"}),
+      React.createElement("polyline",{points:poly(calc.mid),fill:"none",stroke:"var(--mint)",strokeWidth:"2.6"}),
+      React.createElement("circle",{cx:X(N-1),cy:Yc(calc.fv),r:"3.6",fill:"var(--mint)"}),
+      React.createElement("circle",{cx:X(N-1),cy:Yc(calc.aportado),r:"3.6",fill:"#2f6b4a"}),
+      xl.map(function(o,i){ return React.createElement("text",{key:i,x:X(o.i),y:H-6,fontSize:"9",fill:"var(--muted-2)",textAnchor:i===0?"start":(i===xl.length-1?"end":"middle")}, o.t); })
     ),
-    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginTop:12,gap:8}},
-      React.createElement("div",null,React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",fontWeight:700}},"En "+calc.Y+" años"),React.createElement("div",{className:"serif num",style:{fontSize:26,color:"var(--mint)"}},eur0(calc.fv))),
-      React.createElement("div",{style:{textAlign:"right"}},
-        React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}},"Aportado "+eur0(calc.aportado)),
-        React.createElement("div",{style:{fontSize:13,color:"var(--mint)",fontWeight:700}},"Ganancia +"+eur0(calc.ganancia))
-      )
+    React.createElement("div",{style:{marginTop:14}},
+      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}},
+        React.createElement("span",{style:{fontSize:13,color:"var(--muted)",fontWeight:600}},"Contribución mensual"),
+        React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:17}}, monthly+" €")),
+      React.createElement("input",{type:"range",min:"0",max:"3000",step:"50",value:monthly,onChange:function(e){ setMonthly(parseInt(e.target.value)); },style:{width:"100%",accentColor:"#5FD08A"}})
     ),
-    React.createElement("div",{className:"hint",style:{marginTop:8}},"Sobre tu inversión actual ("+eur0(invested||0)+") + aportaciones. Estimación a interés compuesto, no garantía.")
+    React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
+      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"Interés anual %"),React.createElement("input",{style:inp,inputMode:"decimal",value:rate,onChange:function(e){setRate(e.target.value);}})),
+      React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"Años"),React.createElement("input",{style:inp,inputMode:"numeric",value:years,onChange:function(e){setYears(e.target.value);}}))
+    ),
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:12}},
+      React.createElement("span",{style:{fontSize:12,color:"var(--muted)"}},"Ganancia estimada en "+calc.Y+" años"),
+      React.createElement("span",{style:{fontSize:14,color:"var(--mint)",fontWeight:700}},"+"+eur0(calc.fv-calc.aportado))),
+    React.createElement("div",{className:"hint",style:{marginTop:8}},"Sobre lo ya invertido ("+eur0(invested||0)+"). La banda es ±2% sobre el interés. Estimación, no garantía.")
   );
 }
 
@@ -1400,6 +1426,26 @@ function Investments({state, set, fetchPrices, pricing}){
     setEditing(false); setShowCost(false);
   };
   const setF=(id,field,v)=> setDraft(d=>Object.assign({},d,{[id]:Object.assign({},d[id],{[field]:v})}));
+  // Venta parcial: reduce valor, coste y participaciones proporcionalmente y registra el líquido vendido.
+  const onSell=function(it){
+    const pStr=window.prompt("¿Qué % de "+it.name+" has vendido? (ej. 30)");
+    if(pStr==null) return;
+    const pct=parseFloat(String(pStr).replace(',','.'));
+    if(!(pct>0 && pct<=100)){ return; }
+    const f=pct/100;
+    const realizado=(it.cur==="USD"?it.value*fx:it.value)*f;   // líquido sacado, en €
+    set(function(s){
+      return Object.assign({},s,{
+        investments:s.investments.map(function(i){
+          if(i.id!==it.id) return i;
+          const o=Object.assign({},i,{ value:+(i.value*(1-f)).toFixed(2), cost:(i.cost!=null?+(i.cost*(1-f)).toFixed(2):i.cost) });
+          if(i.shares) o.shares=+(i.shares*(1-f)).toFixed(6);
+          return o;
+        }),
+        soldCash:+(((s.soldCash||0)+realizado)).toFixed(2)
+      });
+    });
+  };
   const total=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
   const costTotal=state.investments.reduce((a,i)=>a+(i.cur==="USD"?(i.cost||0)*fx:(i.cost||0)),0);
   const plTotal=costTotal>0?(total-costTotal)/costTotal*100:0;
@@ -1434,9 +1480,13 @@ function Investments({state, set, fetchPrices, pricing}){
       if(items.length===0) return null;
       const sub=items.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
       return React.createElement(CollapsibleCard,{key:g[0],title:g[1],sub:eur0(sub),dot:entOf(g[0]).color,storageKey:"inv_"+g[0]},
-        React.createElement(InvRows,{items:items,fx:fx,editing:editing,showCost:showCost,draft:draft,setF:setF})
+        React.createElement(InvRows,{items:items,fx:fx,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell})
       );
     }),
+    (state.soldCash>0) && React.createElement("div",{className:"costtoggle",style:{justifyContent:"space-between"}},
+      React.createElement("span",null,"💸 Líquido vendido (realizado)"),
+      React.createElement("span",{className:"num",style:{fontWeight:700,color:"var(--mint)"}}, eur0(state.soldCash))
+    ),
     React.createElement(CollapsibleCard,{title:"Proyección de tu ahorro",sub:"Interés compuesto",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_proj"},
       React.createElement(Projection,{invested:total, defMonthly: state.aportaciones.reduce(function(a,x){ return a+x.amount; },0)})
     ),
