@@ -939,17 +939,26 @@ function migrate(s){
   store.set("micartera_v3", s);
   return s;
 }
+// Corrección única de posiciones tras ventas parciales en Revolut (datos reales del usuario).
+// Idempotente y marcada con flag para no pisar futuras compras/ediciones.
+function fixInvSold(s){
+  if(!s || s._invFixSold || !s.investments) return s;
+  const fix={ "aamv0u9":{shares:0.2, value:237.95, cost:149.62}, "9wyyzwg":{shares:0.85, value:394.89, cost:343.38}, "t2h1dsy":{shares:0.52, value:284.35, cost:269.27} };
+  s.investments = s.investments.map(function(i){ return fix[i.id]?Object.assign({},i,fix[i.id]):i; });
+  s._invFixSold = true;
+  return s;
+}
 function loadState(){
   const saved = store.get("micartera_v3");
   if(saved && saved.accounts){
-    const s = reconcileTR((saved._dataVer>=6) ? saved : migrate(saved));
+    const s = fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)));
     store.set("micartera_v3", s);
     return s;
   }
   const init = buildInitial();
   init._dataVer = 6;
   init.trAnchor = mkOf(new Date());
-  const r = reconcileTR(init);
+  const r = fixInvSold(reconcileTR(init));
   store.set("micartera_v3", r);
   return r;
 }
@@ -1388,7 +1397,7 @@ function Projection({invested, defMonthly}){
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}},
         React.createElement("span",{style:{fontSize:13,color:"var(--muted)",fontWeight:600}},"Contribución mensual"),
         React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:17}}, monthly+" €")),
-      React.createElement("input",{type:"range",min:"0",max:"3000",step:"50",value:monthly,onChange:function(e){ setMonthly(parseInt(e.target.value)); },style:{width:"100%",accentColor:"#5FD08A"}})
+      React.createElement("input",{type:"range",min:"0",max:"3000",step:"50",value:monthly,onChange:function(e){ setMonthly(parseInt(e.target.value)); },onTouchStart:function(e){e.stopPropagation();},onTouchMove:function(e){e.stopPropagation();},style:{width:"100%",accentColor:"#5FD08A"}})
     ),
     React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
       React.createElement("div",{style:{flex:1}},React.createElement("div",{style:lbl},"Interés anual %"),React.createElement("input",{style:inp,inputMode:"decimal",value:rate,onChange:function(e){setRate(e.target.value);}})),
@@ -1877,7 +1886,7 @@ function App(){
         // adopta el estado de la nube pero UNE los gastos (nunca pierde los locales)
         set(function(prev){
           const u=mergeExpenses(prev.expenses, cloudState.expenses||[]);
-          return reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list}));
+          return fixInvSold(reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list})));
         });
       } else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
