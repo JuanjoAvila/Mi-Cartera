@@ -870,6 +870,13 @@ const DATA = {
     { id:"jlzqayj", ent:"trade_republic", name:"Fondo de emergencia",   amount:500 },
     { id:"xh9vnj7", ent:"trade_republic", name:"FTSE All-World (cashback)", amount:50 },
   ],
+  // Movimientos recurrentes de efectivo (motor de cash-flow): la nómina entra al Sabadell
+  // y de ahí salen las transferencias automáticas. 3333 − 1550 − 500 = 1283 para fijos.
+  flows: [
+    { id:"flow_nom", kind:"income",   name:"Nómina",           amount:3333, to:"sabadell",                       day:27 },
+    { id:"flow_tr",  kind:"transfer", name:"A Trade Republic", amount:1550, from:"sabadell", to:"trade_republic", day:28 },
+    { id:"flow_mi",  kind:"transfer", name:"A MyInvestor",     amount:500,  from:"sabadell", to:"myinvestor",      day:28 },
+  ],
   variables: [
     { id:"yfg081c", name:"Restaurantes y bares (acumulado)", cat:"bares",      amount:204,  date:"2026-06-15" },
     { id:"sjtjuu4", name:"Ocio (acumulado)",                 cat:"ocio",       amount:101,  date:"2026-06-15" },
@@ -895,6 +902,7 @@ function buildInitial(){
     assets: DATA.assets.map(a=>Object.assign({},a)),
     debts: DATA.debts.map(a=>Object.assign({},a)),
     fixed: DATA.fixed.map(a=>Object.assign({},a)),
+    flows: DATA.flows.map(a=>Object.assign({},a)),
     aportaciones: DATA.aportaciones.map(a=>Object.assign({},a)),
     expenses: DATA.variables.map(v=>({ id:v.id, date:new Date(v.date).toISOString(), merchant:v.name, amount:v.amount, category:v.cat, source:"manual" })),
     streak: 4,
@@ -975,10 +983,17 @@ function fixInvAuto(s){
   s._invFixAuto = true;
   return s;
 }
+// Motor de cash-flow: si el estado no tiene movimientos recurrentes, siembra los del usuario
+// (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
+function seedFlows(s){
+  if(!s) return s;
+  if(!s.flows || !s.flows.length){ s.flows = DATA.flows.map(function(a){ return Object.assign({},a); }); }
+  return s;
+}
 function loadState(){
   const saved = store.get("micartera_v3");
   if(saved && saved.accounts){
-    const s = fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))));
+    const s = seedFlows(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)))));
     store.set("micartera_v3", s);
     return s;
   }
@@ -1643,6 +1658,9 @@ const dayOf=(e)=> (e&&e.day)||null;
 const isPaidThisMonth=(e,today)=>{ const d=dayOf(e); return d!=null && d<today; };
 // ¿el gasto necesita que el usuario le asigne un mes? (anual sin programar)
 const needsMonth=(e)=> (e.freq==="año"||e.freq==="anual") && !(e.months&&e.months.length);
+// Movimientos recurrentes (nómina/transferencias): por defecto cada mes salvo que tengan months
+const flowMonths=(f)=> (f&&f.months&&f.months.length)?f.months:[1,2,3,4,5,6,7,8,9,10,11,12];
+const flowOccursIn=(f,m)=> flowMonths(f).indexOf(m)>=0;
 
 // Selector compacto de meses (1-12) para gastos no mensuales.
 function MonthPicker({selected, onToggle}){
@@ -1696,6 +1714,21 @@ function Fijos({state, set, totals}){
   const startEditD=()=>{ const d={}; state.debts.forEach(x=>{ d[x.id]=x.monthly; d["b_"+x.id]=x.account||"sabadell"; d["dy_"+x.id]=x.day||""; }); setDraftD(d); setEditingD(true); };
   const saveEditD=()=>{ set(s=>Object.assign({},s,{debts:s.debts.map(x=>Object.assign({},x,{ monthly:parseFloat(String(dDMon(x)).replace(',','.'))||0, account:dDBank(x), day:cleanDay(dDDay(x)) }))})); setEditingD(false); };
 
+  // --- edición de movimientos recurrentes (nómina + transferencias) — motor cash-flow ---
+  const flows=state.flows||[];
+  const [editingF,setEditingF]=useState(false);
+  const [draftF,setDraftF]=useState({});
+  const [addingF,setAddingF]=useState(false);
+  const [formF,setFormF]=useState({kind:"income",name:"",amount:"",day:"",to:"sabadell",from:"sabadell"});
+  const fAmt=(f)=> draftF[f.id]!=null?draftF[f.id]:f.amount;
+  const fDay=(f)=> draftF["dy_"+f.id]!=null?draftF["dy_"+f.id]:(f.day||"");
+  const fTo=(f)=> draftF["to_"+f.id]!=null?draftF["to_"+f.id]:(f.to||"sabadell");
+  const fFrom=(f)=> draftF["fr_"+f.id]!=null?draftF["fr_"+f.id]:(f.from||"sabadell");
+  const startEditF=()=>{ const d={}; flows.forEach(f=>{ d[f.id]=f.amount; d["dy_"+f.id]=f.day||""; d["to_"+f.id]=f.to||"sabadell"; d["fr_"+f.id]=f.from||"sabadell"; }); setDraftF(d); setEditingF(true); };
+  const saveEditF=()=>{ set(s=>Object.assign({},s,{flows:(s.flows||[]).map(f=>{ const o=Object.assign({},f,{amount:parseFloat(String(fAmt(f)).replace(',','.'))||0, day:cleanDay(fDay(f))}); if(f.kind==="income"){ o.to=fTo(f); delete o.from; } else { o.from=fFrom(f); o.to=fTo(f); } return o; })})); setEditingF(false); };
+  const delFlow=(id)=> set(s=>Object.assign({},s,{flows:(s.flows||[]).filter(f=>f.id!==id)}));
+  const addFlow=()=>{ const amt=parseFloat(String(formF.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),kind:formF.kind,name:formF.name||(formF.kind==="income"?"Ingreso":"Transferencia"),amount:amt}; const dd=cleanDay(formF.day); if(dd) it.day=dd; if(formF.kind==="income"){ it.to=formF.to||"sabadell"; } else { it.from=formF.from||"sabadell"; it.to=formF.to||"trade_republic"; } set(s=>Object.assign({},s,{flows:(s.flows||[]).concat([it])})); setFormF({kind:"income",name:"",amount:"",day:"",to:"sabadell",from:"sabadell"}); setAddingF(false); };
+
   // resumen de meses para el subtítulo de cada fila
   const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return "⚠ sin mes"; return ms.map(m=>MONTHS_ES[m-1]).join(", "); };
 
@@ -1731,22 +1764,28 @@ function Fijos({state, set, totals}){
     ),
     /* MOTOR DINÁMICO: próximos cargos */
     React.createElement(CollapsibleCard,{title:"Próximos cargos · "+MONTHS_ES[cm-1],sub:eur0(totals.cargosMes)+" este mes",dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
-      // estado del banco principal (Sabadell): saldo, lo PENDIENTE y lo que te quedaría
-      React.createElement("div",{className:"liqbox"+(totals.liquidTrasFijos<0?" danger":"")},
+      // estado del banco principal (Sabadell): cash-flow del mes (saldo + nómina − transfers − fijos)
+      React.createElement("div",{className:"liqbox"+(totals.mainProjected<0?" danger":"")},
         React.createElement("div",{className:"liqrow"},
           React.createElement("span",{className:"muted"},entOf(totals.mainBank).label+" hoy"),
           React.createElement("span",{className:"num"},eur0(totals.mainBal))),
+        totals.mainIncome>0 && React.createElement("div",{className:"liqrow"},
+          React.createElement("span",{className:"muted"},"+ nómina por entrar"),
+          React.createElement("span",{className:"num",style:{color:"var(--mint)"}},"+"+eur0(totals.mainIncome))),
+        totals.mainTransferOut>0 && React.createElement("div",{className:"liqrow"},
+          React.createElement("span",{className:"muted"},"− transferencias pend."),
+          React.createElement("span",{className:"num"},"−"+eur0(totals.mainTransferOut))),
         React.createElement("div",{className:"liqrow"},
-          React.createElement("span",{className:"muted"},"− pendiente de "+MONTHS_ES[cm-1]),
+          React.createElement("span",{className:"muted"},"− fijos pendientes"),
           React.createElement("span",{className:"num"},"−"+eur0(totals.mainPending))),
         React.createElement("div",{className:"liqrow strong"},
-          React.createElement("span",null,"= te quedarían"),
-          React.createElement("span",{className:"num",style:{color:totals.liquidTrasFijos<0?"var(--coral)":"var(--mint)"}},eur0(totals.liquidTrasFijos)))
+          React.createElement("span",null,"= a fin de mes"),
+          React.createElement("span",{className:"num",style:{color:totals.mainProjected<0?"var(--coral)":"var(--mint)"}},eur0(totals.mainProjected)))
       ),
-      // ALARMA: algún banco no cubre sus cargos PENDIENTES del mes
+      // ALARMA: algún banco se queda en negativo a fin de mes (ya contando nómina y transfers)
       totals.bankAlerts.length>0 && React.createElement("div",{className:"alarmbox"},
-        "🚨 ¡Cuidado! En ",totals.bankAlerts.map(b=>entOf(b).label).join(", "),
-        " lo que queda por pagar este mes ("+eur0(totals.bankAlerts.reduce((a,b)=>a+totals.pendingByBank[b],0))+") supera el saldo. Mete fondos o no llegarás."),
+        "🚨 ¡Cuidado! ",totals.bankAlerts.map(b=>entOf(b).label).join(", "),
+        " se queda en negativo a fin de mes ("+eur0(totals.bankAlerts.reduce((a,b)=>a+totals.projectedByBank[b],0))+") con lo que falta por pagar. Mete fondos o no llegarás."),
       // aviso de mes cargado en el horizonte
       heavy && React.createElement("div",{className:"hint",style:{margin:"8px 0 4px",color:"#E2A05F",fontWeight:600}},
         (heavy.soon===0?"Este mes ":heavy.soon===1?"El mes que viene ":"En "+MONTHS_ES[heavy.mo-1]+" ")+"se viene cargado: "+eur0(heavy.total)+" en fijos (la media es "+eur0(avgMonth)+"). 👀"),
@@ -1860,6 +1899,61 @@ function Fijos({state, set, totals}){
       }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total cuotas/mes"),React.createElement("span",{className:"num"},eur(cuotas))),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Pon el día y el banco de cada cuota para que en «Próximos cargos» se tachen al pagarse, igual que los gastos fijos. El importe es la cuota mensual; el saldo pendiente se edita en la pestaña Deudas.")
+    ),
+    React.createElement(CollapsibleCard,{title:"Ingresos y transferencias",sub:"Nómina y traspasos automáticos",dot:"#5FD08A",storageKey:"f_flows",defaultOpen:false,
+      right:React.createElement("button",{className:"edit-link"+(editingF?" save":""),onClick:e=>{e.stopPropagation(); editingF?saveEditF():startEditF();}},editingF?"Guardar":"Editar")},
+      flows.map(f=>{
+        const inc=f.kind==="income";
+        const sub=inc ? "Ingreso · a "+entOf(f.to||"sabadell").label : "Transferencia · "+entOf(f.from||"sabadell").label+" → "+entOf(f.to||"trade_republic").label;
+        const row=React.createElement("div",{className:"row",key:f.id},
+          React.createElement("div",{className:"rl"},
+            editingF && React.createElement("button",{className:"del-btn",onClick:()=>delFlow(f.id)},"✕"),
+            React.createElement("div",null,
+              React.createElement("div",{className:"rname"}, f.name, f.day && React.createElement("span",{className:"day-badge"},"día "+f.day)),
+              React.createElement("div",{className:"rsub"}, sub))),
+          editingF
+            ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                React.createElement("input",{className:"editv num",style:{width:74},value:fAmt(f),inputMode:"decimal",onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{[f.id]:v}));}}))
+            : React.createElement("div",{className:"rval num",style:{color:inc?"var(--mint)":null}}, (inc?"+":"−")+eur(Math.abs(f.amount)))
+        );
+        if(editingF){
+          return React.createElement("div",{key:f.id,style:{borderBottom:"1px solid var(--line-soft)"}},
+            row,
+            React.createElement("div",{style:{padding:"2px 4px 10px"}},
+              React.createElement("div",{className:"edit-extra"},
+                React.createElement("span",{className:"rsub"}, inc?"Entra en":"De"),
+                React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value: inc?fTo(f):fFrom(f),onChange:ev=>{const v=ev.target.value; const key=inc?"to_":"fr_"; setDraftF(s=>Object.assign({},s,{[key+f.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
+                !inc && React.createElement("span",{className:"rsub"},"→"),
+                !inc && React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:fTo(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["to_"+f.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
+                React.createElement("span",{className:"rsub",style:{marginLeft:4}},"día"),
+                React.createElement("input",{className:"af-in num",style:{width:54,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:fDay(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["dy_"+f.id]:v}));}})
+              )
+            )
+          );
+        }
+        return row;
+      }),
+      addingF
+        ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
+            React.createElement("div",{className:"af-row"},
+              React.createElement("button",{className:"btn "+(formF.kind==="income"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"income",to:"sabadell"}))},"Ingreso"),
+              React.createElement("button",{className:"btn "+(formF.kind==="transfer"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"transfer",from:"sabadell",to:(banks.filter(b=>b!=="sabadell")[0]||"trade_republic")}))},"Transferencia")
+            ),
+            React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Nómina)",value:formF.name,onChange:e=>setFormF(Object.assign({},formF,{name:e.target.value}))}),
+            React.createElement("div",{className:"af-row"},
+              React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:formF.amount,onChange:e=>setFormF(Object.assign({},formF,{amount:e.target.value}))}),
+              React.createElement("input",{className:"af-in num",placeholder:"día",inputMode:"numeric",style:{maxWidth:84},value:formF.day,onChange:e=>setFormF(Object.assign({},formF,{day:e.target.value}))})
+            ),
+            React.createElement("div",{className:"edit-extra"},
+              React.createElement("span",{className:"rsub"}, formF.kind==="income"?"Entra en":"De"),
+              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value: formF.kind==="income"?formF.to:formF.from,onChange:e=>{const v=e.target.value; setFormF(Object.assign({},formF, formF.kind==="income"?{to:v}:{from:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
+              formF.kind==="transfer" && React.createElement("span",{className:"rsub"},"→"),
+              formF.kind==="transfer" && React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formF.to,onChange:e=>setFormF(Object.assign({},formF,{to:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
+            ),
+            React.createElement("button",{className:"btn btn-primary btn-block",onClick:addFlow},"Añadir movimiento")
+          )
+        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingF(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir ingreso o transferencia"),
+      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Con esto el Sabadell se calcula solo: entra la nómina y salen las transferencias y los fijos. Pon el «día» de cada uno; los que ya han pasado este mes ya están en el saldo, así que no se vuelven a restar.")
     ),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}},"Los gastos no mensuales (agua, seguros, IBI…) se reparten a su equivalente mensual para que veas el peso real de cada uno. Total al año: "+eur0(grand*12)+".")
   );
@@ -2120,7 +2214,7 @@ function App(){
         // adopta el estado de la nube pero UNE los gastos (nunca pierde los locales)
         set(function(prev){
           const u=mergeExpenses(prev.expenses, cloudState.expenses||[]);
-          return fixInvAuto(fixInvSold(reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list}))));
+          return seedFlows(fixInvAuto(fixInvSold(reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list})))));
         });
       } else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
@@ -2231,15 +2325,32 @@ function App(){
       else { pendingThisMonth+=amt; pendingByBank[bank]=(pendingByBank[bank]||0)+amt; } };
     state.fixed.forEach(e=>{ if(occursIn(e,curMonth)) acc(e,occAmount(e),accOf(e)); });
     state.debts.forEach(d=>{ if(d.monthly) acc(d,d.monthly,d.account||"sabadell"); });
+    // --- CASH-FLOW: ingresos (nómina) y transferencias recurrentes PENDIENTES este mes ---
+    // El saldo del banco ya refleja lo que ya ocurrió (día pasado); solo proyectamos lo pendiente.
+    const incomeInByBank={}, transferOutByBank={};
+    let pendingIncome=0, pendingTransferOut=0;
+    (state.flows||[]).forEach(f=>{
+      if(!flowOccursIn(f,curMonth) || isPaidThisMonth(f,today)) return;
+      const amt=f.amount||0;
+      if(f.kind==="income"){ const b=f.to||"sabadell"; incomeInByBank[b]=(incomeInByBank[b]||0)+amt; pendingIncome+=amt; }
+      else if(f.kind==="transfer"){ const b=f.from||"sabadell"; transferOutByBank[b]=(transferOutByBank[b]||0)+amt; pendingTransferOut+=amt; }
+    });
+    // disponible proyectado a fin de mes por banco = saldo + ingresos pend − transfers pend − fijos pend
+    const allBanks={}; [bankBal,incomeInByBank,transferOutByBank,pendingByBank].forEach(o=>Object.keys(o).forEach(b=>allBanks[b]=1));
+    const projectedByBank={};
+    Object.keys(allBanks).forEach(b=>{ projectedByBank[b]=(bankBal[b]||0)+(incomeInByBank[b]||0)-(transferOutByBank[b]||0)-(pendingByBank[b]||0); });
     // foco en el banco principal de gastos fijos (Sabadell)
     const mainBank="sabadell";
     const mainBal=bankBal[mainBank]||0;
     const mainCharges=chargesByBank[mainBank]||0;
     const mainPending=pendingByBank[mainBank]||0;
-    const liquidTrasFijos=mainBal-mainPending;           // lo que quedaría en el Sabadell tras los fijos PENDIENTES
-    const bankAlerts=Object.keys(pendingByBank).filter(b=> (pendingByBank[b]||0) > (bankBal[b]||0)+0.005);
+    const mainIncome=incomeInByBank[mainBank]||0;
+    const mainTransferOut=transferOutByBank[mainBank]||0;
+    const liquidTrasFijos=mainBal-mainPending;           // lo que quedaría tras los fijos PENDIENTES (sin contar nómina/transfers)
+    const mainProjected=projectedByBank[mainBank]||0;    // disponible proyectado a fin de mes (con cash-flow)
+    const bankAlerts=Object.keys(projectedByBank).filter(b=> projectedByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
