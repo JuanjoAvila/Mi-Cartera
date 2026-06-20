@@ -1,7 +1,8 @@
 # Roadmap — Mi Cartera
 
-Tablero de tareas en GitHub: **Issues** del repo + Project _"Mi Cartera — Roadmap"_.
-Lista: https://github.com/JuanjoAvila/Mi-Cartera/issues
+Tablero de tareas en GitHub:
+- **Project (Kanban):** https://github.com/users/JuanjoAvila/projects/1
+- **Issues:** https://github.com/JuanjoAvila/Mi-Cartera/issues
 
 > Estado a 2026-06-20. Tras completar Fase 0 + Fase 1 (Supabase) y el bloque de Inversiones (v3.17.0).
 
