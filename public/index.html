@@ -1687,6 +1687,15 @@ function Fijos({state, set, totals}){
   const toggleFormM=(m)=> setForm(f=>{ const cur=(f.months||[]).slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},f,{months:cur}); });
   const addFixed=()=>{ const amt=parseFloat(String(form.amount).replace(',','.'))||0; if(amt===0){ return; } const it={id:uid(),name:form.name||"Gasto fijo",amount:amt,freq:form.freq,account:form.account||"sabadell"}; const dd=cleanDay(form.day); if(dd) it.day=dd; if(form.freq!=="mes"&&form.months&&form.months.length) it.months=form.months.slice().sort((a,b)=>a-b); set(s=>Object.assign({},s,{fixed:s.fixed.concat([it])})); setForm({name:"",amount:"",freq:"mes",months:[],day:"",account:(form.account||"sabadell")}); setAdding(false); };
 
+  // --- edición de cuotas de deuda (día + banco + cuota), igual que los gastos fijos ---
+  const [editingD,setEditingD]=useState(false);
+  const [draftD,setDraftD]=useState({});
+  const dDMon=(x)=> draftD[x.id]!=null?draftD[x.id]:x.monthly;
+  const dDBank=(x)=> draftD["b_"+x.id]!=null?draftD["b_"+x.id]:(x.account||"sabadell");
+  const dDDay=(x)=> draftD["dy_"+x.id]!=null?draftD["dy_"+x.id]:(x.day||"");
+  const startEditD=()=>{ const d={}; state.debts.forEach(x=>{ d[x.id]=x.monthly; d["b_"+x.id]=x.account||"sabadell"; d["dy_"+x.id]=x.day||""; }); setDraftD(d); setEditingD(true); };
+  const saveEditD=()=>{ set(s=>Object.assign({},s,{debts:s.debts.map(x=>Object.assign({},x,{ monthly:parseFloat(String(dDMon(x)).replace(',','.'))||0, account:dDBank(x), day:cleanDay(dDDay(x)) }))})); setEditingD(false); };
+
   // resumen de meses para el subtítulo de cada fila
   const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return "⚠ sin mes"; return ms.map(m=>MONTHS_ES[m-1]).join(", "); };
 
@@ -1819,13 +1828,38 @@ function Fijos({state, set, totals}){
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir gasto fijo")
     ),
-    React.createElement(CollapsibleCard,{title:"Cuotas de deuda",sub:eur0(cuotas)+"/mes",dot:"#E2705F",storageKey:"f_cuotas"},
-      state.debts.map(d=>React.createElement("div",{className:"row",key:d.id},
-        React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:d.ent,size:38}),
-          React.createElement("div",null,React.createElement("div",{className:"rname"},d.name),React.createElement("div",{className:"rsub"},"Pendiente "+eur0(d.value)))),
-        React.createElement("div",{className:"rval num"},eur(d.monthly)+"/mes")
-      )),
-      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total cuotas/mes"),React.createElement("span",{className:"num"},eur(cuotas)))
+    React.createElement(CollapsibleCard,{title:"Cuotas de deuda",sub:eur0(cuotas)+"/mes",dot:"#E2705F",storageKey:"f_cuotas",
+      right:React.createElement("button",{className:"edit-link"+(editingD?" save":""),onClick:e=>{e.stopPropagation(); editingD?saveEditD():startEditD();}},editingD?"Guardar":"Editar")},
+      state.debts.map(d=>{
+        const bnk=d.account||"sabadell";
+        const row=React.createElement("div",{className:"row",key:d.id},
+          React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:d.ent,size:38}),
+            React.createElement("div",null,
+              React.createElement("div",{className:"rname"}, d.name, d.day && React.createElement("span",{className:"day-badge"},"día "+d.day)),
+              React.createElement("div",{className:"rsub"},"Pendiente "+eur0(d.value)+(bnk!=="sabadell"?" · "+entOf(bnk).label:"")))),
+          editingD
+            ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
+                React.createElement("input",{className:"editv num",style:{width:70},value:dDMon(d),inputMode:"decimal",onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{[d.id]:v}));}}),
+                React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"/mes"))
+            : React.createElement("div",{className:"rval num"},eur(d.monthly)+"/mes")
+        );
+        if(editingD){
+          return React.createElement("div",{key:d.id,style:{borderBottom:"1px solid var(--line-soft)"}},
+            row,
+            React.createElement("div",{style:{padding:"2px 4px 10px"}},
+              React.createElement("div",{className:"edit-extra"},
+                React.createElement("span",{className:"rsub"},"Se cobra en"),
+                React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:dDBank(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["b_"+d.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
+                React.createElement("span",{className:"rsub",style:{marginLeft:4}},"día"),
+                React.createElement("input",{className:"af-in num",style:{width:54,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:dDDay(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["dy_"+d.id]:v}));}})
+              )
+            )
+          );
+        }
+        return row;
+      }),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total cuotas/mes"),React.createElement("span",{className:"num"},eur(cuotas))),
+      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Pon el día y el banco de cada cuota para que en «Próximos cargos» se tachen al pagarse, igual que los gastos fijos. El importe es la cuota mensual; el saldo pendiente se edita en la pestaña Deudas.")
     ),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}},"Los gastos no mensuales (agua, seguros, IBI…) se reparten a su equivalente mensual para que veas el peso real de cada uno. Total al año: "+eur0(grand*12)+".")
   );
