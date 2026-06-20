@@ -17,3 +17,5 @@ Thumbs.db
 *.swp
 # Artefactos temporales de build local
 /tmp/
+# Tooling local de Claude (preview launch.json, settings locales) — no es código de la app
+.claude/

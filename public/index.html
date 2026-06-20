@@ -904,6 +904,7 @@ function buildInitial(){
     debts: DATA.debts.map(a=>Object.assign({},a)),
     fixed: DATA.fixed.map(a=>Object.assign({},a)),
     flows: DATA.flows.map(a=>Object.assign({},a)),
+    oneoffs: [],
     aportaciones: DATA.aportaciones.map(a=>Object.assign({},a)),
     expenses: DATA.variables.map(v=>({ id:v.id, date:new Date(v.date).toISOString(), merchant:v.name, amount:v.amount, category:v.cat, source:"manual" })),
     streak: 4,
@@ -989,6 +990,7 @@ function fixInvAuto(s){
 function seedFlows(s){
   if(!s) return s;
   if(!s.flows || !s.flows.length){ s.flows = DATA.flows.map(function(a){ return Object.assign({},a); }); }
+  if(!s.oneoffs){ s.oneoffs = []; }
   // upgrade único: la nómina/transferencias sembradas pasan a regla de día laborable
   if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
   return s;
@@ -1680,6 +1682,9 @@ const flowPaid=(f,y,m,today)=>{ const d=flowDay(f,y,m); return d!=null && d<toda
 // Movimientos recurrentes (nómina/transferencias): por defecto cada mes salvo que tengan months
 const flowMonths=(f)=> (f&&f.months&&f.months.length)?f.months:[1,2,3,4,5,6,7,8,9,10,11,12];
 const flowOccursIn=(f,m)=> flowMonths(f).indexOf(m)>=0;
+// Cargos puntuales (un solo cobro en un mes/año concreto): imprevistos, amortizaciones…
+const oneoffOccurs=(o,y,m)=> o && o.year===y && o.month===m;
+const oneoffPast=(o,y,m)=> o && (o.year<y || (o.year===y && o.month<m));   // de un mes ya cerrado
 
 // Selector compacto de meses (1-12) para gastos no mensuales.
 function MonthPicker({selected, onToggle}){
@@ -1762,22 +1767,30 @@ function Fijos({state, set, totals}){
   const addFlow=()=>{ const amt=parseFloat(String(formF.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),kind:formF.kind,name:formF.name||(formF.kind==="income"?"Ingreso":"Transferencia"),amount:amt}; if(formF.when){ it.when=formF.when; } else { const dd=cleanDay(formF.day); if(dd) it.day=dd; } if(formF.kind==="income"){ it.to=formF.to||"sabadell"; } else { it.from=formF.from||"sabadell"; it.to=formF.to||"trade_republic"; } set(s=>Object.assign({},s,{flows:(s.flows||[]).concat([it])})); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"}); setAddingF(false); };
   const whenLabel=(f)=> f.when==="last"?"último día laborable":f.when==="first"?"primer día laborable":(f.day?"día "+f.day:null);
 
+  // --- cargos puntuales (un solo cobro): imprevistos, amortizaciones… ---
+  const [addingO,setAddingO]=useState(false);
+  const [formO,setFormO]=useState({name:"",amount:"",month:new Date().getMonth()+1,year:new Date().getFullYear(),day:"",account:"sabadell"});
+  const addOneoff=()=>{ const amt=parseFloat(String(formO.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),name:formO.name||"Cargo puntual",amount:amt,month:parseInt(formO.month,10)||(new Date().getMonth()+1),year:parseInt(formO.year,10)||new Date().getFullYear(),account:formO.account||"sabadell"}; const dd=cleanDay(formO.day); if(dd) it.day=dd; set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).concat([it])})); setFormO({name:"",amount:"",month:new Date().getMonth()+1,year:new Date().getFullYear(),day:"",account:"sabadell"}); setAddingO(false); };
+  const delOneoff=(id)=> set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).filter(o=>o.id!==id)}));
+
   // resumen de meses para el subtítulo de cada fila
   const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return "⚠ sin mes"; return ms.map(m=>MONTHS_ES[m-1]).join(", "); };
 
   // --- Próximos cargos (motor dinámico): qué se cobra este mes y el que viene ---
-  const cm=totals.curMonth, nm=cm===12?1:cm+1, today=totals.today;
-  const chargesOf=(mo)=>{ const items=[];
+  const cm=totals.curMonth, nm=cm===12?1:cm+1, today=totals.today, cy=totals.curYear, ny=cm===12?cy+1:cy;
+  const oneoffs=state.oneoffs||[];
+  const chargesOf=(mo,yr)=>{ const items=[];
     state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmountIn(e,mo)!==0) items.push({key:e.id,name:e.name,amount:occAmountIn(e,mo),bank:accOf(e),day:dayIn(e,mo),paid:mo===cm&&isPaidIn(e,mo,today)}); });
     state.debts.forEach(d=>{ if(d.monthly) items.push({key:d.id,name:d.name,amount:d.monthly,debt:true,bank:d.account||"sabadell",day:dayOf(d),paid:mo===cm&&isPaidThisMonth(d,today)}); });
+    oneoffs.forEach(o=>{ if(oneoffOccurs(o,yr,mo)&&(o.amount||0)!==0) items.push({key:o.id,name:o.name,amount:o.amount,oneoff:true,bank:o.account||"sabadell",day:o.day||null,paid:mo===cm&&yr===cy&&isPaidThisMonth(o,today)}); });
     return items.sort((a,b)=>b.amount-a.amount); };
-  const thisM=chargesOf(cm), nextM=chargesOf(nm);
+  const thisM=chargesOf(cm,cy), nextM=chargesOf(nm,ny);
   const thisPending=thisM.filter(x=>!x.paid), thisPaid=thisM.filter(x=>x.paid);
   const nextSum=nextM.reduce((a,x)=>a+x.amount,0);
   const rowCharge=(x)=> React.createElement("div",{className:"row"+(x.paid?" paid-row":""),key:x.key},
     React.createElement("div",{className:"rl"},React.createElement("div",null,
       React.createElement("div",{className:"rname"}, x.name, x.day && React.createElement("span",{className:"day-badge"},"día "+x.day)),
-      React.createElement("div",{className:"rsub"}, (x.paid?"✓ pagado · ":"")+(x.debt?"cuota de deuda":"gasto fijo")+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
+      React.createElement("div",{className:"rsub"}, (x.paid?"✓ pagado · ":"")+(x.oneoff?"cargo puntual":x.debt?"cuota de deuda":"gasto fijo")+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
     React.createElement("div",{className:"rval num",style:x.amount<0?{color:"var(--mint)"}:null},(x.amount<0?"+":"")+eur(Math.abs(x.amount))));
   // totales por mes (12) para detectar meses "cargados" por encima de lo normal
   const monthTotals=[]; for(let mo=1;mo<=12;mo++){ let tt=0; state.fixed.forEach(e=>{ if(occursIn(e,mo)) tt+=occAmountIn(e,mo); }); tt+=cuotas; monthTotals[mo]=tt; }
@@ -2014,6 +2027,39 @@ function Fijos({state, set, totals}){
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingF(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir ingreso o transferencia"),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Con esto el Sabadell se calcula solo: entra la nómina y salen las transferencias y los fijos. Pon el «día» de cada uno; los que ya han pasado este mes ya están en el saldo, así que no se vuelven a restar.")
+    ),
+    React.createElement(CollapsibleCard,{title:"Cargos puntuales",sub:"Imprevistos y amortizaciones (una vez)",dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false},
+      (function(){ const up=oneoffs.filter(o=>!oneoffPast(o,cy,cm)).sort((a,b)=> (a.year-b.year)||(a.month-b.month) );
+        return up.length? up.map(o=>React.createElement("div",{className:"row",key:o.id},
+          React.createElement("div",{className:"rl"},
+            React.createElement("button",{className:"del-btn",onClick:()=>delOneoff(o.id)},"✕"),
+            React.createElement("div",null,
+              React.createElement("div",{className:"rname"}, o.name, o.day && React.createElement("span",{className:"day-badge"},"día "+o.day)),
+              React.createElement("div",{className:"rsub"}, MONTHS_ES[o.month-1]+" "+o.year+(o.account!=="sabadell"?" · "+entOf(o.account).label:"")))),
+          React.createElement("div",{className:"rval num"}, eur(o.amount))
+        )) : React.createElement("div",{className:"hint"},"No hay cargos puntuales próximos. Añade uno para imprevistos o amortizaciones que ocurren una sola vez.");
+      })(),
+      addingO
+        ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
+            React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Amortización préstamo)",value:formO.name,onChange:e=>setFormO(Object.assign({},formO,{name:e.target.value}))}),
+            React.createElement("div",{className:"af-row"},
+              React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:formO.amount,onChange:e=>setFormO(Object.assign({},formO,{amount:e.target.value}))}),
+              React.createElement("select",{className:"af-in",value:formO.month,onChange:e=>setFormO(Object.assign({},formO,{month:e.target.value}))}, MONTHS_ES.map((lbl,i)=>React.createElement("option",{key:i+1,value:i+1},lbl))),
+              React.createElement("input",{className:"af-in num",placeholder:"día",inputMode:"numeric",style:{maxWidth:64},value:formO.day,onChange:e=>setFormO(Object.assign({},formO,{day:e.target.value}))})
+            ),
+            React.createElement("div",{className:"edit-extra"},
+              React.createElement("span",{className:"rsub"},"año"),
+              React.createElement("input",{className:"af-in num",style:{width:74,padding:"8px 10px"},inputMode:"numeric",value:formO.year,onChange:e=>setFormO(Object.assign({},formO,{year:e.target.value}))}),
+              React.createElement("span",{className:"rsub",style:{marginLeft:4}},"banco"),
+              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formO.account,onChange:e=>setFormO(Object.assign({},formO,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
+            ),
+            React.createElement("div",{className:"af-row"},
+              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingO(false); setFormO({name:"",amount:"",month:cm,year:cy,day:"",account:"sabadell"});}},"Cancelar"),
+              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addOneoff},"Añadir cargo puntual")
+            )
+          )
+        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingO(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir cargo puntual"),
+      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Entra en «Próximos cargos» el mes que toque y se tacha al pasar su día. Solo cuenta una vez; cuando pasa el mes desaparece de la lista.")
     ),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}},"Los gastos no mensuales (agua, seguros, IBI…) se reparten a su equivalente mensual para que veas el peso real de cada uno. Total al año: "+eur0(grand*12)+".")
   );
@@ -2386,6 +2432,7 @@ function App(){
       else { pendingThisMonth+=amt; pendingByBank[bank]=(pendingByBank[bank]||0)+amt; } };
     state.fixed.forEach(e=>{ if(occursIn(e,curMonth)) acc(occAmountIn(e,curMonth),accOf(e),isPaidIn(e,curMonth,today)); });
     state.debts.forEach(d=>{ if(d.monthly) acc(d.monthly,d.account||"sabadell",isPaidThisMonth(d,today)); });
+    (state.oneoffs||[]).forEach(o=>{ if(oneoffOccurs(o,curYear,curMonth) && (o.amount||0)!==0) acc(o.amount,o.account||"sabadell",isPaidThisMonth(o,today)); });
     // --- CASH-FLOW: ingresos (nómina) y transferencias recurrentes PENDIENTES este mes ---
     // El saldo del banco ya refleja lo que ya ocurrió (día pasado); solo proyectamos lo pendiente.
     const incomeInByBank={}, transferOutByBank={};
@@ -2411,7 +2458,7 @@ function App(){
     const mainProjected=projectedByBank[mainBank]||0;    // disponible proyectado a fin de mes (con cash-flow)
     const bankAlerts=Object.keys(projectedByBank).filter(b=> projectedByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
