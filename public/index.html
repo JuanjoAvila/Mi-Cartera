@@ -991,6 +991,8 @@ function seedFlows(s){
   if(!s) return s;
   if(!s.flows || !s.flows.length){ s.flows = DATA.flows.map(function(a){ return Object.assign({},a); }); }
   if(!s.oneoffs){ s.oneoffs = []; }
+  // deuda dinámica: ancla el saldo actual al mes de hoy si aún no tenía ancla
+  if(s.debts){ const nowAbs=ymNow(); s.debts = s.debts.map(function(d){ return (d.asOf==null)?Object.assign({},d,{asOf:nowAbs}):d; }); }
   // upgrade único: la nómina/transferencias sembradas pasan a regla de día laborable
   if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
   return s;
@@ -1142,7 +1144,7 @@ function useEditable(items, onChange, opts){
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState({});
   const start=()=>{ const d={}; items.forEach(i=>d[i.id]=disp(i)); setDraft(d); setEditing(true); };
-  const save=()=>{ onChange(items.map(i=>{ const typed=parseFloat(String(draft[i.id]).replace(',','.'))||0; return Object.assign({},i,{value: toStored(i,typed) }); })); setEditing(false); };
+  const save=()=>{ onChange(items.map(i=>{ const typed=parseFloat(String(draft[i.id]).replace(',','.'))||0; const extra=opts.extra?opts.extra(i,typed):null; return Object.assign({},i,{value: toStored(i,typed) }, extra||{}); })); setEditing(false); };
   return { editing, start, save, draft, setDraft };
 }
 
@@ -1686,6 +1688,17 @@ const flowOccursIn=(f,m)=> flowMonths(f).indexOf(m)>=0;
 const oneoffOccurs=(o,y,m)=> o && o.year===y && o.month===m;
 const oneoffPast=(o,y,m)=> o && (o.year<y || (o.year===y && o.month<m));   // de un mes ya cerrado
 
+/* --- Deuda dinámica: saldo proyectado que baja solo cada mes ---
+   No mutamos el dato guardado (para no descuadrar la sync). `value` es el saldo
+   ANCLA y `asOf` el mes (entero absoluto año*12+mes) en que era cierto. El saldo
+   de hoy = value − amortización/mes × meses transcurridos, con suelo en 0.
+   `amort` es lo que reduce el principal (por defecto la cuota); puede diferir de la
+   cuota en efectivo (p.ej. préstamo familiar: paga 197 € pero amortiza 250 €/mes). */
+const ymAbs=(y,m0)=> y*12+m0;                         // m0 = mes 0-indexado
+const ymNow=()=>{ const n=new Date(); return ymAbs(n.getFullYear(), n.getMonth()); };
+const debtAmort=(d)=> d && d.amort!=null ? d.amort : ((d&&d.monthly)||0);
+function debtBalance(d){ if(!d || d.value==null) return 0; const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); const elapsed=Math.max(0, ymNow()-anchor); return Math.max(0, d.value - debtAmort(d)*elapsed); }
+
 // Selector compacto de meses (1-12) para gastos no mensuales.
 function MonthPicker({selected, onToggle}){
   const sel=selected||[];
@@ -1747,8 +1760,9 @@ function Fijos({state, set, totals}){
   const dDMon=(x)=> draftD[x.id]!=null?draftD[x.id]:x.monthly;
   const dDBank=(x)=> draftD["b_"+x.id]!=null?draftD["b_"+x.id]:(x.account||"sabadell");
   const dDDay=(x)=> draftD["dy_"+x.id]!=null?draftD["dy_"+x.id]:(x.day||"");
-  const startEditD=()=>{ const d={}; state.debts.forEach(x=>{ d[x.id]=x.monthly; d["b_"+x.id]=x.account||"sabadell"; d["dy_"+x.id]=x.day||""; }); setDraftD(d); setEditingD(true); };
-  const saveEditD=()=>{ set(s=>Object.assign({},s,{debts:s.debts.map(x=>Object.assign({},x,{ monthly:parseFloat(String(dDMon(x)).replace(',','.'))||0, account:dDBank(x), day:cleanDay(dDDay(x)) }))})); setEditingD(false); };
+  const dDAmort=(x)=> draftD["am_"+x.id]!=null?draftD["am_"+x.id]:(x.amort!=null?x.amort:(x.monthly||""));
+  const startEditD=()=>{ const d={}; state.debts.forEach(x=>{ d[x.id]=x.monthly; d["b_"+x.id]=x.account||"sabadell"; d["dy_"+x.id]=x.day||""; d["am_"+x.id]=(x.amort!=null?x.amort:(x.monthly||"")); }); setDraftD(d); setEditingD(true); };
+  const saveEditD=()=>{ set(s=>Object.assign({},s,{debts:s.debts.map(x=>{ const mon=parseFloat(String(dDMon(x)).replace(',','.'))||0; const am=parseFloat(String(dDAmort(x)).replace(',','.')); const o=Object.assign({},x,{ monthly:mon, account:dDBank(x), day:cleanDay(dDDay(x)) }); if(am>0 && Math.abs(am-mon)>0.005){ o.amort=am; } else { delete o.amort; } return o; })})); setEditingD(false); };
 
   // --- edición de movimientos recurrentes (nómina + transferencias) — motor cash-flow ---
   const flows=state.flows||[];
@@ -1937,7 +1951,7 @@ function Fijos({state, set, totals}){
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:d.ent,size:38}),
             React.createElement("div",null,
               React.createElement("div",{className:"rname"}, d.name, d.day && React.createElement("span",{className:"day-badge"},"día "+d.day)),
-              React.createElement("div",{className:"rsub"},"Pendiente "+eur0(d.value)+(bnk!=="sabadell"?" · "+entOf(bnk).label:"")))),
+              React.createElement("div",{className:"rsub"},"Pendiente "+eur0(debtBalance(d))+(bnk!=="sabadell"?" · "+entOf(bnk).label:"")))),
           editingD
             ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
                 React.createElement("input",{className:"editv num",style:{width:70},value:dDMon(d),inputMode:"decimal",onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{[d.id]:v}));}}),
@@ -1953,6 +1967,11 @@ function Fijos({state, set, totals}){
                 React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:dDBank(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["b_"+d.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
                 React.createElement("span",{className:"rsub",style:{marginLeft:4}},"día"),
                 React.createElement("input",{className:"af-in num",style:{width:54,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:dDDay(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["dy_"+d.id]:v}));}})
+              ),
+              React.createElement("div",{className:"edit-extra",style:{marginTop:6}},
+                React.createElement("span",{className:"rsub"},"amortiza/mes"),
+                React.createElement("input",{className:"af-in num",style:{width:80,padding:"6px 8px",fontSize:12.5},inputMode:"decimal",value:dDAmort(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["am_"+d.id]:v}));}}),
+                React.createElement("span",{className:"rsub",style:{flex:1}},"cuánto baja el saldo (si difiere de la cuota)")
               )
             )
           );
@@ -2069,15 +2088,16 @@ function Fijos({state, set, totals}){
    TAB: DEUDAS
    ============================================================ */
 function Debts({state, set}){
-  const ed=useEditable(state.debts,it=>set(s=>Object.assign({},s,{debts:it})));
+  // editar el saldo re-ancla al mes de hoy (asOf) para que la proyección siga desde ahí
+  const ed=useEditable(state.debts,it=>set(s=>Object.assign({},s,{debts:it})), { display:d=>Math.round(debtBalance(d)*100)/100, extra:()=>({asOf:ymNow()}) });
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({name:"",value:"",monthly:""});
-  const total=state.debts.reduce((a,d)=>a+d.value,0);
+  const total=state.debts.reduce((a,d)=>a+debtBalance(d),0);
   const monthly=state.debts.reduce((a,d)=>a+(d.monthly||0),0);
   const addDebt=()=>{
     const v=parseFloat(String(form.value).replace(',','.'))||0; if(v<=0) return;
     const m=parseFloat(String(form.monthly).replace(',','.'))||0;
-    const it={id:uid(),ent:"familia",name:form.name||"Nueva deuda",value:v,original:v,monthly:m,note:"Añadida manualmente"};
+    const it={id:uid(),ent:"familia",name:form.name||"Nueva deuda",value:v,original:v,monthly:m,asOf:ymNow(),note:"Añadida manualmente"};
     set(s=>Object.assign({},s,{debts:s.debts.concat([it])}));
     setForm({name:"",value:"",monthly:""}); setAdding(false);
   };
@@ -2088,19 +2108,21 @@ function Debts({state, set}){
       React.createElement("div",{className:"cnt"},"Cuota "+eur0(monthly)+"/mes")
     ),
     state.debts.map(d=>{
-      const paid=Math.max(0,(d.original||d.value)-d.value);
-      const pct=Math.min(100,(paid/(d.original||d.value))*100);
+      const bal=debtBalance(d);
+      const paid=Math.max(0,(d.original||bal)-bal);
+      const pct=Math.min(100,(paid/(d.original||bal))*100);
+      const amortNote=(d.amort!=null && d.amort!==d.monthly) ? "amortiza "+eur0(d.amort)+"/mes (cuota "+eur0(d.monthly)+")" : "amortiza "+eur0(debtAmort(d))+"/mes";
       return React.createElement(CollapsibleCard,{key:d.id,title:d.name,sub:d.note,dot:entOf(d.ent).color,storageKey:"debt_"+d.id,
-        right:React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:14}},eur0(d.value))},
+        right:React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:14}},eur0(bal))},
         React.createElement("div",{className:"bar"},React.createElement("i",{style:{width:pct+"%",background:"linear-gradient(90deg,#6b3a33,#E2705F)"}})),
         React.createElement("div",{className:"debt-meta"},
           React.createElement("span",null,"Amortizado "+eur0(paid)+" ("+Math.round(pct)+"%)"),
-          React.createElement("span",null,"Cuota "+eur0(d.monthly)+"/mes")),
+          React.createElement("span",null,amortNote)),
         React.createElement("div",{className:"row",style:{marginTop:8}},
-          React.createElement("div",{className:"rl"},React.createElement("div",{className:"rname"},"Pendiente")),
+          React.createElement("div",{className:"rl"},React.createElement("div",null,React.createElement("div",{className:"rname"},"Pendiente"),React.createElement("div",{className:"rsub"},"baja solo cada mes"))),
           ed.editing
             ? React.createElement("input",{className:"editv num",value:ed.draft[d.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;ed.setDraft(dr=>Object.assign({},dr,{[d.id]:v}));}})
-            : React.createElement("div",{className:"rval num",style:{color:"#E2705F"}},eur(d.value))),
+            : React.createElement("div",{className:"rval num",style:{color:"#E2705F"}},eur(bal))),
         ed.editing && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"#E2705F"},onClick:()=>delDebt(d.id)},"Eliminar esta deuda")
       );
     }),
@@ -2115,7 +2137,7 @@ function Debts({state, set}){
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addDebt},"Añadir deuda")
         )
       : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir deuda"),
-    React.createElement("div",{className:"hint",style:{padding:"10px 4px 0"}},"El progreso compara el saldo pendiente con el importe original de cada deuda.")
+    React.createElement("div",{className:"hint",style:{padding:"10px 4px 0"}},"El saldo baja solo cada mes según lo que amortizas. Cuando te llegue el saldo real del banco, edítalo aquí y se vuelve a anclar. La cuota y la amortización (si difieren, p.ej. pagas 197 € pero amortizas 250 €) se ponen en Fijos → Cuotas de deuda.")
   );
 }
 
@@ -2405,7 +2427,7 @@ function App(){
     const liquid=state.accounts.reduce((a,i)=> a + (i.spendFrom ? (i.value + injTR - thisMonthSpent) : i.value), 0);
     const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
-    const debtTotal=state.debts.reduce((a,d)=>a+d.value,0);
+    const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
     const activos=liquid+invested+assetsTotal;
     const netWorth=activos-debtTotal;
     const delta=netWorth-state.monthStartNet;
