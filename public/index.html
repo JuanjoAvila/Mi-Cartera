@@ -460,6 +460,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .paid-row{opacity:.5;}
   .paid-row .rval{text-decoration:line-through;}
   .day-badge{display:inline-block;margin-left:7px;font-size:10.5px;font-weight:700;color:var(--muted-2);background:var(--bg-2);border:1px solid var(--line-soft);border-radius:7px;padding:1px 6px;vertical-align:middle;}
+  .sched-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
   .edit-extra{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .liqbox{background:var(--bg-2);border:1px solid var(--line-soft);border-radius:13px;padding:11px 13px;margin-bottom:10px;}
   .liqbox.danger{border-color:rgba(226,112,95,.5);background:rgba(226,112,95,.07);}
@@ -873,9 +874,9 @@ const DATA = {
   // Movimientos recurrentes de efectivo (motor de cash-flow): la nómina entra al Sabadell
   // y de ahí salen las transferencias automáticas. 3333 − 1550 − 500 = 1283 para fijos.
   flows: [
-    { id:"flow_nom", kind:"income",   name:"Nómina",           amount:3333, to:"sabadell",                       day:27 },
-    { id:"flow_tr",  kind:"transfer", name:"A Trade Republic", amount:1550, from:"sabadell", to:"trade_republic", day:28 },
-    { id:"flow_mi",  kind:"transfer", name:"A MyInvestor",     amount:500,  from:"sabadell", to:"myinvestor",      day:28 },
+    { id:"flow_nom", kind:"income",   name:"Nómina",           amount:3333, to:"sabadell",                       when:"last"  },
+    { id:"flow_tr",  kind:"transfer", name:"A Trade Republic", amount:1550, from:"sabadell", to:"trade_republic", when:"first" },
+    { id:"flow_mi",  kind:"transfer", name:"A MyInvestor",     amount:500,  from:"sabadell", to:"myinvestor",      when:"first" },
   ],
   variables: [
     { id:"yfg081c", name:"Restaurantes y bares (acumulado)", cat:"bares",      amount:204,  date:"2026-06-15" },
@@ -988,6 +989,8 @@ function fixInvAuto(s){
 function seedFlows(s){
   if(!s) return s;
   if(!s.flows || !s.flows.length){ s.flows = DATA.flows.map(function(a){ return Object.assign({},a); }); }
+  // upgrade único: la nómina/transferencias sembradas pasan a regla de día laborable
+  if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
   return s;
 }
 function loadState(){
@@ -1633,6 +1636,7 @@ const MONTHS_ES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","No
    quedan "sin programar" hasta que el usuario elige el mes.
    ============================================================ */
 function chargeMonths(e){
+  if(e && e.schedule && e.schedule.length) return e.schedule.map(x=>x.m).slice().sort((a,b)=>a-b);
   if(e && e.months && e.months.length) return e.months.slice().sort((a,b)=>a-b);
   const f=e&&e.freq;
   if(f==="mes"||f==="mensual") return [1,2,3,4,5,6,7,8,9,10,11,12];
@@ -1643,21 +1647,36 @@ function chargeMonths(e){
 }
 // ¿se cobra este gasto en el mes m (1-12)?
 const occursIn=(e,m)=> chargeMonths(e).indexOf(m)>=0;
-// importe de UNA ocurrencia (lo que sale de la cuenta el mes que toca).
-// En los ANUALES el importe es el total del año → se reparte entre los meses marcados
-// (p.ej. IBI 664 €/año en 4 meses = 166 €/cobro). En el resto, amount ya es por cobro.
-function occAmount(e){
+// importe del cobro EN EL MES m. Si hay `schedule` (importes a medida, p.ej. seguro 172,05 + 166,94)
+// usa ese importe; si es anual sin schedule reparte el total entre los meses marcados; si no, amount.
+function occAmountIn(e,m){
+  if(e.schedule && e.schedule.length){ const s=e.schedule.find(x=>x.m===m); return s?(s.amt||0):0; }
   if(e.freq==="año"||e.freq==="anual"){ const n=chargeMonths(e).length||1; return e.amount/n; }
   return e.amount;
 }
+// compat: importe "representativo" de una ocurrencia (primer mes) — para etiquetas
+const occAmount=(e)=> occAmountIn(e, chargeMonths(e)[0]||(new Date().getMonth()+1));
 // banco del que se cobra (por defecto Sabadell)
 const accOf=(e)=> e.account||"sabadell";
-// día del mes en que se cobra (1-31) si se conoce
+// día del cobro en el mes m (schedule tiene su propio día por cobro)
+function dayIn(e,m){ if(e&&e.schedule&&e.schedule.length){ const s=e.schedule.find(x=>x.m===m); return s?(s.day||null):null; } return (e&&e.day)||null; }
+// día simple (objetos sin schedule: deudas)
 const dayOf=(e)=> (e&&e.day)||null;
-// ¿ya se cobró este mes? Tiene día asignado y ese día ya pasó. Sin día → se trata como pendiente.
+// ¿ya se cobró en el mes m? (su día ya pasó). Solo tiene sentido para el mes actual.
+const isPaidIn=(e,m,today)=>{ const d=dayIn(e,m); return d!=null && d<today; };
 const isPaidThisMonth=(e,today)=>{ const d=dayOf(e); return d!=null && d<today; };
 // ¿el gasto necesita que el usuario le asigne un mes? (anual sin programar)
-const needsMonth=(e)=> (e.freq==="año"||e.freq==="anual") && !(e.months&&e.months.length);
+const needsMonth=(e)=> (e.freq==="año"||e.freq==="anual") && !(e.months&&e.months.length) && !(e.schedule&&e.schedule.length);
+// ¿tiene importes/días a medida por cobro?
+const hasSchedule=(e)=> !!(e&&e.schedule&&e.schedule.length);
+
+/* --- Días laborables (lun-vie; sin festivos, aproximación) --- */
+// día del mes (número, mes 1-12) del primer/último día laborable
+function firstWorkDom(y,m){ for(let d=1;d<=7;d++){ const wd=new Date(y,m-1,d).getDay(); if(wd!==0 && wd!==6) return d; } return 1; }
+function lastWorkDom(y,m){ const last=new Date(y,m,0).getDate(); for(let d=last;d>=1;d--){ const wd=new Date(y,m-1,d).getDay(); if(wd!==0 && wd!==6) return d; } return last; }
+// día efectivo de un movimiento recurrente según su regla (`when`) o su día fijo
+function flowDay(f,y,m){ if(f.when==="last") return lastWorkDom(y,m); if(f.when==="first") return firstWorkDom(y,m); return f.day||null; }
+const flowPaid=(f,y,m,today)=>{ const d=flowDay(f,y,m); return d!=null && d<today; };
 // Movimientos recurrentes (nómina/transferencias): por defecto cada mes salvo que tengan months
 const flowMonths=(f)=> (f&&f.months&&f.months.length)?f.months:[1,2,3,4,5,6,7,8,9,10,11,12];
 const flowOccursIn=(f,m)=> flowMonths(f).indexOf(m)>=0;
@@ -1680,7 +1699,7 @@ function Fijos({state, set, totals}){
   const [draftM,setDraftM]=useState({});
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({name:"",amount:"",freq:"mes",months:[],day:""});
-  const monthly=(e)=> e.amount*(FREQ_M[e.freq]||1);
+  const monthly=(e)=>{ if(hasSchedule(e)){ return e.schedule.reduce((a,x)=>a+(x.amt||0),0)/12; } return e.amount*(FREQ_M[e.freq]||1); };
   const list=state.fixed.slice().sort((a,b)=>monthly(b)-monthly(a));
   const servSum=state.fixed.reduce((a,e)=>a+monthly(e),0);
   const cuotas=state.debts.reduce((a,d)=>a+(d.monthly||0),0);
@@ -1693,13 +1712,25 @@ function Fijos({state, set, totals}){
 
   // lecturas robustas: si el borrador no tiene el id (p.ej. recién añadido en modo edición), usa el valor real
   const dAmt=(e)=> draft[e.id]!=null ? draft[e.id] : e.amount;
-  const dMonths=(e)=> draftM[e.id]!=null ? draftM[e.id] : (e.months||[]);
+  const dMonths=(e)=> draftM[e.id]!=null ? draftM[e.id] : (hasSchedule(e)? e.schedule.map(x=>x.m) : (e.months||[]));
   const dBank=(e)=> draft["b_"+e.id]!=null ? draft["b_"+e.id] : accOf(e);
   const dDay=(e)=> draft["d_"+e.id]!=null ? draft["d_"+e.id] : (e.day||"");
   const cleanDay=(v)=>{ const n=parseInt(String(v),10); return (n>=1&&n<=31)?n:null; };
+  // importes/días a medida por cobro (schedule)
+  const dSched=(e)=> draft["sc_"+e.id]!=null ? draft["sc_"+e.id] : hasSchedule(e);
+  const dSA=(e,m)=>{ const k="sa_"+e.id+"_"+m; return draft[k]!=null ? draft[k] : (hasSchedule(e)? (((e.schedule.find(x=>x.m===m)||{}).amt)||"") : occAmountIn(e,m)); };
+  const dSD=(e,m)=>{ const k="sd_"+e.id+"_"+m; return draft[k]!=null ? draft[k] : (dayIn(e,m)||""); };
 
-  const startEdit=()=>{ const d={},dm={}; state.fixed.forEach(e=>{d[e.id]=e.amount; d["b_"+e.id]=accOf(e); d["d_"+e.id]=e.day||""; dm[e.id]=(e.months||[]).slice();}); setDraft(d); setDraftM(dm); setEditing(true); };
-  const saveEdit=()=>{ set(s=>Object.assign({},s,{fixed:s.fixed.map(e=>Object.assign({},e,{amount:parseFloat(String(dAmt(e)).replace(',','.'))||0, account:dBank(e), day:cleanDay(dDay(e)), months:dMonths(e).slice().sort((a,b)=>a-b)}))})); setEditing(false); };
+  const startEdit=()=>{ const d={},dm={}; state.fixed.forEach(e=>{d[e.id]=e.amount; d["b_"+e.id]=accOf(e); d["d_"+e.id]=e.day||""; d["sc_"+e.id]=hasSchedule(e); dm[e.id]=(hasSchedule(e)?e.schedule.map(x=>x.m):(e.months||[])).slice(); if(hasSchedule(e)){ e.schedule.forEach(x=>{ d["sa_"+e.id+"_"+x.m]=x.amt; d["sd_"+e.id+"_"+x.m]=x.day||""; }); }}); setDraft(d); setDraftM(dm); setEditing(true); };
+  const toggleSched=(id)=> setDraft(d=>Object.assign({},d,{["sc_"+id]: !(d["sc_"+id]!=null?d["sc_"+id]:hasSchedule((state.fixed.find(x=>x.id===id)||{})))}));
+  const saveEdit=()=>{ set(s=>Object.assign({},s,{fixed:s.fixed.map(e=>{
+      const base=Object.assign({},e,{amount:parseFloat(String(dAmt(e)).replace(',','.'))||0, account:dBank(e), day:cleanDay(dDay(e)), months:dMonths(e).slice().sort((a,b)=>a-b)});
+      if(e.freq!=="mes" && dSched(e)){
+        const ms=dMonths(e).slice().sort((a,b)=>a-b);
+        base.schedule=ms.map(m=>({ m:m, amt:parseFloat(String(dSA(e,m)).replace(',','.'))||0, day:cleanDay(dSD(e,m)) }));
+      } else { delete base.schedule; }
+      return base;
+    })})); setEditing(false); };
   const toggleDraftM=(id,m)=> setDraftM(dm=>{ const base=dm[id]!=null?dm[id]:(((state.fixed.find(x=>x.id===id)||{}).months)||[]); const cur=base.slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},dm,{[id]:cur}); });
   const del=(id)=> set(s=>Object.assign({},s,{fixed:s.fixed.filter(e=>e.id!==id)}));
   const toggleFormM=(m)=> setForm(f=>{ const cur=(f.months||[]).slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},f,{months:cur}); });
@@ -1719,15 +1750,17 @@ function Fijos({state, set, totals}){
   const [editingF,setEditingF]=useState(false);
   const [draftF,setDraftF]=useState({});
   const [addingF,setAddingF]=useState(false);
-  const [formF,setFormF]=useState({kind:"income",name:"",amount:"",day:"",to:"sabadell",from:"sabadell"});
+  const [formF,setFormF]=useState({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"});
   const fAmt=(f)=> draftF[f.id]!=null?draftF[f.id]:f.amount;
   const fDay=(f)=> draftF["dy_"+f.id]!=null?draftF["dy_"+f.id]:(f.day||"");
+  const fWhen=(f)=> draftF["wh_"+f.id]!=null?draftF["wh_"+f.id]:(f.when||"");
   const fTo=(f)=> draftF["to_"+f.id]!=null?draftF["to_"+f.id]:(f.to||"sabadell");
   const fFrom=(f)=> draftF["fr_"+f.id]!=null?draftF["fr_"+f.id]:(f.from||"sabadell");
-  const startEditF=()=>{ const d={}; flows.forEach(f=>{ d[f.id]=f.amount; d["dy_"+f.id]=f.day||""; d["to_"+f.id]=f.to||"sabadell"; d["fr_"+f.id]=f.from||"sabadell"; }); setDraftF(d); setEditingF(true); };
-  const saveEditF=()=>{ set(s=>Object.assign({},s,{flows:(s.flows||[]).map(f=>{ const o=Object.assign({},f,{amount:parseFloat(String(fAmt(f)).replace(',','.'))||0, day:cleanDay(fDay(f))}); if(f.kind==="income"){ o.to=fTo(f); delete o.from; } else { o.from=fFrom(f); o.to=fTo(f); } return o; })})); setEditingF(false); };
+  const startEditF=()=>{ const d={}; flows.forEach(f=>{ d[f.id]=f.amount; d["dy_"+f.id]=f.day||""; d["wh_"+f.id]=f.when||""; d["to_"+f.id]=f.to||"sabadell"; d["fr_"+f.id]=f.from||"sabadell"; }); setDraftF(d); setEditingF(true); };
+  const saveEditF=()=>{ set(s=>Object.assign({},s,{flows:(s.flows||[]).map(f=>{ const wh=fWhen(f); const o=Object.assign({},f,{amount:parseFloat(String(fAmt(f)).replace(',','.'))||0}); if(wh){ o.when=wh; delete o.day; } else { o.when=undefined; delete o.when; o.day=cleanDay(fDay(f)); } if(f.kind==="income"){ o.to=fTo(f); delete o.from; } else { o.from=fFrom(f); o.to=fTo(f); } return o; })})); setEditingF(false); };
   const delFlow=(id)=> set(s=>Object.assign({},s,{flows:(s.flows||[]).filter(f=>f.id!==id)}));
-  const addFlow=()=>{ const amt=parseFloat(String(formF.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),kind:formF.kind,name:formF.name||(formF.kind==="income"?"Ingreso":"Transferencia"),amount:amt}; const dd=cleanDay(formF.day); if(dd) it.day=dd; if(formF.kind==="income"){ it.to=formF.to||"sabadell"; } else { it.from=formF.from||"sabadell"; it.to=formF.to||"trade_republic"; } set(s=>Object.assign({},s,{flows:(s.flows||[]).concat([it])})); setFormF({kind:"income",name:"",amount:"",day:"",to:"sabadell",from:"sabadell"}); setAddingF(false); };
+  const addFlow=()=>{ const amt=parseFloat(String(formF.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),kind:formF.kind,name:formF.name||(formF.kind==="income"?"Ingreso":"Transferencia"),amount:amt}; if(formF.when){ it.when=formF.when; } else { const dd=cleanDay(formF.day); if(dd) it.day=dd; } if(formF.kind==="income"){ it.to=formF.to||"sabadell"; } else { it.from=formF.from||"sabadell"; it.to=formF.to||"trade_republic"; } set(s=>Object.assign({},s,{flows:(s.flows||[]).concat([it])})); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"}); setAddingF(false); };
+  const whenLabel=(f)=> f.when==="last"?"último día laborable":f.when==="first"?"primer día laborable":(f.day?"día "+f.day:null);
 
   // resumen de meses para el subtítulo de cada fila
   const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return "⚠ sin mes"; return ms.map(m=>MONTHS_ES[m-1]).join(", "); };
@@ -1735,7 +1768,7 @@ function Fijos({state, set, totals}){
   // --- Próximos cargos (motor dinámico): qué se cobra este mes y el que viene ---
   const cm=totals.curMonth, nm=cm===12?1:cm+1, today=totals.today;
   const chargesOf=(mo)=>{ const items=[];
-    state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmount(e)!==0) items.push({key:e.id,name:e.name,amount:occAmount(e),bank:accOf(e),day:dayOf(e),paid:mo===cm&&isPaidThisMonth(e,today)}); });
+    state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmountIn(e,mo)!==0) items.push({key:e.id,name:e.name,amount:occAmountIn(e,mo),bank:accOf(e),day:dayIn(e,mo),paid:mo===cm&&isPaidIn(e,mo,today)}); });
     state.debts.forEach(d=>{ if(d.monthly) items.push({key:d.id,name:d.name,amount:d.monthly,debt:true,bank:d.account||"sabadell",day:dayOf(d),paid:mo===cm&&isPaidThisMonth(d,today)}); });
     return items.sort((a,b)=>b.amount-a.amount); };
   const thisM=chargesOf(cm), nextM=chargesOf(nm);
@@ -1747,7 +1780,7 @@ function Fijos({state, set, totals}){
       React.createElement("div",{className:"rsub"}, (x.paid?"✓ pagado · ":"")+(x.debt?"cuota de deuda":"gasto fijo")+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
     React.createElement("div",{className:"rval num",style:x.amount<0?{color:"var(--mint)"}:null},(x.amount<0?"+":"")+eur(Math.abs(x.amount))));
   // totales por mes (12) para detectar meses "cargados" por encima de lo normal
-  const monthTotals=[]; for(let mo=1;mo<=12;mo++){ let tt=0; state.fixed.forEach(e=>{ if(occursIn(e,mo)) tt+=occAmount(e); }); tt+=cuotas; monthTotals[mo]=tt; }
+  const monthTotals=[]; for(let mo=1;mo<=12;mo++){ let tt=0; state.fixed.forEach(e=>{ if(occursIn(e,mo)) tt+=occAmountIn(e,mo); }); tt+=cuotas; monthTotals[mo]=tt; }
   const avgMonth=monthTotals.slice(1).reduce((a,b)=>a+b,0)/12;
   // primer mes de los próximos 4 que se dispara (>30% sobre la media)
   let heavy=null; for(let k=0;k<4;k++){ const mo=((cm-1+k)%12)+1; if(monthTotals[mo]>avgMonth*1.3 && monthTotals[mo]>avgMonth+150){ heavy={mo:mo,total:monthTotals[mo],soon:k}; break; } }
@@ -1802,14 +1835,15 @@ function Fijos({state, set, totals}){
       list.map(e=>{
         const m=monthly(e); const isCredit=m<0; const mlbl=monthsLabel(e);
         const nMonths=chargeMonths(e).length;
-        const perCharge=(e.freq==="año"||e.freq==="anual")&&nMonths>1 ? " · "+eur0(occAmount(e))+"/cobro" : "";
+        const schedTotal=hasSchedule(e)? e.schedule.reduce((a,x)=>a+(x.amt||0),0) : 0;
+        const perCharge=hasSchedule(e) ? " · a medida (≈"+eur0(schedTotal)+"/año)" : ((e.freq==="año"||e.freq==="anual")&&nMonths>1 ? " · "+eur0(occAmount(e))+"/cobro" : "");
         const row=React.createElement("div",{className:"row",key:e.id},
           React.createElement("div",{className:"rl"},
             editing && React.createElement("button",{className:"del-btn",onClick:()=>del(e.id)},"✕"),
             React.createElement("div",null,
               React.createElement("div",{className:"rname"},e.name),
               React.createElement("div",{className:"rsub"},
-                (e.freq!=="mes" ? FREQ_LABEL[e.freq]+" · "+eur(e.amount)+"/"+(e.freq==="año"?"año":"vez")+perCharge : "mensual"),
+                (e.freq!=="mes" ? FREQ_LABEL[e.freq]+(hasSchedule(e)?"":" · "+eur(e.amount)+"/"+(e.freq==="año"?"año":"vez"))+perCharge : "mensual"),
                 accOf(e)!=="sabadell" && React.createElement("span",null," · "+entOf(accOf(e)).label),
                 mlbl && React.createElement("span",{style:{color:needsMonth(e)?"#E2A05F":"var(--muted-2)"}}," · "+mlbl)
               )
@@ -1838,6 +1872,18 @@ function Fijos({state, set, totals}){
               e.freq!=="mes" && React.createElement("div",{style:{marginTop:8}},
                 React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra?"),
                 React.createElement(MonthPicker,{selected:dMonths(e),onToggle:(mm)=>toggleDraftM(e.id,mm)})
+              ),
+              e.freq!=="mes" && dMonths(e).length>0 && React.createElement("div",{style:{marginTop:8}},
+                React.createElement("button",{type:"button",className:"mchip"+(dSched(e)?" on":""),style:{width:"auto",padding:"5px 10px"},onClick:()=>toggleSched(e.id)}, (dSched(e)?"✓ ":"")+"Importes/días distintos por cobro"),
+                dSched(e) && React.createElement("div",{style:{marginTop:8}},
+                  dMonths(e).slice().sort((a,b)=>a-b).map(m=>React.createElement("div",{key:m,className:"sched-row"},
+                    React.createElement("span",{className:"rsub",style:{width:34}},MONTHS_ES[m-1]),
+                    React.createElement("input",{className:"af-in num",style:{flex:1,padding:"6px 8px",fontSize:12.5},inputMode:"decimal",placeholder:"importe",value:dSA(e,m),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["sa_"+e.id+"_"+m]:v}));}}),
+                    React.createElement("span",{className:"rsub"},"día"),
+                    React.createElement("input",{className:"af-in num",style:{width:50,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:dSD(e,m),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["sd_"+e.id+"_"+m]:v}));}})
+                  )),
+                  React.createElement("div",{className:"hint",style:{fontSize:11}},"Pon el importe y el día reales de cada cobro (p.ej. seguro 172,05 y 166,94; Hacienda 146,14 el 30 y 97,42 el 5).")
+                )
               )
             )
           );
@@ -1863,7 +1909,10 @@ function Fijos({state, set, totals}){
               React.createElement("input",{className:"af-in num",style:{width:60,padding:"8px 10px"},inputMode:"numeric",placeholder:"—",value:form.day,onChange:e=>setForm(Object.assign({},form,{day:e.target.value}))})
             ),
             React.createElement("div",{className:"hint",style:{fontSize:11.5}},"El «día» (1-31) marca cuándo te lo cobran: los cargos cuyo día ya pasó este mes cuentan como pagados y no restan del disponible."),
-            React.createElement("button",{className:"btn btn-primary btn-block",onClick:addFixed},"Añadir gasto fijo")
+            React.createElement("div",{className:"af-row"},
+              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAdding(false); setForm({name:"",amount:"",freq:"mes",months:[],day:"",account:"sabadell"});}},"Cancelar"),
+              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addFixed},"Añadir gasto fijo")
+            )
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir gasto fijo")
     ),
@@ -1909,7 +1958,7 @@ function Fijos({state, set, totals}){
           React.createElement("div",{className:"rl"},
             editingF && React.createElement("button",{className:"del-btn",onClick:()=>delFlow(f.id)},"✕"),
             React.createElement("div",null,
-              React.createElement("div",{className:"rname"}, f.name, f.day && React.createElement("span",{className:"day-badge"},"día "+f.day)),
+              React.createElement("div",{className:"rname"}, f.name, whenLabel(f) && React.createElement("span",{className:"day-badge"},whenLabel(f))),
               React.createElement("div",{className:"rsub"}, sub))),
           editingF
             ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
@@ -1925,8 +1974,12 @@ function Fijos({state, set, totals}){
                 React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value: inc?fTo(f):fFrom(f),onChange:ev=>{const v=ev.target.value; const key=inc?"to_":"fr_"; setDraftF(s=>Object.assign({},s,{[key+f.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
                 !inc && React.createElement("span",{className:"rsub"},"→"),
                 !inc && React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:fTo(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["to_"+f.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
-                React.createElement("span",{className:"rsub",style:{marginLeft:4}},"día"),
-                React.createElement("input",{className:"af-in num",style:{width:54,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:fDay(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["dy_"+f.id]:v}));}})
+                React.createElement("span",{className:"rsub",style:{marginLeft:4}},"cuándo"),
+                React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:fWhen(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["wh_"+f.id]:v}));}},
+                  React.createElement("option",{value:""},"día fijo"),
+                  React.createElement("option",{value:"last"},"últ. laborable"),
+                  React.createElement("option",{value:"first"},"1er laborable")),
+                !fWhen(f) && React.createElement("input",{className:"af-in num",style:{width:50,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"día",value:fDay(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["dy_"+f.id]:v}));}})
               )
             )
           );
@@ -1942,7 +1995,11 @@ function Fijos({state, set, totals}){
             React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Nómina)",value:formF.name,onChange:e=>setFormF(Object.assign({},formF,{name:e.target.value}))}),
             React.createElement("div",{className:"af-row"},
               React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:formF.amount,onChange:e=>setFormF(Object.assign({},formF,{amount:e.target.value}))}),
-              React.createElement("input",{className:"af-in num",placeholder:"día",inputMode:"numeric",style:{maxWidth:84},value:formF.day,onChange:e=>setFormF(Object.assign({},formF,{day:e.target.value}))})
+              React.createElement("select",{className:"af-in",value:formF.when,onChange:e=>setFormF(Object.assign({},formF,{when:e.target.value}))},
+                React.createElement("option",{value:""},"día fijo"),
+                React.createElement("option",{value:"last"},"últ. laborable"),
+                React.createElement("option",{value:"first"},"1er laborable")),
+              !formF.when && React.createElement("input",{className:"af-in num",placeholder:"día",inputMode:"numeric",style:{maxWidth:70},value:formF.day,onChange:e=>setFormF(Object.assign({},formF,{day:e.target.value}))})
             ),
             React.createElement("div",{className:"edit-extra"},
               React.createElement("span",{className:"rsub"}, formF.kind==="income"?"Entra en":"De"),
@@ -1950,7 +2007,10 @@ function Fijos({state, set, totals}){
               formF.kind==="transfer" && React.createElement("span",{className:"rsub"},"→"),
               formF.kind==="transfer" && React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formF.to,onChange:e=>setFormF(Object.assign({},formF,{to:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
             ),
-            React.createElement("button",{className:"btn btn-primary btn-block",onClick:addFlow},"Añadir movimiento")
+            React.createElement("div",{className:"af-row"},
+              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingF(false); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"});}},"Cancelar"),
+              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addFlow},"Añadir movimiento")
+            )
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingF(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir ingreso o transferencia"),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Con esto el Sabadell se calcula solo: entra la nómina y salen las transferencias y los fijos. Pon el «día» de cada uno; los que ya han pasado este mes ya están en el saldo, así que no se vuelven a restar.")
@@ -2310,8 +2370,9 @@ function App(){
     const ahorroMensual=state.aportaciones.reduce((a,x)=>a+x.amount,0);
     // --- MOTOR DINÁMICO: cargos de fijos que tocan ESTE mes, por banco ---
     const curMonth=new Date().getMonth()+1;
+    const curYear=new Date().getFullYear();
     const today=new Date().getDate();                    // día de hoy (para separar pagado/pendiente)
-    const fijosEsteMes=state.fixed.reduce((a,e)=> occursIn(e,curMonth) ? a+occAmount(e) : a, 0);
+    const fijosEsteMes=state.fixed.reduce((a,e)=> occursIn(e,curMonth) ? a+occAmountIn(e,curMonth) : a, 0);
     const cargosMes=fijosEsteMes+cuotas;                 // fijos del mes + cuotas de deuda (todos los bancos)
     // saldo disponible por banco (la cuenta de gasto descuenta el gasto del mes)
     const bankBal={};
@@ -2320,17 +2381,17 @@ function App(){
     // El saldo del banco ya refleja lo pagado; para "lo que te queda" solo cuenta lo pendiente.
     const chargesByBank={}, pendingByBank={};
     let paidThisMonth=0, pendingThisMonth=0;
-    const acc=(e,amt,bank)=>{ chargesByBank[bank]=(chargesByBank[bank]||0)+amt;
-      if(isPaidThisMonth(e,today)){ paidThisMonth+=amt; }
+    const acc=(amt,bank,paid)=>{ chargesByBank[bank]=(chargesByBank[bank]||0)+amt;
+      if(paid){ paidThisMonth+=amt; }
       else { pendingThisMonth+=amt; pendingByBank[bank]=(pendingByBank[bank]||0)+amt; } };
-    state.fixed.forEach(e=>{ if(occursIn(e,curMonth)) acc(e,occAmount(e),accOf(e)); });
-    state.debts.forEach(d=>{ if(d.monthly) acc(d,d.monthly,d.account||"sabadell"); });
+    state.fixed.forEach(e=>{ if(occursIn(e,curMonth)) acc(occAmountIn(e,curMonth),accOf(e),isPaidIn(e,curMonth,today)); });
+    state.debts.forEach(d=>{ if(d.monthly) acc(d.monthly,d.account||"sabadell",isPaidThisMonth(d,today)); });
     // --- CASH-FLOW: ingresos (nómina) y transferencias recurrentes PENDIENTES este mes ---
     // El saldo del banco ya refleja lo que ya ocurrió (día pasado); solo proyectamos lo pendiente.
     const incomeInByBank={}, transferOutByBank={};
     let pendingIncome=0, pendingTransferOut=0;
     (state.flows||[]).forEach(f=>{
-      if(!flowOccursIn(f,curMonth) || isPaidThisMonth(f,today)) return;
+      if(!flowOccursIn(f,curMonth) || flowPaid(f,curYear,curMonth,today)) return;
       const amt=f.amount||0;
       if(f.kind==="income"){ const b=f.to||"sabadell"; incomeInByBank[b]=(incomeInByBank[b]||0)+amt; pendingIncome+=amt; }
       else if(f.kind==="transfer"){ const b=f.from||"sabadell"; transferOutByBank[b]=(transferOutByBank[b]||0)+amt; pendingTransferOut+=amt; }
