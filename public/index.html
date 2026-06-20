@@ -738,9 +738,12 @@ const bio = {
 /* ---------- Helpers ---------- */
 const NF  = new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
 const NF0 = new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
-const eur  = (n)=> NF.format(n||0)+" €";
-const eur0 = (n)=> NF0.format(Math.round(n||0))+" €";
-function eurParts(n){ const s=NF.format(Math.abs(n||0)); const p=s.split(','); return {sign:n<0?"-":"", ent:p[0], dec:p[1]}; }
+// Moneda de visualización. Todos los importes de la app están en € (base); DISP los convierte
+// a la moneda elegida (k = factor sobre €, sym = símbolo). Se fija en App según ajustes + fx.
+let DISP = { sym:"€", k:1 };
+const eur  = (n)=> NF.format((n||0)*DISP.k)+" "+DISP.sym;
+const eur0 = (n)=> NF0.format(Math.round((n||0)*DISP.k))+" "+DISP.sym;
+function eurParts(n){ const s=NF.format(Math.abs((n||0)*DISP.k)); const p=s.split(','); return {sign:n<0?"-":"", ent:p[0], dec:p[1], sym:DISP.sym}; }
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 function parseDate(v){
   if(v instanceof Date) return v;
@@ -1130,7 +1133,7 @@ function Dashboard({state, totals}){
     /* HERO */
     React.createElement("div",{className:"hero"},
       React.createElement("div",{className:"hero-label"},"Patrimonio neto"),
-      (function(){ const p=eurParts(t.netWorth); return React.createElement("div",{className:"hero-amount serif num"}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" €")); })(),
+      (function(){ const p=eurParts(t.netWorth); return React.createElement("div",{className:"hero-amount serif num"}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
       React.createElement("div",{className:"hero-pills"},
         React.createElement("div",{className:"pill "+(t.delta>=0?"pos":"neg")},
           React.createElement(t.delta>=0?I.up:I.down,null), (t.delta>=0?"+":"")+eur(t.delta)+" · "+(t.delta>=0?"+":"")+t.deltaPct.toFixed(1)+"%"),
@@ -1503,6 +1506,12 @@ function Investments({state, set, fetchPrices, pricing}){
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,"Tambi\u00e9n ajustar lo invertido (si he comprado o vendido)")
     ),
+    React.createElement(CollapsibleCard,{title:"Contribuciones vs ganancias",sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg"},
+      React.createElement("div",{className:"row"},React.createElement("div",{className:"rl"},React.createElement("div",{className:"rname"},"Lo que has puesto")),React.createElement("div",{className:"rval num"},eur0(costTotal))),
+      React.createElement("div",{className:"row"},React.createElement("div",{className:"rl"},React.createElement("div",{className:"rname"},"Valor actual")),React.createElement("div",{className:"rval num",style:{fontWeight:700}},eur0(total))),
+      React.createElement("div",{className:"row"},React.createElement("div",{className:"rl"},React.createElement("div",{className:"rname"},"Ganancia")),React.createElement("div",{className:"rval num",style:{fontWeight:700,color:(total-costTotal)>=0?"var(--mint)":"var(--coral)"}},((total-costTotal)>=0?"+":"")+eur0(total-costTotal))),
+      React.createElement("div",{style:{marginTop:10}}, React.createElement(StackedBar,{segments:[{label:"Aportado",value:costTotal,color:"#2f6b4a"},{label:"Ganancia",value:Math.max(0,total-costTotal),color:"var(--mint)"}]}))
+    ),
     React.createElement(CollapsibleCard,{title:"Distribución por tipo",sub:eur0(total),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_tipo"},
       React.createElement(StackedBar,{segments:typeSegs})
     ),
@@ -1543,7 +1552,7 @@ function Wealth({state, set, totals}){
   return React.createElement("div",null,
     React.createElement("div",{className:"hero",style:{marginBottom:14}},
       React.createElement("div",{className:"hero-label"},"Patrimonio neto"),
-      (function(){const p=eurParts(t.netWorth);return React.createElement("div",{className:"hero-amount serif num"},p.ent,React.createElement("span",{className:"cents"},","+p.dec+" €"));})(),
+      (function(){const p=eurParts(t.netWorth);return React.createElement("div",{className:"hero-amount serif num"},p.ent,React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));})(),
       React.createElement("div",{className:"hero-pills"},
         React.createElement("div",{className:"pill ghost"},"Activos "+eur0(t.activos)),
         React.createElement("div",{className:"pill neg"},"Deudas "+eur0(t.debtTotal))
@@ -1847,6 +1856,13 @@ function SettingsPanel({state, set, onClose, showToast}){
     React.createElement("div",{style:lbl},"Presupuesto mensual (€)"),
     React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
     React.createElement("button",{style:btn,onClick:saveNums},"Guardar"),
+    React.createElement("div",{style:lbl},"Moneda de visualización"),
+    React.createElement("div",{style:{display:"flex",gap:8}},
+      ["EUR","USD"].map(function(c){
+        const on=((state.settings&&state.settings.currency)||"EUR")===c;
+        return React.createElement("button",{key:c,onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})}); }); showToast(c==="USD"?"Mostrando en $":"Mostrando en €"); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"#5FD08A":"#16291E",color:on?"#06120C":"#E8F0EB",border:on?"none":"1px solid #2a3a31"})}, c==="EUR"?"€ Euro":"$ Dólar");
+      })
+    ),
     React.createElement("div",{style:{height:"1px",background:"#1e2b24",margin:"18px 0 4px"}}),
     React.createElement("div",{style:lbl},"Copia de seguridad"),
     React.createElement("button",{style:btnGhost,onClick:doExport},"⬇️ Exportar datos (JSON)"),
@@ -1865,6 +1881,8 @@ function App(){
 
   const set=useCallback((updater)=>{ setStateRaw(prev=>{ const next=typeof updater==="function"?updater(prev):updater; store.set("micartera_v3",next); return next; }); },[]);
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(null),2200); };
+  // Moneda de visualización: convierte todos los importes (en €) a la moneda elegida en Ajustes.
+  (function(){ const c=(state.settings&&state.settings.currency)||"EUR"; DISP.sym=c==="USD"?"$":"€"; DISP.k=c==="USD"?((state.fx>0)?1/state.fx:1):1; })();
 
   /* ---------- Sincronización en la nube (Supabase) ---------- */
   const [session,setSession]=useState(null);
