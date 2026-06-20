@@ -457,6 +457,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .month-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
   .mchip{font-size:12px;font-weight:700;padding:7px 0;border-radius:9px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--muted-2);text-align:center;}
   .mchip.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
+  .edit-extra{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .liqbox{background:var(--bg-2);border:1px solid var(--line-soft);border-radius:13px;padding:11px 13px;margin-bottom:10px;}
+  .liqbox.danger{border-color:rgba(226,112,95,.5);background:rgba(226,112,95,.07);}
+  .liqrow{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:2px 0;}
+  .liqrow.strong{font-weight:800;font-size:15px;border-top:1px solid var(--line-soft);margin-top:5px;padding-top:7px;}
+  .alarmbox{background:rgba(226,112,95,.12);border:1px solid rgba(226,112,95,.45);color:var(--coral);border-radius:12px;padding:11px 13px;font-size:13px;font-weight:600;margin-bottom:8px;line-height:1.45;}
 
   .ex-row{display:flex;align-items:center;gap:13px;padding:13px 4px;border-bottom:1px solid var(--line-soft);}
   .ex-row:last-child{border-bottom:none;}
@@ -1619,8 +1625,15 @@ function chargeMonths(e){
 }
 // ¿se cobra este gasto en el mes m (1-12)?
 const occursIn=(e,m)=> chargeMonths(e).indexOf(m)>=0;
-// importe de UNA ocurrencia (lo que sale de la cuenta el mes que toca)
-const occAmount=(e)=> e.amount;
+// importe de UNA ocurrencia (lo que sale de la cuenta el mes que toca).
+// En los ANUALES el importe es el total del año → se reparte entre los meses marcados
+// (p.ej. IBI 664 €/año en 4 meses = 166 €/cobro). En el resto, amount ya es por cobro.
+function occAmount(e){
+  if(e.freq==="año"||e.freq==="anual"){ const n=chargeMonths(e).length||1; return e.amount/n; }
+  return e.amount;
+}
+// banco del que se cobra (por defecto Sabadell)
+const accOf=(e)=> e.account||"sabadell";
 // ¿el gasto necesita que el usuario le asigne un mes? (anual sin programar)
 const needsMonth=(e)=> (e.freq==="año"||e.freq==="anual") && !(e.months&&e.months.length);
 
@@ -1649,12 +1662,21 @@ function Fijos({state, set, totals}){
   const grand=servSum+cuotas;
   const top=list.filter(e=>monthly(e)>0)[0];
 
-  const startEdit=()=>{ const d={},dm={}; state.fixed.forEach(e=>{d[e.id]=e.amount; dm[e.id]=(e.months||[]).slice();}); setDraft(d); setDraftM(dm); setEditing(true); };
-  const saveEdit=()=>{ set(s=>Object.assign({},s,{fixed:s.fixed.map(e=>Object.assign({},e,{amount:parseFloat(String(draft[e.id]).replace(',','.'))||0, months:(draftM[e.id]||[]).slice().sort((a,b)=>a-b)}))})); setEditing(false); };
-  const toggleDraftM=(id,m)=> setDraftM(dm=>{ const cur=(dm[id]||[]).slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},dm,{[id]:cur}); });
+  // bancos disponibles (de las cuentas que tiene el usuario), Sabadell primero
+  const banks=Array.from(new Set(state.accounts.map(a=>a.ent)));
+  if(banks.indexOf("sabadell")>0){ banks.splice(banks.indexOf("sabadell"),1); banks.unshift("sabadell"); }
+
+  // lecturas robustas: si el borrador no tiene el id (p.ej. recién añadido en modo edición), usa el valor real
+  const dAmt=(e)=> draft[e.id]!=null ? draft[e.id] : e.amount;
+  const dMonths=(e)=> draftM[e.id]!=null ? draftM[e.id] : (e.months||[]);
+  const dBank=(e)=> draft["b_"+e.id]!=null ? draft["b_"+e.id] : accOf(e);
+
+  const startEdit=()=>{ const d={},dm={}; state.fixed.forEach(e=>{d[e.id]=e.amount; d["b_"+e.id]=accOf(e); dm[e.id]=(e.months||[]).slice();}); setDraft(d); setDraftM(dm); setEditing(true); };
+  const saveEdit=()=>{ set(s=>Object.assign({},s,{fixed:s.fixed.map(e=>Object.assign({},e,{amount:parseFloat(String(dAmt(e)).replace(',','.'))||0, account:dBank(e), months:dMonths(e).slice().sort((a,b)=>a-b)}))})); setEditing(false); };
+  const toggleDraftM=(id,m)=> setDraftM(dm=>{ const base=dm[id]!=null?dm[id]:(((state.fixed.find(x=>x.id===id)||{}).months)||[]); const cur=base.slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},dm,{[id]:cur}); });
   const del=(id)=> set(s=>Object.assign({},s,{fixed:s.fixed.filter(e=>e.id!==id)}));
   const toggleFormM=(m)=> setForm(f=>{ const cur=(f.months||[]).slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},f,{months:cur}); });
-  const addFixed=()=>{ const amt=parseFloat(String(form.amount).replace(',','.'))||0; if(amt===0){ return; } const it={id:uid(),name:form.name||"Gasto fijo",amount:amt,freq:form.freq}; if(form.freq!=="mes"&&form.months&&form.months.length) it.months=form.months.slice().sort((a,b)=>a-b); set(s=>Object.assign({},s,{fixed:s.fixed.concat([it])})); setForm({name:"",amount:"",freq:"mes",months:[]}); setAdding(false); };
+  const addFixed=()=>{ const amt=parseFloat(String(form.amount).replace(',','.'))||0; if(amt===0){ return; } const it={id:uid(),name:form.name||"Gasto fijo",amount:amt,freq:form.freq,account:form.account||"sabadell"}; if(form.freq!=="mes"&&form.months&&form.months.length) it.months=form.months.slice().sort((a,b)=>a-b); set(s=>Object.assign({},s,{fixed:s.fixed.concat([it])})); setForm({name:"",amount:"",freq:"mes",months:[],account:(form.account||"sabadell")}); setAdding(false); };
 
   // resumen de meses para el subtítulo de cada fila
   const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return "⚠ sin mes"; return ms.map(m=>MONTHS_ES[m-1]).join(", "); };
@@ -1662,11 +1684,16 @@ function Fijos({state, set, totals}){
   // --- Próximos cargos (motor dinámico): qué se cobra este mes y el que viene ---
   const cm=totals.curMonth, nm=cm===12?1:cm+1;
   const chargesOf=(mo)=>{ const items=[];
-    state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmount(e)!==0) items.push({key:e.id,name:e.name,amount:occAmount(e)}); });
-    state.debts.forEach(d=>{ if(d.monthly) items.push({key:d.id,name:d.name,amount:d.monthly,debt:true}); });
+    state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmount(e)!==0) items.push({key:e.id,name:e.name,amount:occAmount(e),bank:accOf(e)}); });
+    state.debts.forEach(d=>{ if(d.monthly) items.push({key:d.id,name:d.name,amount:d.monthly,debt:true,bank:d.account||"sabadell"}); });
     return items.sort((a,b)=>b.amount-a.amount); };
   const thisM=chargesOf(cm), nextM=chargesOf(nm);
   const nextSum=nextM.reduce((a,x)=>a+x.amount,0);
+  // totales por mes (12) para detectar meses "cargados" por encima de lo normal
+  const monthTotals=[]; for(let mo=1;mo<=12;mo++){ let tt=0; state.fixed.forEach(e=>{ if(occursIn(e,mo)) tt+=occAmount(e); }); tt+=cuotas; monthTotals[mo]=tt; }
+  const avgMonth=monthTotals.slice(1).reduce((a,b)=>a+b,0)/12;
+  // primer mes de los próximos 4 que se dispara (>30% sobre la media)
+  let heavy=null; for(let k=0;k<4;k++){ const mo=((cm-1+k)%12)+1; if(monthTotals[mo]>avgMonth*1.3 && monthTotals[mo]>avgMonth+150){ heavy={mo:mo,total:monthTotals[mo],soon:k}; break; } }
 
   return React.createElement("div",null,
     React.createElement("div",{className:"total-bar"},
@@ -1680,11 +1707,30 @@ function Fijos({state, set, totals}){
     ),
     /* MOTOR DINÁMICO: próximos cargos */
     React.createElement(CollapsibleCard,{title:"Próximos cargos · "+MONTHS_ES[cm-1],sub:eur0(totals.cargosMes)+" este mes",dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
-      React.createElement("div",{className:"hint",style:{marginBottom:8}},"Tras estos cargos, en el Sabadell te quedarían unos ",React.createElement("b",{className:"num"},eur0(totals.liquidTrasFijos)),"."),
+      // estado del banco principal (Sabadell): saldo, cargos y disponible tras fijos
+      React.createElement("div",{className:"liqbox"+(totals.liquidTrasFijos<0?" danger":"")},
+        React.createElement("div",{className:"liqrow"},
+          React.createElement("span",{className:"muted"},entOf(totals.mainBank).label+" hoy"),
+          React.createElement("span",{className:"num"},eur0(totals.mainBal))),
+        React.createElement("div",{className:"liqrow"},
+          React.createElement("span",{className:"muted"},"− fijos de "+MONTHS_ES[cm-1]),
+          React.createElement("span",{className:"num"},"−"+eur0(totals.mainCharges))),
+        React.createElement("div",{className:"liqrow strong"},
+          React.createElement("span",null,"= te quedarían"),
+          React.createElement("span",{className:"num",style:{color:totals.liquidTrasFijos<0?"var(--coral)":"var(--mint)"}},eur0(totals.liquidTrasFijos)))
+      ),
+      // ALARMA: algún banco no cubre sus cargos del mes
+      totals.bankAlerts.length>0 && React.createElement("div",{className:"alarmbox"},
+        "🚨 ¡Cuidado! En ",totals.bankAlerts.map(b=>entOf(b).label).join(", "),
+        " los gastos de este mes ("+eur0(totals.bankAlerts.reduce((a,b)=>a+totals.chargesByBank[b],0))+") superan el saldo. Mete fondos o no llegarás."),
+      // aviso de mes cargado en el horizonte
+      heavy && React.createElement("div",{className:"hint",style:{margin:"8px 0 4px",color:"#E2A05F",fontWeight:600}},
+        (heavy.soon===0?"Este mes ":heavy.soon===1?"El mes que viene ":"En "+MONTHS_ES[heavy.mo-1]+" ")+"se viene cargado: "+eur0(heavy.total)+" en fijos (la media es "+eur0(avgMonth)+"). 👀"),
+      React.createElement("div",{className:"hint",style:{margin:"8px 0 4px"}},"Cargos de "+MONTHS_ES[cm-1]+":"),
       thisM.map(x=>React.createElement("div",{className:"row",key:x.key},
         React.createElement("div",{className:"rl"},React.createElement("div",null,
           React.createElement("div",{className:"rname"},x.name),
-          React.createElement("div",{className:"rsub"}, x.debt?"cuota de deuda":"gasto fijo"))),
+          React.createElement("div",{className:"rsub"}, (x.debt?"cuota de deuda":"gasto fijo")+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
         React.createElement("div",{className:"rval num",style:x.amount<0?{color:"var(--mint)"}:null},(x.amount<0?"+":"")+eur(Math.abs(x.amount)))
       )),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total "+MONTHS_ES[cm-1]),React.createElement("span",{className:"num"},eur(totals.cargosMes))),
@@ -1695,20 +1741,23 @@ function Fijos({state, set, totals}){
       right:React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:e=>{e.stopPropagation(); editing?saveEdit():startEdit();}},editing?"Guardar":"Editar")},
       list.map(e=>{
         const m=monthly(e); const isCredit=m<0; const mlbl=monthsLabel(e);
+        const nMonths=chargeMonths(e).length;
+        const perCharge=(e.freq==="año"||e.freq==="anual")&&nMonths>1 ? " · "+eur0(occAmount(e))+"/cobro" : "";
         const row=React.createElement("div",{className:"row",key:e.id},
           React.createElement("div",{className:"rl"},
             editing && React.createElement("button",{className:"del-btn",onClick:()=>del(e.id)},"✕"),
             React.createElement("div",null,
               React.createElement("div",{className:"rname"},e.name),
               React.createElement("div",{className:"rsub"},
-                (e.freq!=="mes" ? FREQ_LABEL[e.freq]+" · "+eur(e.amount)+"/"+(e.freq==="año"?"año":"vez") : "mensual"),
+                (e.freq!=="mes" ? FREQ_LABEL[e.freq]+" · "+eur(e.amount)+"/"+(e.freq==="año"?"año":"vez")+perCharge : "mensual"),
+                accOf(e)!=="sabadell" && React.createElement("span",null," · "+entOf(accOf(e)).label),
                 mlbl && React.createElement("span",{style:{color:needsMonth(e)?"#E2A05F":"var(--muted-2)"}}," · "+mlbl)
               )
             )
           ),
           editing
             ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
-                React.createElement("input",{className:"editv num",value:draft[e.id],inputMode:"decimal",onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{[e.id]:v}));}}),
+                React.createElement("input",{className:"editv num",value:dAmt(e),inputMode:"decimal",onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{[e.id]:v}));}}),
                 React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"/"+(e.freq==="mes"?"mes":FREQ_LABEL[e.freq].slice(0,3)))
               )
             : React.createElement("div",{className:"rval num",style:isCredit?{color:"var(--mint)"}:null},
@@ -1716,12 +1765,18 @@ function Fijos({state, set, totals}){
                 e.freq!=="mes" && React.createElement("div",{className:"rvsub",style:{color:"var(--muted-2)"}},"/mes prorrateado")
               )
         );
-        if(editing && e.freq!=="mes"){
-          return React.createElement("div",{key:e.id,style:{borderBottom:"1px solid var(--hair)"}},
+        if(editing){
+          return React.createElement("div",{key:e.id,style:{borderBottom:"1px solid var(--line-soft)"}},
             row,
             React.createElement("div",{style:{padding:"2px 4px 10px"}},
-              React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra?"),
-              React.createElement(MonthPicker,{selected:draftM[e.id],onToggle:(mm)=>toggleDraftM(e.id,mm)})
+              React.createElement("div",{className:"edit-extra"},
+                React.createElement("span",{className:"rsub"},"Se cobra en"),
+                React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:dBank(e),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["b_"+e.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
+              ),
+              e.freq!=="mes" && React.createElement("div",{style:{marginTop:8}},
+                React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra?"),
+                React.createElement(MonthPicker,{selected:dMonths(e),onToggle:(mm)=>toggleDraftM(e.id,mm)})
+              )
             )
           );
         }
@@ -1738,6 +1793,10 @@ function Fijos({state, set, totals}){
             form.freq!=="mes" && React.createElement("div",{style:{marginTop:4}},
               React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra? (opcional)"),
               React.createElement(MonthPicker,{selected:form.months,onToggle:toggleFormM})
+            ),
+            React.createElement("div",{className:"edit-extra"},
+              React.createElement("span",{className:"rsub"},"Se cobra en"),
+              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:form.account||"sabadell",onChange:e=>setForm(Object.assign({},form,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
             ),
             React.createElement("button",{className:"btn btn-primary btn-block",onClick:addFixed},"Añadir gasto fijo")
           )
@@ -2104,13 +2163,25 @@ function App(){
     const cuotas=state.debts.reduce((a,d)=>a+(d.monthly||0),0);
     const fijosMensual=fijosVar+cuotas;
     const ahorroMensual=state.aportaciones.reduce((a,x)=>a+x.amount,0);
-    // --- MOTOR DINÁMICO: cargos de fijos que tocan ESTE mes ---
+    // --- MOTOR DINÁMICO: cargos de fijos que tocan ESTE mes, por banco ---
     const curMonth=new Date().getMonth()+1;
     const fijosEsteMes=state.fixed.reduce((a,e)=> occursIn(e,curMonth) ? a+occAmount(e) : a, 0);
-    const cargosMes=fijosEsteMes+cuotas;                 // fijos del mes + cuotas de deuda
-    const liquidTrasFijos=liquid-cargosMes;              // disponible real estimado tras los fijos del mes
+    const cargosMes=fijosEsteMes+cuotas;                 // fijos del mes + cuotas de deuda (todos los bancos)
+    // saldo disponible por banco (la cuenta de gasto descuenta el gasto del mes)
+    const bankBal={};
+    state.accounts.forEach(a=>{ const v=a.spendFrom?(a.value+injTR-thisMonthSpent):a.value; bankBal[a.ent]=(bankBal[a.ent]||0)+v; });
+    // cargos del mes por banco (fijos por su cuenta + cuotas de deuda, por defecto Sabadell)
+    const chargesByBank={};
+    state.fixed.forEach(e=>{ if(occursIn(e,curMonth)){ const b=accOf(e); chargesByBank[b]=(chargesByBank[b]||0)+occAmount(e); } });
+    state.debts.forEach(d=>{ if(d.monthly){ const b=d.account||"sabadell"; chargesByBank[b]=(chargesByBank[b]||0)+d.monthly; } });
+    // foco en el banco principal de gastos fijos (Sabadell)
+    const mainBank="sabadell";
+    const mainBal=bankBal[mainBank]||0;
+    const mainCharges=chargesByBank[mainBank]||0;
+    const liquidTrasFijos=mainBal-mainCharges;           // lo que quedaría en el Sabadell tras los fijos del mes
+    const bankAlerts=Object.keys(chargesByBank).filter(b=> (chargesByBank[b]||0) > (bankBal[b]||0)+0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,sinProgramar};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,sinProgramar,bankBal,chargesByBank,mainBank,mainBal,mainCharges,bankAlerts};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
