@@ -4,7 +4,9 @@ const CACHE = "micartera-" + VERSION;
 const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // Precachea el shell pero NO hace skipWaiting: el SW nuevo espera al siguiente
+  // arranque en frío para activarse, así no provoca recargas a media sesión.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
 });
 
 self.addEventListener("activate", (e) => {
