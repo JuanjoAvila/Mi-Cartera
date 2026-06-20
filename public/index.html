@@ -454,6 +454,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .af-in{background:var(--bg-2);border:1px solid var(--line-soft);color:var(--text);border-radius:11px;padding:11px 13px;font-size:14px;width:100%;}
   .af-row{display:flex;gap:10px;}
   .af-row .af-in{flex:1;min-width:0;}
+  .month-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+  .mchip{font-size:12px;font-weight:700;padding:7px 0;border-radius:9px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--muted-2);text-align:center;}
+  .mchip.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
 
   .ex-row{display:flex;align-items:center;gap:13px;padding:13px 4px;border-bottom:1px solid var(--line-soft);}
   .ex-row:last-child{border-bottom:none;}
@@ -1180,7 +1183,7 @@ function Dashboard({state, totals}){
       React.createElement("div",{className:"metric tall"},
         React.createElement("div",{className:"mlabel"},"Gastos fijos"),
         React.createElement("div",{className:"metric-big serif num"},eur0(t.fijosMensual)),
-        React.createElement("div",{className:"metric-sub"},"al mes · cuotas incluidas")
+        React.createElement("div",{className:"metric-sub"},"media/mes · este mes "+eur0(t.cargosMes))
       ),
       React.createElement("div",{className:"metric tall"},
         React.createElement("div",{className:"mlabel"},"Ahorro"),
@@ -1597,11 +1600,48 @@ function Wealth({state, set, totals}){
    ============================================================ */
 const FREQ_LABEL={mes:"mensual",bimestral:"bimestral",trimestral:"trimestral",semestral:"semestral","año":"anual"};
 const FREQ_OPTS=["mes","bimestral","trimestral","semestral","año"];
+const MONTHS_ES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+/* ============================================================
+   MOTOR DINÁMICO — calendario de gastos fijos
+   Cada gasto fijo sabe en qué meses (1-12) se cobra. Si no se ha
+   asignado a mano, se deriva de la frecuencia. Los anuales sin mes
+   quedan "sin programar" hasta que el usuario elige el mes.
+   ============================================================ */
+function chargeMonths(e){
+  if(e && e.months && e.months.length) return e.months.slice().sort((a,b)=>a-b);
+  const f=e&&e.freq;
+  if(f==="mes"||f==="mensual") return [1,2,3,4,5,6,7,8,9,10,11,12];
+  if(f==="bimestral")  return [1,3,5,7,9,11];
+  if(f==="trimestral") return [1,4,7,10];
+  if(f==="semestral")  return [1,7];
+  return [];   // anual sin mes asignado → sin programar
+}
+// ¿se cobra este gasto en el mes m (1-12)?
+const occursIn=(e,m)=> chargeMonths(e).indexOf(m)>=0;
+// importe de UNA ocurrencia (lo que sale de la cuenta el mes que toca)
+const occAmount=(e)=> e.amount;
+// ¿el gasto necesita que el usuario le asigne un mes? (anual sin programar)
+const needsMonth=(e)=> (e.freq==="año"||e.freq==="anual") && !(e.months&&e.months.length);
+
+// Selector compacto de meses (1-12) para gastos no mensuales.
+function MonthPicker({selected, onToggle}){
+  const sel=selected||[];
+  return React.createElement("div",{className:"month-picker"},
+    MONTHS_ES.map((lbl,i)=>{
+      const m=i+1, on=sel.indexOf(m)>=0;
+      return React.createElement("button",{key:m,type:"button",className:"mchip"+(on?" on":""),
+        onClick:(ev)=>{ ev.stopPropagation(); onToggle(m); }}, lbl);
+    })
+  );
+}
+
 function Fijos({state, set, totals}){
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState({});
+  const [draftM,setDraftM]=useState({});
   const [adding,setAdding]=useState(false);
-  const [form,setForm]=useState({name:"",amount:"",freq:"mes"});
+  const [form,setForm]=useState({name:"",amount:"",freq:"mes",months:[]});
   const monthly=(e)=> e.amount*(FREQ_M[e.freq]||1);
   const list=state.fixed.slice().sort((a,b)=>monthly(b)-monthly(a));
   const servSum=state.fixed.reduce((a,e)=>a+monthly(e),0);
@@ -1609,10 +1649,24 @@ function Fijos({state, set, totals}){
   const grand=servSum+cuotas;
   const top=list.filter(e=>monthly(e)>0)[0];
 
-  const startEdit=()=>{ const d={}; state.fixed.forEach(e=>d[e.id]=e.amount); setDraft(d); setEditing(true); };
-  const saveEdit=()=>{ set(s=>Object.assign({},s,{fixed:s.fixed.map(e=>Object.assign({},e,{amount:parseFloat(String(draft[e.id]).replace(',','.'))||0}))})); setEditing(false); };
+  const startEdit=()=>{ const d={},dm={}; state.fixed.forEach(e=>{d[e.id]=e.amount; dm[e.id]=(e.months||[]).slice();}); setDraft(d); setDraftM(dm); setEditing(true); };
+  const saveEdit=()=>{ set(s=>Object.assign({},s,{fixed:s.fixed.map(e=>Object.assign({},e,{amount:parseFloat(String(draft[e.id]).replace(',','.'))||0, months:(draftM[e.id]||[]).slice().sort((a,b)=>a-b)}))})); setEditing(false); };
+  const toggleDraftM=(id,m)=> setDraftM(dm=>{ const cur=(dm[id]||[]).slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},dm,{[id]:cur}); });
   const del=(id)=> set(s=>Object.assign({},s,{fixed:s.fixed.filter(e=>e.id!==id)}));
-  const addFixed=()=>{ const amt=parseFloat(String(form.amount).replace(',','.'))||0; if(amt===0){ return; } const it={id:uid(),name:form.name||"Gasto fijo",amount:amt,freq:form.freq}; set(s=>Object.assign({},s,{fixed:s.fixed.concat([it])})); setForm({name:"",amount:"",freq:"mes"}); setAdding(false); };
+  const toggleFormM=(m)=> setForm(f=>{ const cur=(f.months||[]).slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},f,{months:cur}); });
+  const addFixed=()=>{ const amt=parseFloat(String(form.amount).replace(',','.'))||0; if(amt===0){ return; } const it={id:uid(),name:form.name||"Gasto fijo",amount:amt,freq:form.freq}; if(form.freq!=="mes"&&form.months&&form.months.length) it.months=form.months.slice().sort((a,b)=>a-b); set(s=>Object.assign({},s,{fixed:s.fixed.concat([it])})); setForm({name:"",amount:"",freq:"mes",months:[]}); setAdding(false); };
+
+  // resumen de meses para el subtítulo de cada fila
+  const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return "⚠ sin mes"; return ms.map(m=>MONTHS_ES[m-1]).join(", "); };
+
+  // --- Próximos cargos (motor dinámico): qué se cobra este mes y el que viene ---
+  const cm=totals.curMonth, nm=cm===12?1:cm+1;
+  const chargesOf=(mo)=>{ const items=[];
+    state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmount(e)!==0) items.push({key:e.id,name:e.name,amount:occAmount(e)}); });
+    state.debts.forEach(d=>{ if(d.monthly) items.push({key:d.id,name:d.name,amount:d.monthly,debt:true}); });
+    return items.sort((a,b)=>b.amount-a.amount); };
+  const thisM=chargesOf(cm), nextM=chargesOf(nm);
+  const nextSum=nextM.reduce((a,x)=>a+x.amount,0);
 
   return React.createElement("div",null,
     React.createElement("div",{className:"total-bar"},
@@ -1624,16 +1678,32 @@ function Fijos({state, set, totals}){
       React.createElement("span",{className:"big",style:{fontSize:15}}, top.name),
       React.createElement("span",null," ("+eur0(monthly(top))+"/mes)")
     ),
+    /* MOTOR DINÁMICO: próximos cargos */
+    React.createElement(CollapsibleCard,{title:"Próximos cargos · "+MONTHS_ES[cm-1],sub:eur0(totals.cargosMes)+" este mes",dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
+      React.createElement("div",{className:"hint",style:{marginBottom:8}},"Tras estos cargos, en el Sabadell te quedarían unos ",React.createElement("b",{className:"num"},eur0(totals.liquidTrasFijos)),"."),
+      thisM.map(x=>React.createElement("div",{className:"row",key:x.key},
+        React.createElement("div",{className:"rl"},React.createElement("div",null,
+          React.createElement("div",{className:"rname"},x.name),
+          React.createElement("div",{className:"rsub"}, x.debt?"cuota de deuda":"gasto fijo"))),
+        React.createElement("div",{className:"rval num",style:x.amount<0?{color:"var(--mint)"}:null},(x.amount<0?"+":"")+eur(Math.abs(x.amount)))
+      )),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total "+MONTHS_ES[cm-1]),React.createElement("span",{className:"num"},eur(totals.cargosMes))),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Mes que viene ("+MONTHS_ES[nm-1]+")"),React.createElement("span",{className:"num"},eur(nextSum))),
+      totals.sinProgramar>0 && React.createElement("div",{className:"hint",style:{marginTop:8,color:"#E2A05F"}},"⚠ "+totals.sinProgramar+" gasto(s) anual(es) sin mes asignado. Pulsa «Editar» abajo y márcale el mes para que entren en el cálculo.")
+    ),
     React.createElement(CollapsibleCard,{title:"Servicios y suministros",sub:eur0(servSum)+"/mes",dot:"#7FB5E8",storageKey:"f_serv",
       right:React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:e=>{e.stopPropagation(); editing?saveEdit():startEdit();}},editing?"Guardar":"Editar")},
       list.map(e=>{
-        const m=monthly(e); const isCredit=m<0;
-        return React.createElement("div",{className:"row",key:e.id},
+        const m=monthly(e); const isCredit=m<0; const mlbl=monthsLabel(e);
+        const row=React.createElement("div",{className:"row",key:e.id},
           React.createElement("div",{className:"rl"},
             editing && React.createElement("button",{className:"del-btn",onClick:()=>del(e.id)},"✕"),
             React.createElement("div",null,
               React.createElement("div",{className:"rname"},e.name),
-              React.createElement("div",{className:"rsub"}, e.freq!=="mes" ? FREQ_LABEL[e.freq]+" · "+eur(e.amount)+"/"+(e.freq==="año"?"año":"vez") : "mensual")
+              React.createElement("div",{className:"rsub"},
+                (e.freq!=="mes" ? FREQ_LABEL[e.freq]+" · "+eur(e.amount)+"/"+(e.freq==="año"?"año":"vez") : "mensual"),
+                mlbl && React.createElement("span",{style:{color:needsMonth(e)?"#E2A05F":"var(--muted-2)"}}," · "+mlbl)
+              )
             )
           ),
           editing
@@ -1646,6 +1716,16 @@ function Fijos({state, set, totals}){
                 e.freq!=="mes" && React.createElement("div",{className:"rvsub",style:{color:"var(--muted-2)"}},"/mes prorrateado")
               )
         );
+        if(editing && e.freq!=="mes"){
+          return React.createElement("div",{key:e.id,style:{borderBottom:"1px solid var(--hair)"}},
+            row,
+            React.createElement("div",{style:{padding:"2px 4px 10px"}},
+              React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra?"),
+              React.createElement(MonthPicker,{selected:draftM[e.id],onToggle:(mm)=>toggleDraftM(e.id,mm)})
+            )
+          );
+        }
+        return row;
       }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total servicios/mes"),React.createElement("span",{className:"num"},eur(servSum))),
       adding
@@ -1653,7 +1733,11 @@ function Fijos({state, set, totals}){
             React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Gimnasio)",value:form.name,onChange:e=>setForm(Object.assign({},form,{name:e.target.value}))}),
             React.createElement("div",{className:"af-row"},
               React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:form.amount,onChange:e=>setForm(Object.assign({},form,{amount:e.target.value}))}),
-              React.createElement("select",{className:"af-in",value:form.freq,onChange:e=>setForm(Object.assign({},form,{freq:e.target.value}))}, FREQ_OPTS.map(f=>React.createElement("option",{key:f,value:f},FREQ_LABEL[f])))
+              React.createElement("select",{className:"af-in",value:form.freq,onChange:e=>setForm(Object.assign({},form,{freq:e.target.value,months:[]}))}, FREQ_OPTS.map(f=>React.createElement("option",{key:f,value:f},FREQ_LABEL[f])))
+            ),
+            form.freq!=="mes" && React.createElement("div",{style:{marginTop:4}},
+              React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra? (opcional)"),
+              React.createElement(MonthPicker,{selected:form.months,onToggle:toggleFormM})
             ),
             React.createElement("button",{className:"btn btn-primary btn-block",onClick:addFixed},"Añadir gasto fijo")
           )
@@ -2020,7 +2104,13 @@ function App(){
     const cuotas=state.debts.reduce((a,d)=>a+(d.monthly||0),0);
     const fijosMensual=fijosVar+cuotas;
     const ahorroMensual=state.aportaciones.reduce((a,x)=>a+x.amount,0);
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual};
+    // --- MOTOR DINÁMICO: cargos de fijos que tocan ESTE mes ---
+    const curMonth=new Date().getMonth()+1;
+    const fijosEsteMes=state.fixed.reduce((a,e)=> occursIn(e,curMonth) ? a+occAmount(e) : a, 0);
+    const cargosMes=fijosEsteMes+cuotas;                 // fijos del mes + cuotas de deuda
+    const liquidTrasFijos=liquid-cargosMes;              // disponible real estimado tras los fijos del mes
+    const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,sinProgramar};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
