@@ -461,6 +461,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .paid-row .rval{text-decoration:line-through;}
   .day-badge{display:inline-block;margin-left:7px;font-size:10.5px;font-weight:700;color:var(--muted-2);background:var(--bg-2);border:1px solid var(--line-soft);border-radius:7px;padding:1px 6px;vertical-align:middle;}
   .sched-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+  .curtoggle{display:inline-flex;gap:2px;background:var(--bg-2);border:1px solid var(--line-soft);border-radius:10px;padding:2px;}
+  .curbtn{font-size:13px;font-weight:800;padding:4px 12px;border-radius:8px;background:transparent;color:var(--muted-2);border:none;cursor:pointer;}
+  .curbtn.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));}
   .edit-extra{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .liqbox{background:var(--bg-2);border:1px solid var(--line-soft);border-radius:13px;padding:11px 13px;margin-bottom:10px;}
   .liqbox.danger{border-color:rgba(226,112,95,.5);background:rgba(226,112,95,.07);}
@@ -1365,8 +1368,9 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 /* ============================================================
    TAB: INVERSIONES
    ============================================================ */
-function InvRows({items, fx, editing, showCost, draft, setF, onSell}){
+function InvRows({items, fx, fmt, editing, showCost, draft, setF, onSell}){
   const eurVal=(it)=> it.cur==="USD"? it.value*fx : it.value;
+  const show=fmt||eur;   // moneda local de la tab (fallback a €)
   return items.map(function(it){
     return React.createElement("div",{className:"row",key:it.id},
       React.createElement("div",{className:"rl"},
@@ -1384,7 +1388,7 @@ function InvRows({items, fx, editing, showCost, draft, setF, onSell}){
             showCost && React.createElement("label",null, React.createElement("span",null,"Invertido"),
               React.createElement("input",{className:"num",value:(draft[it.id]||{}).cost,inputMode:"decimal",onFocus:e=>e.target.select(),onChange:e=>setF(it.id,"cost",e.target.value)}))
           )
-        : React.createElement("div",{className:"rval num"}, eur(eurVal(it)),
+        : React.createElement("div",{className:"rval num"}, show(eurVal(it)),
             (function(){ if(it.cost==null||it.cost<=0) return null; const pl=(it.value-it.cost)/it.cost*100; return React.createElement("div",{className:"rvsub"+(pl<0?" neg":"")}, (pl>=0?"+":"")+pl.toFixed(2)+"%"); })())
     );
   });
@@ -1507,6 +1511,16 @@ function Investments({state, set, fetchPrices, pricing}){
   const total=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
   const costTotal=state.investments.reduce((a,i)=>a+(i.cur==="USD"?(i.cost||0)*fx:(i.cost||0)),0);
   const plTotal=costTotal>0?(total-costTotal)/costTotal*100:0;
+  // Moneda LOCAL de la pestaña Inversiones (no toca el resto de la app). Todo se calcula en €
+  // internamente y se convierte a la moneda elegida para mostrar (€ ↔ $ con el cambio del BCE).
+  const [invCur,setInvCur]=useState(function(){ return (state.settings&&state.settings.currency)||"EUR"; });
+  const dk = invCur==="USD" ? (fx>0?1/fx:1) : 1;
+  const dsym = invCur==="USD" ? "$" : "€";
+  const f2  = (eurVal)=> NF.format((eurVal||0)*dk)+" "+dsym;
+  const f0  = (eurVal)=> NF0.format(Math.round((eurVal||0)*dk))+" "+dsym;
+  // valor y coste por bróker (en €) para el desglose de contribuciones
+  const byBroker={};
+  state.investments.forEach(function(i){ const v=i.cur==="USD"?i.value*fx:i.value; const c=i.cur==="USD"?(i.cost||0)*fx:(i.cost||0); const o=byBroker[i.ent]||(byBroker[i.ent]={c:0,v:0}); o.c+=c; o.v+=v; });
   // Desglose por tipo de activo (clasificación por id conocido, con respaldo por nombre)
   const TYPE_BY_ID={ "0mrszi5":"materias", "7zjaw0y":"etf", "0itlr5k":"fondo" };
   const invType=function(it){ if(TYPE_BY_ID[it.id]) return TYPE_BY_ID[it.id]; if(/oro|xau|materia|plata/i.test(it.name)) return "materias"; if(/etf|all.?world|s&p|amundi/i.test(it.name)) return "etf"; if(/fondo|indexad|fidelity|msci world/i.test(it.name)) return "fondo"; return "acciones"; };
@@ -1519,8 +1533,12 @@ function Investments({state, set, fetchPrices, pricing}){
     React.createElement("div",{className:"total-bar"},
       React.createElement("div",null,
         React.createElement("div",{className:"tl"},"Total invertido"),
-        React.createElement("div",{className:"tn num"},eur(total)),
-        React.createElement("div",{style:{fontSize:12,fontWeight:700,marginTop:2,color:plTotal>=0?"var(--mint)":"var(--coral)"}},(plTotal>=0?"+":"")+plTotal.toFixed(2)+"% global")
+        React.createElement("div",{className:"tn num"},f2(total)),
+        React.createElement("div",{style:{fontSize:12,fontWeight:700,marginTop:2,color:plTotal>=0?"var(--mint)":"var(--coral)"}},(plTotal>=0?"+":"")+plTotal.toFixed(2)+"% global"),
+        React.createElement("div",{className:"curtoggle",style:{marginTop:8}},
+          React.createElement("button",{type:"button",className:"curbtn"+(invCur==="EUR"?" on":""),onClick:()=>setInvCur("EUR")},"€"),
+          React.createElement("button",{type:"button",className:"curbtn"+(invCur==="USD"?" on":""),onClick:()=>setInvCur("USD")},"$")
+        )
       ),
       editing
         ? React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
@@ -1541,25 +1559,34 @@ function Investments({state, set, fetchPrices, pricing}){
       React.createElement("span",null,"Tambi\u00e9n ajustar lo invertido (si he comprado o vendido)")
     ),
     React.createElement(CollapsibleCard,{title:"Contribuciones vs ganancias",sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg"},
-      React.createElement("div",{className:"row"},React.createElement("div",{className:"rl"},React.createElement("div",{className:"rname"},"Lo que has puesto")),React.createElement("div",{className:"rval num"},eur0(costTotal))),
-      React.createElement("div",{className:"row"},React.createElement("div",{className:"rl"},React.createElement("div",{className:"rname"},"Valor actual")),React.createElement("div",{className:"rval num",style:{fontWeight:700}},eur0(total))),
-      React.createElement("div",{className:"row"},React.createElement("div",{className:"rl"},React.createElement("div",{className:"rname"},"Ganancia")),React.createElement("div",{className:"rval num",style:{fontWeight:700,color:(total-costTotal)>=0?"var(--mint)":"var(--coral)"}},((total-costTotal)>=0?"+":"")+eur0(total-costTotal))),
-      React.createElement("div",{style:{marginTop:10}}, React.createElement(StackedBar,{segments:[{label:"Aportado",value:costTotal,color:"#2f6b4a"},{label:"Ganancia",value:Math.max(0,total-costTotal),color:"var(--mint)"}]}))
+      // desglose por bróker, para poder comparar cada uno con su app (p.ej. Revolut en $)
+      groups.map(function(g){ const o=byBroker[g[0]]; if(!o||o.v===0) return null; const gain=o.v-o.c; const pl=o.c>0?gain/o.c*100:0;
+        return React.createElement("div",{className:"row",key:g[0]},
+          React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g[0],size:34}),
+            React.createElement("div",null,React.createElement("div",{className:"rname"},g[1]),React.createElement("div",{className:"rsub"},"invertido "+f0(o.c)))),
+          React.createElement("div",{className:"rval num"}, f0(o.v),
+            React.createElement("div",{className:"rvsub"+(gain<0?" neg":""),style:{color:gain>=0?"var(--mint)":"var(--coral)"}}, (gain>=0?"+":"")+f0(gain)+" ("+(pl>=0?"+":"")+pl.toFixed(1)+"%)")));
+      }),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Invertido (coste) total"),React.createElement("span",{className:"num"},f0(costTotal))),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Valor actual total"),React.createElement("span",{className:"num",style:{fontWeight:700}},f0(total))),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Ganancia (plusvalía latente)"),React.createElement("span",{className:"num",style:{fontWeight:700,color:(total-costTotal)>=0?"var(--mint)":"var(--coral)"}},((total-costTotal)>=0?"+":"")+f0(total-costTotal))),
+      React.createElement("div",{style:{marginTop:10}}, React.createElement(StackedBar,{segments:[{label:"Aportado",value:costTotal,color:"#2f6b4a"},{label:"Ganancia",value:Math.max(0,total-costTotal),color:"var(--mint)"}]})),
+      React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:8}},"«Invertido» es el coste de lo que tienes ahora (base de coste). Tras ventas parciales puede no cuadrar con las «contribuciones netas» que muestra tu bróker. La ganancia aquí es la plusvalía latente (valor − coste).")
     ),
-    React.createElement(CollapsibleCard,{title:"Distribución por tipo",sub:eur0(total),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_tipo"},
+    React.createElement(CollapsibleCard,{title:"Distribución por tipo",sub:f0(total),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_tipo"},
       React.createElement(StackedBar,{segments:typeSegs})
     ),
     groups.map(function(g){
       const items=state.investments.filter(i=>i.ent===g[0]);
       if(items.length===0) return null;
       const sub=items.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
-      return React.createElement(CollapsibleCard,{key:g[0],title:g[1],sub:eur0(sub),dot:entOf(g[0]).color,storageKey:"inv_"+g[0]},
-        React.createElement(InvRows,{items:items,fx:fx,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell})
+      return React.createElement(CollapsibleCard,{key:g[0],title:g[1],sub:f0(sub),dot:entOf(g[0]).color,storageKey:"inv_"+g[0]},
+        React.createElement(InvRows,{items:items,fx:fx,fmt:f2,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell})
       );
     }),
     (state.soldCash>0) && React.createElement("div",{className:"costtoggle",style:{justifyContent:"space-between"}},
       React.createElement("span",null,"💸 Líquido vendido (realizado)"),
-      React.createElement("span",{className:"num",style:{fontWeight:700,color:"var(--mint)"}}, eur0(state.soldCash))
+      React.createElement("span",{className:"num",style:{fontWeight:700,color:"var(--mint)"}}, f0(state.soldCash))
     ),
     React.createElement(CollapsibleCard,{title:"Proyección de tu ahorro",sub:"Interés compuesto",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_proj"},
       React.createElement(Projection,{invested:total, defMonthly: state.aportaciones.reduce(function(a,x){ return a+x.amount; },0)})
@@ -2352,8 +2379,7 @@ function App(){
         });
       } else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
-      .then(function(){ showToast("✓ Sincronizado con la nube"); })
-      .catch(function(e){ showToast("✕ Nube: "+((e&&e.message)||e)); });
+      .catch(function(e){ showToast("✕ Nube: "+((e&&e.message)||e)); });   // sync de arranque silencioso (solo avisa si falla)
   };
 
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
