@@ -561,6 +561,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .wedit-btns button.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
   .wedit-lock{font-size:11px;color:var(--muted-2);font-weight:700;padding:0 4px;}
   .wedit-body{pointer-events:none;}
+  .pencil-btn{font-size:11px;color:var(--muted-2);background:var(--surface-2);border:1px solid var(--line-soft);border-radius:7px;padding:1px 6px;line-height:1.4;}
+  .ex-del{font-size:12px;color:var(--muted-2);background:transparent;border:none;padding:4px 6px;opacity:.55;}
+  .ex-del:hover{opacity:1;color:var(--coral);}
   .wdragwrap{transition:transform .18s cubic-bezier(.22,.61,.36,1);}
   .wdragwrap.lifting{box-shadow:0 22px 48px -14px rgba(0,0,0,.55);border-radius:20px;}
   .debt-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted-2);margin-top:7px;}
@@ -637,7 +640,8 @@ const CATEGORIES = [
   { id:"otros",      name:"Otros",               color:"#8FA89A", icon:"•" },
 ];
 const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
-const catOf = (id)=> CAT[id] || CAT.otros;
+const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰" };
+const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (CAT[id] || CAT.otros);
 
 /* Autodetección de categoría por comercio (mismas keywords que el GAS, ampliadas) */
 /* Overrides personales: comercios concretos que mapeas a tu manera (substring en minúsculas) */
@@ -735,6 +739,14 @@ const cloud = (function(){
         { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:e.source||'manual' },
         { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
       );
+      if(error) throw error;
+    },
+    async deleteExpense(e){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      const {error}=await sb.from('expenses').delete()
+        .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
       if(error) throw error;
     },
     async prices(){
@@ -1238,6 +1250,9 @@ function dashOrderOf(s, allIds){
 function Dashboard({state, totals, set}){
   const t=totals;
   const [editing,setEditing]=useState(false);
+  const [bEdit,setBEdit]=useState(false);
+  const [bDraft,setBDraft]=useState("");
+  const saveBudget=function(){ const b=parseFloat(String(bDraft).replace(',','.')); if(b>=0) set(function(s){ return Object.assign({},s,{budget:b}); }); setBEdit(false); };
   const ratio=t.thisMonthSpent/state.budget;
   const monthName=MONTHS[new Date().getMonth()];
 
@@ -1273,8 +1288,15 @@ function Dashboard({state, totals, set}){
   W.push({id:"budget", label:"Presupuesto y racha", el:
     React.createElement("div",{className:"grid2"},
       React.createElement("div",{className:"metric"},
-        React.createElement("div",{className:"mlabel"},"Presupuesto · "+monthName),
-        React.createElement(Ring,{ratio:ratio,spent:t.thisMonthSpent,budget:state.budget})
+        React.createElement("div",{className:"mlabel",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
+          "Presupuesto · "+monthName,
+          React.createElement("button",{className:"pencil-btn",onClick:function(){ setBDraft(String(state.budget||"")); setBEdit(true); }},"✎")),
+        bEdit
+          ? React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6,margin:"18px 0"}},
+              React.createElement("input",{className:"editv num",style:{width:90,textAlign:"center"},inputMode:"decimal",autoFocus:true,value:bDraft,onChange:function(e){ setBDraft(e.target.value); },onKeyDown:function(e){ if(e.key==="Enter") saveBudget(); }}),
+              React.createElement("span",{style:{fontSize:13,color:"var(--muted-2)"}},"€"),
+              React.createElement("button",{className:"edit-link save",onClick:saveBudget},"OK"))
+          : React.createElement(Ring,{ratio:ratio,spent:t.thisMonthSpent,budget:state.budget})
       ),
       React.createElement("div",{className:"metric"},
         React.createElement("div",{className:"mlabel"},"Racha sin pasarte"),
@@ -1486,8 +1508,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
-  const [form,setForm]=useState({merchant:"",amount:"",category:"super"});
+  const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false});
   const sentinelRef=useRef(null);
+  const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
+  const delExpense=function(e){
+    set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:(s.deleted||[]).concat([keyOfE(e)]) }); });
+    if(cloud.enabled()) cloud.deleteExpense(e).catch(function(){});
+    showToast("Eliminado");
+  };
 
   const filtered=useMemo(()=> state.expenses
     .filter(e=>inPreset(parseDate(e.date),preset,range))
@@ -1510,10 +1538,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const addExpense=()=>{
     const amt=parseFloat(String(form.amount).replace(',','.'))||0;
     if(amt<=0){ showToast("Pon un importe válido"); return; }
-    const ex={ id:uid(), date:new Date().toISOString(), merchant:form.merchant||"Gasto", amount:amt, category:form.category, source:"manual" };
+    const signed=form.income? -amt : amt;   // ingreso = negativo (resta del gasto del mes)
+    const ex={ id:uid(), date:new Date().toISOString(), merchant:form.merchant||(form.income?"Ingreso":"Gasto"), amount:signed, category:form.income?"ingreso":form.category, source:"manual" };
     set(s=>Object.assign({},s,{expenses:[ex].concat(s.expenses)}));
     if(cloud.enabled()) cloud.addExpense(ex).catch(function(){});   // lo guarda también en la BD
-    setForm({merchant:"",amount:"",category:form.category}); setAdding(false); showToast("✓ Gasto apuntado");
+    setForm({merchant:"",amount:"",category:form.category,income:false}); setAdding(false); showToast(form.income?"✓ Ingreso apuntado":"✓ Gasto apuntado");
   };
 
   return React.createElement("div",null,
@@ -1545,12 +1574,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       syncStatus.msg || (state.lastSync?"Última sincronización: "+new Date(state.lastSync).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):"Sin sincronizar todavía")
     ),
     adding && React.createElement("div",{className:"add-form"},
-      React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Cena)",value:form.merchant,onChange:e=>setForm(Object.assign({},form,{merchant:e.target.value}))}),
+      React.createElement("div",{className:"af-row"},
+        React.createElement("button",{className:"btn "+(!form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:false}))},"💸 Gasto"),
+        React.createElement("button",{className:"btn "+(form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:true}))},"💰 Ingreso")
+      ),
+      React.createElement("input",{className:"af-in",placeholder:form.income?"Concepto (ej. me devolvió Ana)":"Concepto (ej. Cena)",value:form.merchant,onChange:e=>setForm(Object.assign({},form,{merchant:e.target.value}))}),
       React.createElement("div",{className:"af-row"},
         React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:form.amount,onChange:e=>setForm(Object.assign({},form,{amount:e.target.value}))}),
-        React.createElement("select",{className:"af-in",value:form.category,onChange:e=>setForm(Object.assign({},form,{category:e.target.value}))}, CATEGORIES.map(c=>React.createElement("option",{key:c.id,value:c.id},c.icon+" "+c.name)))
+        !form.income && React.createElement("select",{className:"af-in",value:form.category,onChange:e=>setForm(Object.assign({},form,{category:e.target.value}))}, CATEGORIES.map(c=>React.createElement("option",{key:c.id,value:c.id},c.icon+" "+c.name)))
       ),
-      React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense},"Añadir gasto")
+      React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?"Añadir ingreso":"Añadir gasto")
     ),
     React.createElement("div",{className:"card",style:{marginTop:14}},
       React.createElement("div",{className:"card-body",style:{paddingTop:6}},
@@ -1567,7 +1600,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                       React.createElement("span",null,g.d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'}))
                     )
                   ),
-                  React.createElement("div",{className:"ex-amt num"},"−"+eur(g.e.amount))
+                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                    React.createElement("div",{className:"ex-amt num",style: g.e.amount<0?{color:"var(--mint)"}:null}, (g.e.amount<0?"+":"−")+eur(Math.abs(g.e.amount))),
+                    React.createElement("button",{className:"ex-del",title:"Eliminar",onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
+                  )
                 ); })()
           ),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},"Cargando más…")
@@ -2381,9 +2417,10 @@ function Debts({state, set}){
       const paid=Math.max(0,(d.original||bal)-bal);
       const pct=Math.min(100,(paid/(d.original||bal))*100);
       const amortNote=(d.amort!=null && d.amort!==d.monthly) ? "amortiza "+eur0(d.amort)+"/mes (cuota "+eur0(d.monthly)+")" : "amortiza "+eur0(debtAmort(d))+"/mes";
-      return React.createElement(CollapsibleCard,{key:d.id,title:d.name,sub:d.note,dot:entOf(d.ent).color,storageKey:"debt_"+d.id,
+      const dc=entOf(d.ent).color;   // mismo color para la bolita y la barra
+      return React.createElement(CollapsibleCard,{key:d.id,title:d.name,sub:d.note,dot:dc,storageKey:"debt_"+d.id,
         right:React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:14}},eur0(bal))},
-        React.createElement("div",{className:"bar"},React.createElement("i",{style:{width:pct+"%",background:"linear-gradient(90deg,#6b3a33,#E2705F)"}})),
+        React.createElement("div",{className:"bar"},React.createElement("i",{style:{width:pct+"%",background:"linear-gradient(90deg,"+dc+"88,"+dc+")"}})),
         React.createElement("div",{className:"debt-meta"},
           React.createElement("span",null,"Amortizado "+eur0(paid)+" ("+Math.round(pct)+"%)"),
           React.createElement("span",null,amortNote)),
@@ -2638,8 +2675,9 @@ function App(){
   // Trae los gastos de la tabla y los mezcla en el estado (dedup).
   const syncCloudExpenses=function(){
     return cloud.pullExpenses().then(function(rows){
-      const incoming=rows.map(expenseFromRow).filter(function(e){ return e.amount>0; });
       const keyOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
+      const delSet={}; (stateRef.current.deleted||[]).forEach(function(k){ delSet[k]=1; });
+      const incoming=rows.map(expenseFromRow).filter(function(e){ return e.amount!==0 && !delSet[keyOf(e)]; });
       // La tabla `expenses` es la FUENTE DE VERDAD de los gastos de la nube: se reemplazan los
       // de origen "supabase" con lo que hay en la tabla (refresca categorías, importes y borrados).
       // Los manuales/sheet locales NO se tocan nunca (por eso esto es seguro y no borra datos).
