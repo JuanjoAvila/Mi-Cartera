@@ -561,6 +561,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .wedit-btns button.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
   .wedit-lock{font-size:11px;color:var(--muted-2);font-weight:700;padding:0 4px;}
   .wedit-body{pointer-events:none;}
+  .wdragwrap.lifting{box-shadow:0 22px 48px -14px rgba(0,0,0,.55);border-radius:20px;}
+  .wdrop-line{position:absolute;left:0;right:0;height:3px;margin-top:-8px;background:var(--mint);border-radius:3px;z-index:49;box-shadow:0 0 10px var(--mint);pointer-events:none;}
   .debt-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted-2);margin-top:7px;}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:13px;font-weight:700;font-size:14px;}
@@ -1341,28 +1343,99 @@ function Dashboard({state, totals, set}){
   const move=function(id,dir){ set(function(s){ const o=dashOrderOf(s,allIds); const i=o.indexOf(id), j=i+dir; if(j<0||j>=o.length) return s; const n=o.slice(); n[i]=o[j]; n[j]=o[i]; return Object.assign({},s,{settings:Object.assign({},s.settings,{dashOrder:n})}); }); };
   const toggleHide=function(id){ set(function(s){ const h=((s.settings&&s.settings.dashHidden)||[]).slice(); const k=h.indexOf(id); if(k>=0)h.splice(k,1); else h.push(id); return Object.assign({},s,{settings:Object.assign({},s.settings,{dashHidden:h})}); }); };
 
-  return React.createElement("div",null,
-    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
+  // ---- arrastre por MANTENER PULSADO una tarjeta (reordenar, estilo "pro") ----
+  const visibleOrder=order.filter(function(id){ return hidden.indexOf(id)<0; });
+  const [drag,setDrag]=useState(null);     // {id, off, ti}
+  const nodeRefs=useRef({}), listRef=useRef(null);
+  const pressT=useRef(null), startY=useRef(0), lifted=useRef(false), measured=useRef([]), curId=useRef(null), curTarget=useRef(0), contTop=useRef(0);
+  const allIdsRef=useRef([]), hiddenRef=useRef([]), visRef=useRef([]);
+  allIdsRef.current=allIds; hiddenRef.current=hidden; visRef.current=visibleOrder;
+  const H=useRef(null);
+  if(!H.current){
+    H.current={
+      move:function(e){
+        if(!lifted.current) return;
+        if(e.cancelable) e.preventDefault();
+        const y=(e.touches&&e.touches[0])?e.touches[0].clientY:e.clientY;
+        let ti=0; measured.current.forEach(function(m){ if(m.id!==curId.current && y>m.mid) ti++; });
+        curTarget.current=ti;
+        setDrag({id:curId.current, off:y-startY.current, ti:ti});
+      },
+      end:function(){
+        document.removeEventListener('touchmove',H.current.move,{passive:false});
+        document.removeEventListener('touchend',H.current.end);
+        document.removeEventListener('touchcancel',H.current.end);
+        if(lifted.current && curId.current!=null){
+          const id=curId.current, ti=curTarget.current;
+          set(function(s){
+            const o=dashOrderOf(s, allIdsRef.current);
+            const without=o.filter(function(x){ return hiddenRef.current.indexOf(x)<0 && x!==id; });
+            without.splice(Math.max(0,Math.min(ti,without.length)),0,id);
+            const hid=o.filter(function(x){ return hiddenRef.current.indexOf(x)>=0; });
+            return Object.assign({},s,{settings:Object.assign({},s.settings,{dashOrder:without.concat(hid)})});
+          });
+        }
+        lifted.current=false; curId.current=null; setDrag(null);
+      }
+    };
+  }
+  const startPress=function(id,e){
+    if(editing) return;
+    startY.current=e.touches[0].clientY; lifted.current=false; curId.current=id;
+    clearTimeout(pressT.current);
+    pressT.current=setTimeout(function(){
+      lifted.current=true;
+      const arr=[]; visRef.current.forEach(function(wid){ const n=nodeRefs.current[wid]; if(n){ const r=n.getBoundingClientRect(); arr.push({id:wid, top:r.top, bottom:r.bottom, mid:(r.top+r.bottom)/2}); } });
+      measured.current=arr;
+      contTop.current=listRef.current?listRef.current.getBoundingClientRect().top:0;
+      let ci=0; arr.forEach(function(m,k){ if(m.id===id) ci=k; }); curTarget.current=ci;
+      if(navigator.vibrate){ try{ navigator.vibrate(15); }catch(_){} }
+      document.addEventListener('touchmove',H.current.move,{passive:false});
+      document.addEventListener('touchend',H.current.end);
+      document.addEventListener('touchcancel',H.current.end);
+      setDrag({id:id, off:0, ti:ci});
+    },360);
+  };
+  const movePress=function(e){ if(lifted.current) return; if(Math.abs(e.touches[0].clientY-startY.current)>10) clearTimeout(pressT.current); };
+  const endPress=function(){ if(!lifted.current) clearTimeout(pressT.current); };
+
+  return React.createElement("div",{ref:listRef,style:{position:"relative"}},
+    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10,marginBottom:8}},
+      !editing && React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"mantén pulsada una tarjeta para moverla"),
       React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:function(){ setEditing(!editing); }}, editing?"Listo ✓":"✎ Personalizar")
     ),
-    order.map(function(id,idx){
-      const w=wmap[id]; if(!w) return null;
-      const isHidden=hidden.indexOf(id)>=0;
-      if(!editing) return isHidden?null:React.createElement(React.Fragment,{key:id}, w.el);
-      return React.createElement("div",{key:id,className:"wedit"+(isHidden?" off":"")},
-        React.createElement("div",{className:"wedit-bar"},
-          React.createElement("span",{className:"wedit-lbl"}, w.label),
-          React.createElement("div",{className:"wedit-btns"},
-            React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
-            React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓"),
-            w.lock
-              ? React.createElement("span",{className:"wedit-lock"},"fijo")
-              : React.createElement("button",{className:isHidden?"on":"",onClick:function(){ toggleHide(id); }}, isHidden?"Mostrar":"Ocultar")
-          )
-        ),
-        React.createElement("div",{className:"wedit-body"}, w.el)
-      );
-    })
+    drag && (function(){
+      const others=measured.current.filter(function(m){ return m.id!==drag.id; });
+      const y = drag.ti<others.length ? others[drag.ti].top : (others.length?others[others.length-1].bottom:contTop.current);
+      return React.createElement("div",{className:"wdrop-line",style:{top:(y-contTop.current)+"px"}});
+    })(),
+    editing
+      ? order.map(function(id,idx){
+          const w=wmap[id]; if(!w) return null;
+          const isHidden=hidden.indexOf(id)>=0;
+          return React.createElement("div",{key:id,className:"wedit"+(isHidden?" off":"")},
+            React.createElement("div",{className:"wedit-bar"},
+              React.createElement("span",{className:"wedit-lbl"}, w.label),
+              React.createElement("div",{className:"wedit-btns"},
+                React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
+                React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓"),
+                w.lock
+                  ? React.createElement("span",{className:"wedit-lock"},"fijo")
+                  : React.createElement("button",{className:isHidden?"on":"",onClick:function(){ toggleHide(id); }}, isHidden?"Mostrar":"Ocultar")
+              )
+            ),
+            React.createElement("div",{className:"wedit-body"}, w.el)
+          );
+        })
+      : visibleOrder.map(function(id){
+          const w=wmap[id]; if(!w) return null;
+          const isDragging=drag && drag.id===id;
+          return React.createElement("div",{key:id, ref:function(n){ nodeRefs.current[id]=n; },
+            onTouchStart:function(e){ startPress(id,e); }, onTouchMove:movePress, onTouchEnd:endPress, onTouchCancel:endPress,
+            className:"wdragwrap"+(isDragging?" lifting":""),
+            style: isDragging?{transform:"translateY("+drag.off+"px) scale(1.03)",zIndex:50,position:"relative",opacity:.96,transition:"none"}:null
+          }, w.el);
+        })
   );
 }
 
