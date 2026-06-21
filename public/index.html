@@ -936,6 +936,17 @@ const DATA = {
   ],
 };
 
+// Estado VACÍO para usuarios nuevos (no heredan la cartera de ejemplo). Pasan por el onboarding.
+function buildEmpty(){
+  return {
+    fx: 0.92, budget: 0, monthStartNet: 0, history: [],
+    accounts: [], investments: [], assets: [], debts: [], fixed: [], flows: [], oneoffs: [], aportaciones: [],
+    expenses: [], streak: 0,
+    settings: { autoPrices:false },
+    lastSync: null, lastPriceSync: null,
+    onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
+  };
+}
 function buildInitial(){
   return {
     fx: DATA.fx,
@@ -1033,12 +1044,19 @@ function fixInvAuto(s){
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
   if(!s) return s;
-  if(!s.flows || !s.flows.length){ s.flows = DATA.flows.map(function(a){ return Object.assign({},a); }); }
-  if(!s.oneoffs){ s.oneoffs = []; }
-  // deuda dinámica: ancla el saldo actual al mes de hoy si aún no tenía ancla
+  // estados existentes = ya en uso → no son onboarding
+  if(s.onboarded==null) s.onboarded=true;
+  if(!s.oneoffs) s.oneoffs = [];
+  if(!s.flows) s.flows = [];
+  // SEMILLAS DE LA CARTERA DE EJEMPLO: solo para MI estado legacy (detectado por el id de la
+  // cuenta Sabadell demo). Así un usuario nuevo NO hereda mi nómina/transferencias.
+  const isDemo = s.accounts && s.accounts.some(function(a){ return a.id==="qnx5klq"; });
+  if(isDemo){
+    if(!s.flows.length){ s.flows = DATA.flows.map(function(a){ return Object.assign({},a); }); }
+    if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
+  }
+  // deuda dinámica: ancla el saldo actual al mes de hoy si aún no tenía ancla (vale para todos)
   if(s.debts){ const nowAbs=ymNow(); s.debts = s.debts.map(function(d){ return (d.asOf==null)?Object.assign({},d,{asOf:nowAbs}):d; }); }
-  // upgrade único: la nómina/transferencias sembradas pasan a regla de día laborable
-  if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
   return s;
 }
 // Aplica el tema de color poniendo data-theme en <html> (las variables CSS hacen el resto).
@@ -1052,13 +1070,11 @@ function loadState(){
     applyTheme(s.settings&&s.settings.theme);
     return s;
   }
-  const init = buildInitial();
-  init._dataVer = 6;
-  init.trAnchor = mkOf(new Date());
-  const r = fixInvAuto(fixInvSold(reconcileTR(init)));
-  store.set("micartera_v3", r);
-  applyTheme(r.settings&&r.settings.theme);
-  return r;
+  // Sin estado guardado = usuario nuevo → arranca VACÍO y verá el onboarding (no hereda la cartera de ejemplo).
+  const init = buildEmpty();
+  store.set("micartera_v3", init);
+  applyTheme(init.settings&&init.settings.theme);
+  return init;
 }
 
 /* ============================================================
@@ -2376,6 +2392,57 @@ function SettingsPanel({state, set, onClose, showToast}){
   );
 }
 
+/* ============================================================
+   ONBOARDING — bienvenida para usuarios nuevos (arranque vacío)
+   ============================================================ */
+function Onboarding({set, onCloud}){
+  const [budget,setBudget]=useState("");
+  const [accs,setAccs]=useState([]);
+  const [ent,setEnt]=useState("sabadell");
+  const [name,setName]=useState("");
+  const [val,setVal]=useState("");
+  const wrap={position:"fixed",inset:0,zIndex:90,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 28px) 22px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const lbl={fontSize:"12px",color:"var(--muted)",margin:"18px 0 6px",fontWeight:700};
+  const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
+  const btn={width:"100%",padding:"14px",borderRadius:"14px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:"15px",cursor:"pointer"};
+  const addAcc=function(){ const v=parseFloat(String(val).replace(',','.'))||0; setAccs(function(a){ return a.concat([{id:uid(),ent:ent,name:name||entOf(ent).label,value:v,note:""}]); }); setName(""); setVal(""); };
+  const delAcc=function(id){ setAccs(function(a){ return a.filter(function(x){return x.id!==id;}); }); };
+  const finish=function(){
+    const b=parseFloat(String(budget).replace(',','.'))||0;
+    const base=accs.reduce(function(t,x){ return t+(x.value||0); },0);
+    set(function(s){ return Object.assign({},s,{ accounts:accs.slice(), budget:b, monthStartNet:base, history:[base], onboarded:true }); });
+  };
+  return React.createElement("div",{style:wrap},
+    React.createElement("div",{style:inner},
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:11,marginBottom:6}},
+        React.createElement("div",{className:"brand-mark"},React.createElement(I.logo,{width:22,height:22})),
+        React.createElement("div",{style:{fontWeight:800,fontSize:20}},"Mi Cartera")),
+      React.createElement("div",{className:"serif",style:{fontSize:26,margin:"14px 0 6px"}},"Bienvenido/a 👋"),
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.5}},"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas."),
+
+      React.createElement("div",{style:lbl},"Presupuesto mensual para gastos (€)"),
+      React.createElement("input",{style:inp,type:"number",inputMode:"decimal",placeholder:"ej. 700",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
+
+      React.createElement("div",{style:lbl},"Tus cuentas (banco y saldo actual)"),
+      accs.map(function(a){ return React.createElement("div",{key:a.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:8}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement(Mono,{ent:a.ent,size:34}),React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,fontSize:14}},a.name),React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}},entOf(a.ent).label))),
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{className:"num",style:{fontWeight:700}},eur(a.value)),React.createElement("button",{onClick:function(){ delAcc(a.id); },style:{background:"none",border:"none",color:"var(--coral)",fontSize:16,cursor:"pointer"}},"×"))
+      ); }),
+      React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
+        React.createElement("select",{style:Object.assign({},inp,{flex:"0 0 38%"}),value:ent,onChange:function(e){ setEnt(e.target.value); }}, Object.keys(ENT).filter(function(k){return k!=="familia";}).map(function(k){ return React.createElement("option",{key:k,value:k},ENT[k].label); })),
+        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:"Saldo €",inputMode:"decimal",value:val,onChange:function(e){ setVal(e.target.value); }})
+      ),
+      React.createElement("input",{style:Object.assign({},inp,{marginTop:8}),placeholder:"Nombre (opcional, ej. Cuenta corriente)",value:name,onChange:function(e){ setName(e.target.value); }}),
+      React.createElement("button",{style:Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)",marginTop:10}),onClick:addAcc},"+ Añadir cuenta"),
+
+      React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:finish}, accs.length?"Empezar a usar Mi Cartera":"Empezar (añadiré cuentas luego)"),
+      onCloud && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:"14px",border:"1px solid var(--line)",background:"transparent",color:"var(--blue)",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:10},onClick:onCloud},"Ya tengo cuenta · Iniciar sesión"),
+      React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:14}},"Podrás editar y añadir todo cuando quieras. Inicia sesión para sincronizar entre dispositivos y recuperar tus datos.")
+    )
+  );
+}
+
 function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
@@ -2718,6 +2785,11 @@ function App(){
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
+  if(state.onboarded===false) return React.createElement(React.Fragment,null,
+    React.createElement(Onboarding,{set:set, onCloud:(cloud.enabled()?onCloudClick:null)}),
+    showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); },showToast:showToast}),
+    toast && React.createElement("div",{className:"toast"},toast)
+  );
 
   return React.createElement("div",{className:"app"},
     React.createElement("div",{className:"topbar"},
