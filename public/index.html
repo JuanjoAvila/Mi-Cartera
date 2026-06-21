@@ -551,6 +551,16 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .bar > i{display:block;height:100%;border-radius:6px;}
   .rendbar{height:6px;border-radius:5px;background:var(--surface-2);overflow:hidden;}
   .rendbar > i{display:block;height:100%;border-radius:5px;}
+  .wedit{border:1px dashed var(--line);border-radius:16px;padding:8px;margin-bottom:12px;background:var(--bg-2);}
+  .wedit.off{opacity:.5;}
+  .wedit-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding:0 2px;}
+  .wedit-lbl{font-size:12.5px;font-weight:700;color:var(--muted);}
+  .wedit-btns{display:flex;gap:6px;align-items:center;}
+  .wedit-btns button{font-size:12px;font-weight:700;padding:5px 9px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line-soft);color:var(--text);}
+  .wedit-btns button:disabled{opacity:.35;}
+  .wedit-btns button.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
+  .wedit-lock{font-size:11px;color:var(--muted-2);font-weight:700;padding:0 4px;}
+  .wedit-body{pointer-events:none;}
   .debt-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted-2);margin-top:7px;}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:13px;font-weight:700;font-size:14px;}
@@ -1218,8 +1228,14 @@ function useEditable(items, onChange, opts){
 /* ============================================================
    TAB: DASHBOARD
    ============================================================ */
-function Dashboard({state, totals}){
+// orden efectivo de widgets del Resumen: el guardado + cualquier widget nuevo al final
+function dashOrderOf(s, allIds){
+  const saved=((s.settings&&s.settings.dashOrder)||[]).filter(function(id){ return allIds.indexOf(id)>=0; });
+  return saved.concat(allIds.filter(function(id){ return saved.indexOf(id)<0; }));
+}
+function Dashboard({state, totals, set}){
   const t=totals;
+  const [editing,setEditing]=useState(false);
   const ratio=t.thisMonthSpent/state.budget;
   const monthName=MONTHS[new Date().getMonth()];
 
@@ -1230,8 +1246,9 @@ function Dashboard({state, totals}){
 
   const pips=[]; for(let i=0;i<12;i++) pips.push(i<state.streak);
 
-  return React.createElement("div",null,
-    /* HERO */
+  // ---- Widgets del Resumen (cada uno con su render) ----
+  const W=[];
+  W.push({id:"hero", label:"Patrimonio neto", lock:true, el:
     React.createElement("div",{className:"hero"},
       React.createElement("div",{className:"hero-label"},"Patrimonio neto"),
       (function(){ const p=eurParts(t.netWorth); return React.createElement("div",{className:"hero-amount serif num"}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
@@ -1242,16 +1259,16 @@ function Dashboard({state, totals}){
         React.createElement("div",{className:"pill ghost"},"Deudas "+eur0(t.debtTotal))
       ),
       React.createElement(Sparkline,{data:state.history,current:t.netWorth})
-    ),
-    /* DISTRIBUCIÓN */
+    )});
+  W.push({id:"dist", label:"Distribución de activos", el:
     React.createElement(CollapsibleCard,{title:"Distribución de activos",dot:"#5FD08A",storageKey:"d_dist"},
       React.createElement(StackedBar,{segments:[
         {label:"Liquidez",value:t.liquid,color:"var(--mint)"},
         {label:"Inversiones",value:t.invested,color:"var(--blue)"},
         {label:"Bienes",value:t.assetsTotal,color:"var(--cream)"},
       ]})
-    ),
-    /* RING + RACHA */
+    )});
+  W.push({id:"budget", label:"Presupuesto y racha", el:
     React.createElement("div",{className:"grid2"},
       React.createElement("div",{className:"metric"},
         React.createElement("div",{className:"mlabel"},"Presupuesto · "+monthName),
@@ -1269,14 +1286,14 @@ function Dashboard({state, totals}){
         React.createElement("div",{className:"pips"}, pips.map((on,i)=>React.createElement("span",{key:i,className:"pip"+(on?" on":"")}))),
         React.createElement("div",{className:"hint",style:{marginTop:8}}, ratio<=1?monthName+" va dentro de límite ✓":monthName+" se ha pasado")
       )
-    ),
-    /* SIN CULPA */
+    )});
+  W.push({id:"culpa", label:"Sin culpa (lo que te queda)", el:
     (function(){ const rem=state.budget-t.thisMonthSpent; return React.createElement("div",{className:"culpa"+(rem>=0?"":" over")},
       rem>=0
         ? React.createElement(React.Fragment,null, React.createElement("span",{className:"big num"},eur0(rem)), React.createElement("span",null," para gastar sin culpa este mes 😎"))
         : React.createElement(React.Fragment,null, React.createElement("span",null,"Este mes te has pasado "), React.createElement("span",{className:"big num"},eur0(-rem)), React.createElement("span",null," 😬"))
-    ); })(),
-    /* GASTOS FIJOS + AHORRO */
+    ); })() });
+  W.push({id:"fixedsave", label:"Gastos fijos y ahorro", el:
     React.createElement("div",{className:"grid2"},
       React.createElement("div",{className:"metric tall"},
         React.createElement("div",{className:"mlabel"},"Gastos fijos"),
@@ -1288,7 +1305,8 @@ function Dashboard({state, totals}){
         React.createElement("div",{className:"metric-big serif num",style:{color:"#5FD08A"}},eur0(t.ahorroMensual)),
         React.createElement("div",{className:"metric-sub"},"al mes a inversión")
       )
-    ),
+    )});
+  W.push({id:"savings", label:"De dónde sale el ahorro", el:
     React.createElement(CollapsibleCard,{title:"¿De dónde sale el ahorro?",sub:eur0(t.ahorroMensual)+"/mes a inversión",dot:"#5FD08A",defaultOpen:false,storageKey:"d_ahorro"},
       state.aportaciones.map(function(ap){
         return React.createElement("div",{className:"row",key:ap.id},
@@ -1297,8 +1315,8 @@ function Dashboard({state, totals}){
           React.createElement("div",{className:"rval num",style:{color:"#5FD08A"}},eur0(ap.amount)+"/mes"));
       }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total ahorrado/mes"),React.createElement("span",{className:"num"},eur(t.ahorroMensual)))
-    ),
-    /* CULPABLE */
+    )});
+  W.push({id:"culprit", label:"Categoría culpable", el:
     React.createElement(CollapsibleCard,{title:"Categoría culpable",sub:"Lo que más gastas en "+monthName,dot:top?top.color:"#8FA89A",storageKey:"d_culprit"},
       catList.length===0
         ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},"Aún sin gastos"),"Sincroniza o apunta un gasto.")
@@ -1313,7 +1331,38 @@ function Dashboard({state, totals}){
             )
           ),
       top && React.createElement("div",{className:"hint"},"👑 "+top.name+" se lleva "+Math.round(top.v/t.thisMonthSpent*100)+"% de tu gasto este mes.")
-    )
+    )});
+
+  // ---- render con orden + visibilidad ----
+  const allIds=W.map(function(w){return w.id;});
+  const order=dashOrderOf(state, allIds);
+  const hidden=(state.settings&&state.settings.dashHidden)||[];
+  const wmap={}; W.forEach(function(w){ wmap[w.id]=w; });
+  const move=function(id,dir){ set(function(s){ const o=dashOrderOf(s,allIds); const i=o.indexOf(id), j=i+dir; if(j<0||j>=o.length) return s; const n=o.slice(); n[i]=o[j]; n[j]=o[i]; return Object.assign({},s,{settings:Object.assign({},s.settings,{dashOrder:n})}); }); };
+  const toggleHide=function(id){ set(function(s){ const h=((s.settings&&s.settings.dashHidden)||[]).slice(); const k=h.indexOf(id); if(k>=0)h.splice(k,1); else h.push(id); return Object.assign({},s,{settings:Object.assign({},s.settings,{dashHidden:h})}); }); };
+
+  return React.createElement("div",null,
+    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",marginBottom:8}},
+      React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:function(){ setEditing(!editing); }}, editing?"Listo ✓":"✎ Personalizar")
+    ),
+    order.map(function(id,idx){
+      const w=wmap[id]; if(!w) return null;
+      const isHidden=hidden.indexOf(id)>=0;
+      if(!editing) return isHidden?null:React.createElement(React.Fragment,{key:id}, w.el);
+      return React.createElement("div",{key:id,className:"wedit"+(isHidden?" off":"")},
+        React.createElement("div",{className:"wedit-bar"},
+          React.createElement("span",{className:"wedit-lbl"}, w.label),
+          React.createElement("div",{className:"wedit-btns"},
+            React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
+            React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓"),
+            w.lock
+              ? React.createElement("span",{className:"wedit-lock"},"fijo")
+              : React.createElement("button",{className:isHidden?"on":"",onClick:function(){ toggleHide(id); }}, isHidden?"Mostrar":"Ocultar")
+          )
+        ),
+        React.createElement("div",{className:"wedit-body"}, w.el)
+      );
+    })
   );
 }
 
@@ -2852,7 +2901,7 @@ function App(){
     ),
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
-        React.createElement("div",{className:"page"},React.createElement(Dashboard,{state:state,totals:totals})),
+        React.createElement("div",{className:"page"},React.createElement(Dashboard,{state:state,totals:totals,set:set})),
         React.createElement("div",{className:"page"},React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe})),
         React.createElement("div",{className:"page"},React.createElement(Fijos,{state:state,set:set,totals:totals})),
         React.createElement("div",{className:"page"},React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})),
