@@ -1825,7 +1825,7 @@ function Fijos({state, set, totals}){
     /* MOTOR DINÁMICO: próximos cargos */
     React.createElement(CollapsibleCard,{title:"Próximos cargos · "+MONTHS_ES[cm-1],sub:eur0(totals.cargosMes)+" este mes",dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
       // estado del banco principal (Sabadell): cash-flow del mes (saldo + nómina − transfers − fijos)
-      React.createElement("div",{className:"liqbox"+(totals.mainProjected<0?" danger":"")},
+      React.createElement("div",{className:"liqbox"+((totals.mainMin<0||totals.mainProjected<0)?" danger":"")},
         React.createElement("div",{className:"liqrow"},
           React.createElement("span",{className:"muted"},entOf(totals.mainBank).label+" hoy"),
           React.createElement("span",{className:"num"},eur0(totals.mainBal))),
@@ -1840,12 +1840,18 @@ function Fijos({state, set, totals}){
           React.createElement("span",{className:"num"},"−"+eur0(totals.mainPending))),
         React.createElement("div",{className:"liqrow strong"},
           React.createElement("span",null,"= a fin de mes"),
-          React.createElement("span",{className:"num",style:{color:totals.mainProjected<0?"var(--coral)":"var(--mint)"}},eur0(totals.mainProjected)))
+          React.createElement("span",{className:"num",style:{color:totals.mainProjected<0?"var(--coral)":"var(--mint)"}},eur0(totals.mainProjected))),
+        // punto más bajo del mes (importa el orden: si los fijos salen antes de cobrar)
+        (totals.mainMin < totals.mainProjected-0.5) && React.createElement("div",{className:"liqrow",style:{color:totals.mainMin<0?"var(--coral)":"var(--muted-2)"}},
+          React.createElement("span",null,(totals.mainMin<0?"⚠ ":"")+"punto más bajo"+(totals.mainMinDay?" (día "+totals.mainMinDay+")":"")),
+          React.createElement("span",{className:"num"},eur0(totals.mainMin)))
       ),
-      // ALARMA: algún banco se queda en negativo a fin de mes (ya contando nómina y transfers)
+      // ALARMA: el saldo mínimo del mes se va a negativo (bajón antes de cobrar o no llegar a fin de mes)
       totals.bankAlerts.length>0 && React.createElement("div",{className:"alarmbox"},
         "🚨 ¡Cuidado! ",totals.bankAlerts.map(b=>entOf(b).label).join(", "),
-        " se queda en negativo a fin de mes ("+eur0(totals.bankAlerts.reduce((a,b)=>a+totals.projectedByBank[b],0))+") con lo que falta por pagar. Mete fondos o no llegarás."),
+        (totals.bankAlerts.length===1 && totals.minDayByBank[totals.bankAlerts[0]])
+          ? " se queda en "+eur0(totals.minByBank[totals.bankAlerts[0]])+" sobre el día "+totals.minDayByBank[totals.bankAlerts[0]]+" (antes de que entre la nómina). Mete fondos o no llegarás."
+          : " se queda en negativo este mes con lo que falta por pagar. Mete fondos o no llegarás."),
       // aviso de mes cargado en el horizonte
       heavy && React.createElement("div",{className:"hint",style:{margin:"8px 0 4px",color:"#E2A05F",fontWeight:600}},
         (heavy.soon===0?"Este mes ":heavy.soon===1?"El mes que viene ":"En "+MONTHS_ES[heavy.mo-1]+" ")+"se viene cargado: "+eur0(heavy.total)+" en fijos (la media es "+eur0(avgMonth)+"). 👀"),
@@ -2469,6 +2475,18 @@ function App(){
     const allBanks={}; [bankBal,incomeInByBank,transferOutByBank,pendingByBank].forEach(o=>Object.keys(o).forEach(b=>allBanks[b]=1));
     const projectedByBank={};
     Object.keys(allBanks).forEach(b=>{ projectedByBank[b]=(bankBal[b]||0)+(incomeInByBank[b]||0)-(transferOutByBank[b]||0)-(pendingByBank[b]||0); });
+    // --- SIMULACIÓN INTRA-MES: recorre el resto del mes por día y busca el saldo MÍNIMO.
+    // Importa el ORDEN: si los fijos se cobran antes de que entre la nómina, puedes quedarte
+    // en negativo a mitad de mes aunque a fin de mes cuadres. Sin día: cargos al principio
+    // (día 0, peor caso) e ingresos al final (día 99). ---
+    const evsByBank={};
+    const pushEv=(bank,day,amt)=>{ (evsByBank[bank]=evsByBank[bank]||[]).push({day:day,amt:amt}); };
+    state.fixed.forEach(e=>{ if(occursIn(e,curMonth)&&!isPaidIn(e,curMonth,today)) pushEv(accOf(e), dayIn(e,curMonth)||0, -occAmountIn(e,curMonth)); });
+    state.debts.forEach(d=>{ if(d.monthly&&!isPaidThisMonth(d,today)) pushEv(d.account||"sabadell", d.day||0, -d.monthly); });
+    (state.oneoffs||[]).forEach(o=>{ if(oneoffOccurs(o,curYear,curMonth)&&(o.amount||0)!==0&&!isPaidThisMonth(o,today)) pushEv(o.account||"sabadell", o.day||0, -o.amount); });
+    (state.flows||[]).forEach(f=>{ if(!flowOccursIn(f,curMonth)||flowPaid(f,curYear,curMonth,today))return; const dd=flowDay(f,curYear,curMonth); if(f.kind==="income") pushEv(f.to||"sabadell", dd||99, f.amount); else if(f.kind==="transfer") pushEv(f.from||"sabadell", dd||0, -f.amount); });
+    const minByBank={}, minDayByBank={};
+    Object.keys(allBanks).forEach(b=>{ const evs=(evsByBank[b]||[]).slice().sort((x,y)=>x.day-y.day); let run=bankBal[b]||0, mn=run, md=0; evs.forEach(ev=>{ run+=ev.amt; if(run<mn-0.005){ mn=run; md=ev.day; } }); minByBank[b]=mn; minDayByBank[b]=md; });
     // foco en el banco principal de gastos fijos (Sabadell)
     const mainBank="sabadell";
     const mainBal=bankBal[mainBank]||0;
@@ -2478,9 +2496,12 @@ function App(){
     const mainTransferOut=transferOutByBank[mainBank]||0;
     const liquidTrasFijos=mainBal-mainPending;           // lo que quedaría tras los fijos PENDIENTES (sin contar nómina/transfers)
     const mainProjected=projectedByBank[mainBank]||0;    // disponible proyectado a fin de mes (con cash-flow)
-    const bankAlerts=Object.keys(projectedByBank).filter(b=> projectedByBank[b] < -0.005);
+    const mainMin=minByBank[mainBank]!=null?minByBank[mainBank]:mainBal;   // saldo mínimo del mes (peor momento)
+    const mainMinDay=minDayByBank[mainBank]||0;
+    // alarma: el saldo mínimo del mes se va a negativo (cubre tanto el bajón intra-mes como no llegar a fin de mes)
+    const bankAlerts=Object.keys(minByBank).filter(b=> minByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
