@@ -561,8 +561,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .wedit-btns button.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
   .wedit-lock{font-size:11px;color:var(--muted-2);font-weight:700;padding:0 4px;}
   .wedit-body{pointer-events:none;}
+  .wdragwrap{transition:transform .18s cubic-bezier(.22,.61,.36,1);}
   .wdragwrap.lifting{box-shadow:0 22px 48px -14px rgba(0,0,0,.55);border-radius:20px;}
-  .wdrop-line{position:absolute;left:0;right:0;height:3px;margin-top:-8px;background:var(--mint);border-radius:3px;z-index:49;box-shadow:0 0 10px var(--mint);pointer-events:none;}
   .debt-meta{display:flex;justify-content:space-between;font-size:12px;color:var(--muted-2);margin-top:7px;}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:13px;font-weight:700;font-size:14px;}
@@ -1343,28 +1343,46 @@ function Dashboard({state, totals, set}){
   const move=function(id,dir){ set(function(s){ const o=dashOrderOf(s,allIds); const i=o.indexOf(id), j=i+dir; if(j<0||j>=o.length) return s; const n=o.slice(); n[i]=o[j]; n[j]=o[i]; return Object.assign({},s,{settings:Object.assign({},s.settings,{dashOrder:n})}); }); };
   const toggleHide=function(id){ set(function(s){ const h=((s.settings&&s.settings.dashHidden)||[]).slice(); const k=h.indexOf(id); if(k>=0)h.splice(k,1); else h.push(id); return Object.assign({},s,{settings:Object.assign({},s.settings,{dashHidden:h})}); }); };
 
-  // ---- arrastre por MANTENER PULSADO una tarjeta (reordenar, estilo "pro") ----
+  // ---- arrastre por MANTENER PULSADO: las demás tarjetas abren hueco con animación + auto-scroll ----
   const visibleOrder=order.filter(function(id){ return hidden.indexOf(id)<0; });
   const [drag,setDrag]=useState(null);     // {id, off, ti}
   const nodeRefs=useRef({}), listRef=useRef(null);
-  const pressT=useRef(null), startY=useRef(0), lifted=useRef(false), measured=useRef([]), curId=useRef(null), curTarget=useRef(0), contTop=useRef(0);
+  const pressT=useRef(null), startY=useRef(0), lifted=useRef(false), curId=useRef(null), curTarget=useRef(0);
+  const bases=useRef([]), stepR=useRef(0), origIdxR=useRef(0), pageEl=useRef(null), pageTop=useRef(0), startScroll=useRef(0), lastY=useRef(0), scrollDir=useRef(0), rafId=useRef(0);
   const allIdsRef=useRef([]), hiddenRef=useRef([]), visRef=useRef([]);
   allIdsRef.current=allIds; hiddenRef.current=hidden; visRef.current=visibleOrder;
   const H=useRef(null);
   if(!H.current){
     H.current={
-      move:function(e){
-        if(!lifted.current) return;
-        if(e.cancelable) e.preventDefault();
-        const y=(e.touches&&e.touches[0])?e.touches[0].clientY:e.clientY;
-        let ti=0; measured.current.forEach(function(m){ if(m.id!==curId.current && y>m.mid) ti++; });
+      update:function(cy){
+        lastY.current=cy;
+        const sc=pageEl.current?pageEl.current.scrollTop:0;
+        const pcy=cy - pageTop.current + sc;                       // posición del dedo en coords del contenido
+        const off=(cy - startY.current) + (sc - startScroll.current);
+        let ti=0; bases.current.forEach(function(m){ if(m.id!==curId.current && m.mid < pcy) ti++; });
         curTarget.current=ti;
-        setDrag({id:curId.current, off:y-startY.current, ti:ti});
+        // dirección de auto-scroll si el dedo está cerca del borde
+        const vh=pageEl.current?pageEl.current.clientHeight:600;
+        scrollDir.current = cy < pageTop.current+80 ? -1 : (cy > pageTop.current+vh-80 ? 1 : 0);
+        setDrag({id:curId.current, off:off, ti:ti});
       },
+      tick:function(){
+        if(!lifted.current){ rafId.current=0; return; }
+        const p=pageEl.current;
+        if(scrollDir.current!==0 && p){
+          const max=p.scrollHeight-p.clientHeight;
+          const nt=Math.max(0,Math.min(max, p.scrollTop + scrollDir.current*9));
+          if(nt!==p.scrollTop){ p.scrollTop=nt; H.current.update(lastY.current); }
+        }
+        rafId.current=requestAnimationFrame(H.current.tick);
+      },
+      move:function(e){ if(!lifted.current) return; if(e.cancelable) e.preventDefault(); H.current.update((e.touches&&e.touches[0])?e.touches[0].clientY:e.clientY); },
       end:function(){
         document.removeEventListener('touchmove',H.current.move,{passive:false});
         document.removeEventListener('touchend',H.current.end);
         document.removeEventListener('touchcancel',H.current.end);
+        if(rafId.current){ cancelAnimationFrame(rafId.current); rafId.current=0; }
+        scrollDir.current=0;
         if(lifted.current && curId.current!=null){
           const id=curId.current, ti=curTarget.current;
           set(function(s){
@@ -1385,15 +1403,19 @@ function Dashboard({state, totals, set}){
     clearTimeout(pressT.current);
     pressT.current=setTimeout(function(){
       lifted.current=true;
-      const arr=[]; visRef.current.forEach(function(wid){ const n=nodeRefs.current[wid]; if(n){ const r=n.getBoundingClientRect(); arr.push({id:wid, top:r.top, bottom:r.bottom, mid:(r.top+r.bottom)/2}); } });
-      measured.current=arr;
-      contTop.current=listRef.current?listRef.current.getBoundingClientRect().top:0;
-      let ci=0; arr.forEach(function(m,k){ if(m.id===id) ci=k; }); curTarget.current=ci;
-      if(navigator.vibrate){ try{ navigator.vibrate(15); }catch(_){} }
+      const pg=listRef.current?listRef.current.closest('.page'):null; pageEl.current=pg;
+      pageTop.current=pg?pg.getBoundingClientRect().top:0; startScroll.current=pg?pg.scrollTop:0;
+      const sc=startScroll.current, pt=pageTop.current;
+      const arr=[]; visRef.current.forEach(function(wid){ const n=nodeRefs.current[wid]; if(n){ const r=n.getBoundingClientRect(); const top=r.top-pt+sc; arr.push({id:wid, top:top, bottom:top+r.height, mid:top+r.height/2}); } });
+      bases.current=arr;
+      let ci=0; arr.forEach(function(m,k){ if(m.id===id) ci=k; }); origIdxR.current=ci; curTarget.current=ci;
+      stepR.current = (ci+1<arr.length) ? (arr[ci+1].top-arr[ci].top) : (arr[ci]? (arr[ci].bottom-arr[ci].top+14) : 0);
+      if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(_){} }
       document.addEventListener('touchmove',H.current.move,{passive:false});
       document.addEventListener('touchend',H.current.end);
       document.addEventListener('touchcancel',H.current.end);
       setDrag({id:id, off:0, ti:ci});
+      rafId.current=requestAnimationFrame(H.current.tick);
     },360);
   };
   const movePress=function(e){ if(lifted.current) return; if(Math.abs(e.touches[0].clientY-startY.current)>10) clearTimeout(pressT.current); };
@@ -1404,11 +1426,6 @@ function Dashboard({state, totals, set}){
       !editing && React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"mantén pulsada una tarjeta para moverla"),
       React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:function(){ setEditing(!editing); }}, editing?"Listo ✓":"✎ Personalizar")
     ),
-    drag && (function(){
-      const others=measured.current.filter(function(m){ return m.id!==drag.id; });
-      const y = drag.ti<others.length ? others[drag.ti].top : (others.length?others[others.length-1].bottom:contTop.current);
-      return React.createElement("div",{className:"wdrop-line",style:{top:(y-contTop.current)+"px"}});
-    })(),
     editing
       ? order.map(function(id,idx){
           const w=wmap[id]; if(!w) return null;
@@ -1427,13 +1444,21 @@ function Dashboard({state, totals, set}){
             React.createElement("div",{className:"wedit-body"}, w.el)
           );
         })
-      : visibleOrder.map(function(id){
+      : visibleOrder.map(function(id,fi){
           const w=wmap[id]; if(!w) return null;
           const isDragging=drag && drag.id===id;
+          let st=null;
+          if(isDragging){
+            st={transform:"translateY("+drag.off+"px) scale(1.03)",zIndex:50,position:"relative",opacity:.97,transition:"none"};
+          } else if(drag){
+            const oi=origIdxR.current, ti=drag.ti; let sh=0;
+            if(ti>oi && fi>oi && fi<=ti) sh=-stepR.current;
+            else if(ti<oi && fi>=ti && fi<oi) sh=stepR.current;
+            if(sh) st={transform:"translateY("+sh+"px)"};
+          }
           return React.createElement("div",{key:id, ref:function(n){ nodeRefs.current[id]=n; },
             onTouchStart:function(e){ startPress(id,e); }, onTouchMove:movePress, onTouchEnd:endPress, onTouchCancel:endPress,
-            className:"wdragwrap"+(isDragging?" lifting":""),
-            style: isDragging?{transform:"translateY("+drag.off+"px) scale(1.03)",zIndex:50,position:"relative",opacity:.96,transition:"none"}:null
+            className:"wdragwrap"+(isDragging?" lifting":""), style:st
           }, w.el);
         })
   );
