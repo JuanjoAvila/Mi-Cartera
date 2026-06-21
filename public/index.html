@@ -331,8 +331,44 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
     --shadow:0 18px 40px -24px rgba(0,0,0,.7);
     --safe-top:env(safe-area-inset-top,0px); --safe-bottom:env(safe-area-inset-bottom,0px);
   }
+  /* ===== TEMAS DE COLOR (se aplican con html[data-theme=...]) ===== */
+  /* Oscuro puro: negro neutro, mismo verde de acento */
+  html[data-theme="dark"]{
+    --bg:#0A0A0C; --bg-2:#141417; --surface:#17171B; --surface-2:#1F1F25;
+    --line:#2B2B32; --line-soft:#232329;
+    --text:#ECECEF; --muted:#9A9AA4; --muted-2:#66666F;
+    --shadow:0 18px 40px -24px rgba(0,0,0,.85);
+  }
+  /* Claro / blanco */
+  html[data-theme="light"]{
+    --bg:#F3F6F3; --bg-2:#FFFFFF; --surface:#FFFFFF; --surface-2:#EEF2EE;
+    --line:#DCE4DD; --line-soft:#E7ECE7;
+    --mint:#2FA866; --mint-bright:#36BE74; --mint-dim:#A6DCBC;
+    --blue:#3E80C8; --tan:#C79A2E; --cream:#6E5F33;
+    --text:#15201A; --muted:#566A5E; --muted-2:#8A988F; --coral:#D2563F; --coral-dim:#F1D2CB;
+    --shadow:0 14px 30px -24px rgba(20,40,30,.30);
+  }
+  /* Azul (modo oscuro fresquito) */
+  html[data-theme="blue"]{
+    --bg:#0A1320; --bg-2:#0E1B2E; --surface:#13243B; --surface-2:#192E49;
+    --line:#213D5C; --line-soft:#1A3049;
+    --text:#E6EEF8; --muted:#93A8C2; --muted-2:#5E7A96;
+    --shadow:0 18px 40px -24px rgba(0,0,0,.75);
+  }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--text);overscroll-behavior:none;}
+  /* fondo (degradados) por tema */
+  html[data-theme="dark"] body{ background:var(--bg); }
+  html[data-theme="light"] body{ background:
+      radial-gradient(120% 55% at 80% -5%, rgba(47,168,102,.10), transparent 60%),
+      radial-gradient(90% 50% at -10% 0%, rgba(62,128,200,.07), transparent 55%),
+      var(--bg); }
+  html[data-theme="blue"] body{ background:
+      radial-gradient(120% 55% at 80% -5%, rgba(127,181,232,.16), transparent 60%),
+      radial-gradient(90% 50% at -10% 0%, rgba(95,208,138,.05), transparent 55%),
+      var(--bg); }
+  /* en tema claro el hero es claro: el número grande va en texto oscuro, no en crema */
+  html[data-theme="light"] .hero-amount{ color:var(--text); }
   body{
     font-family:'Manrope',system-ui,sans-serif;font-size:15px;line-height:1.45;overscroll-behavior-y:none;
     background:
@@ -544,7 +580,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* Cajón de Ajustes: página oculta a la IZQUIERDA del Resumen (estilo Revolut) */
   .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:55;}
   .drawer-backdrop.open{opacity:1;pointer-events:auto;}
-  .drawer-panel{position:fixed;top:0;left:0;height:100%;width:86%;max-width:360px;transform:translateX(-100%);transition:transform .26s cubic-bezier(.22,.61,.36,1);z-index:56;background:#0F1A15;border-right:1px solid #1e2b24;padding:calc(var(--safe-top) + 20px) 22px 22px;overflow-y:auto;color:#E8F0EB;font-family:'Manrope',sans-serif;}
+  .drawer-panel{position:fixed;top:0;left:0;height:100%;width:86%;max-width:360px;transform:translateX(-100%);transition:transform .26s cubic-bezier(.22,.61,.36,1);z-index:56;background:var(--surface);border-right:1px solid var(--line);padding:calc(var(--safe-top) + 20px) 22px 22px;overflow-y:auto;color:var(--text);font-family:'Manrope',sans-serif;}
   .drawer-panel.open{transform:translateX(0);}
   .drawer-panel.dragging{transition:none;}
   @keyframes toastin{from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);}}
@@ -1000,11 +1036,15 @@ function seedFlows(s){
   if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
   return s;
 }
+// Aplica el tema de color poniendo data-theme en <html> (las variables CSS hacen el resto).
+function applyTheme(t){ try{ document.documentElement.setAttribute("data-theme", t||"green"); }catch(e){} }
+const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
 function loadState(){
   const saved = store.get("micartera_v3");
   if(saved && saved.accounts){
     const s = seedFlows(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)))));
     store.set("micartera_v3", s);
+    applyTheme(s.settings&&s.settings.theme);
     return s;
   }
   const init = buildInitial();
@@ -1012,6 +1052,7 @@ function loadState(){
   init.trAnchor = mkOf(new Date());
   const r = fixInvAuto(fixInvSold(reconcileTR(init)));
   store.set("micartera_v3", r);
+  applyTheme(r.settings&&r.settings.theme);
   return r;
 }
 
@@ -2263,11 +2304,11 @@ function AuthPanel({session, onClose, showToast}){
 function SettingsPanel({state, set, onClose, showToast}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const fileRef=useRef(null);
-  const lbl={fontSize:"12px",color:"#9fb3a8",margin:"14px 0 2px"};
-  const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid #2a3a31",background:"#0B1410",color:"#fff",fontSize:"16px",boxSizing:"border-box"};
-  const btn={width:"100%",padding:"12px",borderRadius:"12px",border:"none",background:"#5FD08A",color:"#06120C",fontWeight:700,fontSize:"15px",marginTop:"10px",cursor:"pointer"};
-  const btnGhost=Object.assign({},btn,{background:"#16291E",color:"#E8F0EB",border:"1px solid #2a3a31"});
-  const link={background:"none",border:"none",color:"#9BD0E0",cursor:"pointer",fontSize:"13px",marginTop:"14px",width:"100%"};
+  const lbl={fontSize:"12px",color:"var(--muted)",margin:"14px 0 2px"};
+  const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
+  const btn={width:"100%",padding:"12px",borderRadius:"12px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:700,fontSize:"15px",marginTop:"10px",cursor:"pointer"};
+  const btnGhost=Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"});
+  const link={background:"none",border:"none",color:"var(--blue)",cursor:"pointer",fontSize:"13px",marginTop:"14px",width:"100%"};
   const saveNums=function(){
     const b=parseFloat(String(budget).replace(',','.'))||0;
     set(function(s){ return Object.assign({},s,{budget:b}); });
@@ -2299,20 +2340,29 @@ function SettingsPanel({state, set, onClose, showToast}){
   };
   return React.createElement(React.Fragment,null,
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
-      React.createElement("div",{style:{fontWeight:700,fontSize:"18px"}},"Ajustes"),
-      React.createElement("button",{style:{background:"none",border:"none",color:"#9fb3a8",fontSize:"22px",cursor:"pointer",lineHeight:1},onClick:onClose},"×")
+      React.createElement("div",{style:{fontWeight:700,fontSize:"18px",color:"var(--text)"}},"Ajustes"),
+      React.createElement("button",{style:{background:"none",border:"none",color:"var(--muted)",fontSize:"22px",cursor:"pointer",lineHeight:1},onClick:onClose},"×")
     ),
     React.createElement("div",{style:lbl},"Presupuesto mensual (€)"),
     React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
     React.createElement("button",{style:btn,onClick:saveNums},"Guardar"),
+    React.createElement("div",{style:lbl},"Tema de color"),
+    React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+      THEMES.map(function(t){
+        const on=((state.settings&&state.settings.theme)||"green")===t[0];
+        return React.createElement("button",{key:t[0],onClick:function(){ applyTheme(t[0]); set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{theme:t[0]})}); }); },
+          style:Object.assign({},btn,{flex:"1 1 40%",marginTop:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})},
+          React.createElement("span",{style:{width:14,height:14,borderRadius:"50%",background:t[2],border:"1px solid rgba(128,128,128,.35)",flex:"0 0 auto"}}), t[1]);
+      })
+    ),
     React.createElement("div",{style:lbl},"Moneda de visualización"),
     React.createElement("div",{style:{display:"flex",gap:8}},
       ["EUR","USD"].map(function(c){
         const on=((state.settings&&state.settings.currency)||"EUR")===c;
-        return React.createElement("button",{key:c,onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})}); }); showToast(c==="USD"?"Mostrando en $":"Mostrando en €"); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"#5FD08A":"#16291E",color:on?"#06120C":"#E8F0EB",border:on?"none":"1px solid #2a3a31"})}, c==="EUR"?"€ Euro":"$ Dólar");
+        return React.createElement("button",{key:c,onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})}); }); showToast(c==="USD"?"Mostrando en $":"Mostrando en €"); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, c==="EUR"?"€ Euro":"$ Dólar");
       })
     ),
-    React.createElement("div",{style:{height:"1px",background:"#1e2b24",margin:"18px 0 4px"}}),
+    React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
     React.createElement("div",{style:lbl},"Copia de seguridad"),
     React.createElement("button",{style:btnGhost,onClick:doExport},"⬇️ Exportar datos (JSON)"),
     React.createElement("button",{style:btnGhost,onClick:function(){ fileRef.current&&fileRef.current.click(); }},"⬆️ Importar datos (JSON)"),
@@ -2539,6 +2589,7 @@ function App(){
     }).catch(function(){});
   };
   useEffect(function(){ refreshFx(); },[]);   // refresca el cambio al abrir la app
+  useEffect(function(){ applyTheme(state.settings&&state.settings.theme); },[state.settings&&state.settings.theme]);  // tema de color
   const fetchPrices=function(silent){
     refreshFx();   // y también al pulsar "Precios USD"
     const withTicker=state.investments.filter(function(i){ return i.ticker; });
