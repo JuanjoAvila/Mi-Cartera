@@ -827,6 +827,61 @@ let DISP = { sym:"€", k:1 };
 const eur  = (n)=> NF.format((n||0)*DISP.k)+" "+DISP.sym;
 const eur0 = (n)=> NF0.format(Math.round((n||0)*DISP.k))+" "+DISP.sym;
 function eurParts(n){ const s=NF.format(Math.abs((n||0)*DISP.k)); const p=s.split(','); return {sign:n<0?"-":"", ent:p[0], dec:p[1], sym:DISP.sym}; }
+/* ============================================================
+   i18n — idiomas (ES/EN/CA). t(clave) traduce; si falta, cae al español.
+   Fase 1: navegación, Ajustes y onboarding. El resto se irá traduciendo.
+   ============================================================ */
+let CURLANG = "es";
+const LANGS = [["es","Español"],["en","English"],["ca","Català"]];
+const LANG = {
+  es:{
+    tab_dash:"Resumen", tab_gastos:"Gastos", tab_fijos:"Fijos", tab_inv:"Inversiones", tab_patri:"Patrimonio", tab_debt:"Deudas",
+    brand_sub:"tus finanzas, claras",
+    settings:"Ajustes", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualización",
+    budget_month:"Presupuesto mensual (€)", save:"Guardar", backup:"Copia de seguridad",
+    do_export:"⬇️ Exportar datos (JSON)", do_import:"⬆️ Importar datos (JSON)",
+    th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
+    ob_welcome:"Bienvenido/a 👋",
+    ob_intro:"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas.",
+    ob_budget:"Presupuesto mensual para gastos (€)", ob_accounts:"Tus cuentas (banco y saldo actual)",
+    ob_addacc:"+ Añadir cuenta", ob_start:"Empezar a usar Mi Cartera", ob_start_empty:"Empezar (añadiré cuentas luego)",
+    ob_haveacc:"Ya tengo cuenta · Iniciar sesión",
+    ob_foot:"Podrás editar y añadir todo cuando quieras. Inicia sesión para sincronizar entre dispositivos y recuperar tus datos.",
+    ob_name_ph:"Nombre (opcional, ej. Cuenta corriente)", ob_balance_ph:"Saldo €",
+  },
+  en:{
+    tab_dash:"Summary", tab_gastos:"Spending", tab_fijos:"Fixed", tab_inv:"Investments", tab_patri:"Net worth", tab_debt:"Debts",
+    brand_sub:"your money, clear",
+    settings:"Settings", language:"Language", theme:"Colour theme", currency:"Display currency",
+    budget_month:"Monthly budget (€)", save:"Save", backup:"Backup",
+    do_export:"⬇️ Export data (JSON)", do_import:"⬆️ Import data (JSON)",
+    th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
+    ob_welcome:"Welcome 👋",
+    ob_intro:"Let's set up your wallet in 1 minute. Start with your accounts and budget; you can add investments, debts and fixed costs later in their tabs.",
+    ob_budget:"Monthly spending budget (€)", ob_accounts:"Your accounts (bank and current balance)",
+    ob_addacc:"+ Add account", ob_start:"Start using Mi Cartera", ob_start_empty:"Start (I'll add accounts later)",
+    ob_haveacc:"I already have an account · Sign in",
+    ob_foot:"You can edit and add everything whenever you want. Sign in to sync across devices and recover your data.",
+    ob_name_ph:"Name (optional, e.g. Checking account)", ob_balance_ph:"Balance €",
+  },
+  ca:{
+    tab_dash:"Resum", tab_gastos:"Despeses", tab_fijos:"Fixes", tab_inv:"Inversions", tab_patri:"Patrimoni", tab_debt:"Deutes",
+    brand_sub:"els teus diners, clars",
+    settings:"Configuració", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualització",
+    budget_month:"Pressupost mensual (€)", save:"Desa", backup:"Còpia de seguretat",
+    do_export:"⬇️ Exporta dades (JSON)", do_import:"⬆️ Importa dades (JSON)",
+    th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
+    ob_welcome:"Benvingut/da 👋",
+    ob_intro:"Muntem la teva cartera en 1 minut. Comença pels comptes i el pressupost; les inversions, deutes i despeses fixes les afegeixes després a les seves pestanyes.",
+    ob_budget:"Pressupost mensual per a despeses (€)", ob_accounts:"Els teus comptes (banc i saldo actual)",
+    ob_addacc:"+ Afegeix compte", ob_start:"Comença a usar Mi Cartera", ob_start_empty:"Comença (ja afegiré comptes)",
+    ob_haveacc:"Ja tinc compte · Inicia sessió",
+    ob_foot:"Podràs editar i afegir-ho tot quan vulguis. Inicia sessió per sincronitzar entre dispositius i recuperar les teves dades.",
+    ob_name_ph:"Nom (opcional, ex. Compte corrent)", ob_balance_ph:"Saldo €",
+  },
+};
+const t = (k)=> (LANG[CURLANG] && LANG[CURLANG][k]) || LANG.es[k] || k;
+
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 function parseDate(v){
   if(v instanceof Date) return v;
@@ -2572,32 +2627,39 @@ function SettingsPanel({state, set, onClose, showToast}){
   };
   return React.createElement(React.Fragment,null,
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
-      React.createElement("div",{style:{fontWeight:700,fontSize:"18px",color:"var(--text)"}},"Ajustes"),
+      React.createElement("div",{style:{fontWeight:700,fontSize:"18px",color:"var(--text)"}},t("settings")),
       React.createElement("button",{style:{background:"none",border:"none",color:"var(--muted)",fontSize:"22px",cursor:"pointer",lineHeight:1},onClick:onClose},"×")
     ),
-    React.createElement("div",{style:lbl},"Presupuesto mensual (€)"),
-    React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
-    React.createElement("button",{style:btn,onClick:saveNums},"Guardar"),
-    React.createElement("div",{style:lbl},"Tema de color"),
+    React.createElement("div",{style:lbl},t("language")),
     React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-      THEMES.map(function(t){
-        const on=((state.settings&&state.settings.theme)||"green")===t[0];
-        return React.createElement("button",{key:t[0],onClick:function(){ applyTheme(t[0]); set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{theme:t[0]})}); }); },
-          style:Object.assign({},btn,{flex:"1 1 40%",marginTop:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})},
-          React.createElement("span",{style:{width:14,height:14,borderRadius:"50%",background:t[2],border:"1px solid rgba(128,128,128,.35)",flex:"0 0 auto"}}), t[1]);
+      LANGS.map(function(L){
+        const on=((state.settings&&state.settings.lang)||"es")===L[0];
+        return React.createElement("button",{key:L[0],onClick:function(){ CURLANG=L[0]; set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{lang:L[0]})}); }); },style:Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, L[1]);
       })
     ),
-    React.createElement("div",{style:lbl},"Moneda de visualización"),
+    React.createElement("div",{style:lbl},t("budget_month")),
+    React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
+    React.createElement("button",{style:btn,onClick:saveNums},t("save")),
+    React.createElement("div",{style:lbl},t("theme")),
+    React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+      THEMES.map(function(th){
+        const on=((state.settings&&state.settings.theme)||"green")===th[0];
+        return React.createElement("button",{key:th[0],onClick:function(){ applyTheme(th[0]); set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{theme:th[0]})}); }); },
+          style:Object.assign({},btn,{flex:"1 1 40%",marginTop:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})},
+          React.createElement("span",{style:{width:14,height:14,borderRadius:"50%",background:th[2],border:"1px solid rgba(128,128,128,.35)",flex:"0 0 auto"}}), t("th_"+th[0]));
+      })
+    ),
+    React.createElement("div",{style:lbl},t("currency")),
     React.createElement("div",{style:{display:"flex",gap:8}},
       ["EUR","USD"].map(function(c){
         const on=((state.settings&&state.settings.currency)||"EUR")===c;
-        return React.createElement("button",{key:c,onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})}); }); showToast(c==="USD"?"Mostrando en $":"Mostrando en €"); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, c==="EUR"?"€ Euro":"$ Dólar");
+        return React.createElement("button",{key:c,onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})}); }); showToast(c==="USD"?"Mostrando en $":"Mostrando en €"); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, c==="EUR"?t("cur_eur"):t("cur_usd"));
       })
     ),
     React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
-    React.createElement("div",{style:lbl},"Copia de seguridad"),
-    React.createElement("button",{style:btnGhost,onClick:doExport},"⬇️ Exportar datos (JSON)"),
-    React.createElement("button",{style:btnGhost,onClick:function(){ fileRef.current&&fileRef.current.click(); }},"⬆️ Importar datos (JSON)"),
+    React.createElement("div",{style:lbl},t("backup")),
+    React.createElement("button",{style:btnGhost,onClick:doExport},t("do_export")),
+    React.createElement("button",{style:btnGhost,onClick:function(){ fileRef.current&&fileRef.current.click(); }},t("do_import")),
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
   );
@@ -2629,27 +2691,27 @@ function Onboarding({set, onCloud}){
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:11,marginBottom:6}},
         React.createElement("div",{className:"brand-mark"},React.createElement(I.logo,{width:22,height:22})),
         React.createElement("div",{style:{fontWeight:800,fontSize:20}},"Mi Cartera")),
-      React.createElement("div",{className:"serif",style:{fontSize:26,margin:"14px 0 6px"}},"Bienvenido/a 👋"),
-      React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.5}},"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas."),
+      React.createElement("div",{className:"serif",style:{fontSize:26,margin:"14px 0 6px"}},t("ob_welcome")),
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.5}},t("ob_intro")),
 
-      React.createElement("div",{style:lbl},"Presupuesto mensual para gastos (€)"),
+      React.createElement("div",{style:lbl},t("ob_budget")),
       React.createElement("input",{style:inp,type:"number",inputMode:"decimal",placeholder:"ej. 700",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
 
-      React.createElement("div",{style:lbl},"Tus cuentas (banco y saldo actual)"),
+      React.createElement("div",{style:lbl},t("ob_accounts")),
       accs.map(function(a){ return React.createElement("div",{key:a.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:8}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement(Mono,{ent:a.ent,size:34}),React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,fontSize:14}},a.name),React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}},entOf(a.ent).label))),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{className:"num",style:{fontWeight:700}},eur(a.value)),React.createElement("button",{onClick:function(){ delAcc(a.id); },style:{background:"none",border:"none",color:"var(--coral)",fontSize:16,cursor:"pointer"}},"×"))
       ); }),
       React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
         React.createElement("select",{style:Object.assign({},inp,{flex:"0 0 38%"}),value:ent,onChange:function(e){ setEnt(e.target.value); }}, Object.keys(ENT).filter(function(k){return k!=="familia";}).map(function(k){ return React.createElement("option",{key:k,value:k},ENT[k].label); })),
-        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:"Saldo €",inputMode:"decimal",value:val,onChange:function(e){ setVal(e.target.value); }})
+        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob_balance_ph"),inputMode:"decimal",value:val,onChange:function(e){ setVal(e.target.value); }})
       ),
-      React.createElement("input",{style:Object.assign({},inp,{marginTop:8}),placeholder:"Nombre (opcional, ej. Cuenta corriente)",value:name,onChange:function(e){ setName(e.target.value); }}),
-      React.createElement("button",{style:Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)",marginTop:10}),onClick:addAcc},"+ Añadir cuenta"),
+      React.createElement("input",{style:Object.assign({},inp,{marginTop:8}),placeholder:t("ob_name_ph"),value:name,onChange:function(e){ setName(e.target.value); }}),
+      React.createElement("button",{style:Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)",marginTop:10}),onClick:addAcc},t("ob_addacc")),
 
-      React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:finish}, accs.length?"Empezar a usar Mi Cartera":"Empezar (añadiré cuentas luego)"),
-      onCloud && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:"14px",border:"1px solid var(--line)",background:"transparent",color:"var(--blue)",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:10},onClick:onCloud},"Ya tengo cuenta · Iniciar sesión"),
-      React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:14}},"Podrás editar y añadir todo cuando quieras. Inicia sesión para sincronizar entre dispositivos y recuperar tus datos.")
+      React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:finish}, accs.length?t("ob_start"):t("ob_start_empty")),
+      onCloud && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:"14px",border:"1px solid var(--line)",background:"transparent",color:"var(--blue)",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:10},onClick:onCloud},t("ob_haveacc")),
+      React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:14}},t("ob_foot"))
     )
   );
 }
@@ -2665,6 +2727,7 @@ function App(){
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(null),2200); };
   // Moneda de visualización: convierte todos los importes (en €) a la moneda elegida en Ajustes.
   (function(){ const c=(state.settings&&state.settings.currency)||"EUR"; DISP.sym=c==="USD"?"$":"€"; DISP.k=c==="USD"?((state.fx>0)?1/state.fx:1):1; })();
+  CURLANG = (state.settings&&state.settings.lang) || "es";   // idioma activo (i18n)
 
   /* ---------- Sincronización en la nube (Supabase) ---------- */
   const [session,setSession]=useState(null);
@@ -3032,7 +3095,7 @@ function App(){
     ),
     React.createElement("div",{className:"tabbar-wrap"},
       React.createElement("div",{className:"tabbar",ref:tabbarRef},
-        TABS.map((t,i)=>React.createElement("button",{key:t.id,className:"tab"+(tab===i?" active":""),onClick:()=>setTab(i)},React.createElement(t.icon,null),t.label))
+        TABS.map((tb,i)=>React.createElement("button",{key:tb.id,className:"tab"+(tab===i?" active":""),onClick:()=>setTab(i)},React.createElement(tb.icon,null),t("tab_"+tb.id)))
       )
     ),
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
