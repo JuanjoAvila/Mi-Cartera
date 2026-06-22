@@ -19,6 +19,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.35.0] — 2026-06-22
+### Fixed
+- **Arrastre del Resumen:** al mantener pulsada una tarjeta ya no se selecciona el texto (se bugeaba el movimiento). Las tarjetas no son seleccionables.
+- **Texto del ahorro:** «¿De dónde sale el ahorro?» → «¿A dónde va tu ahorro?» (es hacia dónde va, a inversión).
+
 ## [3.34.1] — 2026-06-21
 ### Added
 - **Más restaurantes autodetectados:** KFC, Five Guys, Goiko, TGB, Taco Bell, Domino's, Subway, Starbucks, Foster's, 100 Montaditos, La Sureña, Dunkin', Popeyes, Nando's, Udon, La Tagliatella, Ginos y muchos más caen ahora en «Bares y restaurantes» (🍽️) en vez de «Otros». Los que entren por sincronización se recategorizan solos.
