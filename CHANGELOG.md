@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.37.0] — 2026-06-22
+### Added — Idiomas (fase 2): Resumen y Gastos · [#14](https://github.com/JuanjoAvila/Mi-Cartera/issues/14)
+- Traducidas al completo (ES/EN/CA) las pestañas **Resumen** y **Gastos**, incluidos meses, categorías, fechas (locale) y «Hoy/Ayer». Helper `tf()` para textos con variables.
+
 ## [3.36.0] — 2026-06-22
 ### Added — Idiomas (fase 1) · [#14](https://github.com/JuanjoAvila/Mi-Cartera/issues/14)
 - **Selector de idioma en Ajustes: Español / English / Català.** Sistema de traducción (`t()`) con diccionario y **fallback a español** (lo que aún no está traducido se ve en español, nada se rompe).

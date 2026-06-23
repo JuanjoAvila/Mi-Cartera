@@ -642,6 +642,7 @@ const CATEGORIES = [
 const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
 const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰" };
 const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (CAT[id] || CAT.otros);
+const catName = (id)=> t("cat_"+(catOf(id).id));   // nombre traducido de la categoría
 
 /* Autodetección de categoría por comercio (mismas keywords que el GAS, ampliadas) */
 /* Overrides personales: comercios concretos que mapeas a tu manera (substring en minúsculas) */
@@ -881,6 +882,90 @@ const LANG = {
   },
 };
 const t = (k)=> (LANG[CURLANG] && LANG[CURLANG][k]) || LANG.es[k] || k;
+// textos con variables: tf("key",{name:"x"}) reemplaza {name} en la traducción
+function tf(k,vals){ let s=t(k); if(vals) for(const v in vals) s=s.split("{"+v+"}").join(vals[v]); return s; }
+// meses traducidos (largos y cortos)
+const MON_I18N = {
+  es:{ long:["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"], short:["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"] },
+  en:{ long:["January","February","March","April","May","June","July","August","September","October","November","December"], short:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] },
+  ca:{ long:["gener","febrer","març","abril","maig","juny","juliol","agost","setembre","octubre","novembre","desembre"], short:["Gen","Feb","Mar","Abr","Mai","Jun","Jul","Ago","Set","Oct","Nov","Des"] },
+};
+const monthLong  = (i)=> ((MON_I18N[CURLANG]||MON_I18N.es).long[i])||"";
+const monthShort = (i)=> ((MON_I18N[CURLANG]||MON_I18N.es).short[i])||"";
+const LOCALE = { es:"es-ES", en:"en-GB", ca:"ca-ES" };
+const loc = ()=> LOCALE[CURLANG] || "es-ES";
+
+/* --- Diccionario: pestaña RESUMEN (Dashboard) --- */
+Object.assign(LANG.es,{
+  d_networth:"Patrimonio neto", d_assets:"Activos", d_debts:"Deudas", d_dist:"Distribución de activos",
+  d_liquid:"Liquidez", d_invest:"Inversiones", d_goods:"Bienes",
+  d_budget:"Presupuesto", d_streak:"Racha sin pasarte", d_months:"meses",
+  d_inbudget:"{m} va dentro de límite ✓", d_overbudget:"{m} se ha pasado",
+  d_guilt_ok:"para gastar sin culpa este mes 😎", d_guilt_over_a:"Este mes te has pasado ",
+  d_fixed:"Gastos fijos", d_fixed_sub:"media/mes · este mes {x}", d_saving:"Ahorro", d_saving_sub:"al mes a inversión",
+  d_saving_card:"¿A dónde va tu ahorro?", d_saving_card_sub:"{x}/mes a inversión", d_saving_total:"Total ahorrado/mes",
+  d_culprit:"Categoría culpable", d_culprit_sub:"Lo que más gastas en {m}",
+  d_noexp_t:"Aún sin gastos", d_noexp_d:"Sincroniza o apunta un gasto.", d_culprit_hint:"👑 {name} se lleva {pct}% de tu gasto este mes.",
+  wl_budget:"Presupuesto y racha", wl_culpa:"Sin culpa (lo que te queda)", wl_fixedsave:"Gastos fijos y ahorro", wl_savings:"A dónde va tu ahorro",
+  personalize:"✎ Personalizar", done:"Listo ✓", drag_hint:"mantén pulsada una tarjeta para moverla",
+  w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
+  // Gastos
+  g_month:"Este mes", g_last:"Mes pasado", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
+  g_totalfilt:"Total filtrado", g_n_one:"gasto", g_n_many:"gastos",
+  g_sync:"Sincronizar", g_syncing:"Sincronizando…", g_add:"Apuntar",
+  g_lastsync:"Última sincronización: {d}", g_nosync:"Sin sincronizar todavía",
+  g_gasto:"💸 Gasto", g_ingreso:"💰 Ingreso", g_concept_g:"Concepto (ej. Cena)", g_concept_i:"Concepto (ej. me devolvió Ana)",
+  g_addgasto:"Añadir gasto", g_addingreso:"Añadir ingreso",
+  g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
+  g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado",
+  cat_super:"Supermercado", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
+});
+Object.assign(LANG.en,{
+  d_networth:"Net worth", d_assets:"Assets", d_debts:"Debts", d_dist:"Asset distribution",
+  d_liquid:"Cash", d_invest:"Investments", d_goods:"Property",
+  d_budget:"Budget", d_streak:"Streak under budget", d_months:"months",
+  d_inbudget:"{m} is within budget ✓", d_overbudget:"{m} went over budget",
+  d_guilt_ok:"to spend guilt-free this month 😎", d_guilt_over_a:"You've gone over this month by ",
+  d_fixed:"Fixed costs", d_fixed_sub:"avg/month · this month {x}", d_saving:"Saving", d_saving_sub:"per month to investing",
+  d_saving_card:"Where does your saving go?", d_saving_card_sub:"{x}/month to investing", d_saving_total:"Total saved/month",
+  d_culprit:"Top category", d_culprit_sub:"What you spend most on in {m}",
+  d_noexp_t:"No spending yet", d_noexp_d:"Sync or add an expense.", d_culprit_hint:"👑 {name} takes {pct}% of your spending this month.",
+  wl_budget:"Budget & streak", wl_culpa:"Guilt-free (what's left)", wl_fixedsave:"Fixed costs & saving", wl_savings:"Where your saving goes",
+  personalize:"✎ Customise", done:"Done ✓", drag_hint:"press and hold a card to move it",
+  w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
+  g_month:"This month", g_last:"Last month", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
+  g_totalfilt:"Filtered total", g_n_one:"expense", g_n_many:"expenses",
+  g_sync:"Sync", g_syncing:"Syncing…", g_add:"Add",
+  g_lastsync:"Last sync: {d}", g_nosync:"Not synced yet",
+  g_gasto:"💸 Expense", g_ingreso:"💰 Income", g_concept_g:"What (e.g. Dinner)", g_concept_i:"What (e.g. Ana paid me back)",
+  g_addgasto:"Add expense", g_addingreso:"Add income",
+  g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
+  g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted",
+  cat_super:"Groceries", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
+});
+Object.assign(LANG.ca,{
+  d_networth:"Patrimoni net", d_assets:"Actius", d_debts:"Deutes", d_dist:"Distribució d'actius",
+  d_liquid:"Liquiditat", d_invest:"Inversions", d_goods:"Béns",
+  d_budget:"Pressupost", d_streak:"Ratxa sense passar-te", d_months:"mesos",
+  d_inbudget:"{m} va dins del límit ✓", d_overbudget:"{m} s'ha passat",
+  d_guilt_ok:"per gastar sense culpa aquest mes 😎", d_guilt_over_a:"Aquest mes t'has passat ",
+  d_fixed:"Despeses fixes", d_fixed_sub:"mitjana/mes · aquest mes {x}", d_saving:"Estalvi", d_saving_sub:"al mes a inversió",
+  d_saving_card:"On va el teu estalvi?", d_saving_card_sub:"{x}/mes a inversió", d_saving_total:"Total estalviat/mes",
+  d_culprit:"Categoria culpable", d_culprit_sub:"On més gastes al {m}",
+  d_noexp_t:"Encara sense despeses", d_noexp_d:"Sincronitza o apunta una despesa.", d_culprit_hint:"👑 {name} s'emporta el {pct}% de la teva despesa aquest mes.",
+  wl_budget:"Pressupost i ratxa", wl_culpa:"Sense culpa (el que et queda)", wl_fixedsave:"Despeses fixes i estalvi", wl_savings:"On va el teu estalvi",
+  personalize:"✎ Personalitza", done:"Fet ✓", drag_hint:"mantén premuda una targeta per moure-la",
+  w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
+  g_month:"Aquest mes", g_last:"Mes passat", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
+  g_totalfilt:"Total filtrat", g_n_one:"despesa", g_n_many:"despeses",
+  g_sync:"Sincronitza", g_syncing:"Sincronitzant…", g_add:"Apunta",
+  g_lastsync:"Última sincronització: {d}", g_nosync:"Encara sense sincronitzar",
+  g_gasto:"💸 Despesa", g_ingreso:"💰 Ingrés", g_concept_g:"Concepte (ex. Sopar)", g_concept_i:"Concepte (ex. l'Ana m'ho ha tornat)",
+  g_addgasto:"Afegeix despesa", g_addingreso:"Afegeix ingrés",
+  g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
+  g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat",
+  cat_super:"Supermercat", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
+});
 
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 function parseDate(v){
@@ -893,10 +978,10 @@ function parseDate(v){
 }
 const dayKey=(d)=> d.toISOString().slice(0,10);
 function relDay(d){
-  const t=new Date(); const y=new Date(); y.setDate(t.getDate()-1);
-  if(dayKey(d)===dayKey(t)) return "Hoy";
-  if(dayKey(d)===dayKey(y)) return "Ayer";
-  return d.getDate()+" "+MONTHS[d.getMonth()].slice(0,3);
+  const tn=new Date(); const y=new Date(); y.setDate(tn.getDate()-1);
+  if(dayKey(d)===dayKey(tn)) return t("g_today");
+  if(dayKey(d)===dayKey(y)) return t("g_yesterday");
+  return d.getDate()+" "+monthShort(d.getMonth());
 }
 const startOfMonth=(d)=>{ d=d||new Date(); return new Date(d.getFullYear(),d.getMonth(),1); };
 
@@ -1303,13 +1388,13 @@ function dashOrderOf(s, allIds){
   return saved.concat(allIds.filter(function(id){ return saved.indexOf(id)<0; }));
 }
 function Dashboard({state, totals, set}){
-  const t=totals;
+  const tt=totals;
   const [editing,setEditing]=useState(false);
   const [bEdit,setBEdit]=useState(false);
   const [bDraft,setBDraft]=useState("");
   const saveBudget=function(){ const b=parseFloat(String(bDraft).replace(',','.')); if(b>=0) set(function(s){ return Object.assign({},s,{budget:b}); }); setBEdit(false); };
-  const ratio=t.thisMonthSpent/state.budget;
-  const monthName=MONTHS[new Date().getMonth()];
+  const ratio=tt.thisMonthSpent/state.budget;
+  const monthName=monthLong(new Date().getMonth());
 
   const byCat={};
   state.expenses.filter(e=>parseDate(e.date)>=startOfMonth()).forEach(e=>{ byCat[e.category]=(byCat[e.category]||0)+e.amount; });
@@ -1320,96 +1405,96 @@ function Dashboard({state, totals, set}){
 
   // ---- Widgets del Resumen (cada uno con su render) ----
   const W=[];
-  W.push({id:"hero", label:"Patrimonio neto", lock:true, el:
+  W.push({id:"hero", label:t("d_networth"), lock:true, el:
     React.createElement("div",{className:"hero"},
-      React.createElement("div",{className:"hero-label"},"Patrimonio neto"),
-      (function(){ const p=eurParts(t.netWorth); return React.createElement("div",{className:"hero-amount serif num"}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
+      React.createElement("div",{className:"hero-label"},t("d_networth")),
+      (function(){ const p=eurParts(tt.netWorth); return React.createElement("div",{className:"hero-amount serif num"}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
       React.createElement("div",{className:"hero-pills"},
-        React.createElement("div",{className:"pill "+(t.delta>=0?"pos":"neg")},
-          React.createElement(t.delta>=0?I.up:I.down,null), (t.delta>=0?"+":"")+eur(t.delta)+" · "+(t.delta>=0?"+":"")+t.deltaPct.toFixed(1)+"%"),
-        React.createElement("div",{className:"pill ghost"},"Activos "+eur0(t.activos)),
-        React.createElement("div",{className:"pill ghost"},"Deudas "+eur0(t.debtTotal))
+        React.createElement("div",{className:"pill "+(tt.delta>=0?"pos":"neg")},
+          React.createElement(tt.delta>=0?I.up:I.down,null), (tt.delta>=0?"+":"")+eur(tt.delta)+" · "+(tt.delta>=0?"+":"")+tt.deltaPct.toFixed(1)+"%"),
+        React.createElement("div",{className:"pill ghost"},t("d_assets")+" "+eur0(tt.activos)),
+        React.createElement("div",{className:"pill ghost"},t("d_debts")+" "+eur0(tt.debtTotal))
       ),
-      React.createElement(Sparkline,{data:state.history,current:t.netWorth})
+      React.createElement(Sparkline,{data:state.history,current:tt.netWorth})
     )});
-  W.push({id:"dist", label:"Distribución de activos", el:
-    React.createElement(CollapsibleCard,{title:"Distribución de activos",dot:"#5FD08A",storageKey:"d_dist"},
+  W.push({id:"dist", label:t("d_dist"), el:
+    React.createElement(CollapsibleCard,{title:t("d_dist"),dot:"#5FD08A",storageKey:"d_dist"},
       React.createElement(StackedBar,{segments:[
-        {label:"Liquidez",value:t.liquid,color:"var(--mint)"},
-        {label:"Inversiones",value:t.invested,color:"var(--blue)"},
-        {label:"Bienes",value:t.assetsTotal,color:"var(--cream)"},
+        {label:t("d_liquid"),value:tt.liquid,color:"var(--mint)"},
+        {label:t("d_invest"),value:tt.invested,color:"var(--blue)"},
+        {label:t("d_goods"),value:tt.assetsTotal,color:"var(--cream)"},
       ]})
     )});
-  W.push({id:"budget", label:"Presupuesto y racha", el:
+  W.push({id:"budget", label:t("wl_budget"), el:
     React.createElement("div",{className:"grid2"},
       React.createElement("div",{className:"metric"},
         React.createElement("div",{className:"mlabel",style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6}},
-          "Presupuesto · "+monthName,
+          t("d_budget")+" · "+monthName,
           React.createElement("button",{className:"pencil-btn",onClick:function(){ setBDraft(String(state.budget||"")); setBEdit(true); }},"✎")),
         bEdit
           ? React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:6,margin:"18px 0"}},
               React.createElement("input",{className:"editv num",style:{width:90,textAlign:"center"},inputMode:"decimal",autoFocus:true,value:bDraft,onChange:function(e){ setBDraft(e.target.value); },onKeyDown:function(e){ if(e.key==="Enter") saveBudget(); }}),
               React.createElement("span",{style:{fontSize:13,color:"var(--muted-2)"}},"€"),
               React.createElement("button",{className:"edit-link save",onClick:saveBudget},"OK"))
-          : React.createElement(Ring,{ratio:ratio,spent:t.thisMonthSpent,budget:state.budget})
+          : React.createElement(Ring,{ratio:ratio,spent:tt.thisMonthSpent,budget:state.budget})
       ),
       React.createElement("div",{className:"metric"},
-        React.createElement("div",{className:"mlabel"},"Racha sin pasarte"),
+        React.createElement("div",{className:"mlabel"},t("d_streak")),
         React.createElement("div",{className:"streak-row"},
           React.createElement("span",{className:"streak-flame"},state.streak>=3?"🔥":"✨"),
           React.createElement("div",null,
             React.createElement("div",{className:"streak-n num"},state.streak),
-            React.createElement("div",{style:{fontSize:12,color:"#5E7468",fontWeight:600}},"meses")
+            React.createElement("div",{style:{fontSize:12,color:"#5E7468",fontWeight:600}},t("d_months"))
           )
         ),
         React.createElement("div",{className:"pips"}, pips.map((on,i)=>React.createElement("span",{key:i,className:"pip"+(on?" on":"")}))),
-        React.createElement("div",{className:"hint",style:{marginTop:8}}, ratio<=1?monthName+" va dentro de límite ✓":monthName+" se ha pasado")
+        React.createElement("div",{className:"hint",style:{marginTop:8}}, ratio<=1?tf("d_inbudget",{m:monthName}):tf("d_overbudget",{m:monthName}))
       )
     )});
-  W.push({id:"culpa", label:"Sin culpa (lo que te queda)", el:
-    (function(){ const rem=state.budget-t.thisMonthSpent; return React.createElement("div",{className:"culpa"+(rem>=0?"":" over")},
+  W.push({id:"culpa", label:t("wl_culpa"), el:
+    (function(){ const rem=state.budget-tt.thisMonthSpent; return React.createElement("div",{className:"culpa"+(rem>=0?"":" over")},
       rem>=0
-        ? React.createElement(React.Fragment,null, React.createElement("span",{className:"big num"},eur0(rem)), React.createElement("span",null," para gastar sin culpa este mes 😎"))
-        : React.createElement(React.Fragment,null, React.createElement("span",null,"Este mes te has pasado "), React.createElement("span",{className:"big num"},eur0(-rem)), React.createElement("span",null," 😬"))
+        ? React.createElement(React.Fragment,null, React.createElement("span",{className:"big num"},eur0(rem)), React.createElement("span",null," "+t("d_guilt_ok")))
+        : React.createElement(React.Fragment,null, React.createElement("span",null,t("d_guilt_over_a")), React.createElement("span",{className:"big num"},eur0(-rem)), React.createElement("span",null," 😬"))
     ); })() });
-  W.push({id:"fixedsave", label:"Gastos fijos y ahorro", el:
+  W.push({id:"fixedsave", label:t("wl_fixedsave"), el:
     React.createElement("div",{className:"grid2"},
       React.createElement("div",{className:"metric tall"},
-        React.createElement("div",{className:"mlabel"},"Gastos fijos"),
-        React.createElement("div",{className:"metric-big serif num"},eur0(t.fijosMensual)),
-        React.createElement("div",{className:"metric-sub"},"media/mes · este mes "+eur0(t.cargosMes))
+        React.createElement("div",{className:"mlabel"},t("d_fixed")),
+        React.createElement("div",{className:"metric-big serif num"},eur0(tt.fijosMensual)),
+        React.createElement("div",{className:"metric-sub"},tf("d_fixed_sub",{x:eur0(tt.cargosMes)}))
       ),
       React.createElement("div",{className:"metric tall"},
-        React.createElement("div",{className:"mlabel"},"Ahorro"),
-        React.createElement("div",{className:"metric-big serif num",style:{color:"#5FD08A"}},eur0(t.ahorroMensual)),
-        React.createElement("div",{className:"metric-sub"},"al mes a inversión")
+        React.createElement("div",{className:"mlabel"},t("d_saving")),
+        React.createElement("div",{className:"metric-big serif num",style:{color:"#5FD08A"}},eur0(tt.ahorroMensual)),
+        React.createElement("div",{className:"metric-sub"},t("d_saving_sub"))
       )
     )});
-  W.push({id:"savings", label:"A dónde va tu ahorro", el:
-    React.createElement(CollapsibleCard,{title:"¿A dónde va tu ahorro?",sub:eur0(t.ahorroMensual)+"/mes a inversión",dot:"#5FD08A",defaultOpen:false,storageKey:"d_ahorro"},
+  W.push({id:"savings", label:t("wl_savings"), el:
+    React.createElement(CollapsibleCard,{title:t("d_saving_card"),sub:tf("d_saving_card_sub",{x:eur0(tt.ahorroMensual)}),dot:"#5FD08A",defaultOpen:false,storageKey:"d_ahorro"},
       state.aportaciones.map(function(ap){
         return React.createElement("div",{className:"row",key:ap.id},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:ap.ent,size:38}),
             React.createElement("div",null,React.createElement("div",{className:"rname"},ap.name),React.createElement("div",{className:"rsub"},entOf(ap.ent).label))),
           React.createElement("div",{className:"rval num",style:{color:"#5FD08A"}},eur0(ap.amount)+"/mes"));
       }),
-      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total ahorrado/mes"),React.createElement("span",{className:"num"},eur(t.ahorroMensual)))
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("d_saving_total")),React.createElement("span",{className:"num"},eur(tt.ahorroMensual)))
     )});
-  W.push({id:"culprit", label:"Categoría culpable", el:
-    React.createElement(CollapsibleCard,{title:"Categoría culpable",sub:"Lo que más gastas en "+monthName,dot:top?top.color:"#8FA89A",storageKey:"d_culprit"},
+  W.push({id:"culprit", label:t("d_culprit"), el:
+    React.createElement(CollapsibleCard,{title:t("d_culprit"),sub:tf("d_culprit_sub",{m:monthName}),dot:top?top.color:"#8FA89A",storageKey:"d_culprit"},
       catList.length===0
-        ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},"Aún sin gastos"),"Sincroniza o apunta un gasto.")
+        ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("d_noexp_t")),t("d_noexp_d"))
         : React.createElement("div",{className:"culprit-row"},
             React.createElement(MiniPie,{slices:catList.map(c=>({value:c.v,color:c.color}))}),
             React.createElement("div",{className:"legend"},
               catList.slice(0,5).map(c=>React.createElement("div",{className:"legend-item",key:c.id},
                 React.createElement("span",{className:"sw",style:{background:c.color}}),
-                React.createElement("span",{className:"nm"},c.icon+" "+c.name),
+                React.createElement("span",{className:"nm"},c.icon+" "+catName(c.id)),
                 React.createElement("span",{className:"vl num"},eur0(c.v))
               ))
             )
           ),
-      top && React.createElement("div",{className:"hint"},"👑 "+top.name+" se lleva "+Math.round(top.v/t.thisMonthSpent*100)+"% de tu gasto este mes.")
+      top && React.createElement("div",{className:"hint"},tf("d_culprit_hint",{name:top.name,pct:Math.round(top.v/tt.thisMonthSpent*100)}))
     )});
 
   // ---- render con orden + visibilidad ----
@@ -1500,8 +1585,8 @@ function Dashboard({state, totals, set}){
 
   return React.createElement("div",{ref:listRef,style:{position:"relative"}},
     React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10,marginBottom:8}},
-      !editing && React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"mantén pulsada una tarjeta para moverla"),
-      React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:function(){ setEditing(!editing); }}, editing?"Listo ✓":"✎ Personalizar")
+      !editing && React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},t("drag_hint")),
+      React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:function(){ setEditing(!editing); }}, editing?t("done"):t("personalize"))
     ),
     editing
       ? order.map(function(id,idx){
@@ -1514,8 +1599,8 @@ function Dashboard({state, totals, set}){
                 React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
                 React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓"),
                 w.lock
-                  ? React.createElement("span",{className:"wedit-lock"},"fijo")
-                  : React.createElement("button",{className:isHidden?"on":"",onClick:function(){ toggleHide(id); }}, isHidden?"Mostrar":"Ocultar")
+                  ? React.createElement("span",{className:"wedit-lock"},t("w_fixed"))
+                  : React.createElement("button",{className:isHidden?"on":"",onClick:function(){ toggleHide(id); }}, isHidden?t("w_show"):t("w_hide"))
               )
             ),
             React.createElement("div",{className:"wedit-body"}, w.el)
@@ -1569,7 +1654,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const delExpense=function(e){
     set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:(s.deleted||[]).concat([keyOfE(e)]) }); });
     if(cloud.enabled()) cloud.deleteExpense(e).catch(function(){});
-    showToast("Eliminado");
+    showToast(t("g_deleted"));
   };
 
   const filtered=useMemo(()=> state.expenses
@@ -1592,76 +1677,76 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 
   const addExpense=()=>{
     const amt=parseFloat(String(form.amount).replace(',','.'))||0;
-    if(amt<=0){ showToast("Pon un importe válido"); return; }
+    if(amt<=0){ showToast(t("g_invalid")); return; }
     const signed=form.income? -amt : amt;   // ingreso = negativo (resta del gasto del mes)
     const ex={ id:uid(), date:new Date().toISOString(), merchant:form.merchant||(form.income?"Ingreso":"Gasto"), amount:signed, category:form.income?"ingreso":form.category, source:"manual" };
     set(s=>Object.assign({},s,{expenses:[ex].concat(s.expenses)}));
     if(cloud.enabled()) cloud.addExpense(ex).catch(function(){});   // lo guarda también en la BD
-    setForm({merchant:"",amount:"",category:form.category,income:false}); setAdding(false); showToast(form.income?"✓ Ingreso apuntado":"✓ Gasto apuntado");
+    setForm({merchant:"",amount:"",category:form.category,income:false}); setAdding(false); showToast(form.income?t("g_saved_i"):t("g_saved_g"));
   };
 
   return React.createElement("div",null,
     React.createElement("div",{className:"filters"},
-      React.createElement("div",Object.assign({className:"chips"},stopSwipe), DATE_PRESETS.map(p=>React.createElement("button",{key:p.id,className:"chip"+(preset===p.id?" active":""),onClick:()=>setPreset(p.id)},p.label))),
+      React.createElement("div",Object.assign({className:"chips"},stopSwipe), DATE_PRESETS.map(p=>React.createElement("button",{key:p.id,className:"chip"+(preset===p.id?" active":""),onClick:()=>setPreset(p.id)},t("g_"+p.id)))),
       preset==="custom" && React.createElement("div",Object.assign({className:"range"},stopSwipe),
         React.createElement("input",{type:"date",value:range.from,onChange:e=>setRange(Object.assign({},range,{from:e.target.value}))}),
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
       React.createElement("div",Object.assign({className:"cat-select"},stopSwipe),
-        React.createElement("button",{className:"chip"+(sel.length===0?" active":""),onClick:()=>setSel([])},"Todas"),
-        CATEGORIES.map(c=>React.createElement("button",{key:c.id,className:"chip"+(sel.indexOf(c.id)!==-1?" active":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+c.name.split(" ")[0]))
+        React.createElement("button",{className:"chip"+(sel.length===0?" active":""),onClick:()=>setSel([])},t("g_allcats")),
+        CATEGORIES.map(c=>React.createElement("button",{key:c.id,className:"chip"+(sel.indexOf(c.id)!==-1?" active":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       )
     ),
     React.createElement("div",{className:"total-bar"},
       React.createElement("div",null,
-        React.createElement("div",{className:"tl"},"Total filtrado"),
+        React.createElement("div",{className:"tl"},t("g_totalfilt")),
         React.createElement("div",{className:"tn num"},eur(total))
       ),
-      React.createElement("div",{className:"cnt"}, filtered.length+(filtered.length===1?" gasto":" gastos"))
+      React.createElement("div",{className:"cnt"}, filtered.length+" "+(filtered.length===1?t("g_n_one"):t("g_n_many")))
     ),
     React.createElement("div",{className:"action-row"},
-      React.createElement("button",{className:"btn btn-primary",style:{flex:1},onClick:onSync,disabled:syncing}, syncing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),"Sincronizando…"):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:16,height:16}),"Sincronizar")),
-      React.createElement("button",{className:"btn btn-ghost",onClick:()=>setAdding(!adding)},React.createElement(I.plus,{width:16,height:16}),"Apuntar")
+      React.createElement("button",{className:"btn btn-primary",style:{flex:1},onClick:onSync,disabled:syncing}, syncing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),t("g_syncing")):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:16,height:16}),t("g_sync"))),
+      React.createElement("button",{className:"btn btn-ghost",onClick:()=>setAdding(!adding)},React.createElement(I.plus,{width:16,height:16}),t("g_add"))
     ),
     React.createElement("div",{className:"sync-note"},
       React.createElement("span",{className:"sync-dot "+(syncStatus.type||"idle")}),
-      syncStatus.msg || (state.lastSync?"Última sincronización: "+new Date(state.lastSync).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):"Sin sincronizar todavía")
+      syncStatus.msg || (state.lastSync?tf("g_lastsync",{d:new Date(state.lastSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):t("g_nosync"))
     ),
     adding && React.createElement("div",{className:"add-form"},
       React.createElement("div",{className:"af-row"},
-        React.createElement("button",{className:"btn "+(!form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:false}))},"💸 Gasto"),
-        React.createElement("button",{className:"btn "+(form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:true}))},"💰 Ingreso")
+        React.createElement("button",{className:"btn "+(!form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:false}))},t("g_gasto")),
+        React.createElement("button",{className:"btn "+(form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:true}))},t("g_ingreso"))
       ),
-      React.createElement("input",{className:"af-in",placeholder:form.income?"Concepto (ej. me devolvió Ana)":"Concepto (ej. Cena)",value:form.merchant,onChange:e=>setForm(Object.assign({},form,{merchant:e.target.value}))}),
+      React.createElement("input",{className:"af-in",placeholder:form.income?t("g_concept_i"):t("g_concept_g"),value:form.merchant,onChange:e=>setForm(Object.assign({},form,{merchant:e.target.value}))}),
       React.createElement("div",{className:"af-row"},
         React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:form.amount,onChange:e=>setForm(Object.assign({},form,{amount:e.target.value}))}),
-        !form.income && React.createElement("select",{className:"af-in",value:form.category,onChange:e=>setForm(Object.assign({},form,{category:e.target.value}))}, CATEGORIES.map(c=>React.createElement("option",{key:c.id,value:c.id},c.icon+" "+c.name)))
+        !form.income && React.createElement("select",{className:"af-in",value:form.category,onChange:e=>setForm(Object.assign({},form,{category:e.target.value}))}, CATEGORIES.map(c=>React.createElement("option",{key:c.id,value:c.id},c.icon+" "+catName(c.id))))
       ),
-      React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?"Añadir ingreso":"Añadir gasto")
+      React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?t("g_addingreso"):t("g_addgasto"))
     ),
     React.createElement("div",{className:"card",style:{marginTop:14}},
       React.createElement("div",{className:"card-body",style:{paddingTop:6}},
         shown.length===0
-          ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},"No hay gastos aquí"),"Cambia el filtro, sincroniza o apunta uno.")
+          ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map((g,i)=> g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
               : (function(){ const c=catOf(g.e.category); return React.createElement("div",{className:"ex-row",key:g.e.id||i},
                   React.createElement("div",{className:"ex-ic",style:{borderColor:c.color+"55",color:c.color}},c.icon),
                   React.createElement("div",{className:"ex-mid"},
-                    React.createElement("div",{className:"ex-merchant"},g.e.merchant||"Gasto"),
+                    React.createElement("div",{className:"ex-merchant"},g.e.merchant||"—"),
                     React.createElement("div",{className:"ex-meta"},
-                      React.createElement("span",{className:"ex-cat",style:{color:c.color}},c.name),
-                      React.createElement("span",null,g.d.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'}))
+                      React.createElement("span",{className:"ex-cat",style:{color:c.color}},catName(g.e.category)),
+                      React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}))
                     )
                   ),
                   React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
                     React.createElement("div",{className:"ex-amt num",style: g.e.amount<0?{color:"var(--mint)"}:null}, (g.e.amount<0?"+":"−")+eur(Math.abs(g.e.amount))),
-                    React.createElement("button",{className:"ex-del",title:"Eliminar",onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
+                    React.createElement("button",{className:"ex-del",title:t("w_hide"),onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
                   )
                 ); })()
           ),
-        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},"Cargando más…")
+        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
       )
     )
   );
@@ -1936,14 +2021,14 @@ function Wealth({state, set, totals}){
   const astEd=useEditable(state.assets,it=>set(s=>Object.assign({},s,{assets:it})));
   const accSum=totals.liquid;
   const astSum=state.assets.reduce((a,i)=>a+i.value,0);
-  const t=totals;
+  const tt=totals;
   return React.createElement("div",null,
     React.createElement("div",{className:"hero",style:{marginBottom:14}},
       React.createElement("div",{className:"hero-label"},"Patrimonio neto"),
-      (function(){const p=eurParts(t.netWorth);return React.createElement("div",{className:"hero-amount serif num"},p.ent,React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));})(),
+      (function(){const p=eurParts(tt.netWorth);return React.createElement("div",{className:"hero-amount serif num"},p.ent,React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));})(),
       React.createElement("div",{className:"hero-pills"},
-        React.createElement("div",{className:"pill ghost"},"Activos "+eur0(t.activos)),
-        React.createElement("div",{className:"pill neg"},"Deudas "+eur0(t.debtTotal))
+        React.createElement("div",{className:"pill ghost"},"Activos "+eur0(tt.activos)),
+        React.createElement("div",{className:"pill neg"},"Deudas "+eur0(tt.debtTotal))
       )
     ),
     React.createElement(CollapsibleCard,{title:"Cuentas",sub:"Liquidez disponible",dot:"#5FD08A",storageKey:"w_acc",
