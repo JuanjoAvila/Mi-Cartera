@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.39.0] — 2026-06-23
+### Added — Idiomas COMPLETO (ES/EN/CA) · [#14](https://github.com/JuanjoAvila/Mi-Cartera/issues/14)
+- Traducidas las pestañas restantes: **Inversiones** (incluida la proyección y el rendimiento por posición), **Patrimonio**, **Deudas** y el **login/cuenta** (pantalla de bloqueo y panel de sesión). Con esto **toda la app está disponible en español, inglés y catalán**.
+
 ## [3.38.0] — 2026-06-23
 ### Added — Idiomas (fase 3): Fijos (motor) · [#14](https://github.com/JuanjoAvila/Mi-Cartera/issues/14)
 - Traducida al completo (ES/EN/CA) la pestaña **Fijos**: próximos cargos, cash-flow, alarmas, servicios, cuotas de deuda, ingresos/transferencias y cargos puntuales, con todos sus formularios. Frecuencias y meses traducidos.
