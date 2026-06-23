@@ -643,6 +643,7 @@ const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
 const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰" };
 const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (CAT[id] || CAT.otros);
 const catName = (id)=> t("cat_"+(catOf(id).id));   // nombre traducido de la categoría
+const freqLabel = (f)=> t("freq_"+f);              // frecuencia traducida
 
 /* Autodetección de categoría por comercio (mismas keywords que el GAS, ampliadas) */
 /* Overrides personales: comercios concretos que mapeas a tu manera (substring en minúsculas) */
@@ -919,6 +920,35 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado",
   cat_super:"Supermercado", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
+  freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
+  // Fijos
+  fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
+  fj_prox:"Próximos cargos · {m}", fj_prox_sub:"{x} este mes",
+  fj_today:"{bank} hoy", fj_in:"+ nómina por entrar", fj_transf:"− transferencias pend.", fj_pend:"− fijos pendientes", fj_eom:"= a fin de mes", fj_low:"punto más bajo", fj_low_day:"punto más bajo (día {d})",
+  fj_alarm:"🚨 ¡Cuidado! ", fj_alarm_a:" se queda en {x} sobre el día {d} (antes de que entre la nómina). Mete fondos o no llegarás.", fj_alarm_b:" se queda en negativo este mes con lo que falta por pagar. Mete fondos o no llegarás.",
+  fj_heavy_now:"Este mes ", fj_heavy_next:"El mes que viene ", fj_heavy_in:"En {m} ", fj_heavy_b:"se viene cargado: {x} en fijos (la media es {avg}). 👀",
+  fj_pend_in:"Pendiente en {m}:", fj_allpaid:"✓ Todo pagado este mes.", fj_paid_m:"Ya pagado este mes ({x}):",
+  fj_pend_tot:"Pendiente {m}", fj_next_m:"Mes que viene ({m})",
+  fj_noprog:"⚠ {n} gasto(s) anual(es) sin mes asignado. Pulsa «Editar» abajo y márcale el mes para que entren en el cálculo.",
+  fj_paid_tag:"✓ pagado · ", fj_oneoff_tag:"cargo puntual", fj_debt_tag:"cuota de deuda", fj_fixed_tag:"gasto fijo",
+  fj_serv:"Servicios y suministros", fj_permonth:"{x}/mes", fj_edit:"Editar", fj_save:"Guardar",
+  fj_year:"año", fj_time:"vez", fj_custom:" · a medida (≈{x}/año)", fj_percharge:" · {x}/cobro", fj_mensual:"mensual", fj_prorated:"/mes prorrateado", fj_nomonth:"⚠ sin mes",
+  fj_chargedin:"Se cobra en", fj_day:"día", fj_whatmonths:"¿Qué mes(es) se cobra?", fj_whatmonths_opt:"¿Qué mes(es) se cobra? (opcional)",
+  fj_diffamounts:"Importes/días distintos por cobro", fj_amount:"importe", fj_sched_hint:"Pon el importe y el día reales de cada cobro (p.ej. seguro 172,05 y 166,94; Hacienda 146,14 el 30 y 97,42 el 5).",
+  fj_serv_tot:"Total servicios/mes", fj_concept_gym:"Concepto (ej. Gimnasio)", fj_day_hint:"El «día» (1-31) marca cuándo te lo cobran: los cargos cuyo día ya pasó este mes cuentan como pagados y no restan del disponible.",
+  fj_cancel:"Cancelar", fj_addfixed:"Añadir gasto fijo",
+  fj_debts:"Cuotas de deuda", fj_pending:"Pendiente {x}", fj_permonth2:"/mes", fj_amort:"amortiza/mes", fj_amort_hint:"cuánto baja el saldo (si difiere de la cuota)", fj_debts_tot:"Total cuotas/mes",
+  fj_debts_hint:"Pon el día y el banco de cada cuota para que en «Próximos cargos» se tachen al pagarse, igual que los gastos fijos. El importe es la cuota mensual; el saldo pendiente se edita en la pestaña Deudas.",
+  fj_flows:"Ingresos y transferencias", fj_flows_sub:"Nómina y traspasos automáticos", fj_inc_to:"Ingreso · a {bank}", fj_tr_fromto:"Transferencia · {from} → {to}",
+  fj_when_last:"último día laborable", fj_when_first:"primer día laborable", fj_day_n:"día {d}",
+  fj_entersin:"Entra en", fj_from:"De", fj_when:"cuándo", fj_fixedday:"día fijo", fj_lastwork:"últ. laborable", fj_firstwork:"1er laborable",
+  fj_income:"Ingreso", fj_transfer:"Transferencia", fj_concept_payroll:"Concepto (ej. Nómina)", fj_addmove:"Añadir movimiento",
+  fj_flows_hint:"Con esto el Sabadell se calcula solo: entra la nómina y salen las transferencias y los fijos. Pon el «día» de cada uno; los que ya han pasado este mes ya están en el saldo, así que no se vuelven a restar.",
+  fj_addflow:"Añadir ingreso o transferencia",
+  fj_oneoffs:"Cargos puntuales", fj_oneoffs_sub:"Imprevistos y amortizaciones (una vez)", fj_oneoffs_empty:"No hay cargos puntuales próximos. Añade uno para imprevistos o amortizaciones que ocurren una sola vez.",
+  fj_concept_amort:"Concepto (ej. Amortización préstamo)", fj_year_lbl:"año", fj_bank:"banco", fj_addoneoff:"Añadir cargo puntual",
+  fj_oneoff_hint:"Entra en «Próximos cargos» el mes que toque y se tacha al pasar su día. Solo cuenta una vez; cuando pasa el mes desaparece de la lista.",
+  fj_foot:"Los gastos no mensuales (agua, seguros, IBI…) se reparten a su equivalente mensual para que veas el peso real de cada uno. Total al año: {x}.",
 });
 Object.assign(LANG.en,{
   d_networth:"Net worth", d_assets:"Assets", d_debts:"Debts", d_dist:"Asset distribution",
@@ -942,6 +972,34 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted",
   cat_super:"Groceries", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
+  freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
+  fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
+  fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
+  fj_today:"{bank} today", fj_in:"+ incoming payroll", fj_transf:"− pending transfers", fj_pend:"− pending fixed", fj_eom:"= end of month", fj_low:"lowest point", fj_low_day:"lowest point (day {d})",
+  fj_alarm:"🚨 Heads up! ", fj_alarm_a:" drops to {x} around day {d} (before payroll arrives). Add funds or you won't make it.", fj_alarm_b:" goes negative this month with what's left to pay. Add funds or you won't make it.",
+  fj_heavy_now:"This month ", fj_heavy_next:"Next month ", fj_heavy_in:"In {m} ", fj_heavy_b:"is heavy: {x} in fixed costs (avg is {avg}). 👀",
+  fj_pend_in:"Pending in {m}:", fj_allpaid:"✓ All paid this month.", fj_paid_m:"Already paid this month ({x}):",
+  fj_pend_tot:"Pending {m}", fj_next_m:"Next month ({m})",
+  fj_noprog:"⚠ {n} yearly expense(s) with no month set. Tap «Edit» below and set the month so they're counted.",
+  fj_paid_tag:"✓ paid · ", fj_oneoff_tag:"one-off charge", fj_debt_tag:"debt payment", fj_fixed_tag:"fixed cost",
+  fj_serv:"Bills & utilities", fj_permonth:"{x}/mo", fj_edit:"Edit", fj_save:"Save",
+  fj_year:"yr", fj_time:"time", fj_custom:" · custom (≈{x}/yr)", fj_percharge:" · {x}/charge", fj_mensual:"monthly", fj_prorated:"/mo prorated", fj_nomonth:"⚠ no month",
+  fj_chargedin:"Charged from", fj_day:"day", fj_whatmonths:"Which month(s)?", fj_whatmonths_opt:"Which month(s)? (optional)",
+  fj_diffamounts:"Different amounts/days per charge", fj_amount:"amount", fj_sched_hint:"Set the real amount and day of each charge (e.g. insurance 172.05 and 166.94; tax 146.14 on the 30th and 97.42 on the 5th).",
+  fj_serv_tot:"Total bills/mo", fj_concept_gym:"What (e.g. Gym)", fj_day_hint:"The «day» (1-31) marks when you're charged: charges whose day has passed this month count as paid and don't reduce what's available.",
+  fj_cancel:"Cancel", fj_addfixed:"Add fixed cost",
+  fj_debts:"Debt payments", fj_pending:"Pending {x}", fj_permonth2:"/mo", fj_amort:"pays off/mo", fj_amort_hint:"how much the balance drops (if different from the payment)", fj_debts_tot:"Total payments/mo",
+  fj_debts_hint:"Set the day and bank of each payment so they get crossed off in «Upcoming charges», like fixed costs. The amount is the monthly payment; the outstanding balance is edited in the Debts tab.",
+  fj_flows:"Income & transfers", fj_flows_sub:"Payroll and automatic transfers", fj_inc_to:"Income · to {bank}", fj_tr_fromto:"Transfer · {from} → {to}",
+  fj_when_last:"last working day", fj_when_first:"first working day", fj_day_n:"day {d}",
+  fj_entersin:"Into", fj_from:"From", fj_when:"when", fj_fixedday:"fixed day", fj_lastwork:"last work.", fj_firstwork:"1st work.",
+  fj_income:"Income", fj_transfer:"Transfer", fj_concept_payroll:"What (e.g. Payroll)", fj_addmove:"Add movement",
+  fj_flows_hint:"With this, Sabadell calculates itself: payroll comes in and transfers and fixed costs go out. Set the «day» of each; those already passed this month are in the balance and aren't subtracted again.",
+  fj_addflow:"Add income or transfer",
+  fj_oneoffs:"One-off charges", fj_oneoffs_sub:"Unexpected costs and one-time payoffs", fj_oneoffs_empty:"No upcoming one-off charges. Add one for unexpected costs or payoffs that happen only once.",
+  fj_concept_amort:"What (e.g. Loan payoff)", fj_year_lbl:"year", fj_bank:"bank", fj_addoneoff:"Add one-off charge",
+  fj_oneoff_hint:"It appears in «Upcoming charges» the relevant month and is crossed off once its day passes. It counts only once; when the month passes it leaves the list.",
+  fj_foot:"Non-monthly costs (water, insurance, property tax…) are spread to their monthly equivalent so you see each one's real weight. Total per year: {x}.",
 });
 Object.assign(LANG.ca,{
   d_networth:"Patrimoni net", d_assets:"Actius", d_debts:"Deutes", d_dist:"Distribució d'actius",
@@ -965,6 +1023,34 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat",
   cat_super:"Supermercat", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
+  freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
+  fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
+  fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
+  fj_today:"{bank} avui", fj_in:"+ nòmina per entrar", fj_transf:"− transferències pend.", fj_pend:"− fixes pendents", fj_eom:"= a fi de mes", fj_low:"punt més baix", fj_low_day:"punt més baix (dia {d})",
+  fj_alarm:"🚨 Compte! ", fj_alarm_a:" es queda en {x} cap al dia {d} (abans que entri la nòmina). Posa-hi fons o no hi arribaràs.", fj_alarm_b:" es queda en negatiu aquest mes amb el que falta per pagar. Posa-hi fons o no hi arribaràs.",
+  fj_heavy_now:"Aquest mes ", fj_heavy_next:"El mes que ve ", fj_heavy_in:"Al {m} ", fj_heavy_b:"ve carregat: {x} en fixes (la mitjana és {avg}). 👀",
+  fj_pend_in:"Pendent al {m}:", fj_allpaid:"✓ Tot pagat aquest mes.", fj_paid_m:"Ja pagat aquest mes ({x}):",
+  fj_pend_tot:"Pendent {m}", fj_next_m:"Mes que ve ({m})",
+  fj_noprog:"⚠ {n} despesa/es anual(s) sense mes assignat. Prem «Edita» a sota i marca-li el mes perquè entrin al càlcul.",
+  fj_paid_tag:"✓ pagat · ", fj_oneoff_tag:"càrrec puntual", fj_debt_tag:"quota de deute", fj_fixed_tag:"despesa fixa",
+  fj_serv:"Serveis i subministraments", fj_permonth:"{x}/mes", fj_edit:"Edita", fj_save:"Desa",
+  fj_year:"any", fj_time:"cop", fj_custom:" · a mida (≈{x}/any)", fj_percharge:" · {x}/càrrec", fj_mensual:"mensual", fj_prorated:"/mes prorratejat", fj_nomonth:"⚠ sense mes",
+  fj_chargedin:"Es cobra a", fj_day:"dia", fj_whatmonths:"Quin(s) mes(os) es cobra?", fj_whatmonths_opt:"Quin(s) mes(os) es cobra? (opcional)",
+  fj_diffamounts:"Imports/dies diferents per càrrec", fj_amount:"import", fj_sched_hint:"Posa l'import i el dia reals de cada càrrec (ex. assegurança 172,05 i 166,94; Hisenda 146,14 el 30 i 97,42 el 5).",
+  fj_serv_tot:"Total serveis/mes", fj_concept_gym:"Concepte (ex. Gimnàs)", fj_day_hint:"El «dia» (1-31) marca quan et cobren: els càrrecs el dia dels quals ja ha passat aquest mes compten com pagats i no resten del disponible.",
+  fj_cancel:"Cancel·la", fj_addfixed:"Afegeix despesa fixa",
+  fj_debts:"Quotes de deute", fj_pending:"Pendent {x}", fj_permonth2:"/mes", fj_amort:"amortitza/mes", fj_amort_hint:"quant baixa el saldo (si difereix de la quota)", fj_debts_tot:"Total quotes/mes",
+  fj_debts_hint:"Posa el dia i el banc de cada quota perquè a «Pròxims càrrecs» es ratllin en pagar-se, igual que les despeses fixes. L'import és la quota mensual; el saldo pendent s'edita a la pestanya Deutes.",
+  fj_flows:"Ingressos i transferències", fj_flows_sub:"Nòmina i traspassos automàtics", fj_inc_to:"Ingrés · a {bank}", fj_tr_fromto:"Transferència · {from} → {to}",
+  fj_when_last:"últim dia laborable", fj_when_first:"primer dia laborable", fj_day_n:"dia {d}",
+  fj_entersin:"Entra a", fj_from:"De", fj_when:"quan", fj_fixedday:"dia fix", fj_lastwork:"últ. laborable", fj_firstwork:"1r laborable",
+  fj_income:"Ingrés", fj_transfer:"Transferència", fj_concept_payroll:"Concepte (ex. Nòmina)", fj_addmove:"Afegeix moviment",
+  fj_flows_hint:"Amb això el Sabadell es calcula sol: entra la nòmina i surten les transferències i les fixes. Posa el «dia» de cadascun; els que ja han passat aquest mes ja són al saldo, així que no es tornen a restar.",
+  fj_addflow:"Afegeix ingrés o transferència",
+  fj_oneoffs:"Càrrecs puntuals", fj_oneoffs_sub:"Imprevistos i amortitzacions (un cop)", fj_oneoffs_empty:"No hi ha càrrecs puntuals pròxims. Afegeix-ne un per a imprevistos o amortitzacions que passen un sol cop.",
+  fj_concept_amort:"Concepte (ex. Amortització préstec)", fj_year_lbl:"any", fj_bank:"banc", fj_addoneoff:"Afegeix càrrec puntual",
+  fj_oneoff_hint:"Apareix a «Pròxims càrrecs» el mes que toqui i es ratlla en passar el seu dia. Només compta un cop; quan passa el mes desapareix de la llista.",
+  fj_foot:"Les despeses no mensuals (aigua, assegurances, IBI…) es reparteixen al seu equivalent mensual perquè vegis el pes real de cadascuna. Total a l'any: {x}.",
 });
 
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -2145,7 +2231,7 @@ function MonthPicker({selected, onToggle}){
     MONTHS_ES.map((lbl,i)=>{
       const m=i+1, on=sel.indexOf(m)>=0;
       return React.createElement("button",{key:m,type:"button",className:"mchip"+(on?" on":""),
-        onClick:(ev)=>{ ev.stopPropagation(); onToggle(m); }}, lbl);
+        onClick:(ev)=>{ ev.stopPropagation(); onToggle(m); }}, monthShort(i));
     })
   );
 }
@@ -2218,7 +2304,7 @@ function Fijos({state, set, totals}){
   const saveEditF=()=>{ set(s=>Object.assign({},s,{flows:(s.flows||[]).map(f=>{ const wh=fWhen(f); const o=Object.assign({},f,{amount:parseFloat(String(fAmt(f)).replace(',','.'))||0}); if(wh){ o.when=wh; delete o.day; } else { o.when=undefined; delete o.when; o.day=cleanDay(fDay(f)); } if(f.kind==="income"){ o.to=fTo(f); delete o.from; } else { o.from=fFrom(f); o.to=fTo(f); } return o; })})); setEditingF(false); };
   const delFlow=(id)=> set(s=>Object.assign({},s,{flows:(s.flows||[]).filter(f=>f.id!==id)}));
   const addFlow=()=>{ const amt=parseFloat(String(formF.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),kind:formF.kind,name:formF.name||(formF.kind==="income"?"Ingreso":"Transferencia"),amount:amt}; if(formF.when){ it.when=formF.when; } else { const dd=cleanDay(formF.day); if(dd) it.day=dd; } if(formF.kind==="income"){ it.to=formF.to||"sabadell"; } else { it.from=formF.from||"sabadell"; it.to=formF.to||"trade_republic"; } set(s=>Object.assign({},s,{flows:(s.flows||[]).concat([it])})); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"}); setAddingF(false); };
-  const whenLabel=(f)=> f.when==="last"?"último día laborable":f.when==="first"?"primer día laborable":(f.day?"día "+f.day:null);
+  const whenLabel=(f)=> f.when==="last"?t("fj_when_last"):f.when==="first"?t("fj_when_first"):(f.day?tf("fj_day_n",{d:f.day}):null);
 
   // --- cargos puntuales (un solo cobro): imprevistos, amortizaciones… ---
   const [addingO,setAddingO]=useState(false);
@@ -2227,7 +2313,7 @@ function Fijos({state, set, totals}){
   const delOneoff=(id)=> set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).filter(o=>o.id!==id)}));
 
   // resumen de meses para el subtítulo de cada fila
-  const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return "⚠ sin mes"; return ms.map(m=>MONTHS_ES[m-1]).join(", "); };
+  const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return t("fj_nomonth"); return ms.map(m=>monthShort(m-1)).join(", "); };
 
   // --- Próximos cargos (motor dinámico): qué se cobra este mes y el que viene ---
   const cm=totals.curMonth, nm=cm===12?1:cm+1, today=totals.today, cy=totals.curYear, ny=cm===12?cy+1:cy;
@@ -2242,8 +2328,8 @@ function Fijos({state, set, totals}){
   const nextSum=nextM.reduce((a,x)=>a+x.amount,0);
   const rowCharge=(x)=> React.createElement("div",{className:"row"+(x.paid?" paid-row":""),key:x.key},
     React.createElement("div",{className:"rl"},React.createElement("div",null,
-      React.createElement("div",{className:"rname"}, x.name, x.day && React.createElement("span",{className:"day-badge"},"día "+x.day)),
-      React.createElement("div",{className:"rsub"}, (x.paid?"✓ pagado · ":"")+(x.oneoff?"cargo puntual":x.debt?"cuota de deuda":"gasto fijo")+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
+      React.createElement("div",{className:"rname"}, x.name, x.day && React.createElement("span",{className:"day-badge"},tf("fj_day_n",{d:x.day}))),
+      React.createElement("div",{className:"rsub"}, (x.paid?t("fj_paid_tag"):"")+(x.oneoff?t("fj_oneoff_tag"):x.debt?t("fj_debt_tag"):t("fj_fixed_tag"))+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
     React.createElement("div",{className:"rval num",style:x.amount<0?{color:"var(--mint)"}:null},(x.amount<0?"+":"")+eur(Math.abs(x.amount))));
   // totales por mes (12) para detectar meses "cargados" por encima de lo normal
   const monthTotals=[]; for(let mo=1;mo<=12;mo++){ let tt=0; state.fixed.forEach(e=>{ if(occursIn(e,mo)) tt+=occAmountIn(e,mo); }); tt+=cuotas; monthTotals[mo]=tt; }
@@ -2253,69 +2339,69 @@ function Fijos({state, set, totals}){
 
   return React.createElement("div",null,
     React.createElement("div",{className:"total-bar"},
-      React.createElement("div",null,React.createElement("div",{className:"tl"},"Gasto fijo mensual"),React.createElement("div",{className:"tn num"},eur(grand))),
-      React.createElement("div",{className:"cnt"},eur0(grand*12)+"/año")
+      React.createElement("div",null,React.createElement("div",{className:"tl"},t("fj_monthly")),React.createElement("div",{className:"tn num"},eur(grand))),
+      React.createElement("div",{className:"cnt"},tf("fj_peryear",{x:eur0(grand*12)}))
     ),
     top && React.createElement("div",{className:"culpa"},
-      React.createElement("span",null,"Tu mayor gasto fijo es "),
+      React.createElement("span",null,t("fj_top_a")),
       React.createElement("span",{className:"big",style:{fontSize:15}}, top.name),
-      React.createElement("span",null," ("+eur0(monthly(top))+"/mes)")
+      React.createElement("span",null,tf("fj_top_b",{x:eur0(monthly(top))}))
     ),
     /* MOTOR DINÁMICO: próximos cargos */
-    React.createElement(CollapsibleCard,{title:"Próximos cargos · "+MONTHS_ES[cm-1],sub:eur0(totals.cargosMes)+" este mes",dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
+    React.createElement(CollapsibleCard,{title:tf("fj_prox",{m:monthShort(cm-1)}),sub:tf("fj_prox_sub",{x:eur0(totals.cargosMes)}),dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
       // estado del banco principal (Sabadell): cash-flow del mes (saldo + nómina − transfers − fijos)
       React.createElement("div",{className:"liqbox"+((totals.mainMin<0||totals.mainProjected<0)?" danger":"")},
         React.createElement("div",{className:"liqrow"},
-          React.createElement("span",{className:"muted"},entOf(totals.mainBank).label+" hoy"),
+          React.createElement("span",{className:"muted"},tf("fj_today",{bank:entOf(totals.mainBank).label})),
           React.createElement("span",{className:"num"},eur0(totals.mainBal))),
         totals.mainIncome>0 && React.createElement("div",{className:"liqrow"},
-          React.createElement("span",{className:"muted"},"+ nómina por entrar"),
+          React.createElement("span",{className:"muted"},t("fj_in")),
           React.createElement("span",{className:"num",style:{color:"var(--mint)"}},"+"+eur0(totals.mainIncome))),
         totals.mainTransferOut>0 && React.createElement("div",{className:"liqrow"},
-          React.createElement("span",{className:"muted"},"− transferencias pend."),
+          React.createElement("span",{className:"muted"},t("fj_transf")),
           React.createElement("span",{className:"num"},"−"+eur0(totals.mainTransferOut))),
         React.createElement("div",{className:"liqrow"},
-          React.createElement("span",{className:"muted"},"− fijos pendientes"),
+          React.createElement("span",{className:"muted"},t("fj_pend")),
           React.createElement("span",{className:"num"},"−"+eur0(totals.mainPending))),
         React.createElement("div",{className:"liqrow strong"},
-          React.createElement("span",null,"= a fin de mes"),
+          React.createElement("span",null,t("fj_eom")),
           React.createElement("span",{className:"num",style:{color:totals.mainProjected<0?"var(--coral)":"var(--mint)"}},eur0(totals.mainProjected))),
         // punto más bajo del mes (importa el orden: si los fijos salen antes de cobrar)
         (totals.mainMin < totals.mainProjected-0.5) && React.createElement("div",{className:"liqrow",style:{color:totals.mainMin<0?"var(--coral)":"var(--muted-2)"}},
-          React.createElement("span",null,(totals.mainMin<0?"⚠ ":"")+"punto más bajo"+(totals.mainMinDay?" (día "+totals.mainMinDay+")":"")),
+          React.createElement("span",null,(totals.mainMin<0?"⚠ ":"")+(totals.mainMinDay?tf("fj_low_day",{d:totals.mainMinDay}):t("fj_low"))),
           React.createElement("span",{className:"num"},eur0(totals.mainMin)))
       ),
       // ALARMA: el saldo mínimo del mes se va a negativo (bajón antes de cobrar o no llegar a fin de mes)
       totals.bankAlerts.length>0 && React.createElement("div",{className:"alarmbox"},
-        "🚨 ¡Cuidado! ",totals.bankAlerts.map(b=>entOf(b).label).join(", "),
+        t("fj_alarm"),totals.bankAlerts.map(b=>entOf(b).label).join(", "),
         (totals.bankAlerts.length===1 && totals.minDayByBank[totals.bankAlerts[0]])
-          ? " se queda en "+eur0(totals.minByBank[totals.bankAlerts[0]])+" sobre el día "+totals.minDayByBank[totals.bankAlerts[0]]+" (antes de que entre la nómina). Mete fondos o no llegarás."
-          : " se queda en negativo este mes con lo que falta por pagar. Mete fondos o no llegarás."),
+          ? tf("fj_alarm_a",{x:eur0(totals.minByBank[totals.bankAlerts[0]]),d:totals.minDayByBank[totals.bankAlerts[0]]})
+          : t("fj_alarm_b")),
       // aviso de mes cargado en el horizonte
       heavy && React.createElement("div",{className:"hint",style:{margin:"8px 0 4px",color:"#E2A05F",fontWeight:600}},
-        (heavy.soon===0?"Este mes ":heavy.soon===1?"El mes que viene ":"En "+MONTHS_ES[heavy.mo-1]+" ")+"se viene cargado: "+eur0(heavy.total)+" en fijos (la media es "+eur0(avgMonth)+"). 👀"),
-      React.createElement("div",{className:"hint",style:{margin:"8px 0 4px"}}, thisPending.length?"Pendiente en "+MONTHS_ES[cm-1]+":":"✓ Todo pagado este mes."),
+        (heavy.soon===0?t("fj_heavy_now"):heavy.soon===1?t("fj_heavy_next"):tf("fj_heavy_in",{m:monthShort(heavy.mo-1)}))+tf("fj_heavy_b",{x:eur0(heavy.total),avg:eur0(avgMonth)})),
+      React.createElement("div",{className:"hint",style:{margin:"8px 0 4px"}}, thisPending.length?tf("fj_pend_in",{m:monthShort(cm-1)}):t("fj_allpaid")),
       thisPending.map(rowCharge),
-      thisPaid.length>0 && React.createElement("div",{className:"hint",style:{margin:"10px 0 2px"}},"Ya pagado este mes ("+eur0(totals.paidThisMonth)+"):"),
+      thisPaid.length>0 && React.createElement("div",{className:"hint",style:{margin:"10px 0 2px"}},tf("fj_paid_m",{x:eur0(totals.paidThisMonth)})),
       thisPaid.map(rowCharge),
-      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Pendiente "+MONTHS_ES[cm-1]),React.createElement("span",{className:"num"},eur(totals.pendingThisMonth))),
-      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Mes que viene ("+MONTHS_ES[nm-1]+")"),React.createElement("span",{className:"num"},eur(nextSum))),
-      totals.sinProgramar>0 && React.createElement("div",{className:"hint",style:{marginTop:8,color:"#E2A05F"}},"⚠ "+totals.sinProgramar+" gasto(s) anual(es) sin mes asignado. Pulsa «Editar» abajo y márcale el mes para que entren en el cálculo.")
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_pend_tot",{m:monthShort(cm-1)})),React.createElement("span",{className:"num"},eur(totals.pendingThisMonth))),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_next_m",{m:monthShort(nm-1)})),React.createElement("span",{className:"num"},eur(nextSum))),
+      totals.sinProgramar>0 && React.createElement("div",{className:"hint",style:{marginTop:8,color:"#E2A05F"}},tf("fj_noprog",{n:totals.sinProgramar}))
     ),
-    React.createElement(CollapsibleCard,{title:"Servicios y suministros",sub:eur0(servSum)+"/mes",dot:"#7FB5E8",storageKey:"f_serv",
-      right:React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:e=>{e.stopPropagation(); editing?saveEdit():startEdit();}},editing?"Guardar":"Editar")},
+    React.createElement(CollapsibleCard,{title:t("fj_serv"),sub:tf("fj_permonth",{x:eur0(servSum)}),dot:"#7FB5E8",storageKey:"f_serv",
+      right:React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:e=>{e.stopPropagation(); editing?saveEdit():startEdit();}},editing?t("fj_save"):t("fj_edit"))},
       list.map(e=>{
         const m=monthly(e); const isCredit=m<0; const mlbl=monthsLabel(e);
         const nMonths=chargeMonths(e).length;
         const schedTotal=hasSchedule(e)? e.schedule.reduce((a,x)=>a+(x.amt||0),0) : 0;
-        const perCharge=hasSchedule(e) ? " · a medida (≈"+eur0(schedTotal)+"/año)" : ((e.freq==="año"||e.freq==="anual")&&nMonths>1 ? " · "+eur0(occAmount(e))+"/cobro" : "");
+        const perCharge=hasSchedule(e) ? tf("fj_custom",{x:eur0(schedTotal)}) : ((e.freq==="año"||e.freq==="anual")&&nMonths>1 ? tf("fj_percharge",{x:eur0(occAmount(e))}) : "");
         const row=React.createElement("div",{className:"row",key:e.id},
           React.createElement("div",{className:"rl"},
             editing && React.createElement("button",{className:"del-btn",onClick:()=>del(e.id)},"✕"),
             React.createElement("div",null,
               React.createElement("div",{className:"rname"},e.name),
               React.createElement("div",{className:"rsub"},
-                (e.freq!=="mes" ? FREQ_LABEL[e.freq]+(hasSchedule(e)?"":" · "+eur(e.amount)+"/"+(e.freq==="año"?"año":"vez"))+perCharge : "mensual"),
+                (e.freq!=="mes" ? freqLabel(e.freq)+(hasSchedule(e)?"":" · "+eur(e.amount)+"/"+(e.freq==="año"?t("fj_year"):t("fj_time")))+perCharge : t("fj_mensual")),
                 accOf(e)!=="sabadell" && React.createElement("span",null," · "+entOf(accOf(e)).label),
                 mlbl && React.createElement("span",{style:{color:needsMonth(e)?"#E2A05F":"var(--muted-2)"}}," · "+mlbl)
               )
@@ -2324,11 +2410,11 @@ function Fijos({state, set, totals}){
           editing
             ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
                 React.createElement("input",{className:"editv num",value:dAmt(e),inputMode:"decimal",onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{[e.id]:v}));}}),
-                React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"/"+(e.freq==="mes"?"mes":FREQ_LABEL[e.freq].slice(0,3)))
+                React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"/"+freqLabel(e.freq).slice(0,3))
               )
             : React.createElement("div",{className:"rval num",style:isCredit?{color:"var(--mint)"}:null},
                 React.createElement("div",null, (isCredit?"+":"")+eur(Math.abs(m)) ),
-                e.freq!=="mes" && React.createElement("div",{className:"rvsub",style:{color:"var(--muted-2)"}},"/mes prorrateado")
+                e.freq!=="mes" && React.createElement("div",{className:"rvsub",style:{color:"var(--muted-2)"}},t("fj_prorated"))
               )
         );
         if(editing){
@@ -2336,25 +2422,25 @@ function Fijos({state, set, totals}){
             row,
             React.createElement("div",{style:{padding:"2px 4px 10px"}},
               React.createElement("div",{className:"edit-extra"},
-                React.createElement("span",{className:"rsub"},"Se cobra en"),
+                React.createElement("span",{className:"rsub"},t("fj_chargedin")),
                 React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:dBank(e),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["b_"+e.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
-                React.createElement("span",{className:"rsub",style:{marginLeft:4}},"día"),
+                React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_day")),
                 React.createElement("input",{className:"af-in num",style:{width:54,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:dDay(e),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["d_"+e.id]:v}));}})
               ),
               e.freq!=="mes" && React.createElement("div",{style:{marginTop:8}},
-                React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra?"),
+                React.createElement("div",{className:"rsub",style:{marginBottom:5}},t("fj_whatmonths")),
                 React.createElement(MonthPicker,{selected:dMonths(e),onToggle:(mm)=>toggleDraftM(e.id,mm)})
               ),
               e.freq!=="mes" && dMonths(e).length>0 && React.createElement("div",{style:{marginTop:8}},
-                React.createElement("button",{type:"button",className:"mchip"+(dSched(e)?" on":""),style:{width:"auto",padding:"5px 10px"},onClick:()=>toggleSched(e.id)}, (dSched(e)?"✓ ":"")+"Importes/días distintos por cobro"),
+                React.createElement("button",{type:"button",className:"mchip"+(dSched(e)?" on":""),style:{width:"auto",padding:"5px 10px"},onClick:()=>toggleSched(e.id)}, (dSched(e)?"✓ ":"")+t("fj_diffamounts")),
                 dSched(e) && React.createElement("div",{style:{marginTop:8}},
                   dMonths(e).slice().sort((a,b)=>a-b).map(m=>React.createElement("div",{key:m,className:"sched-row"},
-                    React.createElement("span",{className:"rsub",style:{width:34}},MONTHS_ES[m-1]),
-                    React.createElement("input",{className:"af-in num",style:{flex:1,padding:"6px 8px",fontSize:12.5},inputMode:"decimal",placeholder:"importe",value:dSA(e,m),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["sa_"+e.id+"_"+m]:v}));}}),
-                    React.createElement("span",{className:"rsub"},"día"),
+                    React.createElement("span",{className:"rsub",style:{width:34}},monthShort(m-1)),
+                    React.createElement("input",{className:"af-in num",style:{flex:1,padding:"6px 8px",fontSize:12.5},inputMode:"decimal",placeholder:t("fj_amount"),value:dSA(e,m),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["sa_"+e.id+"_"+m]:v}));}}),
+                    React.createElement("span",{className:"rsub"},t("fj_day")),
                     React.createElement("input",{className:"af-in num",style:{width:50,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:dSD(e,m),onChange:ev=>{const v=ev.target.value;setDraft(d=>Object.assign({},d,{["sd_"+e.id+"_"+m]:v}));}})
                   )),
-                  React.createElement("div",{className:"hint",style:{fontSize:11}},"Pon el importe y el día reales de cada cobro (p.ej. seguro 172,05 y 166,94; Hacienda 146,14 el 30 y 97,42 el 5).")
+                  React.createElement("div",{className:"hint",style:{fontSize:11}},t("fj_sched_hint"))
                 )
               )
             )
@@ -2362,75 +2448,75 @@ function Fijos({state, set, totals}){
         }
         return row;
       }),
-      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total servicios/mes"),React.createElement("span",{className:"num"},eur(servSum))),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("fj_serv_tot")),React.createElement("span",{className:"num"},eur(servSum))),
       adding
         ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
-            React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Gimnasio)",value:form.name,onChange:e=>setForm(Object.assign({},form,{name:e.target.value}))}),
+            React.createElement("input",{className:"af-in",placeholder:t("fj_concept_gym"),value:form.name,onChange:e=>setForm(Object.assign({},form,{name:e.target.value}))}),
             React.createElement("div",{className:"af-row"},
               React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:form.amount,onChange:e=>setForm(Object.assign({},form,{amount:e.target.value}))}),
-              React.createElement("select",{className:"af-in",value:form.freq,onChange:e=>setForm(Object.assign({},form,{freq:e.target.value,months:[]}))}, FREQ_OPTS.map(f=>React.createElement("option",{key:f,value:f},FREQ_LABEL[f])))
+              React.createElement("select",{className:"af-in",value:form.freq,onChange:e=>setForm(Object.assign({},form,{freq:e.target.value,months:[]}))}, FREQ_OPTS.map(f=>React.createElement("option",{key:f,value:f},freqLabel(f))))
             ),
             form.freq!=="mes" && React.createElement("div",{style:{marginTop:4}},
-              React.createElement("div",{className:"rsub",style:{marginBottom:5}},"¿Qué mes(es) se cobra? (opcional)"),
+              React.createElement("div",{className:"rsub",style:{marginBottom:5}},t("fj_whatmonths_opt")),
               React.createElement(MonthPicker,{selected:form.months,onToggle:toggleFormM})
             ),
             React.createElement("div",{className:"edit-extra"},
-              React.createElement("span",{className:"rsub"},"Se cobra en"),
+              React.createElement("span",{className:"rsub"},t("fj_chargedin")),
               React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:form.account||"sabadell",onChange:e=>setForm(Object.assign({},form,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
-              React.createElement("span",{className:"rsub",style:{marginLeft:4}},"día"),
+              React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_day")),
               React.createElement("input",{className:"af-in num",style:{width:60,padding:"8px 10px"},inputMode:"numeric",placeholder:"—",value:form.day,onChange:e=>setForm(Object.assign({},form,{day:e.target.value}))})
             ),
-            React.createElement("div",{className:"hint",style:{fontSize:11.5}},"El «día» (1-31) marca cuándo te lo cobran: los cargos cuyo día ya pasó este mes cuentan como pagados y no restan del disponible."),
+            React.createElement("div",{className:"hint",style:{fontSize:11.5}},t("fj_day_hint")),
             React.createElement("div",{className:"af-row"},
-              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAdding(false); setForm({name:"",amount:"",freq:"mes",months:[],day:"",account:"sabadell"});}},"Cancelar"),
-              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addFixed},"Añadir gasto fijo")
+              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAdding(false); setForm({name:"",amount:"",freq:"mes",months:[],day:"",account:"sabadell"});}},t("fj_cancel")),
+              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addFixed},t("fj_addfixed"))
             )
           )
-        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir gasto fijo")
+        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addfixed"))
     ),
-    React.createElement(CollapsibleCard,{title:"Cuotas de deuda",sub:eur0(cuotas)+"/mes",dot:"#E2705F",storageKey:"f_cuotas",
-      right:React.createElement("button",{className:"edit-link"+(editingD?" save":""),onClick:e=>{e.stopPropagation(); editingD?saveEditD():startEditD();}},editingD?"Guardar":"Editar")},
+    React.createElement(CollapsibleCard,{title:t("fj_debts"),sub:tf("fj_permonth",{x:eur0(cuotas)}),dot:"#E2705F",storageKey:"f_cuotas",
+      right:React.createElement("button",{className:"edit-link"+(editingD?" save":""),onClick:e=>{e.stopPropagation(); editingD?saveEditD():startEditD();}},editingD?t("fj_save"):t("fj_edit"))},
       state.debts.map(d=>{
         const bnk=d.account||"sabadell";
         const row=React.createElement("div",{className:"row",key:d.id},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:d.ent,size:38}),
             React.createElement("div",null,
-              React.createElement("div",{className:"rname"}, d.name, d.day && React.createElement("span",{className:"day-badge"},"día "+d.day)),
-              React.createElement("div",{className:"rsub"},"Pendiente "+eur0(debtBalance(d))+(bnk!=="sabadell"?" · "+entOf(bnk).label:"")))),
+              React.createElement("div",{className:"rname"}, d.name, d.day && React.createElement("span",{className:"day-badge"},tf("fj_day_n",{d:d.day}))),
+              React.createElement("div",{className:"rsub"},tf("fj_pending",{x:eur0(debtBalance(d))})+(bnk!=="sabadell"?" · "+entOf(bnk).label:"")))),
           editingD
             ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
                 React.createElement("input",{className:"editv num",style:{width:70},value:dDMon(d),inputMode:"decimal",onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{[d.id]:v}));}}),
-                React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},"/mes"))
-            : React.createElement("div",{className:"rval num"},eur(d.monthly)+"/mes")
+                React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},t("fj_permonth2")))
+            : React.createElement("div",{className:"rval num"},eur(d.monthly)+t("fj_permonth2"))
         );
         if(editingD){
           return React.createElement("div",{key:d.id,style:{borderBottom:"1px solid var(--line-soft)"}},
             row,
             React.createElement("div",{style:{padding:"2px 4px 10px"}},
               React.createElement("div",{className:"edit-extra"},
-                React.createElement("span",{className:"rsub"},"Se cobra en"),
+                React.createElement("span",{className:"rsub"},t("fj_chargedin")),
                 React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:dDBank(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["b_"+d.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
-                React.createElement("span",{className:"rsub",style:{marginLeft:4}},"día"),
+                React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_day")),
                 React.createElement("input",{className:"af-in num",style:{width:54,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"—",value:dDDay(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["dy_"+d.id]:v}));}})
               ),
               React.createElement("div",{className:"edit-extra",style:{marginTop:6}},
-                React.createElement("span",{className:"rsub"},"amortiza/mes"),
+                React.createElement("span",{className:"rsub"},t("fj_amort")),
                 React.createElement("input",{className:"af-in num",style:{width:80,padding:"6px 8px",fontSize:12.5},inputMode:"decimal",value:dDAmort(d),onChange:ev=>{const v=ev.target.value;setDraftD(s=>Object.assign({},s,{["am_"+d.id]:v}));}}),
-                React.createElement("span",{className:"rsub",style:{flex:1}},"cuánto baja el saldo (si difiere de la cuota)")
+                React.createElement("span",{className:"rsub",style:{flex:1}},t("fj_amort_hint"))
               )
             )
           );
         }
         return row;
       }),
-      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},"Total cuotas/mes"),React.createElement("span",{className:"num"},eur(cuotas))),
-      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Pon el día y el banco de cada cuota para que en «Próximos cargos» se tachen al pagarse, igual que los gastos fijos. El importe es la cuota mensual; el saldo pendiente se edita en la pestaña Deudas.")
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("fj_debts_tot")),React.createElement("span",{className:"num"},eur(cuotas))),
+      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_debts_hint"))
     ),
-    React.createElement(CollapsibleCard,{title:"Ingresos y transferencias",sub:"Nómina y traspasos automáticos",dot:"#5FD08A",storageKey:"f_flows",defaultOpen:false,
-      right:React.createElement("button",{className:"edit-link"+(editingF?" save":""),onClick:e=>{e.stopPropagation(); editingF?saveEditF():startEditF();}},editingF?"Guardar":"Editar")},
+    React.createElement(CollapsibleCard,{title:t("fj_flows"),sub:t("fj_flows_sub"),dot:"#5FD08A",storageKey:"f_flows",defaultOpen:false,
+      right:React.createElement("button",{className:"edit-link"+(editingF?" save":""),onClick:e=>{e.stopPropagation(); editingF?saveEditF():startEditF();}},editingF?t("fj_save"):t("fj_edit"))},
       flows.map(f=>{
         const inc=f.kind==="income";
-        const sub=inc ? "Ingreso · a "+entOf(f.to||"sabadell").label : "Transferencia · "+entOf(f.from||"sabadell").label+" → "+entOf(f.to||"trade_republic").label;
+        const sub=inc ? tf("fj_inc_to",{bank:entOf(f.to||"sabadell").label}) : tf("fj_tr_fromto",{from:entOf(f.from||"sabadell").label,to:entOf(f.to||"trade_republic").label});
         const row=React.createElement("div",{className:"row",key:f.id},
           React.createElement("div",{className:"rl"},
             editingF && React.createElement("button",{className:"del-btn",onClick:()=>delFlow(f.id)},"✕"),
@@ -2447,16 +2533,16 @@ function Fijos({state, set, totals}){
             row,
             React.createElement("div",{style:{padding:"2px 4px 10px"}},
               React.createElement("div",{className:"edit-extra"},
-                React.createElement("span",{className:"rsub"}, inc?"Entra en":"De"),
+                React.createElement("span",{className:"rsub"}, inc?t("fj_entersin"):t("fj_from")),
                 React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value: inc?fTo(f):fFrom(f),onChange:ev=>{const v=ev.target.value; const key=inc?"to_":"fr_"; setDraftF(s=>Object.assign({},s,{[key+f.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
                 !inc && React.createElement("span",{className:"rsub"},"→"),
                 !inc && React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:fTo(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["to_"+f.id]:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
-                React.createElement("span",{className:"rsub",style:{marginLeft:4}},"cuándo"),
+                React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_when")),
                 React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:fWhen(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["wh_"+f.id]:v}));}},
-                  React.createElement("option",{value:""},"día fijo"),
-                  React.createElement("option",{value:"last"},"últ. laborable"),
-                  React.createElement("option",{value:"first"},"1er laborable")),
-                !fWhen(f) && React.createElement("input",{className:"af-in num",style:{width:50,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:"día",value:fDay(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["dy_"+f.id]:v}));}})
+                  React.createElement("option",{value:""},t("fj_fixedday")),
+                  React.createElement("option",{value:"last"},t("fj_lastwork")),
+                  React.createElement("option",{value:"first"},t("fj_firstwork"))),
+                !fWhen(f) && React.createElement("input",{className:"af-in num",style:{width:50,padding:"6px 8px",fontSize:12.5},inputMode:"numeric",placeholder:t("fj_day"),value:fDay(f),onChange:ev=>{const v=ev.target.value;setDraftF(s=>Object.assign({},s,{["dy_"+f.id]:v}));}})
               )
             )
           );
@@ -2466,66 +2552,66 @@ function Fijos({state, set, totals}){
       addingF
         ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
             React.createElement("div",{className:"af-row"},
-              React.createElement("button",{className:"btn "+(formF.kind==="income"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"income",to:"sabadell"}))},"Ingreso"),
-              React.createElement("button",{className:"btn "+(formF.kind==="transfer"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"transfer",from:"sabadell",to:(banks.filter(b=>b!=="sabadell")[0]||"trade_republic")}))},"Transferencia")
+              React.createElement("button",{className:"btn "+(formF.kind==="income"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"income",to:"sabadell"}))},t("fj_income")),
+              React.createElement("button",{className:"btn "+(formF.kind==="transfer"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"transfer",from:"sabadell",to:(banks.filter(b=>b!=="sabadell")[0]||"trade_republic")}))},t("fj_transfer"))
             ),
-            React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Nómina)",value:formF.name,onChange:e=>setFormF(Object.assign({},formF,{name:e.target.value}))}),
+            React.createElement("input",{className:"af-in",placeholder:t("fj_concept_payroll"),value:formF.name,onChange:e=>setFormF(Object.assign({},formF,{name:e.target.value}))}),
             React.createElement("div",{className:"af-row"},
               React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:formF.amount,onChange:e=>setFormF(Object.assign({},formF,{amount:e.target.value}))}),
               React.createElement("select",{className:"af-in",value:formF.when,onChange:e=>setFormF(Object.assign({},formF,{when:e.target.value}))},
-                React.createElement("option",{value:""},"día fijo"),
-                React.createElement("option",{value:"last"},"últ. laborable"),
-                React.createElement("option",{value:"first"},"1er laborable")),
-              !formF.when && React.createElement("input",{className:"af-in num",placeholder:"día",inputMode:"numeric",style:{maxWidth:70},value:formF.day,onChange:e=>setFormF(Object.assign({},formF,{day:e.target.value}))})
+                React.createElement("option",{value:""},t("fj_fixedday")),
+                React.createElement("option",{value:"last"},t("fj_lastwork")),
+                React.createElement("option",{value:"first"},t("fj_firstwork"))),
+              !formF.when && React.createElement("input",{className:"af-in num",placeholder:t("fj_day"),inputMode:"numeric",style:{maxWidth:70},value:formF.day,onChange:e=>setFormF(Object.assign({},formF,{day:e.target.value}))})
             ),
             React.createElement("div",{className:"edit-extra"},
-              React.createElement("span",{className:"rsub"}, formF.kind==="income"?"Entra en":"De"),
+              React.createElement("span",{className:"rsub"}, formF.kind==="income"?t("fj_entersin"):t("fj_from")),
               React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value: formF.kind==="income"?formF.to:formF.from,onChange:e=>{const v=e.target.value; setFormF(Object.assign({},formF, formF.kind==="income"?{to:v}:{from:v}));}}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
               formF.kind==="transfer" && React.createElement("span",{className:"rsub"},"→"),
               formF.kind==="transfer" && React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formF.to,onChange:e=>setFormF(Object.assign({},formF,{to:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
             ),
             React.createElement("div",{className:"af-row"},
-              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingF(false); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"});}},"Cancelar"),
-              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addFlow},"Añadir movimiento")
+              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingF(false); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"});}},t("fj_cancel")),
+              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addFlow},t("fj_addmove"))
             )
           )
-        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingF(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir ingreso o transferencia"),
-      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Con esto el Sabadell se calcula solo: entra la nómina y salen las transferencias y los fijos. Pon el «día» de cada uno; los que ya han pasado este mes ya están en el saldo, así que no se vuelven a restar.")
+        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingF(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addflow")),
+      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_flows_hint"))
     ),
-    React.createElement(CollapsibleCard,{title:"Cargos puntuales",sub:"Imprevistos y amortizaciones (una vez)",dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false},
+    React.createElement(CollapsibleCard,{title:t("fj_oneoffs"),sub:t("fj_oneoffs_sub"),dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false},
       (function(){ const up=oneoffs.filter(o=>!oneoffPast(o,cy,cm)).sort((a,b)=> (a.year-b.year)||(a.month-b.month) );
         return up.length? up.map(o=>React.createElement("div",{className:"row",key:o.id},
           React.createElement("div",{className:"rl"},
             React.createElement("button",{className:"del-btn",onClick:()=>delOneoff(o.id)},"✕"),
             React.createElement("div",null,
-              React.createElement("div",{className:"rname"}, o.name, o.day && React.createElement("span",{className:"day-badge"},"día "+o.day)),
-              React.createElement("div",{className:"rsub"}, MONTHS_ES[o.month-1]+" "+o.year+(o.account!=="sabadell"?" · "+entOf(o.account).label:"")))),
+              React.createElement("div",{className:"rname"}, o.name, o.day && React.createElement("span",{className:"day-badge"},tf("fj_day_n",{d:o.day}))),
+              React.createElement("div",{className:"rsub"}, monthShort(o.month-1)+" "+o.year+(o.account!=="sabadell"?" · "+entOf(o.account).label:"")))),
           React.createElement("div",{className:"rval num"}, eur(o.amount))
-        )) : React.createElement("div",{className:"hint"},"No hay cargos puntuales próximos. Añade uno para imprevistos o amortizaciones que ocurren una sola vez.");
+        )) : React.createElement("div",{className:"hint"},t("fj_oneoffs_empty"));
       })(),
       addingO
         ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
-            React.createElement("input",{className:"af-in",placeholder:"Concepto (ej. Amortización préstamo)",value:formO.name,onChange:e=>setFormO(Object.assign({},formO,{name:e.target.value}))}),
+            React.createElement("input",{className:"af-in",placeholder:t("fj_concept_amort"),value:formO.name,onChange:e=>setFormO(Object.assign({},formO,{name:e.target.value}))}),
             React.createElement("div",{className:"af-row"},
               React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:formO.amount,onChange:e=>setFormO(Object.assign({},formO,{amount:e.target.value}))}),
-              React.createElement("select",{className:"af-in",value:formO.month,onChange:e=>setFormO(Object.assign({},formO,{month:e.target.value}))}, MONTHS_ES.map((lbl,i)=>React.createElement("option",{key:i+1,value:i+1},lbl))),
-              React.createElement("input",{className:"af-in num",placeholder:"día",inputMode:"numeric",style:{maxWidth:64},value:formO.day,onChange:e=>setFormO(Object.assign({},formO,{day:e.target.value}))})
+              React.createElement("select",{className:"af-in",value:formO.month,onChange:e=>setFormO(Object.assign({},formO,{month:e.target.value}))}, MONTHS_ES.map((lbl,i)=>React.createElement("option",{key:i+1,value:i+1},monthShort(i)))),
+              React.createElement("input",{className:"af-in num",placeholder:t("fj_day"),inputMode:"numeric",style:{maxWidth:64},value:formO.day,onChange:e=>setFormO(Object.assign({},formO,{day:e.target.value}))})
             ),
             React.createElement("div",{className:"edit-extra"},
-              React.createElement("span",{className:"rsub"},"año"),
+              React.createElement("span",{className:"rsub"},t("fj_year_lbl")),
               React.createElement("input",{className:"af-in num",style:{width:74,padding:"8px 10px"},inputMode:"numeric",value:formO.year,onChange:e=>setFormO(Object.assign({},formO,{year:e.target.value}))}),
-              React.createElement("span",{className:"rsub",style:{marginLeft:4}},"banco"),
+              React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_bank")),
               React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formO.account,onChange:e=>setFormO(Object.assign({},formO,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
             ),
             React.createElement("div",{className:"af-row"},
-              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingO(false); setFormO({name:"",amount:"",month:cm,year:cy,day:"",account:"sabadell"});}},"Cancelar"),
-              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addOneoff},"Añadir cargo puntual")
+              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingO(false); setFormO({name:"",amount:"",month:cm,year:cy,day:"",account:"sabadell"});}},t("fj_cancel")),
+              React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addOneoff},t("fj_addoneoff"))
             )
           )
-        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingO(true)},React.createElement(I.plus,{width:16,height:16}),"Añadir cargo puntual"),
-      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},"Entra en «Próximos cargos» el mes que toque y se tacha al pasar su día. Solo cuenta una vez; cuando pasa el mes desaparece de la lista.")
+        : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingO(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addoneoff")),
+      React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_oneoff_hint"))
     ),
-    React.createElement("div",{className:"hint",style:{padding:"0 4px"}},"Los gastos no mensuales (agua, seguros, IBI…) se reparten a su equivalente mensual para que veas el peso real de cada uno. Total al año: "+eur0(grand*12)+".")
+    React.createElement("div",{className:"hint",style:{padding:"0 4px"}},tf("fj_foot",{x:eur0(grand*12)}))
   );
 }
 
