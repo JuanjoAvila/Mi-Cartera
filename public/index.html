@@ -649,6 +649,7 @@ const CATEGORIES = [
   { id:"bares",      name:"Bares y restaurantes", color:"#E6C36A", icon:"🍽️" },
   { id:"ocio",       name:"Ocio",                color:"#9BD0E0", icon:"🎬" },
   { id:"transporte", name:"Transporte",          color:"#7FB5E8", icon:"🚇" },
+  { id:"parking",    name:"Parking",             color:"#8AA0B8", icon:"🅿️" },
   { id:"compras",    name:"Compras",             color:"#C9A0E0", icon:"🛍️" },
   { id:"salud",      name:"Salud",               color:"#6FD6C9", icon:"💊" },
   { id:"hogar",      name:"Hogar",               color:"#B7C98A", icon:"🏠" },
@@ -669,9 +670,10 @@ const MERCHANT_OVERRIDES = {
 const KW = {
   bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin"],
   super:["mercadona","lidl","aldi","carrefour","dia","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria"],
-  transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","parking","gasolina","repsol","cepsa","shell","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing"],
+  transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing","blablacar","flixbus"],
+  parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal"],
   ocio:["cinema","cine","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","bolera"],
-  compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker"],
+  compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum"],
   hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
   salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","barberia","estetica","belleza","depilacion"],
   regalos:["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
@@ -935,7 +937,7 @@ Object.assign(LANG.es,{
   g_addgasto:"Añadir gasto", g_addingreso:"Añadir ingreso",
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado",
-  cat_super:"Supermercado", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
+  cat_super:"Supermercado", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -947,6 +949,7 @@ Object.assign(LANG.es,{
   fj_pend_tot:"Pendiente {m}", fj_next_m:"Mes que viene ({m})",
   fj_noprog:"⚠ {n} gasto(s) anual(es) sin mes asignado. Pulsa «Editar» abajo y márcale el mes para que entren en el cálculo.",
   fj_paid_tag:"✓ pagado · ", fj_oneoff_tag:"cargo puntual", fj_debt_tag:"cuota de deuda", fj_fixed_tag:"gasto fijo",
+  fj_flows_h:"Nómina y transferencias", fj_income_tag:"ingreso (entra)", fj_transfer_tag:"transferencia",
   fj_serv:"Servicios y suministros", fj_permonth:"{x}/mes", fj_edit:"Editar", fj_save:"Guardar",
   fj_year:"año", fj_time:"vez", fj_custom:" · a medida (≈{x}/año)", fj_percharge:" · {x}/cobro", fj_mensual:"mensual", fj_prorated:"/mes prorrateado", fj_nomonth:"⚠ sin mes",
   fj_chargedin:"Se cobra en", fj_day:"día", fj_whatmonths:"¿Qué mes(es) se cobra?", fj_whatmonths_opt:"¿Qué mes(es) se cobra? (opcional)",
@@ -987,7 +990,7 @@ Object.assign(LANG.en,{
   g_addgasto:"Add expense", g_addingreso:"Add income",
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted",
-  cat_super:"Groceries", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
+  cat_super:"Groceries", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -998,6 +1001,7 @@ Object.assign(LANG.en,{
   fj_pend_tot:"Pending {m}", fj_next_m:"Next month ({m})",
   fj_noprog:"⚠ {n} yearly expense(s) with no month set. Tap «Edit» below and set the month so they're counted.",
   fj_paid_tag:"✓ paid · ", fj_oneoff_tag:"one-off charge", fj_debt_tag:"debt payment", fj_fixed_tag:"fixed cost",
+  fj_flows_h:"Income & transfers", fj_income_tag:"income (in)", fj_transfer_tag:"transfer",
   fj_serv:"Bills & utilities", fj_permonth:"{x}/mo", fj_edit:"Edit", fj_save:"Save",
   fj_year:"yr", fj_time:"time", fj_custom:" · custom (≈{x}/yr)", fj_percharge:" · {x}/charge", fj_mensual:"monthly", fj_prorated:"/mo prorated", fj_nomonth:"⚠ no month",
   fj_chargedin:"Charged from", fj_day:"day", fj_whatmonths:"Which month(s)?", fj_whatmonths_opt:"Which month(s)? (optional)",
@@ -1038,7 +1042,7 @@ Object.assign(LANG.ca,{
   g_addgasto:"Afegeix despesa", g_addingreso:"Afegeix ingrés",
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat",
-  cat_super:"Supermercat", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
+  cat_super:"Supermercat", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -1049,6 +1053,7 @@ Object.assign(LANG.ca,{
   fj_pend_tot:"Pendent {m}", fj_next_m:"Mes que ve ({m})",
   fj_noprog:"⚠ {n} despesa/es anual(s) sense mes assignat. Prem «Edita» a sota i marca-li el mes perquè entrin al càlcul.",
   fj_paid_tag:"✓ pagat · ", fj_oneoff_tag:"càrrec puntual", fj_debt_tag:"quota de deute", fj_fixed_tag:"despesa fixa",
+  fj_flows_h:"Nòmina i transferències", fj_income_tag:"ingrés (entra)", fj_transfer_tag:"transferència",
   fj_serv:"Serveis i subministraments", fj_permonth:"{x}/mes", fj_edit:"Edita", fj_save:"Desa",
   fj_year:"any", fj_time:"cop", fj_custom:" · a mida (≈{x}/any)", fj_percharge:" · {x}/càrrec", fj_mensual:"mensual", fj_prorated:"/mes prorratejat", fj_nomonth:"⚠ sense mes",
   fj_chargedin:"Es cobra a", fj_day:"dia", fj_whatmonths:"Quin(s) mes(os) es cobra?", fj_whatmonths_opt:"Quin(s) mes(os) es cobra? (opcional)",
@@ -1160,7 +1165,7 @@ Object.assign(LANG.es,{
   tab_metas:"Metas",
   gl_total:"Ahorrado en metas", gl_total_sub:"de {x} en total",
   gl_new:"Nueva meta", gl_create:"Crear meta", gl_cancel:"Cancelar",
-  gl_name_ph:"Nombre (ej. Vacaciones)", gl_target_ph:"Objetivo €", gl_saved_ph:"Ya ahorrado €", gl_deadline:"Fecha límite (opcional)",
+  gl_name_ph:"Nombre (ej. Vacaciones)", gl_target_ph:"Objetivo €", gl_saved_ph:"Ya ahorrado €", gl_deadline:"Fecha límite (opcional)", gl_monthly_ph:"Aporte al mes € (opcional)",
   gl_emoji:"Icono", gl_newdefault:"Mi meta",
   gl_contribute:"+ Aportar", gl_contribute_prompt:"¿Cuánto añades a «{name}»? (€)",
   gl_edit:"Editar metas", gl_save:"Guardar cambios", gl_delete:"Eliminar meta", gl_of:"de",
@@ -1175,7 +1180,7 @@ Object.assign(LANG.en,{
   tab_metas:"Goals",
   gl_total:"Saved towards goals", gl_total_sub:"of {x} total",
   gl_new:"New goal", gl_create:"Create goal", gl_cancel:"Cancel",
-  gl_name_ph:"Name (e.g. Holidays)", gl_target_ph:"Target €", gl_saved_ph:"Already saved €", gl_deadline:"Deadline (optional)",
+  gl_name_ph:"Name (e.g. Holidays)", gl_target_ph:"Target €", gl_saved_ph:"Already saved €", gl_deadline:"Deadline (optional)", gl_monthly_ph:"Monthly amount € (optional)",
   gl_emoji:"Icon", gl_newdefault:"My goal",
   gl_contribute:"+ Add", gl_contribute_prompt:"How much do you add to “{name}”? (€)",
   gl_edit:"Edit goals", gl_save:"Save changes", gl_delete:"Delete goal", gl_of:"of",
@@ -1190,7 +1195,7 @@ Object.assign(LANG.ca,{
   tab_metas:"Objectius",
   gl_total:"Estalviat en objectius", gl_total_sub:"de {x} en total",
   gl_new:"Nou objectiu", gl_create:"Crea objectiu", gl_cancel:"Cancel·la",
-  gl_name_ph:"Nom (ex. Vacances)", gl_target_ph:"Objectiu €", gl_saved_ph:"Ja estalviat €", gl_deadline:"Data límit (opcional)",
+  gl_name_ph:"Nom (ex. Vacances)", gl_target_ph:"Objectiu €", gl_saved_ph:"Ja estalviat €", gl_deadline:"Data límit (opcional)", gl_monthly_ph:"Aportació al mes € (opcional)",
   gl_emoji:"Icona", gl_newdefault:"El meu objectiu",
   gl_contribute:"+ Aporta", gl_contribute_prompt:"Quant afegeixes a «{name}»? (€)",
   gl_edit:"Edita objectius", gl_save:"Desa els canvis", gl_delete:"Elimina objectiu", gl_of:"de",
@@ -1272,14 +1277,16 @@ function monthYearIn(n){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth
 function goalEta(g, monthlySaving){
   const rem=goalRemaining(g);
   if((g&&g.done) || rem<=0) return {text:t("gl_eta_reached"), cls:"ok"};
+  // aporte mensual elegido PARA esta meta tiene prioridad sobre el ahorro global
+  const m = (g && g.monthly>0) ? g.monthly : monthlySaving;
   const dl=monthsUntil(g.deadline);
   if(dl!=null){
     if(dl<=0) return {text:t("gl_eta_overdue"), cls:"warn"};
     const need=rem/dl;
-    if(monthlySaving>0 && monthlySaving>=need) return {text:tf("gl_eta_ok",{x:eur0(rem),m:dl}), cls:"ok"};
+    if(m>0 && m>=need) return {text:tf("gl_eta_ok",{x:eur0(rem),m:dl}), cls:"ok"};
     return {text:tf("gl_eta_behind",{x:eur0(need)}), cls:"warn"};
   }
-  if(monthlySaving>0){ const months=Math.max(1,Math.ceil(rem/monthlySaving)); return {text:tf("gl_eta",{x:eur0(monthlySaving),when:monthYearIn(months)}), cls:""}; }
+  if(m>0){ const months=Math.max(1,Math.ceil(rem/m)); return {text:tf("gl_eta",{x:eur0(m),when:monthYearIn(months)}), cls:""}; }
   return {text:t("gl_eta_nosaving"), cls:""};
 }
 // confeti DOM: ligero, se autolimpia. Para celebrar una meta cumplida.
@@ -2535,11 +2542,18 @@ function Fijos({state, set, totals}){
     return items.sort((a,b)=>b.amount-a.amount); };
   const thisM=chargesOf(cm,cy), nextM=chargesOf(nm,ny);
   const thisPending=thisM.filter(x=>!x.paid), thisPaid=thisM.filter(x=>x.paid);
+  // flujos de efectivo del mes (nómina + transferencias): se ven con su día y se tachan al pasar
+  const flowsThis=(state.flows||[]).filter(f=>flowOccursIn(f,cm)).map(f=>({
+    key:f.id, name:f.name, flow:true, kind:f.kind,
+    amount: f.kind==="income" ? -(f.amount||0) : (f.amount||0),   // ingreso = entra (verde +) · transfer = sale
+    bank: f.kind==="income" ? (f.to||"sabadell") : (f.from||"sabadell"),
+    day: flowDay(f,cy,cm), paid: flowPaid(f,cy,cm,today)
+  })).sort((a,b)=>(a.day||0)-(b.day||0));
   const nextSum=nextM.reduce((a,x)=>a+x.amount,0);
   const rowCharge=(x)=> React.createElement("div",{className:"row"+(x.paid?" paid-row":""),key:x.key},
     React.createElement("div",{className:"rl"},React.createElement("div",null,
       React.createElement("div",{className:"rname"}, x.name, x.day && React.createElement("span",{className:"day-badge"},tf("fj_day_n",{d:x.day}))),
-      React.createElement("div",{className:"rsub"}, (x.paid?t("fj_paid_tag"):"")+(x.oneoff?t("fj_oneoff_tag"):x.debt?t("fj_debt_tag"):t("fj_fixed_tag"))+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
+      React.createElement("div",{className:"rsub"}, (x.paid?t("fj_paid_tag"):"")+(x.flow?(x.kind==="income"?t("fj_income_tag"):t("fj_transfer_tag")):x.oneoff?t("fj_oneoff_tag"):x.debt?t("fj_debt_tag"):t("fj_fixed_tag"))+(x.bank&&x.bank!=="sabadell"?" · "+entOf(x.bank).label:"")))),
     React.createElement("div",{className:"rval num",style:x.amount<0?{color:"var(--mint)"}:null},(x.amount<0?"+":"")+eur(Math.abs(x.amount))));
   // totales por mes (12) para detectar meses "cargados" por encima de lo normal
   const monthTotals=[]; for(let mo=1;mo<=12;mo++){ let tt=0; state.fixed.forEach(e=>{ if(occursIn(e,mo)) tt+=occAmountIn(e,mo); }); tt+=cuotas; monthTotals[mo]=tt; }
@@ -2594,6 +2608,8 @@ function Fijos({state, set, totals}){
       thisPending.map(rowCharge),
       thisPaid.length>0 && React.createElement("div",{className:"hint",style:{margin:"10px 0 2px"}},tf("fj_paid_m",{x:eur0(totals.paidThisMonth)})),
       thisPaid.map(rowCharge),
+      flowsThis.length>0 && React.createElement("div",{className:"hint",style:{margin:"12px 0 2px"}},t("fj_flows_h")),
+      flowsThis.map(rowCharge),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_pend_tot",{m:monthShort(cm-1)})),React.createElement("span",{className:"num"},eur(totals.pendingThisMonth))),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_next_m",{m:monthShort(nm-1)})),React.createElement("span",{className:"num"},eur(nextSum))),
       totals.sinProgramar>0 && React.createElement("div",{className:"hint",style:{marginTop:8,color:"#E2A05F"}},tf("fj_noprog",{n:totals.sinProgramar}))
@@ -2892,14 +2908,15 @@ function Goals({state, set, totals, showToast}){
   const [adding,setAdding]=useState(false);
   const [editing,setEditing]=useState(false);
   const [drafts,setDrafts]=useState({});
-  const blank={name:"",emoji:"🎯",target:"",saved:"",deadline:""};
+  const blank={name:"",emoji:"🎯",target:"",saved:"",deadline:"",monthly:""};
   const [form,setForm]=useState(blank);
 
   const addGoal=function(){
     const tg=parseFloat(String(form.target).replace(',','.'))||0; if(tg<=0) return;
     const sv=parseFloat(String(form.saved).replace(',','.'))||0;
+    const mo=parseFloat(String(form.monthly).replace(',','.'))||0;
     const done=sv>=tg;
-    const g={id:uid(),name:form.name||t("gl_newdefault"),emoji:form.emoji||"🎯",target:tg,saved:sv,deadline:form.deadline||null,color:"#5FD08A",createdAt:new Date().toISOString(),done:done,doneAt:done?new Date().toISOString():null};
+    const g={id:uid(),name:form.name||t("gl_newdefault"),emoji:form.emoji||"🎯",target:tg,saved:sv,deadline:form.deadline||null,monthly:mo>0?mo:null,color:"#5FD08A",createdAt:new Date().toISOString(),done:done,doneAt:done?new Date().toISOString():null};
     set(function(s){ return Object.assign({},s,{goals:(s.goals||[]).concat([g])}); });
     setForm(blank); setAdding(false);
   };
@@ -2915,8 +2932,8 @@ function Goals({state, set, totals, showToast}){
       return Object.assign({},x,{saved:ns,done:ns>=x.target,doneAt:(ns>=x.target&&!x.doneAt)?new Date().toISOString():x.doneAt});
     })}); });
   };
-  const delGoal=function(id){ set(function(s){ return Object.assign({},s,{goals:(s.goals||[]).filter(function(g){return g.id!==id;})}); }); };
-  const startEdit=function(){ const d={}; goals.forEach(function(g){ d[g.id]={name:g.name,emoji:g.emoji||"🎯",target:String(g.target),saved:String(g.saved),deadline:g.deadline||""}; }); setDrafts(d); setEditing(true); };
+  const delGoal=function(id){ set(function(s){ return Object.assign({},s,{goals:(s.goals||[]).filter(function(g){return g.id!==id;})}); }); if(goals.length<=1) setEditing(false); };
+  const startEdit=function(){ const d={}; goals.forEach(function(g){ d[g.id]={name:g.name,emoji:g.emoji||"🎯",target:String(g.target),saved:String(g.saved),deadline:g.deadline||"",monthly:g.monthly!=null?String(g.monthly):""}; }); setDrafts(d); setEditing(true); };
   const setD=function(id,k,v){ setDrafts(function(dr){ const n=Object.assign({},dr); n[id]=Object.assign({},n[id],{[k]:v}); return n; }); };
   const saveEdit=function(){
     set(function(s){ return Object.assign({},s,{goals:(s.goals||[]).map(function(g){
@@ -2924,8 +2941,10 @@ function Goals({state, set, totals, showToast}){
       const tg=parseFloat(String(d.target).replace(',','.'))||g.target;
       const svN=parseFloat(String(d.saved).replace(',','.'));
       const sv=isNaN(svN)?g.saved:Math.max(0,svN);
+      const moN=parseFloat(String(d.monthly).replace(',','.'));
+      const mo=(isNaN(moN)||moN<=0)?null:moN;
       const done=sv>=tg;
-      return Object.assign({},g,{name:d.name||g.name,emoji:d.emoji||g.emoji,target:tg,saved:sv,deadline:d.deadline||null,done:done,doneAt:done?(g.doneAt||new Date().toISOString()):null});
+      return Object.assign({},g,{name:d.name||g.name,emoji:d.emoji||g.emoji,target:tg,saved:sv,deadline:d.deadline||null,monthly:mo,done:done,doneAt:done?(g.doneAt||new Date().toISOString()):null});
     })}); });
     setEditing(false);
   };
@@ -2970,6 +2989,7 @@ function Goals({state, set, totals, showToast}){
                 React.createElement("input",{className:"af-in num",placeholder:t("gl_target_ph"),inputMode:"decimal",value:ed.target,onChange:function(e){ setD(g.id,"target",e.target.value); }})
               ),
               React.createElement("input",{className:"af-in",type:"month",style:{marginTop:8},value:ed.deadline,onChange:function(e){ setD(g.id,"deadline",e.target.value); }}),
+              React.createElement("input",{className:"af-in num",style:{marginTop:8},placeholder:t("gl_monthly_ph"),inputMode:"decimal",value:ed.monthly,onChange:function(e){ setD(g.id,"monthly",e.target.value); }}),
               React.createElement("div",{style:{marginTop:8}}, emojiPicker(ed.emoji,function(e){ setD(g.id,"emoji",e); })),
               React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"#E2705F"},onClick:function(){ delGoal(g.id); }},t("gl_delete"))
             )
@@ -2992,10 +3012,11 @@ function Goals({state, set, totals, showToast}){
           ),
           React.createElement("label",{className:"goal-dl-lbl"},t("gl_deadline")),
           React.createElement("input",{className:"af-in",type:"month",value:form.deadline,onChange:function(e){ setForm(Object.assign({},form,{deadline:e.target.value})); }}),
+          React.createElement("input",{className:"af-in num",placeholder:t("gl_monthly_ph"),inputMode:"decimal",value:form.monthly,onChange:function(e){ setForm(Object.assign({},form,{monthly:e.target.value})); }}),
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addGoal},t("gl_create")),
           React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAdding(false); setForm(blank); }},t("gl_cancel"))
         )
-      : !editing && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:function(){ setAdding(true); }},React.createElement(I.plus,{width:16,height:16}),t("gl_new"))
+      : (!editing || goals.length===0) && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:function(){ setAdding(true); }},React.createElement(I.plus,{width:16,height:16}),t("gl_new"))
   );
 }
 
