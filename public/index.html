@@ -1086,6 +1086,12 @@ Object.assign(LANG.es,{
   inv_hint_edit:"Escribe el valor actual de cada posición (al tocar se selecciona solo). El % de ganancia se calcula automáticamente.",
   inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones de Revolut. El oro, el ETF de TR y el fondo de MyInvestor se editan a mano con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
   inv_sold_part:"Vendí parte →", inv_value:"Valor", inv_invested:"Invertido", inv_sell_prompt:"¿Qué % de {name} has vendido? (ej. 30)",
+  ru_title:"Round-up & Saveback (TR)", ru_sub_on:"redondeo ×{m} activo", ru_sub_off:"desactivado",
+  ru_mult:"Multiplicador del redondeo", ru_off:"Off", ru_dest:"Inversión destino", ru_pick:"Elige una inversión…",
+  ru_saveback:"Saveback 1% (cashback de TR, máx 15€/mes)",
+  ru_month_ru:"Round-up acumulado (este mes)", ru_month_sb:"Saveback estimado (este mes)", ru_total:"Aportado vía TR (total)",
+  ru_hint:"El round-up redondea cada compra al € superior × multiplicador y sale de tu efectivo TR hacia {inv} (TR lo invierte los días 2/9/16/23). El Saveback es un 1% que TR te regala e invierte el día 2. La app lo aplica a tu efectivo e inversión al CERRAR cada mes. Estimación según tus gastos registrados: tu saldo TR real siempre manda.",
+  ru_hint_off:"Actívalo si en TR tienes Round-up o Saveback, para que tu efectivo TR cuadre con el real (TR mueve esa calderilla a inversión).",
   type_acciones:"Acciones", type_etf:"ETF", type_fondo:"Fondo indexado", type_materias:"Materias primas",
   pj_projvalue:"Valor proyectado", pj_contrib:"Tu contribución", pj_monthly:"Contribución mensual", pj_rate:"Interés anual %", pj_years:"Años",
   pj_gain:"Ganancia estimada en {y} años", pj_hint:"Sobre lo ya invertido ({x}). La banda es ±2% sobre el interés. Estimación, no garantía.",
@@ -1114,6 +1120,12 @@ Object.assign(LANG.en,{
   inv_hint_edit:"Type the current value of each position (tap to select). The gain % is calculated automatically.",
   inv_hint_view:"«USD prices» fetches Revolut stock quotes automatically. Gold, the TR ETF and the MyInvestor fund are edited by hand with «Edit manually». USD→EUR rate: {fx} · live ECB.",
   inv_sold_part:"Sold part →", inv_value:"Value", inv_invested:"Invested", inv_sell_prompt:"What % of {name} did you sell? (e.g. 30)",
+  ru_title:"Round-up & Saveback (TR)", ru_sub_on:"round-up ×{m} on", ru_sub_off:"off",
+  ru_mult:"Round-up multiplier", ru_off:"Off", ru_dest:"Target investment", ru_pick:"Pick an investment…",
+  ru_saveback:"Saveback 1% (TR cashback, max €15/mo)",
+  ru_month_ru:"Round-up so far (this month)", ru_month_sb:"Saveback estimate (this month)", ru_total:"Contributed via TR (total)",
+  ru_hint:"Round-up rounds each purchase up to the next € × multiplier and leaves your TR cash towards {inv} (TR invests it on the 2nd/9th/16th/23rd). Saveback is a 1% TR gives you, invested on the 2nd. The app applies it to your cash and investment when each month CLOSES. Estimate from your logged spending: your real TR balance always wins.",
+  ru_hint_off:"Turn it on if you use Round-up or Saveback in TR, so your TR cash matches reality (TR moves that spare change into investments).",
   type_acciones:"Stocks", type_etf:"ETF", type_fondo:"Index fund", type_materias:"Commodities",
   pj_projvalue:"Projected value", pj_contrib:"Your contribution", pj_monthly:"Monthly contribution", pj_rate:"Annual interest %", pj_years:"Years",
   pj_gain:"Estimated gain in {y} years", pj_hint:"On what's already invested ({x}). The band is ±2% on the rate. Estimate, not a guarantee.",
@@ -1142,6 +1154,12 @@ Object.assign(LANG.ca,{
   inv_hint_edit:"Escriu el valor actual de cada posició (en tocar se selecciona sol). El % de guany es calcula automàticament.",
   inv_hint_view:"«Preus USD» porta sols les cotitzacions de les accions de Revolut. L'or, l'ETF de TR i el fons de MyInvestor s'editen a mà amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
   inv_sold_part:"He venut part →", inv_value:"Valor", inv_invested:"Invertit", inv_sell_prompt:"Quin % de {name} has venut? (ex. 30)",
+  ru_title:"Round-up & Saveback (TR)", ru_sub_on:"arrodoniment ×{m} actiu", ru_sub_off:"desactivat",
+  ru_mult:"Multiplicador de l'arrodoniment", ru_off:"Off", ru_dest:"Inversió destí", ru_pick:"Tria una inversió…",
+  ru_saveback:"Saveback 1% (cashback de TR, màx 15€/mes)",
+  ru_month_ru:"Arrodoniment acumulat (aquest mes)", ru_month_sb:"Saveback estimat (aquest mes)", ru_total:"Aportat via TR (total)",
+  ru_hint:"L'arrodoniment puja cada compra a l'€ superior × multiplicador i surt del teu efectiu TR cap a {inv} (TR ho inverteix els dies 2/9/16/23). El Saveback és un 1% que TR et regala i inverteix el dia 2. L'app ho aplica al teu efectiu i inversió en TANCAR cada mes. Estimació segons les teves despeses registrades: el teu saldo TR real sempre mana.",
+  ru_hint_off:"Activa'l si a TR tens Round-up o Saveback, perquè el teu efectiu TR quadri amb el real (TR mou aquesta xavalla a inversió).",
   type_acciones:"Accions", type_etf:"ETF", type_fondo:"Fons indexat", type_materias:"Matèries primeres",
   pj_projvalue:"Valor projectat", pj_contrib:"La teva contribució", pj_monthly:"Contribució mensual", pj_rate:"Interès anual %", pj_years:"Anys",
   pj_gain:"Guany estimat en {y} anys", pj_hint:"Sobre el ja invertit ({x}). La banda és ±2% sobre l'interès. Estimació, no garantia.",
@@ -1253,8 +1271,25 @@ function reconcileTR(s){
   let guard=0;
   while(mk(ay,am) < cmKey && guard<120){
     const key=mk(ay,am);
-    const spent=s.expenses.filter(e=> mkOf(parseDate(e.date))===key).reduce((a,e)=>a+e.amount,0);
+    const monthExp=s.expenses.filter(e=> mkOf(parseDate(e.date))===key);
+    const spent=monthExp.reduce((a,e)=>a+e.amount,0);
     acc.value = acc.value + CONFIG.TR_INJECTION - spent;            // mes cerrado: + nómina − gasto
+    // Round-up & Saveback (#19): al cerrar el mes, el round-up sale del efectivo y se abona
+    // (junto al saveback, dinero gratis) a la inversión destino comprando participaciones.
+    const ru = roundupOf(monthExp, acc.roundup||0);
+    const sb = acc.saveback ? savebackOf(monthExp) : 0;
+    if(ru>0) acc.value = +(acc.value - ru).toFixed(2);             // el round-up abandona el efectivo
+    const contrib = ru + sb;                                       // total que entra a la inversión (€)
+    if(contrib>0 && acc.rewardInv){
+      const inv = s.investments && s.investments.find(function(i){ return i.id===acc.rewardInv; });
+      if(inv){
+        const cInv = inv.cur==="USD" ? contrib/(s.fx||1) : contrib;   // a la moneda de la inversión
+        if(inv.shares>0 && inv.value>0) inv.shares = +(inv.shares + cInv/(inv.value/inv.shares)).toFixed(6);
+        inv.value = +((inv.value||0)+cInv).toFixed(2);
+        inv.cost  = +((inv.cost||0)+cInv).toFixed(2);
+      }
+      s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
+    }
     am++; if(am>11){am=0;ay++;}
     guard++;
   }
@@ -1264,6 +1299,15 @@ function reconcileTR(s){
 
 const uid=()=> Math.random().toString(36).slice(2,10);
 const FREQ_M = { mes:1, mensual:1, bimestral:1/2, trimestral:1/3, semestral:1/6, "año":1/12, anual:1/12, semana:4.345 };
+
+/* ---- Round-up & Saveback de TR (#19): calderilla y cashback que TR mueve a inversión ---- */
+// Calderilla de una compra: TR redondea al € superior (2,00→3,00=1€; 5,95→6,00=0,05).
+function spareOf(amt){ amt=Math.abs(amt||0); return +(Math.floor(amt)+1-amt).toFixed(2); }
+// Round-up total de una lista de gastos × multiplicador (solo gastos reales, amount>0).
+function roundupOf(expenses, mult){ if(!mult||mult<=0) return 0; let s=0; (expenses||[]).forEach(function(e){ if(e.amount>0) s+=spareOf(e.amount); }); return +(s*mult).toFixed(2); }
+// Saveback: 1% del gasto del periodo, tope 15€/mes (dinero gratis de TR).
+function savebackOf(expenses){ let g=0; (expenses||[]).forEach(function(e){ if(e.amount>0) g+=e.amount; }); return +Math.min(15, g*0.01).toFixed(2); }
+const RU_MULTS=[0,2,3,5,10];
 
 /* ---- Metas de ahorro (#15): helpers de progreso/previsión + celebración ---- */
 const GOAL_EMOJIS=["🎯","✈️","🏠","🚗","💍","🎓","🛟","🎮","💻","🏖️","🎁","💰","📱","🐱"];
@@ -1505,6 +1549,8 @@ function seedFlows(s){
     if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
     // semilla única: una meta de ejemplo para que la pestaña Metas se vea viva (solo cartera demo)
     if(!s._goalSeed){ if(!s.goals.length){ s.goals=[{id:uid(),name:"Vacaciones",emoji:"✈️",target:3000,saved:1200,deadline:null,color:"#5FD08A",createdAt:new Date().toISOString(),done:false,doneAt:null}]; } s._goalSeed=true; }
+    // semilla única: round-up ×2 + saveback en la cuenta TR demo → FTSE All-World (#19)
+    if(!s._trRewardSeed){ s.accounts=s.accounts.map(function(a){ return a.spendFrom?Object.assign({roundup:2,saveback:true,rewardInv:"7zjaw0y"},a,{roundup:a.roundup!=null?a.roundup:2,saveback:a.saveback!=null?a.saveback:true,rewardInv:a.rewardInv||"7zjaw0y"}):a; }); s._trRewardSeed=true; }
   }
   // deuda dinámica: ancla el saldo actual al mes de hoy si aún no tenía ancla (vale para todos)
   if(s.debts){ const nowAbs=ymNow(); s.debts = s.debts.map(function(d){ return (d.asOf==null)?Object.assign({},d,{asOf:nowAbs}):d; }); }
@@ -2253,6 +2299,32 @@ function Investments({state, set, fetchPrices, pricing}){
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,t("inv_alsoinvested"))
     ),
+    (function(){
+      const trAcc=state.accounts.find(function(a){ return a.spendFrom; });
+      if(!trAcc) return null;
+      const setTr=function(patch){ set(function(s){ return Object.assign({},s,{accounts:s.accounts.map(function(a){ return a.spendFrom?Object.assign({},a,patch):a; })}); }); };
+      const monthExp=state.expenses.filter(function(e){ return parseDate(e.date)>=startOfMonth(); });
+      const mult=trAcc.roundup||0;
+      const ru=roundupOf(monthExp, mult), sb=trAcc.saveback?savebackOf(monthExp):0, tot=state.trRewardsTotal||0;
+      const iv=state.investments.find(function(i){ return i.id===trAcc.rewardInv; });
+      const invName=iv?iv.name:t("ru_pick");
+      return React.createElement(CollapsibleCard,{key:"ru",title:t("ru_title"),sub:mult>0?tf("ru_sub_on",{m:mult}):t("ru_sub_off"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_ru"},
+        React.createElement("div",{className:"mlabel",style:{textAlign:"left",marginBottom:6}},t("ru_mult")),
+        React.createElement("div",{className:"curtoggle",style:{flexWrap:"wrap",justifyContent:"flex-start"}},
+          RU_MULTS.map(function(m){ return React.createElement("button",{key:m,type:"button",className:"curbtn"+(mult===m?" on":""),onClick:function(){ setTr({roundup:m}); }}, m===0?t("ru_off"):"×"+m); })),
+        React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"12px 0 6px"}},t("ru_dest")),
+        React.createElement("select",{className:"af-in",value:trAcc.rewardInv||"",onChange:function(e){ setTr({rewardInv:e.target.value}); }},
+          React.createElement("option",{value:""},t("ru_pick")),
+          state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name); })),
+        React.createElement("div",{className:"costtoggle",style:{marginTop:12},onClick:function(){ setTr({saveback:!trAcc.saveback}); }},
+          React.createElement("span",{className:"cbx"+(trAcc.saveback?" on":"")}, trAcc.saveback?"✓":""),
+          React.createElement("span",null,t("ru_saveback"))),
+        React.createElement("div",{className:"subtotal",style:{marginTop:12}},React.createElement("span",{className:"muted"},t("ru_month_ru")),React.createElement("span",{className:"num"},"−"+eur(ru))),
+        trAcc.saveback && React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("ru_month_sb")),React.createElement("span",{className:"num",style:{color:"var(--mint)"}},"+"+eur(sb))),
+        tot>0 && React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("ru_total")),React.createElement("span",{className:"num"},eur(tot))),
+        React.createElement("div",{className:"hint",style:{marginTop:8}}, mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))
+      );
+    })(),
     React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg"},
       // desglose por bróker, para poder comparar cada uno con su app (p.ej. Revolut en $)
       groups.map(function(g){ const o=byBroker[g[0]]; if(!o||o.v===0) return null; const gain=o.v-o.c; const pl=o.c>0?gain/o.c*100:0;
@@ -3369,9 +3441,16 @@ function App(){
 
   const totals=useMemo(()=>{
     const fx=state.fx;
-    const thisMonthSpent=state.expenses.filter(e=>parseDate(e.date)>=startOfMonth()).reduce((a,e)=>a+e.amount,0);
+    const thisMonthExp=state.expenses.filter(e=>parseDate(e.date)>=startOfMonth());
+    const thisMonthSpent=thisMonthExp.reduce((a,e)=>a+e.amount,0);
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
+    // El round-up & saveback (#19) se aplican al CERRAR el mes (reconcileTR), persistidos, para que
+    // todas las pestañas lean lo mismo. El mes en curso se muestra como informativo en Inversiones.
     const injTR = nominaYaEntro() ? CONFIG.TR_INJECTION : 0;
+    const trAcc=state.accounts.find(a=>a.spendFrom);
+    const roundupThisMonth = trAcc ? roundupOf(thisMonthExp, trAcc.roundup||0) : 0;
+    const savebackThisMonth = (trAcc && trAcc.saveback) ? savebackOf(thisMonthExp) : 0;
+    const trRewardsTotal = state.trRewardsTotal||0;
     const liquid=state.accounts.reduce((a,i)=> a + (i.spendFrom ? (i.value + injTR - thisMonthSpent) : i.value), 0);
     const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
@@ -3443,7 +3522,7 @@ function App(){
     // alarma: el saldo mínimo del mes se va a negativo (cubre tanto el bajón intra-mes como no llegar a fin de mes)
     const bankAlerts=Object.keys(minByBank).filter(b=> minByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,trRewardsTotal};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
