@@ -403,8 +403,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .tabbar-wrap{position:relative;flex:0 0 auto;padding:0 14px 10px;}
   .tabbar-wrap::after{content:"";position:absolute;top:0;right:15px;bottom:10px;width:34px;pointer-events:none;border-radius:0 16px 16px 0;background:linear-gradient(to right,rgba(14,26,20,0),var(--bg-2));}
   .tabbar{position:relative;display:flex;gap:4px;background:var(--bg-2);border:1px solid var(--line-soft);border-radius:16px;padding:5px;overflow-x:auto;scrollbar-width:none;scroll-behavior:smooth;}
-  .tab{flex:0 0 auto;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:7px;transition:color .2s;}
+  .tab{flex:0 0 auto;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:7px;transition:color .2s,transform .15s;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   .tab.active{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));box-shadow:0 4px 12px -4px rgba(95,208,138,.5);}
+  .tabbar.reordering{touch-action:none;}
+  .tabbar.reordering .tab.active{transform:scale(1.08);box-shadow:0 8px 20px -6px rgba(95,208,138,.7);}
   .tab svg{width:15px;height:15px;}
 
   .viewport{flex:1 1 auto;overflow:hidden;min-height:0;}
@@ -3165,6 +3167,12 @@ const TABS=[
   {id:"patri",label:"Patrimonio",icon:I.wealth},
   {id:"debt",label:"Deudas",icon:I.debt},
 ];
+// Orden de pestañas personalizado (settings.tabOrder); ids nuevos se añaden al final.
+function tabOrderOf(s){
+  const allIds=TABS.map(function(t){return t.id;});
+  const saved=((s&&s.settings&&s.settings.tabOrder)||[]).filter(function(id){return allIds.indexOf(id)>=0;});
+  return saved.concat(allIds.filter(function(id){return saved.indexOf(id)<0;}));
+}
 
 /* Pantalla de bloqueo: pide huella al abrir la app cuando el candado está activado. */
 function LockScreen({onUnlock}){
@@ -3371,6 +3379,8 @@ function Onboarding({set, onCloud}){
 function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
+  const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
+  const tabDrag=useRef(null);
   const [toast,setToast]=useState(null);
   const [syncing,setSyncing]=useState(false);
   const [syncStatus,setSyncStatus]=useState({type:"idle",msg:""});
@@ -3729,7 +3739,57 @@ function App(){
     const left = btn.offsetLeft - (bar.clientWidth/2) + (btn.clientWidth/2);
     try{ bar.scrollTo({left:Math.max(0,left),behavior:"smooth"}); }catch(e){ bar.scrollLeft=Math.max(0,left); }
   },[tab]);
+  /* ARRASTRE de pestañas por mantener pulsado (como los widgets del Resumen): reordena tabs+páginas */
+  const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });
+  useEffect(function(){
+    const bar=tabbarRef.current; if(!bar) return;
+    const onTS=function(e){
+      const btn=e.target.closest && e.target.closest('[data-ti]'); if(!btn) return;
+      const tch=e.touches[0];
+      const order=tabOrderOf(stateRef.current);
+      const d={startX:tch.clientX,startY:tch.clientY,active:false,order:order,activeId:order[tabRef.current],timer:null};
+      d.timer=setTimeout(function(){ d.active=true; bar.classList.add('reordering'); setTabOrderState(d.order.slice()); try{navigator.vibrate&&navigator.vibrate(15);}catch(_){} },380);
+      tabDrag.current=d;
+    };
+    const onTM=function(e){
+      const d=tabDrag.current; if(!d) return; const tch=e.touches[0];
+      if(!d.active){ if(Math.abs(tch.clientX-d.startX)>10||Math.abs(tch.clientY-d.startY)>10){ clearTimeout(d.timer); tabDrag.current=null; } return; }
+      e.preventDefault();
+      const kids=Array.prototype.slice.call(bar.querySelectorAll('[data-ti]'));
+      let target=-1,best=1e9;
+      kids.forEach(function(k,idx){ const r=k.getBoundingClientRect(); const c=r.left+r.width/2; const dist=Math.abs(c-tch.clientX); if(dist<best){best=dist;target=idx;} });
+      if(target<0) return;
+      const cur=d.order.indexOf(d.activeId);
+      if(target!==cur){ const o=d.order.slice(); o.splice(cur,1); o.splice(target,0,d.activeId); d.order=o; setTabOrderState(o.slice()); setTab(target); }
+    };
+    const onTE=function(){
+      const d=tabDrag.current; if(!d) return; clearTimeout(d.timer);
+      if(d.active){ bar.classList.remove('reordering'); const fin=d.order.slice();
+        set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{tabOrder:fin})}); });
+        setTab(fin.indexOf(d.activeId)); setTabOrderState(null);
+      }
+      tabDrag.current=null;
+    };
+    bar.addEventListener('touchstart',onTS,{passive:true});
+    bar.addEventListener('touchmove',onTM,{passive:false});
+    bar.addEventListener('touchend',onTE,{passive:true});
+    bar.addEventListener('touchcancel',onTE,{passive:true});
+    return function(){ bar.removeEventListener('touchstart',onTS); bar.removeEventListener('touchmove',onTM); bar.removeEventListener('touchend',onTE); bar.removeEventListener('touchcancel',onTE); };
+  },[]);
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
+
+  const tabIds = tabOrderState || tabOrderOf(state);
+  const TABBYID={}; TABS.forEach(function(tt){ TABBYID[tt.id]=tt; });
+  const pageFor=function(id){
+    if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set});
+    if(id==="metas") return React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe});
+    if(id==="fijos") return React.createElement(Fijos,{state:state,set:set,totals:totals});
+    if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
+    if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
+    if(id==="debt") return React.createElement(Debts,{state:state,set:set});
+    return null;
+  };
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
   if(state.onboarded===false) return React.createElement(React.Fragment,null,
@@ -3754,21 +3814,15 @@ function App(){
     ),
     React.createElement("div",{className:"tabbar-wrap"},
       React.createElement("div",{className:"tabbar",ref:tabbarRef},
-        TABS.map((tb,i)=>React.createElement("button",{key:tb.id,className:"tab"+(tab===i?" active":""),onClick:()=>setTab(i)},React.createElement(tb.icon,null),t("tab_"+tb.id)))
+        tabIds.map(function(id,i){ const tb=TABBYID[id]; return React.createElement("button",{key:id,"data-ti":i,className:"tab"+(tab===i?" active":""),onClick:()=>setTab(i)},React.createElement(tb.icon,null),t("tab_"+id)); })
       )
     ),
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
-        React.createElement("div",{className:"page"},React.createElement(Dashboard,{state:state,totals:totals,set:set})),
-        React.createElement("div",{className:"page"},React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast})),
-        React.createElement("div",{className:"page"},React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe})),
-        React.createElement("div",{className:"page"},React.createElement(Fijos,{state:state,set:set,totals:totals})),
-        React.createElement("div",{className:"page"},React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})),
-        React.createElement("div",{className:"page"},React.createElement(Wealth,{state:state,set:set,totals:totals})),
-        React.createElement("div",{className:"page"},React.createElement(Debts,{state:state,set:set}))
+        tabIds.map(function(id){ return React.createElement("div",{className:"page",key:id}, pageFor(id)); })
       )
     ),
-    React.createElement("div",{className:"dots"+(showDots?" show":"")}, TABS.map((t,i)=>React.createElement("div",{key:t.id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
+    React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); },showToast:showToast}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
