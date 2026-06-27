@@ -2638,10 +2638,11 @@ function Fijos({state, set, totals}){
   const [formO,setFormO]=useState({name:"",amount:"",month:new Date().getMonth()+1,year:new Date().getFullYear(),day:"",account:"sabadell"});
   const addOneoff=()=>{ const amt=parseFloat(String(formO.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),name:formO.name||"Cargo puntual",amount:amt,month:parseInt(formO.month,10)||(new Date().getMonth()+1),year:parseInt(formO.year,10)||new Date().getFullYear(),account:formO.account||"sabadell"}; const dd=cleanDay(formO.day); if(dd) it.day=dd; set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).concat([it])})); setFormO({name:"",amount:"",month:new Date().getMonth()+1,year:new Date().getFullYear(),day:"",account:"sabadell"}); setAddingO(false); };
   const delOneoff=(id)=> set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).filter(o=>o.id!==id)}));
-  const [editingO,setEditingO]=useState(null);
-  const [draftO,setDraftO]=useState({});
-  const startEditO=(o)=>{ setDraftO({name:o.name,amount:String(o.amount),day:o.day?String(o.day):"",month:o.month,year:o.year,account:o.account||"sabadell"}); setEditingO(o.id); };
-  const saveEditO=()=>{ const amt=parseFloat(String(draftO.amount).replace(',','.')); set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).map(function(o){ if(o.id!==editingO) return o; const dd=cleanDay(draftO.day); const n=Object.assign({},o,{name:draftO.name||o.name,amount:isNaN(amt)?o.amount:amt,month:parseInt(draftO.month,10)||o.month,year:parseInt(draftO.year,10)||o.year,account:draftO.account||"sabadell"}); if(dd) n.day=dd; else delete n.day; return n; })})); setEditingO(null); };
+  const [editingO,setEditingO]=useState(false);   // modo edición GLOBAL de la tarjeta (como Servicios)
+  const [draftsO,setDraftsO]=useState({});
+  const startEditAllO=(list)=>{ const d={}; list.forEach(function(o){ d[o.id]={name:o.name,amount:String(o.amount),day:o.day?String(o.day):"",month:o.month,year:o.year,account:o.account||"sabadell"}; }); setDraftsO(d); setEditingO(true); };
+  const setDO=(id,k,v)=> setDraftsO(function(dr){ const n=Object.assign({},dr); n[id]=Object.assign({},n[id],{[k]:v}); return n; });
+  const saveAllO=()=>{ set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).map(function(o){ const dd=draftsO[o.id]; if(!dd) return o; const amt=parseFloat(String(dd.amount).replace(',','.')); const day=cleanDay(dd.day); const n=Object.assign({},o,{name:dd.name||o.name,amount:isNaN(amt)?o.amount:amt,month:parseInt(dd.month,10)||o.month,year:parseInt(dd.year,10)||o.year,account:dd.account||"sabadell"}); if(day) n.day=day; else delete n.day; return n; })})); setEditingO(false); };
 
   // resumen de meses para el subtítulo de cada fila
   const monthsLabel=(e)=>{ const ms=chargeMonths(e); if(e.freq==="mes"||ms.length>=12) return null; if(!ms.length) return t("fj_nomonth"); return ms.map(m=>monthShort(m-1)).join(", "); };
@@ -2653,17 +2654,19 @@ function Fijos({state, set, totals}){
     state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmountIn(e,mo)!==0) items.push({key:e.id,name:e.name,amount:occAmountIn(e,mo),bank:accOf(e),day:dayIn(e,mo),paid:mo===cm&&isPaidIn(e,mo,today)}); });
     state.debts.forEach(d=>{ if(d.monthly) items.push({key:d.id,name:d.name,amount:d.monthly,debt:true,bank:d.account||"sabadell",day:dayOf(d),paid:mo===cm&&isPaidThisMonth(d,today)}); });
     oneoffs.forEach(o=>{ if(oneoffOccurs(o,yr,mo)&&(o.amount||0)!==0) items.push({key:o.id,name:o.name,amount:o.amount,oneoff:true,bank:o.account||"sabadell",day:o.day||null,paid:mo===cm&&yr===cy&&isPaidThisMonth(o,today)}); });
-    return items.sort((a,b)=>b.amount-a.amount); };
-  const thisM=chargesOf(cm,cy), nextM=chargesOf(nm,ny);
-  const thisPending=thisM.filter(x=>!x.paid), thisPaid=thisM.filter(x=>x.paid);
-  // flujos de efectivo del mes (nómina + transferencias): se ven con su día y se tachan al pasar
-  const flowsThis=(state.flows||[]).filter(f=>flowOccursIn(f,cm)).map(f=>({
+    return items; };
+  const byDay=(a,b)=> ((a.day||99)-(b.day||99)) || (b.amount-a.amount);   // por DÍA; sin día, al final
+  // flujos de efectivo del mes (nómina + transferencias): se mezclan con el resto, ordenados por día
+  const flowsOf=(mo,yr)=> (state.flows||[]).filter(f=>flowOccursIn(f,mo)).map(f=>({
     key:f.id, name:f.name, flow:true, kind:f.kind,
     amount: f.kind==="income" ? -(f.amount||0) : (f.amount||0),   // ingreso = entra (verde +) · transfer = sale
     bank: f.kind==="income" ? (f.to||"sabadell") : (f.from||"sabadell"),
-    day: flowDay(f,cy,cm), paid: flowPaid(f,cy,cm,today)
-  })).sort((a,b)=>(a.day||0)-(b.day||0));
-  const nextSum=nextM.reduce((a,x)=>a+x.amount,0);
+    day: flowDay(f,yr,mo), paid: mo===cm&&yr===cy ? flowPaid(f,yr,mo,today) : false
+  }));
+  const thisM=chargesOf(cm,cy).concat(flowsOf(cm,cy)).sort(byDay);
+  const nextM=chargesOf(nm,ny);
+  const thisPending=thisM.filter(x=>!x.paid), thisPaid=thisM.filter(x=>x.paid);
+  const nextSum=nextM.reduce((a,x)=>a+x.amount,0);   // solo cargos (sin flujos) para el subtotal
   const rowCharge=(x)=> React.createElement("div",{className:"row"+(x.paid?" paid-row":""),key:x.key},
     React.createElement("div",{className:"rl"},React.createElement("div",null,
       React.createElement("div",{className:"rname"}, x.name, x.day && React.createElement("span",{className:"day-badge"},tf("fj_day_n",{d:x.day}))),
@@ -2722,8 +2725,6 @@ function Fijos({state, set, totals}){
       thisPending.map(rowCharge),
       thisPaid.length>0 && React.createElement("div",{className:"hint",style:{margin:"10px 0 2px"}},tf("fj_paid_m",{x:eur0(totals.paidThisMonth)})),
       thisPaid.map(rowCharge),
-      flowsThis.length>0 && React.createElement("div",{className:"hint",style:{margin:"12px 0 2px"}},t("fj_flows_h")),
-      flowsThis.map(rowCharge),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_pend_tot",{m:monthShort(cm-1)})),React.createElement("span",{className:"num"},eur(totals.pendingThisMonth))),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_next_m",{m:monthShort(nm-1)})),React.createElement("span",{className:"num"},eur(nextSum))),
       totals.sinProgramar>0 && React.createElement("div",{className:"hint",style:{marginTop:8,color:"#E2A05F"}},tf("fj_noprog",{n:totals.sinProgramar}))
@@ -2918,41 +2919,35 @@ function Fijos({state, set, totals}){
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingF(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addflow")),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_flows_hint"))
     ),
-    React.createElement(CollapsibleCard,{title:t("fj_oneoffs"),sub:t("fj_oneoffs_sub"),dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false},
-      (function(){ const up=oneoffs.filter(o=>!oneoffPast(o,cy,cm)).sort((a,b)=> (a.year-b.year)||(a.month-b.month) );
-        return up.length? up.map(function(o){
-          if(editingO===o.id){
-            return React.createElement("div",{className:"add-form",key:o.id,style:{marginBottom:10}},
-              React.createElement("input",{className:"af-in",placeholder:t("fj_concept_amort"),value:draftO.name,onChange:e=>setDraftO(Object.assign({},draftO,{name:e.target.value}))}),
+    (function(){ const up=oneoffs.filter(o=>!oneoffPast(o,cy,cm)).sort((a,b)=> (a.year-b.year)||(a.month-b.month) );
+      return React.createElement(CollapsibleCard,{title:t("fj_oneoffs"),sub:t("fj_oneoffs_sub"),dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false,
+        right: up.length? React.createElement("button",{className:"edit-link"+(editingO?" save":""),onClick:e=>{ e.stopPropagation(); editingO?saveAllO():startEditAllO(up); }}, editingO?t("fj_save"):t("fj_edit")) : null},
+        up.length? up.map(function(o){
+          if(editingO){
+            const d=draftsO[o.id]||{}; return React.createElement("div",{className:"add-form",key:o.id,style:{marginBottom:10}},
+              React.createElement("input",{className:"af-in",placeholder:t("fj_concept_amort"),value:d.name||"",onChange:e=>setDO(o.id,"name",e.target.value)}),
               React.createElement("div",{className:"af-row"},
-                React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:draftO.amount,onChange:e=>setDraftO(Object.assign({},draftO,{amount:e.target.value}))}),
-                React.createElement("select",{className:"af-in",value:draftO.month,onChange:e=>setDraftO(Object.assign({},draftO,{month:e.target.value}))}, MONTHS_ES.map((lbl,i)=>React.createElement("option",{key:i+1,value:i+1},monthShort(i)))),
-                React.createElement("input",{className:"af-in num",placeholder:t("fj_day"),inputMode:"numeric",style:{maxWidth:64},value:draftO.day,onChange:e=>setDraftO(Object.assign({},draftO,{day:e.target.value}))})
+                React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:d.amount||"",onChange:e=>setDO(o.id,"amount",e.target.value)}),
+                React.createElement("select",{className:"af-in",value:d.month,onChange:e=>setDO(o.id,"month",e.target.value)}, MONTHS_ES.map((lbl,i)=>React.createElement("option",{key:i+1,value:i+1},monthShort(i)))),
+                React.createElement("input",{className:"af-in num",placeholder:t("fj_day"),inputMode:"numeric",style:{maxWidth:64},value:d.day||"",onChange:e=>setDO(o.id,"day",e.target.value)})
               ),
               React.createElement("div",{className:"edit-extra"},
                 React.createElement("span",{className:"rsub"},t("fj_year_lbl")),
-                React.createElement("input",{className:"af-in num",style:{width:74,padding:"8px 10px"},inputMode:"numeric",value:draftO.year,onChange:e=>setDraftO(Object.assign({},draftO,{year:e.target.value}))}),
+                React.createElement("input",{className:"af-in num",style:{width:74,padding:"8px 10px"},inputMode:"numeric",value:d.year,onChange:e=>setDO(o.id,"year",e.target.value)}),
                 React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_bank")),
-                React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:draftO.account,onChange:e=>setDraftO(Object.assign({},draftO,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
+                React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:d.account,onChange:e=>setDO(o.id,"account",e.target.value)}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
               ),
-              React.createElement("div",{className:"af-row"},
-                React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>setEditingO(null)},t("fj_cancel")),
-                React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:saveEditO},t("fj_save"))
-              )
+              React.createElement("button",{className:"btn btn-ghost btn-block",style:{color:"var(--coral)"},onClick:()=>delOneoff(o.id)},t("db_delete"))
             );
           }
           return React.createElement("div",{className:"row",key:o.id},
-          React.createElement("div",{className:"rl"},
-            React.createElement("button",{className:"del-btn",onClick:()=>delOneoff(o.id)},"✕"),
-            React.createElement("div",null,
-              React.createElement("div",{className:"rname"}, o.name, o.day && React.createElement("span",{className:"day-badge"},tf("fj_day_n",{d:o.day}))),
-              React.createElement("div",{className:"rsub"}, monthShort(o.month-1)+" "+o.year+(o.account!=="sabadell"?" · "+entOf(o.account).label:"")))),
-          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-            React.createElement("div",{className:"rval num"}, eur(o.amount)),
-            React.createElement("button",{className:"pencil-btn",onClick:()=>startEditO(o)},"✎"))
-        );
-        }) : React.createElement("div",{className:"hint"},t("fj_oneoffs_empty"));
-      })(),
+            React.createElement("div",{className:"rl"},
+              React.createElement("div",null,
+                React.createElement("div",{className:"rname"}, o.name, o.day && React.createElement("span",{className:"day-badge"},tf("fj_day_n",{d:o.day}))),
+                React.createElement("div",{className:"rsub"}, monthShort(o.month-1)+" "+o.year+(o.account!=="sabadell"?" · "+entOf(o.account).label:"")))),
+            React.createElement("div",{className:"rval num"}, eur(o.amount))
+          );
+        }) : React.createElement("div",{className:"hint"},t("fj_oneoffs_empty")),
       addingO
         ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
             React.createElement("input",{className:"af-in",placeholder:t("fj_concept_amort"),value:formO.name,onChange:e=>setFormO(Object.assign({},formO,{name:e.target.value}))}),
@@ -2974,7 +2969,7 @@ function Fijos({state, set, totals}){
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingO(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addoneoff")),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_oneoff_hint"))
-    ),
+    ); })(),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}},tf("fj_foot",{x:eur0(grand*12)}))
   );
 }
