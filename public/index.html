@@ -583,6 +583,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .emoji-pick button.on{border-color:var(--mint);background:rgba(95,208,138,.16);}
   .confetti{position:fixed;top:-14px;width:9px;height:14px;border-radius:2px;z-index:200;pointer-events:none;animation:conffall linear forwards;}
   @keyframes conffall{to{transform:translateY(106vh) rotate(720deg);}}
+  .catpick{display:flex;flex-wrap:wrap;gap:6px;padding:2px 2px 12px 50px;}
+  .catpick-b{font-size:12px;font-weight:600;padding:6px 9px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--text);cursor:pointer;}
+  .catpick-b.on{border-color:var(--mint);background:rgba(95,208,138,.16);color:var(--mint);}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:13px;font-weight:700;font-size:14px;}
   .btn-primary{background:linear-gradient(160deg,var(--mint-bright),var(--mint));color:#08120C;box-shadow:0 8px 18px -8px rgba(95,208,138,.55);}
@@ -667,20 +670,26 @@ const freqLabel = (f)=> t("freq_"+f);              // frecuencia traducida
 const MERCHANT_OVERRIDES = {
   "mapfre": "bares",   // para ti es el bar donde pillas bocadillo/menú del día
 };
+// Overrides PERSONALES del usuario (comercio→categoría), que aprende al recategorizar a mano.
+// Se puebla desde state.catOverrides al cargar. Tiene prioridad sobre las keywords.
+let USER_OVERRIDES = {};
+function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
 const KW = {
   bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin"],
   super:["mercadona","lidl","aldi","carrefour","dia","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria"],
   transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing","blablacar","flixbus"],
   parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal"],
   ocio:["cinema","cine","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","bolera"],
-  compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum"],
+  compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","amzn","openbank","open bank","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","saona","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum"],
   hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
   salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","barberia","estetica","belleza","depilacion"],
   regalos:["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
 };
 function autoCategory(merchant){
   const c=(merchant||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-  for(const k in MERCHANT_OVERRIDES){ if(c.indexOf(k)!==-1) return MERCHANT_OVERRIDES[k]; }  // overrides personales primero
+  const key=c.trim();
+  if(USER_OVERRIDES[key]) return USER_OVERRIDES[key];                                        // lo que T\u00da has aprendido a mano
+  for(const k in MERCHANT_OVERRIDES){ if(c.indexOf(k)!==-1) return MERCHANT_OVERRIDES[k]; }  // overrides de ejemplo
   for(const cat in KW){ if(KW[cat].some(k=>c.indexOf(k)!==-1)) return cat; }
   return "otros";
 }
@@ -936,7 +945,7 @@ Object.assign(LANG.es,{
   g_gasto:"💸 Gasto", g_ingreso:"💰 Ingreso", g_concept_g:"Concepto (ej. Cena)", g_concept_i:"Concepto (ej. me devolvió Ana)",
   g_addgasto:"Añadir gasto", g_addingreso:"Añadir ingreso",
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
-  g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado",
+  g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
   cat_super:"Supermercado", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
@@ -989,7 +998,7 @@ Object.assign(LANG.en,{
   g_gasto:"💸 Expense", g_ingreso:"💰 Income", g_concept_g:"What (e.g. Dinner)", g_concept_i:"What (e.g. Ana paid me back)",
   g_addgasto:"Add expense", g_addingreso:"Add income",
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
-  g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted",
+  g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
   cat_super:"Groceries", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
@@ -1041,7 +1050,7 @@ Object.assign(LANG.ca,{
   g_gasto:"💸 Despesa", g_ingreso:"💰 Ingrés", g_concept_g:"Concepte (ex. Sopar)", g_concept_i:"Concepte (ex. l'Ana m'ho ha tornat)",
   g_addgasto:"Afegeix despesa", g_addingreso:"Afegeix ingrés",
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
-  g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat",
+  g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
   cat_super:"Supermercat", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
@@ -1432,7 +1441,7 @@ function buildEmpty(){
   return {
     fx: 0.92, budget: 0, monthStartNet: 0, history: [],
     accounts: [], investments: [], assets: [], debts: [], fixed: [], flows: [], oneoffs: [], aportaciones: [],
-    expenses: [], goals: [], streak: 0,
+    expenses: [], goals: [], catOverrides: {}, streak: 0,
     settings: { autoPrices:false },
     lastSync: null, lastPriceSync: null,
     onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
@@ -1541,6 +1550,13 @@ function seedFlows(s){
   if(!s.oneoffs) s.oneoffs = [];
   if(!s.flows) s.flows = [];
   if(!s.goals) s.goals = [];
+  if(!s.catOverrides) s.catOverrides = {};
+  USER_OVERRIDES = Object.assign({}, s.catOverrides);    // overrides personales (comercio→cat) activos
+  // recategoriza lo que quedó en "Otros" (gastos auto, no manuales) con las keywords/overrides mejorados
+  if(s.expenses){ s.expenses = s.expenses.map(function(e){
+    if(e.category==="otros" && e.source!=="manual"){ const nc=autoCategory(e.merchant); if(nc!=="otros") return Object.assign({},e,{category:nc}); }
+    return e;
+  }); }
   // SEMILLAS DE LA CARTERA DE EJEMPLO: solo para MI estado legacy (detectado por el id de la
   // cuenta Sabadell demo). Así un usuario nuevo NO hereda mi nómina/transferencias.
   const isDemo = s.accounts && s.accounts.some(function(a){ return a.id==="qnx5klq"; });
@@ -1998,12 +2014,29 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false});
+  const [catEdit,setCatEdit]=useState(null);   // id del gasto al que estás cambiando la categoría
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
     set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:(s.deleted||[]).concat([keyOfE(e)]) }); });
     if(cloud.enabled()) cloud.deleteExpense(e).catch(function(){});
     showToast(t("g_deleted"));
+  };
+  // Recategorizar un gasto a mano: actualiza ESTE, recuerda el comercio (catOverrides) para los
+  // futuros y arregla otros gastos del mismo comercio que estuvieran en "Otros".
+  const setCat=function(ex,newCat){
+    const mkey=catKey(ex.merchant);
+    set(function(s){
+      const ov=Object.assign({}, s.catOverrides||{}); if(mkey) ov[mkey]=newCat;
+      USER_OVERRIDES=Object.assign({},ov);
+      const exps=s.expenses.map(function(e){
+        if(e.id===ex.id) return Object.assign({},e,{category:newCat});
+        if(mkey && catKey(e.merchant)===mkey && e.category==="otros") return Object.assign({},e,{category:newCat});
+        return e;
+      });
+      return Object.assign({},s,{expenses:exps,catOverrides:ov});
+    });
+    setCatEdit(null);
   };
 
   const filtered=useMemo(()=> state.expenses
@@ -2080,19 +2113,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map((g,i)=> g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : (function(){ const c=catOf(g.e.category); return React.createElement("div",{className:"ex-row",key:g.e.id||i},
-                  React.createElement("div",{className:"ex-ic",style:{borderColor:c.color+"55",color:c.color}},c.icon),
-                  React.createElement("div",{className:"ex-mid"},
-                    React.createElement("div",{className:"ex-merchant"},g.e.merchant||"—"),
-                    React.createElement("div",{className:"ex-meta"},
-                      React.createElement("span",{className:"ex-cat",style:{color:c.color}},catName(g.e.category)),
-                      React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}))
+              : (function(){ const c=catOf(g.e.category); const isIncome=g.e.amount<0; const open=catEdit===g.e.id; return React.createElement(React.Fragment,{key:g.e.id||i},
+                  React.createElement("div",{className:"ex-row"},
+                    React.createElement("button",{className:"ex-ic",style:{borderColor:c.color+"55",color:c.color,cursor:isIncome?"default":"pointer",background:"none"},title:t("g_changecat"),onClick:function(ev){ ev.stopPropagation(); if(!isIncome) setCatEdit(open?null:g.e.id); }},c.icon),
+                    React.createElement("div",{className:"ex-mid"},
+                      React.createElement("div",{className:"ex-merchant"},g.e.merchant||"—"),
+                      React.createElement("div",{className:"ex-meta"},
+                        React.createElement("span",{className:"ex-cat",style:{color:c.color}},catName(g.e.category)),
+                        React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}))
+                      )
+                    ),
+                    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+                      React.createElement("div",{className:"ex-amt num",style: isIncome?{color:"var(--mint)"}:null}, (isIncome?"+":"−")+eur(Math.abs(g.e.amount))),
+                      React.createElement("button",{className:"ex-del",title:t("w_hide"),onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
                     )
                   ),
-                  React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-                    React.createElement("div",{className:"ex-amt num",style: g.e.amount<0?{color:"var(--mint)"}:null}, (g.e.amount<0?"+":"−")+eur(Math.abs(g.e.amount))),
-                    React.createElement("button",{className:"ex-del",title:t("w_hide"),onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
-                  )
+                  open && React.createElement("div",{className:"catpick"}, CATEGORIES.map(function(cc){
+                    return React.createElement("button",{key:cc.id,type:"button",className:"catpick-b"+(cc.id===g.e.category?" on":""),onClick:function(){ setCat(g.e,cc.id); }}, cc.icon+" "+catName(cc.id).split(" ")[0]);
+                  }))
                 ); })()
           ),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
