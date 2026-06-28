@@ -2434,10 +2434,12 @@ function Investments({state, set, fetchPrices, pricing}){
    ============================================================ */
 function Wealth({state, set, totals}){
   const pn=(i)=> (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0;   // movimientos ya ocurridos este mes
+  const ruM=totals.roundupThisMonth||0;                                     // round-up del mes (sale del efectivo de gasto)
+  const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM;
   const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})),{
     // Editas el SALDO REAL de hoy; por dentro se guarda la base (inicio de mes) correcta.
-    display:  i => i.spendFrom ? (i.value + totals.injTR - totals.thisMonthSpent) : (i.value + pn(i)),
-    toStored: (i,typed) => i.spendFrom ? (typed - totals.injTR + totals.thisMonthSpent) : (typed - pn(i))
+    display:  i => i.spendFrom ? spendBal(i) : (i.value + pn(i)),
+    toStored: (i,typed) => i.spendFrom ? (typed - totals.injTR + totals.thisMonthSpent + ruM) : (typed - pn(i))
   });
   const astEd=useEditable(state.assets,it=>set(s=>Object.assign({},s,{assets:it})));
   const accSum=totals.liquid;
@@ -2459,7 +2461,7 @@ function Wealth({state, set, totals}){
           React.createElement("div",null,React.createElement("div",{className:"rname"},entOf(a.ent).label),React.createElement("div",{className:"rsub"}, a.spendFrom?(tf("pt_monthspent",{x:eur0(totals.thisMonthSpent)})+(totals.injTR?tf("pt_payroll",{x:eur0(totals.injTR)}):"")):a.name))),
         accEd.editing
           ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
-          : React.createElement("div",{className:"rval num"},eur(a.spendFrom? a.value + totals.injTR - totals.thisMonthSpent : a.value + pn(a)))
+          : React.createElement("div",{className:"rval num"},eur(a.spendFrom? spendBal(a) : a.value + pn(a)))
       )),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_liquid")),React.createElement("span",{className:"num"},eur(accSum)))
     ),
@@ -3566,9 +3568,10 @@ function App(){
     // (ingresos/nómina/bizums − fijos − cuotas − puntuales − transfers). El de gasto (TR) usa su inyección.
     const paidNetByBank={};
     state.accounts.forEach(function(a){ if(!a.spendFrom) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
-    const dynBal=function(a){ return a.spendFrom ? (a.value+injTR-thisMonthSpent) : ((a.value||0)+(paidNetByBank[a.ent]||0)); };
+    // el round-up del mes en curso ya salió del efectivo de gasto (TR) hacia la inversión (en tránsito)
+    const dynBal=function(a){ return a.spendFrom ? (a.value+injTR-thisMonthSpent-roundupThisMonth) : ((a.value||0)+(paidNetByBank[a.ent]||0)); };
     const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0);
-    const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
+    const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0) + roundupThisMonth + savebackThisMonth;
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
     const activos=liquid+invested+assetsTotal;
