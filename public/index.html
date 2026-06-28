@@ -1575,6 +1575,15 @@ function seedFlows(s){
     // semilla única: round-up ×2 + saveback en la cuenta TR demo → FTSE All-World (#19)
     if(!s._trRewardSeed){ s.accounts=s.accounts.map(function(a){ return a.spendFrom?Object.assign({roundup:2,saveback:true,rewardInv:"7zjaw0y"},a,{roundup:a.roundup!=null?a.roundup:2,saveback:a.saveback!=null?a.saveback:true,rewardInv:a.rewardInv||"7zjaw0y"}):a; }); s._trRewardSeed=true; }
   }
+  // FIX v3.50: el saldo dinámico (v3.48) interpretó el `value` guardado como "inicio de mes" y volvió a
+  // restar los cargos YA pagados de este mes → saldos disparados (Sabadell −3312 en vez de 147). Re-anclamos
+  // UNA sola vez: el value guardado era el saldo de HOY, así que le sumamos de vuelta el neto ya ocurrido
+  // (base = hoy − netoYaOcurrido) para que el saldo mostrado vuelva a ser el real y evolucione bien.
+  if(!s._dynBalAnchored){
+    const cy=new Date().getFullYear(), cm=new Date().getMonth()+1, td=new Date().getDate();
+    (s.accounts||[]).forEach(function(a){ if(!a.spendFrom){ a.value = +(((a.value||0) - monthNetForAccount(s, a.ent, cy, cm, td))).toFixed(2); } });
+    s._dynBalAnchored=true;
+  }
   // deuda dinámica: ancla el saldo actual al mes de hoy si aún no tenía ancla (vale para todos)
   if(s.debts){ const nowAbs=ymNow(); s.debts = s.debts.map(function(d){ return (d.asOf==null)?Object.assign({},d,{asOf:nowAbs}):d; }); }
   return s;
@@ -3551,7 +3560,7 @@ function App(){
 
   const totals=useMemo(()=>{
     const fx=state.fx;
-    const thisMonthExp=state.expenses.filter(e=>parseDate(e.date)>=startOfMonth());
+    const thisMonthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth());
     const thisMonthSpent=thisMonthExp.reduce((a,e)=>a+e.amount,0);
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
     // El round-up & saveback (#19) se aplican al CERRAR el mes (reconcileTR), persistidos, para que
