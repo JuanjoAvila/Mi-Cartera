@@ -538,6 +538,15 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .af-result.no{border-color:rgba(226,112,95,.5);background:rgba(226,112,95,.08);}
   .af-floor{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;font-size:12.5px;}
   .af-below{margin-top:8px;font-size:12px;font-weight:600;color:#E2A05F;}
+  .af-info{margin-top:10px;padding:10px 12px;border-radius:11px;background:var(--bg-2);border:1px solid var(--line-soft);}
+  .af-safe{font-weight:700;font-size:13px;color:var(--mint);}
+  .recap-card{background:linear-gradient(135deg,rgba(95,208,138,.14),rgba(127,181,232,.10));border:1px solid rgba(95,208,138,.4);border-radius:16px;padding:15px 16px;margin-bottom:12px;}
+  .recap-h{font-weight:800;font-size:15px;margin-bottom:10px;}
+  .recap-stats{display:flex;gap:10px;}
+  .recap-stat{flex:1;text-align:center;background:var(--bg-2);border:1px solid var(--line-soft);border-radius:11px;padding:9px 6px;}
+  .recap-v{font-weight:800;font-size:16px;}
+  .recap-v.good{color:var(--mint);} .recap-v.bad{color:#E2705F;}
+  .recap-l{font-size:10.5px;color:var(--muted);margin-top:2px;}
   .af-verdict{font-weight:800;font-size:14px;}
   .af-low{font-size:12.5px;color:var(--text);margin-top:5px;}
   .af-delta{font-size:11.5px;color:var(--muted);margin-top:3px;}
@@ -1049,6 +1058,7 @@ Object.assign(LANG.es,{
   d_saving_card:"¿A dónde va tu ahorro?", d_saving_card_sub:"{x}/mes a inversión", d_saving_total:"Total ahorrado/mes",
   d_culprit:"Categoría culpable", d_culprit_sub:"Lo que más gastas en {m}",
   d_trend:"Esto vs tu media", d_trend_sub:"Gasto del mes por categoría vs tu media", d_trend_avg:"media {x}", d_trend_hint:"▲ por encima de tu media de meses anteriores · ▼ por debajo.", d_trend_nodata:"Aparecerá en cuanto tengas 2+ meses de datos en alguna categoría. Sigue apuntando 😉",
+  recap_title:"📅 Cómo fue {m}", recap_spent:"gastado", recap_under:"bajo presupuesto 🟢", recap_over:"sobre presupuesto 🔴", recap_subs:"subs activas", recap_ok:"¡Entendido!",
   d_noexp_t:"Aún sin gastos", d_noexp_d:"Sincroniza o apunta un gasto.", d_culprit_hint:"👑 {name} se lleva {pct}% de tu gasto este mes.",
   wl_budget:"Presupuesto y racha", wl_culpa:"Sin culpa (lo que te queda)", wl_fixedsave:"Gastos fijos y ahorro", wl_savings:"A dónde va tu ahorro",
   personalize:"✎ Personalizar", done:"Listo ✓", drag_hint:"mantén pulsada una tarjeta para moverla",
@@ -1076,6 +1086,7 @@ Object.assign(LANG.es,{
   af_yes:"✅ Sí, puedes permitírtelo", af_tight:"🟠 Puedes, pero te quedarías muy justo", af_no:"🔴 Mejor no: te quedarías en negativo",
   af_low:"Tu punto más bajo del mes sería {x} (día {d})", af_low_noday:"Tu punto más bajo del mes sería {x}", af_from_to:"sin la compra {a} → con ella {b}",
   af_floor:"🛟 Colchón mínimo de {bank}", af_floor_ph:"sin tope", af_floor_break:"🟠 Puedes, PERO bajarías de tu colchón de {x}", af_below:"⚠ Ya estás por debajo de tu colchón de {x} (vas {y})",
+  af_safe:"💚 Hoy puedes gastar hasta {x} sin pasarte", af_eom:"A fin de mes te quedarían ~{x}",
   fj_alarm:"🚨 ¡Cuidado! ", fj_alarm_a:" se queda en {x} sobre el día {d} (antes de que entre la nómina). Mete fondos o no llegarás.", fj_alarm_b:" se queda en negativo este mes con lo que falta por pagar. Mete fondos o no llegarás.",
   fj_heavy_now:"Este mes ", fj_heavy_next:"El mes que viene ", fj_heavy_in:"En {m} ", fj_heavy_b:"se viene cargado: {x} en fijos (la media es {avg}). 👀",
   fj_pend_in:"Pendiente en {m}:", fj_allpaid:"✓ Todo pagado este mes.", fj_paid_m:"Ya pagado este mes ({x}):",
@@ -1112,6 +1123,7 @@ Object.assign(LANG.en,{
   d_saving_card:"Where does your saving go?", d_saving_card_sub:"{x}/month to investing", d_saving_total:"Total saved/month",
   d_culprit:"Top category", d_culprit_sub:"What you spend most on in {m}",
   d_trend:"This vs your average", d_trend_sub:"This month's spend by category vs your average", d_trend_avg:"avg {x}", d_trend_hint:"▲ above your previous-months average · ▼ below.", d_trend_nodata:"It'll appear once you have 2+ months of data in any category. Keep logging 😉",
+  recap_title:"📅 How {m} went", recap_spent:"spent", recap_under:"under budget 🟢", recap_over:"over budget 🔴", recap_subs:"active subs", recap_ok:"Got it!",
   d_noexp_t:"No spending yet", d_noexp_d:"Sync or add an expense.", d_culprit_hint:"👑 {name} takes {pct}% of your spending this month.",
   wl_budget:"Budget & streak", wl_culpa:"Guilt-free (what's left)", wl_fixedsave:"Fixed costs & saving", wl_savings:"Where your saving goes",
   personalize:"✎ Customise", done:"Done ✓", drag_hint:"press and hold a card to move it",
@@ -1137,6 +1149,7 @@ Object.assign(LANG.en,{
   af_yes:"✅ Yes, you can afford it", af_tight:"🟠 You can, but it'd be very tight", af_no:"🔴 Better not: you'd go negative",
   af_low:"Your lowest point this month would be {x} (day {d})", af_low_noday:"Your lowest point this month would be {x}", af_from_to:"without it {a} → with it {b}",
   af_floor:"🛟 {bank} safety floor", af_floor_ph:"no floor", af_floor_break:"🟠 You can, BUT you'd dip below your {x} floor", af_below:"⚠ You're already below your {x} floor (at {y})",
+  af_safe:"💚 Today you can spend up to {x} safely", af_eom:"End of month you'd have ~{x}",
   fj_alarm:"🚨 Heads up! ", fj_alarm_a:" drops to {x} around day {d} (before payroll arrives). Add funds or you won't make it.", fj_alarm_b:" goes negative this month with what's left to pay. Add funds or you won't make it.",
   fj_heavy_now:"This month ", fj_heavy_next:"Next month ", fj_heavy_in:"In {m} ", fj_heavy_b:"is heavy: {x} in fixed costs (avg is {avg}). 👀",
   fj_pend_in:"Pending in {m}:", fj_allpaid:"✓ All paid this month.", fj_paid_m:"Already paid this month ({x}):",
@@ -1173,6 +1186,7 @@ Object.assign(LANG.ca,{
   d_saving_card:"On va el teu estalvi?", d_saving_card_sub:"{x}/mes a inversió", d_saving_total:"Total estalviat/mes",
   d_culprit:"Categoria culpable", d_culprit_sub:"On més gastes al {m}",
   d_trend:"Això vs la teva mitjana", d_trend_sub:"Despesa del mes per categoria vs la teva mitjana", d_trend_avg:"mitjana {x}", d_trend_hint:"▲ per sobre de la mitjana de mesos anteriors · ▼ per sota.", d_trend_nodata:"Apareixerà quan tinguis 2+ mesos de dades en alguna categoria. Segueix apuntant 😉",
+  recap_title:"📅 Com va anar {m}", recap_spent:"gastat", recap_under:"sota pressupost 🟢", recap_over:"sobre pressupost 🔴", recap_subs:"subs actives", recap_ok:"Entesos!",
   d_noexp_t:"Encara sense despeses", d_noexp_d:"Sincronitza o apunta una despesa.", d_culprit_hint:"👑 {name} s'emporta el {pct}% de la teva despesa aquest mes.",
   wl_budget:"Pressupost i ratxa", wl_culpa:"Sense culpa (el que et queda)", wl_fixedsave:"Despeses fixes i estalvi", wl_savings:"On va el teu estalvi",
   personalize:"✎ Personalitza", done:"Fet ✓", drag_hint:"mantén premuda una targeta per moure-la",
@@ -1198,6 +1212,7 @@ Object.assign(LANG.ca,{
   af_yes:"✅ Sí, t'ho pots permetre", af_tight:"🟠 Pots, però et quedaries molt just", af_no:"🔴 Millor no: et quedaries en negatiu",
   af_low:"El teu punt més baix del mes seria {x} (dia {d})", af_low_noday:"El teu punt més baix del mes seria {x}", af_from_to:"sense la compra {a} → amb ella {b}",
   af_floor:"🛟 Coixí mínim de {bank}", af_floor_ph:"sense límit", af_floor_break:"🟠 Pots, PERÒ baixaries del teu coixí de {x}", af_below:"⚠ Ja estàs per sota del teu coixí de {x} (vas {y})",
+  af_safe:"💚 Avui pots gastar fins a {x} sense passar-te", af_eom:"A fi de mes et quedarien ~{x}",
   fj_alarm:"🚨 Compte! ", fj_alarm_a:" es queda en {x} cap al dia {d} (abans que entri la nòmina). Posa-hi fons o no hi arribaràs.", fj_alarm_b:" es queda en negatiu aquest mes amb el que falta per pagar. Posa-hi fons o no hi arribaràs.",
   fj_heavy_now:"Aquest mes ", fj_heavy_next:"El mes que ve ", fj_heavy_in:"Al {m} ", fj_heavy_b:"ve carregat: {x} en fixes (la mitjana és {avg}). 👀",
   fj_pend_in:"Pendent al {m}:", fj_allpaid:"✓ Tot pagat aquest mes.", fj_paid_m:"Ja pagat aquest mes ({x}):",
@@ -1253,6 +1268,7 @@ Object.assign(LANG.es,{
   db_pending:"Pendiente", db_pending_sub:"baja solo cada mes", db_delete:"Eliminar esta deuda", db_savechanges:"Guardar cambios", db_editbalances:"Editar saldos pendientes",
   db_concept:"Concepto (ej. Financiación móvil)", db_amount:"Importe €", db_quota_ph:"Cuota/mes € (vacío si 0%)", db_add:"Añadir deuda", db_newdebt:"Nueva deuda", db_addedmanual:"Añadida manualmente",
   db_months_ph:"Plazo (meses)", db_day_ph:"Día", db_left:"Quedan {n}/{tot} cuotas · {x}/mes", db_paidoff_done:"✓ Financiación pagada", db_financing_hint:"Pon el plazo en meses para una financiación: la cuota aparece sola en Gastos fijos cada mes y se para al acabar. Si es 0% deja la cuota vacía (la calculo). Para interés, escribe la cuota real.",
+  db_down_ph:"Entrada € (opcional)", db_balloon_ph:"Pago final € (coche)", db_balloon_tag:"(pago final)", db_balloon_hint:"¿Coche? Entrada al inicio + cuotas + un PAGO FINAL grande al acabar el plazo. Pon el importe financiado, el pago final y el plazo: la cuota se calcula sola y el pago final aparece como cargo el último mes.", db_balloon_line:"Pago final: {x}", db_down_line:"Entrada: {x}",
   db_hint:"El saldo baja solo cada mes según lo que amortizas. Cuando te llegue el saldo real del banco, edítalo aquí y se vuelve a anclar. La cuota y la amortización (si difieren, p.ej. pagas 197 € pero amortizas 250 €) se ponen en Fijos → Cuotas de deuda.",
   lk_unlock:"Desbloquea para continuar", lk_failed:"No se pudo verificar. Inténtalo de nuevo.", lk_unlockbtn:"Desbloquear con huella", lk_cant:"No puedo desbloquear",
   lk_escape:"¿Quitar el candado de huella en este dispositivo? Podrás volver a activarlo desde tu cuenta.",
@@ -1289,6 +1305,7 @@ Object.assign(LANG.en,{
   db_pending:"Outstanding", db_pending_sub:"drops on its own each month", db_delete:"Delete this debt", db_savechanges:"Save changes", db_editbalances:"Edit outstanding balances",
   db_concept:"What (e.g. Phone financing)", db_amount:"Amount €", db_quota_ph:"Payment/mo € (empty if 0%)", db_add:"Add debt", db_newdebt:"New debt", db_addedmanual:"Added manually",
   db_months_ph:"Term (months)", db_day_ph:"Day", db_left:"{n}/{tot} payments left · {x}/mo", db_paidoff_done:"✓ Financing paid off", db_financing_hint:"Set a term in months for a financing: the payment shows up by itself in Fixed costs each month and stops when it ends. If 0%, leave the payment empty (I compute it). For interest, enter the real payment.",
+  db_down_ph:"Down payment € (optional)", db_balloon_ph:"Final payment € (car)", db_balloon_tag:"(final payment)", db_balloon_hint:"Car? Down payment upfront + installments + a big FINAL PAYMENT at term end. Enter the financed amount, the final payment and the term: the installment is computed and the final payment shows as a charge in the last month.", db_balloon_line:"Final payment: {x}", db_down_line:"Down payment: {x}",
   db_hint:"The balance drops on its own each month based on what you pay off. When you get the real bank balance, edit it here and it re-anchors. The payment and payoff (if different, e.g. you pay 197 € but pay off 250 €) are set in Fixed → Debt payments.",
   lk_unlock:"Unlock to continue", lk_failed:"Couldn't verify. Try again.", lk_unlockbtn:"Unlock with fingerprint", lk_cant:"I can't unlock",
   lk_escape:"Remove the fingerprint lock on this device? You can re-enable it from your account.",
@@ -1325,6 +1342,7 @@ Object.assign(LANG.ca,{
   db_pending:"Pendent", db_pending_sub:"baixa sol cada mes", db_delete:"Elimina aquest deute", db_savechanges:"Desa els canvis", db_editbalances:"Edita saldos pendents",
   db_concept:"Concepte (ex. Finançament mòbil)", db_amount:"Import €", db_quota_ph:"Quota/mes € (buit si 0%)", db_add:"Afegeix deute", db_newdebt:"Nou deute", db_addedmanual:"Afegida manualment",
   db_months_ph:"Termini (mesos)", db_day_ph:"Dia", db_left:"Queden {n}/{tot} quotes · {x}/mes", db_paidoff_done:"✓ Finançament pagat", db_financing_hint:"Posa el termini en mesos per a un finançament: la quota apareix sola a Despeses fixes cada mes i s'atura en acabar. Si és 0%, deixa la quota buida (la calculo). Per interès, escriu la quota real.",
+  db_down_ph:"Entrada € (opcional)", db_balloon_ph:"Pagament final € (cotxe)", db_balloon_tag:"(pagament final)", db_balloon_hint:"Cotxe? Entrada a l'inici + quotes + un PAGAMENT FINAL gran en acabar el termini. Posa l'import finançat, el pagament final i el termini: la quota es calcula sola i el pagament final surt com a càrrec l'últim mes.", db_balloon_line:"Pagament final: {x}", db_down_line:"Entrada: {x}",
   db_hint:"El saldo baixa sol cada mes segons el que amortitzes. Quan et arribi el saldo real del banc, edita'l aquí i es torna a ancorar. La quota i l'amortització (si difereixen, ex. pagues 197 € però amortitzes 250 €) es posen a Fixes → Quotes de deute.",
   lk_unlock:"Desbloqueja per continuar", lk_failed:"No s'ha pogut verificar. Torna-ho a provar.", lk_unlockbtn:"Desbloqueja amb empremta", lk_cant:"No puc desbloquejar",
   lk_escape:"Treure el bloqueig d'empremta en aquest dispositiu? Podràs tornar a activar-lo des del teu compte.",
@@ -2267,7 +2285,27 @@ function Dashboard({state, totals, set}){
   const movePress=function(e){ if(lifted.current) return; if(Math.abs(e.touches[0].clientY-startY.current)>10) clearTimeout(pressT.current); };
   const endPress=function(){ if(!lifted.current) clearTimeout(pressT.current); };
 
+  // Resumen del mes pasado: aparece 1×/mes al abrir la app en un mes nuevo (si hay datos del anterior).
+  const recap=(function(){
+    const now=new Date(); const curK=mk(now.getFullYear(),now.getMonth());
+    if((state.monthRecapSeen||"")===curK) return null;
+    const lm=new Date(now.getFullYear(),now.getMonth()-1,1); const lmK=mk(lm.getFullYear(),lm.getMonth());
+    const sb=spendByMonth(state.expenses); if(sb[lmK]==null) return null;
+    const budget=state.budget||0; const spent=+sb[lmK].toFixed(2);
+    return {curK:curK, monthName:monthLong(lm.getMonth()), spent:spent, budget:budget, under:budget>0&&spent<=budget, diff:budget>0?Math.abs(+(budget-spent).toFixed(2)):0, subs:detectSubscriptions(state.expenses).filter(function(x){return x.active;}).length};
+  })();
+  const dismissRecap=function(){ if(recap) set(function(s){ return Object.assign({},s,{monthRecapSeen:recap.curK}); }); };
+
   return React.createElement("div",{ref:listRef,style:{position:"relative"}},
+    recap && React.createElement("div",{className:"recap-card"},
+      React.createElement("div",{className:"recap-h"}, tf("recap_title",{m:recap.monthName})),
+      React.createElement("div",{className:"recap-stats"},
+        React.createElement("div",{className:"recap-stat"}, React.createElement("div",{className:"recap-v num"},eur0(recap.spent)), React.createElement("div",{className:"recap-l"},t("recap_spent"))),
+        recap.budget>0 && React.createElement("div",{className:"recap-stat"}, React.createElement("div",{className:"recap-v num "+(recap.under?"good":"bad")},(recap.under?"−":"+")+eur0(recap.diff)), React.createElement("div",{className:"recap-l"},recap.under?t("recap_under"):t("recap_over"))),
+        recap.subs>0 && React.createElement("div",{className:"recap-stat"}, React.createElement("div",{className:"recap-v num"},recap.subs), React.createElement("div",{className:"recap-l"},t("recap_subs")))
+      ),
+      React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},onClick:dismissRecap}, t("recap_ok"))
+    ),
     React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10,marginBottom:8}},
       !editing && React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},t("drag_hint")),
       React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:function(){ setEditing(!editing); }}, editing?t("done"):t("personalize"))
@@ -2912,7 +2950,12 @@ const debtAmort=(d)=> d && d.amort!=null ? d.amort : ((d&&d.monthly)||0);
 // nº de pagos ya hechos. Una financiación (con `months`) cuenta TAMBIÉN el pago de ESTE mes si ya pasó
 // su día (ej. financias el 599/4 con día 26 y hoy es 28 → el 1er pago del 26 ya cuenta).
 function debtPaidCount(d){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); let n=Math.max(0, ymNow()-anchor); if(d.months!=null){ const dd=dayOf(d); if(dd!=null && dd<new Date().getDate()) n+=1; } return n; }
-function debtBalance(d){ if(!d || d.value==null) return 0; return Math.max(0, d.value - debtAmort(d)*debtPaidCount(d)); }
+// Financiación tipo coche: además de entrada (downPayment, ya pagada = informativa) y cuotas,
+// hay un PAGO FINAL (balloon) en el último mes del plazo. debtBalloonIn(d,y,m): balloon si (y,m 1-12)
+// es ese último mes; 0 si no. La amort lineal ya se fija a (value−balloon)/months al crear la deuda,
+// así el saldo baja con las cuotas y el balloon limpia el resto al final.
+function debtBalloonIn(d, y, m){ if(!d || !(d.balloon>0) || d.months==null) return 0; const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return (y*12+(m-1))===(anchor+d.months-1) ? d.balloon : 0; }
+function debtBalance(d){ if(!d || d.value==null) return 0; let b=d.value - debtAmort(d)*debtPaidCount(d); if(d.balloon>0 && d.months!=null && debtPaidCount(d)>=d.months) b-=d.balloon; return Math.max(0, b); }
 // ¿la cuota sigue cobrándose este mes? Una financiación (con `months` = plazo) deja de
 // cobrar al acabar el plazo o al llegar el saldo a 0. Sin plazo (hipoteca/préstamo): mientras quede saldo.
 function debtActive(d){ if(!d || !d.monthly) return false; const bal=debtBalance(d); if(d.months!=null){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return (ymNow()-anchor) < d.months && bal>0.005; } return bal>0.005; }
@@ -2925,7 +2968,7 @@ function monthNetForAccount(s, ent, y, m, todayLim){
   const hit=function(d){ return closed ? true : (d!=null && d<todayLim); };
   let net=0;
   (s.fixed||[]).forEach(function(e){ if((e.account||"sabadell")===ent && occursIn(e,m) && hit(dayIn(e,m))) net -= occAmountIn(e,m); });
-  (s.debts||[]).forEach(function(d){ if(debtActive(d) && (d.account||"sabadell")===ent && hit(dayOf(d))) net -= (d.monthly||0); });
+  (s.debts||[]).forEach(function(d){ if(debtActive(d) && (d.account||"sabadell")===ent && hit(dayOf(d))) net -= (d.monthly||0) + debtBalloonIn(d,y,m); });
   (s.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,y,m) && (o.account||"sabadell")===ent && (o.amount||0)!==0 && hit(o.day!=null?o.day:null)) net -= o.amount; });
   (s.flows||[]).forEach(function(f){ if(flowOccursIn(f,m)){ const dd=flowDay(f,y,m); if(hit(dd)){ if(f.kind==="income" && (f.to||"sabadell")===ent) net += (f.amount||0); else if(f.kind==="transfer" && (f.from||"sabadell")===ent) net -= (f.amount||0); } } });
   return net;
@@ -2937,7 +2980,7 @@ function monthNetForAccount(s, ent, y, m, todayLim){
 function bankPendingEvents(state, bank, y, m, today){
   const evs=[];
   (state.fixed||[]).forEach(function(e){ if(occursIn(e,m)&&accOf(e)===bank&&!isPaidIn(e,m,today)) evs.push({day:dayIn(e,m)||0, amt:-occAmountIn(e,m)}); });
-  (state.debts||[]).forEach(function(d){ if(debtActive(d)&&(d.account||"sabadell")===bank&&!isPaidThisMonth(d,today)) evs.push({day:d.day||0, amt:-(d.monthly||0)}); });
+  (state.debts||[]).forEach(function(d){ if(debtActive(d)&&(d.account||"sabadell")===bank&&!isPaidThisMonth(d,today)){ evs.push({day:d.day||0, amt:-(d.monthly||0)}); const bl=debtBalloonIn(d,y,m); if(bl>0) evs.push({day:d.day||0, amt:-bl}); } });
   (state.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,y,m)&&(o.account||"sabadell")===bank&&(o.amount||0)!==0&&!isPaidThisMonth(o,today)) evs.push({day:o.day||0, amt:-o.amount}); });
   (state.flows||[]).forEach(function(f){ if(!flowOccursIn(f,m)||flowPaid(f,y,m,today))return; const dd=flowDay(f,y,m); if(f.kind==="income"&&(f.to||"sabadell")===bank) evs.push({day:dd||99, amt:f.amount}); else if(f.kind==="transfer"&&(f.from||"sabadell")===bank) evs.push({day:dd||0, amt:-f.amount}); });
   return evs;
@@ -2995,13 +3038,15 @@ function AffordSim({state, totals, set}){
       React.createElement("span",{className:"muted"}, tf("af_floor",{bank:entOf(bank).label})),
       React.createElement("input",{key:"floor-"+bank,className:"af-in num",style:{flex:"0 0 38%",textAlign:"right"},inputMode:"decimal",placeholder:t("af_floor_ph"),defaultValue:floor||"",onBlur:function(e){ setFloor(e.target.value); }})),
     (floor>0 && base.min<floor) && React.createElement("div",{className:"af-below"}, tf("af_below",{x:eur0(floor),y:eur(base.min)})),
-    amt>0
-      ? React.createElement("div",{className:"af-result "+verdict,style:{marginTop:10}},
-          React.createElement("div",{className:"af-verdict"}, verdictTxt),
-          React.createElement("div",{className:"af-low"}, lowTxt),
-          React.createElement("div",{className:"af-delta num"}, tf("af_from_to",{a:eur(base.min),b:eur(sim.min)}))
-        )
-      : React.createElement("div",{className:"hint",style:{marginTop:10}}, t("af_enter"))
+    React.createElement("div",{className:"af-info"},
+      React.createElement("div",{className:"af-safe"}, tf("af_safe",{x:eur(Math.max(0, base.min-Math.max(0,floor)))})),
+      React.createElement("div",{className:"muted",style:{fontSize:11.5,marginTop:3}}, tf("af_eom",{x:eur(base.end)}))
+    ),
+    amt>0 && React.createElement("div",{className:"af-result "+verdict,style:{marginTop:10}},
+      React.createElement("div",{className:"af-verdict"}, verdictTxt),
+      React.createElement("div",{className:"af-low"}, lowTxt),
+      React.createElement("div",{className:"af-delta num"}, tf("af_from_to",{a:eur(base.min),b:eur(sim.min)}))
+    )
   );
 }
 
@@ -3094,7 +3139,7 @@ function Fijos({state, set, totals}){
   const oneoffs=state.oneoffs||[];
   const chargesOf=(mo,yr)=>{ const items=[];
     state.fixed.forEach(e=>{ if(occursIn(e,mo)&&occAmountIn(e,mo)!==0) items.push({key:e.id,name:e.name,amount:occAmountIn(e,mo),bank:accOf(e),day:dayIn(e,mo),paid:mo===cm&&isPaidIn(e,mo,today)}); });
-    state.debts.forEach(d=>{ if(debtActive(d)) items.push({key:d.id,name:d.name,amount:d.monthly,debt:true,bank:d.account||"sabadell",day:dayOf(d),paid:mo===cm&&isPaidThisMonth(d,today)}); });
+    state.debts.forEach(d=>{ if(debtActive(d)){ items.push({key:d.id,name:d.name,amount:d.monthly,debt:true,bank:d.account||"sabadell",day:dayOf(d),paid:mo===cm&&isPaidThisMonth(d,today)}); const bl=debtBalloonIn(d,yr,mo); if(bl>0) items.push({key:d.id+"_balloon",name:d.name+" "+t("db_balloon_tag"),amount:bl,debt:true,bank:d.account||"sabadell",day:dayOf(d),paid:mo===cm&&isPaidThisMonth(d,today)}); } });
     oneoffs.forEach(o=>{ if(oneoffOccurs(o,yr,mo)&&(o.amount||0)!==0) items.push({key:o.id,name:o.name,amount:o.amount,oneoff:true,bank:o.account||"sabadell",day:o.day||null,paid:mo===cm&&yr===cy&&isPaidThisMonth(o,today)}); });
     return items; };
   const byDay=(a,b)=> ((a.day||99)-(b.day||99)) || (b.amount-a.amount);   // por DÍA; sin día, al final
@@ -3424,20 +3469,25 @@ function Debts({state, set}){
   // editar el saldo re-ancla al mes de hoy (asOf) para que la proyección siga desde ahí
   const ed=useEditable(state.debts,it=>set(s=>Object.assign({},s,{debts:it})), { display:d=>Math.round(debtBalance(d)*100)/100, extra:()=>({asOf:ymNow()}) });
   const [adding,setAdding]=useState(false);
-  const [form,setForm]=useState({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell"});
+  const [form,setForm]=useState({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell",down:"",balloon:""});
   const banks=(function(){ const b=[]; (state.accounts||[]).forEach(a=>{ if(b.indexOf(a.ent)<0) b.push(a.ent); }); ["sabadell","trade_republic","familia"].forEach(x=>{ if(b.indexOf(x)<0) b.push(x); }); return b; })();
   const total=state.debts.reduce((a,d)=>a+debtBalance(d),0);
   const monthly=state.debts.reduce((a,d)=>a+(debtActive(d)?(d.monthly||0):0),0);
   const addDebt=()=>{
     const v=parseFloat(String(form.value).replace(',','.'))||0; if(v<=0) return;
     const months=parseInt(form.months,10)||0;
+    const balloon=parseFloat(String(form.balloon).replace(',','.'))||0;
+    const down=parseFloat(String(form.down).replace(',','.'))||0;
+    const viaMonthly=Math.max(0, v-balloon);                 // lo que cubren las cuotas (el resto = pago final)
     let m=parseFloat(String(form.monthly).replace(',','.'))||0;
-    if(months>0 && m<=0) m=+(v/months).toFixed(2);   // 0%: cuota = total / plazo
+    if(months>0 && m<=0) m=+(viaMonthly/months).toFixed(2);  // 0%: cuota = (financiado − pago final) / plazo
     const it={id:uid(),ent:"familia",name:form.name||t("db_newdebt"),value:v,original:v,monthly:m,asOf:ymNow(),account:form.account||"sabadell",note:t("db_addedmanual")};
     const day=cleanDay(form.day); if(day) it.day=day;
-    if(months>0){ it.months=months; it.amort=+(v/months).toFixed(2); }   // amortiza principal lineal → llega a 0 al acabar el plazo
+    if(months>0){ it.months=months; it.amort=+(viaMonthly/months).toFixed(2); }   // amortiza principal lineal; el pago final limpia el resto
+    if(balloon>0) it.balloon=balloon;
+    if(down>0) it.downPayment=down;
     set(s=>Object.assign({},s,{debts:s.debts.concat([it])}));
-    setForm({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell"}); setAdding(false);
+    setForm({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell",down:"",balloon:""}); setAdding(false);
   };
   const delDebt=(id)=> set(s=>Object.assign({},s,{debts:s.debts.filter(d=>d.id!==id)}));
   return React.createElement("div",null,
@@ -3460,6 +3510,9 @@ function Debts({state, set}){
         d.months!=null && React.createElement("div",{className:"debt-meta",style:{color:debtLeft(d)>0?"var(--mint)":"var(--muted-2)"}},
           React.createElement("span",null, debtLeft(d)>0 ? tf("db_left",{n:debtLeft(d),tot:d.months,x:eur0(d.monthly)}) : t("db_paidoff_done")),
           d.day && React.createElement("span",null, tf("fj_day_n",{d:d.day}))),
+        (d.balloon>0||d.downPayment>0) && React.createElement("div",{className:"debt-meta",style:{color:"#E2A05F"}},
+          React.createElement("span",null, d.balloon>0?tf("db_balloon_line",{x:eur0(d.balloon)}):""),
+          React.createElement("span",null, d.downPayment>0?tf("db_down_line",{x:eur0(d.downPayment)}):"")),
         React.createElement("div",{className:"row",style:{marginTop:8}},
           React.createElement("div",{className:"rl"},React.createElement("div",null,React.createElement("div",{className:"rname"},t("db_pending")),React.createElement("div",{className:"rsub"},t("db_pending_sub")))),
           ed.editing
@@ -3481,7 +3534,12 @@ function Debts({state, set}){
             React.createElement("input",{className:"af-in num",placeholder:t("db_day_ph"),inputMode:"numeric",style:{maxWidth:80},value:form.day,onChange:e=>setForm(Object.assign({},form,{day:e.target.value}))}),
             React.createElement("select",{className:"af-in",value:form.account,onChange:e=>setForm(Object.assign({},form,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
           ),
+          React.createElement("div",{className:"af-row"},
+            React.createElement("input",{className:"af-in num",placeholder:t("db_down_ph"),inputMode:"decimal",value:form.down,onChange:e=>setForm(Object.assign({},form,{down:e.target.value}))}),
+            React.createElement("input",{className:"af-in num",placeholder:t("db_balloon_ph"),inputMode:"decimal",value:form.balloon,onChange:e=>setForm(Object.assign({},form,{balloon:e.target.value}))})
+          ),
           React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_financing_hint")),
+          React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_balloon_hint")),
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addDebt},t("db_add"))
         )
       : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),t("db_add")),
@@ -4270,7 +4328,7 @@ function App(){
       if(paid){ paidThisMonth+=amt; }
       else { pendingThisMonth+=amt; pendingByBank[bank]=(pendingByBank[bank]||0)+amt; } };
     state.fixed.forEach(e=>{ if(occursIn(e,curMonth)) acc(occAmountIn(e,curMonth),accOf(e),isPaidIn(e,curMonth,today)); });
-    state.debts.forEach(d=>{ if(debtActive(d)) acc(d.monthly,d.account||"sabadell",isPaidThisMonth(d,today)); });
+    state.debts.forEach(d=>{ if(debtActive(d)) acc((d.monthly||0)+debtBalloonIn(d,curYear,curMonth),d.account||"sabadell",isPaidThisMonth(d,today)); });
     (state.oneoffs||[]).forEach(o=>{ if(oneoffOccurs(o,curYear,curMonth) && (o.amount||0)!==0) acc(o.amount,o.account||"sabadell",isPaidThisMonth(o,today)); });
     // --- CASH-FLOW: ingresos (nómina) y transferencias recurrentes PENDIENTES este mes ---
     // El saldo del banco ya refleja lo que ya ocurrió (día pasado); solo proyectamos lo pendiente.
@@ -4293,7 +4351,7 @@ function App(){
     const evsByBank={};
     const pushEv=(bank,day,amt)=>{ (evsByBank[bank]=evsByBank[bank]||[]).push({day:day,amt:amt}); };
     state.fixed.forEach(e=>{ if(occursIn(e,curMonth)&&!isPaidIn(e,curMonth,today)) pushEv(accOf(e), dayIn(e,curMonth)||0, -occAmountIn(e,curMonth)); });
-    state.debts.forEach(d=>{ if(debtActive(d)&&!isPaidThisMonth(d,today)) pushEv(d.account||"sabadell", d.day||0, -d.monthly); });
+    state.debts.forEach(d=>{ if(debtActive(d)&&!isPaidThisMonth(d,today)){ pushEv(d.account||"sabadell", d.day||0, -d.monthly); const bl=debtBalloonIn(d,curYear,curMonth); if(bl>0) pushEv(d.account||"sabadell", d.day||0, -bl); } });
     (state.oneoffs||[]).forEach(o=>{ if(oneoffOccurs(o,curYear,curMonth)&&(o.amount||0)!==0&&!isPaidThisMonth(o,today)) pushEv(o.account||"sabadell", o.day||0, -o.amount); });
     (state.flows||[]).forEach(f=>{ if(!flowOccursIn(f,curMonth)||flowPaid(f,curYear,curMonth,today))return; const dd=flowDay(f,curYear,curMonth); if(f.kind==="income") pushEv(f.to||"sabadell", dd||99, f.amount); else if(f.kind==="transfer") pushEv(f.from||"sabadell", dd||0, -f.amount); });
     const minByBank={}, minDayByBank={};
