@@ -534,8 +534,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .liqbox.danger{border-color:rgba(226,112,95,.5);background:rgba(226,112,95,.07);}
   .af-result{border-radius:12px;padding:11px 13px;border:1px solid var(--line-soft);background:var(--bg-2);}
   .af-result.yes{border-color:rgba(95,208,138,.45);background:rgba(95,208,138,.08);}
-  .af-result.tight{border-color:rgba(242,193,78,.5);background:rgba(242,193,78,.08);}
+  .af-result.tight,.af-result.floor{border-color:rgba(242,193,78,.5);background:rgba(242,193,78,.08);}
   .af-result.no{border-color:rgba(226,112,95,.5);background:rgba(226,112,95,.08);}
+  .af-floor{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;font-size:12.5px;}
+  .af-below{margin-top:8px;font-size:12px;font-weight:600;color:#E2A05F;}
   .af-verdict{font-weight:800;font-size:14px;}
   .af-low{font-size:12.5px;color:var(--text);margin-top:5px;}
   .af-delta{font-size:11.5px;color:var(--muted);margin-top:3px;}
@@ -1020,7 +1022,7 @@ Object.assign(LANG.es,{
   d_fixed:"Gastos fijos", d_fixed_sub:"media/mes · este mes {x}", d_saving:"Ahorro", d_saving_sub:"al mes a inversión",
   d_saving_card:"¿A dónde va tu ahorro?", d_saving_card_sub:"{x}/mes a inversión", d_saving_total:"Total ahorrado/mes",
   d_culprit:"Categoría culpable", d_culprit_sub:"Lo que más gastas en {m}",
-  d_trend:"Esto vs tu media", d_trend_sub:"Gasto del mes por categoría vs tu media", d_trend_avg:"media {x}", d_trend_hint:"▲ por encima de tu media de meses anteriores · ▼ por debajo.",
+  d_trend:"Esto vs tu media", d_trend_sub:"Gasto del mes por categoría vs tu media", d_trend_avg:"media {x}", d_trend_hint:"▲ por encima de tu media de meses anteriores · ▼ por debajo.", d_trend_nodata:"Aparecerá en cuanto tengas 2+ meses de datos en alguna categoría. Sigue apuntando 😉",
   d_noexp_t:"Aún sin gastos", d_noexp_d:"Sincroniza o apunta un gasto.", d_culprit_hint:"👑 {name} se lleva {pct}% de tu gasto este mes.",
   wl_budget:"Presupuesto y racha", wl_culpa:"Sin culpa (lo que te queda)", wl_fixedsave:"Gastos fijos y ahorro", wl_savings:"A dónde va tu ahorro",
   personalize:"✎ Personalizar", done:"Listo ✓", drag_hint:"mantén pulsada una tarjeta para moverla",
@@ -1047,6 +1049,7 @@ Object.assign(LANG.es,{
   af_title:"💸 ¿Me lo puedo permitir?", af_sub:"Simula una compra y mira el impacto", af_amount:"Importe €", af_day:"Día", af_enter:"Escribe un importe para simular el gasto.",
   af_yes:"✅ Sí, puedes permitírtelo", af_tight:"🟠 Puedes, pero te quedarías muy justo", af_no:"🔴 Mejor no: te quedarías en negativo",
   af_low:"Tu punto más bajo del mes sería {x} (día {d})", af_low_noday:"Tu punto más bajo del mes sería {x}", af_from_to:"sin la compra {a} → con ella {b}",
+  af_floor:"🛟 Colchón mínimo de {bank}", af_floor_ph:"sin tope", af_floor_break:"🟠 Puedes, PERO bajarías de tu colchón de {x}", af_below:"⚠ Ya estás por debajo de tu colchón de {x} (vas {y})",
   fj_alarm:"🚨 ¡Cuidado! ", fj_alarm_a:" se queda en {x} sobre el día {d} (antes de que entre la nómina). Mete fondos o no llegarás.", fj_alarm_b:" se queda en negativo este mes con lo que falta por pagar. Mete fondos o no llegarás.",
   fj_heavy_now:"Este mes ", fj_heavy_next:"El mes que viene ", fj_heavy_in:"En {m} ", fj_heavy_b:"se viene cargado: {x} en fijos (la media es {avg}). 👀",
   fj_pend_in:"Pendiente en {m}:", fj_allpaid:"✓ Todo pagado este mes.", fj_paid_m:"Ya pagado este mes ({x}):",
@@ -1082,7 +1085,7 @@ Object.assign(LANG.en,{
   d_fixed:"Fixed costs", d_fixed_sub:"avg/month · this month {x}", d_saving:"Saving", d_saving_sub:"per month to investing",
   d_saving_card:"Where does your saving go?", d_saving_card_sub:"{x}/month to investing", d_saving_total:"Total saved/month",
   d_culprit:"Top category", d_culprit_sub:"What you spend most on in {m}",
-  d_trend:"This vs your average", d_trend_sub:"This month's spend by category vs your average", d_trend_avg:"avg {x}", d_trend_hint:"▲ above your previous-months average · ▼ below.",
+  d_trend:"This vs your average", d_trend_sub:"This month's spend by category vs your average", d_trend_avg:"avg {x}", d_trend_hint:"▲ above your previous-months average · ▼ below.", d_trend_nodata:"It'll appear once you have 2+ months of data in any category. Keep logging 😉",
   d_noexp_t:"No spending yet", d_noexp_d:"Sync or add an expense.", d_culprit_hint:"👑 {name} takes {pct}% of your spending this month.",
   wl_budget:"Budget & streak", wl_culpa:"Guilt-free (what's left)", wl_fixedsave:"Fixed costs & saving", wl_savings:"Where your saving goes",
   personalize:"✎ Customise", done:"Done ✓", drag_hint:"press and hold a card to move it",
@@ -1107,6 +1110,7 @@ Object.assign(LANG.en,{
   af_title:"💸 Can I afford it?", af_sub:"Simulate a purchase and see the impact", af_amount:"Amount €", af_day:"Day", af_enter:"Type an amount to simulate the purchase.",
   af_yes:"✅ Yes, you can afford it", af_tight:"🟠 You can, but it'd be very tight", af_no:"🔴 Better not: you'd go negative",
   af_low:"Your lowest point this month would be {x} (day {d})", af_low_noday:"Your lowest point this month would be {x}", af_from_to:"without it {a} → with it {b}",
+  af_floor:"🛟 {bank} safety floor", af_floor_ph:"no floor", af_floor_break:"🟠 You can, BUT you'd dip below your {x} floor", af_below:"⚠ You're already below your {x} floor (at {y})",
   fj_alarm:"🚨 Heads up! ", fj_alarm_a:" drops to {x} around day {d} (before payroll arrives). Add funds or you won't make it.", fj_alarm_b:" goes negative this month with what's left to pay. Add funds or you won't make it.",
   fj_heavy_now:"This month ", fj_heavy_next:"Next month ", fj_heavy_in:"In {m} ", fj_heavy_b:"is heavy: {x} in fixed costs (avg is {avg}). 👀",
   fj_pend_in:"Pending in {m}:", fj_allpaid:"✓ All paid this month.", fj_paid_m:"Already paid this month ({x}):",
@@ -1142,7 +1146,7 @@ Object.assign(LANG.ca,{
   d_fixed:"Despeses fixes", d_fixed_sub:"mitjana/mes · aquest mes {x}", d_saving:"Estalvi", d_saving_sub:"al mes a inversió",
   d_saving_card:"On va el teu estalvi?", d_saving_card_sub:"{x}/mes a inversió", d_saving_total:"Total estalviat/mes",
   d_culprit:"Categoria culpable", d_culprit_sub:"On més gastes al {m}",
-  d_trend:"Això vs la teva mitjana", d_trend_sub:"Despesa del mes per categoria vs la teva mitjana", d_trend_avg:"mitjana {x}", d_trend_hint:"▲ per sobre de la mitjana de mesos anteriors · ▼ per sota.",
+  d_trend:"Això vs la teva mitjana", d_trend_sub:"Despesa del mes per categoria vs la teva mitjana", d_trend_avg:"mitjana {x}", d_trend_hint:"▲ per sobre de la mitjana de mesos anteriors · ▼ per sota.", d_trend_nodata:"Apareixerà quan tinguis 2+ mesos de dades en alguna categoria. Segueix apuntant 😉",
   d_noexp_t:"Encara sense despeses", d_noexp_d:"Sincronitza o apunta una despesa.", d_culprit_hint:"👑 {name} s'emporta el {pct}% de la teva despesa aquest mes.",
   wl_budget:"Pressupost i ratxa", wl_culpa:"Sense culpa (el que et queda)", wl_fixedsave:"Despeses fixes i estalvi", wl_savings:"On va el teu estalvi",
   personalize:"✎ Personalitza", done:"Fet ✓", drag_hint:"mantén premuda una targeta per moure-la",
@@ -1167,6 +1171,7 @@ Object.assign(LANG.ca,{
   af_title:"💸 M'ho puc permetre?", af_sub:"Simula una compra i mira l'impacte", af_amount:"Import €", af_day:"Dia", af_enter:"Escriu un import per simular la despesa.",
   af_yes:"✅ Sí, t'ho pots permetre", af_tight:"🟠 Pots, però et quedaries molt just", af_no:"🔴 Millor no: et quedaries en negatiu",
   af_low:"El teu punt més baix del mes seria {x} (dia {d})", af_low_noday:"El teu punt més baix del mes seria {x}", af_from_to:"sense la compra {a} → amb ella {b}",
+  af_floor:"🛟 Coixí mínim de {bank}", af_floor_ph:"sense límit", af_floor_break:"🟠 Pots, PERÒ baixaries del teu coixí de {x}", af_below:"⚠ Ja estàs per sota del teu coixí de {x} (vas {y})",
   fj_alarm:"🚨 Compte! ", fj_alarm_a:" es queda en {x} cap al dia {d} (abans que entri la nòmina). Posa-hi fons o no hi arribaràs.", fj_alarm_b:" es queda en negatiu aquest mes amb el que falta per pagar. Posa-hi fons o no hi arribaràs.",
   fj_heavy_now:"Aquest mes ", fj_heavy_next:"El mes que ve ", fj_heavy_in:"Al {m} ", fj_heavy_b:"ve carregat: {x} en fixes (la mitjana és {avg}). 👀",
   fj_pend_in:"Pendent al {m}:", fj_allpaid:"✓ Tot pagat aquest mes.", fj_paid_m:"Ja pagat aquest mes ({x}):",
@@ -2114,16 +2119,20 @@ function Dashboard({state, totals, set}){
       top && React.createElement("div",{className:"hint"},tf("d_culprit_hint",{name:top.name,pct:Math.round(top.v/tt.thisMonthSpent*100)}))
     )});
 
-  if(trend.length) W.push({id:"trend", label:t("d_trend"), el:
+  W.push({id:"trend", label:t("d_trend"), el:
     React.createElement(CollapsibleCard,{title:t("d_trend"),sub:t("d_trend_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"d_trend"},
-      trend.slice(0,6).map(function(r){ const over=r.pct>=0; return React.createElement("div",{className:"trend-row",key:r.id},
-        React.createElement("span",{className:"trend-ic",style:{color:r.color}}, r.icon),
-        React.createElement("div",{className:"trend-mid"},
-          React.createElement("div",{className:"trend-nm"}, catName(r.id)),
-          React.createElement("div",{className:"trend-sub num"}, eur0(r.cur)+" · "+tf("d_trend_avg",{x:eur0(r.avg)}))),
-        React.createElement("span",{className:"trend-pct "+(over?"up":"down")}, (over?"▲ +":"▼ ")+Math.round(r.pct)+"%")
-      ); }),
-      React.createElement("div",{className:"hint",style:{marginTop:6}}, t("d_trend_hint"))
+      trend.length===0
+        ? React.createElement("div",{className:"hint"}, t("d_trend_nodata"))
+        : React.createElement(React.Fragment,null,
+            trend.slice(0,6).map(function(r){ const over=r.pct>=0; return React.createElement("div",{className:"trend-row",key:r.id},
+              React.createElement("span",{className:"trend-ic",style:{color:r.color}}, r.icon),
+              React.createElement("div",{className:"trend-mid"},
+                React.createElement("div",{className:"trend-nm"}, catName(r.id)),
+                React.createElement("div",{className:"trend-sub num"}, eur0(r.cur)+" · "+tf("d_trend_avg",{x:eur0(r.avg)}))),
+              React.createElement("span",{className:"trend-pct "+(over?"up":"down")}, (over?"▲ +":"▼ ")+Math.round(r.pct)+"%")
+            ); }),
+            React.createElement("div",{className:"hint",style:{marginTop:6}}, t("d_trend_hint"))
+          )
     )});
 
   // ---- render con orden + visibilidad ----
@@ -2909,12 +2918,15 @@ function MonthPicker({selected, onToggle}){
 
 /* "¿Me lo puedo permitir?" — simula una compra hipotética y dice cómo afecta al punto
    más bajo del mes de ese banco (reusa el motor minWalk). Distintivo: mira el FUTURO. */
-function AffordSim({state, totals}){
+function AffordSim({state, totals, set}){
   const accounts=(state.accounts||[]);
   const defBank=(accounts.find(function(a){return a.ent==="sabadell";})?"sabadell":(accounts[0]&&accounts[0].ent))||"sabadell";
   const [amount,setAmount]=useState("");
   const [day,setDay]=useState(String(totals.today||new Date().getDate()));
   const [bank,setBank]=useState(defBank);
+  const acc=accounts.find(function(a){return a.ent===bank;});
+  const floor=(acc&&acc.floor>0)?acc.floor:0;          // colchón mínimo opcional de esta cuenta
+  const setFloor=function(v){ const n=parseFloat(String(v).replace(',','.')); set(function(s){ return Object.assign({},s,{accounts:s.accounts.map(function(a){ return a.ent===bank?Object.assign({},a,{floor:(isNaN(n)||n<=0)?undefined:n}):a; })}); }); };
   const amt=parseFloat(String(amount).replace(',','.'))||0;
   const dd=Math.max(1,Math.min(31,parseInt(day)||totals.today||1));
   const start=(totals.bankBal&&totals.bankBal[bank])||0;
@@ -2922,8 +2934,10 @@ function AffordSim({state, totals}){
   const base=minWalk(start, evs);
   const sim=minWalk(start, evs.concat([{day:dd, amt:-amt}]));
   const BUFFER=50;
-  const verdict = amt<=0 ? null : (sim.min<-0.005 ? "no" : (sim.min<BUFFER ? "tight" : "yes"));
+  const breaksFloor = floor>0 && sim.min < floor;
+  const verdict = amt<=0 ? null : (sim.min<-0.005 ? "no" : (breaksFloor ? "floor" : (sim.min<BUFFER ? "tight" : "yes")));
   const lowTxt = sim.minDay ? tf("af_low",{x:eur(sim.min),d:sim.minDay}) : tf("af_low_noday",{x:eur(sim.min)});
+  const verdictTxt = verdict==="no"?t("af_no"):(verdict==="floor"?tf("af_floor_break",{x:eur0(floor)}):(verdict==="tight"?t("af_tight"):t("af_yes")));
   return React.createElement(CollapsibleCard,{title:t("af_title"),sub:t("af_sub"),dot:"#9BD0E0",defaultOpen:false,storageKey:"fj_afford"},
     React.createElement("div",{className:"af-row"},
       React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:t("af_amount"),value:amount,onChange:function(e){ setAmount(e.target.value); }}),
@@ -2931,9 +2945,13 @@ function AffordSim({state, totals}){
     ),
     accounts.length>1 && React.createElement("select",{className:"af-in",style:{marginTop:8},value:bank,onChange:function(e){ setBank(e.target.value); }},
       accounts.map(function(a){ return React.createElement("option",{key:a.id,value:a.ent}, entOf(a.ent).label); })),
+    React.createElement("div",{className:"af-floor"},
+      React.createElement("span",{className:"muted"}, tf("af_floor",{bank:entOf(bank).label})),
+      React.createElement("input",{key:"floor-"+bank,className:"af-in num",style:{flex:"0 0 38%",textAlign:"right"},inputMode:"decimal",placeholder:t("af_floor_ph"),defaultValue:floor||"",onBlur:function(e){ setFloor(e.target.value); }})),
+    (floor>0 && base.min<floor) && React.createElement("div",{className:"af-below"}, tf("af_below",{x:eur0(floor),y:eur(base.min)})),
     amt>0
       ? React.createElement("div",{className:"af-result "+verdict,style:{marginTop:10}},
-          React.createElement("div",{className:"af-verdict"}, verdict==="no"?t("af_no"):(verdict==="tight"?t("af_tight"):t("af_yes"))),
+          React.createElement("div",{className:"af-verdict"}, verdictTxt),
           React.createElement("div",{className:"af-low"}, lowTxt),
           React.createElement("div",{className:"af-delta num"}, tf("af_from_to",{a:eur(base.min),b:eur(sim.min)}))
         )
@@ -3066,7 +3084,7 @@ function Fijos({state, set, totals}){
       React.createElement("span",{className:"big",style:{fontSize:15}}, top.name),
       React.createElement("span",null,tf("fj_top_b",{x:eur0(monthly(top))}))
     ),
-    React.createElement(AffordSim,{state:state, totals:totals}),
+    React.createElement(AffordSim,{state:state, totals:totals, set:set}),
     /* MOTOR DINÁMICO: próximos cargos */
     React.createElement(CollapsibleCard,{title:tf("fj_prox",{m:monthShort(cm-1)}),sub:tf("fj_prox_sub",{x:eur0(totals.cargosMes)}),dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
       // estado del banco principal (Sabadell): cash-flow del mes (saldo + nómina − transfers − fijos)
