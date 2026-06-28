@@ -588,6 +588,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .catpick{display:flex;flex-wrap:wrap;gap:6px;padding:2px 2px 12px 50px;}
   .catpick-b{font-size:12px;font-weight:600;padding:6px 9px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--text);cursor:pointer;}
   .catpick-b.on{border-color:var(--mint);background:rgba(95,208,138,.16);color:var(--mint);}
+  .cardflag{display:block;width:100%;font-size:12.5px;font-weight:600;padding:9px 11px;border-radius:11px;background:rgba(95,208,138,.14);border:1px solid var(--mint);color:var(--mint);cursor:pointer;text-align:center;}
+  .cardflag.off{background:var(--bg-2);border-color:var(--line-soft);color:var(--muted);}
+  .catpick + .cardflag{margin-left:50px;width:calc(100% - 50px);}
   .ru-edit{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line-soft);}
   .ru-edit:first-of-type{border-top:none;}
 
@@ -948,6 +951,7 @@ Object.assign(LANG.es,{
   g_lastsync:"Última sincronización: {d}", g_nosync:"Sin sincronizar todavía",
   g_gasto:"💸 Gasto", g_ingreso:"💰 Ingreso", g_concept_g:"Concepto (ej. Cena)", g_concept_i:"Concepto (ej. me devolvió Ana)",
   g_addgasto:"Añadir gasto", g_addingreso:"Añadir ingreso",
+  g_card:"Con tarjeta (cuenta round-up)", g_nocard:"Bizum/transfer · sin round-up",
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
   cat_super:"Supermercado", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
@@ -1001,6 +1005,7 @@ Object.assign(LANG.en,{
   g_lastsync:"Last sync: {d}", g_nosync:"Not synced yet",
   g_gasto:"💸 Expense", g_ingreso:"💰 Income", g_concept_g:"What (e.g. Dinner)", g_concept_i:"What (e.g. Ana paid me back)",
   g_addgasto:"Add expense", g_addingreso:"Add income",
+  g_card:"Card (counts round-up)", g_nocard:"Bizum/transfer · no round-up",
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
   cat_super:"Groceries", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
@@ -1053,6 +1058,7 @@ Object.assign(LANG.ca,{
   g_lastsync:"Última sincronització: {d}", g_nosync:"Encara sense sincronitzar",
   g_gasto:"💸 Despesa", g_ingreso:"💰 Ingrés", g_concept_g:"Concepte (ex. Sopar)", g_concept_i:"Concepte (ex. l'Ana m'ho ha tornat)",
   g_addgasto:"Afegeix despesa", g_addingreso:"Afegeix ingrés",
+  g_card:"Amb targeta (compta round-up)", g_nocard:"Bizum/transfer · sense round-up",
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
   cat_super:"Supermercat", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
@@ -1327,10 +1333,13 @@ const FREQ_M = { mes:1, mensual:1, bimestral:1/2, trimestral:1/3, semestral:1/6,
 /* ---- Round-up & Saveback de TR (#19): calderilla y cashback que TR mueve a inversión ---- */
 // Calderilla de una compra: TR redondea al € superior (2,00→3,00=1€; 5,95→6,00=0,05).
 function spareOf(amt){ amt=Math.abs(amt||0); return +(Math.floor(amt)+1-amt).toFixed(2); }
-// Round-up total de una lista de gastos × multiplicador (solo gastos reales, amount>0).
-function roundupOf(expenses, mult){ if(!mult||mult<=0) return 0; let s=0; (expenses||[]).forEach(function(e){ if(e.amount>0) s+=spareOf(e.amount); }); return +(s*mult).toFixed(2); }
-// Saveback: 1% del gasto del periodo, tope 15€/mes (dinero gratis de TR).
-function savebackOf(expenses){ let g=0; (expenses||[]).forEach(function(e){ if(e.amount>0) g+=e.amount; }); return +Math.min(15, g*0.01).toFixed(2); }
+// Round-up/saveback SOLO cuentan compras con tarjeta: gasto real (amount>0) que no esté
+// marcado noCard (bizum/transferencia a personas, que TR no redondea ni bonifica).
+function isCardSpend(e){ return e && e.amount>0 && !e.noCard; }
+// Round-up total de una lista de gastos × multiplicador.
+function roundupOf(expenses, mult){ if(!mult||mult<=0) return 0; let s=0; (expenses||[]).forEach(function(e){ if(isCardSpend(e)) s+=spareOf(e.amount); }); return +(s*mult).toFixed(2); }
+// Saveback: 1% del gasto con tarjeta del periodo, tope 15€/mes (dinero gratis de TR).
+function savebackOf(expenses){ let g=0; (expenses||[]).forEach(function(e){ if(isCardSpend(e)) g+=e.amount; }); return +Math.min(15, g*0.01).toFixed(2); }
 const RU_MULTS=[0,2,3,5,10];
 
 /* ---- Metas de ahorro (#15): helpers de progreso/previsión + celebración ---- */
@@ -2037,7 +2046,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
-  const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false});
+  const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false});
   const [catEdit,setCatEdit]=useState(null);   // id del gasto al que estás cambiando la categoría
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -2061,6 +2070,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return Object.assign({},s,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
+  };
+  // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
+  const setCardFlag=function(ex,noCard){
+    set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{noCard:noCard?true:undefined}):e; })}); });
   };
 
   const filtered=useMemo(()=> state.expenses
@@ -2086,9 +2099,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(amt<=0){ showToast(t("g_invalid")); return; }
     const signed=form.income? -amt : amt;   // ingreso = negativo (resta del gasto del mes)
     const ex={ id:uid(), date:new Date().toISOString(), merchant:form.merchant||(form.income?"Ingreso":"Gasto"), amount:signed, category:form.income?"ingreso":form.category, source:"manual" };
+    if(!form.income && form.noCard) ex.noCard=true;   // bizum/transfer: no cuenta round-up
     set(s=>Object.assign({},s,{expenses:[ex].concat(s.expenses)}));
     if(cloud.enabled()) cloud.addExpense(ex).catch(function(){});   // lo guarda también en la BD
-    setForm({merchant:"",amount:"",category:form.category,income:false}); setAdding(false); showToast(form.income?t("g_saved_i"):t("g_saved_g"));
+    setForm({merchant:"",amount:"",category:form.category,income:false,noCard:false}); setAdding(false); showToast(form.income?t("g_saved_i"):t("g_saved_g"));
   };
 
   return React.createElement("div",null,
@@ -2129,6 +2143,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:form.amount,onChange:e=>setForm(Object.assign({},form,{amount:e.target.value}))}),
         !form.income && React.createElement("select",{className:"af-in",value:form.category,onChange:e=>setForm(Object.assign({},form,{category:e.target.value}))}, CATEGORIES.map(c=>React.createElement("option",{key:c.id,value:c.id},c.icon+" "+catName(c.id))))
       ),
+      !form.income && React.createElement("button",{type:"button",className:"cardflag"+(form.noCard?" off":""),onClick:()=>setForm(Object.assign({},form,{noCard:!form.noCard}))}, form.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?t("g_addingreso"):t("g_addgasto"))
     ),
     React.createElement("div",{className:"card",style:{marginTop:14}},
@@ -2152,9 +2167,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                       React.createElement("button",{className:"ex-del",title:t("w_hide"),onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
                     )
                   ),
-                  open && React.createElement("div",{className:"catpick"}, CATEGORIES.map(function(cc){
-                    return React.createElement("button",{key:cc.id,type:"button",className:"catpick-b"+(cc.id===g.e.category?" on":""),onClick:function(){ setCat(g.e,cc.id); }}, cc.icon+" "+catName(cc.id).split(" ")[0]);
-                  }))
+                  open && React.createElement(React.Fragment,null,
+                    React.createElement("div",{className:"catpick"}, CATEGORIES.map(function(cc){
+                      return React.createElement("button",{key:cc.id,type:"button",className:"catpick-b"+(cc.id===g.e.category?" on":""),onClick:function(){ setCat(g.e,cc.id); }}, cc.icon+" "+catName(cc.id).split(" ")[0]);
+                    })),
+                    React.createElement("button",{type:"button",className:"cardflag"+(g.e.noCard?" off":""),style:{marginTop:8},onClick:function(){ setCardFlag(g.e,!g.e.noCard); }}, g.e.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card")))
+                  )
                 ); })()
           ),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
