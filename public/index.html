@@ -679,6 +679,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .dots .d.on{width:22px;background:linear-gradient(90deg,var(--mint-bright),var(--mint));}
 
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + var(--safe-bottom));background:var(--surface-2);border:1px solid var(--line);color:var(--text);padding:11px 18px;border-radius:14px;font-size:13px;font-weight:600;z-index:200;box-shadow:var(--shadow);animation:toastin .3s ease;}
+  .offline-pill{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-top) + 8px);background:rgba(226,160,95,.16);border:1px solid rgba(226,160,95,.5);color:#E2A05F;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;z-index:210;white-space:nowrap;box-shadow:var(--shadow);}
   /* Cajón de Ajustes: página oculta a la IZQUIERDA del Resumen (estilo Revolut) */
   .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:55;}
   .drawer-backdrop.open{opacity:1;pointer-events:auto;}
@@ -956,6 +957,7 @@ const LANG = {
     budget_month:"Presupuesto mensual (€)", save:"Guardar", backup:"Copia de seguridad",
     do_export:"⬇️ Exportar datos (JSON)", do_import:"⬆️ Importar datos (JSON)",
     eb_title:"Algo se ha torcido", eb_msg:"La app ha tenido un error al dibujar. Tus datos están a salvo. Descarga una copia por si acaso y recarga.", eb_export:"⬇️ Descargar copia de seguridad", eb_reload:"🔄 Recargar la app",
+    off_pill:"📴 Sin conexión · se guarda y sincroniza al volver",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
     ob_intro:"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas.",
@@ -972,6 +974,7 @@ const LANG = {
     budget_month:"Monthly budget (€)", save:"Save", backup:"Backup",
     do_export:"⬇️ Export data (JSON)", do_import:"⬆️ Import data (JSON)",
     eb_title:"Something went wrong", eb_msg:"The app hit a rendering error. Your data is safe. Download a backup just in case and reload.", eb_export:"⬇️ Download backup", eb_reload:"🔄 Reload the app",
+    off_pill:"📴 Offline · saved and synced when you're back",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
     ob_intro:"Let's set up your wallet in 1 minute. Start with your accounts and budget; you can add investments, debts and fixed costs later in their tabs.",
@@ -988,6 +991,7 @@ const LANG = {
     budget_month:"Pressupost mensual (€)", save:"Desa", backup:"Còpia de seguretat",
     do_export:"⬇️ Exporta dades (JSON)", do_import:"⬆️ Importa dades (JSON)",
     eb_title:"Alguna cosa ha fallat", eb_msg:"L'app ha tingut un error en dibuixar. Les teves dades estan segures. Descarrega una còpia per si de cas i recarrega.", eb_export:"⬇️ Descarrega còpia de seguretat", eb_reload:"🔄 Recarrega l'app",
+    off_pill:"📴 Sense connexió · es desa i sincronitza en tornar",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
     ob_intro:"Muntem la teva cartera en 1 minut. Comença pels comptes i el pressupost; les inversions, deutes i despeses fixes les afegeixes després a les seves pestanyes.",
@@ -3868,7 +3872,7 @@ function App(){
   const [syncing,setSyncing]=useState(false);
   const [syncStatus,setSyncStatus]=useState({type:"idle",msg:""});
 
-  const set=useCallback((updater)=>{ setStateRaw(prev=>{ const next=typeof updater==="function"?updater(prev):updater; store.set("micartera_v3",next); return next; }); },[]);
+  const set=useCallback((updater)=>{ setStateRaw(prev=>{ const next=typeof updater==="function"?updater(prev):updater; if(next===prev) return prev; const stamped=Object.assign({},next,{_savedAt:Date.now()}); store.set("micartera_v3",stamped); return stamped; }); },[]);
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(null),2200); };
   // Moneda de visualización: convierte todos los importes (en €) a la moneda elegida en Ajustes.
   (function(){ const c=(state.settings&&state.settings.currency)||"EUR"; DISP.sym=c==="USD"?"$":"€"; DISP.k=c==="USD"?((state.fx>0)?1/state.fx:1):1; })();
@@ -3915,10 +3919,15 @@ function App(){
     const u=s.user.id;
     cloud.pullState().then(function(cloudState){
       if(cloudState && validCloudState(cloudState)){
-        // adopta el estado de la nube pero UNE los gastos (nunca pierde los locales)
+        // LAST-WRITE-WINS: si lo LOCAL es más reciente (p.ej. cambios hechos sin conexión),
+        // NO lo pisamos con la nube vieja; solo unimos los gastos (aditivo). Si la nube es más
+        // nueva o igual, adoptamos su estado. Los gastos SIEMPRE se mezclan (nunca se pierden).
         set(function(prev){
-          const u=mergeExpenses(prev.expenses, cloudState.expenses||[]);
-          return seedFlows(fixInvAuto(fixInvSold(reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list})))));
+          const merged=mergeExpenses(prev.expenses, cloudState.expenses||[]);
+          const localNewer=(prev._savedAt||0) > (cloudState._savedAt||0);
+          const baseObj = localNewer ? Object.assign({},prev,{expenses:merged.list})
+                                     : Object.assign({},prev,cloudState,{expenses:merged.list});
+          return seedFlows(fixInvAuto(fixInvSold(reconcileTR(baseObj))));
         });
       } else if(cloudState){
         // llegó algo pero con forma inválida (corrupto/parcial) → NO machacar lo local; resube lo bueno
@@ -3926,7 +3935,7 @@ function App(){
         return cloud.pushState(u, slimForCloud(stateRef.current));
       } else { return cloud.pushState(u, slimForCloud(stateRef.current)); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
-      .catch(function(e){ showToast("✕ Nube: "+((e&&e.message)||e)); });   // sync de arranque silencioso (solo avisa si falla)
+      .catch(function(e){ if(navigator.onLine!==false) showToast("✕ Nube: "+((e&&e.message)||e)); });   // si estás sin conexión, ni avisamos (es normal)
   };
 
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
@@ -3972,6 +3981,20 @@ function App(){
   const [showAuth,setShowAuth]=useState(false);
   const [drawerOpen,setDrawerOpen]=useState(false);
   const [locked,setLocked]=useState(function(){ return bio.enabled(); });
+
+  // Estado de conexión: la app es offline-first (todo en localStorage); esto solo informa y, al
+  // reconectar, sube los cambios hechos sin red. Sin conexión NO se rompe ni se pierde nada.
+  const [online,setOnline]=useState(typeof navigator==="undefined" || navigator.onLine!==false);
+  const wasOnline=useRef(online);
+  useEffect(function(){
+    const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
+    window.addEventListener("online",on); window.addEventListener("offline",off);
+    return function(){ window.removeEventListener("online",on); window.removeEventListener("offline",off); };
+  },[]);
+  useEffect(function(){
+    if(online && !wasOnline.current && uid){ cloud.pushState(uid, slimForCloud(stateRef.current)).catch(function(){}); }   // reconectó → sube lo de offline
+    wasOnline.current=online;
+  },[online,uid]);
 
   // Cajón de Ajustes: se abre arrastrando de izquierda a derecha en la 1ª pestaña (integrado en el swipe)
   const drawerRef=useRef(null), backRef=useRef(null), gestureMode=useRef(null);
@@ -4345,6 +4368,7 @@ function App(){
       )
     ),
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
+    !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); },showToast:showToast}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
