@@ -1304,6 +1304,8 @@ function reconcileTR(s){
       }
       s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
     }
+    // Demás bancos (Sabadell, etc.): arrastran su neto del mes cerrado (ingresos − fijos − cuotas − puntuales − transfers)
+    s.accounts.forEach(function(a2){ if(!a2.spendFrom){ a2.value = +(((a2.value||0) + monthNetForAccount(s, a2.ent, ay, am+1, null))).toFixed(2); } });
     am++; if(am>11){am=0;ay++;}
     guard++;
   }
@@ -2431,10 +2433,11 @@ function Investments({state, set, fetchPrices, pricing}){
    TAB: PATRIMONIO
    ============================================================ */
 function Wealth({state, set, totals}){
+  const pn=(i)=> (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0;   // movimientos ya ocurridos este mes
   const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})),{
-    // En la cuenta de gasto (TR) editas el SALDO REAL; por dentro se guarda la base correcta.
-    display:  i => i.spendFrom ? (i.value + totals.injTR - totals.thisMonthSpent) : i.value,
-    toStored: (i,typed) => i.spendFrom ? (typed - totals.injTR + totals.thisMonthSpent) : typed
+    // Editas el SALDO REAL de hoy; por dentro se guarda la base (inicio de mes) correcta.
+    display:  i => i.spendFrom ? (i.value + totals.injTR - totals.thisMonthSpent) : (i.value + pn(i)),
+    toStored: (i,typed) => i.spendFrom ? (typed - totals.injTR + totals.thisMonthSpent) : (typed - pn(i))
   });
   const astEd=useEditable(state.assets,it=>set(s=>Object.assign({},s,{assets:it})));
   const accSum=totals.liquid;
@@ -2456,7 +2459,7 @@ function Wealth({state, set, totals}){
           React.createElement("div",null,React.createElement("div",{className:"rname"},entOf(a.ent).label),React.createElement("div",{className:"rsub"}, a.spendFrom?(tf("pt_monthspent",{x:eur0(totals.thisMonthSpent)})+(totals.injTR?tf("pt_payroll",{x:eur0(totals.injTR)}):"")):a.name))),
         accEd.editing
           ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
-          : React.createElement("div",{className:"rval num"},eur(a.spendFrom? a.value + totals.injTR - totals.thisMonthSpent : a.value))
+          : React.createElement("div",{className:"rval num"},eur(a.spendFrom? a.value + totals.injTR - totals.thisMonthSpent : a.value + pn(a)))
       )),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_liquid")),React.createElement("span",{className:"num"},eur(accSum)))
     ),
@@ -2560,6 +2563,18 @@ function debtBalance(d){ if(!d || d.value==null) return 0; const anchor=(typeof 
 function debtActive(d){ if(!d || !d.monthly) return false; const bal=debtBalance(d); if(d.months!=null){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return (ymNow()-anchor) < d.months && bal>0.005; } return bal>0.005; }
 // cuotas que quedan de una financiación (null si no tiene plazo)
 function debtLeft(d){ if(!d || d.months==null) return null; const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return Math.max(0, d.months-(ymNow()-anchor)); }
+// Movimientos netos de un banco en un mes (m 1-12): +ingresos −fijos −cuotas −puntuales −transfers.
+// todayLim null = mes cerrado (cuentan todos); número = solo los YA ocurridos (día < todayLim, regla isPaidIn).
+function monthNetForAccount(s, ent, y, m, todayLim){
+  const closed=(todayLim==null);
+  const hit=function(d){ return closed ? true : (d!=null && d<todayLim); };
+  let net=0;
+  (s.fixed||[]).forEach(function(e){ if((e.account||"sabadell")===ent && occursIn(e,m) && hit(dayIn(e,m))) net -= occAmountIn(e,m); });
+  (s.debts||[]).forEach(function(d){ if(debtActive(d) && (d.account||"sabadell")===ent && hit(dayOf(d))) net -= (d.monthly||0); });
+  (s.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,y,m) && (o.account||"sabadell")===ent && (o.amount||0)!==0 && hit(o.day!=null?o.day:null)) net -= o.amount; });
+  (s.flows||[]).forEach(function(f){ if(flowOccursIn(f,m)){ const dd=flowDay(f,y,m); if(hit(dd)){ if(f.kind==="income" && (f.to||"sabadell")===ent) net += (f.amount||0); else if(f.kind==="transfer" && (f.from||"sabadell")===ent) net -= (f.amount||0); } } });
+  return net;
+}
 
 // Selector compacto de meses (1-12) para gastos no mensuales.
 function MonthPicker({selected, onToggle}){
@@ -3544,7 +3559,15 @@ function App(){
     const roundupThisMonth = trAcc ? roundupOf(thisMonthExp, trAcc.roundup||0) : 0;
     const savebackThisMonth = (trAcc && trAcc.saveback) ? savebackOf(thisMonthExp) : 0;
     const trRewardsTotal = state.trRewardsTotal||0;
-    const liquid=state.accounts.reduce((a,i)=> a + (i.spendFrom ? (i.value + injTR - thisMonthSpent) : i.value), 0);
+    const curMonth=new Date().getMonth()+1;
+    const curYear=new Date().getFullYear();
+    const today=new Date().getDate();                    // día de hoy (para separar pagado/pendiente)
+    // SALDO DINÁMICO: cada banco = base (inicio de mes) + movimientos YA ocurridos este mes
+    // (ingresos/nómina/bizums − fijos − cuotas − puntuales − transfers). El de gasto (TR) usa su inyección.
+    const paidNetByBank={};
+    state.accounts.forEach(function(a){ if(!a.spendFrom) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
+    const dynBal=function(a){ return a.spendFrom ? (a.value+injTR-thisMonthSpent) : ((a.value||0)+(paidNetByBank[a.ent]||0)); };
+    const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0);
     const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
@@ -3557,14 +3580,11 @@ function App(){
     const fijosMensual=fijosVar+cuotas;
     const ahorroMensual=state.aportaciones.reduce((a,x)=>a+x.amount,0);
     // --- MOTOR DINÁMICO: cargos de fijos que tocan ESTE mes, por banco ---
-    const curMonth=new Date().getMonth()+1;
-    const curYear=new Date().getFullYear();
-    const today=new Date().getDate();                    // día de hoy (para separar pagado/pendiente)
     const fijosEsteMes=state.fixed.reduce((a,e)=> occursIn(e,curMonth) ? a+occAmountIn(e,curMonth) : a, 0);
     const cargosMes=fijosEsteMes+cuotas;                 // fijos del mes + cuotas de deuda (todos los bancos)
     // saldo disponible por banco (la cuenta de gasto descuenta el gasto del mes)
     const bankBal={};
-    state.accounts.forEach(a=>{ const v=a.spendFrom?(a.value+injTR-thisMonthSpent):a.value; bankBal[a.ent]=(bankBal[a.ent]||0)+v; });
+    state.accounts.forEach(a=>{ bankBal[a.ent]=(bankBal[a.ent]||0)+dynBal(a); });
     // cargos del mes por banco, separando lo YA PAGADO (día ya pasado) de lo PENDIENTE.
     // El saldo del banco ya refleja lo pagado; para "lo que te queda" solo cuenta lo pendiente.
     const chargesByBank={}, pendingByBank={};
@@ -3615,7 +3635,7 @@ function App(){
     // alarma: el saldo mínimo del mes se va a negativo (cubre tanto el bajón intra-mes como no llegar a fin de mes)
     const bankAlerts=Object.keys(minByBank).filter(b=> minByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,trRewardsTotal};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,trRewardsTotal,paidNetByBank};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
