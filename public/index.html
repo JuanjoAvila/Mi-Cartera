@@ -639,6 +639,25 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .gm-badge.on{opacity:1;background:rgba(242,193,78,.12);border-color:rgba(242,193,78,.45);}
   .gm-badge-ic{font-size:16px;line-height:1;}
   .gm-badge-lbl{font-size:11.5px;font-weight:600;line-height:1.2;}
+  /* Compartido */
+  .sh-card{display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;cursor:pointer;}
+  .sh-emoji{font-size:26px;line-height:1;}
+  .sh-name{font-weight:800;font-size:15px;}
+  .sh-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .sh-arrow{color:var(--muted);font-size:22px;font-weight:700;}
+  .sh-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:13.5px;cursor:pointer;padding:4px 0 10px;}
+  .sh-settle{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;}
+  .sh-settle:last-child{border-bottom:none;}
+  .sh-owe{font-weight:800;color:#E2A05F;}
+  .sh-people{display:flex;flex-wrap:wrap;gap:7px;}
+  .sh-chip{font-size:12px;font-weight:600;padding:6px 10px;border-radius:20px;background:var(--bg-2);border:1px solid var(--line-soft);}
+  .sh-exp{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line-soft);}
+  .sh-exp:last-of-type{border-bottom:none;}
+  .sh-exp-desc{font-weight:700;font-size:13.5px;}
+  .sh-exp-meta{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .sh-parts{display:flex;flex-wrap:wrap;gap:6px;}
+  .sh-part{font-size:12px;font-weight:600;padding:6px 11px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--muted);cursor:pointer;}
+  .sh-part.on{border-color:var(--mint);background:rgba(95,208,138,.16);color:var(--mint);}
   .catpick{display:flex;flex-wrap:wrap;gap:6px;padding:2px 2px 12px 50px;}
   .catpick-b{font-size:12px;font-weight:600;padding:6px 9px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--text);cursor:pointer;}
   .catpick-b.on{border-color:var(--mint);background:rgba(95,208,138,.16);color:var(--mint);}
@@ -951,7 +970,8 @@ let CURLANG = "es";
 const LANGS = [["es","Español"],["en","English"],["ca","Català"]];
 const LANG = {
   es:{
-    tab_dash:"Resumen", tab_gastos:"Gastos", tab_fijos:"Fijos", tab_inv:"Inversiones", tab_patri:"Patrimonio", tab_debt:"Deudas",
+    tab_dash:"Resumen", tab_gastos:"Gastos", tab_fijos:"Fijos", tab_inv:"Inversiones", tab_patri:"Patrimonio", tab_debt:"Deudas", tab_compartido:"Compartido",
+    st_mode:"Modo de la app", st_mode_full:"Completo", st_mode_simple:"Sencillo", st_mode_hint:"Sencillo deja solo Resumen, Gastos y Fijos. Ideal para empezar o para quien quiere lo básico.",
     brand_sub:"tus finanzas, claras",
     settings:"Ajustes", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualización",
     budget_month:"Presupuesto mensual (€)", save:"Guardar", backup:"Copia de seguridad",
@@ -968,7 +988,8 @@ const LANG = {
     ob_name_ph:"Nombre (opcional, ej. Cuenta corriente)", ob_balance_ph:"Saldo €",
   },
   en:{
-    tab_dash:"Summary", tab_gastos:"Spending", tab_fijos:"Fixed", tab_inv:"Investments", tab_patri:"Net worth", tab_debt:"Debts",
+    tab_dash:"Summary", tab_gastos:"Spending", tab_fijos:"Fixed", tab_inv:"Investments", tab_patri:"Net worth", tab_debt:"Debts", tab_compartido:"Shared",
+    st_mode:"App mode", st_mode_full:"Full", st_mode_simple:"Simple", st_mode_hint:"Simple keeps only Summary, Spending and Fixed. Great to start or for anyone who wants the basics.",
     brand_sub:"your money, clear",
     settings:"Settings", language:"Language", theme:"Colour theme", currency:"Display currency",
     budget_month:"Monthly budget (€)", save:"Save", backup:"Backup",
@@ -985,7 +1006,8 @@ const LANG = {
     ob_name_ph:"Name (optional, e.g. Checking account)", ob_balance_ph:"Balance €",
   },
   ca:{
-    tab_dash:"Resum", tab_gastos:"Despeses", tab_fijos:"Fixes", tab_inv:"Inversions", tab_patri:"Patrimoni", tab_debt:"Deutes",
+    tab_dash:"Resum", tab_gastos:"Despeses", tab_fijos:"Fixes", tab_inv:"Inversions", tab_patri:"Patrimoni", tab_debt:"Deutes", tab_compartido:"Compartit",
+    st_mode:"Mode de l'app", st_mode_full:"Complet", st_mode_simple:"Senzill", st_mode_hint:"Senzill deixa només Resum, Despeses i Fixes. Ideal per començar o per qui vol el bàsic.",
     brand_sub:"els teus diners, clars",
     settings:"Configuració", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualització",
     budget_month:"Pressupost mensual (€)", save:"Desa", backup:"Còpia de seguretat",
@@ -1335,6 +1357,11 @@ Object.assign(LANG.es,{
   gm_locked:"🔒 Bloqueado", gm_levelup:"🎉 ¡Subiste al nivel {n}!", gm_badge_new:"🏅 Logro: {x}",
   gm_b_first_goal:"1ª meta cumplida", gm_b_first_underbudget:"1er mes bajo presupuesto", gm_b_first_reto:"1er reto completado", gm_b_streak_3:"Racha de 3 meses",
   gm_b_save_100:"100 € ahorrado", gm_b_save_500:"500 € ahorrado", gm_b_save_1000:"1.000 € ahorrado", gm_b_save_5000:"5.000 € ahorrado",
+  sh_newdefault:"Grupo", sh_newgroup:"Nuevo grupo compartido", sh_name_ph:"Nombre (ej. Crucero)", sh_you:"Tú", sh_other_ph:"Otra persona (ej. Pareja)", sh_create:"Crear grupo", sh_cancel:"Cancelar",
+  sh_empty_t:"Aún no hay grupos", sh_empty_d:"Crea un grupo para repartir gastos de un viaje, piso o evento con otras personas.",
+  sh_people:"personas", sh_people_h:"Personas", sh_addperson_ph:"Añadir persona", sh_balances:"Quién debe a quién", sh_settled:"Todo saldado 🎉", sh_settled_short:"saldado", sh_pending:"{n} pago(s) pendiente(s)",
+  sh_expenses:"Gastos del grupo", sh_noexp:"Aún no hay gastos. Añade el primero.", sh_paidby:"Pagó {who}", sh_addexp:"Añadir gasto", sh_exp:"Gasto", sh_exp_ph:"Concepto (ej. Cena)", sh_split:"¿Entre quién se reparte?",
+  sh_back:"Grupos", sh_delgroup:"Borrar grupo", sh_delgroup_q:"¿Borrar este grupo y sus gastos?",
   gl_empty_t:"Aún no tienes metas", gl_empty_d:"Crea tu primera meta de ahorro y mira cómo se acerca cada mes.",
   gl_widget_title:"Tu meta", wl_goal:"Meta",
 });
@@ -1359,6 +1386,11 @@ Object.assign(LANG.en,{
   gm_locked:"🔒 Locked", gm_levelup:"🎉 You reached level {n}!", gm_badge_new:"🏅 Achievement: {x}",
   gm_b_first_goal:"1st goal reached", gm_b_first_underbudget:"1st month under budget", gm_b_first_reto:"1st challenge done", gm_b_streak_3:"3-month streak",
   gm_b_save_100:"€100 saved", gm_b_save_500:"€500 saved", gm_b_save_1000:"€1,000 saved", gm_b_save_5000:"€5,000 saved",
+  sh_newdefault:"Group", sh_newgroup:"New shared group", sh_name_ph:"Name (e.g. Cruise)", sh_you:"You", sh_other_ph:"Other person (e.g. Partner)", sh_create:"Create group", sh_cancel:"Cancel",
+  sh_empty_t:"No groups yet", sh_empty_d:"Create a group to split trip, flat or event expenses with others.",
+  sh_people:"people", sh_people_h:"People", sh_addperson_ph:"Add person", sh_balances:"Who owes whom", sh_settled:"All settled 🎉", sh_settled_short:"settled", sh_pending:"{n} payment(s) pending",
+  sh_expenses:"Group expenses", sh_noexp:"No expenses yet. Add the first one.", sh_paidby:"Paid by {who}", sh_addexp:"Add expense", sh_exp:"Expense", sh_exp_ph:"What (e.g. Dinner)", sh_split:"Split between whom?",
+  sh_back:"Groups", sh_delgroup:"Delete group", sh_delgroup_q:"Delete this group and its expenses?",
   gl_empty_t:"No goals yet", gl_empty_d:"Create your first savings goal and watch it get closer each month.",
   gl_widget_title:"Your goal", wl_goal:"Goal",
 });
@@ -1383,6 +1415,11 @@ Object.assign(LANG.ca,{
   gm_locked:"🔒 Bloquejat", gm_levelup:"🎉 Has pujat al nivell {n}!", gm_badge_new:"🏅 Assoliment: {x}",
   gm_b_first_goal:"1r objectiu assolit", gm_b_first_underbudget:"1r mes sota pressupost", gm_b_first_reto:"1r repte completat", gm_b_streak_3:"Ratxa de 3 mesos",
   gm_b_save_100:"100 € estalviats", gm_b_save_500:"500 € estalviats", gm_b_save_1000:"1.000 € estalviats", gm_b_save_5000:"5.000 € estalviats",
+  sh_newdefault:"Grup", sh_newgroup:"Nou grup compartit", sh_name_ph:"Nom (ex. Creuer)", sh_you:"Tu", sh_other_ph:"Altra persona (ex. Parella)", sh_create:"Crea grup", sh_cancel:"Cancel·la",
+  sh_empty_t:"Encara no hi ha grups", sh_empty_d:"Crea un grup per repartir despeses d'un viatge, pis o esdeveniment amb altres persones.",
+  sh_people:"persones", sh_people_h:"Persones", sh_addperson_ph:"Afegeix persona", sh_balances:"Qui deu a qui", sh_settled:"Tot saldat 🎉", sh_settled_short:"saldat", sh_pending:"{n} pagament(s) pendent(s)",
+  sh_expenses:"Despeses del grup", sh_noexp:"Encara no hi ha despeses. Afegeix la primera.", sh_paidby:"Va pagar {who}", sh_addexp:"Afegeix despesa", sh_exp:"Despesa", sh_exp_ph:"Concepte (ex. Sopar)", sh_split:"Entre qui es reparteix?",
+  sh_back:"Grups", sh_delgroup:"Esborra grup", sh_delgroup_q:"Esborrar aquest grup i les seves despeses?",
   gl_empty_t:"Encara no tens objectius", gl_empty_d:"Crea el teu primer objectiu d'estalvi i mira com s'acosta cada mes.",
   gl_widget_title:"El teu objectiu", wl_goal:"Objectiu",
 });
@@ -1676,7 +1713,7 @@ function buildEmpty(){
   return {
     fx: 0.92, budget: 0, monthStartNet: 0, history: [],
     accounts: [], investments: [], assets: [], debts: [], fixed: [], flows: [], oneoffs: [], aportaciones: [],
-    expenses: [], goals: [], catOverrides: {}, streak: 0,
+    expenses: [], goals: [], shared: [], catOverrides: {}, streak: 0,
     settings: { autoPrices:false },
     lastSync: null, lastPriceSync: null,
     onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
@@ -1698,6 +1735,7 @@ function buildInitial(){
     aportaciones: DATA.aportaciones.map(a=>Object.assign({},a)),
     expenses: DATA.variables.map(v=>({ id:v.id, date:new Date(v.date).toISOString(), merchant:v.name, amount:v.amount, category:v.cat, source:"manual" })),
     goals: [],
+    shared: [],
     streak: 4,
     settings: { autoPrices:false },
     lastSync: null,
@@ -1785,6 +1823,7 @@ function seedFlows(s){
   if(!s.oneoffs) s.oneoffs = [];
   if(!s.flows) s.flows = [];
   if(!s.goals) s.goals = [];
+  if(!s.shared) s.shared = [];
   if(!s.catOverrides) s.catOverrides = {};
   USER_OVERRIDES = Object.assign({}, s.catOverrides);    // overrides personales (comercio→cat) activos
   // recategoriza lo que quedó en "Otros" (gastos auto, no manuales) con las keywords/overrides mejorados
@@ -1800,6 +1839,8 @@ function seedFlows(s){
     if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
     // semilla única: una meta de ejemplo para que la pestaña Metas se vea viva (solo cartera demo)
     if(!s._goalSeed){ if(!s.goals.length){ s.goals=[{id:uid(),name:"Vacaciones",emoji:"✈️",target:3000,saved:1200,deadline:null,color:"#5FD08A",createdAt:new Date().toISOString(),done:false,doneAt:null}]; } s._goalSeed=true; }
+    // semilla única: un grupo de gastos compartidos de ejemplo (crucero con la pareja)
+    if(!s._sharedSeed){ if(!s.shared.length){ s.shared=[{id:uid(),name:"Crucero",emoji:"🛳️",people:["Yo","Pareja"],expenses:[{id:uid(),desc:"Excursión",amount:120,payer:"Yo",parts:["Yo","Pareja"],date:new Date().toISOString()},{id:uid(),desc:"Cena especial",amount:80,payer:"Pareja",parts:["Yo","Pareja"],date:new Date().toISOString()}]}]; } s._sharedSeed=true; }
     // semilla única: round-up ×2 + saveback en la cuenta TR demo → FTSE All-World (#19)
     if(!s._trRewardSeed){ s.accounts=s.accounts.map(function(a){ return a.spendFrom?Object.assign({roundup:2,saveback:true,rewardInv:"7zjaw0y"},a,{roundup:a.roundup!=null?a.roundup:2,saveback:a.saveback!=null?a.saveback:true,rewardInv:a.rewardInv||"7zjaw0y"}):a; }); s._trRewardSeed=true; }
   }
@@ -1854,6 +1895,7 @@ const I = {
   cloudOff:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("path",{d:"M17.5 19a4.5 4.5 0 0 0 1.9-8.58M9 5.2A6 6 0 0 1 18 9.2M6.5 19a4 4 0 0 1-.3-7.8"}),React.createElement("path",{d:"M3 3l18 18"})),
   gear:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},p),React.createElement("circle",{cx:12,cy:12,r:3}),React.createElement("path",{d:"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 3.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.05a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.05a1.65 1.65 0 0 0 1.51 1H22a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"})),
   goal:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("circle",{cx:12,cy:12,r:9}),React.createElement("circle",{cx:12,cy:12,r:5}),React.createElement("circle",{cx:12,cy:12,r:1.5,fill:"currentColor"})),
+  share:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("circle",{cx:18,cy:5,r:3}),React.createElement("circle",{cx:6,cy:12,r:3}),React.createElement("circle",{cx:18,cy:19,r:3}),React.createElement("path",{d:"M8.6 10.6l6.8-4M8.6 13.4l6.8 4"})),
 };
 
 /* ============================================================
@@ -3629,10 +3671,15 @@ const TABS=[
   {id:"inv",label:"Inversiones",icon:I.invest},
   {id:"patri",label:"Patrimonio",icon:I.wealth},
   {id:"debt",label:"Deudas",icon:I.debt},
+  {id:"compartido",label:"Compartido",icon:I.share},
 ];
+// Pestañas avanzadas: se ocultan en "modo simple" (settings.simpleMode) para gente que quiere lo básico.
+const ADVANCED_TABS=["metas","inv","patri","debt","compartido"];
 // Orden de pestañas personalizado (settings.tabOrder); ids nuevos se añaden al final.
 function tabOrderOf(s){
-  const allIds=TABS.map(function(t){return t.id;});
+  const simple=!!(s&&s.settings&&s.settings.simpleMode);
+  let allIds=TABS.map(function(t){return t.id;});
+  if(simple) allIds=allIds.filter(function(id){ return ADVANCED_TABS.indexOf(id)<0; });
   const saved=((s&&s.settings&&s.settings.tabOrder)||[]).filter(function(id){return allIds.indexOf(id)>=0;});
   return saved.concat(allIds.filter(function(id){return saved.indexOf(id)<0;}));
 }
@@ -3760,6 +3807,14 @@ function SettingsPanel({state, set, onClose, showToast}){
         return React.createElement("button",{key:L[0],onClick:function(){ CURLANG=L[0]; set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{lang:L[0]})}); }); },style:Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, L[1]);
       })
     ),
+    React.createElement("div",{style:lbl},t("st_mode")),
+    React.createElement("div",{style:{display:"flex",gap:8}},
+      [["false","st_mode_full"],["true","st_mode_simple"]].map(function(m){
+        const on=(!!(state.settings&&state.settings.simpleMode))===(m[0]==="true");
+        return React.createElement("button",{key:m[0],onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{simpleMode:m[0]==="true"})}); }); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t(m[1]));
+      })
+    ),
+    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6}}, t("st_mode_hint")),
     React.createElement("div",{style:lbl},t("budget_month")),
     React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
     React.createElement("button",{style:btn,onClick:saveNums},t("save")),
@@ -3836,6 +3891,139 @@ function Onboarding({set, onCloud}){
       onCloud && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:"14px",border:"1px solid var(--line)",background:"transparent",color:"var(--blue)",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:10},onClick:onCloud},t("ob_haveacc")),
       React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:14}},t("ob_foot"))
     )
+  );
+}
+
+/* ============================================================
+   TAB: COMPARTIDO — gastos compartidos por grupos/eventos (crucero con la pareja).
+   Quién paga, cómo se reparte, y quién debe a quién. Sirve de "sobre" del evento.
+   ============================================================ */
+// Balances de un grupo: neto por persona (+ le deben / − debe) y liquidación mínima (quién paga a quién).
+function sharedBalances(g){
+  const people=(g&&g.people)||[];
+  const bal={}; people.forEach(function(p){ bal[p]=0; });
+  ((g&&g.expenses)||[]).forEach(function(e){
+    const amt=e.amount||0; if(!amt) return;
+    const parts=(e.parts&&e.parts.length)?e.parts:people; if(!parts.length) return;
+    const share=amt/parts.length;
+    bal[e.payer]=(bal[e.payer]||0)+amt;
+    parts.forEach(function(p){ bal[p]=(bal[p]||0)-share; });
+  });
+  Object.keys(bal).forEach(function(k){ bal[k]=+bal[k].toFixed(2); });
+  const cred=[], deb=[];
+  Object.keys(bal).forEach(function(k){ if(bal[k]>0.005)cred.push({name:k,amt:bal[k]}); else if(bal[k]<-0.005)deb.push({name:k,amt:-bal[k]}); });
+  cred.sort(function(a,b){return b.amt-a.amt;}); deb.sort(function(a,b){return b.amt-a.amt;});
+  const settle=[]; let i=0,j=0;
+  while(i<deb.length&&j<cred.length){ const pay=Math.min(deb[i].amt,cred[j].amt); settle.push({from:deb[i].name,to:cred[j].name,amount:+pay.toFixed(2)}); deb[i].amt-=pay; cred[j].amt-=pay; if(deb[i].amt<0.005)i++; if(cred[j].amt<0.005)j++; }
+  return {bal:bal, settle:settle, total:+(((g&&g.expenses)||[]).reduce(function(a,e){return a+(e.amount||0);},0)).toFixed(2)};
+}
+
+function Shared({state, set}){
+  const groups=state.shared||[];
+  const [openId,setOpenId]=useState(null);
+  const [addingG,setAddingG]=useState(false);
+  const [gForm,setGForm]=useState({name:"",emoji:"🧳",p1:"Yo",p2:""});
+  const [addingE,setAddingE]=useState(false);
+  const [eForm,setEForm]=useState({desc:"",amount:"",payer:"",parts:[]});
+  const [newPerson,setNewPerson]=useState("");
+  const SH_EMOJIS=["🧳","🛳️","🏖️","🏠","🎉","🍽️","🚗","⛷️","🎟️","👫"];
+
+  const upd=function(id,fn){ set(function(s){ return Object.assign({},s,{shared:(s.shared||[]).map(function(g){ return g.id===id?fn(g):g; })}); }); };
+  const addGroup=function(){
+    const ppl=[gForm.p1||"Yo"]; if(gForm.p2&&gForm.p2.trim()) ppl.push(gForm.p2.trim());
+    const g={id:uid(),name:gForm.name||t("sh_newdefault"),emoji:gForm.emoji||"🧳",people:ppl,expenses:[]};
+    set(function(s){ return Object.assign({},s,{shared:(s.shared||[]).concat([g])}); });
+    setGForm({name:"",emoji:"🧳",p1:"Yo",p2:""}); setAddingG(false); setOpenId(g.id);
+  };
+  const delGroup=function(id){ if(!window.confirm(t("sh_delgroup_q"))) return; set(function(s){ return Object.assign({},s,{shared:(s.shared||[]).filter(function(g){return g.id!==id;})}); }); setOpenId(null); };
+  const addPerson=function(g){ const nm=(newPerson||"").trim(); if(!nm||g.people.indexOf(nm)>=0) return; upd(g.id,function(x){ return Object.assign({},x,{people:x.people.concat([nm])}); }); setNewPerson(""); };
+  const startAddE=function(g){ setEForm({desc:"",amount:"",payer:g.people[0]||"",parts:g.people.slice()}); setAddingE(true); };
+  const addExpense=function(g){
+    const amt=parseFloat(String(eForm.amount).replace(',','.'))||0; if(amt<=0) return;
+    const parts=(eForm.parts&&eForm.parts.length)?eForm.parts:g.people.slice();
+    const ex={id:uid(),desc:eForm.desc||t("sh_exp"),amount:+amt.toFixed(2),payer:eForm.payer||g.people[0],parts:parts,date:new Date().toISOString()};
+    upd(g.id,function(x){ return Object.assign({},x,{expenses:[ex].concat(x.expenses||[])}); });
+    setAddingE(false);
+  };
+  const delExpense=function(g,eid){ upd(g.id,function(x){ return Object.assign({},x,{expenses:(x.expenses||[]).filter(function(e){return e.id!==eid;})}); }); };
+  const toggleParts=function(p){ setEForm(function(f){ const has=f.parts.indexOf(p)>=0; return Object.assign({},f,{parts:has?f.parts.filter(function(x){return x!==p;}):f.parts.concat([p])}); }); };
+
+  const open=groups.find(function(g){return g.id===openId;});
+
+  if(open){
+    const bb=sharedBalances(open);
+    return React.createElement("div",null,
+      React.createElement("button",{className:"sh-back",onClick:function(){ setOpenId(null); setAddingE(false); }},"‹ "+t("sh_back")),
+      React.createElement("div",{className:"total-bar"},
+        React.createElement("div",null,React.createElement("div",{className:"tl"}, open.emoji+" "+open.name),React.createElement("div",{className:"tn num"},eur(bb.total))),
+        React.createElement("div",{className:"cnt"}, open.people.length+" "+t("sh_people"))
+      ),
+      // Balances / quién debe a quién
+      React.createElement("div",{className:"card",style:{padding:"14px 16px"}},
+        React.createElement("div",{className:"gm-sec-h"}, t("sh_balances")),
+        bb.settle.length===0
+          ? React.createElement("div",{className:"hint"}, t("sh_settled"))
+          : bb.settle.map(function(st,i){ return React.createElement("div",{key:i,className:"sh-settle"},
+              React.createElement("span",null, React.createElement("b",null,st.from), " → ", React.createElement("b",null,st.to)),
+              React.createElement("span",{className:"num sh-owe"}, eur(st.amount))); })
+      ),
+      // Personas
+      React.createElement("div",{className:"card",style:{padding:"14px 16px",marginTop:12}},
+        React.createElement("div",{className:"gm-sec-h"}, t("sh_people_h")),
+        React.createElement("div",{className:"sh-people"}, open.people.map(function(p){ return React.createElement("span",{key:p,className:"sh-chip"}, p+" · "+eur0(bb.bal[p]||0)); })),
+        React.createElement("div",{className:"af-row",style:{marginTop:8}},
+          React.createElement("input",{className:"af-in",placeholder:t("sh_addperson_ph"),value:newPerson,onChange:function(e){ setNewPerson(e.target.value); }}),
+          React.createElement("button",{className:"btn btn-ghost",style:{flex:"0 0 auto"},onClick:function(){ addPerson(open); }},"+"))
+      ),
+      // Gastos del grupo
+      React.createElement("div",{className:"card",style:{padding:"14px 16px",marginTop:12}},
+        React.createElement("div",{className:"gm-sec-h"}, t("sh_expenses")),
+        (open.expenses||[]).length===0 && React.createElement("div",{className:"hint"}, t("sh_noexp")),
+        (open.expenses||[]).map(function(e){ return React.createElement("div",{key:e.id,className:"sh-exp"},
+          React.createElement("div",{className:"sh-exp-mid"},
+            React.createElement("div",{className:"sh-exp-desc"}, e.desc),
+            React.createElement("div",{className:"sh-exp-meta"}, tf("sh_paidby",{who:e.payer})+" · "+((e.parts&&e.parts.length)||open.people.length)+" "+t("sh_people"))),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("span",{className:"num",style:{fontWeight:700}}, eur(e.amount)),
+            React.createElement("button",{className:"ex-del",onClick:function(){ delExpense(open,e.id); }},"✕"))
+        ); }),
+        addingE
+          ? React.createElement("div",{className:"add-form",style:{marginTop:10}},
+              React.createElement("input",{className:"af-in",placeholder:t("sh_exp_ph"),value:eForm.desc,onChange:function(e){ setEForm(Object.assign({},eForm,{desc:e.target.value})); }}),
+              React.createElement("div",{className:"af-row"},
+                React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:"0,00 €",value:eForm.amount,onChange:function(e){ setEForm(Object.assign({},eForm,{amount:e.target.value})); }}),
+                React.createElement("select",{className:"af-in",value:eForm.payer,onChange:function(e){ setEForm(Object.assign({},eForm,{payer:e.target.value})); }}, open.people.map(function(p){ return React.createElement("option",{key:p,value:p},p); }))),
+              React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"8px 0 4px"}}, t("sh_split")),
+              React.createElement("div",{className:"sh-parts"}, open.people.map(function(p){ const on=eForm.parts.indexOf(p)>=0; return React.createElement("button",{key:p,type:"button",className:"sh-part"+(on?" on":""),onClick:function(){ toggleParts(p); }}, p); })),
+              React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},onClick:function(){ addExpense(open); }}, t("sh_addexp")),
+              React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAddingE(false); }}, t("sh_cancel")))
+          : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:function(){ startAddE(open); }}, "+ "+t("sh_addexp"))
+      ),
+      React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12,color:"#E2705F"},onClick:function(){ delGroup(open.id); }}, t("sh_delgroup"))
+    );
+  }
+
+  // Vista de lista de grupos
+  return React.createElement("div",null,
+    groups.length===0 && !addingG && React.createElement("div",{className:"empty"},
+      React.createElement("div",{className:"ttl"}, t("sh_empty_t")), t("sh_empty_d")),
+    groups.map(function(g){ const bb=sharedBalances(g); return React.createElement("div",{key:g.id,className:"card sh-card",onClick:function(){ setOpenId(g.id); }},
+      React.createElement("span",{className:"sh-emoji"}, g.emoji||"🧳"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{className:"sh-name"}, g.name),
+        React.createElement("div",{className:"sh-sub"}, eur(bb.total)+" · "+g.people.length+" "+t("sh_people")+(bb.settle.length?(" · "+tf("sh_pending",{n:bb.settle.length})):" · "+t("sh_settled_short")))),
+      React.createElement("span",{className:"sh-arrow"}, "›")
+    ); }),
+    addingG
+      ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
+          React.createElement("input",{className:"af-in",placeholder:t("sh_name_ph"),value:gForm.name,onChange:function(e){ setGForm(Object.assign({},gForm,{name:e.target.value})); }}),
+          React.createElement("div",{className:"emoji-pick",style:{marginTop:8}}, SH_EMOJIS.map(function(em){ return React.createElement("button",{key:em,type:"button",className:(gForm.emoji===em?"on":""),onClick:function(){ setGForm(Object.assign({},gForm,{emoji:em})); }}, em); })),
+          React.createElement("div",{className:"af-row",style:{marginTop:8}},
+            React.createElement("input",{className:"af-in",placeholder:t("sh_you"),value:gForm.p1,onChange:function(e){ setGForm(Object.assign({},gForm,{p1:e.target.value})); }}),
+            React.createElement("input",{className:"af-in",placeholder:t("sh_other_ph"),value:gForm.p2,onChange:function(e){ setGForm(Object.assign({},gForm,{p2:e.target.value})); }})),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},onClick:addGroup}, t("sh_create")),
+          React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAddingG(false); }}, t("sh_cancel")))
+      : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:function(){ setAddingG(true); }}, React.createElement(I.plus,{width:16,height:16}), t("sh_newgroup"))
   );
 }
 
@@ -4324,6 +4512,7 @@ function App(){
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
   const tabIds = tabOrderState || tabOrderOf(state);
+  useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   const TABBYID={}; TABS.forEach(function(tt){ TABBYID[tt.id]=tt; });
   const pageFor=function(id){
     if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set});
@@ -4333,6 +4522,7 @@ function App(){
     if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
     if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
     if(id==="debt") return React.createElement(Debts,{state:state,set:set});
+    if(id==="compartido") return React.createElement(Shared,{state:state,set:set});
     return null;
   };
 
