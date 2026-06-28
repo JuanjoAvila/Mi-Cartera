@@ -862,6 +862,11 @@ function validCloudState(s){
   return ["accounts","investments","debts","fixed"].every(function(k){ return Array.isArray(s[k]); });
 }
 
+/* Para el push FRECUENTE a la nube (cada ~1,2s): los gastos viven en su tabla `expenses`
+   (fuente de verdad), así que NO los duplicamos en el JSONB de app_state → se mantiene ligero
+   aunque haya miles de gastos. El backup diario sí guarda el estado completo. */
+function slimForCloud(s){ const c=Object.assign({},s); delete c.expenses; return c; }
+
 /* ---------- Desbloqueo biométrico (huella / Face ID vía WebAuthn) ----------
    Candado LOCAL por dispositivo: tras iniciar sesión una vez, la app pide huella al abrir.
    No verifica en servidor (suficiente para uso personal); es una capa de UX tipo app de banco. */
@@ -3690,10 +3695,11 @@ function App(){
       // La tabla `expenses` es la FUENTE DE VERDAD de los gastos de la nube: se reemplazan los
       // de origen "supabase" con lo que hay en la tabla (refresca categorías, importes y borrados).
       // Los manuales/sheet locales NO se tocan nunca (por eso esto es seguro y no borra datos).
-      // Backfill: sube a la tabla los gastos manuales locales que aún no estén en ella
-      // (p. ej. los apuntados antes de que existiera el guardado en BD). Upsert idempotente.
+      // Backfill: sube a la tabla TODO gasto local que aún no esté en ella (no solo los manuales).
+      // Esto garantiza que la tabla sea la fuente de verdad COMPLETA antes de dejar de duplicar
+      // los gastos en app_state (ver slimForCloud). Upsert idempotente (ignoreDuplicates).
       const tableKeys={}; incoming.forEach(function(e){ tableKeys[keyOf(e)]=1; });
-      (stateRef.current.expenses||[]).forEach(function(e){ if(e.source==="manual" && !tableKeys[keyOf(e)]) cloud.addExpense(e).catch(function(){}); });
+      (stateRef.current.expenses||[]).forEach(function(e){ if(e.amount!==0 && !tableKeys[keyOf(e)]) cloud.addExpense(e).catch(function(){}); });
       // "nuevo" = no lo teníamos en NINGÚN origen local (así, ya sincronizado → 0 → "Ya estás al día")
       const prevKeys={}; (stateRef.current.expenses||[]).forEach(function(e){ prevKeys[keyOf(e)]=1; });
       let count=0; const seenC={};
@@ -3723,8 +3729,8 @@ function App(){
       } else if(cloudState){
         // llegó algo pero con forma inválida (corrupto/parcial) → NO machacar lo local; resube lo bueno
         showToast("⚠ Nube con formato inesperado: se conservan tus datos locales");
-        return cloud.pushState(u, stateRef.current);
-      } else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
+        return cloud.pushState(u, slimForCloud(stateRef.current));
+      } else { return cloud.pushState(u, slimForCloud(stateRef.current)); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
       .catch(function(e){ showToast("✕ Nube: "+((e&&e.message)||e)); });   // sync de arranque silencioso (solo avisa si falla)
   };
@@ -3741,10 +3747,10 @@ function App(){
     });
   },[]);
 
-  // Empuja el estado a la nube (debounced) cuando cambie y haya sesión.
+  // Empuja el estado a la nube (debounced) cuando cambie y haya sesión. Sin los gastos (ya en su tabla).
   useEffect(function(){
     if(!uid) return;
-    const t=setTimeout(function(){ cloud.pushState(uid, state).catch(function(){}); }, 1200);
+    const t=setTimeout(function(){ cloud.pushState(uid, slimForCloud(state)).catch(function(){}); }, 1200);
     return function(){ clearTimeout(t); };
   },[state,uid]);
 
