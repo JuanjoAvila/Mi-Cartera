@@ -1102,7 +1102,7 @@ Object.assign(LANG.es,{
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"redondeo ×{m} activo", ru_sub_off:"desactivado",
   ru_mult:"Multiplicador del redondeo", ru_off:"Off", ru_dest:"Inversión destino", ru_pick:"Elige una inversión…",
   ru_saveback:"Saveback 1% (cashback de TR, máx 15€/mes)",
-  ru_month_ru:"Round-up acumulado (este mes)", ru_month_sb:"Saveback estimado (este mes)", ru_total:"Aportado vía TR (total)",
+  ru_month_ru:"Round-up ya invertido (este mes)", ru_month_sb:"Saveback ya invertido (este mes)", ru_total:"Aportado vía TR (total acumulado)",
   ru_hint:"El round-up redondea cada compra al € superior × multiplicador y sale de tu efectivo TR hacia {inv} (TR lo invierte los días 2/9/16/23). El Saveback es un 1% que TR te regala e invierte el día 2. La app lo aplica a tu efectivo e inversión al CERRAR cada mes. Estimación según tus gastos registrados: tu saldo TR real siempre manda.",
   ru_hint_off:"Actívalo si en TR tienes Round-up o Saveback, para que tu efectivo TR cuadre con el real (TR mueve esa calderilla a inversión).",
   ru_manual_hint:"Puedes escribir el importe REAL que ves en TR para corregir la estimación (déjalo vacío para que lo calcule solo).",
@@ -1138,7 +1138,7 @@ Object.assign(LANG.en,{
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"round-up ×{m} on", ru_sub_off:"off",
   ru_mult:"Round-up multiplier", ru_off:"Off", ru_dest:"Target investment", ru_pick:"Pick an investment…",
   ru_saveback:"Saveback 1% (TR cashback, max €15/mo)",
-  ru_month_ru:"Round-up so far (this month)", ru_month_sb:"Saveback estimate (this month)", ru_total:"Contributed via TR (total)",
+  ru_month_ru:"Round-up invested (this month)", ru_month_sb:"Saveback invested (this month)", ru_total:"Contributed via TR (running total)",
   ru_hint:"Round-up rounds each purchase up to the next € × multiplier and leaves your TR cash towards {inv} (TR invests it on the 2nd/9th/16th/23rd). Saveback is a 1% TR gives you, invested on the 2nd. The app applies it to your cash and investment when each month CLOSES. Estimate from your logged spending: your real TR balance always wins.",
   ru_hint_off:"Turn it on if you use Round-up or Saveback in TR, so your TR cash matches reality (TR moves that spare change into investments).",
   ru_manual_hint:"You can type the REAL amount you see in TR to correct the estimate (leave empty to auto-calculate).",
@@ -1174,7 +1174,7 @@ Object.assign(LANG.ca,{
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"arrodoniment ×{m} actiu", ru_sub_off:"desactivat",
   ru_mult:"Multiplicador de l'arrodoniment", ru_off:"Off", ru_dest:"Inversió destí", ru_pick:"Tria una inversió…",
   ru_saveback:"Saveback 1% (cashback de TR, màx 15€/mes)",
-  ru_month_ru:"Arrodoniment acumulat (aquest mes)", ru_month_sb:"Saveback estimat (aquest mes)", ru_total:"Aportat via TR (total)",
+  ru_month_ru:"Arrodoniment ja invertit (aquest mes)", ru_month_sb:"Saveback ja invertit (aquest mes)", ru_total:"Aportat via TR (total acumulat)",
   ru_hint:"L'arrodoniment puja cada compra a l'€ superior × multiplicador i surt del teu efectiu TR cap a {inv} (TR ho inverteix els dies 2/9/16/23). El Saveback és un 1% que TR et regala i inverteix el dia 2. L'app ho aplica al teu efectiu i inversió en TANCAR cada mes. Estimació segons les teves despeses registrades: el teu saldo TR real sempre mana.",
   ru_hint_off:"Activa'l si a TR tens Round-up o Saveback, perquè el teu efectiu TR quadri amb el real (TR mou aquesta xavalla a inversió).",
   ru_manual_hint:"Pots escriure l'import REAL que veus a TR per corregir l'estimació (deixa-ho buit perquè ho calculi sol).",
@@ -2587,12 +2587,15 @@ const oneoffPast=(o,y,m)=> o && (o.year<y || (o.year===y && o.month<m));   // de
 const ymAbs=(y,m0)=> y*12+m0;                         // m0 = mes 0-indexado
 const ymNow=()=>{ const n=new Date(); return ymAbs(n.getFullYear(), n.getMonth()); };
 const debtAmort=(d)=> d && d.amort!=null ? d.amort : ((d&&d.monthly)||0);
-function debtBalance(d){ if(!d || d.value==null) return 0; const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); const elapsed=Math.max(0, ymNow()-anchor); return Math.max(0, d.value - debtAmort(d)*elapsed); }
+// nº de pagos ya hechos. Una financiación (con `months`) cuenta TAMBIÉN el pago de ESTE mes si ya pasó
+// su día (ej. financias el 599/4 con día 26 y hoy es 28 → el 1er pago del 26 ya cuenta).
+function debtPaidCount(d){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); let n=Math.max(0, ymNow()-anchor); if(d.months!=null){ const dd=dayOf(d); if(dd!=null && dd<new Date().getDate()) n+=1; } return n; }
+function debtBalance(d){ if(!d || d.value==null) return 0; return Math.max(0, d.value - debtAmort(d)*debtPaidCount(d)); }
 // ¿la cuota sigue cobrándose este mes? Una financiación (con `months` = plazo) deja de
 // cobrar al acabar el plazo o al llegar el saldo a 0. Sin plazo (hipoteca/préstamo): mientras quede saldo.
 function debtActive(d){ if(!d || !d.monthly) return false; const bal=debtBalance(d); if(d.months!=null){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return (ymNow()-anchor) < d.months && bal>0.005; } return bal>0.005; }
 // cuotas que quedan de una financiación (null si no tiene plazo)
-function debtLeft(d){ if(!d || d.months==null) return null; const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return Math.max(0, d.months-(ymNow()-anchor)); }
+function debtLeft(d){ if(!d || d.months==null) return null; return Math.max(0, d.months - debtPaidCount(d)); }
 // Movimientos netos de un banco en un mes (m 1-12): +ingresos −fijos −cuotas −puntuales −transfers.
 // todayLim null = mes cerrado (cuentan todos); número = solo los YA ocurridos (día < todayLim, regla isPaidIn).
 function monthNetForAccount(s, ent, y, m, todayLim){
