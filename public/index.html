@@ -479,6 +479,28 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .legend-item .vl{font-weight:700;}
 
   .filters{margin-bottom:14px;}
+  .searchbar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-soft);border-radius:12px;padding:9px 12px;margin-bottom:9px;}
+  .searchbar-ic{font-size:13px;opacity:.7;}
+  .searchbar-in{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--text);font-size:14px;font-family:inherit;}
+  .searchbar-in::-webkit-search-cancel-button{display:none;}
+  .searchbar-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;}
+  .sub-row{display:flex;align-items:center;gap:11px;padding:8px 0;border-bottom:1px solid var(--line-soft);}
+  .sub-row:last-child{border-bottom:none;}
+  .sub-row.off{opacity:.55;}
+  .sub-ic{width:34px;height:34px;flex:0 0 34px;border-radius:10px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .sub-mid{flex:1;min-width:0;}
+  .sub-name{font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sub-tag{font-size:11px;font-weight:600;color:var(--muted);}
+  .sub-meta{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .sub-amt{font-weight:800;font-size:13.5px;}
+  .trend-row{display:flex;align-items:center;gap:11px;padding:7px 0;border-bottom:1px solid var(--line-soft);}
+  .trend-row:last-of-type{border-bottom:none;}
+  .trend-ic{font-size:16px;width:22px;text-align:center;}
+  .trend-mid{flex:1;min-width:0;}
+  .trend-nm{font-weight:700;font-size:13.5px;}
+  .trend-sub{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .trend-pct{font-weight:800;font-size:12.5px;white-space:nowrap;}
+  .trend-pct.up{color:#E2705F;} .trend-pct.down{color:var(--mint);}
   .chips{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
   .chip{flex:0 0 auto;padding:8px 13px;border-radius:11px;font-size:12.5px;font-weight:600;background:var(--surface);border:1px solid var(--line-soft);color:var(--muted);}
   .chip.active{background:rgba(95,208,138,.14);border-color:var(--mint-dim);color:var(--mint);}
@@ -991,12 +1013,16 @@ Object.assign(LANG.es,{
   d_fixed:"Gastos fijos", d_fixed_sub:"media/mes · este mes {x}", d_saving:"Ahorro", d_saving_sub:"al mes a inversión",
   d_saving_card:"¿A dónde va tu ahorro?", d_saving_card_sub:"{x}/mes a inversión", d_saving_total:"Total ahorrado/mes",
   d_culprit:"Categoría culpable", d_culprit_sub:"Lo que más gastas en {m}",
+  d_trend:"Esto vs tu media", d_trend_sub:"Gasto del mes por categoría vs tu media", d_trend_avg:"media {x}", d_trend_hint:"▲ por encima de tu media de meses anteriores · ▼ por debajo.",
   d_noexp_t:"Aún sin gastos", d_noexp_d:"Sincroniza o apunta un gasto.", d_culprit_hint:"👑 {name} se lleva {pct}% de tu gasto este mes.",
   wl_budget:"Presupuesto y racha", wl_culpa:"Sin culpa (lo que te queda)", wl_fixedsave:"Gastos fijos y ahorro", wl_savings:"A dónde va tu ahorro",
   personalize:"✎ Personalizar", done:"Listo ✓", drag_hint:"mantén pulsada una tarjeta para moverla",
   w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
+  g_search:"Buscar comercio o categoría…",
+  sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes",
+  sub_hint:"Cargos al mismo comercio en ≥3 meses con importe parecido. Revisa si alguna ya no la usas.",
   g_totalfilt:"Total filtrado", g_n_one:"gasto", g_n_many:"gastos",
   g_sync:"Sincronizar", g_syncing:"Sincronizando…", g_add:"Apuntar",
   g_lastsync:"Última sincronización: {d}", g_nosync:"Sin sincronizar todavía",
@@ -1046,11 +1072,15 @@ Object.assign(LANG.en,{
   d_fixed:"Fixed costs", d_fixed_sub:"avg/month · this month {x}", d_saving:"Saving", d_saving_sub:"per month to investing",
   d_saving_card:"Where does your saving go?", d_saving_card_sub:"{x}/month to investing", d_saving_total:"Total saved/month",
   d_culprit:"Top category", d_culprit_sub:"What you spend most on in {m}",
+  d_trend:"This vs your average", d_trend_sub:"This month's spend by category vs your average", d_trend_avg:"avg {x}", d_trend_hint:"▲ above your previous-months average · ▼ below.",
   d_noexp_t:"No spending yet", d_noexp_d:"Sync or add an expense.", d_culprit_hint:"👑 {name} takes {pct}% of your spending this month.",
   wl_budget:"Budget & streak", wl_culpa:"Guilt-free (what's left)", wl_fixedsave:"Fixed costs & saving", wl_savings:"Where your saving goes",
   personalize:"✎ Customise", done:"Done ✓", drag_hint:"press and hold a card to move it",
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
+  g_search:"Search merchant or category…",
+  sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo",
+  sub_hint:"Charges to the same merchant in ≥3 months with similar amounts. Check if you still use them.",
   g_totalfilt:"Filtered total", g_n_one:"expense", g_n_many:"expenses",
   g_sync:"Sync", g_syncing:"Syncing…", g_add:"Add",
   g_lastsync:"Last sync: {d}", g_nosync:"Not synced yet",
@@ -1099,11 +1129,15 @@ Object.assign(LANG.ca,{
   d_fixed:"Despeses fixes", d_fixed_sub:"mitjana/mes · aquest mes {x}", d_saving:"Estalvi", d_saving_sub:"al mes a inversió",
   d_saving_card:"On va el teu estalvi?", d_saving_card_sub:"{x}/mes a inversió", d_saving_total:"Total estalviat/mes",
   d_culprit:"Categoria culpable", d_culprit_sub:"On més gastes al {m}",
+  d_trend:"Això vs la teva mitjana", d_trend_sub:"Despesa del mes per categoria vs la teva mitjana", d_trend_avg:"mitjana {x}", d_trend_hint:"▲ per sobre de la mitjana de mesos anteriors · ▼ per sota.",
   d_noexp_t:"Encara sense despeses", d_noexp_d:"Sincronitza o apunta una despesa.", d_culprit_hint:"👑 {name} s'emporta el {pct}% de la teva despesa aquest mes.",
   wl_budget:"Pressupost i ratxa", wl_culpa:"Sense culpa (el que et queda)", wl_fixedsave:"Despeses fixes i estalvi", wl_savings:"On va el teu estalvi",
   personalize:"✎ Personalitza", done:"Fet ✓", drag_hint:"mantén premuda una targeta per moure-la",
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
+  g_search:"Cerca comerç o categoria…",
+  sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes",
+  sub_hint:"Càrrecs al mateix comerç en ≥3 mesos amb import semblant. Revisa si ja no n'uses alguna.",
   g_totalfilt:"Total filtrat", g_n_one:"despesa", g_n_many:"despeses",
   g_sync:"Sincronitza", g_syncing:"Sincronitzant…", g_add:"Apunta",
   g_lastsync:"Última sincronització: {d}", g_nosync:"Encara sense sincronitzar",
@@ -1471,6 +1505,31 @@ const GM_LEVELS=[0,250,1000,3000,8000]; // umbrales de savedScore por nivel
 const GM_ICONS=["🐣","🐢","🦊","🦅","👑"];
 // Gasto mensual (solo gastos reales, amount>0) por clave YYYY-MM.
 function spendByMonth(expenses){ const m={}; (expenses||[]).forEach(function(e){ if(e.amount>0){ const k=mkOf(parseDate(e.date)); m[k]=(m[k]||0)+e.amount; } }); return m; }
+function median(arr){ const a=(arr||[]).slice().sort(function(x,y){return x-y;}); const n=a.length; if(!n) return 0; return n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2; }
+// Detector de SUSCRIPCIONES / cargos recurrentes: mismo comercio en ≥3 meses distintos con importe
+// estable (≥60% dentro de ±25% de la mediana). Devuelve {name,cat,amount,months,last,active,yearly}.
+function detectSubscriptions(expenses){
+  const now=new Date();
+  const activeCut=mk(now.getFullYear(), now.getMonth()-2);   // visto en los últimos ~2 meses = sigue activa
+  const groups={};
+  (expenses||[]).forEach(function(e){
+    if(!(e.amount>0)) return; const k=catKey(e.merchant); if(!k) return;
+    const mkey=mkOf(parseDate(e.date));
+    const g=(groups[k]=groups[k]||{name:e.merchant||k,cat:e.category,byMonth:{}});
+    g.byMonth[mkey]=(g.byMonth[mkey]||0)+e.amount; g.name=e.merchant||g.name; g.cat=e.category;
+  });
+  const subs=[];
+  Object.keys(groups).forEach(function(k){
+    const g=groups[k]; const months=Object.keys(g.byMonth).sort(); if(months.length<3) return;
+    const amts=months.map(function(m){ return g.byMonth[m]; });
+    const med=median(amts); if(med<=0) return;
+    const consistent=amts.filter(function(a){ return Math.abs(a-med)<=Math.max(1,med*0.25); }).length;
+    if(consistent < Math.ceil(months.length*0.6)) return;
+    const last=months[months.length-1];
+    subs.push({ key:k, name:g.name, cat:g.cat, amount:+med.toFixed(2), months:months.length, last:last, active:last>=activeCut, yearly:Math.round(med*12) });
+  });
+  return subs.sort(function(a,b){ return b.amount-a.amount; });
+}
 // Racha de meses CERRADOS consecutivos bajo presupuesto + mejor racha histórica.
 function underBudgetStreak(expenses, budget){
   if(!budget||budget<=0) return {current:0,best:0,ever:false};
@@ -1909,6 +1968,23 @@ function Dashboard({state, totals, set}){
   const catList=Object.keys(byCat).map(id=>Object.assign({id:id,v:byCat[id]},catOf(id))).sort((a,b)=>b.v-a.v);
   const top=catList[0];
 
+  // Comparativa "esto vs tu media": gasto por categoría este mes vs media de los meses cerrados.
+  const trend=(function(){
+    const now=new Date(); const curK=mk(now.getFullYear(),now.getMonth());
+    const cm={};   // categoría -> { mesKey: suma }
+    state.expenses.forEach(function(e){ if(!(e.amount>0)) return; const c=e.category; const k=mkOf(parseDate(e.date)); (cm[c]=cm[c]||{})[k]=(cm[c][k]||0)+e.amount; });
+    const rows=[];
+    Object.keys(cm).forEach(function(c){
+      const past=Object.keys(cm[c]).filter(function(k){ return k<curK; }).sort().slice(-6);
+      if(past.length<2) return;                       // hace falta histórico para comparar
+      const avg=past.reduce(function(a,k){return a+cm[c][k];},0)/past.length;
+      if(avg<5) return;                               // ignora categorías irrelevantes
+      const cur=cm[c][curK]||0;
+      rows.push({id:c, cur:cur, avg:avg, pct:(cur-avg)/avg*100, color:catOf(c).color, icon:catOf(c).icon});
+    });
+    return rows.sort(function(a,b){ return b.pct-a.pct; });   // lo más por encima, arriba
+  })();
+
   const pips=[]; for(let i=0;i<12;i++) pips.push(i<state.streak);
 
   // ---- Widgets del Resumen (cada uno con su render) ----
@@ -2020,6 +2096,18 @@ function Dashboard({state, totals, set}){
             )
           ),
       top && React.createElement("div",{className:"hint"},tf("d_culprit_hint",{name:top.name,pct:Math.round(top.v/tt.thisMonthSpent*100)}))
+    )});
+
+  if(trend.length) W.push({id:"trend", label:t("d_trend"), el:
+    React.createElement(CollapsibleCard,{title:t("d_trend"),sub:t("d_trend_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"d_trend"},
+      trend.slice(0,6).map(function(r){ const over=r.pct>=0; return React.createElement("div",{className:"trend-row",key:r.id},
+        React.createElement("span",{className:"trend-ic",style:{color:r.color}}, r.icon),
+        React.createElement("div",{className:"trend-mid"},
+          React.createElement("div",{className:"trend-nm"}, catName(r.id)),
+          React.createElement("div",{className:"trend-sub num"}, eur0(r.cur)+" · "+tf("d_trend_avg",{x:eur0(r.avg)}))),
+        React.createElement("span",{className:"trend-pct "+(over?"up":"down")}, (over?"▲ +":"▼ ")+Math.round(r.pct)+"%")
+      ); }),
+      React.createElement("div",{className:"hint",style:{marginTop:6}}, t("d_trend_hint"))
     )});
 
   // ---- render con orden + visibilidad ----
@@ -2171,6 +2259,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
+  const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false});
@@ -2203,14 +2292,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{noCard:noCard?true:undefined}):e; })}); });
   };
 
-  const filtered=useMemo(()=> state.expenses
+  const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return state.expenses
     .filter(e=>inPreset(parseDate(e.date),preset,range))
     .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
-    .sort((a,b)=>parseDate(b.date)-parseDate(a.date))
-  ,[state.expenses,preset,range,sel]);
+    .filter(e=> !needle || (e.merchant||"").toLowerCase().indexOf(needle)!==-1 || catName(e.category).toLowerCase().indexOf(needle)!==-1)
+    .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
+  },[state.expenses,preset,range,sel,q]);
 
   const total=useMemo(()=>filtered.reduce((a,e)=>a+e.amount,0),[filtered]);
-  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel]);
+  const subs=useMemo(()=>detectSubscriptions(state.expenses),[state.expenses]);
+  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,q]);
   useEffect(()=>{
     const el=sentinelRef.current; if(!el) return;
     const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting) setVisible(v=> v<filtered.length?v+CONFIG.PAGE_SIZE:v); },{rootMargin:"120px"});
@@ -2234,6 +2325,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 
   return React.createElement("div",null,
     React.createElement("div",{className:"filters"},
+      React.createElement("div",Object.assign({className:"searchbar"},stopSwipe),
+        React.createElement("span",{className:"searchbar-ic"},"🔍"),
+        React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
+        q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
+      ),
       React.createElement("div",Object.assign({className:"chips"},stopSwipe), DATE_PRESETS.map(p=>React.createElement("button",{key:p.id,className:"chip"+(preset===p.id?" active":""),onClick:()=>setPreset(p.id)},t("g_"+p.id)))),
       preset==="custom" && React.createElement("div",Object.assign({className:"range"},stopSwipe),
         React.createElement("input",{type:"date",value:range.from,onChange:e=>setRange(Object.assign({},range,{from:e.target.value}))}),
@@ -2273,6 +2369,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       !form.income && React.createElement("button",{type:"button",className:"cardflag"+(form.noCard?" off":""),onClick:()=>setForm(Object.assign({},form,{noCard:!form.noCard}))}, form.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?t("g_addingreso"):t("g_addgasto"))
     ),
+    subs.length>0 && React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title"),sub:tf("sub_sub",{n:subs.length,y:eur0(subs.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:false,storageKey:"g_subs"},
+      subs.map(function(sp){ const c=catOf(sp.cat); return React.createElement("div",{key:sp.key,className:"sub-row"+(sp.active?"":" off")},
+        React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
+        React.createElement("div",{className:"sub-mid"},
+          React.createElement("div",{className:"sub-name"}, sp.name, !sp.active && React.createElement("span",{className:"sub-tag"}," "+t("sub_inactive"))),
+          React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)}))),
+        React.createElement("div",{className:"sub-amt num"}, eur(sp.amount)+t("sub_permonth"))
+      ); }),
+      React.createElement("div",{className:"hint",style:{marginTop:8}}, t("sub_hint"))
+    )),
     React.createElement("div",{className:"card",style:{marginTop:14}},
       React.createElement("div",{className:"card-body",style:{paddingTop:6}},
         shown.length===0
