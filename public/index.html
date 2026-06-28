@@ -588,6 +588,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .catpick{display:flex;flex-wrap:wrap;gap:6px;padding:2px 2px 12px 50px;}
   .catpick-b{font-size:12px;font-weight:600;padding:6px 9px;border-radius:10px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--text);cursor:pointer;}
   .catpick-b.on{border-color:var(--mint);background:rgba(95,208,138,.16);color:var(--mint);}
+  .ru-edit{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line-soft);}
+  .ru-edit:first-of-type{border-top:none;}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:13px;font-weight:700;font-size:14px;}
   .btn-primary{background:linear-gradient(160deg,var(--mint-bright),var(--mint));color:#08120C;box-shadow:0 8px 18px -8px rgba(95,208,138,.55);}
@@ -1103,6 +1105,7 @@ Object.assign(LANG.es,{
   ru_month_ru:"Round-up acumulado (este mes)", ru_month_sb:"Saveback estimado (este mes)", ru_total:"Aportado vía TR (total)",
   ru_hint:"El round-up redondea cada compra al € superior × multiplicador y sale de tu efectivo TR hacia {inv} (TR lo invierte los días 2/9/16/23). El Saveback es un 1% que TR te regala e invierte el día 2. La app lo aplica a tu efectivo e inversión al CERRAR cada mes. Estimación según tus gastos registrados: tu saldo TR real siempre manda.",
   ru_hint_off:"Actívalo si en TR tienes Round-up o Saveback, para que tu efectivo TR cuadre con el real (TR mueve esa calderilla a inversión).",
+  ru_manual_hint:"Puedes escribir el importe REAL que ves en TR para corregir la estimación (déjalo vacío para que lo calcule solo).",
   type_acciones:"Acciones", type_etf:"ETF", type_fondo:"Fondo indexado", type_materias:"Materias primas",
   pj_projvalue:"Valor proyectado", pj_contrib:"Tu contribución", pj_monthly:"Contribución mensual", pj_rate:"Interés anual %", pj_years:"Años",
   pj_gain:"Ganancia estimada en {y} años", pj_hint:"Sobre lo ya invertido ({x}). La banda es ±2% sobre el interés. Estimación, no garantía.",
@@ -1138,6 +1141,7 @@ Object.assign(LANG.en,{
   ru_month_ru:"Round-up so far (this month)", ru_month_sb:"Saveback estimate (this month)", ru_total:"Contributed via TR (total)",
   ru_hint:"Round-up rounds each purchase up to the next € × multiplier and leaves your TR cash towards {inv} (TR invests it on the 2nd/9th/16th/23rd). Saveback is a 1% TR gives you, invested on the 2nd. The app applies it to your cash and investment when each month CLOSES. Estimate from your logged spending: your real TR balance always wins.",
   ru_hint_off:"Turn it on if you use Round-up or Saveback in TR, so your TR cash matches reality (TR moves that spare change into investments).",
+  ru_manual_hint:"You can type the REAL amount you see in TR to correct the estimate (leave empty to auto-calculate).",
   type_acciones:"Stocks", type_etf:"ETF", type_fondo:"Index fund", type_materias:"Commodities",
   pj_projvalue:"Projected value", pj_contrib:"Your contribution", pj_monthly:"Monthly contribution", pj_rate:"Annual interest %", pj_years:"Years",
   pj_gain:"Estimated gain in {y} years", pj_hint:"On what's already invested ({x}). The band is ±2% on the rate. Estimate, not a guarantee.",
@@ -1173,6 +1177,7 @@ Object.assign(LANG.ca,{
   ru_month_ru:"Arrodoniment acumulat (aquest mes)", ru_month_sb:"Saveback estimat (aquest mes)", ru_total:"Aportat via TR (total)",
   ru_hint:"L'arrodoniment puja cada compra a l'€ superior × multiplicador i surt del teu efectiu TR cap a {inv} (TR ho inverteix els dies 2/9/16/23). El Saveback és un 1% que TR et regala i inverteix el dia 2. L'app ho aplica al teu efectiu i inversió en TANCAR cada mes. Estimació segons les teves despeses registrades: el teu saldo TR real sempre mana.",
   ru_hint_off:"Activa'l si a TR tens Round-up o Saveback, perquè el teu efectiu TR quadri amb el real (TR mou aquesta xavalla a inversió).",
+  ru_manual_hint:"Pots escriure l'import REAL que veus a TR per corregir l'estimació (deixa-ho buit perquè ho calculi sol).",
   type_acciones:"Accions", type_etf:"ETF", type_fondo:"Fons indexat", type_materias:"Matèries primeres",
   pj_projvalue:"Valor projectat", pj_contrib:"La teva contribució", pj_monthly:"Contribució mensual", pj_rate:"Interès anual %", pj_years:"Anys",
   pj_gain:"Guany estimat en {y} anys", pj_hint:"Sobre el ja invertit ({x}). La banda és ±2% sobre l'interès. Estimació, no garantia.",
@@ -1290,8 +1295,8 @@ function reconcileTR(s){
     acc.value = acc.value + CONFIG.TR_INJECTION - spent;            // mes cerrado: + nómina − gasto
     // Round-up & Saveback (#19): al cerrar el mes, el round-up sale del efectivo y se abona
     // (junto al saveback, dinero gratis) a la inversión destino comprando participaciones.
-    const ru = roundupOf(monthExp, acc.roundup||0);
-    const sb = acc.saveback ? savebackOf(monthExp) : 0;
+    const ru = (acc.roundupManual!=null) ? acc.roundupManual : roundupOf(monthExp, acc.roundup||0);
+    const sb = (acc.savebackManual!=null) ? acc.savebackManual : (acc.saveback ? savebackOf(monthExp) : 0);
     if(ru>0) acc.value = +(acc.value - ru).toFixed(2);             // el round-up abandona el efectivo
     const contrib = ru + sb;                                       // total que entra a la inversión (€)
     if(contrib>0 && acc.rewardInv){
@@ -1304,6 +1309,9 @@ function reconcileTR(s){
       }
       s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
     }
+    // los importes manuales de round-up/saveback eran de ESTE mes que se cierra → ya aplicados, se limpian
+    if(acc.roundupManual!=null) delete acc.roundupManual;
+    if(acc.savebackManual!=null) delete acc.savebackManual;
     // Demás bancos (Sabadell, etc.): arrastran su neto del mes cerrado (ingresos − fijos − cuotas − puntuales − transfers)
     s.accounts.forEach(function(a2){ if(!a2.spendFrom){ a2.value = +(((a2.value||0) + monthNetForAccount(s, a2.ent, ay, am+1, null))).toFixed(2); } });
     am++; if(am>11){am=0;ay++;}
@@ -2357,9 +2365,12 @@ function Investments({state, set, fetchPrices, pricing}){
       const trAcc=state.accounts.find(function(a){ return a.spendFrom; });
       if(!trAcc) return null;
       const setTr=function(patch){ set(function(s){ return Object.assign({},s,{accounts:s.accounts.map(function(a){ return a.spendFrom?Object.assign({},a,patch):a; })}); }); };
-      const monthExp=state.expenses.filter(function(e){ return parseDate(e.date)>=startOfMonth(); });
+      const setTot=function(v){ set(function(s){ return Object.assign({},s,{trRewardsTotal:v}); }); };
+      const numOrNull=function(v){ v=String(v).trim(); return v===""?null:(parseFloat(v.replace(',','.'))||0); };
+      const monthExp=(state.expenses||[]).filter(function(e){ return parseDate(e.date)>=startOfMonth(); });
       const mult=trAcc.roundup||0;
-      const ru=roundupOf(monthExp, mult), sb=trAcc.saveback?savebackOf(monthExp):0, tot=state.trRewardsTotal||0;
+      const ruAuto=roundupOf(monthExp, mult), sbAuto=trAcc.saveback?savebackOf(monthExp):0;
+      const ru=(trAcc.roundupManual!=null)?trAcc.roundupManual:ruAuto, sb=(trAcc.savebackManual!=null)?trAcc.savebackManual:sbAuto, tot=state.trRewardsTotal||0;
       const iv=state.investments.find(function(i){ return i.id===trAcc.rewardInv; });
       const invName=iv?iv.name:t("ru_pick");
       return React.createElement(CollapsibleCard,{key:"ru",title:t("ru_title"),sub:mult>0?tf("ru_sub_on",{m:mult}):t("ru_sub_off"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_ru"},
@@ -2373,10 +2384,16 @@ function Investments({state, set, fetchPrices, pricing}){
         React.createElement("div",{className:"costtoggle",style:{marginTop:12},onClick:function(){ setTr({saveback:!trAcc.saveback}); }},
           React.createElement("span",{className:"cbx"+(trAcc.saveback?" on":"")}, trAcc.saveback?"✓":""),
           React.createElement("span",null,t("ru_saveback"))),
-        React.createElement("div",{className:"subtotal",style:{marginTop:12}},React.createElement("span",{className:"muted"},t("ru_month_ru")),React.createElement("span",{className:"num"},"−"+eur(ru))),
-        trAcc.saveback && React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("ru_month_sb")),React.createElement("span",{className:"num",style:{color:"var(--mint)"}},"+"+eur(sb))),
-        tot>0 && React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("ru_total")),React.createElement("span",{className:"num"},eur(tot))),
-        React.createElement("div",{className:"hint",style:{marginTop:8}}, mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))
+        React.createElement("div",{className:"ru-edit",style:{marginTop:12}},
+          React.createElement("span",{className:"muted"},t("ru_month_ru")),
+          React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:eur0(ruAuto),value:trAcc.roundupManual!=null?trAcc.roundupManual:"",onChange:function(e){ setTr({roundupManual:numOrNull(e.target.value)}); }})),
+        trAcc.saveback && React.createElement("div",{className:"ru-edit"},
+          React.createElement("span",{className:"muted"},t("ru_month_sb")),
+          React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:eur0(sbAuto),value:trAcc.savebackManual!=null?trAcc.savebackManual:"",onChange:function(e){ setTr({savebackManual:numOrNull(e.target.value)}); }})),
+        React.createElement("div",{className:"ru-edit"},
+          React.createElement("span",{className:"muted"},t("ru_total")),
+          React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:tot||"",onChange:function(e){ setTot(parseFloat(String(e.target.value).replace(',','.'))||0); }})),
+        React.createElement("div",{className:"hint",style:{marginTop:8}}, (mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))+" "+t("ru_manual_hint"))
       );
     })(),
     React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg"},
@@ -2533,6 +2550,8 @@ function occAmountIn(e,m){
 const occAmount=(e)=> occAmountIn(e, chargeMonths(e)[0]||(new Date().getMonth()+1));
 // banco del que se cobra (por defecto Sabadell)
 const accOf=(e)=> e.account||"sabadell";
+// día válido (1-31) o null — global para que lo usen Fijos y Deudas
+const cleanDay=(v)=>{ const n=parseInt(String(v),10); return (n>=1&&n<=31)?n:null; };
 // día del cobro en el mes m (schedule tiene su propio día por cobro)
 function dayIn(e,m){ if(e&&e.schedule&&e.schedule.length){ const s=e.schedule.find(x=>x.m===m); return s?(s.day||null):null; } return (e&&e.day)||null; }
 // día simple (objetos sin schedule: deudas)
@@ -3567,8 +3586,9 @@ function App(){
     // todas las pestañas lean lo mismo. El mes en curso se muestra como informativo en Inversiones.
     const injTR = nominaYaEntro() ? CONFIG.TR_INJECTION : 0;
     const trAcc=state.accounts.find(a=>a.spendFrom);
-    const roundupThisMonth = trAcc ? roundupOf(thisMonthExp, trAcc.roundup||0) : 0;
-    const savebackThisMonth = (trAcc && trAcc.saveback) ? savebackOf(thisMonthExp) : 0;
+    // si has puesto un importe a mano (roundupManual/savebackManual) manda ese; si no, se estima de los gastos
+    const roundupThisMonth = trAcc ? ((trAcc.roundupManual!=null)?trAcc.roundupManual:roundupOf(thisMonthExp, trAcc.roundup||0)) : 0;
+    const savebackThisMonth = trAcc ? ((trAcc.savebackManual!=null)?trAcc.savebackManual:(trAcc.saveback?savebackOf(thisMonthExp):0)) : 0;
     const trRewardsTotal = state.trRewardsTotal||0;
     const curMonth=new Date().getMonth()+1;
     const curYear=new Date().getFullYear();
