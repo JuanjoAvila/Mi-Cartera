@@ -814,6 +814,19 @@ const cloud = (function(){
       if(error) throw error;
       return data;
     },
+    // Copia de seguridad diaria del estado COMPLETO (idempotente por día) + poda a 30 días.
+    // Best-effort: si la tabla aún no existe (migración 0002 sin aplicar), simplemente falla y se ignora.
+    async backupState(uid, data){
+      if(!sb || !uid) return;
+      const today=new Date().toISOString().slice(0,10);
+      const {error}=await sb.from('state_backups').upsert(
+        { user_id:uid, day:today, data:data },
+        { onConflict:'user_id,day' }
+      );
+      if(error) throw error;
+      const cutoff=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+      try{ await sb.from('state_backups').delete().eq('user_id',uid).lt('day',cutoff); }catch(e){}
+    },
   };
 })();
 
@@ -840,6 +853,13 @@ function mergeExpenses(prevList, incoming){
   let nuevos=0;
   (incoming||[]).forEach(function(e){ const k=keyOf(e); if(!seen[k]){ seen[k]=1; list.push(e); nuevos++; } });
   return { list:list, nuevos:nuevos };
+}
+
+/* ¿El estado bajado de la nube tiene forma válida? Evita machacar lo local con algo corrupto/parcial.
+   (Los arrays pueden estar vacíos —usuario nuevo— pero deben EXISTIR y ser arrays.) */
+function validCloudState(s){
+  if(!s || typeof s!=="object") return false;
+  return ["accounts","investments","debts","fixed"].every(function(k){ return Array.isArray(s[k]); });
 }
 
 /* ---------- Desbloqueo biométrico (huella / Face ID vía WebAuthn) ----------
@@ -899,6 +919,7 @@ const LANG = {
     settings:"Ajustes", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualización",
     budget_month:"Presupuesto mensual (€)", save:"Guardar", backup:"Copia de seguridad",
     do_export:"⬇️ Exportar datos (JSON)", do_import:"⬆️ Importar datos (JSON)",
+    eb_title:"Algo se ha torcido", eb_msg:"La app ha tenido un error al dibujar. Tus datos están a salvo. Descarga una copia por si acaso y recarga.", eb_export:"⬇️ Descargar copia de seguridad", eb_reload:"🔄 Recargar la app",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
     ob_intro:"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas.",
@@ -914,6 +935,7 @@ const LANG = {
     settings:"Settings", language:"Language", theme:"Colour theme", currency:"Display currency",
     budget_month:"Monthly budget (€)", save:"Save", backup:"Backup",
     do_export:"⬇️ Export data (JSON)", do_import:"⬆️ Import data (JSON)",
+    eb_title:"Something went wrong", eb_msg:"The app hit a rendering error. Your data is safe. Download a backup just in case and reload.", eb_export:"⬇️ Download backup", eb_reload:"🔄 Reload the app",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
     ob_intro:"Let's set up your wallet in 1 minute. Start with your accounts and budget; you can add investments, debts and fixed costs later in their tabs.",
@@ -929,6 +951,7 @@ const LANG = {
     settings:"Configuració", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualització",
     budget_month:"Pressupost mensual (€)", save:"Desa", backup:"Còpia de seguretat",
     do_export:"⬇️ Exporta dades (JSON)", do_import:"⬆️ Importa dades (JSON)",
+    eb_title:"Alguna cosa ha fallat", eb_msg:"L'app ha tingut un error en dibuixar. Les teves dades estan segures. Descarrega una còpia per si de cas i recarrega.", eb_export:"⬇️ Descarrega còpia de seguretat", eb_reload:"🔄 Recarrega l'app",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
     ob_intro:"Muntem la teva cartera en 1 minut. Comença pels comptes i el pressupost; les inversions, deutes i despeses fixes les afegeixes després a les seves pestanyes.",
@@ -3613,6 +3636,30 @@ function Onboarding({set, onCloud}){
   );
 }
 
+/* Airbag: si cualquier render revienta, en vez de pantalla en blanco muestra
+   una pantalla de recuperación con BACKUP descargable (lee localStorage directo,
+   independiente del estado roto) + recargar. Dinero real ⇒ nunca dejar al usuario tirado. */
+class ErrorBoundary extends React.Component{
+  constructor(props){ super(props); this.state={err:null}; }
+  static getDerivedStateFromError(err){ return {err:err}; }
+  componentDidCatch(err,info){ try{ console.error("App crash:",err,info); }catch(e){} }
+  render(){
+    if(!this.state.err) return this.props.children;
+    const wrap={position:"fixed",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:13,padding:24,textAlign:"center",background:"#0B1410",color:"#E8F0EB",fontFamily:"Manrope,sans-serif",zIndex:9999};
+    const btn={padding:"13px 22px",borderRadius:14,border:"none",background:"#5FD08A",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"};
+    const btn2=Object.assign({},btn,{background:"transparent",border:"1px solid #2a3a31",color:"#E8F0EB"});
+    const dl=function(){ try{ const data=JSON.stringify(store.get("micartera_v3")||{},null,2); const url=URL.createObjectURL(new Blob([data],{type:"application/json"})); const a=document.createElement("a"); a.href=url; a.download="mi-cartera-backup-"+new Date().toISOString().slice(0,10)+".json"; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000); }catch(e){ alert("Export error: "+e); } };
+    return React.createElement("div",{style:wrap},
+      React.createElement("div",{style:{fontSize:46}},"🛟"),
+      React.createElement("div",{style:{fontWeight:800,fontSize:21,fontFamily:"Fraunces,serif"}}, t("eb_title")),
+      React.createElement("div",{style:{color:"#9fb3a8",fontSize:14,maxWidth:340,lineHeight:1.5}}, t("eb_msg")),
+      React.createElement("button",{style:btn,onClick:dl}, t("eb_export")),
+      React.createElement("button",{style:btn2,onClick:function(){ try{ location.reload(); }catch(e){} }}, t("eb_reload")),
+      React.createElement("div",{style:{color:"#5a6b62",fontSize:11,maxWidth:340,marginTop:6,wordBreak:"break-word"}}, String((this.state.err&&this.state.err.message)||this.state.err||""))
+    );
+  }
+}
+
 function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
@@ -3667,12 +3714,16 @@ function App(){
     if(!s || !s.user) return;
     const u=s.user.id;
     cloud.pullState().then(function(cloudState){
-      if(cloudState){
+      if(cloudState && validCloudState(cloudState)){
         // adopta el estado de la nube pero UNE los gastos (nunca pierde los locales)
         set(function(prev){
           const u=mergeExpenses(prev.expenses, cloudState.expenses||[]);
           return seedFlows(fixInvAuto(fixInvSold(reconcileTR(Object.assign({},prev,cloudState,{expenses:u.list})))));
         });
+      } else if(cloudState){
+        // llegó algo pero con forma inválida (corrupto/parcial) → NO machacar lo local; resube lo bueno
+        showToast("⚠ Nube con formato inesperado: se conservan tus datos locales");
+        return cloud.pushState(u, stateRef.current);
       } else { return cloud.pushState(u, stateRef.current); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
       .catch(function(e){ showToast("✕ Nube: "+((e&&e.message)||e)); });   // sync de arranque silencioso (solo avisa si falla)
@@ -3704,6 +3755,19 @@ function App(){
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
   },[uid]);
+
+  // Copia de seguridad diaria del estado completo en la nube (1×/día, tras asentarse el arranque).
+  useEffect(function(){
+    if(!uid) return;
+    const today=new Date().toISOString().slice(0,10);
+    if(state.lastBackup===today) return;
+    const tm=setTimeout(function(){
+      cloud.backupState(uid, stateRef.current)
+        .then(function(){ set(function(s){ return Object.assign({},s,{lastBackup:today}); }); })
+        .catch(function(){});   // tabla 0002 sin aplicar u offline → se reintenta otro día
+    }, 4000);
+    return function(){ clearTimeout(tm); };
+  },[uid,state.lastBackup]);
 
   const [showAuth,setShowAuth]=useState(false);
   const [drawerOpen,setDrawerOpen]=useState(false);
@@ -4100,7 +4164,7 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
     navigator.serviceWorker.register('sw.js').catch(function(){});
   });
 }
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
 </script>
 
 <script>(function(){var t=setInterval(function(){var r=document.getElementById("root"),l=document.getElementById("mc-load");if(r&&l&&r.childElementCount>1){l.remove();clearInterval(t);}},60);setTimeout(function(){clearInterval(t);},10000);})();</script>
