@@ -4645,6 +4645,10 @@ function App(){
     if(!uid) return;
     if(bankJustConnected.current){ bankJustConnected.current=false; runBankSync({manual:true}); return; }
     if(!state.hasBankLink) return;   // nadie ha conectado banco en esta cartera → no llamamos a la función
+    // CAPA 3: primera vez que hay banco pero aún no se han capturado movimientos (bankTx sin definir)
+    // → sincroniza saltándose el throttle, para que la tarjeta de conciliación aparezca sola.
+    // Tras el 1er sync, bankTx es un array (aunque vacío) y deja de cumplirse → no se repite.
+    if(typeof state.bankTx==="undefined"){ runBankSync({}); return; }
     if(Date.now()-(state.lastBankSync||0) < BANK_SYNC_THROTTLE) return;
     runBankSync({});
   },[uid, state.hasBankLink]);
