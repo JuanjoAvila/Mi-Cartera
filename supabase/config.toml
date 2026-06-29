@@ -10,3 +10,16 @@ verify_jwt = true
 # ingest: la llama MacroDroid (sin sesión) → sin JWT; se protege con INGEST_TOKEN propio.
 [functions.ingest]
 verify_jwt = false
+
+# --- Open Banking (Enable Banking) ---
+# bank-connect / bank-sync: las llama la app (usuario logueado) → exigen JWT.
+[functions.bank-connect]
+verify_jwt = true
+
+[functions.bank-sync]
+verify_jwt = true
+
+# bank-callback: aquí ATERRIZA el navegador desde el banco (sin sesión) → sin JWT.
+# Se protege por el `state` aleatorio que casa con el enlace 'pending'.
+[functions.bank-callback]
+verify_jwt = false
