@@ -795,6 +795,18 @@ const ENT = {
   revolut:        { label:"Revolut",        mono:"Rv", color:"#5FD08A" },
   trade_republic: { label:"Trade Republic", mono:"TR", color:"#E6C36A" },
   myinvestor:     { label:"MyInvestor",     mono:"MI", color:"#C9A0E0" },
+  caixabank:      { label:"CaixaBank",      mono:"Cx", color:"#3FA9E0" },
+  bbva:           { label:"BBVA",           mono:"BB", color:"#4B7FD6" },
+  santander:      { label:"Santander",      mono:"Sa", color:"#E2705F" },
+  ing:            { label:"ING",            mono:"IN", color:"#E2A05F" },
+  openbank:       { label:"Openbank",       mono:"Ob", color:"#E2705F" },
+  bankinter:      { label:"Bankinter",      mono:"Bk", color:"#E2A05F" },
+  n26:            { label:"N26",            mono:"N2", color:"#3FB8A0" },
+  kutxabank:      { label:"Kutxabank",      mono:"Ku", color:"#5FB0D0" },
+  abanca:         { label:"Abanca",         mono:"Ab", color:"#5F90D0" },
+  unicaja:        { label:"Unicaja",        mono:"Un", color:"#5FA0C0" },
+  cajamar:        { label:"Cajamar",        mono:"Cj", color:"#6FB08A" },
+  imagin:         { label:"imagin",         mono:"im", color:"#3FC0A8" },
   familia:        { label:"Familia",        mono:"Fa", color:"#E2705F" },
 };
 const entOf = (id)=> ENT[id] || { label:id, mono:"··", color:"#8FA89A" };
@@ -891,12 +903,20 @@ const cloud = (function(){
     },
     // ---- Open Banking (Enable Banking) · Capa 2 ----
     // Genera el enlace de login del banco (la Edge Function guarda el 'pending').
-    async bankConnect(aspsp_name){
+    async bankConnect(aspsp_name, country){
       if(!sb) throw new Error("nube no disponible");
-      const {data,error}=await sb.functions.invoke('bank-connect',{ body:{ aspsp_name:aspsp_name||"Banco de Sabadell", country:"ES" } });
+      const {data,error}=await sb.functions.invoke('bank-connect',{ body:{ aspsp_name:aspsp_name||"Banco de Sabadell", country:(country||"ES") } });
       if(error) throw error;
       if(!data || !data.ok) throw new Error((data&&data.error)||"no se pudo conectar");
       return data;   // { ok, url }
+    },
+    // Lista de bancos soportados por Enable Banking para el selector (con logo).
+    async bankAspsps(country){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('bank-aspsps',{ body:{ country:(country||"ES") } });
+      if(error) throw error;
+      if(!data || !data.ok) throw new Error((data&&data.error)||"no se pudieron listar los bancos");
+      return data.aspsps||[];
     },
     // Trae saldo (+ movimientos, que en Capa 2 ignoramos) de los bancos enlazados.
     async bankSync(){
@@ -1517,6 +1537,40 @@ Object.assign(LANG.es,{
   rec_shared_t:"ℹ Pagas solo tu parte (te reintegran el resto)", rec_shared_l:"{name} — pagas {net}, el banco cobra {gross}", rec_unshare:"deshacer",
   rec_pay_from:"lo pago desde:",
   rec_hint:"Solo informa: no toca tus gastos ni tu saldo. Compara lo que modelas con lo que el banco ha cobrado este mes.",
+});
+// --- Open Banking · sección "Mis bancos" (multibanco) ---
+Object.assign(LANG.es,{
+  bp_title:"Mis bancos", bp_intro:"Conecta uno o varios bancos por Open Banking. Solo lectura, sin tarjeta. Cada permiso se renueva cada ~3 meses.",
+  bp_manage:"Gestionar mis bancos", bp_close:"Ajustes", bp_back:"Mis bancos",
+  bp_empty:"Aún no has conectado ningún banco.", bp_add:"Conectar un banco",
+  bp_summary_n:"{n} conectado(s)", bp_summary_none:"Ningún banco conectado todavía",
+  bp_pick_title:"Elige tu banco", bp_pick_sub:"Busca tu banco en la lista. Solo verás datos de las cuentas que autorices.",
+  bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
+  bp_need_login:"Inicia sesión para conectar tu banco", bp_syncing:"Actualizando…",
+  bp_st_active:"activo", bp_st_soon:"caduca pronto", bp_st_pending:"pendiente", bp_st_expired:"caducado",
+  bp_foot:"Trade Republic no está en Open Banking (es un bróker): su gasto con tarjeta sigue siendo manual.",
+});
+Object.assign(LANG.en,{
+  bp_title:"My banks", bp_intro:"Connect one or more banks via Open Banking. Read-only, no card. Each consent renews every ~3 months.",
+  bp_manage:"Manage my banks", bp_close:"Settings", bp_back:"My banks",
+  bp_empty:"You haven't connected any bank yet.", bp_add:"Connect a bank",
+  bp_summary_n:"{n} connected", bp_summary_none:"No bank connected yet",
+  bp_pick_title:"Choose your bank", bp_pick_sub:"Find your bank in the list. You'll only see data from the accounts you authorize.",
+  bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
+  bp_need_login:"Sign in to connect your bank", bp_syncing:"Refreshing…",
+  bp_st_active:"active", bp_st_soon:"expires soon", bp_st_pending:"pending", bp_st_expired:"expired",
+  bp_foot:"Trade Republic isn't in Open Banking (it's a broker): its card spending stays manual.",
+});
+Object.assign(LANG.ca,{
+  bp_title:"Els meus bancs", bp_intro:"Connecta un o més bancs per Open Banking. Només lectura, sense targeta. Cada permís es renova cada ~3 mesos.",
+  bp_manage:"Gestiona els meus bancs", bp_close:"Ajustos", bp_back:"Els meus bancs",
+  bp_empty:"Encara no has connectat cap banc.", bp_add:"Connecta un banc",
+  bp_summary_n:"{n} connectat(s)", bp_summary_none:"Cap banc connectat encara",
+  bp_pick_title:"Tria el teu banc", bp_pick_sub:"Cerca el teu banc a la llista. Només veuràs dades dels comptes que autoritzis.",
+  bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
+  bp_need_login:"Inicia sessió per connectar el teu banc", bp_syncing:"Actualitzant…",
+  bp_st_active:"actiu", bp_st_soon:"caduca aviat", bp_st_pending:"pendent", bp_st_expired:"caducat",
+  bp_foot:"Trade Republic no és a Open Banking (és un bróker): la seva despesa amb targeta segueix sent manual.",
 });
 Object.assign(LANG.en,{
   rec_title:"Bank reconciliation",
@@ -4210,13 +4264,113 @@ function AuthPanel({session, onClose, showToast, recovery}){
   );
 }
 
+/* ============================================================
+   OPEN BANKING — sección dedicada "Mis bancos": conecta varios bancos,
+   ve su estado y elige de la lista REAL de Enable Banking (con buscador y logos).
+   Overlay a pantalla completa que abre SettingsPanel.
+   ============================================================ */
+function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
+  const [links,setLinks]=useState(null);          // null = cargando
+  const [aspsps,setAspsps]=useState(null);        // null = sin cargar
+  const [loadingA,setLoadingA]=useState(false);
+  const [q,setQ]=useState("");
+  const [busy,setBusy]=useState("");              // aspsp en curso / "__sync"
+  const [picking,setPicking]=useState(false);
+  const loadLinks=function(){ if(!cloud.enabled()){ setLinks([]); return; } cloud.bankLinks().then(function(rows){ setLinks(rows||[]); if((rows||[]).some(function(r){return r.status==='active'||r.status==='pending';})) set(function(s){ return s.hasBankLink?s:Object.assign({},s,{hasBankLink:true}); }); }).catch(function(){ setLinks([]); }); };
+  useEffect(loadLinks,[uid]);
+  const loadAspsps=function(){ if(aspsps!==null||loadingA) return; setLoadingA(true); cloud.bankAspsps("ES").then(function(rows){ setAspsps(rows||[]); }).catch(function(e){ setAspsps([]); showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setLoadingA(false); }); };
+  const openPicker=function(){ setPicking(true); loadAspsps(); };
+  const connect=function(name,country){ if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; } setBusy(name); showToast(t("bank_connecting")); set(function(s){ return Object.assign({},s,{hasBankLink:true}); }); cloud.bankConnect(name, country||"ES").then(function(d){ location.href=d.url; }).catch(function(e){ setBusy(""); showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); }); };
+  const refresh=function(){ if(!onBankSync){ return; } setBusy("__sync"); Promise.resolve(onBankSync()).finally(function(){ setBusy(""); loadLinks(); }); };
+
+  const fmtD=function(x){ try{ return new Date(x).toLocaleDateString(); }catch(e){ return String(x); } };
+  const fmtDT=function(x){ try{ return new Date(x).toLocaleString(); }catch(e){ return String(x); } };
+  const bankLabel=function(nm){ const e=entFromAspsp(nm); return e?entOf(e).label:nm; };
+  const connected={}; (links||[]).forEach(function(l){ connected[(l.aspsp_name||"").toLowerCase()]=l; });
+  const ql=q.trim().toLowerCase();
+  const shown=(aspsps||[]).filter(function(a){ return !ql || (a.name||"").toLowerCase().indexOf(ql)>=0; });
+
+  const wrap={position:"fixed",inset:0,zIndex:95,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const card={display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:10};
+  const pill=function(txt,col){ return React.createElement("span",{style:{fontSize:11,fontWeight:800,color:col,background:col+"1f",border:"1px solid "+col+"44",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}, txt); };
+  const mb={background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--text)",borderRadius:10,padding:"7px 11px",fontSize:12.5,fontWeight:700,cursor:"pointer"};
+  const bigBtn={width:"100%",padding:"14px",borderRadius:14,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer",marginTop:6};
+  const inp={width:"100%",padding:"12px 14px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:16,boxSizing:"border-box"};
+
+  const logoBox=function(a){
+    const ent=entFromAspsp(a.name);
+    if(a.logo) return React.createElement("img",{src:a.logo,alt:"",style:{width:36,height:36,borderRadius:9,objectFit:"contain",background:"#fff",flexShrink:0},onError:function(e){ e.target.style.display="none"; }});
+    return React.createElement(Mono,{ent:ent||"",size:36});
+  };
+
+  // ---- vista PICKER (elegir banco de la lista real) ----
+  if(picking){
+    return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+      React.createElement("button",{style:back,onClick:function(){ setPicking(false); setQ(""); }}, "‹ "+t("bp_back")),
+      React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px"}}, t("bp_pick_title")),
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}}, t("bp_pick_sub")),
+      React.createElement("input",{style:inp,placeholder:t("bp_search"),value:q,onChange:function(e){ setQ(e.target.value); },autoFocus:true}),
+      loadingA && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,padding:"18px 2px"}}, t("bp_loading")),
+      (!loadingA && aspsps!==null && shown.length===0) && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,padding:"18px 2px"}}, t("bp_noresults")),
+      React.createElement("div",{style:{marginTop:12}},
+        shown.slice(0,80).map(function(a){
+          const isC=!!connected[(a.name||"").toLowerCase()];
+          return React.createElement("button",{key:a.name+a.country,disabled:!!busy,onClick:function(){ connect(a.name,a.country); },
+            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:8,cursor:busy?"default":"pointer",opacity:busy&&busy!==a.name?0.5:1,textAlign:"left"}},
+            logoBox(a),
+            React.createElement("div",{style:{flex:1,minWidth:0}},
+              React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, a.name),
+              isC? React.createElement("div",{style:{fontSize:11,color:"var(--mint)",fontWeight:700}}, "✓ "+t("bp_already")) : (a.beta? React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)"}}, "beta") : null)),
+            React.createElement("span",{style:{color:"var(--muted-2)",fontWeight:800,fontSize:18}}, busy===a.name?"…":"›")
+          );
+        })
+      )
+    ));
+  }
+
+  // ---- vista PRINCIPAL (mis bancos conectados) ----
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("bp_close")),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,margin:"2px 0 2px"}},
+      React.createElement("div",{className:"serif",style:{fontSize:25}}, t("bp_title"))),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:16}}, t("bp_intro")),
+    links===null && React.createElement("div",{style:{color:"var(--muted)",fontSize:13}}, "…"),
+    links!==null && links.length===0 && React.createElement("div",{style:{textAlign:"center",color:"var(--muted)",fontSize:13,padding:"10px 0 16px"}}, t("bp_empty")),
+    (links||[]).map(function(l){
+      const ent=entFromAspsp(l.aspsp_name);
+      const vu=l.valid_until?new Date(l.valid_until).getTime():0;
+      const soon=vu && (vu-Date.now()<14*86400000);
+      const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
+               : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
+               : pill(t("bp_st_expired"),"var(--coral)");
+      return React.createElement("div",{key:l.aspsp_name},
+        React.createElement("div",{style:card},
+          React.createElement(Mono,{ent:ent||"",size:40}),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontWeight:800}}, bankLabel(l.aspsp_name)),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:2}}, l.last_sync?tf("bank_updated",{x:fmtDT(l.last_sync)}):t("bank_neversync")),
+            l.valid_until?React.createElement("div",{style:{fontSize:11,color:soon?"var(--coral)":"var(--muted-2)",marginTop:1}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
+          sp),
+        React.createElement("div",{style:{display:"flex",gap:8,margin:"-4px 0 14px"}},
+          React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:refresh}, busy==="__sync"?t("bp_syncing"):t("bank_refresh")),
+          React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ connect(l.aspsp_name, l.aspsp_country||"ES"); }}, t("bank_reconnect")))
+      );
+    }),
+    React.createElement("button",{style:bigBtn,onClick:openPicker}, "+ "+t("bp_add")),
+    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
+  ));
+}
+
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const fileRef=useRef(null);
-  // --- Banco (Open Banking · Capa 2) ---
-  const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno
+  // --- Banco (Open Banking) ---
+  const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno (resumen)
   const [bankBusy,setBankBusy]=useState(false);
+  const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
   useEffect(function(){
     if(!cloud.enabled()){ setBankLinks([]); return; }
     cloud.bankLinks().then(function(rows){
@@ -4309,38 +4463,19 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync}){
     ),
     cloud.enabled() && (function(){
       const links=bankLinks;
-      const active=(links||[]).find(function(r){ return r.status==='active'; });
-      const link=active || (links||[])[0] || null;
+      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length;
       const small={fontSize:11.5,color:"var(--muted-2)",marginTop:4,lineHeight:1.45};
-      const fmtD=function(x){ try{ return new Date(x).toLocaleDateString(); }catch(e){ return String(x); } };
-      const fmtDT=function(x){ try{ return new Date(x).toLocaleString(); }catch(e){ return String(x); } };
-      const bankLabel=function(nm){ const e=entFromAspsp(nm); return e?entOf(e).label:nm; };
-      let body;
-      if(links===null){
-        body=React.createElement("div",{style:small},"…");
-      } else if(active){
-        const vu=link.valid_until?new Date(link.valid_until).getTime():0;
-        const soon=vu && (vu-Date.now() < 14*86400000);
-        body=React.createElement(React.Fragment,null,
-          React.createElement("div",{style:{fontWeight:700,color:"var(--text)",marginTop:6}}, "✓ "+tf("bank_linked",{bank:bankLabel(link.aspsp_name)})),
-          React.createElement("div",{style:small}, link.last_sync?tf("bank_updated",{x:fmtDT(link.last_sync)}):t("bank_neversync")),
-          vu?React.createElement("div",{style:Object.assign({},small,soon?{color:"var(--coral)",fontWeight:700}:null)}, soon?tf("bank_consent_soon",{x:fmtD(link.valid_until)}):tf("bank_consent",{x:fmtD(link.valid_until)})):null,
-          React.createElement("button",{style:Object.assign({},btn,{opacity:bankBusy?0.6:1}),disabled:bankBusy,onClick:refreshBank}, t("bank_refresh")),
-          React.createElement("button",{style:btnGhost,disabled:bankBusy,onClick:connectBank}, t("bank_reconnect"))
-        );
-      } else {
-        body=React.createElement(React.Fragment,null,
-          (link&&link.status==='pending')?React.createElement("div",{style:Object.assign({},small,{color:"var(--coral)"})}, t("bank_pending")):null,
-          React.createElement("div",{style:small}, t("bank_intro")),
-          React.createElement("button",{style:Object.assign({},btn,{opacity:bankBusy?0.6:1}),disabled:bankBusy,onClick:connectBank}, bankBusy?t("bank_connecting"):t("bank_connect"))
-        );
-      }
+      const summary = links===null ? "…"
+        : nActive>0 ? tf("bp_summary_n",{n:nActive})
+        : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
       return React.createElement(React.Fragment,null,
         React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
         React.createElement("div",{style:lbl}, t("bank_section")),
-        body
+        React.createElement("div",{style:small}, summary),
+        React.createElement("button",{style:btnGhost,onClick:function(){ setManageBanks(true); }}, t("bp_manage")+" →")
       );
     })(),
+    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,onClose:function(){ setManageBanks(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }}), document.body),
     React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
     React.createElement("div",{style:lbl},t("backup")),
     React.createElement("button",{style:btnGhost,onClick:doExport},t("do_export")),
