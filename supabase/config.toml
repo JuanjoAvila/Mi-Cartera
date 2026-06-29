@@ -19,6 +19,10 @@ verify_jwt = true
 [functions.bank-sync]
 verify_jwt = true
 
+# bank-aspsps: lista los bancos soportados para el selector → la llama la app (con JWT).
+[functions.bank-aspsps]
+verify_jwt = true
+
 # bank-callback: aquí ATERRIZA el navegador desde el banco (sin sesión) → sin JWT.
 # Se protege por el `state` aleatorio que casa con el enlace 'pending'.
 [functions.bank-callback]
