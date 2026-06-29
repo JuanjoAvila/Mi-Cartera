@@ -889,6 +889,30 @@ const cloud = (function(){
       const cutoff=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
       try{ await sb.from('state_backups').delete().eq('user_id',uid).lt('day',cutoff); }catch(e){}
     },
+    // ---- Open Banking (Enable Banking) · Capa 2 ----
+    // Genera el enlace de login del banco (la Edge Function guarda el 'pending').
+    async bankConnect(aspsp_name){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('bank-connect',{ body:{ aspsp_name:aspsp_name||"Banco de Sabadell", country:"ES" } });
+      if(error) throw error;
+      if(!data || !data.ok) throw new Error((data&&data.error)||"no se pudo conectar");
+      return data;   // { ok, url }
+    },
+    // Trae saldo (+ movimientos, que en Capa 2 ignoramos) de los bancos enlazados.
+    async bankSync(){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('bank-sync');
+      if(error) throw error;
+      if(!data || !data.ok) throw new Error((data&&data.error)||"sync falló");
+      return data;   // { ok, dryRun, links:[{aspsp, iban, balances, transactions}] }
+    },
+    // Estado de los enlaces para pintar "conectado ✓" / caducidad (RLS: solo lo del usuario).
+    async bankLinks(){
+      if(!sb) return [];
+      const {data,error}=await sb.from('bank_links').select('aspsp_name,iban,status,valid_until,last_sync');
+      if(error) throw error;
+      return data||[];
+    },
   };
 })();
 
@@ -1445,6 +1469,40 @@ Object.assign(LANG.ca,{
   sh_back:"Grups", sh_delgroup:"Esborra grup", sh_delgroup_q:"Esborrar aquest grup i les seves despeses?",
   gl_empty_t:"Encara no tens objectius", gl_empty_d:"Crea el teu primer objectiu d'estalvi i mira com s'acosta cada mes.",
   gl_widget_title:"El teu objectiu", wl_goal:"Objectiu",
+});
+// --- Open Banking (Capa 2: el saldo real del banco) ---
+Object.assign(LANG.es,{
+  bank_section:"Banco (Open Banking)",
+  bank_intro:"Conecta tu banco y tu saldo real será el «hoy» de la app. Solo lectura, sin tarjeta. El permiso se renueva cada ~3 meses.",
+  bank_connect:"Conectar mi banco", bank_connecting:"Abriendo tu banco…",
+  bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
+  bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
+  bank_refresh:"Actualizar saldo", bank_reconnect:"Reconectar",
+  bank_linked:"{bank} conectado", bank_pending:"Pendiente de autorizar en el banco",
+  bank_updated:"Saldo actualizado: {x}", bank_neversync:"Aún sin sincronizar",
+  bank_consent:"Permiso válido hasta {x}", bank_consent_soon:"⚠ El permiso caduca el {x} · reconéctate",
+});
+Object.assign(LANG.en,{
+  bank_section:"Bank (Open Banking)",
+  bank_intro:"Connect your bank and your real balance becomes the app's “today”. Read-only, no card. The consent renews every ~3 months.",
+  bank_connect:"Connect my bank", bank_connecting:"Opening your bank…",
+  bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
+  bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
+  bank_refresh:"Refresh balance", bank_reconnect:"Reconnect",
+  bank_linked:"{bank} connected", bank_pending:"Pending authorization at the bank",
+  bank_updated:"Balance updated: {x}", bank_neversync:"Not synced yet",
+  bank_consent:"Consent valid until {x}", bank_consent_soon:"⚠ Consent expires on {x} · reconnect",
+});
+Object.assign(LANG.ca,{
+  bank_section:"Banc (Open Banking)",
+  bank_intro:"Connecta el teu banc i el teu saldo real serà l'«avui» de l'app. Només lectura, sense targeta. El permís es renova cada ~3 mesos.",
+  bank_connect:"Connecta el meu banc", bank_connecting:"Obrint el teu banc…",
+  bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
+  bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
+  bank_refresh:"Actualitza saldo", bank_reconnect:"Reconnecta",
+  bank_linked:"{bank} connectat", bank_pending:"Pendent d'autoritzar al banc",
+  bank_updated:"Saldo actualitzat: {x}", bank_neversync:"Encara sense sincronitzar",
+  bank_consent:"Permís vàlid fins {x}", bank_consent_soon:"⚠ El permís caduca el {x} · reconnecta't",
 });
 
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -2979,6 +3037,57 @@ function monthNetForAccount(s, ent, y, m, todayLim){
   return net;
 }
 
+/* ============================================================
+   CAPA 2 — Open Banking: el saldo real del banco re-ancla el motor.
+   ============================================================ */
+// Mapea el nombre del banco de Enable Banking ("Banco de Sabadell", "MyInvestor Banco"…)
+// a la entidad de la app (sabadell, revolut, myinvestor…). null si no casa con ninguna.
+function entFromAspsp(name){
+  const n=String(name||"").toLowerCase();
+  for(const k in ENT){
+    if(k==="familia") continue;
+    if(n.indexOf(k)>=0 || n.indexOf(String(ENT[k].label).toLowerCase())>=0) return k;
+  }
+  return null;
+}
+// Elige el saldo "de hoy" de la lista de balances del banco. Preferimos el disponible/esperado
+// (lo que ves en la app del banco) y caemos al contable. Devuelve número o null.
+function pickBankBalance(balances){
+  if(!Array.isArray(balances) || !balances.length) return null;
+  const pri=["ITAV","XPCD","CLBD","OTHR","PRCD"];
+  for(let p=0;p<pri.length;p++){
+    const b=balances.find(function(x){ return String(x&&x.type).toUpperCase()===pri[p]; });
+    if(b && b.amount!=null) return Number(b.amount);
+  }
+  return Number(balances[0].amount);
+}
+// Re-ancla la base de cada cuenta enlazada con su saldo real del banco.
+// IGUAL que editar el saldo a mano: value = saldoBanco − movimientosYaOcurridosEsteMes,
+// para que dynBal (= value + paidNet) muestre HOY el saldo real y la proyección a fin de mes
+// siga encima. NO toca la cuenta de gasto (spendFrom / Trade Republic, fuera de Open Banking).
+// Función PURA: devuelve {state, changed, synced:[{ent,bal}]}.
+function applyBankBalances(s, links){
+  if(!s || !Array.isArray(links) || !links.length) return { state:s, changed:false, synced:[] };
+  const now=new Date(), cy=now.getFullYear(), cm=now.getMonth()+1, td=now.getDate();
+  const accounts=(s.accounts||[]).slice();
+  let changed=false; const synced=[];
+  links.forEach(function(lk){
+    const ent=entFromAspsp(lk && lk.aspsp);
+    const bal=pickBankBalance(lk && lk.balances);
+    if(ent==null || bal==null) return;
+    const idx=accounts.findIndex(function(a){ return a.ent===ent && !a.spendFrom; });
+    if(idx<0) return;
+    const a=accounts[idx];
+    const newBase=+((bal - monthNetForAccount(s, ent, cy, cm, td)).toFixed(2));
+    synced.push({ ent:ent, bal:bal, iban:lk.iban||null });
+    if(Math.abs((a.value||0)-newBase) > 0.005){
+      accounts[idx]=Object.assign({}, a, { value:newBase, bankIban:lk.iban||a.bankIban });
+      changed=true;
+    }
+  });
+  return { state: changed ? Object.assign({},s,{accounts:accounts}) : s, changed:changed, synced:synced };
+}
+
 // Eventos PENDIENTES de un banco este mes (cargos −, ingresos +) con su día.
 // Espejo EXACTO de la lógica evsByBank del motor (totals) para un solo banco, reutilizable
 // por el simulador "¿me lo puedo permitir?". today = día de hoy (solo cuenta lo no pagado).
@@ -3861,9 +3970,29 @@ function AuthPanel({session, onClose, showToast, recovery}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const fileRef=useRef(null);
+  // --- Banco (Open Banking · Capa 2) ---
+  const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno
+  const [bankBusy,setBankBusy]=useState(false);
+  useEffect(function(){
+    if(!cloud.enabled()){ setBankLinks([]); return; }
+    cloud.bankLinks().then(function(rows){
+      setBankLinks(rows||[]);
+      if((rows||[]).some(function(r){ return r.status==='active'||r.status==='pending'; })){
+        set(function(s){ return s.hasBankLink?s:Object.assign({},s,{hasBankLink:true}); });
+      }
+    }).catch(function(){ setBankLinks([]); });
+  },[uid]);
+  const connectBank=function(){
+    setBankBusy(true); showToast(t("bank_connecting"));
+    cloud.bankConnect("Banco de Sabadell").then(function(d){
+      set(function(s){ return Object.assign({},s,{hasBankLink:true}); });
+      location.href=d.url;   // → login del banco (SCA); vuelve a la app con ?bank=ok
+    }).catch(function(e){ setBankBusy(false); showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
+  };
+  const refreshBank=function(){ if(!onBankSync) return; setBankBusy(true); Promise.resolve(onBankSync()).finally(function(){ setBankBusy(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }); };
   const lbl={fontSize:"12px",color:"var(--muted)",margin:"14px 0 2px"};
   const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
   const btn={width:"100%",padding:"12px",borderRadius:"12px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:700,fontSize:"15px",marginTop:"10px",cursor:"pointer"};
@@ -3937,6 +4066,40 @@ function SettingsPanel({state, set, onClose, showToast}){
         return React.createElement("button",{key:c,onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})}); }); showToast(c==="USD"?"Mostrando en $":"Mostrando en €"); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, c==="EUR"?t("cur_eur"):t("cur_usd"));
       })
     ),
+    cloud.enabled() && (function(){
+      const links=bankLinks;
+      const active=(links||[]).find(function(r){ return r.status==='active'; });
+      const link=active || (links||[])[0] || null;
+      const small={fontSize:11.5,color:"var(--muted-2)",marginTop:4,lineHeight:1.45};
+      const fmtD=function(x){ try{ return new Date(x).toLocaleDateString(); }catch(e){ return String(x); } };
+      const fmtDT=function(x){ try{ return new Date(x).toLocaleString(); }catch(e){ return String(x); } };
+      const bankLabel=function(nm){ const e=entFromAspsp(nm); return e?entOf(e).label:nm; };
+      let body;
+      if(links===null){
+        body=React.createElement("div",{style:small},"…");
+      } else if(active){
+        const vu=link.valid_until?new Date(link.valid_until).getTime():0;
+        const soon=vu && (vu-Date.now() < 14*86400000);
+        body=React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontWeight:700,color:"var(--text)",marginTop:6}}, "✓ "+tf("bank_linked",{bank:bankLabel(link.aspsp_name)})),
+          React.createElement("div",{style:small}, link.last_sync?tf("bank_updated",{x:fmtDT(link.last_sync)}):t("bank_neversync")),
+          vu?React.createElement("div",{style:Object.assign({},small,soon?{color:"var(--coral)",fontWeight:700}:null)}, soon?tf("bank_consent_soon",{x:fmtD(link.valid_until)}):tf("bank_consent",{x:fmtD(link.valid_until)})):null,
+          React.createElement("button",{style:Object.assign({},btn,{opacity:bankBusy?0.6:1}),disabled:bankBusy,onClick:refreshBank}, t("bank_refresh")),
+          React.createElement("button",{style:btnGhost,disabled:bankBusy,onClick:connectBank}, t("bank_reconnect"))
+        );
+      } else {
+        body=React.createElement(React.Fragment,null,
+          (link&&link.status==='pending')?React.createElement("div",{style:Object.assign({},small,{color:"var(--coral)"})}, t("bank_pending")):null,
+          React.createElement("div",{style:small}, t("bank_intro")),
+          React.createElement("button",{style:Object.assign({},btn,{opacity:bankBusy?0.6:1}),disabled:bankBusy,onClick:connectBank}, bankBusy?t("bank_connecting"):t("bank_connect"))
+        );
+      }
+      return React.createElement(React.Fragment,null,
+        React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
+        React.createElement("div",{style:lbl}, t("bank_section")),
+        body
+      );
+    })(),
     React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
     React.createElement("div",{style:lbl},t("backup")),
     React.createElement("button",{style:btnGhost,onClick:doExport},t("do_export")),
@@ -4174,6 +4337,8 @@ function App(){
   const uid = session && session.user ? session.user.id : null;
   const stateRef=useRef(state); useEffect(function(){ stateRef.current=state; });
   const sessionRef=useRef(null);
+  const bankSyncing=useRef(false);          // evita syncs de banco solapados
+  const bankJustConnected=useRef(false);    // marca la vuelta de ?bank=ok para sincronizar en cuanto haya sesión
 
   // Trae los gastos de la tabla y los mezcla en el estado (dedup).
   const syncCloudExpenses=function(){
@@ -4229,6 +4394,28 @@ function App(){
       .catch(function(e){ if(navigator.onLine!==false) showToast("✕ Nube: "+((e&&e.message)||e)); });   // si estás sin conexión, ni avisamos (es normal)
   };
 
+  // CAPA 2 — Open Banking: lee el saldo del banco y re-ancla el motor (= editar el saldo a mano,
+  // pero con el número real). opts.manual = avisa siempre (botón "Actualizar saldo").
+  const BANK_SYNC_THROTTLE=6*3600*1000;   // auto: como máx ~cada 6h (cap PSD2 desatendido = 4/día)
+  const runBankSync=function(opts){
+    opts=opts||{};
+    if(!cloud.enabled() || !sessionRef.current || bankSyncing.current) return Promise.resolve();
+    bankSyncing.current=true;
+    return cloud.bankSync().then(function(res){
+      const links=(res&&res.links)||[];
+      const preview=applyBankBalances(stateRef.current, links);   // función pura: solo para decidir el aviso
+      set(function(prev){
+        const r=applyBankBalances(prev, links);
+        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink });
+      });
+      if(preview.synced.length){
+        if(preview.changed || opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
+      } else if(opts.manual){ showToast(t("bank_none")); }
+    }).catch(function(e){
+      if(opts.manual || navigator.onLine!==false) showToast("⚠ "+t("bank_syncfail"));
+    }).finally(function(){ bankSyncing.current=false; });
+  };
+
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
   useEffect(function(){
     if(!cloud.enabled()) return;
@@ -4270,6 +4457,26 @@ function App(){
     }, 4000);
     return function(){ clearTimeout(tm); };
   },[uid,state.lastBackup]);
+
+  // CAPA 2 — vuelta del banco (?bank=ok / ?bank=error tras autorizar). Avisa y limpia la URL.
+  useEffect(function(){
+    if(!cloud.enabled()) return;
+    let params=null; try{ params=new URLSearchParams(location.search); }catch(e){}
+    const bankParam=params && params.get("bank");
+    if(!bankParam) return;
+    try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}   // que no se repita al recargar
+    if(bankParam==="ok"){ showToast("✓ "+t("bank_connected")); bankJustConnected.current=true; }
+    else if(bankParam==="error"){ const m=params.get("msg"); showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
+  },[]);
+
+  // CAPA 2 — auto-sync del saldo al abrir: justo tras conectar, o pasado el margen (throttle).
+  useEffect(function(){
+    if(!uid) return;
+    if(bankJustConnected.current){ bankJustConnected.current=false; runBankSync({manual:true}); return; }
+    if(!state.hasBankLink) return;   // nadie ha conectado banco en esta cartera → no llamamos a la función
+    if(Date.now()-(state.lastBankSync||0) < BANK_SYNC_THROTTLE) return;
+    runBankSync({});
+  },[uid, state.hasBankLink]);
 
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
@@ -4669,7 +4876,7 @@ function App(){
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
     React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
-      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast})
+      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); }})
     )
   );
 }
