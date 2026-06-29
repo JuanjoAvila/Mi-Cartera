@@ -1513,8 +1513,8 @@ Object.assign(LANG.es,{
   rec_new_t:"🆕 Cargos del banco sin modelar", rec_new_l:"{merchant} · día {day}",
   rec_add:"+ Añadir a Fijos", rec_added:"Añadido a Fijos ✓",
   rec_confirmed:"✓ {n} cargos confirmados por el banco", rec_feed:"Movimientos del banco", rec_income:"ingreso", rec_card:"tarjeta",
-  rec_adjust:"Ajustar a {x}", rec_mark_shared:"Es compartido",
-  rec_shared_t:"ℹ Compartido (pagas tu parte)", rec_shared_l:"{name} — pagas {net}, el banco cobra {gross}", rec_unshare:"ya no es compartido",
+  rec_adjust:"Ajustar a {x}", rec_mark_shared:"Pago solo mi parte", rec_ignore:"Ignorar",
+  rec_shared_t:"ℹ Pagas solo tu parte (te reintegran el resto)", rec_shared_l:"{name} — pagas {net}, el banco cobra {gross}", rec_unshare:"deshacer",
   rec_pay_from:"lo pago desde:",
   rec_hint:"Solo informa: no toca tus gastos ni tu saldo. Compara lo que modelas con lo que el banco ha cobrado este mes.",
 });
@@ -1526,8 +1526,8 @@ Object.assign(LANG.en,{
   rec_new_t:"🆕 Bank charges you don't model", rec_new_l:"{merchant} · day {day}",
   rec_add:"+ Add to Fixed", rec_added:"Added to Fixed ✓",
   rec_confirmed:"✓ {n} charges confirmed by the bank", rec_feed:"Bank movements", rec_income:"income", rec_card:"card",
-  rec_adjust:"Set to {x}", rec_mark_shared:"It's shared",
-  rec_shared_t:"ℹ Shared (you pay your part)", rec_shared_l:"{name} — you pay {net}, the bank charges {gross}", rec_unshare:"not shared anymore",
+  rec_adjust:"Set to {x}", rec_mark_shared:"I only pay my share", rec_ignore:"Ignore",
+  rec_shared_t:"ℹ You only pay your share (you get the rest back)", rec_shared_l:"{name} — you pay {net}, the bank charges {gross}", rec_unshare:"undo",
   rec_pay_from:"I pay it from:",
   rec_hint:"Info only: it doesn't touch your spending or balance. It compares what you model with what the bank actually charged this month.",
 });
@@ -1539,8 +1539,8 @@ Object.assign(LANG.ca,{
   rec_new_t:"🆕 Càrrecs del banc sense modelar", rec_new_l:"{merchant} · dia {day}",
   rec_add:"+ Afegeix a Fixes", rec_added:"Afegit a Fixes ✓",
   rec_confirmed:"✓ {n} càrrecs confirmats pel banc", rec_feed:"Moviments del banc", rec_income:"ingrés", rec_card:"targeta",
-  rec_adjust:"Ajusta a {x}", rec_mark_shared:"És compartit",
-  rec_shared_t:"ℹ Compartit (pagues la teva part)", rec_shared_l:"{name} — pagues {net}, el banc cobra {gross}", rec_unshare:"ja no és compartit",
+  rec_adjust:"Ajusta a {x}", rec_mark_shared:"Pago només la meva part", rec_ignore:"Ignora",
+  rec_shared_t:"ℹ Pagues només la teva part (et retornen la resta)", rec_shared_l:"{name} — pagues {net}, el banc cobra {gross}", rec_unshare:"desfés",
   rec_pay_from:"ho pago des de:",
   rec_hint:"Només informa: no toca les teves despeses ni el teu saldo. Compara el que modeles amb el que el banc ha cobrat aquest mes.",
 });
@@ -3216,10 +3216,29 @@ function reconcileBank(state, y, m, today){
       res.missing.push({name:mc.name, amount:mc.amount, day:mc.day, ent:mc.ent, id:mc.id, kind:mc.kind});
     }
   });
-  // cargos del banco que no casan con nada modelado
-  debits.forEach(function(d){ if(!d._used) res.newCharges.push({merchant:d.merchant, amount:d.amount, date:d.date, ent:d.ent, card:!!d.card}); });
-  // ingresos vistos (informativo)
-  credits.forEach(function(c){ res.income.push({merchant:c.merchant, amount:-c.amount, date:c.date, ent:c.ent}); });
+  // transferencias e ingresos modelados (flows): los reconocemos para que NO salgan como "sin modelar"
+  // (nómina entrante, transfers a TR/MyInvestor…). Casan por nombre O importe; las transfers varían cada mes,
+  // así que solo confirmamos su presencia (no las marcamos "no cuadra").
+  const usedCredit={};
+  (state.flows||[]).forEach(function(f){
+    if(!flowOccursIn(f,m)) return;
+    if(f.kind==="transfer"){
+      const ent=f.from||"sabadell"; if(!obEnts[ent]) return; const amt=f.amount||0; let best=null;
+      debits.forEach(function(d){ if(d._used||d.ent!==ent) return; if(recNameMatch(f.name,d.merchant)||recAmtClose(amt,d.amount)){ if(!best||Math.abs(amt-d.amount)<Math.abs(amt-best.amount)) best=d; } });
+      if(best){ best._used=true; res.confirmed.push({name:f.name||"Transferencia", amount:best.amount, ent:ent}); }
+    } else if(f.kind==="income"){
+      const ent=f.to||"sabadell"; if(!obEnts[ent]) return; const amt=f.amount||0; let bi=-1;
+      credits.forEach(function(c,ci){ if(usedCredit[ci]||c.ent!==ent) return; if(recNameMatch(f.name,c.merchant)||recAmtClose(amt,-c.amount)){ if(bi<0||Math.abs(amt-(-credits[bi].amount))>Math.abs(amt-(-c.amount))) bi=ci; } });
+      if(bi>=0){ usedCredit[bi]=true; res.confirmed.push({name:f.name||"Ingreso", amount:-credits[bi].amount, ent:ent}); }
+    }
+  });
+  // movimientos que el usuario ha decidido ignorar (doble cobro del banco, comisiones que se devuelven…)
+  const dismissed={}; (state.bankDismissed||[]).forEach(function(k){ dismissed[k]=1; });
+  const dkey=function(x){ return x.id || ((x.merchant||"")+"|"+x.amount+"|"+x.date); };
+  // cargos del banco que no casan con nada modelado (excluidos los ignorados)
+  debits.forEach(function(d){ if(d._used) return; const x={merchant:d.merchant, amount:d.amount, date:d.date, ent:d.ent, card:!!d.card, id:d.id||null}; if(!dismissed[dkey(x)]) res.newCharges.push(x); });
+  // ingresos vistos no reconocidos como nómina/transfer (informativo)
+  credits.forEach(function(c,ci){ if(!usedCredit[ci]) res.income.push({merchant:c.merchant, amount:-c.amount, date:c.date, ent:c.ent}); });
   return res;
 }
 
@@ -3329,6 +3348,8 @@ function Reconcile({state, set}){
     set(function(s){ const it={id:uid(),name:nc.merchant||"Gasto fijo",amount:+Number(nc.amount).toFixed(2),freq:"mes",account:nc.ent}; const dd=recDay(nc.date); if(dd) it.day=dd; return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
     setAdded(function(a){ return Object.assign({},a,{[k]:true}); });
   };
+  // "Ignorar": oculta un movimiento del banco (doble cobro, comisión que te devuelven…). Persistente.
+  const dismiss=function(nc){ const dk=nc.id || ((nc.merchant||"")+"|"+nc.amount+"|"+nc.date); set(function(s){ const cur=(s.bankDismissed||[]); return cur.indexOf(dk)>=0?s:Object.assign({},s,{bankDismissed:cur.concat([dk])}); }); };
   return React.createElement(CollapsibleCard,{title:t("rec_title"), sub:sub, dot:dot, storageKey:"f_recon", defaultOpen:nIssues>0},
     r.mismatch.length>0 && React.createElement(React.Fragment,{key:"mm"},
       React.createElement("div",{style:Object.assign({},secT,{color:"var(--coral)"})}, t("rec_mismatch_t")),
@@ -3365,7 +3386,10 @@ function Reconcile({state, set}){
           React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)"}}, tf("rec_new_l",{merchant:(x.card?t("rec_card"):entOf(x.ent).label), day:recDay(x.date)||"?"}))),
         added[k]
           ? React.createElement("span",{style:{fontSize:12,color:"var(--mint)",fontWeight:700,whiteSpace:"nowrap"}}, t("rec_added"))
-          : React.createElement("button",{onClick:function(){ addAsFixed(x); },style:{background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--text)",borderRadius:10,padding:"6px 10px",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}, t("rec_add"))
+          : React.createElement("div",{style:{display:"flex",gap:6,flexShrink:0}},
+              React.createElement("button",{onClick:function(){ addAsFixed(x); },style:Object.assign({},mb,{padding:"6px 10px",fontSize:12})}, t("rec_add")),
+              React.createElement("button",{onClick:function(){ dismiss(x); },style:Object.assign({},mb,{padding:"6px 10px",fontSize:12,color:"var(--muted-2)"})}, t("rec_ignore"))
+            )
       ); })
     ),
     r.confirmed.length>0 && React.createElement("div",{key:"cf",style:Object.assign({},rowS,{color:"var(--mint)",fontWeight:700})}, tf("rec_confirmed",{n:r.confirmed.length})),
