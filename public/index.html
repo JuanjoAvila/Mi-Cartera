@@ -1513,6 +1513,9 @@ Object.assign(LANG.es,{
   rec_new_t:"🆕 Cargos del banco sin modelar", rec_new_l:"{merchant} · día {day}",
   rec_add:"+ Añadir a Fijos", rec_added:"Añadido a Fijos ✓",
   rec_confirmed:"✓ {n} cargos confirmados por el banco", rec_feed:"Movimientos del banco", rec_income:"ingreso", rec_card:"tarjeta",
+  rec_adjust:"Ajustar a {x}", rec_mark_shared:"Es compartido",
+  rec_shared_t:"ℹ Compartido (pagas tu parte)", rec_shared_l:"{name} — pagas {net}, el banco cobra {gross}", rec_unshare:"ya no es compartido",
+  rec_pay_from:"lo pago desde:",
   rec_hint:"Solo informa: no toca tus gastos ni tu saldo. Compara lo que modelas con lo que el banco ha cobrado este mes.",
 });
 Object.assign(LANG.en,{
@@ -1523,6 +1526,9 @@ Object.assign(LANG.en,{
   rec_new_t:"🆕 Bank charges you don't model", rec_new_l:"{merchant} · day {day}",
   rec_add:"+ Add to Fixed", rec_added:"Added to Fixed ✓",
   rec_confirmed:"✓ {n} charges confirmed by the bank", rec_feed:"Bank movements", rec_income:"income", rec_card:"card",
+  rec_adjust:"Set to {x}", rec_mark_shared:"It's shared",
+  rec_shared_t:"ℹ Shared (you pay your part)", rec_shared_l:"{name} — you pay {net}, the bank charges {gross}", rec_unshare:"not shared anymore",
+  rec_pay_from:"I pay it from:",
   rec_hint:"Info only: it doesn't touch your spending or balance. It compares what you model with what the bank actually charged this month.",
 });
 Object.assign(LANG.ca,{
@@ -1533,6 +1539,9 @@ Object.assign(LANG.ca,{
   rec_new_t:"🆕 Càrrecs del banc sense modelar", rec_new_l:"{merchant} · dia {day}",
   rec_add:"+ Afegeix a Fixes", rec_added:"Afegit a Fixes ✓",
   rec_confirmed:"✓ {n} càrrecs confirmats pel banc", rec_feed:"Moviments del banc", rec_income:"ingrés", rec_card:"targeta",
+  rec_adjust:"Ajusta a {x}", rec_mark_shared:"És compartit",
+  rec_shared_t:"ℹ Compartit (pagues la teva part)", rec_shared_l:"{name} — pagues {net}, el banc cobra {gross}", rec_unshare:"ja no és compartit",
+  rec_pay_from:"ho pago des de:",
   rec_hint:"Només informa: no toca les teves despeses ni el teu saldo. Compara el que modeles amb el que el banc ha cobrat aquest mes.",
 });
 
@@ -3161,9 +3170,10 @@ function recAmtClose(a,b){ return Math.abs(a-b) <= Math.max(0.5, 0.02*Math.max(M
 // día (1-31) de una fecha "YYYY-MM-DD"
 function recDay(ds){ const p=String(ds||"").slice(0,10).split("-"); return p.length===3?(parseInt(p[2],10)||null):null; }
 
+const REC_GRACE=3;   // días de gracia antes de avisar "aún no aparece" (cargos que se cobran tarde, p.ej. hipoteca a fin de mes)
 function reconcileBank(state, y, m, today){
   const tx=(state && state.bankTx)||[];
-  const res={ hasData:tx.length>0, confirmed:[], mismatch:[], missing:[], newCharges:[], income:[], feed:[] };
+  const res={ hasData:tx.length>0, confirmed:[], shared:[], mismatch:[], missing:[], newCharges:[], income:[], feed:[] };
   if(!tx.length) return res;
   const ym=y+"-"+(m<10?"0":"")+m;
   // bancos OB del usuario (cuentas no-spendFrom; el gasto de tarjeta de TR no es OB)
@@ -3173,9 +3183,9 @@ function reconcileBank(state, y, m, today){
   res.feed=month.slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
   // cargos modelados de este mes por entidad
   const modeled=[];
-  (state.fixed||[]).forEach(function(e){ const ent=accOf(e); if(!obEnts[ent]||!occursIn(e,m)) return; const amt=occAmountIn(e,m); if(amt<=0) return; modeled.push({name:e.name,amount:amt,day:dayIn(e,m),ent:ent}); });
-  (state.debts||[]).forEach(function(d){ const ent=d.account||"sabadell"; if(!obEnts[ent]||!debtActive(d)) return; const amt=(d.monthly||0)+debtBalloonIn(d,y,m); if(amt<=0) return; modeled.push({name:d.name||"Cuota",amount:amt,day:d.day||null,ent:ent}); });
-  (state.oneoffs||[]).forEach(function(o){ const ent=o.account||"sabadell"; if(!obEnts[ent]||!oneoffOccurs(o,y,m)||(o.amount||0)<=0) return; modeled.push({name:o.name||"Cargo",amount:o.amount,day:o.day||null,ent:ent}); });
+  (state.fixed||[]).forEach(function(e){ const ent=accOf(e); if(!obEnts[ent]||!occursIn(e,m)) return; const amt=occAmountIn(e,m); if(amt<=0) return; modeled.push({name:e.name,amount:amt,day:dayIn(e,m),ent:ent,id:e.id,kind:"fixed",bankAmount:(typeof e.bankAmount==="number"?e.bankAmount:null)}); });
+  (state.debts||[]).forEach(function(d){ const ent=d.account||"sabadell"; if(!obEnts[ent]||!debtActive(d)) return; const amt=(d.monthly||0)+debtBalloonIn(d,y,m); if(amt<=0) return; modeled.push({name:d.name||"Cuota",amount:amt,day:d.day||null,ent:ent,id:d.id,kind:"debt",bankAmount:(typeof d.bankAmount==="number"?d.bankAmount:null)}); });
+  (state.oneoffs||[]).forEach(function(o){ const ent=o.account||"sabadell"; if(!obEnts[ent]||!oneoffOccurs(o,y,m)||(o.amount||0)<=0) return; modeled.push({name:o.name||"Cargo",amount:o.amount,day:o.day||null,ent:ent,id:o.id,kind:"oneoff",bankAmount:(typeof o.bankAmount==="number"?o.bankAmount:null)}); });
 
   const debits=month.filter(function(t){ return (t.amount||0)>0; }).map(function(t){ return Object.assign({},t,{_used:false}); });
   const credits=month.filter(function(t){ return (t.amount||0)<0; });
@@ -3183,22 +3193,27 @@ function reconcileBank(state, y, m, today){
   // empareja cada cargo modelado con el mejor movimiento (nombre vale más; entre los que casan, importe cercano)
   modeled.sort(function(a,b){ return b.amount-a.amount; });
   modeled.forEach(function(mc){
+    // si lo marcaste "compartido", el banco cobra el BRUTO (bankAmount); tú modelas tu parte (amount)
+    const target=(typeof mc.bankAmount==="number" && mc.bankAmount>0) ? mc.bankAmount : mc.amount;
     let best=null, bestScore=-1;
     debits.forEach(function(d){
       if(d._used || d.ent!==mc.ent) return;
       const nameOk=recNameMatch(mc.name, d.merchant);
-      const amtOk=recAmtClose(mc.amount, d.amount);
+      const amtOk=recAmtClose(target, d.amount);
       if(!nameOk && !amtOk) return;
-      const score=(nameOk?2:0)+(amtOk?1:0) - Math.abs(mc.amount-d.amount)/100000;
+      const score=(nameOk?2:0)+(amtOk?1:0) - Math.abs(target-d.amount)/100000;
       if(score>bestScore){ bestScore=score; best=d; }
     });
     if(best){
       best._used=true;
-      if(recAmtClose(mc.amount, best.amount)) res.confirmed.push({name:mc.name, amount:best.amount, ent:mc.ent});
-      else res.mismatch.push({name:mc.name, modeled:mc.amount, bank:best.amount, ent:mc.ent});
-    } else if(mc.day!=null && mc.day<today){
-      // solo lo marcamos "no aparece" si su día ya pasó (si no, aún puede llegar)
-      res.missing.push({name:mc.name, amount:mc.amount, day:mc.day, ent:mc.ent});
+      if(recAmtClose(target, best.amount)){
+        if(typeof mc.bankAmount==="number" && Math.abs(mc.bankAmount-mc.amount)>0.005)
+          res.shared.push({name:mc.name, net:mc.amount, gross:best.amount, ent:mc.ent, id:mc.id, kind:mc.kind});
+        else res.confirmed.push({name:mc.name, amount:best.amount, ent:mc.ent});
+      } else res.mismatch.push({name:mc.name, modeled:mc.amount, bank:best.amount, ent:mc.ent, id:mc.id, kind:mc.kind});
+    } else if(mc.day!=null && (today-mc.day)>=REC_GRACE){
+      // "no aparece" solo si el día ya pasó con margen (gracia) → no llora por cargos de fin de mes / que se cobran tarde
+      res.missing.push({name:mc.name, amount:mc.amount, day:mc.day, ent:mc.ent, id:mc.id, kind:mc.kind});
     }
   });
   // cargos del banco que no casan con nada modelado
@@ -3290,13 +3305,25 @@ function Reconcile({state, set}){
   const r=reconcileBank(state, y, m, today);
   const [added,setAdded]=useState({});
   if(!r.hasData) return null;
+  const okCount=r.confirmed.length+r.shared.length;
   const nIssues=r.mismatch.length+r.missing.length+r.newCharges.length;
-  const sub = nIssues ? tf("rec_sub_issues",{n:nIssues, ok:r.confirmed.length})
-            : (r.confirmed.length ? tf("rec_sub_ok",{ok:r.confirmed.length}) : t("rec_sub_none"));
+  const sub = nIssues ? tf("rec_sub_issues",{n:nIssues, ok:okCount})
+            : (okCount ? tf("rec_sub_ok",{ok:okCount}) : t("rec_sub_none"));
   const dot = nIssues ? "#E2A05F" : "#5FD08A";
   const rowS={padding:"8px 0",borderTop:"1px solid var(--line)",fontSize:13,lineHeight:1.4};
   const secT={fontSize:12,fontWeight:800,color:"var(--muted)",margin:"12px 0 2px"};
+  const mb={background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--text)",borderRadius:9,padding:"5px 9px",fontSize:11.5,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"};
+  const actRow={display:"flex",gap:6,marginTop:6,flexWrap:"wrap",alignItems:"center"};
   const keyOf=function(nc){ return (nc.merchant||"")+"|"+nc.amount+"|"+nc.date; };
+  // muta el cargo modelado correcto (fixed / debt / oneoff) por id
+  const updateCharge=function(id,kind,patch){
+    set(function(s){ const key=kind==="debt"?"debts":(kind==="oneoff"?"oneoffs":"fixed");
+      return Object.assign({},s,{[key]:(s[key]||[]).map(function(e){ return e.id===id?Object.assign({},e,patch):e; })}); });
+  };
+  const adjustToBank=function(x){ const f=x.kind==="debt"?"monthly":"amount"; const p={}; p[f]=+Number(x.bank).toFixed(2); updateCharge(x.id,x.kind,p); };
+  const markShared=function(x){ updateCharge(x.id,x.kind,{bankAmount:+Number(x.bank).toFixed(2)}); };
+  const reassign=function(x,ent){ updateCharge(x.id,x.kind,{account:ent}); };
+  const entList=Array.from(new Set((state.accounts||[]).map(function(a){ return a.ent; })));
   const addAsFixed=function(nc){
     const k=keyOf(nc);
     set(function(s){ const it={id:uid(),name:nc.merchant||"Gasto fijo",amount:+Number(nc.amount).toFixed(2),freq:"mes",account:nc.ent}; const dd=recDay(nc.date); if(dd) it.day=dd; return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
@@ -3305,11 +3332,30 @@ function Reconcile({state, set}){
   return React.createElement(CollapsibleCard,{title:t("rec_title"), sub:sub, dot:dot, storageKey:"f_recon", defaultOpen:nIssues>0},
     r.mismatch.length>0 && React.createElement(React.Fragment,{key:"mm"},
       React.createElement("div",{style:Object.assign({},secT,{color:"var(--coral)"})}, t("rec_mismatch_t")),
-      r.mismatch.map(function(x,i){ return React.createElement("div",{key:i,style:rowS}, tf("rec_mismatch_l",{name:x.name, modeled:eur(x.modeled), bank:eur(x.bank)})); })
+      r.mismatch.map(function(x,i){ return React.createElement("div",{key:i,style:rowS},
+        React.createElement("div",null, tf("rec_mismatch_l",{name:x.name, modeled:eur(x.modeled), bank:eur(x.bank)})),
+        x.id && React.createElement("div",{style:actRow},
+          React.createElement("button",{style:mb,onClick:function(){ adjustToBank(x); }}, tf("rec_adjust",{x:eur(x.bank)})),
+          React.createElement("button",{style:mb,onClick:function(){ markShared(x); }}, t("rec_mark_shared"))
+        )
+      ); })
+    ),
+    r.shared.length>0 && React.createElement(React.Fragment,{key:"sh"},
+      React.createElement("div",{style:Object.assign({},secT,{color:"var(--blue)"})}, t("rec_shared_t")),
+      r.shared.map(function(x,i){ return React.createElement("div",{key:i,style:rowS},
+        React.createElement("div",null, tf("rec_shared_l",{name:x.name, net:eur(x.net), gross:eur(x.gross)})),
+        x.id && React.createElement("div",{style:actRow},
+          React.createElement("button",{style:mb,onClick:function(){ updateCharge(x.id,x.kind,{bankAmount:null}); }}, t("rec_unshare")))
+      ); })
     ),
     r.missing.length>0 && React.createElement(React.Fragment,{key:"ms"},
       React.createElement("div",{style:secT}, t("rec_missing_t")),
-      r.missing.map(function(x,i){ return React.createElement("div",{key:i,style:rowS}, tf("rec_missing_l",{name:x.name, amount:eur(x.amount), day:x.day})); })
+      r.missing.map(function(x,i){ const others=entList.filter(function(e){ return e!==x.ent; }); return React.createElement("div",{key:i,style:rowS},
+        React.createElement("div",null, tf("rec_missing_l",{name:x.name, amount:eur(x.amount), day:x.day})),
+        (x.id && others.length>0) && React.createElement("div",{style:actRow},
+          React.createElement("span",{style:{fontSize:11.5,color:"var(--muted-2)"}}, t("rec_pay_from")),
+          others.map(function(e){ return React.createElement("button",{key:e,style:mb,onClick:function(){ reassign(x,e); }}, "↪ "+entOf(e).label); }))
+      ); })
     ),
     r.newCharges.length>0 && React.createElement(React.Fragment,{key:"nc"},
       React.createElement("div",{style:Object.assign({},secT,{color:"var(--blue)"})}, t("rec_new_t")),
