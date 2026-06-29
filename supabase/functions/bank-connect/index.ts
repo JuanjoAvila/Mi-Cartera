@@ -1,0 +1,60 @@
+// ============================================================
+// Edge Function: bank-connect  (verify_jwt = true)
+// La llama la app (usuario logueado). Genera el enlace de login del banco
+// vía Enable Banking y guarda un enlace 'pending' con el `state` para casar
+// luego el callback. NO escribe nada en expenses ni en app_state.
+// ============================================================
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { CORS, ebApi, ebConfig, jsonResp, makeJWT } from "../_shared/enablebanking.ts";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    // Usuario a partir del JWT de la petición.
+    const supa = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: req.headers.get("Authorization") || "" } },
+    });
+    const { data: { user } } = await supa.auth.getUser();
+    if (!user) return jsonResp({ ok: false, error: "sin sesión" }, 401);
+
+    const body = await req.json().catch(() => ({}));
+    const aspsp_name = body.aspsp_name || "Banco de Sabadell";
+    const aspsp_country = String(body.country || "ES").toUpperCase();
+
+    const { appId, pem } = ebConfig();
+    const jwt = await makeJWT(appId, pem);
+    const state = crypto.randomUUID();
+    const redirect = Deno.env.get("EB_REDIRECT_URL") || `${SUPABASE_URL}/functions/v1/bank-callback`;
+    const validUntil = new Date(Date.now() + 89 * 24 * 3600 * 1000).toISOString();
+
+    const auth = await ebApi(jwt, "/auth", {
+      method: "POST",
+      body: {
+        access: { valid_until: validUntil },
+        aspsp: { name: aspsp_name, country: aspsp_country },
+        state,
+        redirect_url: redirect,
+        psu_type: "personal",
+      },
+    });
+
+    // Guarda/actualiza el enlace 'pending' (service role salta RLS).
+    const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { error } = await admin.from("bank_links").upsert({
+      user_id: user.id,
+      aspsp_name,
+      aspsp_country,
+      state,
+      status: "pending",
+      valid_until: validUntil,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,aspsp_name" });
+    if (error) return jsonResp({ ok: false, error: error.message }, 500);
+
+    return jsonResp({ ok: true, url: auth.url || auth.redirect_url });
+  } catch (e) {
+    return jsonResp({ ok: false, error: String((e as Error)?.message || e) }, 500);
+  }
+});
