@@ -15,8 +15,11 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  const ebError = url.searchParams.get("error") || url.searchParams.get("error_description");
+  const rawQuery = url.search || "(vacío)";
   try {
-    if (!code || !state) throw new Error("faltan code/state");
+    if (ebError) throw new Error("banco devolvió error: " + ebError + " · " + rawQuery);
+    if (!code || !state) throw new Error("faltan code/state · recibido: " + rawQuery);
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
