@@ -951,7 +951,7 @@ function validCloudState(s){
 /* Para el push FRECUENTE a la nube (cada ~1,2s): los gastos viven en su tabla `expenses`
    (fuente de verdad), así que NO los duplicamos en el JSONB de app_state → se mantiene ligero
    aunque haya miles de gastos. El backup diario sí guarda el estado completo. */
-function slimForCloud(s){ const c=Object.assign({},s); delete c.expenses; return c; }
+function slimForCloud(s){ const c=Object.assign({},s); delete c.expenses; delete c.bankTx; return c; }
 
 /* ---------- Desbloqueo biométrico (huella / Face ID vía WebAuthn) ----------
    Candado LOCAL por dispositivo: tras iniciar sesión una vez, la app pide huella al abrir.
@@ -1503,6 +1503,37 @@ Object.assign(LANG.ca,{
   bank_linked:"{bank} connectat", bank_pending:"Pendent d'autoritzar al banc",
   bank_updated:"Saldo actualitzat: {x}", bank_neversync:"Encara sense sincronitzar",
   bank_consent:"Permís vàlid fins {x}", bank_consent_soon:"⚠ El permís caduca el {x} · reconnecta't",
+});
+// --- Open Banking (Capa 3: conciliación — el banco confirma tus fijos o te avisa) ---
+Object.assign(LANG.es,{
+  rec_title:"Conciliación con el banco",
+  rec_sub_ok:"{ok} cargos confirmados ✓", rec_sub_issues:"{n} por revisar · {ok} confirmados", rec_sub_none:"Sin cargos que conciliar este mes",
+  rec_mismatch_t:"⚠ No cuadra", rec_mismatch_l:"{name} — tú modelas {modeled}, el banco cobró {bank}",
+  rec_missing_t:"⏳ Aún no aparece en el banco", rec_missing_l:"{name} · {amount} · día {day}",
+  rec_new_t:"🆕 Cargos del banco sin modelar", rec_new_l:"{merchant} · día {day}",
+  rec_add:"+ Añadir a Fijos", rec_added:"Añadido a Fijos ✓",
+  rec_confirmed:"✓ {n} cargos confirmados por el banco", rec_feed:"Movimientos del banco", rec_income:"ingreso", rec_card:"tarjeta",
+  rec_hint:"Solo informa: no toca tus gastos ni tu saldo. Compara lo que modelas con lo que el banco ha cobrado este mes.",
+});
+Object.assign(LANG.en,{
+  rec_title:"Bank reconciliation",
+  rec_sub_ok:"{ok} charges confirmed ✓", rec_sub_issues:"{n} to review · {ok} confirmed", rec_sub_none:"Nothing to reconcile this month",
+  rec_mismatch_t:"⚠ Doesn't match", rec_mismatch_l:"{name} — you model {modeled}, the bank charged {bank}",
+  rec_missing_t:"⏳ Not in the bank yet", rec_missing_l:"{name} · {amount} · day {day}",
+  rec_new_t:"🆕 Bank charges you don't model", rec_new_l:"{merchant} · day {day}",
+  rec_add:"+ Add to Fixed", rec_added:"Added to Fixed ✓",
+  rec_confirmed:"✓ {n} charges confirmed by the bank", rec_feed:"Bank movements", rec_income:"income", rec_card:"card",
+  rec_hint:"Info only: it doesn't touch your spending or balance. It compares what you model with what the bank actually charged this month.",
+});
+Object.assign(LANG.ca,{
+  rec_title:"Conciliació amb el banc",
+  rec_sub_ok:"{ok} càrrecs confirmats ✓", rec_sub_issues:"{n} per revisar · {ok} confirmats", rec_sub_none:"Res a conciliar aquest mes",
+  rec_mismatch_t:"⚠ No quadra", rec_mismatch_l:"{name} — tu modeles {modeled}, el banc va cobrar {bank}",
+  rec_missing_t:"⏳ Encara no apareix al banc", rec_missing_l:"{name} · {amount} · dia {day}",
+  rec_new_t:"🆕 Càrrecs del banc sense modelar", rec_new_l:"{merchant} · dia {day}",
+  rec_add:"+ Afegeix a Fixes", rec_added:"Afegit a Fixes ✓",
+  rec_confirmed:"✓ {n} càrrecs confirmats pel banc", rec_feed:"Moviments del banc", rec_income:"ingrés", rec_card:"targeta",
+  rec_hint:"Només informa: no toca les teves despeses ni el teu saldo. Compara el que modeles amb el que el banc ha cobrat aquest mes.",
 });
 
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -3107,6 +3138,91 @@ function minWalk(startBal, evs){
   return {min:mn, minDay:md, end:run};
 }
 
+/* ============================================================
+   CAPA 3 — Conciliación: el banco confirma tus fijos (o te avisa).
+   PURA y ADVISORY: NO muta gastos ni saldo (eso lo hace la Capa 2).
+   Casa los movimientos reales del banco (state.bankTx) con los cargos
+   modelados del mes (fixed + cuotas + puntuales) por NOMBRE y/o IMPORTE.
+   ============================================================ */
+// normaliza un nombre para casar ("Mamá"→"mama", "COMUNIDAD PROPIETARIOS"→tokens)
+function recNorm(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim(); }
+function recTokens(s){ return recNorm(s).split(" ").filter(function(w){ return w.length>=4; }); }
+// ¿comparten nombre? (uno contiene al otro, o un token ≥4 en común)
+function recNameMatch(a,b){
+  const na=recNorm(a), nb=recNorm(b);
+  if(!na||!nb) return false;
+  if(na.length>=4 && nb.indexOf(na)>=0) return true;
+  if(nb.length>=4 && na.indexOf(nb)>=0) return true;
+  const ta=recTokens(a), tb=recTokens(b);
+  return ta.some(function(w){ return tb.indexOf(w)>=0; });
+}
+// igual importe si difiere < max(0,50€, 2%)
+function recAmtClose(a,b){ return Math.abs(a-b) <= Math.max(0.5, 0.02*Math.max(Math.abs(a),Math.abs(b))); }
+// día (1-31) de una fecha "YYYY-MM-DD"
+function recDay(ds){ const p=String(ds||"").slice(0,10).split("-"); return p.length===3?(parseInt(p[2],10)||null):null; }
+
+function reconcileBank(state, y, m, today){
+  const tx=(state && state.bankTx)||[];
+  const res={ hasData:tx.length>0, confirmed:[], mismatch:[], missing:[], newCharges:[], income:[], feed:[] };
+  if(!tx.length) return res;
+  const ym=y+"-"+(m<10?"0":"")+m;
+  // bancos OB del usuario (cuentas no-spendFrom; el gasto de tarjeta de TR no es OB)
+  const obEnts={}; (state.accounts||[]).forEach(function(a){ if(!a.spendFrom) obEnts[a.ent]=true; });
+  // movimientos de ESTE mes en esos bancos (convención: amount POSITIVO = gasto)
+  const month=tx.filter(function(t){ return String(t.date||"").slice(0,7)===ym && obEnts[t.ent]; });
+  res.feed=month.slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+  // cargos modelados de este mes por entidad
+  const modeled=[];
+  (state.fixed||[]).forEach(function(e){ const ent=accOf(e); if(!obEnts[ent]||!occursIn(e,m)) return; const amt=occAmountIn(e,m); if(amt<=0) return; modeled.push({name:e.name,amount:amt,day:dayIn(e,m),ent:ent}); });
+  (state.debts||[]).forEach(function(d){ const ent=d.account||"sabadell"; if(!obEnts[ent]||!debtActive(d)) return; const amt=(d.monthly||0)+debtBalloonIn(d,y,m); if(amt<=0) return; modeled.push({name:d.name||"Cuota",amount:amt,day:d.day||null,ent:ent}); });
+  (state.oneoffs||[]).forEach(function(o){ const ent=o.account||"sabadell"; if(!obEnts[ent]||!oneoffOccurs(o,y,m)||(o.amount||0)<=0) return; modeled.push({name:o.name||"Cargo",amount:o.amount,day:o.day||null,ent:ent}); });
+
+  const debits=month.filter(function(t){ return (t.amount||0)>0; }).map(function(t){ return Object.assign({},t,{_used:false}); });
+  const credits=month.filter(function(t){ return (t.amount||0)<0; });
+
+  // empareja cada cargo modelado con el mejor movimiento (nombre vale más; entre los que casan, importe cercano)
+  modeled.sort(function(a,b){ return b.amount-a.amount; });
+  modeled.forEach(function(mc){
+    let best=null, bestScore=-1;
+    debits.forEach(function(d){
+      if(d._used || d.ent!==mc.ent) return;
+      const nameOk=recNameMatch(mc.name, d.merchant);
+      const amtOk=recAmtClose(mc.amount, d.amount);
+      if(!nameOk && !amtOk) return;
+      const score=(nameOk?2:0)+(amtOk?1:0) - Math.abs(mc.amount-d.amount)/100000;
+      if(score>bestScore){ bestScore=score; best=d; }
+    });
+    if(best){
+      best._used=true;
+      if(recAmtClose(mc.amount, best.amount)) res.confirmed.push({name:mc.name, amount:best.amount, ent:mc.ent});
+      else res.mismatch.push({name:mc.name, modeled:mc.amount, bank:best.amount, ent:mc.ent});
+    } else if(mc.day!=null && mc.day<today){
+      // solo lo marcamos "no aparece" si su día ya pasó (si no, aún puede llegar)
+      res.missing.push({name:mc.name, amount:mc.amount, day:mc.day, ent:mc.ent});
+    }
+  });
+  // cargos del banco que no casan con nada modelado
+  debits.forEach(function(d){ if(!d._used) res.newCharges.push({merchant:d.merchant, amount:d.amount, date:d.date, ent:d.ent, card:!!d.card}); });
+  // ingresos vistos (informativo)
+  credits.forEach(function(c){ res.income.push({merchant:c.merchant, amount:-c.amount, date:c.date, ent:c.ent}); });
+  return res;
+}
+
+// Aplana los movimientos de los bancos enlazados (que devuelve bank-sync) al formato
+// que usa la conciliación. Adjunta la entidad (sabadell…) y recorta a lo reciente.
+function flattenBankTx(links){
+  const out=[];
+  (links||[]).forEach(function(lk){
+    const ent=entFromAspsp(lk && lk.aspsp);
+    if(!ent) return;
+    (lk.transactions||[]).forEach(function(t){
+      out.push({ ent:ent, id:t.ext_id||null, date:String(t.date||"").slice(0,10), amount:Number(t.amount)||0, merchant:t.merchant||"", card:!!t.card, status:t.status||"" });
+    });
+  });
+  out.sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+  return out.slice(0,150);   // últimos ~150 movimientos
+}
+
 // Selector compacto de meses (1-12) para gastos no mensuales.
 function MonthPicker({selected, onToggle}){
   const sel=selected||[];
@@ -3161,6 +3277,60 @@ function AffordSim({state, totals, set}){
       React.createElement("div",{className:"af-low"}, lowTxt),
       React.createElement("div",{className:"af-delta num"}, tf("af_from_to",{a:eur(base.min),b:eur(sim.min)}))
     )
+  );
+}
+
+/* ============================================================
+   CAPA 3 — Conciliación bancaria: tarjeta ADVISORY en Fijos.
+   Lee state.bankTx (movimientos reales del banco) y los casa con los cargos
+   modelados del mes. NO muta nada salvo el botón opt-in "+ Añadir a Fijos".
+   ============================================================ */
+function Reconcile({state, set}){
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth()+1, today=now.getDate();
+  const r=reconcileBank(state, y, m, today);
+  const [added,setAdded]=useState({});
+  if(!r.hasData) return null;
+  const nIssues=r.mismatch.length+r.missing.length+r.newCharges.length;
+  const sub = nIssues ? tf("rec_sub_issues",{n:nIssues, ok:r.confirmed.length})
+            : (r.confirmed.length ? tf("rec_sub_ok",{ok:r.confirmed.length}) : t("rec_sub_none"));
+  const dot = nIssues ? "#E2A05F" : "#5FD08A";
+  const rowS={padding:"8px 0",borderTop:"1px solid var(--line)",fontSize:13,lineHeight:1.4};
+  const secT={fontSize:12,fontWeight:800,color:"var(--muted)",margin:"12px 0 2px"};
+  const keyOf=function(nc){ return (nc.merchant||"")+"|"+nc.amount+"|"+nc.date; };
+  const addAsFixed=function(nc){
+    const k=keyOf(nc);
+    set(function(s){ const it={id:uid(),name:nc.merchant||"Gasto fijo",amount:+Number(nc.amount).toFixed(2),freq:"mes",account:nc.ent}; const dd=recDay(nc.date); if(dd) it.day=dd; return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
+    setAdded(function(a){ return Object.assign({},a,{[k]:true}); });
+  };
+  return React.createElement(CollapsibleCard,{title:t("rec_title"), sub:sub, dot:dot, storageKey:"f_recon", defaultOpen:nIssues>0},
+    r.mismatch.length>0 && React.createElement(React.Fragment,{key:"mm"},
+      React.createElement("div",{style:Object.assign({},secT,{color:"var(--coral)"})}, t("rec_mismatch_t")),
+      r.mismatch.map(function(x,i){ return React.createElement("div",{key:i,style:rowS}, tf("rec_mismatch_l",{name:x.name, modeled:eur(x.modeled), bank:eur(x.bank)})); })
+    ),
+    r.missing.length>0 && React.createElement(React.Fragment,{key:"ms"},
+      React.createElement("div",{style:secT}, t("rec_missing_t")),
+      r.missing.map(function(x,i){ return React.createElement("div",{key:i,style:rowS}, tf("rec_missing_l",{name:x.name, amount:eur(x.amount), day:x.day})); })
+    ),
+    r.newCharges.length>0 && React.createElement(React.Fragment,{key:"nc"},
+      React.createElement("div",{style:Object.assign({},secT,{color:"var(--blue)"})}, t("rec_new_t")),
+      r.newCharges.map(function(x,i){ const k=keyOf(x); return React.createElement("div",{key:i,style:Object.assign({},rowS,{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8})},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontWeight:700}}, eur(x.amount)+" · "+(x.merchant||"")),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)"}}, tf("rec_new_l",{merchant:(x.card?t("rec_card"):entOf(x.ent).label), day:recDay(x.date)||"?"}))),
+        added[k]
+          ? React.createElement("span",{style:{fontSize:12,color:"var(--mint)",fontWeight:700,whiteSpace:"nowrap"}}, t("rec_added"))
+          : React.createElement("button",{onClick:function(){ addAsFixed(x); },style:{background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--text)",borderRadius:10,padding:"6px 10px",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}, t("rec_add"))
+      ); })
+    ),
+    r.confirmed.length>0 && React.createElement("div",{key:"cf",style:Object.assign({},rowS,{color:"var(--mint)",fontWeight:700})}, tf("rec_confirmed",{n:r.confirmed.length})),
+    r.feed.length>0 && React.createElement("details",{key:"fd",style:{marginTop:10}},
+      React.createElement("summary",{style:{fontSize:12,fontWeight:800,color:"var(--muted)",cursor:"pointer"}}, t("rec_feed")),
+      r.feed.slice(0,12).map(function(tx,i){ const inc=(tx.amount||0)<0; return React.createElement("div",{key:i,style:Object.assign({},rowS,{display:"flex",justifyContent:"space-between",gap:8})},
+        React.createElement("span",{style:{color:"var(--muted)"}}, (recDay(tx.date)||"")+" · "+(tx.merchant||"")),
+        React.createElement("span",{className:"num",style:{fontWeight:700,color:inc?"var(--mint)":"var(--text)",whiteSpace:"nowrap"}}, (inc?"+":"")+eur(Math.abs(tx.amount)))
+      ); })
+    ),
+    React.createElement("div",{key:"hint",style:{fontSize:11,color:"var(--muted-2)",marginTop:10,lineHeight:1.4}}, t("rec_hint"))
   );
 }
 
@@ -3290,6 +3460,7 @@ function Fijos({state, set, totals}){
       React.createElement("span",null,tf("fj_top_b",{x:eur0(monthly(top))}))
     ),
     React.createElement(AffordSim,{state:state, totals:totals, set:set}),
+    React.createElement(Reconcile,{state:state, set:set}),
     /* MOTOR DINÁMICO: próximos cargos */
     React.createElement(CollapsibleCard,{title:tf("fj_prox",{m:monthShort(cm-1)}),sub:tf("fj_prox_sub",{x:eur0(totals.cargosMes)}),dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
       // estado del banco principal (Sabadell): cash-flow del mes (saldo + nómina − transfers − fijos)
@@ -4406,7 +4577,7 @@ function App(){
       const preview=applyBankBalances(stateRef.current, links);   // función pura: solo para decidir el aviso
       set(function(prev){
         const r=applyBankBalances(prev, links);
-        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink });
+        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: flattenBankTx(links) });
       });
       if(preview.synced.length){
         if(preview.changed || opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
