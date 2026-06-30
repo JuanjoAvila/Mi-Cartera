@@ -28,34 +28,53 @@ Deno.serve(async (req) => {
     const { appId, pem } = ebConfig();
     const jwt = await makeJWT(appId, pem);
 
+    // RESILIENCIA (bug Sabadell): cada banco se sincroniza por separado dentro de su try/catch.
+    // Si UNO falla (sesión caducada, banco caído, rate-limit PSD2…) NO tumba a los demás: la app
+    // sigue recibiendo los que sí funcionaron y un aviso del que falló. Antes, un solo fallo
+    // lanzaba 500 y obligaba a "resincronizar" todo.
     const out: unknown[] = [];
     for (const link of links || []) {
       const uid = link.account_uid;
-      if (!uid) continue;
-      const bal = await ebApi(jwt, `/accounts/${uid}/balances`);
-      const tx = await ebApi(jwt, `/accounts/${uid}/transactions`);
+      if (!uid || typeof uid !== "string") {
+        // enlace sin cuenta válida: hay que reconectar este banco (no el resto).
+        await admin.from("bank_links")
+          .update({ status: "expired", updated_at: new Date().toISOString() })
+          .eq("id", link.id);
+        out.push({ aspsp: link.aspsp_name, iban: link.iban, ok: false, expired: true, error: "cuenta sin uid · reconecta", balances: [], count: 0, transactions: [] });
+        continue;
+      }
+      try {
+        const bal = await ebApi(jwt, `/accounts/${uid}/balances`);
+        const tx = await ebApi(jwt, `/accounts/${uid}/transactions`);
 
-      // deno-lint-ignore no-explicit-any
-      const balances = (bal.balances || []).map((b: any) => ({
-        type: b.balance_type || b.name || "",
-        amount: Number(b?.balance_amount?.amount || 0),
-        currency: b?.balance_amount?.currency || "",
-      }));
-      // deno-lint-ignore no-explicit-any
-      const transactions = (tx.transactions || []).map((t: any) => mapTransaction(t));
+        // deno-lint-ignore no-explicit-any
+        const balances = (bal.balances || []).map((b: any) => ({
+          type: b.balance_type || b.name || "",
+          amount: Number(b?.balance_amount?.amount || 0),
+          currency: b?.balance_amount?.currency || "",
+        }));
+        // deno-lint-ignore no-explicit-any
+        const transactions = (tx.transactions || []).map((t: any) => mapTransaction(t));
 
-      await admin.from("bank_links").update({ last_sync: new Date().toISOString() }).eq("id", link.id);
+        await admin.from("bank_links")
+          .update({ last_sync: new Date().toISOString(), status: "active", updated_at: new Date().toISOString() })
+          .eq("id", link.id);
 
-      out.push({
-        aspsp: link.aspsp_name,
-        iban: link.iban,
-        balances,
-        count: transactions.length,
-        transactions,
-      });
+        out.push({ aspsp: link.aspsp_name, iban: link.iban, ok: true, balances, count: transactions.length, transactions });
+      } catch (err) {
+        const msg = String((err as Error)?.message || err);
+        // 401/403/404 o "expired/invalid/unauthorized" = el permiso del banco caducó → marca SOLO este enlace
+        // para que la app pinte "caducado · reconectar" en ese banco, sin afectar a los demás.
+        const expired = /\b40[134]\b|expired|invalid|unauthor/i.test(msg);
+        await admin.from("bank_links")
+          .update({ status: expired ? "expired" : link.status, updated_at: new Date().toISOString() })
+          .eq("id", link.id);
+        out.push({ aspsp: link.aspsp_name, iban: link.iban, ok: false, expired, error: msg, balances: [], count: 0, transactions: [] });
+      }
     }
 
-    return jsonResp({ ok: true, dryRun: true, links: out });
+    const anyOk = out.some((l) => (l as { ok?: boolean }).ok);
+    return jsonResp({ ok: true, dryRun: true, anyOk, links: out });
   } catch (e) {
     return jsonResp({ ok: false, error: String((e as Error)?.message || e) }, 500);
   }

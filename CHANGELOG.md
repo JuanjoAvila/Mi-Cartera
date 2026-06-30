@@ -19,6 +19,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.69.0] — 2026-06-30
+### Fixed — Proyección y Open Banking (la app se "volvía loca")
+- 🐛 **Doble conteo de la nómina / "= a fin de mes" disparado:** la heurística pagado/pendiente usaba `<` estricto, así que lo que ocurre **hoy** (nómina, IRPF, fijos del día) se contaba como pendiente y se sumaba **encima** del saldo real del banco. Cambiado a `<=` en `isPaidIn`, `isPaidThisMonth`, `flowPaid`, `monthNetForAccount` y `debtPaidCount`. (Reproducido: `2673 + 3333 − 146 = 5860` → ahora `2673`.)
+- 🐛 **Sync de Sabadell tumbaba a todos los bancos:** `bank-sync` sincronizaba en un bucle donde un único fallo lanzaba 500 y obligaba a resincronizar todo. Ahora cada banco va en su propio try/catch; el fallo de uno no afecta a los demás y un 401/403/404 marca **solo** ese enlace como `expired` (reconectar). La app aplica los saldos de los que sí funcionaron y avisa del banco concreto.
+- 🐛 **Bancos nuevos salían "caducado" al conectar:** `bank-callback` cogía a ciegas `accounts[0]`; si no traía `uid` guardaba `status:error`. Ahora busca la primera cuenta con `uid` (soporta string/objeto) y, si no hay cuenta utilizable, devuelve un error honesto en vez de un falso `ok`.
+- 🐛 **"Aún no aparece en el banco" (IBI) falso positivo:** la conciliación solo marca un cargo como "no aparece" si el feed del banco **cubre realmente ese día**; con sync vieja o parcial ya no inventa el aviso.
+
 ## [3.39.0] — 2026-06-23
 ### Added — Idiomas COMPLETO (ES/EN/CA) · [#14](https://github.com/JuanjoAvila/Mi-Cartera/issues/14)
 - Traducidas las pestañas restantes: **Inversiones** (incluida la proyección y el rendimiento por posición), **Patrimonio**, **Deudas** y el **login/cuenta** (pantalla de bloqueo y panel de sesión). Con esto **toda la app está disponible en español, inglés y catalán**.
