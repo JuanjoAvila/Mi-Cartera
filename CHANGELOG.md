@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.69.2] — 2026-06-30
+### Diagnostics — Revolut devuelve la sesión con 0 cuentas
+- 🔍 Confirmado con el diagnóstico real: Revolut crea la sesión (hay `session_id` y `access`) pero `accounts` viene **vacío** y sin `accounts_data`. `bank-callback` ahora **reintenta `GET /sessions/{id}` con espera** (×3, por si las cuentas se rellenan con retardo) y, si sigue sin cuenta, el error incluye un diagnóstico completo: conteos de POST y GET, `status` de la sesión y el `access` concedido. Sirve para cerrar el caso Revolut en el próximo intento.
+
 ## [3.69.1] — 2026-06-30
 ### Fixed — Conexión de bancos que devolvían 0 cuentas
 - 🐛 **MyInvestor/Revolut/Caixa daban "sin cuenta utilizable (recibidas: 0)":** Enable Banking entrega las cuentas en formas distintas según el banco; solo leíamos `session.accounts` como objetos. Ahora `bank-callback` lee también `accounts_data` y los UID sueltos, y si el `POST /sessions` viene vacío hace fallback a `GET /sessions/{id}`. Si aún así no hay cuenta, el error incluye un diagnóstico real (claves y conteos de la respuesta) en vez de un mensaje opaco. (Sabadell ya conectaba bien.)
