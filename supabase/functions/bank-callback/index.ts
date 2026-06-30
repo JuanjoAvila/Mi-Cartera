@@ -84,9 +84,17 @@ Deno.serve(async (req) => {
       updated_at: new Date().toISOString(),
     }).eq("id", link.id);
 
-    // Si autorizó pero no obtuvimos una cuenta legible, no mentimos con "bank=ok":
-    // devolvemos un diagnóstico real (POST + GET + scope concedido) para cerrarlo en una.
+    // Si autorizó pero no obtuvimos una cuenta legible, no mentimos con "bank=ok".
     if (!uid) {
+      // CAUSA REAL (confirmada por la FAQ de Enable Banking): en MODO RESTRINGIDO la API compara las
+      // cuentas autorizadas contra las que tienes ENLAZADAS (whitelisted) en el panel y descarta el resto.
+      // Una sesión autorizada que vuelve con 0 cuentas ⇒ esta cuenta NO está dada de alta en la app.
+      // No es un bug de código: hay que enlazarla en el control panel. Devolvemos un código corto
+      // (`nolink:<banco>`) que la app traduce a un mensaje accionable en el idioma del usuario.
+      if (sessionId) {
+        return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent("nolink:" + (link.aspsp_name || ""))}`, 302);
+      }
+      // Caso raro y distinto (ni siquiera hubo sesión): diagnóstico crudo para depurar.
       const nAcc = Array.isArray(session.accounts) ? session.accounts.length : -1;
       const nData = Array.isArray(session.accounts_data) ? session.accounts_data.length : -1;
       const status = session.status || session.session_status || "?";
