@@ -1497,6 +1497,7 @@ Object.assign(LANG.es,{
   bank_connect:"Conectar mi banco", bank_connecting:"Abriendo tu banco…",
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
+  bank_expired_re:"permiso caducado · reconéctate",
   bank_refresh:"Actualizar saldo", bank_reconnect:"Reconectar",
   bank_linked:"{bank} conectado", bank_pending:"Pendiente de autorizar en el banco",
   bank_updated:"Saldo actualizado: {x}", bank_neversync:"Aún sin sincronizar",
@@ -1508,6 +1509,7 @@ Object.assign(LANG.en,{
   bank_connect:"Connect my bank", bank_connecting:"Opening your bank…",
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
+  bank_expired_re:"consent expired · reconnect",
   bank_refresh:"Refresh balance", bank_reconnect:"Reconnect",
   bank_linked:"{bank} connected", bank_pending:"Pending authorization at the bank",
   bank_updated:"Balance updated: {x}", bank_neversync:"Not synced yet",
@@ -1519,6 +1521,7 @@ Object.assign(LANG.ca,{
   bank_connect:"Connecta el meu banc", bank_connecting:"Obrint el teu banc…",
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
+  bank_expired_re:"permís caducat · reconnecta't",
   bank_refresh:"Actualitza saldo", bank_reconnect:"Reconnecta",
   bank_linked:"{bank} connectat", bank_pending:"Pendent d'autoritzar al banc",
   bank_updated:"Saldo actualitzat: {x}", bank_neversync:"Encara sense sincronitzar",
@@ -3073,9 +3076,11 @@ const cleanDay=(v)=>{ const n=parseInt(String(v),10); return (n>=1&&n<=31)?n:nul
 function dayIn(e,m){ if(e&&e.schedule&&e.schedule.length){ const s=e.schedule.find(x=>x.m===m); return s?(s.day||null):null; } return (e&&e.day)||null; }
 // día simple (objetos sin schedule: deudas)
 const dayOf=(e)=> (e&&e.day)||null;
-// ¿ya se cobró en el mes m? (su día ya pasó). Solo tiene sentido para el mes actual.
-const isPaidIn=(e,m,today)=>{ const d=dayIn(e,m); return d!=null && d<today; };
-const isPaidThisMonth=(e,today)=>{ const d=dayOf(e); return d!=null && d<today; };
+// ¿ya se cobró en el mes m? (su día ya pasó o ES HOY). Solo tiene sentido para el mes actual.
+// `<=`: lo programado para HOY cuenta como hecho. Clave para no duplicar la nómina/cargos del día
+// con el saldo real del banco (que ya los refleja) → si no, fin de mes los sumaría por segunda vez.
+const isPaidIn=(e,m,today)=>{ const d=dayIn(e,m); return d!=null && d<=today; };
+const isPaidThisMonth=(e,today)=>{ const d=dayOf(e); return d!=null && d<=today; };
 // ¿el gasto necesita que el usuario le asigne un mes? (anual sin programar)
 const needsMonth=(e)=> (e.freq==="año"||e.freq==="anual") && !(e.months&&e.months.length) && !(e.schedule&&e.schedule.length);
 // ¿tiene importes/días a medida por cobro?
@@ -3087,7 +3092,7 @@ function firstWorkDom(y,m){ for(let d=1;d<=7;d++){ const wd=new Date(y,m-1,d).ge
 function lastWorkDom(y,m){ const last=new Date(y,m,0).getDate(); for(let d=last;d>=1;d--){ const wd=new Date(y,m-1,d).getDay(); if(wd!==0 && wd!==6) return d; } return last; }
 // día efectivo de un movimiento recurrente según su regla (`when`) o su día fijo
 function flowDay(f,y,m){ if(f.when==="last") return lastWorkDom(y,m); if(f.when==="first") return firstWorkDom(y,m); return f.day||null; }
-const flowPaid=(f,y,m,today)=>{ const d=flowDay(f,y,m); return d!=null && d<today; };
+const flowPaid=(f,y,m,today)=>{ const d=flowDay(f,y,m); return d!=null && d<=today; };
 // Movimientos recurrentes (nómina/transferencias): por defecto cada mes salvo que tengan months
 const flowMonths=(f)=> (f&&f.months&&f.months.length)?f.months:[1,2,3,4,5,6,7,8,9,10,11,12];
 const flowOccursIn=(f,m)=> flowMonths(f).indexOf(m)>=0;
@@ -3106,7 +3111,7 @@ const ymNow=()=>{ const n=new Date(); return ymAbs(n.getFullYear(), n.getMonth()
 const debtAmort=(d)=> d && d.amort!=null ? d.amort : ((d&&d.monthly)||0);
 // nº de pagos ya hechos. Una financiación (con `months`) cuenta TAMBIÉN el pago de ESTE mes si ya pasó
 // su día (ej. financias el 599/4 con día 26 y hoy es 28 → el 1er pago del 26 ya cuenta).
-function debtPaidCount(d){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); let n=Math.max(0, ymNow()-anchor); if(d.months!=null){ const dd=dayOf(d); if(dd!=null && dd<new Date().getDate()) n+=1; } return n; }
+function debtPaidCount(d){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); let n=Math.max(0, ymNow()-anchor); if(d.months!=null){ const dd=dayOf(d); if(dd!=null && dd<=new Date().getDate()) n+=1; } return n; }
 // Financiación tipo coche: además de entrada (downPayment, ya pagada = informativa) y cuotas,
 // hay un PAGO FINAL (balloon) en el último mes del plazo. debtBalloonIn(d,y,m): balloon si (y,m 1-12)
 // es ese último mes; 0 si no. La amort lineal ya se fija a (value−balloon)/months al crear la deuda,
@@ -3119,10 +3124,10 @@ function debtActive(d){ if(!d || !d.monthly) return false; const bal=debtBalance
 // cuotas que quedan de una financiación (null si no tiene plazo)
 function debtLeft(d){ if(!d || d.months==null) return null; return Math.max(0, d.months - debtPaidCount(d)); }
 // Movimientos netos de un banco en un mes (m 1-12): +ingresos −fijos −cuotas −puntuales −transfers.
-// todayLim null = mes cerrado (cuentan todos); número = solo los YA ocurridos (día < todayLim, regla isPaidIn).
+// todayLim null = mes cerrado (cuentan todos); número = solo los YA ocurridos (día <= todayLim, regla isPaidIn).
 function monthNetForAccount(s, ent, y, m, todayLim){
   const closed=(todayLim==null);
-  const hit=function(d){ return closed ? true : (d!=null && d<todayLim); };
+  const hit=function(d){ return closed ? true : (d!=null && d<=todayLim); };
   let net=0;
   (s.fixed||[]).forEach(function(e){ if((e.account||"sabadell")===ent && occursIn(e,m) && hit(dayIn(e,m))) net -= occAmountIn(e,m); });
   (s.debts||[]).forEach(function(d){ if(debtActive(d) && (d.account||"sabadell")===ent && hit(dayOf(d))) net -= (d.monthly||0) + debtBalloonIn(d,y,m); });
@@ -3235,6 +3240,12 @@ function reconcileBank(state, y, m, today){
   // movimientos de ESTE mes en esos bancos (convención: amount POSITIVO = gasto)
   const month=tx.filter(function(t){ return String(t.date||"").slice(0,7)===ym && obEnts[t.ent]; });
   res.feed=month.slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+  // Cobertura del feed por entidad: día más antiguo que el banco ha reportado ESTE mes.
+  // Si la sync está vieja/parcial y no llega hasta el día del cargo, NO afirmamos "aún no aparece"
+  // (no podemos saberlo: el movimiento podría estar fuera de la ventana de datos descargada).
+  const entCoverMinDay={};
+  month.forEach(function(t){ const dd=recDay(t.date); if(dd==null) return; const e=t.ent; if(entCoverMinDay[e]==null || dd<entCoverMinDay[e]) entCoverMinDay[e]=dd; });
+  const feedCovers=function(ent,day){ const md=entCoverMinDay[ent]; return md!=null && day>=md; };
   // cargos modelados de este mes por entidad
   const modeled=[];
   (state.fixed||[]).forEach(function(e){ const ent=accOf(e); if(!obEnts[ent]||!occursIn(e,m)) return; const amt=occAmountIn(e,m); if(amt<=0) return; modeled.push({name:e.name,amount:amt,day:dayIn(e,m),ent:ent,id:e.id,kind:"fixed",bankAmount:(typeof e.bankAmount==="number"?e.bankAmount:null)}); });
@@ -3265,8 +3276,9 @@ function reconcileBank(state, y, m, today){
           res.shared.push({name:mc.name, net:mc.amount, gross:best.amount, ent:mc.ent, id:mc.id, kind:mc.kind});
         else res.confirmed.push({name:mc.name, amount:best.amount, ent:mc.ent});
       } else res.mismatch.push({name:mc.name, modeled:mc.amount, bank:best.amount, ent:mc.ent, id:mc.id, kind:mc.kind});
-    } else if(mc.day!=null && (today-mc.day)>=REC_GRACE){
-      // "no aparece" solo si el día ya pasó con margen (gracia) → no llora por cargos de fin de mes / que se cobran tarde
+    } else if(mc.day!=null && (today-mc.day)>=REC_GRACE && feedCovers(mc.ent, mc.day)){
+      // "no aparece" solo si: (1) el día ya pasó con margen (gracia, no llora por cargos de fin de mes)
+      // Y (2) el feed del banco realmente cubre ese día (si no, la sync no ha llegado: no inventamos avisos).
       res.missing.push({name:mc.name, amount:mc.amount, day:mc.day, ent:mc.ent, id:mc.id, kind:mc.kind});
     }
   });
@@ -4784,9 +4796,15 @@ function App(){
         const r=applyBankBalances(prev, links);
         return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: flattenBankTx(links) });
       });
-      if(preview.synced.length){
-        if(preview.changed || opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
-      } else if(opts.manual){ showToast(t("bank_none")); }
+      // Resultado por banco (servidor tolerante a fallos): aplica los que funcionaron y avisa SOLO
+      // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
+      const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
+      const failed=links.filter(function(l){ return l&&l.ok===false; });
+      const expired=failed.filter(function(l){ return l&&l.expired; });
+      if(preview.synced.length && (preview.changed || opts.manual)) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
+      if(expired.length){ showToast("⚠ "+bankLabelOf(expired[0])+": "+t("bank_expired_re")); }
+      else if(failed.length && (opts.manual || navigator.onLine!==false)){ showToast("⚠ "+bankLabelOf(failed[0])+": "+t("bank_syncfail")); }
+      else if(!preview.synced.length && !links.length && opts.manual){ showToast(t("bank_none")); }
     }).catch(function(e){
       if(opts.manual || navigator.onLine!==false) showToast("⚠ "+t("bank_syncfail"));
     }).finally(function(){ bankSyncing.current=false; });
