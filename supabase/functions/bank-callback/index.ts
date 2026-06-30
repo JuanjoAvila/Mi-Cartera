@@ -53,11 +53,24 @@ Deno.serve(async (req) => {
 
     let acc = collect(session).find((a) => uidOf(a)) || null;
     // Fallback: el POST no trajo cuenta usable pero sí hay session_id → pídelas con GET.
+    // Algunos bancos (p.ej. Revolut) rellenan las cuentas con un pequeño retardo tras autorizar,
+    // así que reintentamos el GET un par de veces con espera. Guardamos el resultado para el diagnóstico.
+    let getDiag = "skip";
     if (!acc && sessionId) {
-      try {
-        const full = await ebApi(jwt, `/sessions/${sessionId}`);
-        acc = collect(full).find((a) => uidOf(a)) || null;
-      } catch (_) { /* lo reportamos abajo con diagnóstico */ }
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      for (let attempt = 0; attempt < 3 && !acc; attempt++) {
+        if (attempt > 0) await sleep(1200);
+        try {
+          const full = await ebApi(jwt, `/sessions/${sessionId}`);
+          acc = collect(full).find((a) => uidOf(a)) || null;
+          const ga = Array.isArray(full?.accounts) ? full.accounts.length : -1;
+          const gd = Array.isArray(full?.accounts_data) ? full.accounts_data.length : -1;
+          getDiag = `a${ga}/d${gd}@${attempt}`;
+        } catch (ge) {
+          getDiag = "err:" + String((ge as Error)?.message || ge).slice(0, 50);
+          break;   // un error (404/permiso) no se va a arreglar reintentando
+        }
+      }
     }
     const uid = uidOf(acc);
     const iban = ibanOf(acc);
@@ -72,12 +85,13 @@ Deno.serve(async (req) => {
     }).eq("id", link.id);
 
     // Si autorizó pero no obtuvimos una cuenta legible, no mentimos con "bank=ok":
-    // devolvemos un diagnóstico real (qué claves/conteos trae este banco) para afinar.
+    // devolvemos un diagnóstico real (POST + GET + scope concedido) para cerrarlo en una.
     if (!uid) {
-      const keys = Object.keys(session || {}).join(",");
       const nAcc = Array.isArray(session.accounts) ? session.accounts.length : -1;
       const nData = Array.isArray(session.accounts_data) ? session.accounts_data.length : -1;
-      const detail = `sin cuenta · keys:[${keys}] accounts:${nAcc} data:${nData} sid:${sessionId ? "si" : "no"}`;
+      const status = session.status || session.session_status || "?";
+      const accessTxt = session.access ? JSON.stringify(session.access).slice(0, 140) : "(sin access)";
+      const detail = `sin cuenta · POST a${nAcc}/d${nData} st:${status} · GET ${getDiag} · access:${accessTxt}`;
       return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent(detail)}`, 302);
     }
 
