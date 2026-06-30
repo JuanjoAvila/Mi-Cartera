@@ -19,6 +19,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.69.3] — 2026-06-30
+### Causa raíz del "0 cuentas" (Revolut, MyInvestor, CaixaBank…) — no era un bug
+- ✅ **Confirmado por la FAQ de Enable Banking:** en **modo restringido (restricted production)** la API compara las cuentas autorizadas contra las que tienes **enlazadas (whitelisted)** en el panel de control y **descarta el resto** → una sesión autorizada que vuelve con 0 cuentas significa que esa cuenta **no está dada de alta** en la app. Hoy solo está enlazada la de Sabadell; por eso Revolut (y MyInvestor/CaixaBank) volvían "sin cuenta". **El arreglo es enlazar cada cuenta en el panel de Enable Banking**, no es código.
+- 💬 **Mensaje accionable en vez de texto críptico:** cuando la sesión está autorizada pero vuelve con 0 cuentas, `bank-callback` ahora devuelve un código corto (`nolink:<banco>`) y la app muestra "{Banco}: esta cuenta aún no está dada de alta en Enable Banking (modo restringido). Enlázala en el panel y vuelve a conectar." (ES/EN/CA). El diagnóstico crudo se reserva solo para el caso raro en el que ni siquiera hubo sesión.
+
 ## [3.69.2] — 2026-06-30
 ### Diagnostics — Revolut devuelve la sesión con 0 cuentas
 - 🔍 Confirmado con el diagnóstico real: Revolut crea la sesión (hay `session_id` y `access`) pero `accounts` viene **vacío** y sin `accounts_data`. `bank-callback` ahora **reintenta `GET /sessions/{id}` con espera** (×3, por si las cuentas se rellenan con retardo) y, si sigue sin cuenta, el error incluye un diagnóstico completo: conteos de POST y GET, `status` de la sesión y el `access` concedido. Sirve para cerrar el caso Revolut en el próximo intento.

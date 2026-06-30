@@ -1498,6 +1498,7 @@ Object.assign(LANG.es,{
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_expired_re:"permiso caducado · reconéctate",
+  bank_nolink:"esta cuenta aún no está dada de alta en Enable Banking (modo restringido). Enlázala en el panel de Enable Banking y vuelve a conectar.",
   bank_refresh:"Actualizar saldo", bank_reconnect:"Reconectar",
   bank_linked:"{bank} conectado", bank_pending:"Pendiente de autorizar en el banco",
   bank_updated:"Saldo actualizado: {x}", bank_neversync:"Aún sin sincronizar",
@@ -1510,6 +1511,7 @@ Object.assign(LANG.en,{
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_expired_re:"consent expired · reconnect",
+  bank_nolink:"this account isn't linked in Enable Banking yet (restricted mode). Link it in the Enable Banking control panel and reconnect.",
   bank_refresh:"Refresh balance", bank_reconnect:"Reconnect",
   bank_linked:"{bank} connected", bank_pending:"Pending authorization at the bank",
   bank_updated:"Balance updated: {x}", bank_neversync:"Not synced yet",
@@ -1522,6 +1524,7 @@ Object.assign(LANG.ca,{
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_expired_re:"permís caducat · reconnecta't",
+  bank_nolink:"aquest compte encara no està donat d'alta a Enable Banking (mode restringit). Enllaça'l al panell d'Enable Banking i torna a connectar.",
   bank_refresh:"Actualitza saldo", bank_reconnect:"Reconnecta",
   bank_linked:"{bank} connectat", bank_pending:"Pendent d'autoritzar al banc",
   bank_updated:"Saldo actualitzat: {x}", bank_neversync:"Encara sense sincronitzar",
@@ -4860,7 +4863,13 @@ function App(){
     if(!bankParam) return;
     try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}   // que no se repita al recargar
     if(bankParam==="ok"){ showToast("✓ "+t("bank_connected")); bankJustConnected.current=true; }
-    else if(bankParam==="error"){ const m=params.get("msg"); showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
+    else if(bankParam==="error"){
+      const m=params.get("msg")||"";
+      if(m.indexOf("nolink:")===0){   // autorizó pero la cuenta no está dada de alta (modo restringido EB) → mensaje accionable
+        const nm=m.slice(7), e=entFromAspsp(nm), lbl=e?entOf(e).label:(nm||"🏦");
+        showToast("⚠ "+lbl+": "+t("bank_nolink"));
+      } else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
+    }
   },[]);
 
   // CAPA 2 — auto-sync del saldo al abrir: justo tras conectar, o pasado el margen (throttle).
