@@ -29,26 +29,41 @@ Deno.serve(async (req) => {
     const { appId, pem } = ebConfig();
     const jwt = await makeJWT(appId, pem);
     const session = await ebApi(jwt, "/sessions", { method: "POST", body: { code } });
+    const sessionId = session.session_id || session.id || null;
 
-    // Extracción robusta de la cuenta autorizada. Enable Banking devuelve `accounts` como
-    // lista de objetos {uid, account_id:{iban}}, pero según banco/versión puede venir como
-    // string (uid pelado) o con la cuenta sin uid. Buscamos la PRIMERA cuenta con uid usable
-    // en vez de coger ciegamente accounts[0] (que para algunos bancos no traía uid → status
-    // 'error' → la app lo pintaba como "caducado").
-    // deno-lint-ignore no-explicit-any
-    const accounts: any[] = Array.isArray(session.accounts) ? session.accounts : [];
+    // --- Extracción robusta de la cuenta autorizada ---
+    // Enable Banking devuelve las cuentas en formas DISTINTAS según banco/endpoint:
+    //   · POST /sessions      → `accounts`: objetos {uid, account_id:{iban}}   (Sabadell: OK)
+    //   · otros bancos        → `accounts` vacío y los uids en `accounts_data` [{uid, identification_hash}]
+    //   · GET /sessions/{id}  → `accounts`: uids (strings) + `accounts_data`: objetos
+    // (MyInvestor/Revolut/Caixa daban `recibidas: 0` porque solo mirábamos `accounts` como objetos).
+    // Leemos las DOS listas y, si el POST viene vacío, preguntamos con GET /sessions/{id}.
     // deno-lint-ignore no-explicit-any
     const uidOf = (a: any): string | null =>
       (typeof a === "string" ? a : (a?.uid || a?.account_id?.uid || a?.id || null)) || null;
     // deno-lint-ignore no-explicit-any
     const ibanOf = (a: any): string | null =>
       (typeof a === "string" ? null : (a?.account_id?.iban || a?.iban || null)) || null;
-    const acc = accounts.find((a) => uidOf(a)) || accounts[0] || null;
+    // deno-lint-ignore no-explicit-any
+    const collect = (o: any): any[] => {
+      const a = Array.isArray(o?.accounts) ? o.accounts : [];
+      const d = Array.isArray(o?.accounts_data) ? o.accounts_data : [];
+      return a.concat(d);
+    };
+
+    let acc = collect(session).find((a) => uidOf(a)) || null;
+    // Fallback: el POST no trajo cuenta usable pero sí hay session_id → pídelas con GET.
+    if (!acc && sessionId) {
+      try {
+        const full = await ebApi(jwt, `/sessions/${sessionId}`);
+        acc = collect(full).find((a) => uidOf(a)) || null;
+      } catch (_) { /* lo reportamos abajo con diagnóstico */ }
+    }
     const uid = uidOf(acc);
     const iban = ibanOf(acc);
 
     await admin.from("bank_links").update({
-      session_id: session.session_id || null,
+      session_id: sessionId,
       account_uid: uid,
       iban,
       status: uid ? "active" : "error",
@@ -57,9 +72,12 @@ Deno.serve(async (req) => {
     }).eq("id", link.id);
 
     // Si autorizó pero no obtuvimos una cuenta legible, no mentimos con "bank=ok":
-    // devolvemos error con detalle para que la app lo muestre y el usuario reintente.
+    // devolvemos un diagnóstico real (qué claves/conteos trae este banco) para afinar.
     if (!uid) {
-      const detail = `sin cuenta utilizable (recibidas: ${accounts.length})`;
+      const keys = Object.keys(session || {}).join(",");
+      const nAcc = Array.isArray(session.accounts) ? session.accounts.length : -1;
+      const nData = Array.isArray(session.accounts_data) ? session.accounts_data.length : -1;
+      const detail = `sin cuenta · keys:[${keys}] accounts:${nAcc} data:${nData} sid:${sessionId ? "si" : "no"}`;
       return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent(detail)}`, 302);
     }
 

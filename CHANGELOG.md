@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.69.1] — 2026-06-30
+### Fixed — Conexión de bancos que devolvían 0 cuentas
+- 🐛 **MyInvestor/Revolut/Caixa daban "sin cuenta utilizable (recibidas: 0)":** Enable Banking entrega las cuentas en formas distintas según el banco; solo leíamos `session.accounts` como objetos. Ahora `bank-callback` lee también `accounts_data` y los UID sueltos, y si el `POST /sessions` viene vacío hace fallback a `GET /sessions/{id}`. Si aún así no hay cuenta, el error incluye un diagnóstico real (claves y conteos de la respuesta) en vez de un mensaje opaco. (Sabadell ya conectaba bien.)
+
 ## [3.69.0] — 2026-06-30
 ### Fixed — Proyección y Open Banking (la app se "volvía loca")
 - 🐛 **Doble conteo de la nómina / "= a fin de mes" disparado:** la heurística pagado/pendiente usaba `<` estricto, así que lo que ocurre **hoy** (nómina, IRPF, fijos del día) se contaba como pendiente y se sumaba **encima** del saldo real del banco. Cambiado a `<=` en `isPaidIn`, `isPaidThisMonth`, `flowPaid`, `monthNetForAccount` y `debtPaidCount`. (Reproducido: `2673 + 3333 − 146 = 5860` → ahora `2673`.)
