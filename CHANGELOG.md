@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.70.1] — 2026-07-01
+### Cuentas extra de Open Banking: nombres bonitos + editables
+- ✏️ Las cuentas extra sincronizadas (compartidas, 2ª cuenta de un banco) traían nombres feos del banco (los titulares de una conjunta, un tipo técnico o nada). Ahora se muestran con un **nombre "bonito" automático** (`niceObName`: conjunta/ahorro/corriente, o el final del IBAN si no hay nombre) y se pueden **renombrar a mano** en Patrimonio → Editar (se guarda en `state.obLabels` y sincroniza). Sigue el mismo formato que las cuentas manuales.
+
 ## [3.70.0] — 2026-07-01
 ### UX y motor — feedback tras probar Open Banking multibanco
 - 🔙 **Gesto/botón "atrás" ya no saca de la app:** el cajón de Ajustes, la sección "Mis bancos" y su buscador de bancos ahora meten una entrada de historial al abrirse (History API), así el gesto de retroceso del móvil los **cierra** en vez de salir de la PWA. Se cierran en orden (primero el de encima) y el cierre por botón/swipe también consume su entrada. Nuevo hook `useBackClose` con pila global.
