@@ -34,43 +34,64 @@ Deno.serve(async (req) => {
     // lanzaba 500 y obligaba a "resincronizar" todo.
     const out: unknown[] = [];
     for (const link of links || []) {
-      const uid = link.account_uid;
-      if (!uid || typeof uid !== "string") {
-        // enlace sin cuenta válida: hay que reconectar este banco (no el resto).
+      // MULTI-CUENTA: recorre TODAS las cuentas del banco (columna `accounts`); si no la hay
+      // (enlaces antiguos), cae a la única `account_uid`. Cada cuenta va en su try/catch para
+      // que el fallo de una (o el banco caído) no tumbe a las demás.
+      // deno-lint-ignore no-explicit-any
+      const acctList: any[] = (Array.isArray(link.accounts) && link.accounts.length)
+        ? link.accounts
+        : (link.account_uid ? [{ uid: link.account_uid, iban: link.iban, name: null, currency: null }] : []);
+      if (!acctList.length) {
         await admin.from("bank_links")
           .update({ status: "expired", updated_at: new Date().toISOString() })
           .eq("id", link.id);
-        out.push({ aspsp: link.aspsp_name, iban: link.iban, ok: false, expired: true, error: "cuenta sin uid · reconecta", balances: [], count: 0, transactions: [] });
+        out.push({ aspsp: link.aspsp_name, iban: link.iban, ok: false, expired: true, error: "cuenta sin uid · reconecta", balances: [], count: 0, transactions: [], accounts: [] });
         continue;
       }
-      try {
-        const bal = await ebApi(jwt, `/accounts/${uid}/balances`);
-        const tx = await ebApi(jwt, `/accounts/${uid}/transactions`);
-
-        // deno-lint-ignore no-explicit-any
-        const balances = (bal.balances || []).map((b: any) => ({
-          type: b.balance_type || b.name || "",
-          amount: Number(b?.balance_amount?.amount || 0),
-          currency: b?.balance_amount?.currency || "",
-        }));
-        // deno-lint-ignore no-explicit-any
-        const transactions = (tx.transactions || []).map((t: any) => mapTransaction(t));
-
+      // deno-lint-ignore no-explicit-any
+      const acctOut: any[] = [];
+      let anyAcctOk = false, anyExpired = false, lastErr = "";
+      for (const ac of acctList) {
+        const uid = ac?.uid;
+        if (!uid || typeof uid !== "string") continue;
+        try {
+          const bal = await ebApi(jwt, `/accounts/${uid}/balances`);
+          const tx = await ebApi(jwt, `/accounts/${uid}/transactions`);
+          // deno-lint-ignore no-explicit-any
+          const balances = (bal.balances || []).map((b: any) => ({
+            type: b.balance_type || b.name || "",
+            amount: Number(b?.balance_amount?.amount || 0),
+            currency: b?.balance_amount?.currency || "",
+          }));
+          // deno-lint-ignore no-explicit-any
+          const transactions = (tx.transactions || []).map((t: any) => mapTransaction(t));
+          acctOut.push({ uid, iban: ac.iban || null, name: ac.name || null, currency: ac.currency || null, ok: true, balances, count: transactions.length, transactions });
+          anyAcctOk = true;
+        } catch (err) {
+          const msg = String((err as Error)?.message || err);
+          if (/\b40[134]\b|expired|invalid|unauthor/i.test(msg)) anyExpired = true;
+          lastErr = msg;
+          acctOut.push({ uid, iban: ac.iban || null, name: ac.name || null, currency: ac.currency || null, ok: false, error: msg, balances: [], count: 0, transactions: [] });
+        }
+      }
+      // 401/403/404/"expired" = el permiso del banco caducó → marca SOLO este enlace, sin afectar a los demás.
+      if (anyAcctOk) {
         await admin.from("bank_links")
           .update({ last_sync: new Date().toISOString(), status: "active", updated_at: new Date().toISOString() })
           .eq("id", link.id);
-
-        out.push({ aspsp: link.aspsp_name, iban: link.iban, ok: true, balances, count: transactions.length, transactions });
-      } catch (err) {
-        const msg = String((err as Error)?.message || err);
-        // 401/403/404 o "expired/invalid/unauthorized" = el permiso del banco caducó → marca SOLO este enlace
-        // para que la app pinte "caducado · reconectar" en ese banco, sin afectar a los demás.
-        const expired = /\b40[134]\b|expired|invalid|unauthor/i.test(msg);
+      } else {
         await admin.from("bank_links")
-          .update({ status: expired ? "expired" : link.status, updated_at: new Date().toISOString() })
+          .update({ status: anyExpired ? "expired" : link.status, updated_at: new Date().toISOString() })
           .eq("id", link.id);
-        out.push({ aspsp: link.aspsp_name, iban: link.iban, ok: false, expired, error: msg, balances: [], count: 0, transactions: [] });
       }
+      // top-level (balances/transactions/count) = primera cuenta OK: retrocompat con la Capa 2/3 antigua.
+      const primary = acctOut.find((a) => a.ok) || acctOut[0] || { balances: [], transactions: [], count: 0 };
+      out.push({
+        aspsp: link.aspsp_name, iban: link.iban, ok: anyAcctOk, expired: !anyAcctOk && anyExpired,
+        error: anyAcctOk ? undefined : lastErr,
+        balances: primary.balances, count: primary.count, transactions: primary.transactions,
+        accounts: acctOut,
+      });
     }
 
     const anyOk = out.some((l) => (l as { ok?: boolean }).ok);

@@ -929,7 +929,7 @@ const cloud = (function(){
     // Estado de los enlaces para pintar "conectado ✓" / caducidad (RLS: solo lo del usuario).
     async bankLinks(){
       if(!sb) return [];
-      const {data,error}=await sb.from('bank_links').select('aspsp_name,iban,status,valid_until,last_sync');
+      const {data,error}=await sb.from('bank_links').select('aspsp_name,aspsp_country,iban,status,valid_until,last_sync,accounts');
       if(error) throw error;
       return data||[];
     },
@@ -1152,6 +1152,7 @@ Object.assign(LANG.es,{
   fj_when_last:"último día laborable", fj_when_first:"primer día laborable", fj_day_n:"día {d}",
   fj_entersin:"Entra en", fj_from:"De", fj_when:"cuándo", fj_fixedday:"día fijo", fj_lastwork:"últ. laborable", fj_firstwork:"1er laborable",
   fj_income:"Ingreso", fj_transfer:"Transferencia", fj_concept_payroll:"Concepto (ej. Nómina)", fj_addmove:"Añadir movimiento",
+  fj_recurring:"Cada mes", fj_once:"Una vez", fj_month:"mes",
   fj_flows_hint:"Con esto el Sabadell se calcula solo: entra la nómina y salen las transferencias y los fijos. Pon el «día» de cada uno; los que ya han pasado este mes ya están en el saldo, así que no se vuelven a restar.",
   fj_addflow:"Añadir ingreso o transferencia",
   fj_oneoffs:"Cargos puntuales", fj_oneoffs_sub:"Imprevistos y amortizaciones (una vez)", fj_oneoffs_empty:"No hay cargos puntuales próximos. Añade uno para imprevistos o amortizaciones que ocurren una sola vez.",
@@ -1215,6 +1216,7 @@ Object.assign(LANG.en,{
   fj_when_last:"last working day", fj_when_first:"first working day", fj_day_n:"day {d}",
   fj_entersin:"Into", fj_from:"From", fj_when:"when", fj_fixedday:"fixed day", fj_lastwork:"last work.", fj_firstwork:"1st work.",
   fj_income:"Income", fj_transfer:"Transfer", fj_concept_payroll:"What (e.g. Payroll)", fj_addmove:"Add movement",
+  fj_recurring:"Monthly", fj_once:"One-off", fj_month:"month",
   fj_flows_hint:"With this, Sabadell calculates itself: payroll comes in and transfers and fixed costs go out. Set the «day» of each; those already passed this month are in the balance and aren't subtracted again.",
   fj_addflow:"Add income or transfer",
   fj_oneoffs:"One-off charges", fj_oneoffs_sub:"Unexpected costs and one-time payoffs", fj_oneoffs_empty:"No upcoming one-off charges. Add one for unexpected costs or payoffs that happen only once.",
@@ -1278,6 +1280,7 @@ Object.assign(LANG.ca,{
   fj_when_last:"últim dia laborable", fj_when_first:"primer dia laborable", fj_day_n:"dia {d}",
   fj_entersin:"Entra a", fj_from:"De", fj_when:"quan", fj_fixedday:"dia fix", fj_lastwork:"últ. laborable", fj_firstwork:"1r laborable",
   fj_income:"Ingrés", fj_transfer:"Transferència", fj_concept_payroll:"Concepte (ex. Nòmina)", fj_addmove:"Afegeix moviment",
+  fj_recurring:"Cada mes", fj_once:"Un cop", fj_month:"mes",
   fj_flows_hint:"Amb això el Sabadell es calcula sol: entra la nòmina i surten les transferències i les fixes. Posa el «dia» de cadascun; els que ja han passat aquest mes ja són al saldo, així que no es tornen a restar.",
   fj_addflow:"Afegeix ingrés o transferència",
   fj_oneoffs:"Càrrecs puntuals", fj_oneoffs_sub:"Imprevistos i amortitzacions (un cop)", fj_oneoffs_empty:"No hi ha càrrecs puntuals pròxims. Afegeix-ne un per a imprevistos o amortitzacions que passen un sol cop.",
@@ -1309,6 +1312,7 @@ Object.assign(LANG.es,{
   pj_projvalue:"Valor proyectado", pj_contrib:"Tu contribución", pj_monthly:"Contribución mensual", pj_rate:"Interés anual %", pj_years:"Años",
   pj_gain:"Ganancia estimada en {y} años", pj_hint:"Sobre lo ya invertido ({x}). La banda es ±2% sobre el interés. Estimación, no garantía.",
   pt_accounts:"Cuentas", pt_cash_avail:"Liquidez disponible", pt_monthspent:"Gasto del mes: −{x}", pt_payroll:" · nómina +{x}", pt_total_liquid:"Total líquido",
+  pt_trbreak:"Desglose del efectivo TR", pt_trbreak_sub:"De dónde sale el saldo mostrado", pt_trb_base:"Base (inicio de mes)", pt_trb_payroll:"+ nómina (si ya entró)", pt_trb_spent:"− gasto del mes", pt_trb_roundup:"− round-up del mes", pt_trb_shown:"= saldo mostrado hoy", pt_trb_movs:"Gastos de este mes ({n})", pt_trb_nomovs:"No hay gastos registrados este mes. Si el saldo baja igual, es la nómina/cierre de mes.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = compra con tarjeta (cuenta para el round-up). 🔄 = bizum/transferencia (NO cuenta). Si ves un bizum marcado 💳, cámbialo en Gastos para que no infle el round-up. Este saldo se recalcula solo: base + nómina − gastos − round-up.", pt_ob_extra:"extra",
   pt_investments:"Inversiones", pt_byBroker:"Resumen por bróker", pt_total_inv:"Total invertido", pt_goods:"Bienes", pt_nonliquid:"Activos no líquidos", pt_total_goods:"Total bienes",
   db_total:"Deuda total", db_quota:"Cuota {x}/mes", db_amort:"amortiza {x}/mes", db_amort_q:"amortiza {x}/mes (cuota {y})", db_paidoff:"Amortizado {x} ({p}%)",
   db_pending:"Pendiente", db_pending_sub:"baja solo cada mes", db_delete:"Eliminar esta deuda", db_savechanges:"Guardar cambios", db_editbalances:"Editar saldos pendientes",
@@ -1347,6 +1351,7 @@ Object.assign(LANG.en,{
   pj_projvalue:"Projected value", pj_contrib:"Your contribution", pj_monthly:"Monthly contribution", pj_rate:"Annual interest %", pj_years:"Years",
   pj_gain:"Estimated gain in {y} years", pj_hint:"On what's already invested ({x}). The band is ±2% on the rate. Estimate, not a guarantee.",
   pt_accounts:"Accounts", pt_cash_avail:"Available cash", pt_monthspent:"Spent this month: −{x}", pt_payroll:" · payroll +{x}", pt_total_liquid:"Total cash",
+  pt_trbreak:"TR cash breakdown", pt_trbreak_sub:"Where the shown balance comes from", pt_trb_base:"Base (start of month)", pt_trb_payroll:"+ payroll (if already in)", pt_trb_spent:"− spent this month", pt_trb_roundup:"− round-up this month", pt_trb_shown:"= balance shown today", pt_trb_movs:"This month's spending ({n})", pt_trb_nomovs:"No spending logged this month. If the balance still drops, it's payroll/month close.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = card purchase (counts toward round-up). 🔄 = bizum/transfer (does NOT count). If a bizum is tagged 💳, change it in Expenses so it doesn't inflate round-up. This balance recomputes itself: base + payroll − spending − round-up.", pt_ob_extra:"extra",
   pt_investments:"Investments", pt_byBroker:"By broker", pt_total_inv:"Total invested", pt_goods:"Property", pt_nonliquid:"Non-liquid assets", pt_total_goods:"Total property",
   db_total:"Total debt", db_quota:"Payment {x}/mo", db_amort:"pays off {x}/mo", db_amort_q:"pays off {x}/mo (payment {y})", db_paidoff:"Paid off {x} ({p}%)",
   db_pending:"Outstanding", db_pending_sub:"drops on its own each month", db_delete:"Delete this debt", db_savechanges:"Save changes", db_editbalances:"Edit outstanding balances",
@@ -1385,6 +1390,7 @@ Object.assign(LANG.ca,{
   pj_projvalue:"Valor projectat", pj_contrib:"La teva contribució", pj_monthly:"Contribució mensual", pj_rate:"Interès anual %", pj_years:"Anys",
   pj_gain:"Guany estimat en {y} anys", pj_hint:"Sobre el ja invertit ({x}). La banda és ±2% sobre l'interès. Estimació, no garantia.",
   pt_accounts:"Comptes", pt_cash_avail:"Liquiditat disponible", pt_monthspent:"Despesa del mes: −{x}", pt_payroll:" · nòmina +{x}", pt_total_liquid:"Total líquid",
+  pt_trbreak:"Desglossament de l'efectiu TR", pt_trbreak_sub:"D'on surt el saldo mostrat", pt_trb_base:"Base (inici de mes)", pt_trb_payroll:"+ nòmina (si ja ha entrat)", pt_trb_spent:"− despesa del mes", pt_trb_roundup:"− round-up del mes", pt_trb_shown:"= saldo mostrat avui", pt_trb_movs:"Despeses d'aquest mes ({n})", pt_trb_nomovs:"No hi ha despeses registrades aquest mes. Si el saldo baixa igualment, és la nòmina/tancament de mes.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = compra amb targeta (compta per al round-up). 🔄 = bizum/transferència (NO compta). Si veus un bizum marcat 💳, canvia'l a Despeses perquè no infli el round-up. Aquest saldo es recalcula sol: base + nòmina − despeses − round-up.", pt_ob_extra:"extra",
   pt_investments:"Inversions", pt_byBroker:"Resum per bròker", pt_total_inv:"Total invertit", pt_goods:"Béns", pt_nonliquid:"Actius no líquids", pt_total_goods:"Total béns",
   db_total:"Deute total", db_quota:"Quota {x}/mes", db_amort:"amortitza {x}/mes", db_amort_q:"amortitza {x}/mes (quota {y})", db_paidoff:"Amortitzat {x} ({p}%)",
   db_pending:"Pendent", db_pending_sub:"baixa sol cada mes", db_delete:"Elimina aquest deute", db_savechanges:"Desa els canvis", db_editbalances:"Edita saldos pendents",
@@ -1553,7 +1559,9 @@ Object.assign(LANG.es,{
   bp_pick_title:"Elige tu banco", bp_pick_sub:"Busca tu banco en la lista. Solo verás datos de las cuentas que autorices.",
   bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
   bp_need_login:"Inicia sesión para conectar tu banco", bp_syncing:"Actualizando…",
-  bp_st_active:"activo", bp_st_soon:"caduca pronto", bp_st_pending:"pendiente", bp_st_expired:"caducado",
+  bp_st_active:"activo", bp_st_soon:"caduca pronto", bp_st_pending:"pendiente", bp_st_expired:"caducado", bp_st_noacct:"sin cuentas",
+  bp_noacct_help:"Autorizaste el banco pero no llegó ninguna cuenta. En modo restringido, Enable Banking solo trae las cuentas que has dado de alta en su panel de control. Entra en el panel de Enable Banking, enlaza (whitelistea) esta cuenta y pulsa «Volver a intentar».",
+  bp_retry_link:"Volver a intentar", bp_naccts:"{n} cuentas",
   bp_foot:"Trade Republic no está en Open Banking (es un bróker): su gasto con tarjeta sigue siendo manual.",
 });
 Object.assign(LANG.en,{
@@ -1564,7 +1572,9 @@ Object.assign(LANG.en,{
   bp_pick_title:"Choose your bank", bp_pick_sub:"Find your bank in the list. You'll only see data from the accounts you authorize.",
   bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
   bp_need_login:"Sign in to connect your bank", bp_syncing:"Refreshing…",
-  bp_st_active:"active", bp_st_soon:"expires soon", bp_st_pending:"pending", bp_st_expired:"expired",
+  bp_st_active:"active", bp_st_soon:"expires soon", bp_st_pending:"pending", bp_st_expired:"expired", bp_st_noacct:"no accounts",
+  bp_noacct_help:"You authorised the bank but no account came through. In restricted mode, Enable Banking only returns accounts you've registered in its control panel. Open the Enable Banking panel, link (whitelist) this account and tap «Try again».",
+  bp_retry_link:"Try again", bp_naccts:"{n} accounts",
   bp_foot:"Trade Republic isn't in Open Banking (it's a broker): its card spending stays manual.",
 });
 Object.assign(LANG.ca,{
@@ -1575,7 +1585,9 @@ Object.assign(LANG.ca,{
   bp_pick_title:"Tria el teu banc", bp_pick_sub:"Cerca el teu banc a la llista. Només veuràs dades dels comptes que autoritzis.",
   bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
   bp_need_login:"Inicia sessió per connectar el teu banc", bp_syncing:"Actualitzant…",
-  bp_st_active:"actiu", bp_st_soon:"caduca aviat", bp_st_pending:"pendent", bp_st_expired:"caducat",
+  bp_st_active:"actiu", bp_st_soon:"caduca aviat", bp_st_pending:"pendent", bp_st_expired:"caducat", bp_st_noacct:"sense comptes",
+  bp_noacct_help:"Vas autoritzar el banc però no va arribar cap compte. En mode restringit, Enable Banking només porta els comptes que has donat d'alta al seu panell de control. Entra al panell d'Enable Banking, enllaça (whitelist) aquest compte i prem «Torna-ho a provar».",
+  bp_retry_link:"Torna-ho a provar", bp_naccts:"{n} comptes",
   bp_foot:"Trade Republic no és a Open Banking (és un bróker): la seva despesa amb targeta segueix sent manual.",
 });
 Object.assign(LANG.en,{
@@ -1894,7 +1906,7 @@ function buildEmpty(){
   return {
     fx: 0.92, budget: 0, monthStartNet: 0, history: [],
     accounts: [], investments: [], assets: [], debts: [], fixed: [], flows: [], oneoffs: [], aportaciones: [],
-    expenses: [], goals: [], shared: [], catOverrides: {}, streak: 0,
+    expenses: [], goals: [], shared: [], catOverrides: {}, obAccounts: [], streak: 0,
     settings: { autoPrices:false },
     lastSync: null, lastPriceSync: null,
     onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
@@ -1917,6 +1929,7 @@ function buildInitial(){
     expenses: DATA.variables.map(v=>({ id:v.id, date:new Date(v.date).toISOString(), merchant:v.name, amount:v.amount, category:v.cat, source:"manual" })),
     goals: [],
     shared: [],
+    obAccounts: [],
     streak: 4,
     settings: { autoPrices:false },
     lastSync: null,
@@ -2005,6 +2018,7 @@ function seedFlows(s){
   if(!s.flows) s.flows = [];
   if(!s.goals) s.goals = [];
   if(!s.shared) s.shared = [];
+  if(!s.obAccounts) s.obAccounts = [];
   if(!s.catOverrides) s.catOverrides = {};
   USER_OVERRIDES = Object.assign({}, s.catOverrides);    // overrides personales (comercio→cat) activos
   // recategoriza lo que quedó en "Otros" (gastos auto, no manuales) con las keywords/overrides mejorados
@@ -2180,6 +2194,41 @@ function MiniPie({slices}){
     return React.createElement("path",{key:i,d:"M"+cx+" "+cy+" L"+x0+" "+y0+" A"+r+" "+r+" 0 "+large+" 1 "+x1+" "+y1+" Z",fill:s.color,stroke:"#0E1A14",strokeWidth:"1.5"});
   });
   return React.createElement("svg",{width:"96",height:"96",viewBox:"0 0 96 96"},arcs,React.createElement("circle",{cx:cx,cy:cy,r:"20",fill:"#0E1A14"}));
+}
+
+/* ---- Cierre de overlays con el gesto/botón "atrás" del móvil (History API) ----
+   Sin esto, el gesto de retroceso hace history.back() y, al no haber una entrada
+   propia, SALE de la PWA. Metemos una entrada de historial por cada overlay abierto
+   y, al retroceder, cerramos SOLO el de arriba (pila LIFO), no todos a la vez. */
+var _mcBackStack=[];        // overlays abiertos, en orden de apertura
+var _mcIgnorePop=false;     // true mientras consumimos nuestra propia entrada (cierre por UI)
+var _mcBackInit=false;
+function _mcBackInitOnce(){
+  if(_mcBackInit) return; _mcBackInit=true;
+  window.addEventListener("popstate", function(){
+    if(_mcIgnorePop){ _mcIgnorePop=false; return; }   // fue nuestro history.back() de cierre por UI
+    var top=_mcBackStack.pop();
+    if(top){ top._byPop=true; top.close(); }           // cierra el overlay superior
+  });
+}
+function useBackClose(open, onClose){
+  const entry=useRef(null);
+  useEffect(function(){
+    _mcBackInitOnce();
+    if(!open) return undefined;
+    const e={ close:onClose, _byPop:false };
+    entry.current=e;
+    _mcBackStack.push(e);
+    try{ history.pushState({mcOverlay:true}, ""); }catch(err){}
+    return function(){
+      const i=_mcBackStack.indexOf(e);
+      if(i>=0) _mcBackStack.splice(i,1);
+      if(!e._byPop){                                    // cerrado por UI (botón/swipe), no por gesto atrás:
+        _mcIgnorePop=true;                              // consumimos nuestra entrada sin cerrar otro overlay
+        try{ history.back(); }catch(err){ _mcIgnorePop=false; }
+      }
+    };
+  },[open]);
 }
 
 /* lista editable genérica; valFmt recibe el item entero */
@@ -3012,8 +3061,41 @@ function Wealth({state, set, totals}){
           ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
           : React.createElement("div",{className:"rval num"},eur(a.spendFrom? spendBal(a) : a.value + pn(a)))
       )),
+      // Cuentas extra de Open Banking (compartidas, 2ª cuenta de un banco…): saldo real, solo lectura.
+      (state.obAccounts||[]).map(function(o){ return React.createElement("div",{className:"row",key:"ob_"+o.key},
+        React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:o.ent||"",size:38}),
+          React.createElement("div",null,
+            React.createElement("div",{className:"rname"}, (o.name||(o.iban?"···"+String(o.iban).slice(-4):entOf(o.ent).label)), React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_extra"))),
+            React.createElement("div",{className:"rsub"}, entOf(o.ent).label))),
+        React.createElement("div",{className:"rval num"}, eur(o.cur==="USD"? (o.value||0)*state.fx : (o.value||0)))
+      ); }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_liquid")),React.createElement("span",{className:"num"},eur(accSum)))
     ),
+    (function(){   // DESGLOSE del efectivo de TR: de dónde sale el saldo mostrado (diagnóstico de descuadres)
+      const trAcc=state.accounts.find(a=>a.spendFrom);
+      if(!trAcc) return null;
+      const monthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth()).slice().sort((a,b)=>parseDate(b.date)-parseDate(a.date));
+      const mult=trAcc.roundup||0;
+      const rowD=(lbl,val,col,strong)=> React.createElement("div",{className:"subtotal"},React.createElement("span",{className:strong?"":"muted",style:strong?{fontWeight:700}:null},lbl),React.createElement("span",{className:"num",style:Object.assign({},col?{color:col}:null,strong?{fontWeight:700}:null)},val));
+      return React.createElement(CollapsibleCard,{title:t("pt_trbreak"),sub:t("pt_trbreak_sub"),dot:"#E6C36A",storageKey:"w_trbreak",defaultOpen:false},
+        rowD(t("pt_trb_base"), eur(trAcc.value)),
+        totals.injTR?rowD(t("pt_trb_payroll"), "+"+eur(totals.injTR), "var(--mint)"):null,
+        rowD(t("pt_trb_spent"), "−"+eur(totals.thisMonthSpent), "var(--coral)"),
+        rowD(t("pt_trb_roundup"), "−"+eur(ruM), "var(--coral)"),
+        React.createElement("div",{style:{borderTop:"1px solid var(--line)",marginTop:4,paddingTop:6}}, rowD(t("pt_trb_shown"), eur(spendBal(trAcc)), null, true)),
+        React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"12px 0 4px"}}, tf("pt_trb_movs",{n:monthExp.length})),
+        monthExp.length===0
+          ? React.createElement("div",{className:"hint"}, t("pt_trb_nomovs"))
+          : monthExp.slice(0,12).map(function(e){ const card=isCardSpend(e); const ru=card&&mult>0?spareOf(e.amount)*mult:0;
+              return React.createElement("div",{className:"row",key:e.id,style:{padding:"6px 2px"}},
+                React.createElement("div",{className:"rl"},React.createElement("div",null,
+                  React.createElement("div",{className:"rname",style:{fontSize:13}}, e.merchant||e.category||"—", React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:card?"#5FD08A22":"#E2A05F22",color:card?"var(--mint)":"#E2A05F"}}, card?"💳":"🔄")),
+                  ru>0 && React.createElement("div",{className:"rsub",style:{fontSize:11}}, tf("pt_trb_ru_of",{x:eur(ru)})))),
+                React.createElement("div",{className:"rval num",style:{color:e.amount<0?"var(--mint)":null}}, (e.amount<0?"+":"−")+eur(Math.abs(e.amount))));
+            }),
+        React.createElement("div",{className:"hint",style:{marginTop:8}}, t("pt_trb_hint"))
+      );
+    })(),
     React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv"},
       ["revolut","trade_republic","myinvestor"].map(g=>{
         const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+(i.cur==="USD"?i.value*state.fx:i.value),0);
@@ -3098,7 +3180,11 @@ function flowDay(f,y,m){ if(f.when==="last") return lastWorkDom(y,m); if(f.when=
 const flowPaid=(f,y,m,today)=>{ const d=flowDay(f,y,m); return d!=null && d<=today; };
 // Movimientos recurrentes (nómina/transferencias): por defecto cada mes salvo que tengan months
 const flowMonths=(f)=> (f&&f.months&&f.months.length)?f.months:[1,2,3,4,5,6,7,8,9,10,11,12];
-const flowOccursIn=(f,m)=> flowMonths(f).indexOf(m)>=0;
+// Un flow puntual (f.once={y,m}) solo ocurre en ese mes/año concreto (como un cargo puntual);
+// el resto son recurrentes (mensuales por defecto). Si f.once existe, el año importa.
+const flowOccursIn=(f,m,y)=> f && f.once ? (f.once.y===y && f.once.m===m) : (flowMonths(f).indexOf(m)>=0);
+// ¿este flow puntual ya pasó (mes/año cerrado)? para ocultarlo de la lista una vez cumplido
+const flowOncePast=(f,y,m)=> f && f.once && (f.once.y<y || (f.once.y===y && f.once.m<m));
 // Cargos puntuales (un solo cobro en un mes/año concreto): imprevistos, amortizaciones…
 const oneoffOccurs=(o,y,m)=> o && o.year===y && o.month===m;
 const oneoffPast=(o,y,m)=> o && (o.year<y || (o.year===y && o.month<m));   // de un mes ya cerrado
@@ -3135,7 +3221,7 @@ function monthNetForAccount(s, ent, y, m, todayLim){
   (s.fixed||[]).forEach(function(e){ if((e.account||"sabadell")===ent && occursIn(e,m) && hit(dayIn(e,m))) net -= occAmountIn(e,m); });
   (s.debts||[]).forEach(function(d){ if(debtActive(d) && (d.account||"sabadell")===ent && hit(dayOf(d))) net -= (d.monthly||0) + debtBalloonIn(d,y,m); });
   (s.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,y,m) && (o.account||"sabadell")===ent && (o.amount||0)!==0 && hit(o.day!=null?o.day:null)) net -= o.amount; });
-  (s.flows||[]).forEach(function(f){ if(flowOccursIn(f,m)){ const dd=flowDay(f,y,m); if(hit(dd)){ if(f.kind==="income" && (f.to||"sabadell")===ent) net += (f.amount||0); else if(f.kind==="transfer" && (f.from||"sabadell")===ent) net -= (f.amount||0); } } });
+  (s.flows||[]).forEach(function(f){ if(flowOccursIn(f,m,y)){ const dd=flowDay(f,y,m); if(hit(dd)){ if(f.kind==="income" && (f.to||"sabadell")===ent) net += (f.amount||0); else if(f.kind==="transfer" && (f.from||"sabadell")===ent) net -= (f.amount||0); } } });
   return net;
 }
 
@@ -3163,31 +3249,60 @@ function pickBankBalance(balances){
   }
   return Number(balances[0].amount);
 }
-// Re-ancla la base de cada cuenta enlazada con su saldo real del banco.
-// IGUAL que editar el saldo a mano: value = saldoBanco − movimientosYaOcurridosEsteMes,
-// para que dynBal (= value + paidNet) muestre HOY el saldo real y la proyección a fin de mes
-// siga encima. NO toca la cuenta de gasto (spendFrom / Trade Republic, fuera de Open Banking).
-// Función PURA: devuelve {state, changed, synced:[{ent,bal}]}.
+// Construye una "cuenta extra" (obAccount) = saldo puro de una cuenta secundaria del banco
+// (p.ej. Revolut compartida). NO participa en el motor de cash-flow; solo suma al patrimonio.
+function mkObAcct(lk, ac, bal){
+  const cur=(ac.currency || (ac.balances&&ac.balances[0]&&ac.balances[0].currency) || "EUR");
+  return { key:String(ac.uid||ac.iban||(lk&&lk.aspsp)), ent:entFromAspsp(lk&&lk.aspsp), iban:ac.iban||null, name:ac.name||null, value:+Number(bal).toFixed(2), cur:cur, aspsp:(lk&&lk.aspsp)||null };
+}
+// MULTI-CUENTA: aplica los saldos reales de TODAS las cuentas de los bancos enlazados.
+// · La cuenta PRIMARIA de cada banco (la que ya tienes creada en la app) se RE-ANCLA igual que
+//   editar a mano: value = saldoBanco − movimientosYaOcurridosEsteMes, para que dynBal muestre
+//   HOY el saldo real y la proyección a fin de mes siga encima.
+// · Las cuentas EXTRA (2ª, 3ª… de cualquier banco, o todas las de un banco sin cuenta manual)
+//   van a state.obAccounts como SALDOS PUROS que suman al patrimonio, SIN tocar el motor
+//   (cero riesgo de doble conteo con fijos/flows/round-up).
+// · La cuenta de gasto (spendFrom / Trade Republic) NUNCA la toca el banco (fuera de Open Banking).
+// Función PURA: {state, changed, synced:[{ent,bal}], obAccounts:[]}.
 function applyBankBalances(s, links){
-  if(!s || !Array.isArray(links) || !links.length) return { state:s, changed:false, synced:[] };
+  if(!s || !Array.isArray(links) || !links.length) return { state:s, changed:false, synced:[], obAccounts:(s&&s.obAccounts)||[] };
   const now=new Date(), cy=now.getFullYear(), cm=now.getMonth()+1, td=now.getDate();
   const accounts=(s.accounts||[]).slice();
-  let changed=false; const synced=[];
+  let changed=false; const synced=[]; const obAccts=[]; const usedPrimary={};
   links.forEach(function(lk){
+    if(lk && lk.ok===false) return;   // banco que falló este sync: no toques nada suyo
     const ent=entFromAspsp(lk && lk.aspsp);
-    const bal=pickBankBalance(lk && lk.balances);
-    if(ent==null || bal==null) return;
-    const idx=accounts.findIndex(function(a){ return a.ent===ent && !a.spendFrom; });
-    if(idx<0) return;
-    const a=accounts[idx];
-    const newBase=+((bal - monthNetForAccount(s, ent, cy, cm, td)).toFixed(2));
-    synced.push({ ent:ent, bal:bal, iban:lk.iban||null });
-    if(Math.abs((a.value||0)-newBase) > 0.005){
-      accounts[idx]=Object.assign({}, a, { value:newBase, bankIban:lk.iban||a.bankIban });
-      changed=true;
+    // cuentas del banco: shape nuevo (lk.accounts) o antiguo (una sola, de lk.balances)
+    const accs=(Array.isArray(lk.accounts)&&lk.accounts.length)
+      ? lk.accounts.filter(function(a){ return a && a.ok!==false; })
+      : [{ uid:lk.iban||lk.aspsp, iban:lk.iban||null, name:null, balances:(lk&&lk.balances) }];
+    if(ent==null){   // banco SIN cuenta manual en la app → TODAS sus cuentas van a obAccounts
+      accs.forEach(function(ac){ const bal=pickBankBalance(ac.balances); if(bal!=null) obAccts.push(mkObAcct(lk,ac,bal)); });
+      return;
     }
+    // hay ent conocido: localiza la cuenta MANUAL (no spendFrom, no usada aún) para re-anclarla
+    const pidx=accounts.findIndex(function(a,i){ return a.ent===ent && !a.spendFrom && !usedPrimary[i]; });
+    let primaryAc=null;
+    if(pidx>=0){ const manIban=accounts[pidx].bankIban; primaryAc=(manIban && accs.find(function(a){ return a.iban && a.iban===manIban; })) || accs[0]; usedPrimary[pidx]=true; }
+    accs.forEach(function(ac){
+      const bal=pickBankBalance(ac.balances); if(bal==null) return;
+      if(pidx>=0 && ac===primaryAc){
+        const a=accounts[pidx];
+        const newBase=+((bal - monthNetForAccount(s, ent, cy, cm, td)).toFixed(2));
+        synced.push({ ent:ent, bal:bal, iban:ac.iban||null });
+        if(Math.abs((a.value||0)-newBase)>0.005 || (ac.iban && a.bankIban!==ac.iban)){
+          accounts[pidx]=Object.assign({}, a, { value:newBase, bankIban:ac.iban||a.bankIban });
+          changed=true;
+        }
+      } else {
+        obAccts.push(mkObAcct(lk,ac,bal));
+        synced.push({ ent:ent, bal:bal, iban:ac.iban||null });
+      }
+    });
   });
-  return { state: changed ? Object.assign({},s,{accounts:accounts}) : s, changed:changed, synced:synced };
+  const obChanged=JSON.stringify(s.obAccounts||[])!==JSON.stringify(obAccts);
+  const newState=(changed||obChanged) ? Object.assign({},s,{accounts:accounts, obAccounts:obAccts}) : s;
+  return { state:newState, changed:changed||obChanged, synced:synced, obAccounts:obAccts };
 }
 
 // Eventos PENDIENTES de un banco este mes (cargos −, ingresos +) con su día.
@@ -3198,7 +3313,7 @@ function bankPendingEvents(state, bank, y, m, today){
   (state.fixed||[]).forEach(function(e){ if(occursIn(e,m)&&accOf(e)===bank&&!isPaidIn(e,m,today)) evs.push({day:dayIn(e,m)||0, amt:-occAmountIn(e,m)}); });
   (state.debts||[]).forEach(function(d){ if(debtActive(d)&&(d.account||"sabadell")===bank&&!isPaidThisMonth(d,today)){ evs.push({day:d.day||0, amt:-(d.monthly||0)}); const bl=debtBalloonIn(d,y,m); if(bl>0) evs.push({day:d.day||0, amt:-bl}); } });
   (state.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,y,m)&&(o.account||"sabadell")===bank&&(o.amount||0)!==0&&!isPaidThisMonth(o,today)) evs.push({day:o.day||0, amt:-o.amount}); });
-  (state.flows||[]).forEach(function(f){ if(!flowOccursIn(f,m)||flowPaid(f,y,m,today))return; const dd=flowDay(f,y,m); if(f.kind==="income"&&(f.to||"sabadell")===bank) evs.push({day:dd||99, amt:f.amount}); else if(f.kind==="transfer"&&(f.from||"sabadell")===bank) evs.push({day:dd||0, amt:-f.amount}); });
+  (state.flows||[]).forEach(function(f){ if(!flowOccursIn(f,m,y)||flowPaid(f,y,m,today))return; const dd=flowDay(f,y,m); if(f.kind==="income"&&(f.to||"sabadell")===bank) evs.push({day:dd||99, amt:f.amount}); else if(f.kind==="transfer"&&(f.from||"sabadell")===bank) evs.push({day:dd||0, amt:-f.amount}); });
   return evs;
 }
 // Recorre los eventos por día desde un saldo inicial y devuelve el punto MÍNIMO (peor momento) y el final.
@@ -3290,7 +3405,7 @@ function reconcileBank(state, y, m, today){
   // así que solo confirmamos su presencia (no las marcamos "no cuadra").
   const usedCredit={};
   (state.flows||[]).forEach(function(f){
-    if(!flowOccursIn(f,m)) return;
+    if(!flowOccursIn(f,m,y)) return;
     if(f.kind==="transfer"){
       const ent=f.from||"sabadell"; if(!obEnts[ent]) return; const amt=f.amount||0; let best=null;
       debits.forEach(function(d){ if(d._used||d.ent!==ent) return; if(recNameMatch(f.name,d.merchant)||recAmtClose(amt,d.amount)){ if(!best||Math.abs(amt-d.amount)<Math.abs(amt-best.amount)) best=d; } });
@@ -3531,7 +3646,7 @@ function Fijos({state, set, totals}){
   const [editingF,setEditingF]=useState(false);
   const [draftF,setDraftF]=useState({});
   const [addingF,setAddingF]=useState(false);
-  const [formF,setFormF]=useState({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"});
+  const [formF,setFormF]=useState({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell",once:false,month:new Date().getMonth()+1,year:new Date().getFullYear()});
   const fAmt=(f)=> draftF[f.id]!=null?draftF[f.id]:f.amount;
   const fDay=(f)=> draftF["dy_"+f.id]!=null?draftF["dy_"+f.id]:(f.day||"");
   const fWhen=(f)=> draftF["wh_"+f.id]!=null?draftF["wh_"+f.id]:(f.when||"");
@@ -3540,7 +3655,7 @@ function Fijos({state, set, totals}){
   const startEditF=()=>{ const d={}; flows.forEach(f=>{ d[f.id]=f.amount; d["dy_"+f.id]=f.day||""; d["wh_"+f.id]=f.when||""; d["to_"+f.id]=f.to||"sabadell"; d["fr_"+f.id]=f.from||"sabadell"; }); setDraftF(d); setEditingF(true); };
   const saveEditF=()=>{ set(s=>Object.assign({},s,{flows:(s.flows||[]).map(f=>{ const wh=fWhen(f); const o=Object.assign({},f,{amount:parseFloat(String(fAmt(f)).replace(',','.'))||0}); if(wh){ o.when=wh; delete o.day; } else { o.when=undefined; delete o.when; o.day=cleanDay(fDay(f)); } if(f.kind==="income"){ o.to=fTo(f); delete o.from; } else { o.from=fFrom(f); o.to=fTo(f); } return o; })})); setEditingF(false); };
   const delFlow=(id)=> set(s=>Object.assign({},s,{flows:(s.flows||[]).filter(f=>f.id!==id)}));
-  const addFlow=()=>{ const amt=parseFloat(String(formF.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),kind:formF.kind,name:formF.name||(formF.kind==="income"?"Ingreso":"Transferencia"),amount:amt}; if(formF.when){ it.when=formF.when; } else { const dd=cleanDay(formF.day); if(dd) it.day=dd; } if(formF.kind==="income"){ it.to=formF.to||"sabadell"; } else { it.from=formF.from||"sabadell"; it.to=formF.to||"trade_republic"; } set(s=>Object.assign({},s,{flows:(s.flows||[]).concat([it])})); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"}); setAddingF(false); };
+  const addFlow=()=>{ const amt=parseFloat(String(formF.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),kind:formF.kind,name:formF.name||(formF.kind==="income"?"Ingreso":"Transferencia"),amount:amt}; if(formF.when){ it.when=formF.when; } else { const dd=cleanDay(formF.day); if(dd) it.day=dd; } if(formF.kind==="income"){ it.to=formF.to||"sabadell"; } else { it.from=formF.from||"sabadell"; it.to=formF.to||"trade_republic"; } if(formF.once){ it.once={y:parseInt(formF.year,10)||new Date().getFullYear(), m:parseInt(formF.month,10)||(new Date().getMonth()+1)}; } set(s=>Object.assign({},s,{flows:(s.flows||[]).concat([it])})); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell",once:false,month:new Date().getMonth()+1,year:new Date().getFullYear()}); setAddingF(false); };
   const whenLabel=(f)=> f.when==="last"?t("fj_when_last"):f.when==="first"?t("fj_when_first"):(f.day?tf("fj_day_n",{d:f.day}):null);
 
   // --- cargos puntuales (un solo cobro): imprevistos, amortizaciones… ---
@@ -3567,7 +3682,7 @@ function Fijos({state, set, totals}){
     return items; };
   const byDay=(a,b)=> ((a.day||99)-(b.day||99)) || (b.amount-a.amount);   // por DÍA; sin día, al final
   // flujos de efectivo del mes (nómina + transferencias): se mezclan con el resto, ordenados por día
-  const flowsOf=(mo,yr)=> (state.flows||[]).filter(f=>flowOccursIn(f,mo)).map(f=>({
+  const flowsOf=(mo,yr)=> (state.flows||[]).filter(f=>flowOccursIn(f,mo,yr)).map(f=>({
     key:f.id, name:f.name, flow:true, kind:f.kind,
     amount: f.kind==="income" ? -(f.amount||0) : (f.amount||0),   // ingreso = entra (verde +) · transfer = sale
     bank: f.kind==="income" ? (f.to||"sabadell") : (f.from||"sabadell"),
@@ -3767,14 +3882,14 @@ function Fijos({state, set, totals}){
     ),
     React.createElement(CollapsibleCard,{title:t("fj_flows"),sub:t("fj_flows_sub"),dot:"#5FD08A",storageKey:"f_flows",defaultOpen:false,
       right:React.createElement("button",{className:"edit-link"+(editingF?" save":""),onClick:e=>{e.stopPropagation(); editingF?saveEditF():startEditF();}},editingF?t("fj_save"):t("fj_edit"))},
-      flows.map(f=>{
+      flows.filter(f=>!flowOncePast(f,cy,cm)).map(f=>{
         const inc=f.kind==="income";
         const sub=inc ? tf("fj_inc_to",{bank:entOf(f.to||"sabadell").label}) : tf("fj_tr_fromto",{from:entOf(f.from||"sabadell").label,to:entOf(f.to||"trade_republic").label});
         const row=React.createElement("div",{className:"row",key:f.id},
           React.createElement("div",{className:"rl"},
             editingF && React.createElement("button",{className:"del-btn",onClick:()=>delFlow(f.id)},"✕"),
             React.createElement("div",null,
-              React.createElement("div",{className:"rname"}, f.name, whenLabel(f) && React.createElement("span",{className:"day-badge"},whenLabel(f))),
+              React.createElement("div",{className:"rname"}, f.name, whenLabel(f) && React.createElement("span",{className:"day-badge"},whenLabel(f)), f.once && React.createElement("span",{className:"day-badge",style:{background:"#E2A05F22",color:"#E2A05F",marginLeft:4}}, "📅 "+monthShort(f.once.m-1)+" "+f.once.y)),
               React.createElement("div",{className:"rsub"}, sub))),
           editingF
             ? React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6}},
@@ -3808,6 +3923,16 @@ function Fijos({state, set, totals}){
               React.createElement("button",{className:"btn "+(formF.kind==="income"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"income",to:"sabadell"}))},t("fj_income")),
               React.createElement("button",{className:"btn "+(formF.kind==="transfer"?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{kind:"transfer",from:"sabadell",to:(banks.filter(b=>b!=="sabadell")[0]||"trade_republic")}))},t("fj_transfer"))
             ),
+            React.createElement("div",{className:"af-row"},
+              React.createElement("button",{className:"btn "+(!formF.once?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{once:false}))},"🔁 "+t("fj_recurring")),
+              React.createElement("button",{className:"btn "+(formF.once?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setFormF(Object.assign({},formF,{once:true}))},"📅 "+t("fj_once"))
+            ),
+            formF.once && React.createElement("div",{className:"edit-extra"},
+              React.createElement("span",{className:"rsub"}, t("fj_month")),
+              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formF.month,onChange:e=>setFormF(Object.assign({},formF,{month:e.target.value}))}, MONTHS_ES.map((lbl,i)=>React.createElement("option",{key:i+1,value:i+1},monthShort(i)))),
+              React.createElement("span",{className:"rsub",style:{marginLeft:4}}, t("fj_year_lbl")),
+              React.createElement("input",{className:"af-in num",style:{width:74,padding:"8px 10px"},inputMode:"numeric",value:formF.year,onChange:e=>setFormF(Object.assign({},formF,{year:e.target.value}))})
+            ),
             React.createElement("input",{className:"af-in",placeholder:t("fj_concept_payroll"),value:formF.name,onChange:e=>setFormF(Object.assign({},formF,{name:e.target.value}))}),
             React.createElement("div",{className:"af-row"},
               React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:formF.amount,onChange:e=>setFormF(Object.assign({},formF,{amount:e.target.value}))}),
@@ -3824,7 +3949,7 @@ function Fijos({state, set, totals}){
               formF.kind==="transfer" && React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formF.to,onChange:e=>setFormF(Object.assign({},formF,{to:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
             ),
             React.createElement("div",{className:"af-row"},
-              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingF(false); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell"});}},t("fj_cancel")),
+              React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingF(false); setFormF({kind:"income",name:"",amount:"",day:"",when:"",to:"sabadell",from:"sabadell",once:false,month:new Date().getMonth()+1,year:new Date().getFullYear()});}},t("fj_cancel")),
               React.createElement("button",{className:"btn btn-primary",style:{flex:2},onClick:addFlow},t("fj_addmove"))
             )
           )
@@ -4291,6 +4416,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
   const [q,setQ]=useState("");
   const [busy,setBusy]=useState("");              // aspsp en curso / "__sync"
   const [picking,setPicking]=useState(false);
+  useBackClose(picking, function(){ setPicking(false); setQ(""); });   // gesto atrás: sale del picker, no de la app
   const loadLinks=function(){ if(!cloud.enabled()){ setLinks([]); return; } cloud.bankLinks().then(function(rows){ setLinks(rows||[]); if((rows||[]).some(function(r){return r.status==='active'||r.status==='pending';})) set(function(s){ return s.hasBankLink?s:Object.assign({},s,{hasBankLink:true}); }); }).catch(function(){ setLinks([]); }); };
   useEffect(loadLinks,[uid]);
   const loadAspsps=function(){ if(aspsps!==null||loadingA) return; setLoadingA(true); cloud.bankAspsps("ES").then(function(rows){ setAspsps(rows||[]); }).catch(function(e){ setAspsps([]); showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setLoadingA(false); }); };
@@ -4357,20 +4483,23 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
+      const noAcct = l.status==='error';   // autorizó pero volvió sin cuentas dadas de alta (modo restringido)
       const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
+               : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
                : pill(t("bp_st_expired"),"var(--coral)");
       return React.createElement("div",{key:l.aspsp_name},
         React.createElement("div",{style:card},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("div",{style:{fontWeight:800}}, bankLabel(l.aspsp_name)),
+            React.createElement("div",{style:{fontWeight:800}}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--blue)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
             React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:2}}, l.last_sync?tf("bank_updated",{x:fmtDT(l.last_sync)}):t("bank_neversync")),
             l.valid_until?React.createElement("div",{style:{fontSize:11,color:soon?"var(--coral)":"var(--muted-2)",marginTop:1}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
           sp),
+        noAcct && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",background:"#E2A05F14",border:"1px solid #E2A05F44",borderRadius:12,padding:"9px 12px",margin:"-2px 0 12px"}}, "⚠ "+t("bp_noacct_help")),
         React.createElement("div",{style:{display:"flex",gap:8,margin:"-4px 0 14px"}},
           React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:refresh}, busy==="__sync"?t("bp_syncing"):t("bank_refresh")),
-          React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ connect(l.aspsp_name, l.aspsp_country||"ES"); }}, t("bank_reconnect")))
+          React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ connect(l.aspsp_name, l.aspsp_country||"ES"); }}, noAcct?t("bp_retry_link"):t("bank_reconnect")))
       );
     }),
     React.createElement("button",{style:bigBtn,onClick:openPicker}, "+ "+t("bp_add")),
@@ -4386,6 +4515,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync}){
   const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno (resumen)
   const [bankBusy,setBankBusy]=useState(false);
   const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
+  useBackClose(manageBanks, function(){ setManageBanks(false); });   // gesto atrás: cierra "Mis bancos"
   useEffect(function(){
     if(!cloud.enabled()){ setBankLinks([]); return; }
     cloud.bankLinks().then(function(rows){
@@ -4888,6 +5018,7 @@ function App(){
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
   const [drawerOpen,setDrawerOpen]=useState(false);
+  useBackClose(drawerOpen, function(){ setDrawerOpen(false); });   // gesto atrás: cierra Ajustes en vez de salir de la app
   const [locked,setLocked]=useState(function(){ return bio.enabled(); });
 
   // Estado de conexión: la app es offline-first (todo en localStorage); esto solo informa y, al
@@ -4964,7 +5095,9 @@ function App(){
     state.accounts.forEach(function(a){ if(!a.spendFrom) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
     // el round-up del mes en curso ya salió del efectivo de gasto (TR) hacia la inversión (en tránsito)
     const dynBal=function(a){ return a.spendFrom ? (a.value+injTR-thisMonthSpent-roundupThisMonth) : ((a.value||0)+(paidNetByBank[a.ent]||0)); };
-    const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0);
+    // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
+    const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + (o.cur==="USD"? (o.value||0)*fx : (o.value||0)), 0);
+    const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0) + obLiquid;
     const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0) + roundupThisMonth + savebackThisMonth;
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
@@ -4997,7 +5130,7 @@ function App(){
     const incomeInByBank={}, transferOutByBank={};
     let pendingIncome=0, pendingTransferOut=0;
     (state.flows||[]).forEach(f=>{
-      if(!flowOccursIn(f,curMonth) || flowPaid(f,curYear,curMonth,today)) return;
+      if(!flowOccursIn(f,curMonth,curYear) || flowPaid(f,curYear,curMonth,today)) return;
       const amt=f.amount||0;
       if(f.kind==="income"){ const b=f.to||"sabadell"; incomeInByBank[b]=(incomeInByBank[b]||0)+amt; pendingIncome+=amt; }
       else if(f.kind==="transfer"){ const b=f.from||"sabadell"; transferOutByBank[b]=(transferOutByBank[b]||0)+amt; pendingTransferOut+=amt; }
@@ -5015,7 +5148,7 @@ function App(){
     state.fixed.forEach(e=>{ if(occursIn(e,curMonth)&&!isPaidIn(e,curMonth,today)) pushEv(accOf(e), dayIn(e,curMonth)||0, -occAmountIn(e,curMonth)); });
     state.debts.forEach(d=>{ if(debtActive(d)&&!isPaidThisMonth(d,today)){ pushEv(d.account||"sabadell", d.day||0, -d.monthly); const bl=debtBalloonIn(d,curYear,curMonth); if(bl>0) pushEv(d.account||"sabadell", d.day||0, -bl); } });
     (state.oneoffs||[]).forEach(o=>{ if(oneoffOccurs(o,curYear,curMonth)&&(o.amount||0)!==0&&!isPaidThisMonth(o,today)) pushEv(o.account||"sabadell", o.day||0, -o.amount); });
-    (state.flows||[]).forEach(f=>{ if(!flowOccursIn(f,curMonth)||flowPaid(f,curYear,curMonth,today))return; const dd=flowDay(f,curYear,curMonth); if(f.kind==="income") pushEv(f.to||"sabadell", dd||99, f.amount); else if(f.kind==="transfer") pushEv(f.from||"sabadell", dd||0, -f.amount); });
+    (state.flows||[]).forEach(f=>{ if(!flowOccursIn(f,curMonth,curYear)||flowPaid(f,curYear,curMonth,today))return; const dd=flowDay(f,curYear,curMonth); if(f.kind==="income") pushEv(f.to||"sabadell", dd||99, f.amount); else if(f.kind==="transfer") pushEv(f.from||"sabadell", dd||0, -f.amount); });
     const minByBank={}, minDayByBank={};
     Object.keys(allBanks).forEach(b=>{ const evs=(evsByBank[b]||[]).slice().sort((x,y)=>x.day-y.day); let run=bankBal[b]||0, mn=run, md=0; evs.forEach(ev=>{ run+=ev.amt; if(run<mn-0.005){ mn=run; md=ev.day; } }); minByBank[b]=mn; minDayByBank[b]=md; });
     // foco en el banco principal de gastos fijos (Sabadell)

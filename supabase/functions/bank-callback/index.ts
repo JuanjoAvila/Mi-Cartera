@@ -45,24 +45,38 @@ Deno.serve(async (req) => {
     const ibanOf = (a: any): string | null =>
       (typeof a === "string" ? null : (a?.account_id?.iban || a?.iban || null)) || null;
     // deno-lint-ignore no-explicit-any
+    const nameOf = (a: any): string | null =>
+      (typeof a === "string" ? null : (a?.name || a?.product || a?.details || a?.cash_account_type || null)) || null;
+    // deno-lint-ignore no-explicit-any
+    const currOf = (a: any): string | null =>
+      (typeof a === "string" ? null : (a?.currency || a?.account_id?.currency || null)) || null;
+    // deno-lint-ignore no-explicit-any
     const collect = (o: any): any[] => {
       const a = Array.isArray(o?.accounts) ? o.accounts : [];
       const d = Array.isArray(o?.accounts_data) ? o.accounts_data : [];
       return a.concat(d);
     };
+    // MULTI-CUENTA: junta TODAS las cuentas con uid (no solo la primera), deduplicadas por uid.
+    // deno-lint-ignore no-explicit-any
+    const buildAccts = (list: any[]): { uid: string; iban: string | null; name: string | null; currency: string | null }[] => {
+      const seen: Record<string, boolean> = {};
+      const out: { uid: string; iban: string | null; name: string | null; currency: string | null }[] = [];
+      for (const a of list) { const u = uidOf(a); if (!u || seen[u]) continue; seen[u] = true; out.push({ uid: u, iban: ibanOf(a), name: nameOf(a), currency: currOf(a) }); }
+      return out;
+    };
 
-    let acc = collect(session).find((a) => uidOf(a)) || null;
-    // Fallback: el POST no trajo cuenta usable pero sí hay session_id → pídelas con GET.
+    let accts = buildAccts(collect(session));
+    // Fallback: el POST no trajo cuentas usables pero sí hay session_id → pídelas con GET.
     // Algunos bancos (p.ej. Revolut) rellenan las cuentas con un pequeño retardo tras autorizar,
     // así que reintentamos el GET un par de veces con espera. Guardamos el resultado para el diagnóstico.
     let getDiag = "skip";
-    if (!acc && sessionId) {
+    if (!accts.length && sessionId) {
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-      for (let attempt = 0; attempt < 3 && !acc; attempt++) {
+      for (let attempt = 0; attempt < 3 && !accts.length; attempt++) {
         if (attempt > 0) await sleep(1200);
         try {
           const full = await ebApi(jwt, `/sessions/${sessionId}`);
-          acc = collect(full).find((a) => uidOf(a)) || null;
+          accts = buildAccts(collect(full));
           const ga = Array.isArray(full?.accounts) ? full.accounts.length : -1;
           const gd = Array.isArray(full?.accounts_data) ? full.accounts_data.length : -1;
           getDiag = `a${ga}/d${gd}@${attempt}`;
@@ -72,13 +86,14 @@ Deno.serve(async (req) => {
         }
       }
     }
-    const uid = uidOf(acc);
-    const iban = ibanOf(acc);
+    const uid = accts.length ? accts[0].uid : null;   // primera cuenta = "primaria" (retrocompat)
+    const iban = accts.length ? accts[0].iban : null;
 
     await admin.from("bank_links").update({
       session_id: sessionId,
       account_uid: uid,
       iban,
+      accounts: accts,
       status: uid ? "active" : "error",
       last_sync: null,
       updated_at: new Date().toISOString(),
