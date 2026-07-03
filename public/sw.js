@@ -1,7 +1,17 @@
-// Mi Cartera — service worker (network-first para que SIEMPRE cargue la última versión)
+// Mi Cartera — service worker
+// STALE-WHILE-REVALIDATE: sirve desde caché AL INSTANTE (arranque inmediato incluso con
+// red lenta o sin conexión) y a la vez descarga la versión fresca en segundo plano.
+// La versión nueva queda cacheada y se ve en el SIGUIENTE arranque — mismo comportamiento
+// de actualización que antes (sin recargas a media sesión), pero sin esperar a la red.
 const VERSION = "3.2.0-2026-06-18-038814";
 const CACHE = "micartera-" + VERSION;
-const SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
+const SHELL = [
+  "./", "./index.html", "./manifest.json",
+  "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png",
+  "./vendor/supabase.min.js",
+  "./fonts/manrope-latin.woff2", "./fonts/manrope-latin-ext.woff2",
+  "./fonts/fraunces-latin.woff2", "./fonts/fraunces-latin-ext.woff2",
+];
 
 self.addEventListener("install", (e) => {
   // Precachea el shell pero NO hace skipWaiting: el SW nuevo espera al siguiente
@@ -21,15 +31,17 @@ self.addEventListener("message", (e) => { if (e.data === "skipWaiting") self.ski
 
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
-  if (url.hostname.indexOf("script.google.com") !== -1) return;       // datos siempre frescos
-  if (e.request.method !== "GET" || url.origin !== location.origin) return;
-  // NETWORK-FIRST: red primero, cae a caché solo sin conexión
+  if (e.request.method !== "GET" || url.origin !== location.origin) return;  // API/nube: siempre red
   e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
-        return res;
-      })
-      .catch(() => caches.match(e.request).then((cached) => cached || caches.match("./index.html")))
+    caches.match(e.request).then((cached) => {
+      const fresh = fetch(e.request)
+        .then((res) => {
+          if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)); }
+          return res;
+        })
+        .catch(() => cached || caches.match("./index.html"));
+      // Con caché: respuesta instantánea (la red actualiza por detrás). Sin caché: espera la red.
+      return cached || fresh;
+    })
   );
 });

@@ -31,6 +31,13 @@ jobs:
       - name: Sellar versión del Service Worker
         run: node scripts/stamp-version.mjs
 
+      # Minifica los <script>/<style> inline de public/index.html (solo whitespace+syntax,
+      # sin renombrar símbolos). La fuente editable sigue siendo el index.html del repo.
+      - name: Minificar index.html
+        run: |
+          npm install --no-save --no-audit --no-fund esbuild@0.25.5
+          node scripts/minify-html.mjs
+
       - name: Configurar Pages
         uses: actions/configure-pages@v5
 
