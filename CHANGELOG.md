@@ -19,6 +19,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.74.0] — 2026-07-03
+### Botón «Nueva versión» + plan de ahorro TR (los 50 €/mes al FTSE cuadran solos)
+- ✨ **Aviso de actualización con botón:** cuando hay una versión nueva esperando, aparece un pill verde arriba «✨ Nueva versión · toca para actualizar»; al tocarlo se activa y recarga al momento (tú decides cuándo). Si no lo tocas, entra sola en el siguiente arranque, como siempre. Blindado para que la PRIMERA instalación del SW no recargue sola (guard `_mcUserInitiated`; el viejo bug de v3.20 no vuelve).
+- 💶 **Aporte periódico a inversión (plan de ahorro TR):** nuevo campo «Aporte periódico» en la tarjeta Round-up & Saveback (Inversiones). Los 50 €/mes que van del efectivo de TR al FTSE ahora **se descuentan solos del efectivo** (en vivo, con su línea en el Desglose del efectivo TR) y al cerrar el mes **compran participaciones** en la inversión destino (mismo mecanismo probado del round-up: valores absolutos, sin doble conteo, patrimonio total intacto). Sembrado con tus 50 € → FTSE All-World.
+- ✅ Verificado: cierre de mes 6000 +1500 nómina −50 aporte = 7450 en TR y el FTSE sube exactamente +50 € en coste y participaciones.
+
 ## [3.73.0] — 2026-07-03
 ### UX para no-técnicos (padres): tour guiado + modo Sencillo de verdad + ayudas «?»
 - 🎓 **Tour de bienvenida (coach-marks):** la primera vez tras el onboarding, la app señala con un foco los sitios clave (tu dinero, Gastos, Fijos, Ajustes, la nube) con una frase llana por paso. Saltable, y relanzable cuando quieras desde **Ajustes → 🎓 Ver el tutorial**. Los usuarios existentes no lo ven de golpe (solo bajo demanda).

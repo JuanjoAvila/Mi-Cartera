@@ -758,6 +758,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + var(--safe-bottom));background:var(--surface-2);border:1px solid var(--line);color:var(--text);padding:11px 18px;border-radius:14px;font-size:13px;font-weight:600;z-index:200;box-shadow:var(--shadow);animation:toastin .3s ease;}
   .offline-pill{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-top) + 8px);background:rgba(226,160,95,.16);border:1px solid rgba(226,160,95,.5);color:#E2A05F;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;z-index:210;white-space:nowrap;box-shadow:var(--shadow);}
+  .update-pill{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-top) + 8px);background:linear-gradient(160deg,var(--mint-bright),var(--mint));color:#08120C;padding:9px 18px;border-radius:20px;font-size:12.5px;font-weight:800;z-index:215;white-space:nowrap;box-shadow:0 8px 22px -8px rgba(95,208,138,.7);border:none;cursor:pointer;animation:updin .35s ease;}
+  .update-pill:active{transform:translateX(-50%) translateY(1px);}
+  @keyframes updin{from{opacity:0;transform:translate(-50%,-10px);}to{opacity:1;transform:translate(-50%,0);}}
   /* Cajón de Ajustes: página oculta a la IZQUIERDA del Resumen (estilo Revolut) */
   .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:55;}
   .drawer-backdrop.open{opacity:1;pointer-events:auto;}
@@ -1085,6 +1088,7 @@ const LANG = {
     do_export:"⬇️ Exportar datos (JSON)", do_import:"⬆️ Importar datos (JSON)",
     eb_title:"Algo se ha torcido", eb_msg:"La app ha tenido un error al dibujar. Tus datos están a salvo. Descarga una copia por si acaso y recarga.", eb_export:"⬇️ Descargar copia de seguridad", eb_reload:"🔄 Recargar la app",
     off_pill:"📴 Sin conexión · se guarda y sincroniza al volver",
+    upd_ready:"✨ Nueva versión · toca para actualizar",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
     ob_intro:"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas.",
@@ -1105,6 +1109,7 @@ const LANG = {
     do_export:"⬇️ Export data (JSON)", do_import:"⬆️ Import data (JSON)",
     eb_title:"Something went wrong", eb_msg:"The app hit a rendering error. Your data is safe. Download a backup just in case and reload.", eb_export:"⬇️ Download backup", eb_reload:"🔄 Reload the app",
     off_pill:"📴 Offline · saved and synced when you're back",
+    upd_ready:"✨ New version · tap to update",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
     ob_intro:"Let's set up your wallet in 1 minute. Start with your accounts and budget; you can add investments, debts and fixed costs later in their tabs.",
@@ -1125,6 +1130,7 @@ const LANG = {
     do_export:"⬇️ Exporta dades (JSON)", do_import:"⬆️ Importa dades (JSON)",
     eb_title:"Alguna cosa ha fallat", eb_msg:"L'app ha tingut un error en dibuixar. Les teves dades estan segures. Descarrega una còpia per si de cas i recarrega.", eb_export:"⬇️ Descarrega còpia de seguretat", eb_reload:"🔄 Recarrega l'app",
     off_pill:"📴 Sense connexió · es desa i sincronitza en tornar",
+    upd_ready:"✨ Nova versió · toca per actualitzar",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
     ob_intro:"Muntem la teva cartera en 1 minut. Comença pels comptes i el pressupost; les inversions, deutes i despeses fixes les afegeixes després a les seves pestanyes.",
@@ -1455,6 +1461,7 @@ Object.assign(LANG.es,{
   ru_mult:"Multiplicador del redondeo", ru_off:"Off", ru_dest:"Inversión destino", ru_pick:"Elige una inversión…",
   ru_saveback:"Saveback 1% (cashback de TR, máx 15€/mes)",
   ru_month_ru:"Round-up ya invertido (este mes)", ru_month_sb:"Saveback ya invertido (este mes)", ru_total:"Aportado vía TR (total acumulado)",
+  ru_plan:"Aporte periódico a inversión", ru_plan_amt:"Cada mes (€)", ru_plan_hint:"{x}/mes salen de tu efectivo de TR y compran {inv} (tu plan de ahorro). Así tu saldo de TR cuadra sin tocar nada.", pt_trb_plan:"Aporte a inversión",
   ru_hint:"El round-up redondea cada compra al € superior × multiplicador y sale de tu efectivo TR hacia {inv} (TR lo invierte los días 2/9/16/23). El Saveback es un 1% que TR te regala e invierte el día 2. La app lo aplica a tu efectivo e inversión al CERRAR cada mes. Estimación según tus gastos registrados: tu saldo TR real siempre manda.",
   ru_hint_off:"Actívalo si en TR tienes Round-up o Saveback, para que tu efectivo TR cuadre con el real (TR mueve esa calderilla a inversión).",
   ru_manual_hint:"Puedes escribir el importe REAL que ves en TR para corregir la estimación (déjalo vacío para que lo calcule solo).",
@@ -1494,6 +1501,7 @@ Object.assign(LANG.en,{
   ru_mult:"Round-up multiplier", ru_off:"Off", ru_dest:"Target investment", ru_pick:"Pick an investment…",
   ru_saveback:"Saveback 1% (TR cashback, max €15/mo)",
   ru_month_ru:"Round-up invested (this month)", ru_month_sb:"Saveback invested (this month)", ru_total:"Contributed via TR (running total)",
+  ru_plan:"Recurring investment", ru_plan_amt:"Each month (€)", ru_plan_hint:"{x}/mo leave your TR cash and buy {inv} (your savings plan). This keeps your TR balance right with no manual tweaks.", pt_trb_plan:"Investment plan",
   ru_hint:"Round-up rounds each purchase up to the next € × multiplier and leaves your TR cash towards {inv} (TR invests it on the 2nd/9th/16th/23rd). Saveback is a 1% TR gives you, invested on the 2nd. The app applies it to your cash and investment when each month CLOSES. Estimate from your logged spending: your real TR balance always wins.",
   ru_hint_off:"Turn it on if you use Round-up or Saveback in TR, so your TR cash matches reality (TR moves that spare change into investments).",
   ru_manual_hint:"You can type the REAL amount you see in TR to correct the estimate (leave empty to auto-calculate).",
@@ -1533,6 +1541,7 @@ Object.assign(LANG.ca,{
   ru_mult:"Multiplicador de l'arrodoniment", ru_off:"Off", ru_dest:"Inversió destí", ru_pick:"Tria una inversió…",
   ru_saveback:"Saveback 1% (cashback de TR, màx 15€/mes)",
   ru_month_ru:"Arrodoniment ja invertit (aquest mes)", ru_month_sb:"Saveback ja invertit (aquest mes)", ru_total:"Aportat via TR (total acumulat)",
+  ru_plan:"Aportació periòdica a inversió", ru_plan_amt:"Cada mes (€)", ru_plan_hint:"{x}/mes surten del teu efectiu de TR i compren {inv} (el teu pla d'estalvi). Així el teu saldo de TR quadra sense tocar res.", pt_trb_plan:"Aportació a inversió",
   ru_hint:"L'arrodoniment puja cada compra a l'€ superior × multiplicador i surt del teu efectiu TR cap a {inv} (TR ho inverteix els dies 2/9/16/23). El Saveback és un 1% que TR et regala i inverteix el dia 2. L'app ho aplica al teu efectiu i inversió en TANCAR cada mes. Estimació segons les teves despeses registrades: el teu saldo TR real sempre mana.",
   ru_hint_off:"Activa'l si a TR tens Round-up o Saveback, perquè el teu efectiu TR quadri amb el real (TR mou aquesta xavalla a inversió).",
   ru_manual_hint:"Pots escriure l'import REAL que veus a TR per corregir l'estimació (deixa-ho buit perquè ho calculi sol).",
@@ -1831,6 +1840,20 @@ function reconcileTR(s){
         inv.cost  = +((inv.cost||0)+cInv).toFixed(2);
       }
       s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
+    }
+    // Aporte periódico a inversión (plan de ahorro, p.ej. 50€/mes al FTSE): sale del efectivo y
+    // compra participaciones en su destino (por defecto el mismo del round-up).
+    const mi = acc.monthlyInvest||0;
+    if(mi>0){
+      const dest = acc.monthlyInvestTo || acc.rewardInv;
+      const inv2 = s.investments && s.investments.find(function(i){ return i.id===dest; });
+      if(inv2){
+        acc.value = +(acc.value - mi).toFixed(2);
+        const cInv2 = inv2.cur==="USD" ? mi/(s.fx||1) : mi;
+        if(inv2.shares>0 && inv2.value>0) inv2.shares = +(inv2.shares + cInv2/(inv2.value/inv2.shares)).toFixed(6);
+        inv2.value = +((inv2.value||0)+cInv2).toFixed(2);
+        inv2.cost  = +((inv2.cost||0)+cInv2).toFixed(2);
+      }
     }
     // los importes manuales de round-up/saveback eran de ESTE mes que se cierra → ya aplicados, se limpian
     if(acc.roundupManual!=null) delete acc.roundupManual;
@@ -2195,6 +2218,8 @@ function seedFlows(s){
     if(!s._trRewardSeed){ s.accounts=s.accounts.map(function(a){ return a.spendFrom?Object.assign({roundup:2,saveback:true,rewardInv:"7zjaw0y"},a,{roundup:a.roundup!=null?a.roundup:2,saveback:a.saveback!=null?a.saveback:true,rewardInv:a.rewardInv||"7zjaw0y"}):a; }); s._trRewardSeed=true; }
     // override personal del creador (antes vivía hardcodeado en MERCHANT_OVERRIDES para TODOS)
     if(!s.catOverrides["mapfre"]){ s.catOverrides["mapfre"]="bares"; USER_OVERRIDES["mapfre"]="bares"; }
+    // semilla única: aporte periódico 50€/mes al FTSE desde el efectivo de TR (plan de ahorro real del usuario)
+    if(!s._monthlyInvestSeed){ s.accounts=s.accounts.map(function(a){ return (a.spendFrom && a.monthlyInvest==null)?Object.assign({},a,{monthlyInvest:50}):a; }); s._monthlyInvestSeed=true; }
   }
   // FIX v3.50: el saldo dinámico (v3.48) interpretó el `value` guardado como "inicio de mes" y volvió a
   // restar los cargos YA pagados de este mes → saldos disparados (Sabadell −3312 en vez de 147). Re-anclamos
@@ -3419,6 +3444,12 @@ function Investments({state, set, fetchPrices, pricing}){
         React.createElement("div",{className:"costtoggle",style:{marginTop:12},onClick:function(){ setTr({saveback:!trAcc.saveback}); }},
           React.createElement("span",{className:"cbx"+(trAcc.saveback?" on":"")}, trAcc.saveback?"✓":""),
           React.createElement("span",null,t("ru_saveback"))),
+        // Aporte periódico a inversión (plan de ahorro): p.ej. 50€/mes al FTSE. Baja del efectivo TR.
+        React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"14px 0 6px"}},t("ru_plan")),
+        React.createElement("div",{className:"ru-edit"},
+          React.createElement("span",{className:"muted"},t("ru_plan_amt")),
+          React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:trAcc.monthlyInvest!=null?trAcc.monthlyInvest:"",onChange:function(e){ setTr({monthlyInvest:numOrNull(e.target.value)}); }})),
+        (trAcc.monthlyInvest>0) && React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("ru_plan_hint",{x:eur0(trAcc.monthlyInvest),inv:invName})),
         React.createElement("div",{className:"ru-edit",style:{marginTop:12}},
           React.createElement("span",{className:"muted"},t("ru_month_ru")),
           React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:eur0(ruAuto),value:trAcc.roundupManual!=null?trAcc.roundupManual:"",onChange:function(e){ setTr({roundupManual:numOrNull(e.target.value)}); }})),
@@ -3497,7 +3528,8 @@ function Investments({state, set, fetchPrices, pricing}){
 function Wealth({state, set, totals}){
   const pn=(i)=> (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0;   // movimientos ya ocurridos este mes
   const ruM=totals.roundupThisMonth||0;                                     // round-up del mes (sale del efectivo de gasto)
-  const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM;
+  const miM=totals.monthlyInvestThisMonth||0;                               // aporte periódico del mes (idem)
+  const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM - miM;
   const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})),{
     // Editas el SALDO REAL de hoy; por dentro se guarda la base (inicio de mes) correcta.
     display:  i => i.spendFrom ? spendBal(i) : (i.value + pn(i)),
@@ -3550,6 +3582,7 @@ function Wealth({state, set, totals}){
         totals.injTR?rowD(t("pt_trb_payroll"), "+"+eur(totals.injTR), "var(--mint)"):null,
         rowD(t("pt_trb_spent"), "−"+eur(totals.thisMonthSpent), "var(--coral)"),
         rowD(t("pt_trb_roundup"), "−"+eur(ruM), "var(--coral)"),
+        miM>0?rowD(t("pt_trb_plan"), "−"+eur(miM), "var(--coral)"):null,
         React.createElement("div",{style:{borderTop:"1px solid var(--line)",marginTop:4,paddingTop:6}}, rowD(t("pt_trb_shown"), eur(spendBal(trAcc)), null, true)),
         React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"12px 0 4px"}}, tf("pt_trb_movs",{n:monthExp.length})),
         monthExp.length===0
@@ -5527,6 +5560,13 @@ function App(){
   // reconectar, sube los cambios hechos sin red. Sin conexión NO se rompe ni se pierde nada.
   const [online,setOnline]=useState(typeof navigator==="undefined" || navigator.onLine!==false);
   const wasOnline=useRef(online);
+  // Aviso "hay una versión nueva" (lo dispara el registro del Service Worker cuando queda una esperando)
+  const [updateReady,setUpdateReady]=useState(false);
+  useEffect(function(){
+    const h=function(){ setUpdateReady(true); };
+    window.addEventListener("mc-sw-update", h);
+    return function(){ window.removeEventListener("mc-sw-update", h); };
+  },[]);
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
     window.addEventListener("online",on); window.addEventListener("offline",off);
@@ -5587,6 +5627,9 @@ function App(){
     // si has puesto un importe a mano (roundupManual/savebackManual) manda ese; si no, se estima de los gastos
     const roundupThisMonth = trAcc ? ((trAcc.roundupManual!=null)?trAcc.roundupManual:roundupOf(thisMonthExp, trAcc.roundup||0)) : 0;
     const savebackThisMonth = trAcc ? ((trAcc.savebackManual!=null)?trAcc.savebackManual:(trAcc.saveback?savebackOf(thisMonthExp):0)) : 0;
+    // Aporte periódico a inversión (plan de ahorro TR, p.ej. 50€/mes al FTSE): sale del efectivo
+    // y compra participaciones. Igual que el round-up, se muestra restado en vivo y se persiste al cerrar mes.
+    const monthlyInvestThisMonth = trAcc ? (trAcc.monthlyInvest||0) : 0;
     const trRewardsTotal = state.trRewardsTotal||0;
     const curMonth=new Date().getMonth()+1;
     const curYear=new Date().getFullYear();
@@ -5595,12 +5638,12 @@ function App(){
     // (ingresos/nómina/bizums − fijos − cuotas − puntuales − transfers). El de gasto (TR) usa su inyección.
     const paidNetByBank={};
     state.accounts.forEach(function(a){ if(!a.spendFrom) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
-    // el round-up del mes en curso ya salió del efectivo de gasto (TR) hacia la inversión (en tránsito)
-    const dynBal=function(a){ return a.spendFrom ? (a.value+injTR-thisMonthSpent-roundupThisMonth) : ((a.value||0)+(paidNetByBank[a.ent]||0)); };
+    // el round-up y el aporte periódico del mes ya salieron del efectivo de gasto (TR) hacia la inversión (en tránsito)
+    const dynBal=function(a){ return a.spendFrom ? (a.value+injTR-thisMonthSpent-roundupThisMonth-monthlyInvestThisMonth) : ((a.value||0)+(paidNetByBank[a.ent]||0)); };
     // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
     const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + (o.cur==="USD"? (o.value||0)*fx : (o.value||0)), 0);
     const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0) + obLiquid;
-    const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0) + roundupThisMonth + savebackThisMonth;
+    const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0) + roundupThisMonth + savebackThisMonth + monthlyInvestThisMonth;
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
     const activos=liquid+invested+assetsTotal;
@@ -5667,7 +5710,7 @@ function App(){
     // alarma: el saldo mínimo del mes se va a negativo (cubre tanto el bajón intra-mes como no llegar a fin de mes)
     const bankAlerts=Object.keys(minByBank).filter(b=> minByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,trRewardsTotal,paidNetByBank};
+    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
@@ -5973,6 +6016,7 @@ function App(){
     ),
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
     tourOpen && React.createElement(Tour,{onDone:endTour}),
+    updateReady && React.createElement("button",{className:"update-pill",onClick:function(){ if(window.__mcApplyUpdate) window.__mcApplyUpdate(); }}, t("upd_ready")),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery}),
@@ -5984,14 +6028,35 @@ function App(){
 }
 
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-  // Registramos el SW para que las novedades se descarguen en segundo plano.
-  // NO forzamos skipWaiting ni recargamos en controllerchange: la versión nueva
-  // se activa sola en el siguiente arranque en frío, sin recargar a media sesión
-  // (eso causaba el molesto "se abre y se recarga sola"). El SW es stale-while-
-  // revalidate: arranque INSTANTÁNEO desde caché y la versión fresca se descarga
-  // por detrás → se ve en el siguiente arranque (igual que antes, pero sin esperar la red).
+  // El SW es stale-while-revalidate: arranque INSTANTÁNEO desde caché y la versión fresca
+  // se descarga por detrás. NO forzamos skipWaiting solos (eso causaba el "se abre y se
+  // recarga sola"). En su lugar, cuando hay una versión nueva ESPERANDO, avisamos con un
+  // botón "Actualizar": SOLO al pulsarlo activamos el SW nuevo y recargamos (control del
+  // usuario, sin sorpresas). Si no pulsa, la versión nueva entra sola al siguiente arranque.
+  var _mcWaiting=null, _mcReloading=false, _mcUserInitiated=false;
+  function _mcSignalUpdate(w){ _mcWaiting=w; try{ window.dispatchEvent(new CustomEvent('mc-sw-update')); }catch(e){} }
+  window.__mcApplyUpdate=function(){
+    if(!_mcWaiting){ location.reload(); return; }
+    _mcUserInitiated=true;
+    _mcWaiting.postMessage('skipWaiting');       // el SW en espera hace skipWaiting → controllerchange
+  };
+  // SOLO recargamos si la actualización la pidió el usuario con el botón. Sin este guard,
+  // la PRIMERA instalación del SW (clients.claim) dispara controllerchange y recargaría sola
+  // — el viejo bug "se abre y se recarga" (v3.20) que no queremos de vuelta.
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(!_mcUserInitiated || _mcReloading) return; _mcReloading=true; location.reload();
+  });
   window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      if(reg.waiting && navigator.serviceWorker.controller) _mcSignalUpdate(reg.waiting);  // ya había una esperando
+      reg.addEventListener('updatefound', function(){
+        var nw=reg.installing; if(!nw) return;
+        nw.addEventListener('statechange', function(){
+          // "installed" + ya hay controller = actualización (no es la primera instalación)
+          if(nw.state==='installed' && navigator.serviceWorker.controller) _mcSignalUpdate(reg.waiting||nw);
+        });
+      });
+    }).catch(function(){});
   });
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
