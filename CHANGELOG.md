@@ -19,6 +19,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.73.0] — 2026-07-03
+### UX para no-técnicos (padres): tour guiado + modo Sencillo de verdad + ayudas «?»
+- 🎓 **Tour de bienvenida (coach-marks):** la primera vez tras el onboarding, la app señala con un foco los sitios clave (tu dinero, Gastos, Fijos, Ajustes, la nube) con una frase llana por paso. Saltable, y relanzable cuando quieras desde **Ajustes → 🎓 Ver el tutorial**. Los usuarios existentes no lo ven de golpe (solo bajo demanda).
+- 🧓 **Modo Sencillo de verdad:** además de dejar 3 pestañas, ahora también simplifica el Resumen (fuera widgets avanzados: distribución, tendencias, rachas…) y **habla sin jerga**: «Patrimonio neto» → «Tu dinero en total», «Fijos» → «Recibos», «Activos» → «Lo que tienes» (ES/EN/CA).
+- 🔍 **Letra grande:** nuevo botón en Ajustes que escala toda la app un 12 % (accesibilidad).
+- ❓ **Ayuda contextual:** botón «?» en las tarjetas complejas (round-up, importador, proyección, simulador, conciliación) que explica en cristiano qué hace cada una.
+- 🧹 **Des-personalización:** el override «mapfre→bares» del creador ya no va hardcodeado para todo el mundo (ahora es una semilla solo de su cartera); el mes de la cabecera respeta el idioma elegido (antes siempre en español).
+
 ## [3.72.0] — 2026-07-03
 ### Importador CSV del bróker — sync de inversiones sin dar credenciales a nadie
 - 📥 **Nueva tarjeta «Importar del bróker (CSV)» en Inversiones:** exporta tus movimientos desde la app del bróker (Trade Republic exporta CSV), súbelo o pega el texto, y la app **re-ancla tus posiciones a la verdad del extracto** (participaciones + coste absolutos, con coste medio y ventas parciales bien calculadas). Previsualización SIEMPRE antes de aplicar, con mapeo por posición (sugerido por ISIN guardado o por nombre) y opción «no tocar». Tras aplicar se refrescan los precios para recalcular el valor de mercado.

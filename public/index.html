@@ -441,6 +441,23 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
     padding:13px 14px;border-radius:13px;background:var(--bg-2);border:1px solid var(--line-soft);margin-bottom:8px;}
   .ts-item:active{border-color:var(--mint-dim);background:rgba(95,208,138,.10);}
   .ts-item svg{width:17px;height:17px;color:var(--mint);}
+  /* Letra grande (accesibilidad) */
+  html.bigtext #root{zoom:1.12;}
+  /* Ayuda contextual "?" */
+  .helpq{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
+  .helpq:active{color:var(--mint);border-color:var(--mint-dim);}
+  .helpover{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:95;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .helpcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;max-width:340px;width:100%;box-shadow:var(--shadow);animation:sheetup .22s ease;}
+  /* Tour guiado (coach-marks) */
+  .tour-wrap{position:fixed;inset:0;z-index:90;}
+  .tour-spot{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.62), 0 0 0 3px var(--mint);transition:all .32s cubic-bezier(.22,.61,.36,1);pointer-events:none;}
+  .tour-tip{position:fixed;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);z-index:91;animation:sheetup .25s ease;}
+  .tour-txt{font-size:15px;line-height:1.55;font-weight:600;}
+  .tour-dots{display:flex;gap:5px;margin:12px 0;}
+  .tour-dots .td{width:7px;height:7px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);transition:all .2s;}
+  .tour-dots .td.on{background:var(--mint);border-color:transparent;width:18px;border-radius:5px;}
+  .tour-btns{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .tour-skip{font-size:13px;font-weight:700;color:var(--muted-2);padding:8px;}
 
   .viewport{flex:1 1 auto;overflow:hidden;min-height:0;}
   .track{display:flex;height:100%;transition:transform .34s cubic-bezier(.22,.61,.36,1);will-change:transform;}
@@ -790,9 +807,9 @@ const freqLabel = (f)=> t("freq_"+f);              // frecuencia traducida
 
 /* Autodetección de categoría por comercio (mismas keywords que el GAS, ampliadas) */
 /* Overrides personales: comercios concretos que mapeas a tu manera (substring en minúsculas) */
-const MERCHANT_OVERRIDES = {
-  "mapfre": "bares",   // para ti es el bar donde pillas bocadillo/menú del día
-};
+// (vacío desde v3.73: los overrides personales viven en state.catOverrides de cada usuario;
+//  el "mapfre→bares" del creador se siembra solo en su cartera demo en seedFlows)
+const MERCHANT_OVERRIDES = {};
 // Overrides PERSONALES del usuario (comercio→categoría), que aprende al recategorizar a mano.
 // Se puebla desde state.catOverrides al cargar. Tiene prioridad sobre las keywords.
 let USER_OVERRIDES = {};
@@ -1118,9 +1135,66 @@ const LANG = {
     ob_name_ph:"Nom (opcional, ex. Compte corrent)", ob_balance_ph:"Saldo €",
   },
 };
-const t = (k)=> (LANG[CURLANG] && LANG[CURLANG][k]) || LANG.es[k] || k;
+// Modo Sencillo: además de ocultar pestañas/widgets, suaviza la JERGA en las etiquetas clave
+// (para gente que no ha crecido con apps: "Patrimonio neto" → "Tu dinero en total").
+let SIMPLEMODE = false;   // lo fija App en cada render desde settings.simpleMode
+const LANG_SIMPLE = {
+  es:{ d_networth:"Tu dinero en total", d_assets:"Lo que tienes", tab_fijos:"Recibos" },
+  en:{ d_networth:"All your money",     d_assets:"What you have", tab_fijos:"Bills" },
+  ca:{ d_networth:"Els teus diners en total", d_assets:"El que tens", tab_fijos:"Rebuts" },
+};
+const t = (k)=>{
+  if(SIMPLEMODE){ const v=(LANG_SIMPLE[CURLANG]&&LANG_SIMPLE[CURLANG][k])!=null?LANG_SIMPLE[CURLANG][k]:LANG_SIMPLE.es[k]; if(v!=null) return v; }
+  return (LANG[CURLANG] && LANG[CURLANG][k]) || LANG.es[k] || k;
+};
 // textos con variables: tf("key",{name:"x"}) reemplaza {name} en la traducción
 function tf(k,vals){ let s=t(k); if(vals) for(const v in vals) s=s.split("{"+v+"}").join(vals[v]); return s; }
+/* Tour guiado + ayuda contextual + accesibilidad (UX para no-técnicos) */
+Object.assign(LANG.es,{
+  st_bigtext:"🔍 Letra grande", st_tour:"🎓 Ver el tutorial",
+  tour_1:"💰 Este es tu dinero. Aquí ves cuánto tienes en total y cómo va el mes.",
+  tour_2:"🧾 En «{gastos}» apuntas lo que gastas día a día. Toca «+ Añadir», pon cuánto y en qué, y ya está.",
+  tour_3:"📅 En «{fijos}» están los pagos de cada mes (luz, agua, hipoteca…). La app te avisa si no te va a llegar.",
+  tour_4:"⚙️ Aquí están los Ajustes: idioma, colores, letra grande y el modo sencillo.",
+  tour_5:"☁️ Con tu cuenta, todo se guarda solo y no se pierde aunque cambies de móvil. ¡Ya está!",
+  tour_next:"Siguiente", tour_skip:"Saltar", tour_done:"¡Listo!",
+  h_ok:"Entendido",
+  h_ru:"Trade Republic redondea cada compra con tarjeta al euro y ese pico lo invierte solo (round-up). El saveback es un 1% de regalo por pagar con la tarjeta. Esta tarjeta calcula cuánto se está moviendo y a qué inversión va.",
+  h_import:"Descarga tus movimientos desde la app de tu bróker (un fichero CSV) y súbelo aquí: la app pone tus posiciones EXACTAS (participaciones y coste) tal y como las tiene el bróker. No se sube nada a internet: se lee en tu móvil.",
+  h_proj:"Una estimación de cuánto podría valer tu inversión dentro de unos años si sigue creciendo a un ritmo parecido. No es una promesa: es para hacerse una idea.",
+  h_afford:"Escribe un gasto que estás pensando hacer (importe y día) y te digo si te lo puedes permitir sin quedarte en números rojos antes de que entre la nómina.",
+  h_recon:"Compara lo que TÚ tienes apuntado (recibos, cuotas) con lo que el banco dice que ha cobrado de verdad. Si algo no cuadra o falta, te lo marca.",
+});
+Object.assign(LANG.en,{
+  st_bigtext:"🔍 Large text", st_tour:"🎓 View the tutorial",
+  tour_1:"💰 This is your money. Here you see how much you have in total and how the month is going.",
+  tour_2:"🧾 In “{gastos}” you jot down day-to-day spending. Tap “+ Add”, enter how much and what for, done.",
+  tour_3:"📅 In “{fijos}” live the monthly payments (power, water, mortgage…). The app warns you if you won't make it.",
+  tour_4:"⚙️ Here are the Settings: language, colours, large text and simple mode.",
+  tour_5:"☁️ With your account everything saves itself and survives changing phones. That's it!",
+  tour_next:"Next", tour_skip:"Skip", tour_done:"Done!",
+  h_ok:"Got it",
+  h_ru:"Trade Republic rounds every card purchase up to the euro and invests the spare change (round-up). Saveback is a 1% reward for paying by card. This card tracks how much is moving and into which investment.",
+  h_import:"Download your transactions from your broker's app (a CSV file) and upload it here: the app sets your EXACT positions (shares and cost) as the broker has them. Nothing is uploaded: it's read on your phone.",
+  h_proj:"An estimate of what your investment could be worth in a few years if it keeps growing at a similar pace. Not a promise — just to get an idea.",
+  h_afford:"Type a purchase you're considering (amount and day) and I'll tell you whether you can afford it without going into the red before payday.",
+  h_recon:"Compares what YOU have written down (bills, instalments) with what the bank actually charged. If something doesn't match or is missing, it flags it.",
+});
+Object.assign(LANG.ca,{
+  st_bigtext:"🔍 Lletra gran", st_tour:"🎓 Veure el tutorial",
+  tour_1:"💰 Aquests són els teus diners. Aquí veus quant tens en total i com va el mes.",
+  tour_2:"🧾 A «{gastos}» apuntes el que gastes dia a dia. Toca «+ Afegeix», posa quant i en què, i llest.",
+  tour_3:"📅 A «{fijos}» hi ha els pagaments de cada mes (llum, aigua, hipoteca…). L'app t'avisa si no hi arribaràs.",
+  tour_4:"⚙️ Aquí hi ha la Configuració: idioma, colors, lletra gran i el mode senzill.",
+  tour_5:"☁️ Amb el teu compte tot es desa sol i no es perd encara que canviïs de mòbil. Ja està!",
+  tour_next:"Següent", tour_skip:"Omet", tour_done:"Fet!",
+  h_ok:"Entesos",
+  h_ru:"Trade Republic arrodoneix cada compra amb targeta a l'euro i inverteix el pessic sol (round-up). El saveback és un 1% de regal per pagar amb targeta. Aquesta targeta calcula quant s'està movent i a quina inversió va.",
+  h_import:"Descarrega els teus moviments des de l'app del teu bròker (un fitxer CSV) i puja'l aquí: l'app posa les teves posicions EXACTES (participacions i cost) tal com les té el bròker. No es puja res a internet: es llegeix al teu mòbil.",
+  h_proj:"Una estimació de quant podria valer la teva inversió d'aquí a uns anys si segueix creixent a un ritme semblant. No és cap promesa: és per fer-se una idea.",
+  h_afford:"Escriu una despesa que estàs pensant fer (import i dia) i et dic si te la pots permetre sense quedar en números vermells abans de la nòmina.",
+  h_recon:"Compara el que TU tens apuntat (rebuts, quotes) amb el que el banc diu que ha cobrat de veritat. Si alguna cosa no quadra o falta, t'ho marca.",
+});
 /* Importador CSV del bróker (Inversiones) */
 Object.assign(LANG.es,{
   bi_title:"Importar del bróker (CSV)", bi_sub:"re-ancla posiciones con tu extracto",
@@ -1983,6 +2057,7 @@ function buildEmpty(){
     fx: 0.92, budget: 0, monthStartNet: 0, history: [],
     accounts: [], investments: [], assets: [], debts: [], fixed: [], flows: [], oneoffs: [], aportaciones: [],
     expenses: [], goals: [], shared: [], catOverrides: {}, obAccounts: [], obLabels: {}, streak: 0,
+    tourSeen: false,   // usuario nuevo → tour de bienvenida tras el onboarding
     settings: { autoPrices:false },
     lastSync: null, lastPriceSync: null,
     onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
@@ -2091,6 +2166,8 @@ function seedFlows(s){
   if(!s) return s;
   // estados existentes = ya en uso → no son onboarding
   if(s.onboarded==null) s.onboarded=true;
+  // estados existentes tampoco ven el tour de bienvenida (se puede abrir desde Ajustes)
+  if(s.tourSeen==null) s.tourSeen=true;
   if(!s.oneoffs) s.oneoffs = [];
   if(!s.flows) s.flows = [];
   if(!s.goals) s.goals = [];
@@ -2116,6 +2193,8 @@ function seedFlows(s){
     if(!s._sharedSeed){ if(!s.shared.length){ s.shared=[{id:uid(),name:"Crucero",emoji:"🛳️",people:["Yo","Pareja"],expenses:[{id:uid(),desc:"Excursión",amount:120,payer:"Yo",parts:["Yo","Pareja"],date:new Date().toISOString()},{id:uid(),desc:"Cena especial",amount:80,payer:"Pareja",parts:["Yo","Pareja"],date:new Date().toISOString()}]}]; } s._sharedSeed=true; }
     // semilla única: round-up ×2 + saveback en la cuenta TR demo → FTSE All-World (#19)
     if(!s._trRewardSeed){ s.accounts=s.accounts.map(function(a){ return a.spendFrom?Object.assign({roundup:2,saveback:true,rewardInv:"7zjaw0y"},a,{roundup:a.roundup!=null?a.roundup:2,saveback:a.saveback!=null?a.saveback:true,rewardInv:a.rewardInv||"7zjaw0y"}):a; }); s._trRewardSeed=true; }
+    // override personal del creador (antes vivía hardcodeado en MERCHANT_OVERRIDES para TODOS)
+    if(!s.catOverrides["mapfre"]){ s.catOverrides["mapfre"]="bares"; USER_OVERRIDES["mapfre"]="bares"; }
   }
   // FIX v3.50: el saldo dinámico (v3.48) interpretó el `value` guardado como "inicio de mes" y volvió a
   // restar los cargos YA pagados de este mes → saldos disparados (Sabadell −3312 en vez de 147). Re-anclamos
@@ -2140,6 +2219,8 @@ function applyTheme(t){
     if(meta && bg) meta.setAttribute("content", bg);
   }catch(e){}
 }
+// Letra grande (accesibilidad): escala toda la app un 12% (settings.bigText)
+function applyBigText(on){ try{ document.documentElement.classList.toggle("bigtext", !!on); }catch(e){} }
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
 function loadState(){
   const saved = store.get("micartera_v3");
@@ -2147,12 +2228,14 @@ function loadState(){
     const s = seedFlows(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)))));
     store.set("micartera_v3", s);
     applyTheme(s.settings&&s.settings.theme);
+    applyBigText(s.settings&&s.settings.bigText);
     return s;
   }
   // Sin estado guardado = usuario nuevo → arranca VACÍO y verá el onboarding (no hereda la cartera de ejemplo).
   const init = buildEmpty();
   store.set("micartera_v3", init);
   applyTheme(init.settings&&init.settings.theme);
+  applyBigText(init.settings&&init.settings.bigText);
   return init;
 }
 
@@ -2187,7 +2270,70 @@ function Mono({ent, size}){
   return React.createElement("div",{className:"mono",style:{width:size,height:size,background:e.color+"22",color:e.color,borderColor:e.color+"44"}}, e.mono);
 }
 
-function CollapsibleCard({title, sub, dot, defaultOpen, right, children, storageKey}){
+/* Ayuda contextual: un «?» discreto que explica la tarjeta en cristiano (para no-técnicos). */
+function HelpTip({text}){
+  const [open,setOpen]=useState(false);
+  return React.createElement(React.Fragment,null,
+    React.createElement("button",{className:"helpq",onClick:function(e){ e.stopPropagation(); setOpen(true); },"aria-label":"?"},"?"),
+    open && React.createElement("div",{className:"helpover",onClick:function(e){ e.stopPropagation(); setOpen(false); }},
+      React.createElement("div",{className:"helpcard",onClick:function(e){ e.stopPropagation(); }},
+        React.createElement("div",{style:{fontSize:14,lineHeight:1.55}},text),
+        React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:14},onClick:function(){ setOpen(false); }},t("h_ok"))
+      )
+    )
+  );
+}
+
+/* ============================================================
+   TOUR GUIADO (coach-marks) — para estrenarse sin saber de apps.
+   Ilumina elementos REALES de la pantalla con un foco y una frase llana.
+   Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
+   ============================================================ */
+function Tour({onDone}){
+  const steps=[
+    {k:"tour_1", sel:function(){ return document.querySelector(".hero")||document.querySelector(".page"); }},
+    {k:"tour_2", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_gastos"); })||null; }},
+    {k:"tour_3", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_fijos"); })||null; }},
+    {k:"tour_4", sel:function(){ return document.querySelector(".topbar .icon-btn"); }},
+    {k:"tour_5", sel:function(){ const b=document.querySelectorAll(".topbar .icon-btn"); return b[1]||b[0]||null; }},
+  ];
+  const [i,setI]=useState(0);
+  const [rect,setRect]=useState(null);
+  const measure=function(idx){
+    for(let j=idx;j<steps.length;j++){
+      const el=steps[j].sel();
+      if(el){ const r=el.getBoundingClientRect(); if(r.width>0) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}}; }
+    }
+    return null;
+  };
+  useEffect(function(){
+    const m=measure(i);
+    if(!m){ onDone(); return; }
+    if(m.j!==i){ setI(m.j); return; }
+    setRect(m.r);
+    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(mm.r); };
+    window.addEventListener("resize",onR);
+    return function(){ window.removeEventListener("resize",onR); };
+  },[i]);
+  if(!rect) return null;
+  const pad=8;
+  const below = rect.y + rect.h/2 < (window.innerHeight||700)*0.55;
+  const tipStyle = below ? {top:rect.y+rect.h+pad+12} : {bottom:((window.innerHeight||700)-rect.y)+pad+12};
+  const last=i===steps.length-1;
+  return React.createElement("div",{className:"tour-wrap"},
+    React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),
+    React.createElement("div",{className:"tour-tip",style:tipStyle},
+      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{gastos:t("tab_gastos"),fijos:t("tab_fijos")})),
+      React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===i?" on":"")}); })),
+      React.createElement("div",{className:"tour-btns"},
+        React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
+        React.createElement("button",{className:"btn btn-primary",style:{padding:"9px 20px"},onClick:function(){ if(last) onDone(); else setI(i+1); }}, last?t("tour_done"):t("tour_next"))
+      )
+    )
+  );
+}
+
+function CollapsibleCard({title, sub, dot, defaultOpen, right, children, storageKey, help}){
   const [open,setOpen]=useState(()=>{
     if(storageKey){ const s=store.get("col_"+storageKey); if(s!=null) return s; }
     return defaultOpen!==false;
@@ -2200,6 +2346,7 @@ function CollapsibleCard({title, sub, dot, defaultOpen, right, children, storage
         React.createElement("div",null, title, sub && React.createElement("div",{className:"sub"},sub))
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        help && React.createElement(HelpTip,{text:help}),
         right, React.createElement(I.chev,{className:"chev"+(open?" open":"")})
       )
     ),
@@ -3013,7 +3160,7 @@ function BrokerImport({state, set, fetchPrices}){
   };
   const dfmt=function(ts){ return ts?new Date(ts).toLocaleDateString(loc(),{day:'2-digit',month:'short',year:'2-digit'}):"–"; };
   const agg=parsed&&parsed.agg;
-  return React.createElement(CollapsibleCard,{title:t("bi_title"),sub:t("bi_sub"),dot:"var(--blue)",defaultOpen:false,storageKey:"inv_import"},
+  return React.createElement(CollapsibleCard,{title:t("bi_title"),sub:t("bi_sub"),dot:"var(--blue)",defaultOpen:false,storageKey:"inv_import",help:t("h_import")},
     React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("bi_hint")),
     React.createElement("label",{className:"btn btn-ghost btn-block",style:{cursor:"pointer"}},
       t("bi_file"),
@@ -3261,7 +3408,7 @@ function Investments({state, set, fetchPrices, pricing}){
       const ru=(trAcc.roundupManual!=null)?trAcc.roundupManual:ruAuto, sb=(trAcc.savebackManual!=null)?trAcc.savebackManual:sbAuto, tot=state.trRewardsTotal||0;
       const iv=state.investments.find(function(i){ return i.id===trAcc.rewardInv; });
       const invName=iv?iv.name:t("ru_pick");
-      return React.createElement(CollapsibleCard,{key:"ru",title:t("ru_title"),sub:mult>0?tf("ru_sub_on",{m:mult}):t("ru_sub_off"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_ru"},
+      return React.createElement(CollapsibleCard,{key:"ru",title:t("ru_title"),sub:mult>0?tf("ru_sub_on",{m:mult}):t("ru_sub_off"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_ru",help:t("h_ru")},
         React.createElement("div",{className:"mlabel",style:{textAlign:"left",marginBottom:6}},t("ru_mult")),
         React.createElement("div",{className:"curtoggle",style:{flexWrap:"wrap",justifyContent:"flex-start"}},
           RU_MULTS.map(function(m){ return React.createElement("button",{key:m,type:"button",className:"curbtn"+(mult===m?" on":""),onClick:function(){ setTr({roundup:m}); }}, m===0?t("ru_off"):"×"+m); })),
@@ -3335,7 +3482,7 @@ function Investments({state, set, fetchPrices, pricing}){
       React.createElement("span",null,t("inv_sold")),
       React.createElement("span",{className:"num",style:{fontWeight:700,color:"var(--mint)"}}, f0(state.soldCash))
     ),
-    React.createElement(CollapsibleCard,{title:t("inv_proj"),sub:t("inv_proj_sub"),dot:"#5FD08A",defaultOpen:false,storageKey:"inv_proj"},
+    React.createElement(CollapsibleCard,{title:t("inv_proj"),sub:t("inv_proj_sub"),dot:"#5FD08A",defaultOpen:false,storageKey:"inv_proj",help:t("h_proj")},
       React.createElement(Projection,{invested:total, defMonthly: state.aportaciones.reduce(function(a,x){ return a+x.amount; },0)})
     ),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
@@ -3807,7 +3954,7 @@ function AffordSim({state, totals, set}){
   const verdict = amt<=0 ? null : (sim.min<-0.005 ? "no" : (breaksFloor ? "floor" : (sim.min<BUFFER ? "tight" : "yes")));
   const lowTxt = sim.minDay ? tf("af_low",{x:eur(sim.min),d:sim.minDay}) : tf("af_low_noday",{x:eur(sim.min)});
   const verdictTxt = verdict==="no"?t("af_no"):(verdict==="floor"?tf("af_floor_break",{x:eur0(floor)}):(verdict==="tight"?t("af_tight"):t("af_yes")));
-  return React.createElement(CollapsibleCard,{title:t("af_title"),sub:t("af_sub"),dot:"#9BD0E0",defaultOpen:false,storageKey:"fj_afford"},
+  return React.createElement(CollapsibleCard,{title:t("af_title"),sub:t("af_sub"),dot:"#9BD0E0",defaultOpen:false,storageKey:"fj_afford",help:t("h_afford")},
     React.createElement("div",{className:"af-row"},
       React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:t("af_amount"),value:amount,onChange:function(e){ setAmount(e.target.value); }}),
       React.createElement("input",{className:"af-in num",inputMode:"numeric",style:{flex:"0 0 30%"},placeholder:t("af_day"),value:day,onChange:function(e){ setDay(e.target.value); }})
@@ -3866,7 +4013,7 @@ function Reconcile({state, set}){
   };
   // "Ignorar": oculta un movimiento del banco (doble cobro, comisión que te devuelven…). Persistente.
   const dismiss=function(nc){ const dk=nc.id || ((nc.merchant||"")+"|"+nc.amount+"|"+nc.date); set(function(s){ const cur=(s.bankDismissed||[]); return cur.indexOf(dk)>=0?s:Object.assign({},s,{bankDismissed:cur.concat([dk])}); }); };
-  return React.createElement(CollapsibleCard,{title:t("rec_title"), sub:sub, dot:dot, storageKey:"f_recon", defaultOpen:nIssues>0},
+  return React.createElement(CollapsibleCard,{title:t("rec_title"), sub:sub, dot:dot, storageKey:"f_recon", defaultOpen:nIssues>0, help:t("h_recon")},
     r.mismatch.length>0 && React.createElement(React.Fragment,{key:"mm"},
       React.createElement("div",{style:Object.assign({},secT,{color:"var(--coral)"})}, t("rec_mismatch_t")),
       r.mismatch.map(function(x,i){ return React.createElement("div",{key:i,style:rowS},
@@ -4614,6 +4761,8 @@ const TABS=[
 ];
 // Pestañas avanzadas: se ocultan en "modo simple" (settings.simpleMode) para gente que quiere lo básico.
 const ADVANCED_TABS=["metas","inv","patri","debt","compartido"];
+// Widgets del Resumen que el modo simple esconde (deja hero + presupuesto + frase "puedes gastar").
+const SIMPLE_DASH_HIDDEN=["goal","dist","fixedsave","savings","culprit","trend"];
 // Pestañas ocultas: settings.tabHidden (elegidas por el usuario con + / papelera). Si el usuario
 // aún no ha personalizado nada, se deriva del modo simple (ADVANCED_TABS) para no cambiar el
 // comportamiento de estados existentes. "dash" nunca se puede ocultar.
@@ -4848,7 +4997,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const fileRef=useRef(null);
   // --- Banco (Open Banking) ---
@@ -4923,10 +5072,17 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync}){
     React.createElement("div",{style:{display:"flex",gap:8}},
       [["false","st_mode_full"],["true","st_mode_simple"]].map(function(m){
         const on=(!!(state.settings&&state.settings.simpleMode))===(m[0]==="true");
-        return React.createElement("button",{key:m[0],onClick:function(){ const sim=m[0]==="true"; set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[]})}); }); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t(m[1]));
+        return React.createElement("button",{key:m[0],onClick:function(){ const sim=m[0]==="true"; set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[], dashHidden: sim?SIMPLE_DASH_HIDDEN.slice():[]})}); }); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t(m[1]));
       })
     ),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6}}, t("st_mode_hint")),
+    // Letra grande (accesibilidad) + relanzar el tutorial
+    (function(){
+      const on=!!(state.settings&&state.settings.bigText);
+      return React.createElement("button",{onClick:function(){ applyBigText(!on); set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{bigText:!on})}); }); },
+        style:Object.assign({},btn,{marginTop:10,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t("st_bigtext"));
+    })(),
+    onTour && React.createElement("button",{onClick:onTour,style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",border:"1px solid var(--line)"})}, t("st_tour")),
     React.createElement("div",{style:lbl},t("budget_month")),
     React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
     React.createElement("button",{style:btn,onClick:saveNums},t("save")),
@@ -5186,6 +5342,7 @@ function App(){
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
   const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
   const trashRef=useRef(null);
+  const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
   const [toast,setToast]=useState(null);
   const [syncing,setSyncing]=useState(false);
   const [syncStatus,setSyncStatus]=useState({type:"idle",msg:""});
@@ -5195,6 +5352,7 @@ function App(){
   // Moneda de visualización: convierte todos los importes (en €) a la moneda elegida en Ajustes.
   (function(){ const c=(state.settings&&state.settings.currency)||"EUR"; DISP.sym=c==="USD"?"$":"€"; DISP.k=c==="USD"?((state.fx>0)?1/state.fx:1):1; })();
   CURLANG = (state.settings&&state.settings.lang) || "es";   // idioma activo (i18n)
+  SIMPLEMODE = !!(state.settings&&state.settings.simpleMode); // modo sencillo → etiquetas sin jerga
 
   /* ---------- Sincronización en la nube (Supabase) ---------- */
   const [session,setSession]=useState(null);
@@ -5522,6 +5680,19 @@ function App(){
   };
   useEffect(function(){ refreshFx(); },[]);   // refresca el cambio al abrir la app
   useEffect(function(){ applyTheme(state.settings&&state.settings.theme); },[state.settings&&state.settings.theme]);  // tema de color
+  useEffect(function(){ applyBigText(state.settings&&state.settings.bigText); },[state.settings&&state.settings.bigText]);  // letra grande
+  // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
+  useEffect(function(){
+    if(state.tourSeen===false && state.onboarded!==false && !locked && !tourOpen){
+      const tm=setTimeout(function(){ setTourOpen(true); },700);
+      return function(){ clearTimeout(tm); };
+    }
+  },[state.tourSeen,state.onboarded,locked]);
+  const endTour=function(){
+    setTourOpen(false);
+    if(stateRef.current.tourSeen===false) set(function(s){ return Object.assign({},s,{tourSeen:true}); });
+  };
+  const openTour=function(){ setDrawerOpen(false); setTab(0); setTourOpen(true); };
   // Snapshot diario del total invertido (€) para el gráfico de evolución. Una vez por sesión.
   const snapDone=useRef(false);
   useEffect(function(){
@@ -5762,7 +5933,7 @@ function App(){
         React.createElement("div",{className:"brand-mark"},React.createElement(I.logo,{width:20,height:20})),
         React.createElement("div",null,
           React.createElement("div",{className:"brand-name"},"Mi cartera"),
-          React.createElement("div",{className:"brand-sub"},new Date().toLocaleDateString('es-ES',{month:'long',year:'numeric'}))
+          React.createElement("div",{className:"brand-sub"},new Date().toLocaleDateString(loc(),{month:'long',year:'numeric'}))
         )
       ),
       React.createElement("div",{style:{display:"flex",gap:"8px"}},
@@ -5801,12 +5972,13 @@ function App(){
       )
     ),
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
+    tourOpen && React.createElement(Tour,{onDone:endTour}),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
     React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
-      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); }})
+      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour})
     )
   );
 }
