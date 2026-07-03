@@ -19,6 +19,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.71.0] — 2026-07-03
+### Tabs dinámicas + arranque instantáneo + adiós CDNs de terceros
+- ➕ **Tabs dinámicas (idea del compi del curro):** botón **«+»** al final de la barra para añadir pestañas ocultas (sale una hoja con las disponibles; al tocar una se añade al final y salta a ella), y **papelera al arrastrar**: mantén pulsada una pestaña y suéltala sobre la papelera para quitarla (el Resumen no se puede quitar). Se persiste en `settings.tabHidden` y sincroniza entre dispositivos. El modo Sencillo de Ajustes ahora es un preset de esto mismo (retrocompatible: quien tenía modo sencillo sigue viendo lo mismo).
+- 🖐️ **El drag de pestañas ahora levanta la que tocas** (antes levantaba siempre la activa, aunque mantuvieras pulsada otra).
+- 🐛 **Fix swipe:** con pestañas ocultas (p. ej. modo Sencillo), deslizar más allá de la última saltaba de golpe al Resumen (usaba el total de pestañas en vez de las visibles). Ahora hace la resistencia de borde normal.
+- ⚡ **Arranque instantáneo (Service Worker stale-while-revalidate):** la app abre AL MOMENTO desde caché (incluso con red lenta o sin conexión) y la versión nueva se descarga por detrás y entra en el siguiente arranque — mismo modelo de actualización de siempre, pero sin esperar a la red al abrir.
+- 📦 **Cero CDNs de terceros:** supabase-js auto-hospedado y **con versión fijada** (`vendor/supabase.min.js` v2.110.0; antes jsdelivr con `@2` flotante, que podía romper la app sola el día menos pensado) y fuentes Manrope/Fraunces auto-hospedadas (`fonts/`, variables, latin+latin-ext; antes CSS bloqueante de Google Fonts). Todo cacheado por el SW ⇒ la app entera va offline y carga menos.
+- 🗜️ **Minificación en CI:** nuevo `scripts/minify-html.mjs` (esbuild; solo espacios+sintaxis, sin renombrar símbolos) en el workflow de deploy. El `index.html` del repo sigue siendo la fuente legible; el artefacto desplegado pesa ~14% menos (~26% menos el código propio).
+- 🎨 **Temas redondeados:** el tema elegido se aplica **antes del primer pintado** (adiós fogonazo oscuro del splash en tema claro), la barra de estado del móvil (`theme-color`) se tiñe del color del tema, la pantalla de bloqueo y el splash respetan el tema, y el degradado de la barra de tabs y los puntitos de página ya no llevan colores oscuros fijos.
+
 ## [3.70.1] — 2026-07-01
 ### Cuentas extra de Open Banking: nombres bonitos + editables
 - ✏️ Las cuentas extra sincronizadas (compartidas, 2ª cuenta de un banco) traían nombres feos del banco (los titulares de una conjunta, un tipo técnico o nada). Ahora se muestran con un **nombre "bonito" automático** (`niceObName`: conjunta/ahorro/corriente, o el final del IBAN si no hay nombre) y se pueden **renombrar a mano** en Patrimonio → Editar (se guarda en `state.obLabels` y sincroniza). Sigue el mismo formato que las cuentas manuales.

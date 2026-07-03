@@ -10,8 +10,12 @@ La app usa `React.createElement` directo. Meter JSX + Babel en el navegador prov
 
 > ⚠️ **No crear un `index.html` en la raíz.** GitHub Actions solo despliega `public/`. Hubo un duplicado en la raíz que se editaba por error y dejaba `public/` atrasado (un fix de TR no llegó al móvil). `public/index.html` es la **única fuente**: edítalo ahí directamente.
 
-### 3. Service Worker network-first
-Imprescindible para que el PWA en el móvil reciba siempre el último deploy. La cadena de versión del SW se sella en CI (`scripts/stamp-version.mjs`) para invalidar caché sin trabajo manual.
+**Sin CDNs de terceros en el arranque (v3.71):** supabase-js va auto-hospedado y con versión fijada en `public/vendor/supabase.min.js` (antes venía de jsdelivr con la etiqueta flotante `@2`, que podía romper la app sola), y las fuentes (Manrope/Fraunces, variables, latin+latin-ext) en `public/fonts/` con `@font-face` locales (antes CSS bloqueante de Google Fonts). Todo lo cachea el Service Worker ⇒ la app entera funciona offline. Para actualizar supabase-js: bajar la nueva versión de jsdelivr a `vendor/` a mano y probar.
+
+**Minificación en CI (v3.71):** `scripts/minify-html.mjs` (esbuild, solo whitespace+syntax, **nunca** renombra identificadores) minifica los `<script>`/`<style>` inline en el workflow de deploy, después de `stamp-version.mjs`. La fuente editable sigue siendo el `public/index.html` legible del repo; la minificación es solo un paso de empaquetado del artefacto.
+
+### 3. Service Worker stale-while-revalidate (v3.71; antes network-first)
+Sirve desde caché **al instante** (arranque inmediato incluso con red lenta o sin conexión) y descarga la versión fresca en segundo plano: la novedad se ve en el siguiente arranque. Mismo modelo de actualización de siempre (sin `skipWaiting`, sin recargas a media sesión), pero sin esperar a la red al abrir. La cadena de versión del SW se sella en CI (`scripts/stamp-version.mjs`) para invalidar caché sin trabajo manual.
 
 ### 4. Migraciones de datos versionadas
 `_dataVer` en `localStorage` permite cambiar la forma de los datos sembrados sin borrar los del usuario.
