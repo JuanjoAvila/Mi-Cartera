@@ -19,6 +19,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.75.0] — 2026-07-04
+### Roles de cuenta + gasto por Open Banking + informe del mes en imagen
+- 🎭 **Roles de cuenta (Patrimonio → Editar):** cada cuenta puede ser **🏦 Recibos** (los fijos/cuotas salen de ahí, como siempre), **🛒 Gasto diario** (de ahí sale lo que apuntas en Gastos — lo que antes era "la TR" fija) o **🔁 Todo** (una sola cuenta para ambas cosas, como usa mucha gente). Solo puede haber una de gasto diario; al cambiar el rol **el saldo mostrado se conserva** (re-anclaje automático, nada "salta"). Motor completo: saldo dinámico, cierre de mes y conciliación entienden los tres roles.
+- 🏦 **Compras con tarjeta → Gastos, solas:** si tu cuenta de gasto diario es un banco conectado por Open Banking, sus compras con tarjeta **entran automáticamente como gastos** (idempotente por ext_id, solo tarjeta — recibos y bizums fuera, sin doble conteo: primero entran los gastos y luego se re-ancla con el saldo real). Para el creador es inerte (su gasto va por TR, que no está en OB); es la pieza que hace la app usable por gente con ING/CaixaBank para el día a día.
+- 💶 La **inyección de nómina de TR (1500 €)** deja de ser un número global hardcodeado: ahora es un campo por cuenta (`inject`, sembrado para la cuenta del creador) — otro paso para compartir la app.
+- 📸 **Informe del mes (Ajustes):** genera una imagen bonita (1080×1350, colores de tu tema) con el gasto del mes vs presupuesto, top categorías y patrimonio, y abre el compartir del móvil (o descarga el PNG). Todo en el dispositivo.
+- 🐛 Arreglado de paso: editar a mano el saldo TR no revertía el aporte periódico (anclaba 50 € desviado).
+
 ## [3.74.0] — 2026-07-03
 ### Botón «Nueva versión» + plan de ahorro TR (los 50 €/mes al FTSE cuadran solos)
 - ✨ **Aviso de actualización con botón:** cuando hay una versión nueva esperando, aparece un pill verde arriba «✨ Nueva versión · toca para actualizar»; al tocarlo se activa y recarga al momento (tú decides cuándo). Si no lo tocas, entra sola en el siguiente arranque, como siempre. Blindado para que la PRIMERA instalación del SW no recargue sola (guard `_mcUserInitiated`; el viejo bug de v3.20 no vuelve).

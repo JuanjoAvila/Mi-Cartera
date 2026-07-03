@@ -441,6 +441,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
     padding:13px 14px;border-radius:13px;background:var(--bg-2);border:1px solid var(--line-soft);margin-bottom:8px;}
   .ts-item:active{border-color:var(--mint-dim);background:rgba(95,208,138,.10);}
   .ts-item svg{width:17px;height:17px;color:var(--mint);}
+  /* Roles de cuenta (Patrimonio → Editar) */
+  .rolechips{display:flex;gap:6px;padding:0 0 10px 50px;}
+  .rchip{font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:9px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--muted);}
+  .rchip.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
   /* Letra grande (accesibilidad) */
   html.bigtext #root{zoom:1.12;}
   /* Ayuda contextual "?" */
@@ -1201,6 +1205,28 @@ Object.assign(LANG.ca,{
   h_afford:"Escriu una despesa que estàs pensant fer (import i dia) i et dic si te la pots permetre sense quedar en números vermells abans de la nòmina.",
   h_recon:"Compara el que TU tens apuntat (rebuts, quotes) amb el que el banc diu que ha cobrat de veritat. Si alguna cosa no quadra o falta, t'ho marca.",
 });
+/* Roles de cuenta + import OB + informe mensual */
+Object.assign(LANG.es,{
+  rl_fijos:"🏦 Recibos", rl_diario:"🛒 Gasto diario", rl_ambos:"🔁 Todo",
+  rl_hint:"El rol dice qué papel juega cada cuenta: de las de «Recibos» salen los fijos y cuotas; de la de «Gasto diario» sale lo que apuntas en Gastos; «Todo» = una sola cuenta para ambas cosas. Solo puede haber una de gasto diario; al cambiar el rol, el saldo mostrado se conserva.",
+  ob_imported:"🏦 {n} compras con tarjeta añadidas a Gastos",
+  rp_btn:"📸 Informe del mes (imagen)", rp_spent:"Gastado este mes", rp_of_budget:"de {b} de presupuesto ({p}%)",
+  rp_top:"Top categorías", rp_networth:"Patrimonio", rp_delta:"{x} este mes", rp_footer:"hecho con Mi Cartera",
+});
+Object.assign(LANG.en,{
+  rl_fijos:"🏦 Bills", rl_diario:"🛒 Daily spending", rl_ambos:"🔁 Everything",
+  rl_hint:"The role sets what each account does: «Bills» accounts pay fixed costs and instalments; the «Daily spending» one funds what you log in Spending; «Everything» = one account for both. Only one daily-spending account; when you switch roles the shown balance is preserved.",
+  ob_imported:"🏦 {n} card purchases added to Spending",
+  rp_btn:"📸 Month report (image)", rp_spent:"Spent this month", rp_of_budget:"of {b} budget ({p}%)",
+  rp_top:"Top categories", rp_networth:"Net worth", rp_delta:"{x} this month", rp_footer:"made with Mi Cartera",
+});
+Object.assign(LANG.ca,{
+  rl_fijos:"🏦 Rebuts", rl_diario:"🛒 Despesa diària", rl_ambos:"🔁 Tot",
+  rl_hint:"El rol diu quin paper juga cada compte: dels de «Rebuts» surten els fixos i quotes; del de «Despesa diària» surt el que apuntes a Despeses; «Tot» = un sol compte per a les dues coses. Només n'hi pot haver un de despesa diària; en canviar el rol, el saldo mostrat es conserva.",
+  ob_imported:"🏦 {n} compres amb targeta afegides a Despeses",
+  rp_btn:"📸 Informe del mes (imatge)", rp_spent:"Gastat aquest mes", rp_of_budget:"de {b} de pressupost ({p}%)",
+  rp_top:"Top categories", rp_networth:"Patrimoni", rp_delta:"{x} aquest mes", rp_footer:"fet amb Mi Cartera",
+});
 /* Importador CSV del bróker (Inversiones) */
 Object.assign(LANG.es,{
   bi_title:"Importar del bróker (CSV)", bi_sub:"re-ancla posiciones con tu extracto",
@@ -1811,6 +1837,21 @@ function nominaYaEntro(now){                                        // ¿ya pas�
   return now.getDate() >= lastWorkingDay(now.getFullYear(), now.getMonth()).getDate();
 }
 // Al cargar: arrastra meses ya cerrados al saldo base (les mete su inyección y les resta su gasto)
+/* ---- ROLES DE CUENTA: qué papel juega cada cuenta en el motor ----
+   "fijos"  → lleva recibos/cuotas/nómina (comportamiento banco de siempre).
+   "diario" → de aquí sale el gasto variable del día a día (el spendFrom de siempre, TR).
+   "ambos"  → UNA cuenta para todo (gente que usa un solo banco): recibos Y gasto diario.
+   `spendFrom` se mantiene sincronizado con el rol (diario/ambos → true) para que todo el
+   motor existente siga funcionando sin tocar cada find(a=>a.spendFrom). Solo puede haber
+   UNA cuenta diario/ambos a la vez (la UI degrada las demás a fijos). */
+function accRole(a){ return (a&&a.role) || (a&&a.spendFrom ? "diario" : "fijos"); }
+function accDaily(a){ const r=accRole(a); return r==="diario"||r==="ambos"; }   // gasto variable sale de aquí
+function accFixed(a){ const r=accRole(a); return r==="fijos"||r==="ambos"; }    // participa en el motor de fijos
+// Inyección de nómina de la cuenta de gasto (€ que entran cada mes FUERA del sistema de flujos).
+// Antes era CONFIG.TR_INJECTION hardcodeado para todos; ahora es por cuenta (a.inject). Fallback
+// anclado al id de la cuenta TR del creador (patrón de migración por id) hasta que la semilla escriba el campo.
+function accInject(a){ if(!a) return 0; return a.inject!=null ? a.inject : (a.id==="ebj0vbh" ? CONFIG.TR_INJECTION : 0); }
+
 function reconcileTR(s){
   if(!s.accounts || !s.expenses) return s;
   const acc=s.accounts.find(a=>a.spendFrom);
@@ -1824,7 +1865,9 @@ function reconcileTR(s){
     const key=mk(ay,am);
     const monthExp=s.expenses.filter(e=> mkOf(parseDate(e.date))===key);
     const spent=monthExp.reduce((a,e)=>a+e.amount,0);
-    acc.value = acc.value + CONFIG.TR_INJECTION - spent;            // mes cerrado: + nómina − gasto
+    acc.value = acc.value + accInject(acc) - spent;                 // mes cerrado: + inyección de nómina − gasto
+    // rol "ambos" (una cuenta para todo): además arrastra su neto de fijos/nómina/puntuales del mes
+    if(accRole(acc)==="ambos") acc.value = +(acc.value + monthNetForAccount(s, acc.ent, ay, am+1, null)).toFixed(2);
     // Round-up & Saveback (#19): al cerrar el mes, el round-up sale del efectivo y se abona
     // (junto al saveback, dinero gratis) a la inversión destino comprando participaciones.
     const ru = (acc.roundupManual!=null) ? acc.roundupManual : roundupOf(monthExp, acc.roundup||0);
@@ -2220,6 +2263,8 @@ function seedFlows(s){
     if(!s.catOverrides["mapfre"]){ s.catOverrides["mapfre"]="bares"; USER_OVERRIDES["mapfre"]="bares"; }
     // semilla única: aporte periódico 50€/mes al FTSE desde el efectivo de TR (plan de ahorro real del usuario)
     if(!s._monthlyInvestSeed){ s.accounts=s.accounts.map(function(a){ return (a.spendFrom && a.monthlyInvest==null)?Object.assign({},a,{monthlyInvest:50}):a; }); s._monthlyInvestSeed=true; }
+    // semilla única: materializa la inyección de nómina de TR como campo por cuenta (antes CONFIG global)
+    if(!s._injectSeed){ s.accounts=s.accounts.map(function(a){ return (a.spendFrom && a.inject==null)?Object.assign({},a,{inject:CONFIG.TR_INJECTION}):a; }); s._injectSeed=true; }
   }
   // FIX v3.50: el saldo dinámico (v3.48) interpretó el `value` guardado como "inicio de mes" y volvió a
   // restar los cargos YA pagados de este mes → saldos disparados (Sabadell −3312 en vez de 147). Re-anclamos
@@ -2307,6 +2352,79 @@ function HelpTip({text}){
       )
     )
   );
+}
+
+/* ============================================================
+   INFORME DEL MES — imagen 1080×1350 (para compartir por WhatsApp/IG) con los
+   colores del tema activo. Todo en el dispositivo (canvas → share/descarga).
+   ============================================================ */
+function shareMonthReport(state, tt){
+  try{
+    const css=getComputedStyle(document.documentElement);
+    const C=function(v,fb){ const x=css.getPropertyValue(v).trim(); return x||fb; };
+    const mint=C("--mint","#5FD08A"), text=C("--text","#E8F0EA"), muted=C("--muted","#8FA89A"),
+          surface=C("--surface","#122319"), line=C("--line","#1f3a2c"), coral=C("--coral","#E2705F"), bg=C("--bg","#0B1410");
+    const W=1080,H=1350;
+    const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
+    const g=cv.getContext("2d");
+    const round=function(x,y,w,h,r){ g.beginPath(); g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r); g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath(); };
+    g.fillStyle=bg; g.fillRect(0,0,W,H);
+    const grad=g.createLinearGradient(0,0,0,H*0.5); grad.addColorStop(0,"rgba(95,208,138,.14)"); grad.addColorStop(1,"rgba(0,0,0,0)");
+    g.fillStyle=grad; g.fillRect(0,0,W,H*0.5);
+    g.textBaseline="top";
+    const mes=monthLong(new Date().getMonth())+" "+new Date().getFullYear();
+    g.fillStyle=mint;  g.font="800 44px Manrope, sans-serif"; g.fillText("💼 Mi Cartera", 72, 70);
+    g.fillStyle=muted; g.font="600 34px Manrope, sans-serif"; g.fillText(mes.charAt(0).toUpperCase()+mes.slice(1), 72, 130);
+    // tarjeta: gastado este mes + barra de presupuesto
+    g.fillStyle=surface; round(72,210,W-144,330,28); g.fill(); g.strokeStyle=line; g.lineWidth=2; round(72,210,W-144,330,28); g.stroke();
+    g.fillStyle=muted; g.font="700 27px Manrope, sans-serif"; g.fillText(t("rp_spent").toUpperCase(), 116, 252);
+    g.fillStyle=text;  g.font="700 96px Manrope, sans-serif"; g.fillText(eur0(tt.thisMonthSpent), 112, 300);
+    const bud=state.budget||0;
+    if(bud>0){
+      const ratio=Math.min(1, (tt.thisMonthSpent||0)/bud);
+      g.fillStyle="rgba(128,128,128,.18)"; round(116,432,W-232,26,13); g.fill();
+      g.fillStyle=ratio<1?mint:coral; round(116,432,Math.max(20,(W-232)*ratio),26,13); g.fill();
+      g.fillStyle=muted; g.font="600 28px Manrope, sans-serif"; g.fillText(tf("rp_of_budget",{b:eur0(bud),p:Math.round(ratio*100)}), 116, 480);
+    }
+    // top 3 categorías del mes
+    const byCat={};
+    (state.expenses||[]).filter(function(e){ return parseDate(e.date)>=startOfMonth() && e.amount>0; })
+      .forEach(function(e){ byCat[e.category||"otros"]=(byCat[e.category||"otros"]||0)+e.amount; });
+    const top=Object.keys(byCat).map(function(k){ return [k,byCat[k]]; }).sort(function(a,b){ return b[1]-a[1]; }).slice(0,3);
+    let y=610;
+    g.fillStyle=text; g.font="800 36px Manrope, sans-serif"; g.fillText(t("rp_top"), 72, y); y+=70;
+    const maxV=top.length?top[0][1]:1;
+    top.forEach(function(c){
+      const cat=catOf(c[0]);
+      g.font="600 44px Manrope, sans-serif"; g.fillStyle=text; g.fillText(cat.icon, 72, y-4);
+      g.font="700 34px Manrope, sans-serif"; g.fillText(catName(c[0]), 150, y);
+      g.textAlign="right"; g.fillText(eur0(c[1]), W-72, y); g.textAlign="left";
+      g.fillStyle="rgba(128,128,128,.18)"; round(150,y+48,W-222-72,16,8); g.fill();
+      g.fillStyle=cat.color||mint; round(150,y+48,Math.max(14,(W-222-72)*(c[1]/maxV)),16,8); g.fill();
+      y+=112;
+    });
+    if(!top.length){ g.fillStyle=muted; g.font="600 30px Manrope, sans-serif"; g.fillText("—", 72, y); y+=80; }
+    // tarjeta: patrimonio + delta del mes
+    const py=Math.max(y+30, 1030);
+    g.fillStyle=surface; round(72,py,W-144,190,28); g.fill(); g.strokeStyle=line; round(72,py,W-144,190,28); g.stroke();
+    g.fillStyle=muted; g.font="700 27px Manrope, sans-serif"; g.fillText(t("rp_networth").toUpperCase(), 116, py+38);
+    g.fillStyle=text;  g.font="700 64px Manrope, sans-serif"; g.fillText(eur0(tt.netWorth), 112, py+80);
+    const dl=(tt.delta>=0?"+":"")+eur0(tt.delta);
+    g.textAlign="right"; g.fillStyle=tt.delta>=0?mint:coral; g.font="700 34px Manrope, sans-serif";
+    g.fillText(tf("rp_delta",{x:dl}), W-108, py+95); g.textAlign="left";
+    g.fillStyle=muted; g.font="600 26px Manrope, sans-serif"; g.fillText(t("rp_footer")+" · v"+CONFIG.APP_VERSION, 72, H-72);
+    cv.toBlob(function(b){
+      if(!b) return;
+      const fname="mi-cartera-"+new Date().toISOString().slice(0,7)+".png";
+      const file=new File([b], fname, {type:"image/png"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:"Mi Cartera"}).catch(function(){});
+      } else {
+        const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=fname; a.click();
+        setTimeout(function(){ URL.revokeObjectURL(u); },1000);
+      }
+    },"image/png");
+  }catch(e){ try{ alert("Informe: "+((e&&e.message)||e)); }catch(_){} }
 }
 
 /* ============================================================
@@ -3529,11 +3647,30 @@ function Wealth({state, set, totals}){
   const pn=(i)=> (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0;   // movimientos ya ocurridos este mes
   const ruM=totals.roundupThisMonth||0;                                     // round-up del mes (sale del efectivo de gasto)
   const miM=totals.monthlyInvestThisMonth||0;                               // aporte periódico del mes (idem)
-  const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM - miM;
+  const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM - miM + (accRole(i)==="ambos"?pn(i):0);
+  // ROLES DE CUENTA: al cambiar el rol se RE-ANCLA `value` para que el saldo mostrado no cambie
+  // (despejamos value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario.
+  const ruOfA=(a)=> (a.roundupManual!=null)?a.roundupManual:(a.roundup?(totals.roundupThisMonth||0):0);
+  const injOfA=(a)=> nominaYaEntro()? accInject(a):0;
+  const shownOf=(a)=> accDaily(a)? spendBal(a) : ((a.value||0) + pn(a));
+  const valueForRole=(a,r,shown)=>{
+    if(r==="fijos") return +(shown - pn(a)).toFixed(2);
+    return +((shown - injOfA(a) + (totals.thisMonthSpent||0) + ruOfA(a) + (a.monthlyInvest||0) - (r==="ambos"?pn(a):0))).toFixed(2);
+  };
+  const setRole=(id,r)=>{
+    set(function(s){
+      return Object.assign({},s,{accounts:s.accounts.map(function(a){
+        if(a.id===id){ if(accRole(a)===r) return a; return Object.assign({},a,{role:r, spendFrom:r!=="fijos", value:valueForRole(a,r,shownOf(a))}); }
+        if(r!=="fijos" && accDaily(a)) return Object.assign({},a,{role:"fijos", spendFrom:false, value:valueForRole(a,"fijos",shownOf(a))});
+        return a;
+      })});
+    });
+  };
   const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})),{
     // Editas el SALDO REAL de hoy; por dentro se guarda la base (inicio de mes) correcta.
-    display:  i => i.spendFrom ? spendBal(i) : (i.value + pn(i)),
-    toStored: (i,typed) => i.spendFrom ? (typed - totals.injTR + totals.thisMonthSpent + ruM) : (typed - pn(i))
+    display:  i => accDaily(i) ? spendBal(i) : (i.value + pn(i)),
+    // editar a mano re-ancla: typed = spendBal(nuevo value) → despeja value (incluye miM, que faltaba)
+    toStored: (i,typed) => accDaily(i) ? (typed - totals.injTR + totals.thisMonthSpent + ruM + miM - (accRole(i)==="ambos"?pn(i):0)) : (typed - pn(i))
   });
   const astEd=useEditable(state.assets,it=>set(s=>Object.assign({},s,{assets:it})));
   const accSum=totals.liquid;
@@ -3550,13 +3687,22 @@ function Wealth({state, set, totals}){
     ),
     React.createElement(CollapsibleCard,{title:t("pt_accounts"),sub:t("pt_cash_avail"),dot:"#5FD08A",storageKey:"w_acc",
       right:React.createElement("button",{className:"edit-link"+(accEd.editing?" save":""),onClick:e=>{e.stopPropagation();accEd.editing?accEd.save():accEd.start();}},accEd.editing?t("fj_save"):t("fj_edit"))},
-      state.accounts.map(a=>React.createElement("div",{className:"row",key:a.id},
-        React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:a.ent,size:38}),
-          React.createElement("div",null,React.createElement("div",{className:"rname"},entOf(a.ent).label),React.createElement("div",{className:"rsub"}, a.spendFrom?(tf("pt_monthspent",{x:eur0(totals.thisMonthSpent)})+(totals.injTR?tf("pt_payroll",{x:eur0(totals.injTR)}):"")):a.name))),
-        accEd.editing
-          ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
-          : React.createElement("div",{className:"rval num"},eur(a.spendFrom? spendBal(a) : a.value + pn(a)))
+      state.accounts.map(a=>React.createElement(React.Fragment,{key:a.id},
+        React.createElement("div",{className:"row"},
+          React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:a.ent,size:38}),
+            React.createElement("div",null,React.createElement("div",{className:"rname"},entOf(a.ent).label),React.createElement("div",{className:"rsub"}, a.spendFrom?(tf("pt_monthspent",{x:eur0(totals.thisMonthSpent)})+(totals.injTR?tf("pt_payroll",{x:eur0(totals.injTR)}):"")):a.name))),
+          accEd.editing
+            ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
+            : React.createElement("div",{className:"rval num"},eur(accDaily(a)? spendBal(a) : a.value + pn(a)))
+        ),
+        // rol de la cuenta (solo en modo edición): recibos / gasto diario / todo
+        accEd.editing && React.createElement("div",{className:"rolechips"},
+          [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+            const on=accRole(a)===rr[0];
+            return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){ setRole(a.id, rr[0]); }}, t(rr[1]));
+          }))
       )),
+      accEd.editing && React.createElement("div",{className:"hint"}, t("rl_hint")),
       // Cuentas extra de Open Banking (compartidas, 2ª cuenta de un banco…): saldo real sincronizado.
       // Nombre editable (obLabels) con un default "bonito" (niceObName); el saldo es solo lectura.
       (state.obAccounts||[]).map(function(o){ const custom=(state.obLabels||{})[o.key]; const disp=(custom!=null&&custom!=="")?custom:niceObName(o);
@@ -3792,15 +3938,32 @@ function applyBankBalances(s, links){
       accs.forEach(function(ac){ const bal=pickBankBalance(ac.balances); if(bal!=null) obAccts.push(mkObAcct(lk,ac,bal)); });
       return;
     }
-    // hay ent conocido: localiza la cuenta MANUAL (no spendFrom, no usada aún) para re-anclarla
-    const pidx=accounts.findIndex(function(a,i){ return a.ent===ent && !a.spendFrom && !usedPrimary[i]; });
+    // hay ent conocido: localiza la cuenta MANUAL para re-anclarla. Cualquier rol vale: si un
+    // banco OB es tu cuenta de gasto diario (o "todo"), su saldo real también re-ancla. La TR
+    // de gasto del creador nunca entra aquí porque TR no está en Open Banking (sin link posible).
+    const pidx=accounts.findIndex(function(a,i){ return a.ent===ent && !usedPrimary[i]; });
     let primaryAc=null;
     if(pidx>=0){ const manIban=accounts[pidx].bankIban; primaryAc=(manIban && accs.find(function(a){ return a.iban && a.iban===manIban; })) || accs[0]; usedPrimary[pidx]=true; }
     accs.forEach(function(ac){
       const bal=pickBankBalance(ac.balances); if(bal==null) return;
       if(pidx>=0 && ac===primaryAc){
         const a=accounts[pidx];
-        const newBase=+((bal - monthNetForAccount(s, ent, cy, cm, td)).toFixed(2));
+        // re-anclaje = despejar `value` de la fórmula de dynBal para que HOY muestre el saldo real.
+        // fijos:  dyn = value + paidNet
+        // diario: dyn = value + inyección − gasto − round-up − aporte
+        // ambos:  dyn = value + inyección − gasto − round-up − aporte + paidNet
+        const role=accRole(a);
+        let newBase;
+        if(role==="fijos"){
+          newBase=+((bal - monthNetForAccount(s, ent, cy, cm, td)).toFixed(2));
+        } else {
+          const monthExp=(s.expenses||[]).filter(function(e){ return parseDate(e.date)>=startOfMonth(); });
+          const spentM=monthExp.reduce(function(x,e){ return x+e.amount; },0);
+          const ruMv=(a.roundupManual!=null)?a.roundupManual:roundupOf(monthExp, a.roundup||0);
+          const miMv=a.monthlyInvest||0;
+          const injMv=nominaYaEntro()?accInject(a):0;
+          newBase=+((bal - injMv + spentM + ruMv + miMv - (role==="ambos"?monthNetForAccount(s, ent, cy, cm, td):0)).toFixed(2));
+        }
         synced.push({ ent:ent, bal:bal, iban:ac.iban||null });
         if(Math.abs((a.value||0)-newBase)>0.005 || (ac.iban && a.bankIban!==ac.iban)){
           accounts[pidx]=Object.assign({}, a, { value:newBase, bankIban:ac.iban||a.bankIban });
@@ -3865,8 +4028,8 @@ function reconcileBank(state, y, m, today){
   const res={ hasData:tx.length>0, confirmed:[], shared:[], mismatch:[], missing:[], newCharges:[], income:[], feed:[] };
   if(!tx.length) return res;
   const ym=y+"-"+(m<10?"0":"")+m;
-  // bancos OB del usuario (cuentas no-spendFrom; el gasto de tarjeta de TR no es OB)
-  const obEnts={}; (state.accounts||[]).forEach(function(a){ if(!a.spendFrom) obEnts[a.ent]=true; });
+  // bancos OB del usuario (cuentas con rol de fijos, incluida "ambos"; el gasto de tarjeta de TR no es OB)
+  const obEnts={}; (state.accounts||[]).forEach(function(a){ if(accFixed(a)) obEnts[a.ent]=true; });
   // movimientos de ESTE mes en esos bancos (convención: amount POSITIVO = gasto)
   const month=tx.filter(function(t){ return String(t.date||"").slice(0,7)===ym && obEnts[t.ent]; });
   res.feed=month.slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
@@ -3951,6 +4114,33 @@ function flattenBankTx(links){
   });
   out.sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
   return out.slice(0,150);   // últimos ~150 movimientos
+}
+
+/* GASTO VARIABLE VÍA OPEN BANKING (roles de cuenta): si tu cuenta de gasto diario (rol
+   "diario"/"ambos") es un banco conectado, sus COMPRAS CON TARJETA entran solas como gastos.
+   Idempotente por ext_id (+ dedup clásico fecha|importe|comercio). Solo tarjeta (card:true):
+   los recibos ya van por el motor de fijos y los bizums/transfers no son gasto del día a día.
+   Para el creador es INERTE (su cuenta diaria es TR, que no está en Open Banking). */
+function importObExpenses(s, txs){
+  const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
+  if(!daily || !txs || !txs.length) return null;
+  const som=startOfMonth();
+  const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
+  const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
+  const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
+  const add=[];
+  txs.forEach(function(tx){
+    if(tx.ent!==daily.ent) return;
+    if(!tx.card || !(tx.amount>0)) return;                        // solo compras con tarjeta (gasto)
+    if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
+    if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
+    const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(), merchant:tx.merchant||"Compra", amount:tx.amount, category:autoCategory(tx.merchant||""), source:"ob" };
+    if(tx.id) e.extId=tx.id;
+    if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
+    keys[kOf(e)]=1;
+    add.push(e);
+  });
+  return add.length? add : null;
 }
 
 // Selector compacto de meses (1-12) para gastos no mensuales.
@@ -5030,7 +5220,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const fileRef=useRef(null);
   // --- Banco (Open Banking) ---
@@ -5116,6 +5306,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour}
         style:Object.assign({},btn,{marginTop:10,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t("st_bigtext"));
     })(),
     onTour && React.createElement("button",{onClick:onTour,style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",border:"1px solid var(--line)"})}, t("st_tour")),
+    totals && React.createElement("button",{onClick:function(){ shareMonthReport(state, totals); },style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",border:"1px solid var(--line)"})}, t("rp_btn")),
     React.createElement("div",{style:lbl},t("budget_month")),
     React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
     React.createElement("button",{style:btn,onClick:saveNums},t("save")),
@@ -5459,10 +5650,20 @@ function App(){
     return cloud.bankSync().then(function(res){
       const links=(res&&res.links)||[];
       const preview=applyBankBalances(stateRef.current, links);   // función pura: solo para decidir el aviso
+      let obAdded=[];                                             // compras de tarjeta importadas (roles de cuenta)
       set(function(prev){
-        const r=applyBankBalances(prev, links);
-        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: flattenBankTx(links) });
+        const txs=flattenBankTx(links);
+        // ORDEN anti-doble-conteo: primero entran las compras de tarjeta como gastos, y DESPUÉS
+        // se re-ancla con el saldo real del banco (que ya incluye esas compras).
+        const add=importObExpenses(prev, txs);
+        obAdded=add||[];
+        const withExp=add? Object.assign({},prev,{expenses:add.concat(prev.expenses||[])}) : prev;
+        const r=applyBankBalances(withExp, links);
+        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs });
       });
+      // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
+      setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
+      if(obAdded.length) showToast(tf("ob_imported",{n:obAdded.length}));
       // Resultado por banco (servidor tolerante a fallos): aplica los que funcionaron y avisa SOLO
       // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
@@ -5622,8 +5823,8 @@ function App(){
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
     // El round-up & saveback (#19) se aplican al CERRAR el mes (reconcileTR), persistidos, para que
     // todas las pestañas lean lo mismo. El mes en curso se muestra como informativo en Inversiones.
-    const injTR = nominaYaEntro() ? CONFIG.TR_INJECTION : 0;
     const trAcc=state.accounts.find(a=>a.spendFrom);
+    const injTR = (trAcc && nominaYaEntro()) ? accInject(trAcc) : 0;
     // si has puesto un importe a mano (roundupManual/savebackManual) manda ese; si no, se estima de los gastos
     const roundupThisMonth = trAcc ? ((trAcc.roundupManual!=null)?trAcc.roundupManual:roundupOf(thisMonthExp, trAcc.roundup||0)) : 0;
     const savebackThisMonth = trAcc ? ((trAcc.savebackManual!=null)?trAcc.savebackManual:(trAcc.saveback?savebackOf(thisMonthExp):0)) : 0;
@@ -5637,9 +5838,14 @@ function App(){
     // SALDO DINÁMICO: cada banco = base (inicio de mes) + movimientos YA ocurridos este mes
     // (ingresos/nómina/bizums − fijos − cuotas − puntuales − transfers). El de gasto (TR) usa su inyección.
     const paidNetByBank={};
-    state.accounts.forEach(function(a){ if(!a.spendFrom) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
+    state.accounts.forEach(function(a){ if(accFixed(a)) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
     // el round-up y el aporte periódico del mes ya salieron del efectivo de gasto (TR) hacia la inversión (en tránsito)
-    const dynBal=function(a){ return a.spendFrom ? (a.value+injTR-thisMonthSpent-roundupThisMonth-monthlyInvestThisMonth) : ((a.value||0)+(paidNetByBank[a.ent]||0)); };
+    const dynBal=function(a){
+      if(!accDaily(a)) return (a.value||0)+(paidNetByBank[a.ent]||0);
+      let v=a.value+injTR-thisMonthSpent-roundupThisMonth-monthlyInvestThisMonth;
+      if(accRole(a)==="ambos") v+=(paidNetByBank[a.ent]||0);   // una cuenta para todo: también lleva sus fijos/nómina
+      return v;
+    };
     // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
     const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + (o.cur==="USD"? (o.value||0)*fx : (o.value||0)), 0);
     const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0) + obLiquid;
@@ -6022,7 +6228,7 @@ function App(){
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
     React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
-      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour})
+      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals})
     )
   );
 }
