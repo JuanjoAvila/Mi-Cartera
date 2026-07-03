@@ -19,6 +19,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.72.0] — 2026-07-03
+### Importador CSV del bróker — sync de inversiones sin dar credenciales a nadie
+- 📥 **Nueva tarjeta «Importar del bróker (CSV)» en Inversiones:** exporta tus movimientos desde la app del bróker (Trade Republic exporta CSV), súbelo o pega el texto, y la app **re-ancla tus posiciones a la verdad del extracto** (participaciones + coste absolutos, con coste medio y ventas parciales bien calculadas). Previsualización SIEMPRE antes de aplicar, con mapeo por posición (sugerido por ISIN guardado o por nombre) y opción «no tocar». Tras aplicar se refrescan los precios para recalcular el valor de mercado.
+- 🔒 **Todo se procesa en el móvil**: el CSV no se sube a ningún servidor. Cero credenciales, cero dependencias de terceros.
+- 🧠 **Parser tolerante:** detecta separador (`;`/`,`/tab), fila de cabeceras y columnas por nombre en ES/EN/DE (fecha/date/datum, cantidad/shares/anzahl…) o por la pinta de los valores (ISIN por regex, fechas). Entiende compras, ventas, planes de inversión, **saveback/round-up** (son compras), e informa de **intereses y dividendos** detectados (p. ej. el interés de TR que descuadraba el efectivo).
+- 🔁 **Sin doble conteo con el round-up modelado:** el import fija valores ABSOLUTOS (re-ancla), no suma deltas; el motor sigue proyectando desde el ancla nuevo.
+- 📝 Contexto: investigado el sync automático de inversiones (mandato "no se puede no existe"). SnapTrade no cubre TR/Revolut/MyInvestor (verificado contra su API pública), Plaid Investments es US/CA, y las vías reales (Flanks —lo que usa Getquin—, wealthAPI) son B2B con contrato → encajan en Fase 3 junto a Enable Banking producción. El CSV es lo que usan los trackers serios sin pedir login del bróker.
+
 ## [3.71.0] — 2026-07-03
 ### Tabs dinámicas + arranque instantáneo + adiós CDNs de terceros
 - ➕ **Tabs dinámicas (idea del compi del curro):** botón **«+»** al final de la barra para añadir pestañas ocultas (sale una hoja con las disponibles; al tocar una se añade al final y salta a ella), y **papelera al arrastrar**: mantén pulsada una pestaña y suéltala sobre la papelera para quitarla (el Resumen no se puede quitar). Se persiste en `settings.tabHidden` y sincroniza entre dispositivos. El modo Sencillo de Ajustes ahora es un preset de esto mismo (retrocompatible: quien tenía modo sencillo sigue viendo lo mismo).
