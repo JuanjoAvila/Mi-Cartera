@@ -19,6 +19,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.76.0] — 2026-07-04
+### Arreglos gordos de UX (tabs, ayudas, informe) + interés TR + avisos
+- 🐛 **Tabs que "a veces" no se podían mover ni quitar:** si la app arrancaba en la pantalla de bloqueo (PIN/huella) o en el onboarding, los listeners de arrastre de pestañas no se instalaban nunca en esa sesión. Ahora se enganchan al desbloquear. (Por eso fallaba en la demo y en casa: dependía de si la app abría bloqueada.)
+- 🐛 **Ayudas «?» que salían en Resumen:** el track de páginas lleva un `transform` permanente y capturaba el `position:fixed` del overlay — la tarjeta de ayuda se pintaba sobre otra pestaña. Ahora va en un portal a `<body>`: sale centrada, estés en la pestaña que estés.
+- 🎨 **Informe del mes a prueba de móviles:** los colores ya no se leen de las variables CSS (que el "modo oscuro automático" de algunos Android reescribe, dejando textos negros ilegibles) sino de una paleta fija por tema. El tutorial y las tarjetas de ayuda declaran su color explícito por la misma razón.
+- ❓ **Ayudas «?» en (casi) todas las tarjetas:** de 5 a 23 — Resumen (distribución, culpable, tendencia, ahorro, meta), Gastos (suscripciones), Inversiones (rentabilidad, por tipo, evolución), Patrimonio (cuentas+ROLES, desglose TR, inversiones, bienes) y Fijos (recibos, cuotas, nómina/transfers, puntuales). ES/EN/CA.
+- 🎓 **Tour más completo:** 3 pasos nuevos — mover/quitar/añadir pestañas, la pestaña Patrimonio, y qué son los «?».
+- 💶 **Interés del efectivo TR (Inversiones → Round-up):** campo «% anual»; al cerrar cada mes la app abona el interés sola. Era la fuga principal del descuadre lento con TR (TR paga intereses el día 1 y la app no los contaba). El desglose TR ahora explica los descuadres pequeños legítimos (intereses + TR invierte round-ups los días 2/9/16/23).
+- 🔔 **Avisos al apuntar un gasto** (in-app; las push de verdad llegarán con el APK): pasarse del presupuesto, cruzar el 80 %, o un gasto tocho (≥15 % del presupuesto).
+
 ## [3.75.0] — 2026-07-04
 ### Roles de cuenta + gasto por Open Banking + informe del mes en imagen
 - 🎭 **Roles de cuenta (Patrimonio → Editar):** cada cuenta puede ser **🏦 Recibos** (los fijos/cuotas salen de ahí, como siempre), **🛒 Gasto diario** (de ahí sale lo que apuntas en Gastos — lo que antes era "la TR" fija) o **🔁 Todo** (una sola cuenta para ambas cosas, como usa mucha gente). Solo puede haber una de gasto diario; al cambiar el rol **el saldo mostrado se conserva** (re-anclaje automático, nada "salta"). Motor completo: saldo dinámico, cierre de mes y conciliación entienden los tres roles.

@@ -451,11 +451,11 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .helpq{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
   .helpq:active{color:var(--mint);border-color:var(--mint-dim);}
   .helpover{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:95;display:flex;align-items:center;justify-content:center;padding:24px;}
-  .helpcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;max-width:340px;width:100%;box-shadow:var(--shadow);animation:sheetup .22s ease;}
+  .helpcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;max-width:340px;width:100%;box-shadow:var(--shadow);animation:sheetup .22s ease;color:var(--text);}
   /* Tour guiado (coach-marks) */
   .tour-wrap{position:fixed;inset:0;z-index:90;}
   .tour-spot{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.62), 0 0 0 3px var(--mint);transition:all .32s cubic-bezier(.22,.61,.36,1);pointer-events:none;}
-  .tour-tip{position:fixed;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);z-index:91;animation:sheetup .25s ease;}
+  .tour-tip{position:fixed;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);z-index:91;animation:sheetup .25s ease;color:var(--text);}
   .tour-txt{font-size:15px;line-height:1.55;font-weight:600;}
   .tour-dots{display:flex;gap:5px;margin:12px 0;}
   .tour-dots .td{width:7px;height:7px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);transition:all .2s;}
@@ -1167,8 +1167,34 @@ Object.assign(LANG.es,{
   tour_3:"📅 En «{fijos}» están los pagos de cada mes (luz, agua, hipoteca…). La app te avisa si no te va a llegar.",
   tour_4:"⚙️ Aquí están los Ajustes: idioma, colores, letra grande y el modo sencillo.",
   tour_5:"☁️ Con tu cuenta, todo se guarda solo y no se pierde aunque cambies de móvil. ¡Ya está!",
+  tour_6:"👆 Las pestañas son tuyas: mantén una pulsada y arrástrala para cambiarla de sitio, o suéltala en la papelera para quitarla. Con el «+» añades las que quieras.",
+  tour_7:"🏛 En «{patri}» está TODO lo tuyo junto: cuentas, inversiones, bienes y deudas. Toca «Editar» para corregir cualquier saldo: la app se re-cuadra sola.",
+  tour_8:"❓ Si ves un «?» en una tarjeta, tócalo: te explica esa tarjeta en cristiano, sin jerga. Hay uno en casi todas.",
   tour_next:"Siguiente", tour_skip:"Saltar", tour_done:"¡Listo!",
   h_ok:"Entendido",
+  h_dist:"Cómo se reparte tu dinero: lo líquido (cuentas), lo invertido y los bienes (coche, piso…). La barra crece hacia donde más tienes.",
+  h_savings:"Lo que apartas AUTOMÁTICAMENTE cada mes hacia inversión o ahorro (tus aportaciones periódicas). No es el gasto: es lo que te pagas a ti primero.",
+  h_culprit:"El reparto del gasto de este mes por categorías. El «culpable» es la categoría que más se lleva: si hay que recortar, empieza por ahí.",
+  h_trend:"Compara lo que llevas gastado en cada categoría con tu media de los últimos meses. Flecha arriba = este mes vas por encima de lo normal.",
+  h_goalw:"Tu meta de ahorro más cercana y cómo va. La frase de abajo te dice si llegas a la fecha o cuánto tendrías que apartar al mes.",
+  h_subs:"Pagos que se repiten cada mes por el mismo importe (Netflix, gym…). La app los detecta sola en tus gastos: revisa si de verdad los usas.",
+  h_cvg:"Cuánto has puesto de tu bolsillo en cada bróker y cuánto vale hoy. La diferencia es tu ganancia (o pérdida) real, en la moneda de cada uno.",
+  h_bytype:"Tus inversiones agrupadas por tipo (acciones, ETF, fondo, oro…). Para ver de un vistazo si lo tienes todo en un mismo saco.",
+  h_rend:"Cada posición ordenada por lo que te ha dado: verde = ganas, rojo = pierdes. Con el % sobre lo que pusiste.",
+  h_evo:"El valor total de tus inversiones a lo largo del tiempo, con tus datos reales guardados. Sirve para ver la tendencia, no el día a día.",
+  h_roles:"Cada cuenta tiene un rol (toca Editar para verlo): de las de «Recibos» salen los fijos y cuotas; de la de «Gasto diario» sale lo que apuntas en Gastos; «Todo» = una sola cuenta para ambas cosas. Si usas un solo banco para todo, pon «Todo». El rol importa sobre todo al conectar el banco o compartir la app: dice a qué cuenta va cada cargo.",
+  h_trbreak:"La cuenta de gasto diario no se edita a mano cada día: la app la calcula (base + nómina − gastos − round-up − aporte). Aquí ves esa cuenta, línea a línea, para encontrar cualquier descuadre.",
+  h_ptinv:"El total invertido en cada bróker. El detalle por posición está en la pestaña Inversiones.",
+  h_goods:"Cosas tuyas con valor que no son dinero en el banco (piso, coche…). Cuentan en tu patrimonio pero no puedes gastarlas sin venderlas.",
+  h_serv:"Los recibos de cada mes (luz, agua, gym, hipoteca…) con su día de cobro y de qué cuenta salen. Con esto la app calcula si te va a llegar el dinero.",
+  h_debts:"Tus cuotas de préstamos y financiaciones. El saldo pendiente baja solo cada mes con lo que amortizas.",
+  h_flows:"El dinero que ENTRA (nómina) y el que se MUEVE solo entre tus cuentas cada mes (transferencias programadas). Es el mapa de tu dinero automático.",
+  h_oneoffs:"Pagos o ingresos de UNA vez que ya sabes que vienen (el seguro anual, un regalo, la declaración…). Se apuntan aquí para que el mes no te pille por sorpresa.",
+  al_over:"🚨 Te has pasado del presupuesto: {x} de {b}",
+  al_80:"⚠️ Ya llevas el {p}% del presupuesto del mes",
+  al_big:"💥 Gasto tocho apuntado: {x}",
+  ru_interest:"Interés del efectivo (% anual)",
+  ru_interest_hint:"TR paga un {p}% anual sobre tu efectivo y lo abona el día 1. La app lo suma sola al cerrar cada mes, para que el saldo no se descuadre poco a poco. Pon el % que TR te aplique ahora mismo (sale en su app).",
   h_ru:"Trade Republic redondea cada compra con tarjeta al euro y ese pico lo invierte solo (round-up). El saveback es un 1% de regalo por pagar con la tarjeta. Esta tarjeta calcula cuánto se está moviendo y a qué inversión va.",
   h_import:"Descarga tus movimientos desde la app de tu bróker (un fichero CSV) y súbelo aquí: la app pone tus posiciones EXACTAS (participaciones y coste) tal y como las tiene el bróker. No se sube nada a internet: se lee en tu móvil.",
   h_proj:"Una estimación de cuánto podría valer tu inversión dentro de unos años si sigue creciendo a un ritmo parecido. No es una promesa: es para hacerse una idea.",
@@ -1182,8 +1208,34 @@ Object.assign(LANG.en,{
   tour_3:"📅 In “{fijos}” live the monthly payments (power, water, mortgage…). The app warns you if you won't make it.",
   tour_4:"⚙️ Here are the Settings: language, colours, large text and simple mode.",
   tour_5:"☁️ With your account everything saves itself and survives changing phones. That's it!",
+  tour_6:"👆 The tabs are yours: press and hold one, drag to reorder, or drop it on the bin to remove it. Add more with the «+».",
+  tour_7:"🏛 «{patri}» holds EVERYTHING you own: accounts, investments, assets and debts. Tap “Edit” to fix any balance — the app re-balances itself.",
+  tour_8:"❓ See a «?» on a card? Tap it: it explains that card in plain words, no jargon. Almost every card has one.",
   tour_next:"Next", tour_skip:"Skip", tour_done:"Done!",
   h_ok:"Got it",
+  h_dist:"How your money is spread: liquid (accounts), invested, and goods (car, home…). The bar grows towards where you hold the most.",
+  h_savings:"What you set aside AUTOMATICALLY each month into investments or savings (your recurring contributions). Not spending — paying yourself first.",
+  h_culprit:"This month's spending split by category. The “culprit” is the category eating the most: if you need to cut back, start there.",
+  h_trend:"Compares what you've spent per category with your average of recent months. Arrow up = above your normal this month.",
+  h_goalw:"Your nearest savings goal and how it's going. The line below tells you if you'll make the date or how much to set aside monthly.",
+  h_subs:"Payments that repeat monthly for the same amount (Netflix, gym…). The app detects them in your spending: check you still use them.",
+  h_cvg:"How much of your own money went into each broker and what it's worth today. The difference is your real gain (or loss), in each one's currency.",
+  h_bytype:"Your investments grouped by type (stocks, ETF, fund, gold…). A quick check that everything isn't in one basket.",
+  h_rend:"Each position ranked by what it has made you: green = gaining, red = losing. With the % over what you put in.",
+  h_evo:"The total value of your investments over time, from your real saved data. For the trend, not the day-to-day.",
+  h_roles:"Each account has a role (tap Edit to see it): “Bills” accounts pay fixed costs and instalments; the “Daily spending” one funds what you log in Spending; “Everything” = one account for both. If you use a single bank for everything, pick “Everything”. Roles matter most when connecting your bank or sharing the app: they say which account each charge hits.",
+  h_trbreak:"The daily-spending account isn't edited by hand every day: the app computes it (base + payroll − spending − round-up − plan). Here you see that math line by line to hunt any mismatch.",
+  h_ptinv:"Total invested per broker. Position detail lives in the Investments tab.",
+  h_goods:"Things you own with value that aren't money in the bank (home, car…). They count in your net worth but you can't spend them without selling.",
+  h_serv:"Monthly bills (power, water, gym, mortgage…) with their charge day and the account they come from. With this the app can tell if you'll make it.",
+  h_debts:"Your loan and financing instalments. The outstanding balance drops on its own each month with what you pay off.",
+  h_flows:"Money that comes IN (payroll) and money that moves between your accounts on its own each month (scheduled transfers). The map of your automatic money.",
+  h_oneoffs:"One-off payments or income you already know are coming (annual insurance, a gift, tax season…). Logged here so the month doesn't surprise you.",
+  al_over:"🚨 Over budget: {x} of {b}",
+  al_80:"⚠️ You've used {p}% of this month's budget",
+  al_big:"💥 Big expense logged: {x}",
+  ru_interest:"Cash interest (% p.a.)",
+  ru_interest_hint:"TR pays {p}% p.a. on your cash, credited on the 1st. The app adds it automatically at each month close so the balance doesn't drift. Enter the rate TR currently gives you (shown in their app).",
   h_ru:"Trade Republic rounds every card purchase up to the euro and invests the spare change (round-up). Saveback is a 1% reward for paying by card. This card tracks how much is moving and into which investment.",
   h_import:"Download your transactions from your broker's app (a CSV file) and upload it here: the app sets your EXACT positions (shares and cost) as the broker has them. Nothing is uploaded: it's read on your phone.",
   h_proj:"An estimate of what your investment could be worth in a few years if it keeps growing at a similar pace. Not a promise — just to get an idea.",
@@ -1197,8 +1249,34 @@ Object.assign(LANG.ca,{
   tour_3:"📅 A «{fijos}» hi ha els pagaments de cada mes (llum, aigua, hipoteca…). L'app t'avisa si no hi arribaràs.",
   tour_4:"⚙️ Aquí hi ha la Configuració: idioma, colors, lletra gran i el mode senzill.",
   tour_5:"☁️ Amb el teu compte tot es desa sol i no es perd encara que canviïs de mòbil. Ja està!",
+  tour_6:"👆 Les pestanyes són teves: mantén-ne una premuda i arrossega-la per canviar-la de lloc, o deixa-la a la paperera per treure-la. Amb el «+» n'afegeixes més.",
+  tour_7:"🏛 A «{patri}» hi ha TOT el que és teu: comptes, inversions, béns i deutes. Toca «Edita» per corregir qualsevol saldo: l'app es re-quadra sola.",
+  tour_8:"❓ Si veus un «?» en una targeta, toca'l: t'explica aquella targeta en cristià, sense argot. N'hi ha un a gairebé totes.",
   tour_next:"Següent", tour_skip:"Omet", tour_done:"Fet!",
   h_ok:"Entesos",
+  h_dist:"Com es reparteixen els teus diners: el líquid (comptes), l'invertit i els béns (cotxe, pis…). La barra creix cap on més tens.",
+  h_savings:"El que apartes AUTOMÀTICAMENT cada mes cap a inversió o estalvi (les teves aportacions periòdiques). No és la despesa: és pagar-te a tu primer.",
+  h_culprit:"El repartiment de la despesa d'aquest mes per categories. El «culpable» és la categoria que més s'emporta: si cal retallar, comença per aquí.",
+  h_trend:"Compara el que portes gastat en cada categoria amb la teva mitjana dels últims mesos. Fletxa amunt = aquest mes vas per sobre del normal.",
+  h_goalw:"La teva meta d'estalvi més propera i com va. La frase de sota et diu si arribes a la data o quant hauries d'apartar al mes.",
+  h_subs:"Pagaments que es repeteixen cada mes pel mateix import (Netflix, gym…). L'app els detecta sola a les teves despeses: revisa si de debò els fas servir.",
+  h_cvg:"Quant has posat de la teva butxaca a cada bròker i quant val avui. La diferència és el teu guany (o pèrdua) real, en la moneda de cadascun.",
+  h_bytype:"Les teves inversions agrupades per tipus (accions, ETF, fons, or…). Per veure d'un cop d'ull si ho tens tot al mateix sac.",
+  h_rend:"Cada posició ordenada pel que t'ha donat: verd = guanyes, vermell = perds. Amb el % sobre el que hi vas posar.",
+  h_evo:"El valor total de les teves inversions al llarg del temps, amb les teves dades reals desades. Serveix per veure la tendència, no el dia a dia.",
+  h_roles:"Cada compte té un rol (toca Edita per veure'l): dels de «Rebuts» surten els fixos i quotes; del de «Despesa diària» surt el que apuntes a Despeses; «Tot» = un sol compte per a les dues coses. Si fas servir un sol banc per a tot, posa «Tot». El rol importa sobretot en connectar el banc o compartir l'app: diu a quin compte va cada càrrec.",
+  h_trbreak:"El compte de despesa diària no s'edita a mà cada dia: l'app el calcula (base + nòmina − despeses − round-up − aportació). Aquí veus aquest compte, línia a línia, per trobar qualsevol desquadrament.",
+  h_ptinv:"El total invertit a cada bròker. El detall per posició és a la pestanya Inversions.",
+  h_goods:"Coses teves amb valor que no són diners al banc (pis, cotxe…). Compten al teu patrimoni però no les pots gastar sense vendre-les.",
+  h_serv:"Els rebuts de cada mes (llum, aigua, gym, hipoteca…) amb el seu dia de cobrament i de quin compte surten. Amb això l'app calcula si t'hi arribaran els diners.",
+  h_debts:"Les teves quotes de préstecs i finançaments. El saldo pendent baixa sol cada mes amb el que amortitzes.",
+  h_flows:"Els diners que ENTREN (nòmina) i els que es mouen sols entre els teus comptes cada mes (transferències programades). És el mapa dels teus diners automàtics.",
+  h_oneoffs:"Pagaments o ingressos d'UNA vegada que ja saps que vénen (l'assegurança anual, un regal, la declaració…). S'apunten aquí perquè el mes no t'agafi per sorpresa.",
+  al_over:"🚨 T'has passat del pressupost: {x} de {b}",
+  al_80:"⚠️ Ja portes el {p}% del pressupost del mes",
+  al_big:"💥 Despesa grossa apuntada: {x}",
+  ru_interest:"Interès de l'efectiu (% anual)",
+  ru_interest_hint:"TR paga un {p}% anual sobre el teu efectiu i l'abona el dia 1. L'app el suma sola en tancar cada mes, perquè el saldo no es desquadri a poc a poc. Posa el % que TR t'apliqui ara mateix (surt a la seva app).",
   h_ru:"Trade Republic arrodoneix cada compra amb targeta a l'euro i inverteix el pessic sol (round-up). El saveback és un 1% de regal per pagar amb targeta. Aquesta targeta calcula quant s'està movent i a quina inversió va.",
   h_import:"Descarrega els teus moviments des de l'app del teu bròker (un fitxer CSV) i puja'l aquí: l'app posa les teves posicions EXACTES (participacions i cost) tal com les té el bròker. No es puja res a internet: es llegeix al teu mòbil.",
   h_proj:"Una estimació de quant podria valer la teva inversió d'aquí a uns anys si segueix creixent a un ritme semblant. No és cap promesa: és per fer-se una idea.",
@@ -1495,7 +1573,7 @@ Object.assign(LANG.es,{
   pj_projvalue:"Valor proyectado", pj_contrib:"Tu contribución", pj_monthly:"Contribución mensual", pj_rate:"Interés anual %", pj_years:"Años",
   pj_gain:"Ganancia estimada en {y} años", pj_hint:"Sobre lo ya invertido ({x}). La banda es ±2% sobre el interés. Estimación, no garantía.",
   pt_accounts:"Cuentas", pt_cash_avail:"Liquidez disponible", pt_monthspent:"Gasto del mes: −{x}", pt_payroll:" · nómina +{x}", pt_total_liquid:"Total líquido",
-  pt_trbreak:"Desglose del efectivo TR", pt_trbreak_sub:"De dónde sale el saldo mostrado", pt_trb_base:"Base (inicio de mes)", pt_trb_payroll:"+ nómina (si ya entró)", pt_trb_spent:"− gasto del mes", pt_trb_roundup:"− round-up del mes", pt_trb_shown:"= saldo mostrado hoy", pt_trb_movs:"Gastos de este mes ({n})", pt_trb_nomovs:"No hay gastos registrados este mes. Si el saldo baja igual, es la nómina/cierre de mes.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = compra con tarjeta (cuenta para el round-up). 🔄 = bizum/transferencia (NO cuenta). Si ves un bizum marcado 💳, cámbialo en Gastos para que no infle el round-up. Este saldo se recalcula solo: base + nómina − gastos − round-up.", pt_ob_extra:"extra", pt_ob_joint:"Conjunta", pt_ob_saving:"Ahorro", pt_ob_current:"Corriente",
+  pt_trbreak:"Desglose del efectivo TR", pt_trbreak_sub:"De dónde sale el saldo mostrado", pt_trb_base:"Base (inicio de mes)", pt_trb_payroll:"+ nómina (si ya entró)", pt_trb_spent:"− gasto del mes", pt_trb_roundup:"− round-up del mes", pt_trb_shown:"= saldo mostrado hoy", pt_trb_movs:"Gastos de este mes ({n})", pt_trb_nomovs:"No hay gastos registrados este mes. Si el saldo baja igual, es la nómina/cierre de mes.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = compra con tarjeta (cuenta para el round-up). 🔄 = bizum/transferencia (NO cuenta). Si ves un bizum marcado 💳, cámbialo en Gastos para que no infle el round-up. Este saldo se recalcula solo: base + nómina − gastos − round-up. Un descuadre PEQUEÑO con TR es normal: TR abona intereses del efectivo el día 1 (ponlos en Inversiones → Round-up para que la app los sume sola) e invierte round-ups/saveback los días 2/9/16/23. Si molesta, edita el saldo en Cuentas y se re-ancla.", pt_ob_extra:"extra", pt_ob_joint:"Conjunta", pt_ob_saving:"Ahorro", pt_ob_current:"Corriente",
   pt_investments:"Inversiones", pt_byBroker:"Resumen por bróker", pt_total_inv:"Total invertido", pt_goods:"Bienes", pt_nonliquid:"Activos no líquidos", pt_total_goods:"Total bienes",
   db_total:"Deuda total", db_quota:"Cuota {x}/mes", db_amort:"amortiza {x}/mes", db_amort_q:"amortiza {x}/mes (cuota {y})", db_paidoff:"Amortizado {x} ({p}%)",
   db_pending:"Pendiente", db_pending_sub:"baja solo cada mes", db_delete:"Eliminar esta deuda", db_savechanges:"Guardar cambios", db_editbalances:"Editar saldos pendientes",
@@ -1535,7 +1613,7 @@ Object.assign(LANG.en,{
   pj_projvalue:"Projected value", pj_contrib:"Your contribution", pj_monthly:"Monthly contribution", pj_rate:"Annual interest %", pj_years:"Years",
   pj_gain:"Estimated gain in {y} years", pj_hint:"On what's already invested ({x}). The band is ±2% on the rate. Estimate, not a guarantee.",
   pt_accounts:"Accounts", pt_cash_avail:"Available cash", pt_monthspent:"Spent this month: −{x}", pt_payroll:" · payroll +{x}", pt_total_liquid:"Total cash",
-  pt_trbreak:"TR cash breakdown", pt_trbreak_sub:"Where the shown balance comes from", pt_trb_base:"Base (start of month)", pt_trb_payroll:"+ payroll (if already in)", pt_trb_spent:"− spent this month", pt_trb_roundup:"− round-up this month", pt_trb_shown:"= balance shown today", pt_trb_movs:"This month's spending ({n})", pt_trb_nomovs:"No spending logged this month. If the balance still drops, it's payroll/month close.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = card purchase (counts toward round-up). 🔄 = bizum/transfer (does NOT count). If a bizum is tagged 💳, change it in Expenses so it doesn't inflate round-up. This balance recomputes itself: base + payroll − spending − round-up.", pt_ob_extra:"extra", pt_ob_joint:"Joint account", pt_ob_saving:"Savings", pt_ob_current:"Current account",
+  pt_trbreak:"TR cash breakdown", pt_trbreak_sub:"Where the shown balance comes from", pt_trb_base:"Base (start of month)", pt_trb_payroll:"+ payroll (if already in)", pt_trb_spent:"− spent this month", pt_trb_roundup:"− round-up this month", pt_trb_shown:"= balance shown today", pt_trb_movs:"This month's spending ({n})", pt_trb_nomovs:"No spending logged this month. If the balance still drops, it's payroll/month close.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = card purchase (counts toward round-up). 🔄 = bizum/transfer (does NOT count). If a bizum is tagged 💳, change it in Expenses so it doesn't inflate round-up. This balance recomputes itself: base + payroll − spending − round-up. A SMALL mismatch vs TR is normal: TR credits cash interest on the 1st (set it in Investments → Round-up so the app adds it) and invests round-ups/saveback on the 2nd/9th/16th/23rd. If it bothers you, edit the balance in Accounts and it re-anchors.", pt_ob_extra:"extra", pt_ob_joint:"Joint account", pt_ob_saving:"Savings", pt_ob_current:"Current account",
   pt_investments:"Investments", pt_byBroker:"By broker", pt_total_inv:"Total invested", pt_goods:"Property", pt_nonliquid:"Non-liquid assets", pt_total_goods:"Total property",
   db_total:"Total debt", db_quota:"Payment {x}/mo", db_amort:"pays off {x}/mo", db_amort_q:"pays off {x}/mo (payment {y})", db_paidoff:"Paid off {x} ({p}%)",
   db_pending:"Outstanding", db_pending_sub:"drops on its own each month", db_delete:"Delete this debt", db_savechanges:"Save changes", db_editbalances:"Edit outstanding balances",
@@ -1575,7 +1653,7 @@ Object.assign(LANG.ca,{
   pj_projvalue:"Valor projectat", pj_contrib:"La teva contribució", pj_monthly:"Contribució mensual", pj_rate:"Interès anual %", pj_years:"Anys",
   pj_gain:"Guany estimat en {y} anys", pj_hint:"Sobre el ja invertit ({x}). La banda és ±2% sobre l'interès. Estimació, no garantia.",
   pt_accounts:"Comptes", pt_cash_avail:"Liquiditat disponible", pt_monthspent:"Despesa del mes: −{x}", pt_payroll:" · nòmina +{x}", pt_total_liquid:"Total líquid",
-  pt_trbreak:"Desglossament de l'efectiu TR", pt_trbreak_sub:"D'on surt el saldo mostrat", pt_trb_base:"Base (inici de mes)", pt_trb_payroll:"+ nòmina (si ja ha entrat)", pt_trb_spent:"− despesa del mes", pt_trb_roundup:"− round-up del mes", pt_trb_shown:"= saldo mostrat avui", pt_trb_movs:"Despeses d'aquest mes ({n})", pt_trb_nomovs:"No hi ha despeses registrades aquest mes. Si el saldo baixa igualment, és la nòmina/tancament de mes.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = compra amb targeta (compta per al round-up). 🔄 = bizum/transferència (NO compta). Si veus un bizum marcat 💳, canvia'l a Despeses perquè no infli el round-up. Aquest saldo es recalcula sol: base + nòmina − despeses − round-up.", pt_ob_extra:"extra", pt_ob_joint:"Conjunta", pt_ob_saving:"Estalvi", pt_ob_current:"Corrent",
+  pt_trbreak:"Desglossament de l'efectiu TR", pt_trbreak_sub:"D'on surt el saldo mostrat", pt_trb_base:"Base (inici de mes)", pt_trb_payroll:"+ nòmina (si ja ha entrat)", pt_trb_spent:"− despesa del mes", pt_trb_roundup:"− round-up del mes", pt_trb_shown:"= saldo mostrat avui", pt_trb_movs:"Despeses d'aquest mes ({n})", pt_trb_nomovs:"No hi ha despeses registrades aquest mes. Si el saldo baixa igualment, és la nòmina/tancament de mes.", pt_trb_ru_of:"round-up: {x}", pt_trb_hint:"💳 = compra amb targeta (compta per al round-up). 🔄 = bizum/transferència (NO compta). Si veus un bizum marcat 💳, canvia'l a Despeses perquè no infli el round-up. Aquest saldo es recalcula sol: base + nòmina − despeses − round-up. Un desquadrament PETIT amb TR és normal: TR abona interessos de l'efectiu el dia 1 (posa'ls a Inversions → Round-up perquè l'app els sumi sola) i inverteix round-ups/saveback els dies 2/9/16/23. Si molesta, edita el saldo a Comptes i es re-ancora.", pt_ob_extra:"extra", pt_ob_joint:"Conjunta", pt_ob_saving:"Estalvi", pt_ob_current:"Corrent",
   pt_investments:"Inversions", pt_byBroker:"Resum per bròker", pt_total_inv:"Total invertit", pt_goods:"Béns", pt_nonliquid:"Actius no líquids", pt_total_goods:"Total béns",
   db_total:"Deute total", db_quota:"Quota {x}/mes", db_amort:"amortitza {x}/mes", db_amort_q:"amortitza {x}/mes (quota {y})", db_paidoff:"Amortitzat {x} ({p}%)",
   db_pending:"Pendent", db_pending_sub:"baixa sol cada mes", db_delete:"Elimina aquest deute", db_savechanges:"Desa els canvis", db_editbalances:"Edita saldos pendents",
@@ -1898,6 +1976,9 @@ function reconcileTR(s){
         inv2.cost  = +((inv2.cost||0)+cInv2).toFixed(2);
       }
     }
+    // Interés del efectivo (TR lo abona el día 1 del mes siguiente = justo al cerrar):
+    // estimación % anual / 12 sobre el saldo de cierre. Sin esto el saldo derivaba unos €/mes.
+    if(acc.interestApr>0) acc.value = +(acc.value + acc.value*acc.interestApr/1200).toFixed(2);
     // los importes manuales de round-up/saveback eran de ESTE mes que se cierra → ya aplicados, se limpian
     if(acc.roundupManual!=null) delete acc.roundupManual;
     if(acc.savebackManual!=null) delete acc.savebackManual;
@@ -2343,14 +2424,18 @@ function Mono({ent, size}){
 /* Ayuda contextual: un «?» discreto que explica la tarjeta en cristiano (para no-técnicos). */
 function HelpTip({text}){
   const [open,setOpen]=useState(false);
+  // El overlay va en un PORTAL a <body>: dentro del track de páginas hay un transform
+  // permanente (translateX) que convierte al track en el contenedor de position:fixed,
+  // así que sin portal la tarjeta de ayuda aparecía encima de OTRA pestaña (Resumen).
   return React.createElement(React.Fragment,null,
     React.createElement("button",{className:"helpq",onClick:function(e){ e.stopPropagation(); setOpen(true); },"aria-label":"?"},"?"),
-    open && React.createElement("div",{className:"helpover",onClick:function(e){ e.stopPropagation(); setOpen(false); }},
-      React.createElement("div",{className:"helpcard",onClick:function(e){ e.stopPropagation(); }},
-        React.createElement("div",{style:{fontSize:14,lineHeight:1.55}},text),
-        React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:14},onClick:function(){ setOpen(false); }},t("h_ok"))
-      )
-    )
+    open && ReactDOM.createPortal(
+      React.createElement("div",{className:"helpover",onClick:function(e){ e.stopPropagation(); setOpen(false); }},
+        React.createElement("div",{className:"helpcard",onClick:function(e){ e.stopPropagation(); }},
+          React.createElement("div",{style:{fontSize:14,lineHeight:1.55}},text),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:14},onClick:function(){ setOpen(false); }},t("h_ok"))
+        )
+      ), document.body)
   );
 }
 
@@ -2360,10 +2445,17 @@ function HelpTip({text}){
    ============================================================ */
 function shareMonthReport(state, tt){
   try{
-    const css=getComputedStyle(document.documentElement);
-    const C=function(v,fb){ const x=css.getPropertyValue(v).trim(); return x||fb; };
-    const mint=C("--mint","#5FD08A"), text=C("--text","#E8F0EA"), muted=C("--muted","#8FA89A"),
-          surface=C("--surface","#122319"), line=C("--line","#1f3a2c"), coral=C("--coral","#E2705F"), bg=C("--bg","#0B1410");
+    // Paleta FIJA por tema (mismos hex que el CSS). No se lee getComputedStyle: en algunos
+    // móviles el "modo oscuro automático" del navegador reescribe/oscurece las variables CSS
+    // y el informe salía con textos negros ilegibles. Así los colores son deterministas.
+    const PAL={
+      green:{ bg:"#0B1410", surface:"#122319", line:"#1f3a2c", text:"#E8F0EA", muted:"#8FA89A", mint:"#5FD08A", coral:"#E2705F" },
+      dark: { bg:"#0A0A0C", surface:"#17171B", line:"#2B2B32", text:"#ECECEF", muted:"#9A9AA4", mint:"#5FD08A", coral:"#E2705F" },
+      light:{ bg:"#F3F6F3", surface:"#FFFFFF", line:"#DCE4DD", text:"#15201A", muted:"#566A5E", mint:"#2FA866", coral:"#D2563F" },
+      blue: { bg:"#0A1320", surface:"#13243B", line:"#213D5C", text:"#E6EEF8", muted:"#93A8C2", mint:"#5FD08A", coral:"#E2705F" }
+    };
+    const P=PAL[(state.settings&&state.settings.theme)||"green"]||PAL.green;
+    const mint=P.mint, text=P.text, muted=P.muted, surface=P.surface, line=P.line, coral=P.coral, bg=P.bg;
     const W=1080,H=1350;
     const cv=document.createElement("canvas"); cv.width=W; cv.height=H;
     const g=cv.getContext("2d");
@@ -2437,6 +2529,9 @@ function Tour({onDone}){
     {k:"tour_1", sel:function(){ return document.querySelector(".hero")||document.querySelector(".page"); }},
     {k:"tour_2", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_gastos"); })||null; }},
     {k:"tour_3", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_fijos"); })||null; }},
+    {k:"tour_6", sel:function(){ return document.querySelector(".tabbar"); }},
+    {k:"tour_7", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_patri"); })||null; }},
+    {k:"tour_8", sel:function(){ return document.querySelector(".helpq")||document.querySelector(".hero")||document.querySelector(".page"); }},
     {k:"tour_4", sel:function(){ return document.querySelector(".topbar .icon-btn"); }},
     {k:"tour_5", sel:function(){ const b=document.querySelectorAll(".topbar .icon-btn"); return b[1]||b[0]||null; }},
   ];
@@ -2445,7 +2540,13 @@ function Tour({onDone}){
   const measure=function(idx){
     for(let j=idx;j<steps.length;j++){
       const el=steps[j].sel();
-      if(el){ const r=el.getBoundingClientRect(); if(r.width>0) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}}; }
+      if(el){
+        // la pestaña puede estar fuera de la barra (scroll horizontal): céntrala antes de medir.
+        // Scroll INSTANTÁNEO (anulando el scroll-behavior:smooth del CSS): si animara, la
+        // medición del foco se haría con la pestaña aún en su posición vieja.
+        try{ const bar=el.closest&&el.closest(".tabbar"); if(bar){ const sb=bar.style.scrollBehavior; bar.style.scrollBehavior="auto"; bar.scrollLeft=Math.max(0, el.offsetLeft-(bar.clientWidth/2)+(el.clientWidth/2)); bar.style.scrollBehavior=sb; } }catch(_){}
+        const r=el.getBoundingClientRect(); if(r.width>0) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
+      }
     }
     return null;
   };
@@ -2466,7 +2567,7 @@ function Tour({onDone}){
   return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
-      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{gastos:t("tab_gastos"),fijos:t("tab_fijos")})),
+      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{gastos:t("tab_gastos"),fijos:t("tab_fijos"),patri:t("tab_patri")})),
       React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===i?" on":"")}); })),
       React.createElement("div",{className:"tour-btns"},
         React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
@@ -2680,7 +2781,7 @@ function Dashboard({state, totals, set}){
     if(!g) return;
     const pct=goalPct(g); const eta=goalEta(g, tt.ahorroMensual);
     W.push({id:"goal", label:t("wl_goal"), el:
-      React.createElement(CollapsibleCard,{title:t("gl_widget_title"),dot:"#5FD08A",storageKey:"d_goal"},
+      React.createElement(CollapsibleCard,{title:t("gl_widget_title"),dot:"#5FD08A",storageKey:"d_goal",help:t("h_goalw")},
         React.createElement("div",{className:"goal-top"},
           React.createElement("span",{className:"goal-emoji"}, g.emoji||"🎯"),
           React.createElement("div",{style:{flex:1,minWidth:0}},
@@ -2692,7 +2793,7 @@ function Dashboard({state, totals, set}){
       )});
   })();
   W.push({id:"dist", label:t("d_dist"), el:
-    React.createElement(CollapsibleCard,{title:t("d_dist"),dot:"#5FD08A",storageKey:"d_dist"},
+    React.createElement(CollapsibleCard,{title:t("d_dist"),dot:"#5FD08A",storageKey:"d_dist",help:t("h_dist")},
       React.createElement(StackedBar,{segments:[
         {label:t("d_liquid"),value:tt.liquid,color:"var(--mint)"},
         {label:t("d_invest"),value:tt.invested,color:"var(--blue)"},
@@ -2745,7 +2846,7 @@ function Dashboard({state, totals, set}){
       )
     )});
   W.push({id:"savings", label:t("wl_savings"), el:
-    React.createElement(CollapsibleCard,{title:t("d_saving_card"),sub:tf("d_saving_card_sub",{x:eur0(tt.ahorroMensual)}),dot:"#5FD08A",defaultOpen:false,storageKey:"d_ahorro"},
+    React.createElement(CollapsibleCard,{title:t("d_saving_card"),sub:tf("d_saving_card_sub",{x:eur0(tt.ahorroMensual)}),dot:"#5FD08A",defaultOpen:false,storageKey:"d_ahorro",help:t("h_savings")},
       state.aportaciones.map(function(ap){
         return React.createElement("div",{className:"row",key:ap.id},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:ap.ent,size:38}),
@@ -2755,7 +2856,7 @@ function Dashboard({state, totals, set}){
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("d_saving_total")),React.createElement("span",{className:"num"},eur(tt.ahorroMensual)))
     )});
   W.push({id:"culprit", label:t("d_culprit"), el:
-    React.createElement(CollapsibleCard,{title:t("d_culprit"),sub:tf("d_culprit_sub",{m:monthName}),dot:top?top.color:"#8FA89A",storageKey:"d_culprit"},
+    React.createElement(CollapsibleCard,{title:t("d_culprit"),sub:tf("d_culprit_sub",{m:monthName}),dot:top?top.color:"#8FA89A",storageKey:"d_culprit",help:t("h_culprit")},
       catList.length===0
         ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("d_noexp_t")),t("d_noexp_d"))
         : React.createElement("div",{className:"culprit-row"},
@@ -2772,7 +2873,7 @@ function Dashboard({state, totals, set}){
     )});
 
   W.push({id:"trend", label:t("d_trend"), el:
-    React.createElement(CollapsibleCard,{title:t("d_trend"),sub:t("d_trend_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"d_trend"},
+    React.createElement(CollapsibleCard,{title:t("d_trend"),sub:t("d_trend_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"d_trend",help:t("h_trend")},
       trend.length===0
         ? React.createElement("div",{className:"hint"}, t("d_trend_nodata"))
         : React.createElement(React.Fragment,null,
@@ -3017,7 +3118,18 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(!form.income && form.noCard) ex.noCard=true;   // bizum/transfer: no cuenta round-up
     set(s=>Object.assign({},s,{expenses:[ex].concat(s.expenses)}));
     if(cloud.enabled()) cloud.addExpense(ex).catch(function(){});   // lo guarda también en la BD
-    setForm({merchant:"",amount:"",category:form.category,income:false,noCard:false}); setAdding(false); showToast(form.income?t("g_saved_i"):t("g_saved_g"));
+    // Avisos al apuntar (notificaciones "de andar por casa", las push reales llegarán con el APK):
+    // pasarse del presupuesto > cruzar el 80% > gasto tocho (≥15% del presupuesto). Si no, el toast normal.
+    let msg = form.income ? t("g_saved_i") : t("g_saved_g");
+    if(!form.income && (state.budget||0)>0){
+      const bud=state.budget;
+      const before=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth()).reduce((a,e)=>a+e.amount,0);
+      const after=before+amt;
+      if(before<=bud && after>bud) msg=tf("al_over",{x:eur0(after),b:eur0(bud)});
+      else if(before<bud*0.8 && after>=bud*0.8 && after<=bud) msg=tf("al_80",{p:Math.round(after/bud*100)});
+      else if(amt>=bud*0.15 && amt>=50) msg=tf("al_big",{x:eur0(amt)});
+    }
+    setForm({merchant:"",amount:"",category:form.category,income:false,noCard:false}); setAdding(false); showToast(msg);
   };
 
   return React.createElement("div",null,
@@ -3066,7 +3178,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       !form.income && React.createElement("button",{type:"button",className:"cardflag"+(form.noCard?" off":""),onClick:()=>setForm(Object.assign({},form,{noCard:!form.noCard}))}, form.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?t("g_addingreso"):t("g_addgasto"))
     ),
-    subs.length>0 && React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title"),sub:tf("sub_sub",{n:subs.length,y:eur0(subs.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:false,storageKey:"g_subs"},
+    subs.length>0 && React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title"),sub:tf("sub_sub",{n:subs.length,y:eur0(subs.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:false,storageKey:"g_subs",help:t("h_subs")},
       subs.map(function(sp){ const c=catOf(sp.cat); return React.createElement("div",{key:sp.key,className:"sub-row"+(sp.active?"":" off")},
         React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
         React.createElement("div",{className:"sub-mid"},
@@ -3568,6 +3680,11 @@ function Investments({state, set, fetchPrices, pricing}){
           React.createElement("span",{className:"muted"},t("ru_plan_amt")),
           React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:trAcc.monthlyInvest!=null?trAcc.monthlyInvest:"",onChange:function(e){ setTr({monthlyInvest:numOrNull(e.target.value)}); }})),
         (trAcc.monthlyInvest>0) && React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("ru_plan_hint",{x:eur0(trAcc.monthlyInvest),inv:invName})),
+        // Interés del efectivo (TR lo abona el día 1): sin esto el saldo se descuadra unos € cada mes
+        React.createElement("div",{className:"ru-edit",style:{marginTop:12}},
+          React.createElement("span",{className:"muted"},t("ru_interest")),
+          React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:trAcc.interestApr!=null?trAcc.interestApr:"",onChange:function(e){ setTr({interestApr:numOrNull(e.target.value)}); }})),
+        (trAcc.interestApr>0) && React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("ru_interest_hint",{p:trAcc.interestApr})),
         React.createElement("div",{className:"ru-edit",style:{marginTop:12}},
           React.createElement("span",{className:"muted"},t("ru_month_ru")),
           React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:eur0(ruAuto),value:trAcc.roundupManual!=null?trAcc.roundupManual:"",onChange:function(e){ setTr({roundupManual:numOrNull(e.target.value)}); }})),
@@ -3581,7 +3698,7 @@ function Investments({state, set, fetchPrices, pricing}){
       );
     })(),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
-    React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg"},
+    React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg",help:t("h_cvg")},
       // desglose por bróker, para poder comparar cada uno con su app (p.ej. Revolut en $)
       groups.map(function(g){ const o=byBroker[g[0]]; if(!o||o.v===0) return null; const gain=o.v-o.c; const pl=o.c>0?gain/o.c*100:0;
         return React.createElement("div",{className:"row",key:g[0]},
@@ -3596,10 +3713,10 @@ function Investments({state, set, fetchPrices, pricing}){
       React.createElement("div",{style:{marginTop:10}}, React.createElement(StackedBar,{segments:[{label:t("inv_contributed"),value:costTotal,color:"#2f6b4a"},{label:t("inv_gain"),value:Math.max(0,total-costTotal),color:"var(--mint)"}]})),
       React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:8}},t("inv_cvg_hint"))
     ),
-    React.createElement(CollapsibleCard,{title:t("inv_bytype"),sub:f0(total),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_tipo"},
+    React.createElement(CollapsibleCard,{title:t("inv_bytype"),sub:f0(total),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_tipo",help:t("h_bytype")},
       React.createElement(StackedBar,{segments:typeSegs})
     ),
-    posList.length>0 && React.createElement(CollapsibleCard,{title:t("inv_rend"),sub:best&&worst?tf("inv_best_worst",{best:best.name,worst:worst.name}):"",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_rend"},
+    posList.length>0 && React.createElement(CollapsibleCard,{title:t("inv_rend"),sub:best&&worst?tf("inv_best_worst",{best:best.name,worst:worst.name}):"",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_rend",help:t("h_rend")},
       posList.map(function(p){
         const pos=p.gain>=0; const wpct=Math.min(100,Math.abs(p.gain)/maxAbsGain*100);
         return React.createElement("div",{key:p.id,style:{padding:"8px 2px",borderBottom:"1px solid var(--line-soft)"}},
@@ -3612,7 +3729,7 @@ function Investments({state, set, fetchPrices, pricing}){
         );
       })
     ),
-    invHist.length>=2 && React.createElement(CollapsibleCard,{title:t("inv_evo"),sub:t("inv_evo_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_evo"},
+    invHist.length>=2 && React.createElement(CollapsibleCard,{title:t("inv_evo"),sub:t("inv_evo_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_evo",help:t("h_evo")},
       React.createElement(Sparkline,{data:invHist.map(function(h){return h.v;}),current:null}),
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--muted)",marginTop:6}},
         React.createElement("span",null,new Date(invHist[0].d).toLocaleDateString(loc(),{day:'2-digit',month:'short'})),
@@ -3685,7 +3802,7 @@ function Wealth({state, set, totals}){
         React.createElement("div",{className:"pill neg"},t("d_debts")+" "+eur0(tt.debtTotal))
       )
     ),
-    React.createElement(CollapsibleCard,{title:t("pt_accounts"),sub:t("pt_cash_avail"),dot:"#5FD08A",storageKey:"w_acc",
+    React.createElement(CollapsibleCard,{title:t("pt_accounts"),sub:t("pt_cash_avail"),dot:"#5FD08A",storageKey:"w_acc",help:t("h_roles"),
       right:React.createElement("button",{className:"edit-link"+(accEd.editing?" save":""),onClick:e=>{e.stopPropagation();accEd.editing?accEd.save():accEd.start();}},accEd.editing?t("fj_save"):t("fj_edit"))},
       state.accounts.map(a=>React.createElement(React.Fragment,{key:a.id},
         React.createElement("div",{className:"row"},
@@ -3723,7 +3840,7 @@ function Wealth({state, set, totals}){
       const monthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth()).slice().sort((a,b)=>parseDate(b.date)-parseDate(a.date));
       const mult=trAcc.roundup||0;
       const rowD=(lbl,val,col,strong)=> React.createElement("div",{className:"subtotal"},React.createElement("span",{className:strong?"":"muted",style:strong?{fontWeight:700}:null},lbl),React.createElement("span",{className:"num",style:Object.assign({},col?{color:col}:null,strong?{fontWeight:700}:null)},val));
-      return React.createElement(CollapsibleCard,{title:t("pt_trbreak"),sub:t("pt_trbreak_sub"),dot:"#E6C36A",storageKey:"w_trbreak",defaultOpen:false},
+      return React.createElement(CollapsibleCard,{title:t("pt_trbreak"),sub:t("pt_trbreak_sub"),dot:"#E6C36A",storageKey:"w_trbreak",defaultOpen:false,help:t("h_trbreak")},
         rowD(t("pt_trb_base"), eur(trAcc.value)),
         totals.injTR?rowD(t("pt_trb_payroll"), "+"+eur(totals.injTR), "var(--mint)"):null,
         rowD(t("pt_trb_spent"), "−"+eur(totals.thisMonthSpent), "var(--coral)"),
@@ -3743,7 +3860,7 @@ function Wealth({state, set, totals}){
         React.createElement("div",{className:"hint",style:{marginTop:8}}, t("pt_trb_hint"))
       );
     })(),
-    React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv"},
+    React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv",help:t("h_ptinv")},
       ["revolut","trade_republic","myinvestor"].map(g=>{
         const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+(i.cur==="USD"?i.value*state.fx:i.value),0);
         return React.createElement("div",{className:"row",key:g},
@@ -3752,7 +3869,7 @@ function Wealth({state, set, totals}){
       }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_inv")),React.createElement("span",{className:"num"},eur(totals.invested)))
     ),
-    React.createElement(CollapsibleCard,{title:t("pt_goods"),sub:t("pt_nonliquid"),dot:"#E6C36A",storageKey:"w_ast",
+    React.createElement(CollapsibleCard,{title:t("pt_goods"),sub:t("pt_nonliquid"),dot:"#E6C36A",storageKey:"w_ast",help:t("h_goods"),
       right:React.createElement("button",{className:"edit-link"+(astEd.editing?" save":""),onClick:e=>{e.stopPropagation();astEd.editing?astEd.save():astEd.start();}},astEd.editing?t("fj_save"):t("fj_edit"))},
       state.assets.map(a=>React.createElement("div",{className:"row",key:a.id},
         React.createElement("div",{className:"rl"},React.createElement("div",{className:"ric"},a.kind==="piso"?"🏡":"🚙"),
@@ -4458,7 +4575,7 @@ function Fijos({state, set, totals}){
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_next_m",{m:monthShort(nm-1)})),React.createElement("span",{className:"num"},eur(nextSum))),
       totals.sinProgramar>0 && React.createElement("div",{className:"hint",style:{marginTop:8,color:"#E2A05F"}},tf("fj_noprog",{n:totals.sinProgramar}))
     ),
-    React.createElement(CollapsibleCard,{title:t("fj_serv"),sub:tf("fj_permonth",{x:eur0(servSum)}),dot:"#7FB5E8",storageKey:"f_serv",
+    React.createElement(CollapsibleCard,{title:t("fj_serv"),sub:tf("fj_permonth",{x:eur0(servSum)}),dot:"#7FB5E8",storageKey:"f_serv",help:t("h_serv"),
       right:React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:e=>{e.stopPropagation(); editing?saveEdit():startEdit();}},editing?t("fj_save"):t("fj_edit"))},
       list.map(e=>{
         const m=monthly(e); const isCredit=m<0; const mlbl=monthsLabel(e);
@@ -4544,7 +4661,7 @@ function Fijos({state, set, totals}){
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addfixed"))
     ),
-    React.createElement(CollapsibleCard,{title:t("fj_debts"),sub:tf("fj_permonth",{x:eur0(cuotas)}),dot:"#E2705F",storageKey:"f_cuotas",
+    React.createElement(CollapsibleCard,{title:t("fj_debts"),sub:tf("fj_permonth",{x:eur0(cuotas)}),dot:"#E2705F",storageKey:"f_cuotas",help:t("h_debts"),
       right:React.createElement("button",{className:"edit-link"+(editingD?" save":""),onClick:e=>{e.stopPropagation(); editingD?saveEditD():startEditD();}},editingD?t("fj_save"):t("fj_edit"))},
       state.debts.map(d=>{
         const bnk=d.account||"sabadell";
@@ -4582,7 +4699,7 @@ function Fijos({state, set, totals}){
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("fj_debts_tot")),React.createElement("span",{className:"num"},eur(cuotas))),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_debts_hint"))
     ),
-    React.createElement(CollapsibleCard,{title:t("fj_flows"),sub:t("fj_flows_sub"),dot:"#5FD08A",storageKey:"f_flows",defaultOpen:false,
+    React.createElement(CollapsibleCard,{title:t("fj_flows"),sub:t("fj_flows_sub"),dot:"#5FD08A",storageKey:"f_flows",defaultOpen:false,help:t("h_flows"),
       right:React.createElement("button",{className:"edit-link"+(editingF?" save":""),onClick:e=>{e.stopPropagation(); editingF?saveEditF():startEditF();}},editingF?t("fj_save"):t("fj_edit"))},
       flows.filter(f=>!flowOncePast(f,cy,cm)).map(f=>{
         const inc=f.kind==="income";
@@ -4659,7 +4776,7 @@ function Fijos({state, set, totals}){
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_flows_hint"))
     ),
     (function(){ const up=oneoffs.filter(o=>!oneoffPast(o,cy,cm)).sort((a,b)=> (a.year-b.year)||(a.month-b.month) );
-      return React.createElement(CollapsibleCard,{title:t("fj_oneoffs"),sub:t("fj_oneoffs_sub"),dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false,
+      return React.createElement(CollapsibleCard,{title:t("fj_oneoffs"),sub:t("fj_oneoffs_sub"),dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false,help:t("h_oneoffs"),
         right: up.length? React.createElement("button",{className:"edit-link"+(editingO?" save":""),onClick:e=>{ e.stopPropagation(); editingO?saveAllO():startEditAllO(up); }}, editingO?t("fj_save"):t("fj_edit")) : null},
         up.length? up.map(function(o){
           if(editingO){
@@ -6150,7 +6267,10 @@ function App(){
     bar.addEventListener('touchend',onTE,{passive:true});
     bar.addEventListener('touchcancel',onTE,{passive:true});
     return function(){ bar.removeEventListener('touchstart',onTS); bar.removeEventListener('touchmove',onTM); bar.removeEventListener('touchend',onTE); bar.removeEventListener('touchcancel',onTE); };
-  },[]);
+    // deps: si la app arranca en el candado o el onboarding, la tabbar aún no existe en el
+    // primer montaje y los listeners no se instalaban NUNCA (bug "no se pueden arrastrar ni
+    // quitar las pestañas a veces"). Al desbloquear/terminar onboarding se re-ejecuta y engancha.
+  },[locked, state.onboarded]);
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
   const tabIds = tabOrderState || tabOrderOf(state);
