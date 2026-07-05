@@ -1342,6 +1342,64 @@ Object.assign(LANG.ca,{
   bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker). El valor de mercat es recalcula en actualitzar preus.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
 });
+/* Sincronización Trade Republic (beta · nativa en Android) */
+Object.assign(LANG.es,{
+  tr_title:"Conectar Trade Republic", tr_sub:"un botón · trae tus posiciones",
+  tr_hint:"Conecta tu cuenta de Trade Republic y trae tus posiciones al momento (participaciones, valor y coste), sin exportar nada a mano. Solo LEE: nunca opera ni mueve dinero.",
+  tr_beta:"BETA",
+  tr_web_only:"Esta conexión funciona dentro de la app de Android (necesita un navegador real para el acceso seguro de TR). En la versión web sigue disponible el importador CSV de aquí abajo.",
+  tr_tos:"⚠ Conexión NO oficial: usa la misma vía que la web de TR. Puede pedir el código de 2FA de tu app cada cierto tiempo y podría dejar de funcionar si TR cambia algo. Tus credenciales no se guardan en la nube de Mi Cartera.",
+  tr_phone_ph:"Teléfono (+34…)", tr_pin_ph:"PIN de Trade Republic",
+  tr_connect:"Conectar", tr_connecting:"Conectando…",
+  tr_code_intro:"Mete el código de 4 dígitos que te ha llegado a la app de Trade Republic (o por SMS).",
+  tr_code_ph:"Código de 4 dígitos", tr_verify:"Verificar", tr_verifying:"Verificando…",
+  tr_sync:"Sincronizar ahora", tr_syncing:"Trayendo posiciones…",
+  tr_connected:"✓ Conectado a Trade Republic",
+  tr_disconnect:"Desconectar",
+  tr_preview:"{n} posiciones traídas de Trade Republic. Revisa el mapeo y aplica:",
+  tr_cash:"Efectivo en TR: {x}",
+  tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
+  tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
+  tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
+});
+Object.assign(LANG.en,{
+  tr_title:"Connect Trade Republic", tr_sub:"one button · pulls your positions",
+  tr_hint:"Connect your Trade Republic account and pull your positions instantly (shares, value and cost), no manual export. Read-only: it never trades or moves money.",
+  tr_beta:"BETA",
+  tr_web_only:"This connection runs inside the Android app (it needs a real browser for TR's secure login). On the web, the CSV importer below is still available.",
+  tr_tos:"⚠ UNofficial connection: uses the same path as TR's web. It may ask for your app's 2FA code every so often and could stop working if TR changes something. Your credentials are not stored in Mi Cartera's cloud.",
+  tr_phone_ph:"Phone (+34…)", tr_pin_ph:"Trade Republic PIN",
+  tr_connect:"Connect", tr_connecting:"Connecting…",
+  tr_code_intro:"Enter the 4-digit code sent to your Trade Republic app (or by SMS).",
+  tr_code_ph:"4-digit code", tr_verify:"Verify", tr_verifying:"Verifying…",
+  tr_sync:"Sync now", tr_syncing:"Pulling positions…",
+  tr_connected:"✓ Connected to Trade Republic",
+  tr_disconnect:"Disconnect",
+  tr_preview:"{n} positions pulled from Trade Republic. Check the mapping and apply:",
+  tr_cash:"Cash in TR: {x}",
+  tr_apply:"Apply to {n} positions", tr_apply_hint:"On apply: shares, value and cost are re-anchored to what Trade Republic says right now (live data, no need to refresh prices).",
+  tr_done:"✓ {n} positions updated from Trade Republic",
+  tr_err:"Couldn't connect to Trade Republic. Check phone/PIN or the code, and try again.",
+});
+Object.assign(LANG.ca,{
+  tr_title:"Connecta Trade Republic", tr_sub:"un botó · porta les teves posicions",
+  tr_hint:"Connecta el teu compte de Trade Republic i porta les teves posicions a l'instant (participacions, valor i cost), sense exportar res a mà. Només LLEGEIX: mai no opera ni mou diners.",
+  tr_beta:"BETA",
+  tr_web_only:"Aquesta connexió funciona dins l'app d'Android (necessita un navegador real per a l'accés segur de TR). A la versió web segueix disponible l'importador CSV d'aquí sota.",
+  tr_tos:"⚠ Connexió NO oficial: fa servir la mateixa via que la web de TR. Pot demanar el codi de 2FA de la teva app cada cert temps i podria deixar de funcionar si TR canvia alguna cosa. Les teves credencials no es guarden al núvol de Mi Cartera.",
+  tr_phone_ph:"Telèfon (+34…)", tr_pin_ph:"PIN de Trade Republic",
+  tr_connect:"Connecta", tr_connecting:"Connectant…",
+  tr_code_intro:"Posa el codi de 4 dígits que t'ha arribat a l'app de Trade Republic (o per SMS).",
+  tr_code_ph:"Codi de 4 dígits", tr_verify:"Verifica", tr_verifying:"Verificant…",
+  tr_sync:"Sincronitza ara", tr_syncing:"Portant posicions…",
+  tr_connected:"✓ Connectat a Trade Republic",
+  tr_disconnect:"Desconnecta",
+  tr_preview:"{n} posicions portades de Trade Republic. Revisa el mapatge i aplica:",
+  tr_cash:"Efectiu a TR: {x}",
+  tr_apply:"Aplica a {n} posicions", tr_apply_hint:"En aplicar: participacions, valor i cost es re-ancoren amb el que diu Trade Republic ara mateix (és dada en viu, no cal actualitzar preus).",
+  tr_done:"✓ {n} posicions actualitzades des de Trade Republic",
+  tr_err:"No s'ha pogut connectar amb Trade Republic. Revisa telèfon/PIN o el codi, i torna-ho a provar.",
+});
 // meses traducidos (largos y cortos)
 const MON_I18N = {
   es:{ long:["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"], short:["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"] },
@@ -3378,6 +3436,153 @@ function brokerSuggest(pos, investments){
   return best;
 }
 
+/* ============================================================
+   SINCRONIZACIÓN TRADE REPUBLIC (beta) — un botón, sin exportar nada.
+   La conexión REAL la implementa la capa NATIVA de Android (necesita un
+   navegador de verdad para el token de AWS WAF del login de TR; una función
+   de servidor "pelada" recibe 403). En la web pura el puente no existe y la
+   tarjeta muestra el aviso "solo en la app". El re-anclaje reutiliza el
+   mapeo por ISIN del importador CSV (brokerSuggest).
+
+   CONTRATO que la capa nativa DEBE cumplir (todo devuelve Promises):
+     trBridge().status()                 -> { connected:bool }
+     trBridge().login({phone,pin})       -> { ok:bool, processId?, error? }   (dispara el 2FA)
+     trBridge().verify({processId,code}) -> { ok:bool, error? }               (guarda la sesión EN EL DISPOSITIVO)
+     trBridge().sync()                   -> { ok:bool, positions:[{isin,name,shares,value,cost?}], cash?:number, error? }
+     trBridge().logout()                 -> { ok:bool }
+   `value`/`cost` en EUR (TR liquida en €). NADA de esto toca la nube de Mi Cartera:
+   credenciales y sesión viven solo en el móvil.
+   ============================================================ */
+function trBridge(){
+  try{
+    if(typeof window==="undefined") return null;
+    const cap=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.TradeRepublic;
+    if(cap) return cap;
+    if(window.MiCarteraTR) return window.MiCarteraTR;
+  }catch(e){}
+  return null;
+}
+function TRSync({state, set}){
+  const bridge=trBridge();
+  const [step,setStep]=useState("idle");      // idle | code | preview | done
+  const [phone,setPhone]=useState("");
+  const [pin,setPin]=useState("");
+  const [code,setCode]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState(false);
+  const [processId,setProcessId]=useState(null);
+  const [connected,setConnected]=useState(false);
+  const [positions,setPositions]=useState(null);
+  const [cash,setCash]=useState(null);
+  const [map,setMap]=useState({});
+  const [doneN,setDoneN]=useState(null);
+  useEffect(function(){
+    if(!bridge||!bridge.status) return;
+    Promise.resolve(bridge.status()).then(function(r){ if(r&&r.connected) setConnected(true); }).catch(function(){});
+  },[]);
+  const fail=function(){ setBusy(false); setErr(true); };
+  const doSync=function(){
+    setBusy(true); setErr(false); setStep("idle"); setDoneN(null);
+    return Promise.resolve(bridge.sync()).then(function(r){
+      setBusy(false);
+      if(!r||!r.ok||!Array.isArray(r.positions)){ fail(); return; }
+      const m={};
+      r.positions.forEach(function(po){ const sug=brokerSuggest(po, state.investments); if(sug) m[po.isin]=sug; });
+      setMap(m); setPositions(r.positions); setCash(r.cash!=null?r.cash:null); setStep("preview");
+    }).catch(fail);
+  };
+  const doLogin=function(){
+    if(!phone.trim()||!pin.trim()) return;
+    setBusy(true); setErr(false);
+    Promise.resolve(bridge.login({phone:phone.trim(),pin:pin.trim()})).then(function(r){
+      setBusy(false);
+      if(!r||!r.ok){ fail(); return; }
+      setProcessId(r.processId||null); setStep("code");
+    }).catch(fail);
+  };
+  const doVerify=function(){
+    if(code.trim().length<4) return;
+    setBusy(true); setErr(false);
+    Promise.resolve(bridge.verify({processId:processId,code:code.trim()})).then(function(r){
+      if(!r||!r.ok){ fail(); return; }
+      setConnected(true); setCode(""); doSync();
+    }).catch(fail);
+  };
+  const mappedN=positions?positions.filter(function(p){ return map[p.isin]; }).length:0;
+  const apply=function(){
+    const pos=positions;
+    set(function(s){
+      return Object.assign({},s,{investments:s.investments.map(function(i){
+        const po=pos.find(function(p){ return map[p.isin]===i.id; });
+        if(!po) return i;
+        const patch={shares:po.shares, isin:po.isin};
+        // dato EN VIVO de TR (€). Si la posición se muestra en $, se convierte con el cambio del BCE.
+        if(po.value!=null) patch.value = i.cur==="USD" ? (state.fx>0?po.value/state.fx:po.value) : po.value;
+        if(po.cost!=null)  patch.cost  = i.cur==="USD" ? (state.fx>0?po.cost/state.fx:po.cost)  : po.cost;
+        return Object.assign({},i,patch);
+      })});
+    });
+    setDoneN(mappedN); setPositions(null); setStep("done");
+  };
+  const disconnect=function(){
+    if(bridge&&bridge.logout){ Promise.resolve(bridge.logout()).catch(function(){}); }
+    setConnected(false); setStep("idle"); setPositions(null); setPhone(""); setPin("");
+  };
+  const inpStyle={marginTop:8};
+  return React.createElement(CollapsibleCard,{title:t("tr_title"),sub:t("tr_beta")+" · "+t("tr_sub"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_trsync"},
+    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_hint")),
+    !bridge
+      ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("tr_web_only"))
+      : React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
+          // PASO 1 · login (teléfono + PIN) — solo si no hay sesión activa
+          !connected && step!=="code" && React.createElement(React.Fragment,null,
+            React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
+            React.createElement("input",{className:"af-in",style:inpStyle,type:"password",inputMode:"numeric",placeholder:t("tr_pin_ph"),value:pin,onChange:function(e){ setPin(e.target.value); }}),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!phone.trim()||!pin.trim(),onClick:doLogin}, busy?t("tr_connecting"):t("tr_connect"))
+          ),
+          // PASO 2 · código 2FA
+          step==="code" && React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"hint",style:{marginTop:0}},t("tr_code_intro")),
+            React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:6,placeholder:t("tr_code_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doVerify}, busy?t("tr_verifying"):t("tr_verify"))
+          ),
+          // conectado y sin previsualización pendiente → botón sincronizar
+          connected && step!=="preview" && React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("tr_connected")),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("tr_syncing"):t("tr_sync")),
+            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("tr_disconnect"))
+          ),
+          // PASO 3 · previsualización + mapeo por ISIN (reutiliza el patrón del importador)
+          step==="preview" && positions && React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("tr_preview",{n:positions.length})),
+            cash!=null && React.createElement("div",{className:"hint"}, tf("tr_cash",{x:eur(cash)})),
+            positions.map(function(po){
+              return React.createElement("div",{key:po.isin,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
+                React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
+                  React.createElement("div",{style:{minWidth:0}},
+                    React.createElement("div",{className:"rname"},po.name),
+                    React.createElement("div",{className:"rsub"},po.isin)
+                  ),
+                  React.createElement("div",{className:"rval num"},
+                    po.shares+" "+t("bi_shares"),
+                    React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0))
+                  )
+                ),
+                React.createElement("select",{className:"af-in",value:map[po.isin]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.isin]=v; return n; }); }},
+                  React.createElement("option",{value:""},t("bi_notouch")),
+                  state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+                )
+              );
+            }),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("tr_apply",{n:mappedN})),
+            React.createElement("div",{className:"hint"},t("tr_apply_hint"))
+          ),
+          doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
+          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}},t("tr_err"))
+        )
+  );
+}
 function BrokerImport({state, set, fetchPrices}){
   const [text,setText]=useState("");
   const [parsed,setParsed]=useState(null);   // {agg,skipped} | {error:true}
@@ -3697,6 +3902,7 @@ function Investments({state, set, fetchPrices, pricing}){
         React.createElement("div",{className:"hint",style:{marginTop:8}}, (mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))+" "+t("ru_manual_hint"))
       );
     })(),
+    React.createElement(TRSync,{state:state,set:set}),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
     React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg",help:t("h_cvg")},
       // desglose por bróker, para poder comparar cada uno con su app (p.ej. Revolut en $)
@@ -5422,8 +5628,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       return React.createElement("button",{onClick:function(){ applyBigText(!on); set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{bigText:!on})}); }); },
         style:Object.assign({},btn,{marginTop:10,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t("st_bigtext"));
     })(),
-    onTour && React.createElement("button",{onClick:onTour,style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",border:"1px solid var(--line)"})}, t("st_tour")),
-    totals && React.createElement("button",{onClick:function(){ shareMonthReport(state, totals); },style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",border:"1px solid var(--line)"})}, t("rp_btn")),
+    onTour && React.createElement("button",{onClick:onTour,style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"})}, t("st_tour")),
+    totals && React.createElement("button",{onClick:function(){ shareMonthReport(state, totals); },style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"})}, t("rp_btn")),
     React.createElement("div",{style:lbl},t("budget_month")),
     React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
     React.createElement("button",{style:btn,onClick:saveNums},t("save")),

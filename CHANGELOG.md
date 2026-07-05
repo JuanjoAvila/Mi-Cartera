@@ -19,6 +19,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.77.0] — 2026-07-05
+### Botón de sincronización con Trade Republic (beta) + arreglo de Ajustes
+- 🔗 **Conectar Trade Republic (Inversiones → «Conectar Trade Republic · BETA»):** un botón que trae tus posiciones al momento (participaciones, valor y coste EN VIVO) y las re-ancla por ISIN, reutilizando el mapeo del importador CSV. Solo LEE: nunca opera ni mueve dinero. Las posiciones en $ se convierten con el cambio del BCE. La UI completa (login teléfono+PIN → código 2FA → previsualización con mapeo → aplicar → desconectar) queda cableada y verificada.
+- 🏗️ **La conexión real es NATIVA de Android:** el login de TR está detrás de AWS WAF y exige un token que solo se consigue desde un navegador de verdad (una Edge Function «pelada» recibe 403). Por eso la conexión la implementa la capa nativa del APK (que ES un navegador real y resuelve el WAF gratis). En la web pura la tarjeta muestra un aviso «disponible en la app Android» y el importador CSV sigue como alternativa. El contrato del puente nativo (`window.MiCarteraTR` / plugin Capacitor `TradeRepublic`: `login`/`verify`/`sync`/`status`/`logout`) queda documentado en el código listo para rellenar al montar el APK. Credenciales y sesión viven solo en el móvil, nunca en la nube.
+- 🐛 **Texto invisible en Ajustes (temas oscuro/verde/azul):** los botones «Ver el tutorial» e «Informe del mes» ponían fondo pero no color de texto, así que heredaban el negro del estilo base y no se leían salvo en tema Claro. Ahora usan `var(--text)` como el resto.
+
 ## [3.76.0] — 2026-07-04
 ### Arreglos gordos de UX (tabs, ayudas, informe) + interés TR + avisos
 - 🐛 **Tabs que "a veces" no se podían mover ni quitar:** si la app arrancaba en la pantalla de bloqueo (PIN/huella) o en el onboarding, los listeners de arrastre de pestañas no se instalaban nunca en esa sesión. Ahora se enganchan al desbloquear. (Por eso fallaba en la demo y en casa: dependía de si la app abría bloqueada.)

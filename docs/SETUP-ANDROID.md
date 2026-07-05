@@ -144,6 +144,55 @@ Si no entra:
 
 ---
 
+## 8. Sincronización con Trade Republic (botón «Conectar Trade Republic · BETA»)
+
+La pestaña **Inversiones** ya tiene la tarjeta y toda la UI (login → código 2FA → previsualización →
+re-anclaje por ISIN). Lo que **falta es la parte nativa**: la web no puede hacer el login de TR porque
+está detrás de **AWS WAF**, que exige una cabecera `X-aws-waf-token` que solo se consigue ejecutando la
+página de login en **un navegador de verdad**. La WebView del APK **es** un navegador de verdad, así que
+aquí sí se puede.
+
+### 8.1 El contrato que la web espera
+
+La tarjeta busca un puente en `window.MiCarteraTR` **o** el plugin de Capacitor
+`window.Capacitor.Plugins.TradeRepublic`. Implementa cualquiera de los dos con estos métodos (todos
+devuelven `Promise`):
+
+```ts
+status()                        // -> { connected: boolean }
+login({ phone, pin })           // -> { ok: boolean, processId?: string, error?: string }   (dispara el 2FA)
+verify({ processId, code })     // -> { ok: boolean, error?: string }   (guarda la sesión EN EL DISPOSITIVO)
+sync()                          // -> { ok: boolean, positions: Position[], cash?: number, error?: string }
+logout()                        // -> { ok: boolean }
+
+type Position = { isin: string; name: string; shares: number; value: number; cost?: number };
+// value y cost en EUR (TR liquida en €). La web convierte a $ las posiciones marcadas como USD.
+```
+
+La web hace el resto: mapea cada `Position` a tu inversión por ISIN (con respaldo por nombre) y re-ancla
+participaciones, valor y coste. No necesita nada más.
+
+### 8.2 Lo que hace la parte nativa (flujo real de TR)
+
+1. **Token WAF:** carga `https://app.traderepublic.com` en una WebView oculta (o resuelve el challenge de
+   AWS WAF) para obtener `X-aws-waf-token`. Sin esto, `login` devuelve **403**.
+2. **login:** `POST https://api.traderepublic.com/api/v1/auth/web/login` con
+   `{ phoneNumber, pin }` y el header del WAF → devuelve `{ processId, countdownInSeconds }` y **dispara el
+   2FA** (código de 4 dígitos que llega como **push a la app de TR**; SMS es el respaldo).
+3. **verify:** `POST .../api/v1/auth/web/login/{processId}/{code}` → en la respuesta vienen las cookies
+   `tr_session` / `tr_refresh`. **Guárdalas cifradas en el dispositivo** (EncryptedSharedPreferences /
+   Keystore), nunca en la nube.
+4. **sync:** abre el WebSocket `wss://api.traderepublic.com/` → `connect 31 {locale,platformId:"webtrading",…}`
+   con la cookie de sesión → `sub {id} {"type":"compactPortfolio"}` (y `cash` para el efectivo) → junta la
+   foto de posiciones, ciérralo y devuélvelas mapeadas al shape `Position`.
+5. **logout:** borra las cookies guardadas.
+
+> ⚠️ Es una vía **NO oficial** (misma que usa la web de TR). Va contra sus Términos, puede pedir el 2FA
+> cada cierto tiempo y podría romperse si TR cambia el login. Es opt-in «beta» y avisa de ello en la UI.
+> Referencias del flujo: proyectos `pytr` y conectores similares (ojo: han sufrido justo el bloqueo del WAF).
+
+---
+
 ## Pendiente para multi-usuario (cuando lo abras a más gente)
 
 Ahora `ingest` mete todos los gastos en **tu** usuario (`INGEST_USER_ID` fijo) y el token va hardcodeado
