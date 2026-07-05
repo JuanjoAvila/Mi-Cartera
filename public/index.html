@@ -5762,7 +5762,6 @@ function Onboarding({set, onCloud}){
       React.createElement("button",{style:Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)",marginTop:10}),onClick:addAcc},t("ob_addacc")),
 
       React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:finish}, accs.length?t("ob_start"):t("ob_start_empty")),
-      onCloud && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:"14px",border:"1px solid var(--line)",background:"transparent",color:"var(--blue)",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:10},onClick:onCloud},t("ob_haveacc")),
       React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:14}},t("ob_foot"))
     )
   );
@@ -6071,9 +6070,17 @@ function App(){
   },[state,uid]);
 
   // Auto-sincroniza los gastos al volver a primer plano (abrir la app o cambiar de app y volver).
+  // THROTTLE: si acabas de sincronizar (<30s) no repetimos el pull+merge de red → evita el "lagazo"
+  // al alternar apps rápido (el sync dispara una descarga y un re-render de toda la app).
+  const lastVisSync=useRef(0);
   useEffect(function(){
     if(!uid) return;
-    const onVis=function(){ if(document.visibilityState==="visible") syncCloudExpenses().catch(function(){}); };
+    const onVis=function(){
+      if(document.visibilityState!=="visible") return;
+      if(Date.now()-lastVisSync.current < 30000) return;   // ya sincronizado hace nada: no recargues
+      lastVisSync.current=Date.now();
+      syncCloudExpenses().catch(function(){});
+    };
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
   },[uid]);
@@ -6126,6 +6133,21 @@ function App(){
   const [drawerOpen,setDrawerOpen]=useState(false);
   useBackClose(drawerOpen, function(){ setDrawerOpen(false); });   // gesto atrás: cierra Ajustes en vez de salir de la app
   useBackClose(addTab, function(){ setAddTab(false); });           // gesto atrás: cierra la hoja "añadir pestaña"
+  // APK Android: el gesto/botón "atrás". En navegador lo maneja la History API (useBackClose); en la
+  // app nativa Capacitor NO enruta el gesto por el historial de la WebView (cierra la Activity y SALE),
+  // así que lo capturamos con @capacitor/app: cerramos el overlay de arriba (_mcBackStack) o vamos al
+  // Resumen; solo salimos si no hay nada que cerrar y ya estás en el Resumen.
+  // (tabRef, sincronizado con la pestaña activa, se declara más abajo para el drag de pestañas.)
+  useEffect(function(){
+    const A=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
+    if(!A||!A.addListener) return undefined;
+    const h=A.addListener("backButton", function(){
+      if(_mcBackStack.length){ const top=_mcBackStack.pop(); top._byPop=true; try{ top.close(); }catch(e){} return; }
+      if(tabRef.current>0){ setTab(0); return; }
+      try{ A.exitApp(); }catch(e){}
+    });
+    return function(){ try{ Promise.resolve(h).then(function(x){ x&&x.remove&&x.remove(); }); }catch(e){} };
+  },[]);
   const [locked,setLocked]=useState(function(){ return bio.enabled(); });
 
   // Estado de conexión: la app es offline-first (todo en localStorage); esto solo informa y, al
