@@ -36,6 +36,20 @@
             </intent-filter>
         </service>
 
+        <!-- Widget de pantalla de inicio: gasto del mes vs presupuesto. Lo alimentan
+             la web (plugin MiCartera.updateWidget) y el lector de notis de TR. -->
+        <receiver
+            android:name=".MiCarteraWidget"
+            android:label="Mi Cartera · gasto del mes"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_micartera_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -50,4 +64,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Huella/candado del móvil para el desbloqueo (plugin MiCartera.bioVerify) -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- Notificaciones locales (Android 13+): confirmación de gasto capturado y avisos de presupuesto -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>
