@@ -19,6 +19,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.79.1] — 2026-07-05
+### Fixes de la app nativa tras probarla (APK 4.0.0-alpha4)
+- 🐛 **Doble «Ya tengo cuenta» en la bienvenida:** salía el botón dos veces (el destacado del aviso de arriba + uno al pie). Quitado el del pie.
+- 🐛 **El gesto «atrás» te sacaba de la app:** en el APK, deslizar desde el borde para volver atrás cerraba la app entera en vez de cerrar el menú/panel abierto (en el navegador ya iba bien). Ahora el botón/gesto atrás de Android cierra primero el panel de arriba (Ajustes, bancos, pickers…), luego vuelve al Resumen, y solo sale de la app si ya estás en el Resumen sin nada abierto. Añadido `@capacitor/app` para capturarlo de forma nativa.
+- ⚡ **Menos tirones al volver a la app:** al alternar de app y volver, ya no se relanza la sincronización de red si acabas de sincronizar (margen de 30 s) — quita un re-render pesado innecesario. (El tirón grande al abrir en frío es porque Android mata la app en segundo plano y recarga todo desde internet; se resolverá del todo con la actualización OTA, pendiente.)
+
 ## [3.79.0] — 2026-07-05
 ### Bug del Bizum arreglado + huella nativa + widget + notificaciones de verdad + puente TR (APK 4.0.0-alpha3)
 - 🔗 **Puente nativo Trade Republic (beta):** plugin Android `TradeRepublic` (`status/login/verify/sync/logout`) que atraviesa el AWS WAF ejecutando el login **dentro de una WebView oculta** cargada en `app.traderepublic.com` (que es un navegador real → resuelve el token del WAF, las cookies y el CORS solos). El JS async devuelve por un puente `@JavascriptInterface`. Verificado en el móvil: la WebView carga el login de TR y la API responde de verdad (HTTP real, no el 403 del WAF que mata a pytr). Falta la prueba con credenciales reales + 2FA (solo la puede hacer el usuario). Credenciales y cookies NUNCA salen del móvil.
