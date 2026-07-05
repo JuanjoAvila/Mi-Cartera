@@ -1099,6 +1099,7 @@ const LANG = {
     ob_budget:"Presupuesto mensual para gastos (€)", ob_accounts:"Tus cuentas (banco y saldo actual)",
     ob_addacc:"+ Añadir cuenta", ob_start:"Empezar a usar Mi Cartera", ob_start_empty:"Empezar (añadiré cuentas luego)",
     ob_haveacc:"Ya tengo cuenta · Iniciar sesión",
+    ob_returning:"¿Reinstalaste la app o cambiaste de móvil? Inicia sesión y recuperas todos tus datos al instante.",
     ob_foot:"Podrás editar y añadir todo cuando quieras. Inicia sesión para sincronizar entre dispositivos y recuperar tus datos.",
     ob_name_ph:"Nombre (opcional, ej. Cuenta corriente)", ob_balance_ph:"Saldo €",
   },
@@ -1120,6 +1121,7 @@ const LANG = {
     ob_budget:"Monthly spending budget (€)", ob_accounts:"Your accounts (bank and current balance)",
     ob_addacc:"+ Add account", ob_start:"Start using Mi Cartera", ob_start_empty:"Start (I'll add accounts later)",
     ob_haveacc:"I already have an account · Sign in",
+    ob_returning:"Reinstalled the app or switched phones? Sign in and recover all your data instantly.",
     ob_foot:"You can edit and add everything whenever you want. Sign in to sync across devices and recover your data.",
     ob_name_ph:"Name (optional, e.g. Checking account)", ob_balance_ph:"Balance €",
   },
@@ -1141,6 +1143,7 @@ const LANG = {
     ob_budget:"Pressupost mensual per a despeses (€)", ob_accounts:"Els teus comptes (banc i saldo actual)",
     ob_addacc:"+ Afegeix compte", ob_start:"Comença a usar Mi Cartera", ob_start_empty:"Comença (ja afegiré comptes)",
     ob_haveacc:"Ja tinc compte · Inicia sessió",
+    ob_returning:"Has reinstal·lat l'app o has canviat de mòbil? Inicia sessió i recuperes totes les teves dades a l'instant.",
     ob_foot:"Podràs editar i afegir-ho tot quan vulguis. Inicia sessió per sincronitzar entre dispositius i recuperar les teves dades.",
     ob_name_ph:"Nom (opcional, ex. Compte corrent)", ob_balance_ph:"Saldo €",
   },
@@ -5356,7 +5359,8 @@ function AuthPanel({session, onClose, showToast, recovery}){
   const [pass,setPass]=useState("");
   const [busy,setBusy]=useState(false);
   const [bioOn,setBioOn]=useState(bio.enabled());
-  const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:60,padding:"20px"};
+  // zIndex ALTO: debe quedar por encima del onboarding (z90) para que "Ya tengo cuenta" sea visible.
+  const overlay={position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:120,padding:"20px"};
   const card={background:"#0F1A15",border:"1px solid #1e2b24",borderRadius:"18px",padding:"22px",width:"100%",maxWidth:"360px",color:"#E8F0EB",fontFamily:"Manrope, sans-serif"};
   const inp={width:"100%",padding:"12px 14px",margin:"6px 0",borderRadius:"12px",border:"1px solid #2a3a31",background:"#0B1410",color:"#fff",fontSize:"16px",boxSizing:"border-box"};
   const btn={width:"100%",padding:"12px",borderRadius:"12px",border:"none",background:"#5FD08A",color:"#06120C",fontWeight:700,fontSize:"15px",marginTop:"8px",cursor:"pointer"};
@@ -5702,6 +5706,12 @@ function Onboarding({set, onCloud}){
       React.createElement("div",{className:"serif",style:{fontSize:26,margin:"14px 0 6px"}},t("ob_welcome")),
       React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.5}},t("ob_intro")),
 
+      // CTA prominente para quien REINSTALA / cambia de móvil: iniciar sesión recupera todo al instante.
+      onCloud && React.createElement("div",{style:{marginTop:16,padding:"14px",borderRadius:14,border:"1px solid var(--mint)",background:"rgba(95,208,138,.08)"}},
+        React.createElement("div",{style:{color:"var(--text)",fontSize:13.5,lineHeight:1.5,marginBottom:10}},t("ob_returning")),
+        React.createElement("button",{style:{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"},onClick:onCloud},t("ob_haveacc"))
+      ),
+
       React.createElement("div",{style:lbl},t("ob_budget")),
       React.createElement("input",{style:inp,type:"number",inputMode:"decimal",placeholder:"ej. 700",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
 
@@ -5939,17 +5949,20 @@ function App(){
   };
 
   // Al iniciar sesión: adopta el estado de la nube (o sube el local la 1ª vez) y trae gastos.
-  const syncFromCloud=function(s){
+  const syncFromCloud=function(s, opts){
     if(!s || !s.user) return;
     const u=s.user.id;
+    const freshLogin=!!(opts&&opts.freshLogin);   // acaba de INICIAR SESIÓN (no un reconecta del mismo user)
     cloud.pullState().then(function(cloudState){
       if(cloudState && validCloudState(cloudState)){
         // LAST-WRITE-WINS: si lo LOCAL es más reciente (p.ej. cambios hechos sin conexión),
         // NO lo pisamos con la nube vieja; solo unimos los gastos (aditivo). Si la nube es más
         // nueva o igual, adoptamos su estado. Los gastos SIEMPRE se mezclan (nunca se pierden).
+        // EXCEPCIÓN CLAVE (fresh login): al INICIAR SESIÓN (móvil nuevo / reinstalado) la nube es la
+        // verdad SIEMPRE. Sin esto, una cartera vacía recién creada podía "ganar" y machacar la nube.
         set(function(prev){
           const merged=mergeExpenses(prev.expenses, cloudState.expenses||[]);
-          const localNewer=(prev._savedAt||0) > (cloudState._savedAt||0);
+          const localNewer=!freshLogin && (prev._savedAt||0) > (cloudState._savedAt||0);
           const baseObj = localNewer ? Object.assign({},prev,{expenses:merged.list})
                                      : Object.assign({},prev,cloudState,{expenses:merged.list});
           return seedFlows(fixInvAuto(fixInvSold(reconcileTR(baseObj))));
@@ -6011,7 +6024,8 @@ function App(){
       sessionRef.current=s; setSession(s);
       // Vuelta del email de recuperación: abre el panel para poner contraseña nueva.
       if(ev==="PASSWORD_RECOVERY"){ setRecovery(true); setShowAuth(true); }
-      if(changed && s) syncFromCloud(s);
+      // changed = pasó de sin-sesión a con-sesión (o cambió de usuario) → es un LOGIN → la nube manda.
+      if(changed && s) syncFromCloud(s, {freshLogin:!prev});
     });
   },[]);
 
@@ -6255,11 +6269,13 @@ function App(){
   useEffect(function(){ applyBigText(state.settings&&state.settings.bigText); },[state.settings&&state.settings.bigText]);  // letra grande
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
-    if(state.tourSeen===false && state.onboarded!==false && !locked && !tourOpen){
+    // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos
+    // "tutorial + iniciar sesión a la vez" del primer arranque.
+    if(state.tourSeen===false && state.onboarded!==false && !locked && !tourOpen && !showAuth && !drawerOpen){
       const tm=setTimeout(function(){ setTourOpen(true); },700);
       return function(){ clearTimeout(tm); };
     }
-  },[state.tourSeen,state.onboarded,locked]);
+  },[state.tourSeen,state.onboarded,locked,showAuth,drawerOpen]);
   const endTour=function(){
     setTourOpen(false);
     if(stateRef.current.tourSeen===false) set(function(s){ return Object.assign({},s,{tourSeen:true}); });

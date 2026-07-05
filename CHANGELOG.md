@@ -19,6 +19,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.78.0] — 2026-07-05
+### Primer arranque a prueba de sustos (reinstalar / móvil nuevo / app Android)
+- 🛟 **Iniciar sesión no recuperaba tus datos (y podía machacarlos):** al reinstalar o estrenar móvil, si terminabas el onboarding con la cartera vacía y *luego* iniciabas sesión, la lógica «protege lo offline» creía que tu cartera vacía era «más nueva» que la nube → se quedaba vacía y podía **sobrescribir la nube**. Ahora, al **iniciar sesión** (no un reconecta del mismo usuario), la **nube manda siempre** y recupera todo al instante; los gastos se siguen fusionando (nunca se pierden). Ningún dato se perdió con el bug anterior: hay copia local, en la nube y **backups diarios**.
+- 🐛 **El botón «Ya tengo cuenta» no hacía nada:** el panel de login se abría *por detrás* de la pantalla de bienvenida (z-index 60 bajo el 90 del onboarding), invisible. Subido a 120 → ahora aparece por delante y es clicable.
+- ✨ **Bienvenida orientada a «ya tengo cuenta»:** aviso destacado arriba del onboarding — «¿Reinstalaste o cambiaste de móvil? Inicia sesión y recuperas todo al instante» — con botón de login a mano (antes estaba enterrado al final).
+- 🐛 **Tutorial y login se pisaban:** el tour de bienvenida arrancaba encima del panel de inicio de sesión (y del cajón de Ajustes). Ahora espera a que no haya login/cajón abiertos.
+
 ## [3.77.0] — 2026-07-05
 ### Botón de sincronización con Trade Republic (beta) + arreglo de Ajustes
 - 🔗 **Conectar Trade Republic (Inversiones → «Conectar Trade Republic · BETA»):** un botón que trae tus posiciones al momento (participaciones, valor y coste EN VIVO) y las re-ancla por ISIN, reutilizando el mapeo del importador CSV. Solo LEE: nunca opera ni mueve dinero. Las posiciones en $ se convierten con el cambio del BCE. La UI completa (login teléfono+PIN → código 2FA → previsualización con mapeo → aplicar → desconectar) queda cableada y verificada.
