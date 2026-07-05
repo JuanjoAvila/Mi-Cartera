@@ -19,8 +19,8 @@ android {
         applicationId "com.micartera.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "4.0.0-alpha2"
+        versionCode 3
+        versionName "4.0.0-alpha3"
         buildConfigField "String", "INGEST_URL", "\"${ingestUrl}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -29,10 +29,27 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Firma release desde local.properties (keystore en C:/Users/<tu>/.micartera, NUNCA en el repo).
+    // Claves: MICARTERA_KS_FILE / MICARTERA_KS_PASS / MICARTERA_KEY_ALIAS / MICARTERA_KEY_PASS.
+    // Sin ellas, assembleRelease genera un APK sin firmar (como antes).
+    def ksFile = localProps.getProperty('MICARTERA_KS_FILE', '')
+    signingConfigs {
+        release {
+            if (ksFile) {
+                storeFile file(ksFile)
+                storePassword localProps.getProperty('MICARTERA_KS_PASS', '')
+                keyAlias localProps.getProperty('MICARTERA_KEY_ALIAS', 'micartera')
+                keyPassword localProps.getProperty('MICARTERA_KEY_PASS', '')
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (ksFile) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
