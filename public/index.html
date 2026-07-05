@@ -3507,6 +3507,7 @@ function TRSync({state, set}){
   const [code,setCode]=useState("");
   const [busy,setBusy]=useState(false);
   const [err,setErr]=useState(false);
+  const [errMsg,setErrMsg]=useState("");   // mensaje REAL que devuelve TR (para no depurar a ciegas)
   const [processId,setProcessId]=useState(null);
   const [connected,setConnected]=useState(false);
   const [positions,setPositions]=useState(null);
@@ -3517,12 +3518,21 @@ function TRSync({state, set}){
     if(!bridge||!bridge.status) return;
     Promise.resolve(bridge.status()).then(function(r){ if(r&&r.connected) setConnected(true); }).catch(function(){});
   },[]);
-  const fail=function(){ setBusy(false); setErr(true); };
+  // fail(e): muestra el error REAL de TR si lo hay (r.error), o el genérico.
+  const fail=function(e){ setBusy(false); setErr(true); setErrMsg((e&&(e.error||e.message))||(typeof e==="string"?e:"")); };
+  // Normaliza el teléfono a formato internacional (TR exige +CC…). Sin prefijo → asume España (+34).
+  const normPhone=function(p){
+    let s=(p||"").replace(/[\s().-]/g,"");
+    if(s.indexOf("+")===0) return s;
+    if(s.indexOf("00")===0) return "+"+s.slice(2);
+    if(s.length===9) return "+34"+s;            // móvil español típico
+    return s.indexOf("+")===0?s:"+"+s;
+  };
   const doSync=function(){
-    setBusy(true); setErr(false); setStep("idle"); setDoneN(null);
+    setBusy(true); setErr(false); setErrMsg(""); setStep("idle"); setDoneN(null);
     return Promise.resolve(bridge.sync()).then(function(r){
       setBusy(false);
-      if(!r||!r.ok||!Array.isArray(r.positions)){ fail(); return; }
+      if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
       r.positions.forEach(function(po){ const sug=brokerSuggest(po, state.investments); if(sug) m[po.isin]=sug; });
       setMap(m); setPositions(r.positions); setCash(r.cash!=null?r.cash:null); setStep("preview");
@@ -3530,18 +3540,18 @@ function TRSync({state, set}){
   };
   const doLogin=function(){
     if(!phone.trim()||!pin.trim()) return;
-    setBusy(true); setErr(false);
-    Promise.resolve(bridge.login({phone:phone.trim(),pin:pin.trim()})).then(function(r){
+    setBusy(true); setErr(false); setErrMsg("");
+    Promise.resolve(bridge.login({phone:normPhone(phone),pin:pin.trim()})).then(function(r){
       setBusy(false);
-      if(!r||!r.ok){ fail(); return; }
+      if(!r||!r.ok){ fail(r); return; }
       setProcessId(r.processId||null); setStep("code");
     }).catch(fail);
   };
   const doVerify=function(){
     if(code.trim().length<4) return;
-    setBusy(true); setErr(false);
+    setBusy(true); setErr(false); setErrMsg("");
     Promise.resolve(bridge.verify({processId:processId,code:code.trim()})).then(function(r){
-      if(!r||!r.ok){ fail(); return; }
+      if(!r||!r.ok){ fail(r); return; }
       setConnected(true); setCode(""); doSync();
     }).catch(fail);
   };
@@ -3616,7 +3626,7 @@ function TRSync({state, set}){
             React.createElement("div",{className:"hint"},t("tr_apply_hint"))
           ),
           doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
-          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}},t("tr_err"))
+          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
         )
   );
 }
