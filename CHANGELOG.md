@@ -19,6 +19,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.79.0] — 2026-07-05
+### Bug del Bizum arreglado + huella nativa + widget + notificaciones de verdad (APK 4.0.0-alpha2)
+- 🐛 **Un Bizum recibido ya no cuenta como gasto:** la función `ingest` ahora CLASIFICA la notificación de TR antes de apuntar nada. Bizum **recibido** → entra como **ingreso** (resta del gasto del mes); Bizum **enviado** → gasto marcado «🔄 sin tarjeta» (no infla el round-up); intereses, dividendos, órdenes, planes de inversión, round-up/saveback y transferencias propias → **se ignoran** (ya están modelados en la app). El arreglo vive en el servidor: mejora sin reinstalar el APK.
+- 🔄 **El flag «💳 tarjeta / 🔄 bizum» ahora es permanente:** nueva columna `no_card` en la tabla de gastos (migración 0005). Antes, al re-sincronizar, el flag puesto a mano en un gasto de la nube se perdía; ahora sobrevive a reinstalaciones y sincroniza entre dispositivos.
+- 👆 **Huella en la app Android (por fin):** plugin nativo propio `MiCartera` con `BiometricPrompt` — huella o, si no hay, el PIN/patrón del móvil. La web lo usa automáticamente si existe; en navegador sigue la vía WebAuthn de siempre.
+- 📱 **Widget de pantalla de inicio:** gasto del mes vs presupuesto (con barra y «te quedan X»), saldo de la cuenta de gasto diario y hora de actualización. Lo alimentan la app al usarla **y el lector de notis de TR con la app cerrada** (la respuesta de `ingest` trae el total del mes).
+- 🔔 **Notificaciones de verdad (sin abrir la app):** al capturar un gasto de TR llega una notificación «✓ Gasto apuntado: X € en Y» — y si con ese gasto superas el presupuesto (o cruzas el 80%, o es un gasto tocho) llega también la alerta 🚨, calculada en el servidor. Los avisos al apuntar un gasto a mano también salen como notificación nativa. (Permiso de notificaciones: la app lo pide al abrirse, Android 13+.)
+
 ## [3.78.0] — 2026-07-05
 ### Primer arranque a prueba de sustos (reinstalar / móvil nuevo / app Android)
 - 🛟 **Iniciar sesión no recuperaba tus datos (y podía machacarlos):** al reinstalar o estrenar móvil, si terminabas el onboarding con la cartera vacía y *luego* iniciabas sesión, la lógica «protege lo offline» creía que tu cartera vacía era «más nueva» que la nube → se quedaba vacía y podía **sobrescribir la nube**. Ahora, al **iniciar sesión** (no un reconecta del mismo usuario), la **nube manda siempre** y recupera todo al instante; los gastos se siguen fusionando (nunca se pierden). Ningún dato se perdió con el bug anterior: hay copia local, en la nube y **backups diarios**.

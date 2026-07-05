@@ -842,6 +842,7 @@ function autoCategory(merchant){
 }
 function resolveCategory(sheetCat, merchant){
   // "ambas": usa la del Sheet; si falta o es "otros", autodetecta por comercio
+  if(sheetCat==="ingreso") return "ingreso";   // no está en CAT (es especial) pero debe respetarse
   if(sheetCat && sheetCat!=="otros" && CAT[sheetCat]) return sheetCat;
   return autoCategory(merchant);
 }
@@ -926,9 +927,18 @@ const cloud = (function(){
       const {data:{session}}=await sb.auth.getSession();
       if(!session) return;
       const {error}=await sb.from('expenses').upsert(
-        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:e.source||'manual' },
+        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:e.source||'manual', no_card:!!e.noCard },
         { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
       );
+      if(error) throw error;
+    },
+    // Persiste el flag 💳/🔄 en la tabla (si no, el siguiente pull lo pisaría en gastos de la nube).
+    async setExpenseNoCard(e, noCard){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      const {error}=await sb.from('expenses').update({ no_card:!!noCard })
+        .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
       if(error) throw error;
     },
     async deleteExpense(e){
@@ -1003,6 +1013,7 @@ function expenseFromRow(r){
     // misma autodetección que el path del Sheet: si la cat es genérica, la deduce por comercio
     category: resolveCategory(r.cat, r.comercio || ""),
     source: "supabase",
+    noCard: r.no_card ? true : undefined,   // bizum/transfer: fuera del round-up (columna 0005)
   };
 }
 
@@ -1035,10 +1046,23 @@ function slimForCloud(s){ const c=Object.assign({},s); delete c.expenses; delete
    No verifica en servidor (suficiente para uso personal); es una capa de UX tipo app de banco. */
 function bufToB64(buf){ const b=new Uint8Array(buf); let s=""; for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
 function b64ToBuf(b64){ const s=atob(b64); const a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a.buffer; }
+/* Plugin nativo de la app Android (biometría, widget, notificaciones). null en web pura. */
+function natPlugin(){
+  try{ return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.MiCartera) || null; }catch(e){ return null; }
+}
 const bio = {
-  supported(){ return !!(window.PublicKeyCredential && navigator.credentials && location.protocol==="https:"); },
+  // En la app Android la WebView NO expone WebAuthn → usa el plugin nativo (BiometricPrompt).
+  supported(){ if(natPlugin()) return true; return !!(window.PublicKeyCredential && navigator.credentials && location.protocol==="https:"); },
   enabled(){ return !!store.get("bio_cred"); },
   async enable(uid, email){
+    const nat=natPlugin();
+    if(nat){
+      const r=await nat.bioAvailable();
+      if(!r || !r.available) throw new Error("Configura primero la huella o el bloqueo de pantalla del móvil");
+      await nat.bioVerify();                       // pide la huella YA, como el create() de WebAuthn
+      store.set("bio_cred", { native:true });
+      return true;
+    }
     if(!this.supported()) throw new Error("Este dispositivo/navegador no soporta huella");
     const cred = await navigator.credentials.create({ publicKey:{
       challenge: crypto.getRandomValues(new Uint8Array(32)),
@@ -1054,6 +1078,12 @@ const bio = {
   disable(){ try{ localStorage.removeItem("bio_cred"); }catch(e){} store.set("bio_cred", null); },
   async unlock(){
     const c = store.get("bio_cred"); if(!c) return true;
+    if(c.native){
+      const nat=natPlugin();
+      if(!nat) return true;   // candado nativo pero sin plugin (no debería pasar): no dejar la app inaccesible
+      await nat.bioVerify();
+      return true;
+    }
     await navigator.credentials.get({ publicKey:{
       challenge: crypto.getRandomValues(new Uint8Array(32)),
       rpId: location.hostname,
@@ -3149,6 +3179,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
   const setCardFlag=function(ex,noCard){
     set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{noCard:noCard?true:undefined}):e; })}); });
+    if(cloud.enabled()) cloud.setExpenseNoCard(ex,noCard).catch(function(){});   // durable en la tabla
   };
 
   const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return state.expenses
@@ -3182,14 +3213,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // Avisos al apuntar (notificaciones "de andar por casa", las push reales llegarán con el APK):
     // pasarse del presupuesto > cruzar el 80% > gasto tocho (≥15% del presupuesto). Si no, el toast normal.
     let msg = form.income ? t("g_saved_i") : t("g_saved_g");
+    let isAlert=false;
     if(!form.income && (state.budget||0)>0){
       const bud=state.budget;
       const before=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth()).reduce((a,e)=>a+e.amount,0);
       const after=before+amt;
-      if(before<=bud && after>bud) msg=tf("al_over",{x:eur0(after),b:eur0(bud)});
-      else if(before<bud*0.8 && after>=bud*0.8 && after<=bud) msg=tf("al_80",{p:Math.round(after/bud*100)});
-      else if(amt>=bud*0.15 && amt>=50) msg=tf("al_big",{x:eur0(amt)});
+      if(before<=bud && after>bud){ msg=tf("al_over",{x:eur0(after),b:eur0(bud)}); isAlert=true; }
+      else if(before<bud*0.8 && after>=bud*0.8 && after<=bud){ msg=tf("al_80",{p:Math.round(after/bud*100)}); isAlert=true; }
+      else if(amt>=bud*0.15 && amt>=50){ msg=tf("al_big",{x:eur0(amt)}); isAlert=true; }
     }
+    // En la app Android los avisos también salen como notificación de verdad (quedan en la bandeja).
+    if(isAlert){ const nat=natPlugin(); if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} } }
     setForm({merchant:"",amount:"",category:form.category,income:false,noCard:false}); setAdding(false); showToast(msg);
   };
 
@@ -6267,6 +6301,21 @@ function App(){
   useEffect(function(){ refreshFx(); },[]);   // refresca el cambio al abrir la app
   useEffect(function(){ applyTheme(state.settings&&state.settings.theme); },[state.settings&&state.settings.theme]);  // tema de color
   useEffect(function(){ applyBigText(state.settings&&state.settings.bigText); },[state.settings&&state.settings.bigText]);  // letra grande
+  // App Android: pide el permiso de notificaciones (Android 13+) una sola vez al arrancar.
+  useEffect(function(){
+    const nat=natPlugin();
+    if(nat && nat.ensureNotifPerm){ try{ nat.ensureNotifPerm().catch(function(){}); }catch(e){} }
+  },[]);
+  // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
+  const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
+  const widgetCash=trAccW ? Math.round((totals.bankBal[trAccW.ent]||0)*100)/100 : null;
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat || !nat.updateWidget) return;
+    const data={ spent:Math.round((totals.thisMonthSpent||0)*100)/100, budget:state.budget||0 };
+    if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
+    try{ nat.updateWidget(data).catch(function(){}); }catch(e){}
+  },[totals.thisMonthSpent,state.budget,widgetCash]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos

@@ -4,4 +4,6 @@
     <string name="title_activity_main">Mi Cartera</string>
     <string name="package_name">com.micartera.app</string>
     <string name="custom_url_scheme">com.micartera.app</string>
+    <string name="widget_title">MI CARTERA · ESTE MES</string>
+    <string name="widget_desc">Tu gasto del mes y presupuesto de un vistazo</string>
 </resources>
