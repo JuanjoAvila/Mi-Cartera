@@ -1380,7 +1380,10 @@ Object.assign(LANG.es,{
   tr_title:"Conectar Trade Republic", tr_sub:"un botón · trae tus posiciones",
   tr_hint:"Conecta tu cuenta de Trade Republic y trae tus posiciones al momento (participaciones, valor y coste), sin exportar nada a mano. Solo LEE: nunca opera ni mueve dinero.",
   tr_beta:"BETA",
-  tr_web_only:"Esta conexión funciona dentro de la app de Android (necesita un navegador real para el acceso seguro de TR). En la versión web sigue disponible el importador CSV de aquí abajo.",
+  tr_web_only:"Esta conexión funciona dentro de la app de Android (necesita un navegador real para el acceso seguro de TR). Ábrelo desde la app del móvil.",
+  na_toast:"⚠ El apunte automático de gastos está desactivado — actívalo en Ajustes",
+  na_body:"⚠ El apunte automático de gastos (lector de notificaciones de TR) no tiene permiso — los gastos NO entran solos. Pasa al reinstalar la app: actívalo para Mi Cartera.",
+  na_fix:"Activar acceso a notificaciones",
   tr_tos:"⚠ Conexión NO oficial: usa la misma vía que la web de TR. Puede pedir el código de 2FA de tu app cada cierto tiempo y podría dejar de funcionar si TR cambia algo. Tus credenciales no se guardan en la nube de Mi Cartera.",
   tr_phone_ph:"Teléfono (+34…)", tr_pin_ph:"PIN de Trade Republic",
   tr_connect:"Conectar", tr_connecting:"Conectando…",
@@ -1399,7 +1402,10 @@ Object.assign(LANG.en,{
   tr_title:"Connect Trade Republic", tr_sub:"one button · pulls your positions",
   tr_hint:"Connect your Trade Republic account and pull your positions instantly (shares, value and cost), no manual export. Read-only: it never trades or moves money.",
   tr_beta:"BETA",
-  tr_web_only:"This connection runs inside the Android app (it needs a real browser for TR's secure login). On the web, the CSV importer below is still available.",
+  tr_web_only:"This connection runs inside the Android app (it needs a real browser for TR's secure login). Open it from the mobile app.",
+  na_toast:"⚠ Automatic expense capture is off — enable it in Settings",
+  na_body:"⚠ Automatic expense capture (TR notification reader) has no permission — expenses will NOT come in on their own. This happens after reinstalling: enable it for Mi Cartera.",
+  na_fix:"Enable notification access",
   tr_tos:"⚠ UNofficial connection: uses the same path as TR's web. It may ask for your app's 2FA code every so often and could stop working if TR changes something. Your credentials are not stored in Mi Cartera's cloud.",
   tr_phone_ph:"Phone (+34…)", tr_pin_ph:"Trade Republic PIN",
   tr_connect:"Connect", tr_connecting:"Connecting…",
@@ -1418,7 +1424,10 @@ Object.assign(LANG.ca,{
   tr_title:"Connecta Trade Republic", tr_sub:"un botó · porta les teves posicions",
   tr_hint:"Connecta el teu compte de Trade Republic i porta les teves posicions a l'instant (participacions, valor i cost), sense exportar res a mà. Només LLEGEIX: mai no opera ni mou diners.",
   tr_beta:"BETA",
-  tr_web_only:"Aquesta connexió funciona dins l'app d'Android (necessita un navegador real per a l'accés segur de TR). A la versió web segueix disponible l'importador CSV d'aquí sota.",
+  tr_web_only:"Aquesta connexió funciona dins l'app d'Android (necessita un navegador real per a l'accés segur de TR). Obre-ho des de l'app del mòbil.",
+  na_toast:"⚠ L'apunt automàtic de despeses està desactivat — activa'l a Ajustos",
+  na_body:"⚠ L'apunt automàtic de despeses (lector de notificacions de TR) no té permís — les despeses NO entren soles. Passa en reinstal·lar l'app: activa'l per a Mi Cartera.",
+  na_fix:"Activar accés a notificacions",
   tr_tos:"⚠ Connexió NO oficial: fa servir la mateixa via que la web de TR. Pot demanar el codi de 2FA de la teva app cada cert temps i podria deixar de funcionar si TR canvia alguna cosa. Les teves credencials no es guarden al núvol de Mi Cartera.",
   tr_phone_ph:"Telèfon (+34…)", tr_pin_ph:"PIN de Trade Republic",
   tr_connect:"Connecta", tr_connecting:"Connectant…",
@@ -3321,145 +3330,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 /* ============================================================
    TAB: INVERSIONES
    ============================================================ */
-/* ============================================================
-   IMPORTADOR CSV DEL BRÓKER (TR y similares) — 100% en el dispositivo.
-   Parser tolerante: detecta separador (;/,/tab), fila de cabeceras y columnas
-   por nombre (ES/EN/DE) o por la PINTA de los valores (ISIN por regex, fechas).
-   Agrega por ISIN con coste medio (compras suman, ventas restan proporcional)
-   y RE-ANCLA la posición (participaciones+coste absolutos) tras previsualizar.
-   Sin backend: el CSV nunca sale del móvil.
-   ============================================================ */
-const ISIN_RE=/^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
-function csvNum(v){
-  if(v==null) return null;
-  let s=String(v).replace(/[€$\s ]/g,"").replace(/−/g,"-").trim();
-  if(!s || /^-?$/.test(s)) return null;
-  if(/,\d{1,6}$/.test(s) && s.indexOf(",")===s.lastIndexOf(",")) s=s.replace(/\./g,"").replace(",",".");  // 1.234,56 → 1234.56
-  else s=s.replace(/,/g,"");                                                                              // 1,234.56 → 1234.56
-  const n=parseFloat(s);
-  return isNaN(n)?null:n;
-}
-function csvDate(v){
-  const s=String(v||"").trim();
-  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);            // 2026-07-03 (ISO)
-  if(m) return new Date(+m[1],+m[2]-1,+m[3]).getTime();
-  m=s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})/);      // 03.07.2026 / 03/07/2026 (dd/mm)
-  if(m) return new Date(+m[3],+m[2]-1,+m[1]).getTime();
-  return null;
-}
-function csvSplitLine(line, sep){
-  const out=[]; let cur="", q=false;
-  for(let i=0;i<line.length;i++){
-    const c=line[i];
-    if(c==='"'){ if(q && line[i+1]==='"'){ cur+='"'; i++; } else q=!q; }
-    else if(c===sep && !q){ out.push(cur); cur=""; }
-    else cur+=c;
-  }
-  out.push(cur);
-  return out.map(function(x){ return x.trim(); });
-}
-function brokerParse(text){
-  const lines=String(text||"").split(/\r?\n/).filter(function(l){ return l.trim()!==""; });
-  if(lines.length<2) return {ok:false, reason:"empty"};
-  // separador: el que más aparezca en las primeras líneas (fuera de comillas ni se mira: heurística)
-  const cnt=function(ch){ return lines.slice(0,5).reduce(function(a,l){ return a+l.split(ch).length-1; },0); };
-  const sep=(cnt(";")>=cnt(",") && cnt(";")>=cnt("\t"))?";":(cnt("\t")>cnt(",")?"\t":",");
-  const rows=lines.map(function(l){ return csvSplitLine(l,sep); });
-  // cabecera: fila con nombres reconocibles (fecha/date/datum + algo más)
-  const norm=function(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); };
-  const H={
-    date:["fecha","date","datum","data","fecha valor","booking date"],
-    type:["tipo","type","typ","transaccion","transaction","transaktion","operacion","evento","event"],
-    isin:["isin"],
-    name:["nombre","name","wertpapier","activo","asset","titulo","title","valor","descripcion","description","instrument","producto"],
-    shares:["cantidad","shares","anzahl","stuck","acciones","participaciones","quantity","titulos","units","numero"],
-    price:["precio","price","kurs","precio por accion","price per share"],
-    amount:["importe","amount","betrag","total","valor total","importe total","cash flow","monto"],
-  };
-  const findCols=function(hdr){
-    const map={}; const used={};
-    for(const k in H){
-      let best=-1;
-      hdr.forEach(function(h,idx){
-        if(used[idx]) return;
-        const hn=norm(h);
-        if(best<0 && H[k].some(function(nm){ return hn===nm || hn.indexOf(nm)===0; })) best=idx;
-      });
-      if(best>=0){ map[k]=best; used[best]=1; }
-    }
-    return map;
-  };
-  let hdrIdx=-1, cols=null;
-  for(let i=0;i<Math.min(rows.length,5);i++){
-    const m=findCols(rows[i]);
-    if(m.date!=null && (m.isin!=null||m.type!=null||m.amount!=null)){ hdrIdx=i; cols=m; break; }
-  }
-  const body=rows.slice(hdrIdx+1);
-  // sin cabecera reconocible: deduce columnas por la PINTA de los valores
-  if(!cols){
-    cols={};
-    const sample=body.slice(0,20);
-    const width=Math.max.apply(null,sample.map(function(r){return r.length;}));
-    for(let c=0;c<width;c++){
-      const vals=sample.map(function(r){ return r[c]; }).filter(function(v){ return v!=null && v!==""; });
-      if(!vals.length) continue;
-      if(cols.isin==null && vals.filter(function(v){ return ISIN_RE.test(String(v).trim()); }).length>=vals.length*0.6) cols.isin=c;
-      else if(cols.date==null && vals.filter(function(v){ return csvDate(v)!=null; }).length>=vals.length*0.6) cols.date=c;
-    }
-    if(cols.isin==null && cols.date==null) return {ok:false, reason:"nocols"};
-  }
-  const get=function(r,k){ return cols[k]!=null?r[cols[k]]:null; };
-  const out=[]; let skipped=0;
-  body.forEach(function(r,ri){
-    const isinRaw=String(get(r,"isin")||"").trim().toUpperCase();
-    const isin=ISIN_RE.test(isinRaw)?isinRaw:null;
-    const ty=norm(get(r,"type"));
-    const sh=csvNum(get(r,"shares"));
-    const amt=csvNum(get(r,"amount"));
-    const pr=csvNum(get(r,"price"));
-    const ts=csvDate(get(r,"date"));
-    const name=String(get(r,"name")||"").trim();
-    // clasifica el movimiento
-    let kind=null;
-    if(/compra|buy|kauf|sparplan|savings? plan|plan de inversion|saveback|round ?up|redondeo|ejecucion/.test(ty)) kind="buy";
-    else if(/venta|sell|verkauf/.test(ty)) kind="sell";
-    else if(/interes|interest|zinsen/.test(ty)) kind="interest";
-    else if(/dividendo|dividend|ausschuttung/.test(ty)) kind="dividend";
-    else if(isin && sh!=null){ kind = sh<0?"sell":"buy"; }          // sin tipo: por el signo de las participaciones
-    if(kind==="buy"||kind==="sell"){
-      if(!isin){ skipped++; return; }
-      let q=sh!=null?Math.abs(sh):null;
-      if(q==null && amt!=null && pr) q=Math.abs(amt)/pr;
-      if(q==null || !(q>0)){ skipped++; return; }
-      const cash=amt!=null?Math.abs(amt):(pr!=null?q*pr:null);
-      if(cash==null){ skipped++; return; }
-      out.push({kind:kind, isin:isin, name:name, shares:q, amount:cash, ts:ts||0, ord:ri});
-    } else if(kind==="interest"||kind==="dividend"){
-      if(amt!=null) out.push({kind:kind, amount:Math.abs(amt), ts:ts||0, ord:ri});
-    }
-    // depósitos/retiradas/tarjeta: se ignoran (no afectan a posiciones)
-  });
-  if(!out.length) return {ok:false, reason:"norows", skipped:skipped};
-  return {ok:true, rows:out, skipped:skipped, sep:sep};
-}
-function brokerAggregate(rows){
-  const sorted=rows.slice().sort(function(a,b){ return (a.ts-b.ts)||(a.ord-b.ord); });
-  const by={}; let interest=0, dividends=0, from=null, to=null;
-  sorted.forEach(function(r){
-    if(r.ts){ if(from==null||r.ts<from) from=r.ts; if(to==null||r.ts>to) to=r.ts; }
-    if(r.kind==="interest"){ interest+=r.amount; return; }
-    if(r.kind==="dividend"){ dividends+=r.amount; return; }
-    const p=by[r.isin]||(by[r.isin]={isin:r.isin,name:r.name||r.isin,shares:0,cost:0,ops:0});
-    if(r.name && r.name.length>(p.name||"").length) p.name=r.name;
-    p.ops++;
-    if(r.kind==="buy"){ p.shares+=r.shares; p.cost+=r.amount; }
-    else { if(p.shares>0){ p.cost-=p.cost*Math.min(1,r.shares/p.shares); } p.shares=Math.max(0,p.shares-r.shares); }
-  });
-  const positions=Object.keys(by).map(function(k){ const p=by[k]; p.shares=+p.shares.toFixed(6); p.cost=+p.cost.toFixed(2); return p; })
-    .filter(function(p){ return p.shares>0.0000005 || p.cost>0.005; });
-  return {positions:positions, interest:+interest.toFixed(2), dividends:+dividends.toFixed(2), from:from, to:to};
-}
-// sugerencia de mapeo CSV→posición: primero por ISIN guardado, luego por palabras del nombre
+// sugerencia de mapeo ISIN→posición (la usa la sincro TR): primero por ISIN guardado, luego por palabras del nombre
 function brokerSuggest(pos, investments){
   const byIsin=investments.find(function(i){ return i.isin && i.isin===pos.isin; });
   if(byIsin) return byIsin.id;
@@ -3629,83 +3500,6 @@ function TRSync({state, set}){
           doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
           err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
         )
-  );
-}
-function BrokerImport({state, set, fetchPrices}){
-  const [text,setText]=useState("");
-  const [parsed,setParsed]=useState(null);   // {agg,skipped} | {error:true}
-  const [map,setMap]=useState({});           // isin → id de inversión ("" = no tocar)
-  const [done,setDone]=useState(null);
-  const doParse=function(src){
-    setDone(null);
-    const p=brokerParse(src!=null?src:text);
-    if(!p.ok){ setParsed({error:true}); return; }
-    const agg=brokerAggregate(p.rows);
-    const m={};
-    agg.positions.forEach(function(po){ const sug=brokerSuggest(po, state.investments); if(sug) m[po.isin]=sug; });
-    setMap(m); setParsed({agg:agg, skipped:p.skipped});
-  };
-  const onFile=function(e){
-    const f=e.target.files && e.target.files[0]; if(!f) return;
-    const rd=new FileReader();
-    rd.onload=function(){ const s=String(rd.result||""); setText(s); doParse(s); };
-    rd.readAsText(f);
-    e.target.value="";
-  };
-  const mappedN=parsed&&parsed.agg?parsed.agg.positions.filter(function(p){ return map[p.isin]; }).length:0;
-  const apply=function(){
-    const agg=parsed.agg;
-    set(function(s){
-      return Object.assign({},s,{investments:s.investments.map(function(i){
-        const po=agg.positions.find(function(p){ return map[p.isin]===i.id; });
-        if(!po) return i;
-        return Object.assign({},i,{shares:po.shares, cost:po.cost, isin:po.isin});
-      })});
-    });
-    setDone(mappedN); setParsed(null); setText("");
-    // recalcula el valor de mercado con las participaciones nuevas (si hay tickers y auto-precios)
-    if(state.investments.some(function(i){ return i.ticker; })) fetchPrices(true);
-  };
-  const dfmt=function(ts){ return ts?new Date(ts).toLocaleDateString(loc(),{day:'2-digit',month:'short',year:'2-digit'}):"–"; };
-  const agg=parsed&&parsed.agg;
-  return React.createElement(CollapsibleCard,{title:t("bi_title"),sub:t("bi_sub"),dot:"var(--blue)",defaultOpen:false,storageKey:"inv_import",help:t("h_import")},
-    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("bi_hint")),
-    React.createElement("label",{className:"btn btn-ghost btn-block",style:{cursor:"pointer"}},
-      t("bi_file"),
-      React.createElement("input",{type:"file",accept:".csv,text/csv,text/plain",style:{display:"none"},onChange:onFile})
-    ),
-    React.createElement("textarea",{className:"af-in",rows:3,placeholder:t("bi_paste_ph"),value:text,style:{marginTop:10,resize:"vertical",fontFamily:"inherit"},onChange:function(e){ setText(e.target.value); }}),
-    text.trim()!=="" && !agg && React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},onClick:function(){ doParse(null); }},t("bi_analyze")),
-    parsed&&parsed.error && React.createElement("div",{className:"alarmbox",style:{marginTop:10}},t("bi_err")),
-    agg && React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"hint",style:{marginTop:10}},
-        tf("bi_summary",{n:agg.positions.length,from:dfmt(agg.from),to:dfmt(agg.to)}),
-        parsed.skipped>0?" · "+tf("bi_skipped",{n:parsed.skipped}):""
-      ),
-      agg.positions.map(function(po){
-        return React.createElement("div",{key:po.isin,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
-          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
-            React.createElement("div",{style:{minWidth:0}},
-              React.createElement("div",{className:"rname"},po.name),
-              React.createElement("div",{className:"rsub"},po.isin+" · "+tf("bi_ops",{n:po.ops}))
-            ),
-            React.createElement("div",{className:"rval num"},
-              po.shares+" "+t("bi_shares"),
-              React.createElement("div",{className:"rsub"},eur(po.cost))
-            )
-          ),
-          React.createElement("select",{className:"af-in",value:map[po.isin]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.isin]=v; return n; }); }},
-            React.createElement("option",{value:""},t("bi_notouch")),
-            state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
-          )
-        );
-      }),
-      (agg.interest>0||agg.dividends>0) && React.createElement("div",{className:"hint"},tf("bi_cash_info",{int:eur(agg.interest),div:eur(agg.dividends)})),
-      state.investments.some(function(i){ return i.cur==="USD"; }) && React.createElement("div",{className:"hint"},t("bi_usd_hint")),
-      React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("bi_apply",{n:mappedN})),
-      React.createElement("div",{className:"hint"},t("bi_apply_hint"))
-    ),
-    done!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("bi_done",{n:done}))
   );
 }
 
@@ -3950,8 +3744,6 @@ function Investments({state, set, fetchPrices, pricing}){
         React.createElement("div",{className:"hint",style:{marginTop:8}}, (mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))+" "+t("ru_manual_hint"))
       );
     })(),
-    React.createElement(TRSync,{state:state,set:set}),
-    React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
     React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg",help:t("h_cvg")},
       // desglose por bróker, para poder comparar cada uno con su app (p.ej. Revolut en $)
       groups.map(function(g){ const o=byBroker[g[0]]; if(!o||o.v===0) return null; const gain=o.v-o.c; const pl=o.c>0?gain/o.c*100:0;
@@ -5595,6 +5387,18 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const fileRef=useRef(null);
+  // ¿El lector de gastos TR tiene acceso a notificaciones? (se pierde al reinstalar la app).
+  // Se re-chequea al volver a la app (visibilitychange): al activar el permiso y volver, el aviso se quita solo.
+  const [notifOk,setNotifOk]=useState(true);
+  useEffect(function(){
+    const check=function(){
+      const nat=natPlugin();
+      if(nat&&nat.notifAccess){ try{ nat.notifAccess().then(function(r){ setNotifOk(!(r&&r.granted===false)); }).catch(function(){}); }catch(e){} }
+    };
+    check();
+    document.addEventListener("visibilitychange",check);
+    return function(){ document.removeEventListener("visibilitychange",check); };
+  },[]);
   // --- Banco (Open Banking) ---
   const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno (resumen)
   const [bankBusy,setBankBusy]=useState(false);
@@ -5713,6 +5517,14 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       );
     })(),
     manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,onClose:function(){ setManageBanks(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }}), document.body),
+    // Aviso: el lector de gastos TR sin acceso a notificaciones (los gastos no entran solos)
+    !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
+      t("na_body"),
+      React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix"))
+    ),
+    // Trade Republic: conexión y sincro de cartera (solo opera en la app Android; en web avisa)
+    React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
+    React.createElement(TRSync,{state:state,set:set}),
     React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
     React.createElement("div",{style:lbl},t("backup")),
     React.createElement("button",{style:btnGhost,onClick:doExport},t("do_export")),
@@ -6338,6 +6150,9 @@ function App(){
   useEffect(function(){
     const nat=natPlugin();
     if(nat && nat.ensureNotifPerm){ try{ nat.ensureNotifPerm().catch(function(){}); }catch(e){} }
+    // Aviso si el lector de gastos TR perdió el acceso a notificaciones (se pierde al
+    // desinstalar/reinstalar y el gasto NO llega — bug Consum 2026-07-06). Arreglo en Ajustes.
+    if(nat && nat.notifAccess){ try{ nat.notifAccess().then(function(r){ if(r&&r.granted===false) showToast(t("na_toast")); }).catch(function(){}); }catch(e){} }
   },[]);
   // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
   const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
@@ -6657,7 +6472,37 @@ function App(){
   );
 }
 
-if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+/* ---------- OTA (solo app Android): bundle local + actualización en caliente ----------
+   La app nativa ya NO carga la web en vivo (server.url quitado): arranca del bundle
+   LOCAL (instantáneo, funciona offline) y este bloque baja el bundle nuevo de GitHub
+   Pages en segundo plano y lo deja listo para el SIGUIENTE arranque.
+   (capgo/capacitor-updater en modo manual self-hosted: el CI publica version.json +
+   bundle.zip junto a la web; sin cuenta de Capgo, gratis y reversible.) */
+var _mcNative=false;
+try{ _mcNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); }catch(e){}
+(function(){
+  try{
+    var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+    if(!up) return;
+    up.notifyAppReady().catch(function(){});   // confirma que este bundle arranca bien (si nadie avisa, el plugin hace rollback al anterior)
+    var BASE="https://juanjoavila.github.io/Mi-Cartera/";
+    setTimeout(function(){
+      fetch(BASE+"version.json?ts="+Date.now(),{cache:"no-store"})
+        .then(function(r){ return r.json(); })
+        .then(function(v){
+          if(!v||!v.version) return;
+          if(v.version===CONFIG.APP_VERSION){ try{ localStorage.removeItem("_otaPending"); }catch(e){} return; }   // ya al día
+          var pend=null; try{ pend=localStorage.getItem("_otaPending"); }catch(e){}
+          if(pend===v.version) return;                                    // ya descargado; entra al siguiente arranque
+          return up.download({url:(v.url||BASE+"bundle.zip"),version:v.version}).then(function(b){
+            return up.next({id:b.id});                                    // hot-swap en el próximo arranque (sin recargas a media sesión)
+          }).then(function(){ try{ localStorage.setItem("_otaPending",v.version); }catch(e){} });
+        }).catch(function(){});                                           // sin red o aún sin desplegar: la app sigue con su bundle
+    },4000);
+  }catch(e){}
+})();
+
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0 && !_mcNative){
   // El SW es stale-while-revalidate: arranque INSTANTÁNEO desde caché y la versión fresca
   // se descarga por detrás. NO forzamos skipWaiting solos (eso causaba el "se abre y se
   // recarga sola"). En su lugar, cuando hay una versión nueva ESPERANDO, avisamos con un

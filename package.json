@@ -12,7 +12,8 @@
   "dependencies": {
     "@capacitor/android": "^6.1.0",
     "@capacitor/app": "^6.0.3",
-    "@capacitor/core": "^6.1.0"
+    "@capacitor/core": "^6.1.0",
+    "@capgo/capacitor-updater": "^6.50.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.0"

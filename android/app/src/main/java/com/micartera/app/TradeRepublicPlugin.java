@@ -172,6 +172,14 @@ public class TradeRepublicPlugin extends Plugin {
     public void sync(final PluginCall call) {
         final String id = track(call);
         ensureWeb(() -> run(id,
+            // REFRESCO DE SESIÓN (2026-07-06): las sesiones web de TR caducan rápido, pero la
+            // cookie tr_refresh permite renovar tr_session SIN 2FA llamando al endpoint de
+            // sesión (el mismo que usa la web de TR). Se intenta SIEMPRE antes del WS
+            // (best-effort: si el endpoint cambia o falla, el WS dirá authExpired y la UI
+            // vuelve al login, como antes). Si el refresh renueva, el usuario ni se entera.
+            "const refresh=async()=>{const tries=[['POST','/api/v1/auth/web/session'],['GET','/api/v1/auth/web/session'],['GET','/api/v2/auth/web/session']];" +
+            "for(const t of tries){try{const r=await fetch('https://api.traderepublic.com'+t[1],{method:t[0],credentials:'include'});" +
+            "if(r.status===200||r.status===201)return true;}catch(e){}}return false;};" +
             // Protocolo real de TR (mapeado en vivo 2026-07): connect 31 → "connected";
             //   sub {id} {type:compactPortfolioByType} → {categories:[{positions:[{isin,netSize,averageBuyIn,name}]}]}
             //   sub {id} {type:availableCash}          → [{currencyId,amount}]
@@ -179,10 +187,10 @@ public class TradeRepublicPlugin extends Plugin {
             // value = precio × participaciones; cost = averageBuyIn × participaciones. Todo EUR.
             // IMPORTANTE: los IDs de suscripción DEBEN ser numéricos (TR ignora en silencio los de letra).
             // Posiciones=1, efectivo=2, tickers=100+i.
+            "const trySync=()=>new Promise((resolve)=>{" +
             "const ws=new WebSocket('wss://api.traderepublic.com/');" +
             "let positions=null,cash=null,posDone=false;const price={};" +
-            "return await new Promise((resolve)=>{" +
-            "let done=false;const fin=(o)=>{if(done)return;done=true;try{ws.close()}catch(e){};resolve(JSON.stringify(o));};" +
+            "let done=false;const fin=(o)=>{if(done)return;done=true;try{ws.close()}catch(e){};resolve(o);};" +
             "const hardTo=setTimeout(()=>finishOk(),15000);let graceTo=null;" +
             "const finishOk=()=>{clearTimeout(hardTo);if(graceTo)clearTimeout(graceTo);" +
               "const pos=(positions||[]).map(p=>{const sh=Number(p.netSize||0);const pr=price[p.isin];" +
@@ -200,7 +208,7 @@ public class TradeRepublicPlugin extends Plugin {
             "const sp2=rest.indexOf(' ');const code=sp2<0?rest:rest.slice(0,sp2);const body=sp2<0?'':rest.slice(sp2+1);" +
             "let j=null;try{j=JSON.parse(body)}catch(e){}" +
             "if(code==='E'){const ec=j&&j.errors&&j.errors[0]&&j.errors[0].errorCode;" +
-              "if(String(ec).indexOf('AUTHENTICATION')>=0){return fin({ok:false,authExpired:true,error:'Tu sesión de TR caducó. Pulsa «Desconectar» y vuelve a conectar.'});}return;}" +
+              "if(String(ec).indexOf('AUTHENTICATION')>=0){return fin({ok:false,authExpired:true});}return;}" +
             "if(fid==='1'&&j&&j.categories&&positions==null){positions=[];j.categories.forEach(c=>(c.positions||[]).forEach(p=>positions.push(p)));posDone=true;" +
               "positions.forEach((p,i)=>{try{ws.send('sub '+(100+i)+' '+JSON.stringify({type:'ticker',id:p.isin+'.LSX'}));}catch(e){}});" +
               "if(positions.length===0)finishOk();else maybeGrace();}" +
@@ -208,7 +216,13 @@ public class TradeRepublicPlugin extends Plugin {
             "if(Number(fid)>=100&&code==='A'&&j){const idx=Number(fid)-100;const p=positions&&positions[idx];" +
               "if(p&&price[p.isin]==null){const pr=(j.last&&j.last.price)||(j.bid&&j.bid.price)||(j.ask&&j.ask.price);if(pr!=null){price[p.isin]=Number(pr);try{ws.send('unsub '+fid);}catch(e){}}}" +
               "if(positions&&Object.keys(price).length>=positions.length&&cash!=null)finishOk();}" +
-            "};});"
+            "};});" +
+            // Orquestación: refresca → sincroniza → si aún caduca, refresca otra vez y reintenta 1 vez.
+            "const refreshed=await refresh();" +
+            "let r=await trySync();" +
+            "if(!r.ok&&r.authExpired&&!refreshed){if(await refresh())r=await trySync();}" +
+            "if(!r.ok&&r.authExpired)r.error='Tu sesión de TR caducó. Pulsa «Desconectar» y vuelve a conectar.';" +
+            "return r;"
         ));
     }
 

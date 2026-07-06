@@ -1,6 +1,9 @@
 ext {
-    minSdkVersion = 22
-    compileSdkVersion = 34
+    // 23 (Android 6.0): lo exige play-services-tasks, dependencia de @capgo/capacitor-updater.
+    minSdkVersion = 23
+    // 35: lo exige androidx.work (dependencia de @capgo/capacitor-updater). Solo compilación;
+    // targetSdk se queda en 34 (mismo comportamiento en runtime).
+    compileSdkVersion = 35
     targetSdkVersion = 34
     androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'

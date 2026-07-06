@@ -19,6 +19,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.80.0] — 2026-07-06
+### OTA: la app arranca al instante + gasto automático blindado (APK 4.0.0-alpha7)
+- ⚡ **Adiós al tirón de arranque en frío (OTA con capacitor-updater, self-hosted y gratis).** La app Android ya NO carga la web en vivo desde GitHub Pages en cada apertura: arranca de un **bundle local** (instantáneo, funciona sin red) y baja la versión nueva en segundo plano (`version.json` + `bundle.zip`, publicados por el CI en la misma GitHub Pages). El cambio entra solo en el siguiente arranque — se mantiene el «se actualiza sola», sin recargas a media sesión. ⚠️ Al pasar a la alpha7 la app cambia de origen (`https://localhost`): pedirá iniciar sesión UNA vez y recupera todo de la nube (camino blindado en v3.78).
+- 🔁 **Refresco automático de la sesión de Trade Republic:** antes de cada sincro, el puente nativo renueva la sesión con la cookie `tr_refresh` (sin 2FA, el mismo endpoint que usa la web de TR); solo si el refresh falla de verdad se vuelve al login. Menos «tu sesión caducó».
+- 🔔 **El apunte automático de gastos ya no muere en silencio** (raíz del «pagué en el Consum y no salió»): al reinstalar la app, Android revoca el acceso a notificaciones del lector de TR. Ahora la app lo detecta al arrancar (aviso) y en Ajustes sale un botón «Activar acceso a notificaciones» que abre la pantalla exacta; el aviso se quita solo al concederlo.
+- 🧹 **Fuera el importador CSV** (todo automatizado; nadie lo usaba). La conexión de Trade Republic se muda de Inversiones a **Ajustes**, junto a los bancos.
+
 ## [3.79.3] — 2026-07-06
 ### ¡Trade Republic sincroniza de verdad! (APK 4.0.0-alpha6)
 - 🎉 **Sync de Trade Republic COMPLETO y funcionando de punta a punta.** Login → 2FA → posiciones + valor en vivo + efectivo → re-anclaje automático por ISIN/nombre. Verificado en el móvil real: trae el FTSE All-World (6,819272 particip., 1.133 €) y Meta (0,0539 particip., 27,91 €) + efectivo (6.795 €), y re-ancla las 2 posiciones con un toque. **Sin exportar nada a mano.**

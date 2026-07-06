@@ -17,5 +17,7 @@ Thumbs.db
 *.swp
 # Artefactos temporales de build local
 /tmp/
+# Bundle local de la app Android (lo genera scripts/build-www.mjs desde public/)
+/www/
 # Tooling local de Claude (preview launch.json, settings locales) — no es código de la app
 .claude/
