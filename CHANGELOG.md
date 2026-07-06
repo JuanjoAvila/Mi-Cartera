@@ -19,6 +19,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.81.0] — 2026-07-06
+### Tanda de feedback: gastos editables, conciliación sensata y onboarding nuevo
+- ✏️ **Los gastos variables ya se pueden EDITAR** (lápiz ✎): comercio, importe y gasto↔ingreso. Para corregir lo que la ingesta parsea mal — la financiación de Cofidis que notifica el total (99,99) cuando TR solo cobra la cuota (25,02), o un bizum antiguo que entró como gasto. La corrección se sincroniza bien con la nube (se retira la fila vieja y se inserta la corregida).
+- 📦 **La categoría «Otros» ya tiene icono visible** (antes era un puntito que parecía vacío) y nuevas keywords de auto-categoría: `cofidis` → Compras y `vending`/`expendedor` → Bares (el agua del pádel 😄), en la app y en el clasificador del servidor.
+- 🏦 **Conciliación del banco sin absurdos:** ya no empareja un cargo modelado con un movimiento de importe disparatado solo porque el nombre suene (YouTube Premium 4,33 vs 25,99 genérico). Y los cargos de primeros de mes que el banco adelanta al último día hábil (hipoteca del día 1 cobrada el 30) o que pagaste antes de tiempo se buscan también en la cola del mes anterior → salen confirmados, no «aún no aparece». Todos los avisos llevan «Ocultar aviso» (por mes).
+- 🔗 **La conexión de Trade Republic vive en «Gestionar mis bancos»** — TR también es un banco, aunque su integración sea otra.
+- 💶 **La sincro de TR actualiza también tu EFECTIVO:** al aplicar, además de las posiciones, la cuenta TR se re-ancla al efectivo real que reporta TR (misma fórmula que la edición manual).
+- 🏷️ **Patrimonio honesto:** el subtítulo de cada cuenta es SU nombre (editable en modo edición — se acabó el «Conjunta con pareja» en la cuenta personal) y bajo Trade Republic ya no sale el gasto del mes (eso vive en Gastos). Fuera también la tarjeta de desglose del efectivo TR.
+- 👋 **Onboarding renovado:** wizard de 3 pasos (qué hace la app hoy — gastos solos, bancos, metas —, presupuesto con atajos, cuentas), con progreso y el aviso de «¿reinstalaste? inicia sesión» bien visible.
+
 ## [3.80.0] — 2026-07-06
 ### OTA: la app arranca al instante + gasto automático blindado (APK 4.0.0-alpha7)
 - ⚡ **Adiós al tirón de arranque en frío (OTA con capacitor-updater, self-hosted y gratis).** La app Android ya NO carga la web en vivo desde GitHub Pages en cada apertura: arranca de un **bundle local** (instantáneo, funciona sin red) y baja la versión nueva en segundo plano (`version.json` + `bundle.zip`, publicados por el CI en la misma GitHub Pages). El cambio entra solo en el siguiente arranque — se mantiene el «se actualiza sola», sin recargas a media sesión. ⚠️ Al pasar a la alpha7 la app cambia de origen (`https://localhost`): pedirá iniciar sesión UNA vez y recupera todo de la nube (camino blindado en v3.78).
