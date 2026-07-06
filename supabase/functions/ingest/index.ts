@@ -29,11 +29,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CATEGORIAS: Record<string, string[]> = {
-  bares:      ["restaurante","bar","cafe","cafè","cafeteria","mcdonalds","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","just eat","justeat","glovo","uber eats","ubereats"],
+  bares:      ["restaurante","bar","cafe","cafè","cafeteria","mcdonalds","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","just eat","justeat","glovo","uber eats","ubereats","vending","expendedor"],
   super:      ["mercadona","lidl","aldi","carrefour","dia ","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verdura","fruteria"],
   transporte: ["renfe","fgc","tmb","metro","bus","taxi","cabify","uber","parking","gasolina","repsol","cepsa","bp ","shell","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto"],
   ocio:       ["cinema","cines","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","game ","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport"],
-  compras:    ["zara","mango","hm ","h&m","primark","stradivarius","bershka","pull","cortefiel","el corte","amazon","aliexpress","pccomponentes","mediamarkt","leroy","ikea","worten","nike","adidas","foot locker"],
+  compras:    ["zara","mango","hm ","h&m","primark","stradivarius","bershka","pull","cortefiel","el corte","amazon","aliexpress","pccomponentes","mediamarkt","leroy","ikea","worten","nike","adidas","foot locker","cofidis"],
   hogar:      ["ikea","leroy merlin","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
   salud:      ["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","barberia","estetica","belleza","depilacion"],
   regalos:    ["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],

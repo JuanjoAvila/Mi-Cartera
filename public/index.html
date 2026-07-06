@@ -804,7 +804,7 @@ const CATEGORIES = [
   { id:"salud",      name:"Salud",               color:"#6FD6C9", icon:"💊" },
   { id:"hogar",      name:"Hogar",               color:"#B7C98A", icon:"🏠" },
   { id:"regalos",    name:"Regalos",             color:"#E89CB0", icon:"🎁" },
-  { id:"otros",      name:"Otros",               color:"#8FA89A", icon:"•" },
+  { id:"otros",      name:"Otros",               color:"#8FA89A", icon:"📦" },
 ];
 const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
 const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰" };
@@ -822,12 +822,12 @@ const MERCHANT_OVERRIDES = {};
 let USER_OVERRIDES = {};
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
 const KW = {
-  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin"],
+  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin","vending","expendedor"],
   super:["mercadona","lidl","aldi","carrefour","dia","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria"],
   transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing","blablacar","flixbus"],
   parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal"],
   ocio:["cinema","cine","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","bolera"],
-  compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","amzn","openbank","open bank","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","saona","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum"],
+  compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","amzn","openbank","open bank","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","saona","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis"],
   hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
   salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","barberia","estetica","belleza","depilacion"],
   regalos:["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
@@ -1393,7 +1393,20 @@ Object.assign(LANG.es,{
   tr_connected:"✓ Conectado a Trade Republic",
   tr_disconnect:"Desconectar",
   tr_preview:"{n} posiciones traídas de Trade Republic. Revisa el mapeo y aplica:",
-  tr_cash:"Efectivo en TR: {x}",
+  tr_cash:"Efectivo en TR: {x} · al aplicar se actualiza también tu cuenta TR",
+  g_edit:"Editar", g_edited:"✓ Gasto corregido",
+  rec_hide:"Ocultar aviso",
+  pt_name_ph:"Nombre (ej. Personal)",
+  ob2_claim:"Tu dinero claro y sin trabajo: gastos que se apuntan solos, tus bancos conectados y tus inversiones al día.",
+  ob2_f1_t:"Gastos sin teclear", ob2_f1_d:"Apunta un gasto en dos toques… o deja que entren solos con tu tarjeta de Trade Republic.",
+  ob2_f2_t:"Tus fijos, vigilados", ob2_f2_d:"Recibos, nómina y cuotas con su calendario: sabrás si llegas a fin de mes antes de que pase.",
+  ob2_f3_t:"Bancos e inversiones", ob2_f3_d:"Conecta tus bancos (Open Banking) y tu bróker, y mira tu patrimonio entero en un sitio.",
+  ob2_f4_t:"Metas y retos", ob2_f4_d:"Ponte metas de ahorro con previsión de cuándo las cumples — con confeti incluido.",
+  ob2_go:"Empezar", ob2_next:"Siguiente",
+  ob2_budget_t:"¿Cuánto quieres gastar al mes?", ob2_budget_d:"Tu presupuesto para el día a día (súper, bares, caprichos…). La app te avisa antes de pasarte.",
+  ob2_budget_h:"Lo cambias cuando quieras desde el Resumen o Ajustes.",
+  ob2_acc_t:"Tus cuentas", ob2_acc_d:"Añade tus bancos con el saldo de hoy para ver tu dinero total. Si prefieres, sáltatelo: también se pueden conectar por Open Banking después.",
+  ob2_acc_h:"Todo se puede editar luego en Patrimonio y Ajustes.",
   tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
   tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
   tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
@@ -1415,7 +1428,20 @@ Object.assign(LANG.en,{
   tr_connected:"✓ Connected to Trade Republic",
   tr_disconnect:"Disconnect",
   tr_preview:"{n} positions pulled from Trade Republic. Check the mapping and apply:",
-  tr_cash:"Cash in TR: {x}",
+  tr_cash:"Cash in TR: {x} · applying also updates your TR account",
+  g_edit:"Edit", g_edited:"✓ Expense fixed",
+  rec_hide:"Hide alert",
+  pt_name_ph:"Name (e.g. Personal)",
+  ob2_claim:"Your money, clear and effortless: expenses that log themselves, your banks connected and your investments up to date.",
+  ob2_f1_t:"No-typing expenses", ob2_f1_d:"Log an expense in two taps… or let them come in on their own with your Trade Republic card.",
+  ob2_f2_t:"Your bills, watched", ob2_f2_d:"Bills, payroll and instalments on their calendar: you'll know if you make it to month's end before it happens.",
+  ob2_f3_t:"Banks & investments", ob2_f3_d:"Connect your banks (Open Banking) and your broker, and see your whole net worth in one place.",
+  ob2_f4_t:"Goals & challenges", ob2_f4_d:"Set savings goals with a forecast of when you'll hit them — confetti included.",
+  ob2_go:"Start", ob2_next:"Next",
+  ob2_budget_t:"How much do you want to spend per month?", ob2_budget_d:"Your day-to-day budget (groceries, eating out, treats…). The app warns you before you go over.",
+  ob2_budget_h:"You can change it anytime from Overview or Settings.",
+  ob2_acc_t:"Your accounts", ob2_acc_d:"Add your banks with today's balance to see your total money. Or skip it: you can also connect them via Open Banking later.",
+  ob2_acc_h:"Everything can be edited later in Wealth and Settings.",
   tr_apply:"Apply to {n} positions", tr_apply_hint:"On apply: shares, value and cost are re-anchored to what Trade Republic says right now (live data, no need to refresh prices).",
   tr_done:"✓ {n} positions updated from Trade Republic",
   tr_err:"Couldn't connect to Trade Republic. Check phone/PIN or the code, and try again.",
@@ -1437,7 +1463,20 @@ Object.assign(LANG.ca,{
   tr_connected:"✓ Connectat a Trade Republic",
   tr_disconnect:"Desconnecta",
   tr_preview:"{n} posicions portades de Trade Republic. Revisa el mapatge i aplica:",
-  tr_cash:"Efectiu a TR: {x}",
+  tr_cash:"Efectiu a TR: {x} · en aplicar s'actualitza també el teu compte TR",
+  g_edit:"Edita", g_edited:"✓ Despesa corregida",
+  rec_hide:"Amaga l'avís",
+  pt_name_ph:"Nom (ex. Personal)",
+  ob2_claim:"Els teus diners clars i sense feina: despeses que s'apunten soles, els teus bancs connectats i les inversions al dia.",
+  ob2_f1_t:"Despeses sense teclejar", ob2_f1_d:"Apunta una despesa en dos tocs… o deixa que entrin soles amb la teva targeta de Trade Republic.",
+  ob2_f2_t:"Les teves fixes, vigilades", ob2_f2_d:"Rebuts, nòmina i quotes amb el seu calendari: sabràs si arribes a final de mes abans que passi.",
+  ob2_f3_t:"Bancs i inversions", ob2_f3_d:"Connecta els teus bancs (Open Banking) i el teu bròquer, i mira tot el teu patrimoni en un sol lloc.",
+  ob2_f4_t:"Metes i reptes", ob2_f4_d:"Posa't metes d'estalvi amb previsió de quan les compliràs — amb confeti inclòs.",
+  ob2_go:"Comença", ob2_next:"Següent",
+  ob2_budget_t:"Quant vols gastar al mes?", ob2_budget_d:"El teu pressupost del dia a dia (súper, bars, capricis…). L'app t'avisa abans de passar-te.",
+  ob2_budget_h:"El canvies quan vulguis des del Resum o Ajustos.",
+  ob2_acc_t:"Els teus comptes", ob2_acc_d:"Afegeix els teus bancs amb el saldo d'avui per veure els teus diners totals. O salta-t'ho: també es poden connectar per Open Banking després.",
+  ob2_acc_h:"Tot es pot editar després a Patrimoni i Ajustos.",
   tr_apply:"Aplica a {n} posicions", tr_apply_hint:"En aplicar: participacions, valor i cost es re-ancoren amb el que diu Trade Republic ara mateix (és dada en viu, no cal actualitzar preus).",
   tr_done:"✓ {n} posicions actualitzades des de Trade Republic",
   tr_err:"No s'ha pogut connectar amb Trade Republic. Revisa telèfon/PIN o el codi, i torna-ho a provar.",
@@ -3190,6 +3229,27 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{noCard:noCard?true:undefined}):e; })}); });
     if(cloud.enabled()) cloud.setExpenseNoCard(ex,noCard).catch(function(){});   // durable en la tabla
   };
+  // EDITAR un gasto (comercio / importe / gasto↔ingreso): para corregir lo que la ingesta parsea
+  // mal (financiación Cofidis que notifica el TOTAL pero TR solo cobra la cuota, bizums antiguos
+  // que entraron como gasto…). En la nube la clave es fecha|importe|comercio → se hace tombstone
+  // de la fila vieja (deleted + deleteExpense) y se inserta la corregida, o el pull la resucitaría.
+  const [editExp,setEditExp]=useState(null);   // {id, merchant, amount, income}
+  const saveEdit=function(orig){
+    const amt=parseFloat(String(editExp.amount).replace(',','.'))||0;
+    if(amt<=0){ showToast(t("g_invalid")); return; }
+    const signed=editExp.income? -amt : amt;
+    const merch=(editExp.merchant||"").trim()||orig.merchant;
+    if(signed===orig.amount && merch===(orig.merchant||"")){ setEditExp(null); return; }   // sin cambios
+    const cat = editExp.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
+    const upd=Object.assign({},orig,{merchant:merch, amount:signed, category:cat});
+    if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
+    set(function(s){ return Object.assign({},s,{
+      expenses:s.expenses.map(function(x){ return x.id===orig.id?upd:x; }),
+      deleted:(s.deleted||[]).concat([keyOfE(orig)])
+    }); });
+    if(cloud.enabled()){ cloud.deleteExpense(orig).catch(function(){}); cloud.addExpense(upd).catch(function(){}); }
+    setEditExp(null); showToast(t("g_edited"));
+  };
 
   const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return state.expenses
     .filter(e=>inPreset(parseDate(e.date),preset,range))
@@ -3298,7 +3358,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map((g,i)=> g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : (function(){ const c=catOf(g.e.category); const isIncome=g.e.amount<0; const open=catEdit===g.e.id; return React.createElement(React.Fragment,{key:g.e.id||i},
+              : (function(){ const c=catOf(g.e.category); const isIncome=g.e.amount<0; const open=catEdit===g.e.id; const ed=editExp&&editExp.id===g.e.id; return React.createElement(React.Fragment,{key:g.e.id||i},
                   React.createElement("div",{className:"ex-row"},
                     React.createElement("button",{className:"ex-ic",style:{borderColor:c.color+"55",color:c.color,cursor:isIncome?"default":"pointer",background:"none"},title:t("g_changecat"),onClick:function(ev){ ev.stopPropagation(); if(!isIncome) setCatEdit(open?null:g.e.id); }},c.icon),
                     React.createElement("div",{className:"ex-mid"},
@@ -3310,7 +3370,18 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                     ),
                     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
                       React.createElement("div",{className:"ex-amt num",style: isIncome?{color:"var(--mint)"}:null}, (isIncome?"+":"−")+eur(Math.abs(g.e.amount))),
+                      React.createElement("button",{className:"ex-del",title:t("g_edit"),onClick:function(ev){ ev.stopPropagation(); setEditExp(ed?null:{id:g.e.id, merchant:g.e.merchant||"", amount:String(Math.abs(g.e.amount)).replace('.',','), income:g.e.amount<0}); setCatEdit(null); }},"✎"),
                       React.createElement("button",{className:"ex-del",title:t("w_hide"),onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
+                    )
+                  ),
+                  // editor inline: comercio + importe + gasto↔ingreso (corrige parses malos de la ingesta)
+                  ed && React.createElement("div",{className:"catpick",style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}},
+                    React.createElement("input",{className:"af-in",style:{flex:"1 1 130px",minWidth:0},value:editExp.merchant,placeholder:t("g_concept_g"),onChange:function(e2){ const v=e2.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); }}),
+                    React.createElement("input",{className:"af-in num",style:{flex:"0 0 92px",textAlign:"right"},inputMode:"decimal",value:editExp.amount,onFocus:function(e2){ e2.target.select(); },onChange:function(e2){ const v=e2.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); }}),
+                    React.createElement("button",{type:"button",className:"cardflag"+(editExp.income?"":" off"),onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:!p.income}); }); }}, editExp.income?("💰 "+t("g_ingreso")):("💸 "+t("g_gasto"))),
+                    React.createElement("div",{style:{display:"flex",gap:8,flex:"1 1 100%"}},
+                      React.createElement("button",{className:"btn btn-primary",style:{flex:1,padding:"9px"},onClick:function(){ saveEdit(g.e); }},t("fj_save")),
+                      React.createElement("button",{className:"btn btn-ghost",style:{flex:1,padding:"9px"},onClick:function(){ setEditExp(null); }},t("fj_cancel"))
                     )
                   ),
                   open && React.createElement(React.Fragment,null,
@@ -3370,7 +3441,7 @@ function trBridge(){
   }catch(e){}
   return null;
 }
-function TRSync({state, set}){
+function TRSync({state, set, totals}){
   const bridge=trBridge();
   const [step,setStep]=useState("idle");      // idle | code | preview | done
   const [phone,setPhone]=useState("");
@@ -3429,9 +3500,9 @@ function TRSync({state, set}){
   };
   const mappedN=positions?positions.filter(function(p){ return map[p.isin]; }).length:0;
   const apply=function(){
-    const pos=positions;
+    const pos=positions, trCash=cash;
     set(function(s){
-      return Object.assign({},s,{investments:s.investments.map(function(i){
+      const next=Object.assign({},s,{investments:s.investments.map(function(i){
         const po=pos.find(function(p){ return map[p.isin]===i.id; });
         if(!po) return i;
         const patch={shares:po.shares, isin:po.isin};
@@ -3440,6 +3511,19 @@ function TRSync({state, set}){
         if(po.cost!=null)  patch.cost  = i.cur==="USD" ? (state.fx>0?po.cost/state.fx:po.cost)  : po.cost;
         return Object.assign({},i,patch);
       })});
+      // EFECTIVO de TR (availableCash) → re-ancla la cuenta TR para que HOY muestre exactamente
+      // ese saldo (misma fórmula que la edición manual de Patrimonio: se despeja la base del mes).
+      if(trCash!=null && totals){
+        next.accounts=s.accounts.map(function(a){
+          if(a.ent!=="trade_republic") return a;
+          const pn=(totals.paidNetByBank&&totals.paidNetByBank[a.ent])||0;
+          const stored = accDaily(a)
+            ? trCash-(totals.injTR||0)+(totals.thisMonthSpent||0)+(totals.roundupThisMonth||0)+(totals.monthlyInvestThisMonth||0)-(accRole(a)==="ambos"?pn:0)
+            : trCash-pn;
+          return Object.assign({},a,{value:+stored.toFixed(2)});
+        });
+      }
+      return next;
     });
     setDoneN(mappedN); setPositions(null); setStep("done");
   };
@@ -3853,7 +3937,12 @@ function Wealth({state, set, totals}){
       state.accounts.map(a=>React.createElement(React.Fragment,{key:a.id},
         React.createElement("div",{className:"row"},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:a.ent,size:38}),
-            React.createElement("div",null,React.createElement("div",{className:"rname"},entOf(a.ent).label),React.createElement("div",{className:"rsub"}, a.spendFrom?(tf("pt_monthspent",{x:eur0(totals.thisMonthSpent)})+(totals.injTR?tf("pt_payroll",{x:eur0(totals.injTR)}):"")):a.name))),
+            React.createElement("div",{style:{minWidth:0}},React.createElement("div",{className:"rname"},entOf(a.ent).label),
+              // subtítulo = el NOMBRE de la cuenta (editable abajo en modo edición). Nada de
+              // desgloses aquí: el gasto del mes ya vive en Gastos (feedback 2026-07-06).
+              accEd.editing
+                ? React.createElement("input",{className:"af-in",style:{fontSize:13,padding:"5px 9px",maxWidth:170,marginTop:3},value:a.name||"",placeholder:t("pt_name_ph"),onChange:function(e){ const v=e.target.value; set(function(s){ return Object.assign({},s,{accounts:s.accounts.map(function(x){ return x.id===a.id?Object.assign({},x,{name:v}):x; })}); }); }})
+                : (a.name?React.createElement("div",{className:"rsub"},a.name):null))),
           accEd.editing
             ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
             : React.createElement("div",{className:"rval num"},eur(accDaily(a)? spendBal(a) : a.value + pn(a)))
@@ -3880,32 +3969,7 @@ function Wealth({state, set, totals}){
       ); }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_liquid")),React.createElement("span",{className:"num"},eur(accSum)))
     ),
-    (function(){   // DESGLOSE del efectivo de TR: de dónde sale el saldo mostrado (diagnóstico de descuadres)
-      const trAcc=state.accounts.find(a=>a.spendFrom);
-      if(!trAcc) return null;
-      const monthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth()).slice().sort((a,b)=>parseDate(b.date)-parseDate(a.date));
-      const mult=trAcc.roundup||0;
-      const rowD=(lbl,val,col,strong)=> React.createElement("div",{className:"subtotal"},React.createElement("span",{className:strong?"":"muted",style:strong?{fontWeight:700}:null},lbl),React.createElement("span",{className:"num",style:Object.assign({},col?{color:col}:null,strong?{fontWeight:700}:null)},val));
-      return React.createElement(CollapsibleCard,{title:t("pt_trbreak"),sub:t("pt_trbreak_sub"),dot:"#E6C36A",storageKey:"w_trbreak",defaultOpen:false,help:t("h_trbreak")},
-        rowD(t("pt_trb_base"), eur(trAcc.value)),
-        totals.injTR?rowD(t("pt_trb_payroll"), "+"+eur(totals.injTR), "var(--mint)"):null,
-        rowD(t("pt_trb_spent"), "−"+eur(totals.thisMonthSpent), "var(--coral)"),
-        rowD(t("pt_trb_roundup"), "−"+eur(ruM), "var(--coral)"),
-        miM>0?rowD(t("pt_trb_plan"), "−"+eur(miM), "var(--coral)"):null,
-        React.createElement("div",{style:{borderTop:"1px solid var(--line)",marginTop:4,paddingTop:6}}, rowD(t("pt_trb_shown"), eur(spendBal(trAcc)), null, true)),
-        React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"12px 0 4px"}}, tf("pt_trb_movs",{n:monthExp.length})),
-        monthExp.length===0
-          ? React.createElement("div",{className:"hint"}, t("pt_trb_nomovs"))
-          : monthExp.slice(0,12).map(function(e){ const card=isCardSpend(e); const ru=card&&mult>0?spareOf(e.amount)*mult:0;
-              return React.createElement("div",{className:"row",key:e.id,style:{padding:"6px 2px"}},
-                React.createElement("div",{className:"rl"},React.createElement("div",null,
-                  React.createElement("div",{className:"rname",style:{fontSize:13}}, e.merchant||e.category||"—", React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:card?"#5FD08A22":"#E2A05F22",color:card?"var(--mint)":"#E2A05F"}}, card?"💳":"🔄")),
-                  ru>0 && React.createElement("div",{className:"rsub",style:{fontSize:11}}, tf("pt_trb_ru_of",{x:eur(ru)})))),
-                React.createElement("div",{className:"rval num",style:{color:e.amount<0?"var(--mint)":null}}, (e.amount<0?"+":"−")+eur(Math.abs(e.amount))));
-            }),
-        React.createElement("div",{className:"hint",style:{marginTop:8}}, t("pt_trb_hint"))
-      );
-    })(),
+    // (el desglose de efectivo de TR se quitó 2026-07-06: los movimientos ya viven en Gastos)
     React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv",help:t("h_ptinv")},
       ["revolut","trade_republic","myinvestor"].map(g=>{
         const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+(i.cur==="USD"?i.value*state.fx:i.value),0);
@@ -4182,6 +4246,9 @@ function recNameMatch(a,b){
 }
 // igual importe si difiere < max(0,50€, 2%)
 function recAmtClose(a,b){ return Math.abs(a-b) <= Math.max(0.5, 0.02*Math.max(Math.abs(a),Math.abs(b))); }
+// pareja "creíble" cuando solo casa el nombre: el importe no puede ser disparatado
+// (evita emparejar YouTube Premium 4,33 con un cargo genérico de 25,99 — feedback 2026-07-06)
+function recSane(a,b){ return Math.abs(a-b) <= Math.max(6, 0.5*Math.max(Math.abs(a),Math.abs(b))); }
 // día (1-31) de una fecha "YYYY-MM-DD"
 function recDay(ds){ const p=String(ds||"").slice(0,10).split("-"); return p.length===3?(parseInt(p[2],10)||null):null; }
 
@@ -4210,6 +4277,15 @@ function reconcileBank(state, y, m, today){
 
   const debits=month.filter(function(t){ return (t.amount||0)>0; }).map(function(t){ return Object.assign({},t,{_used:false}); });
   const credits=month.filter(function(t){ return (t.amount||0)<0; });
+  // Cola del MES ANTERIOR (día ≥15): cargos de primeros de mes que el banco adelanta al último
+  // día hábil (hipoteca del día 1 cobrada el 30) o que pagaste antes de tiempo NO deben salir
+  // como "aún no aparece" — se buscan también ahí y cuentan como confirmados.
+  const prevY=(m===1)?y-1:y, prevM=(m===1)?12:m-1;
+  const pym=prevY+"-"+(prevM<10?"0":"")+prevM;
+  const prevTail=tx.filter(function(t){ return String(t.date||"").slice(0,7)===pym && obEnts[t.ent] && (t.amount||0)>0 && (recDay(t.date)||0)>=15; });
+  // avisos que el usuario ha ocultado ("Ocultar aviso") y movimientos ignorados
+  const dismissed={}; (state.bankDismissed||[]).forEach(function(k){ dismissed[k]=1; });
+  res.ym=ym;
 
   // empareja cada cargo modelado con el mejor movimiento (nombre vale más; entre los que casan, importe cercano)
   modeled.sort(function(a,b){ return b.amount-a.amount; });
@@ -4221,7 +4297,9 @@ function reconcileBank(state, y, m, today){
       if(d._used || d.ent!==mc.ent) return;
       const nameOk=recNameMatch(mc.name, d.merchant);
       const amtOk=recAmtClose(target, d.amount);
-      if(!nameOk && !amtOk) return;
+      // el nombre solo no basta si los importes no tienen nada que ver: mejor dejarlo sin
+      // emparejar (saldrá como "no aparece"/"sin modelar") que inventar un "no cuadra" absurdo
+      if(!amtOk && !(nameOk && recSane(target, d.amount))) return;
       const score=(nameOk?2:0)+(amtOk?1:0) - Math.abs(target-d.amount)/100000;
       if(score>bestScore){ bestScore=score; best=d; }
     });
@@ -4231,11 +4309,16 @@ function reconcileBank(state, y, m, today){
         if(typeof mc.bankAmount==="number" && Math.abs(mc.bankAmount-mc.amount)>0.005)
           res.shared.push({name:mc.name, net:mc.amount, gross:best.amount, ent:mc.ent, id:mc.id, kind:mc.kind});
         else res.confirmed.push({name:mc.name, amount:best.amount, ent:mc.ent});
-      } else res.mismatch.push({name:mc.name, modeled:mc.amount, bank:best.amount, ent:mc.ent, id:mc.id, kind:mc.kind});
-    } else if(mc.day!=null && (today-mc.day)>=REC_GRACE && feedCovers(mc.ent, mc.day)){
-      // "no aparece" solo si: (1) el día ya pasó con margen (gracia, no llora por cargos de fin de mes)
-      // Y (2) el feed del banco realmente cubre ese día (si no, la sync no ha llegado: no inventamos avisos).
-      res.missing.push({name:mc.name, amount:mc.amount, day:mc.day, ent:mc.ent, id:mc.id, kind:mc.kind});
+      } else if(!dismissed["mm|"+mc.id+"|"+ym]) res.mismatch.push({name:mc.name, modeled:mc.amount, bank:best.amount, ent:mc.ent, id:mc.id, kind:mc.kind});
+    } else {
+      // ¿se cobró a FINAL del mes pasado? (último día hábil / pago adelantado) → confirmado
+      const prev=prevTail.find(function(d){ return !d._used2 && d.ent===mc.ent && (recAmtClose(target,d.amount)||(recNameMatch(mc.name,d.merchant)&&recSane(target,d.amount))); });
+      if(prev){ prev._used2=true; res.confirmed.push({name:mc.name, amount:prev.amount, ent:mc.ent}); }
+      else if(mc.day!=null && (today-mc.day)>=REC_GRACE && feedCovers(mc.ent, mc.day) && !dismissed["miss|"+mc.id+"|"+ym]){
+        // "no aparece" solo si: (1) el día ya pasó con margen (gracia, no llora por cargos de fin de mes)
+        // Y (2) el feed del banco realmente cubre ese día (si no, la sync no ha llegado: no inventamos avisos).
+        res.missing.push({name:mc.name, amount:mc.amount, day:mc.day, ent:mc.ent, id:mc.id, kind:mc.kind});
+      }
     }
   });
   // transferencias e ingresos modelados (flows): los reconocemos para que NO salgan como "sin modelar"
@@ -4255,7 +4338,6 @@ function reconcileBank(state, y, m, today){
     }
   });
   // movimientos que el usuario ha decidido ignorar (doble cobro del banco, comisiones que se devuelven…)
-  const dismissed={}; (state.bankDismissed||[]).forEach(function(k){ dismissed[k]=1; });
   const dkey=function(x){ return x.id || ((x.merchant||"")+"|"+x.amount+"|"+x.date); };
   // cargos del banco que no casan con nada modelado (excluidos los ignorados)
   debits.forEach(function(d){ if(d._used) return; const x={merchant:d.merchant, amount:d.amount, date:d.date, ent:d.ent, card:!!d.card, id:d.id||null}; if(!dismissed[dkey(x)]) res.newCharges.push(x); });
@@ -4399,6 +4481,9 @@ function Reconcile({state, set}){
   };
   // "Ignorar": oculta un movimiento del banco (doble cobro, comisión que te devuelven…). Persistente.
   const dismiss=function(nc){ const dk=nc.id || ((nc.merchant||"")+"|"+nc.amount+"|"+nc.date); set(function(s){ const cur=(s.bankDismissed||[]); return cur.indexOf(dk)>=0?s:Object.assign({},s,{bankDismissed:cur.concat([dk])}); }); };
+  // "Ocultar aviso": silencia un aviso concreto (no cuadra / aún no aparece) durante ESTE mes
+  // (pago adelantado, cargo que ya sabes que está bien…). La clave lleva el mes → al siguiente vuelve a vigilar.
+  const hideIssue=function(prefix,x){ set(function(s){ const k=prefix+"|"+x.id+"|"+r.ym; const cur=s.bankDismissed||[]; return cur.indexOf(k)>=0?s:Object.assign({},s,{bankDismissed:cur.concat([k])}); }); };
   return React.createElement(CollapsibleCard,{title:t("rec_title"), sub:sub, dot:dot, storageKey:"f_recon", defaultOpen:nIssues>0, help:t("h_recon")},
     r.mismatch.length>0 && React.createElement(React.Fragment,{key:"mm"},
       React.createElement("div",{style:Object.assign({},secT,{color:"var(--coral)"})}, t("rec_mismatch_t")),
@@ -4406,7 +4491,8 @@ function Reconcile({state, set}){
         React.createElement("div",null, tf("rec_mismatch_l",{name:x.name, modeled:eur(x.modeled), bank:eur(x.bank)})),
         x.id && React.createElement("div",{style:actRow},
           React.createElement("button",{style:mb,onClick:function(){ adjustToBank(x); }}, tf("rec_adjust",{x:eur(x.bank)})),
-          React.createElement("button",{style:mb,onClick:function(){ markShared(x); }}, t("rec_mark_shared"))
+          React.createElement("button",{style:mb,onClick:function(){ markShared(x); }}, t("rec_mark_shared")),
+          React.createElement("button",{style:mb,onClick:function(){ hideIssue("mm",x); }}, t("rec_hide"))
         )
       ); })
     ),
@@ -4422,9 +4508,11 @@ function Reconcile({state, set}){
       React.createElement("div",{style:secT}, t("rec_missing_t")),
       r.missing.map(function(x,i){ const others=entList.filter(function(e){ return e!==x.ent; }); return React.createElement("div",{key:i,style:rowS},
         React.createElement("div",null, tf("rec_missing_l",{name:x.name, amount:eur(x.amount), day:x.day})),
-        (x.id && others.length>0) && React.createElement("div",{style:actRow},
-          React.createElement("span",{style:{fontSize:11.5,color:"var(--muted-2)"}}, t("rec_pay_from")),
-          others.map(function(e){ return React.createElement("button",{key:e,style:mb,onClick:function(){ reassign(x,e); }}, "↪ "+entOf(e).label); }))
+        x.id && React.createElement("div",{style:actRow},
+          React.createElement("button",{style:mb,onClick:function(){ hideIssue("miss",x); }}, t("rec_hide")),
+          others.length>0 && React.createElement(React.Fragment,null,
+            React.createElement("span",{style:{fontSize:11.5,color:"var(--muted-2)"}}, t("rec_pay_from")),
+            others.map(function(e){ return React.createElement("button",{key:e,style:mb,onClick:function(){ reassign(x,e); }}, "↪ "+entOf(e).label); })))
       ); })
     ),
     r.newCharges.length>0 && React.createElement(React.Fragment,{key:"nc"},
@@ -5285,7 +5373,7 @@ function AuthPanel({session, onClose, showToast, recovery}){
    ve su estado y elige de la lista REAL de Enable Banking (con buscador y logos).
    Overlay a pantalla completa que abre SettingsPanel.
    ============================================================ */
-function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
+function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
   const [links,setLinks]=useState(null);          // null = cargando
   const [aspsps,setAspsps]=useState(null);        // null = sin cargar
   const [loadingA,setLoadingA]=useState(false);
@@ -5379,6 +5467,10 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose}){
       );
     }),
     React.createElement("button",{style:bigBtn,onClick:openPicker}, "+ "+t("bp_add")),
+    // Trade Republic también es un banco: su conexión (integración propia vía app Android) vive
+    // aquí con el resto de bancos, no perdida en Inversiones/Ajustes (feedback 2026-07-06).
+    React.createElement("div",{style:{height:1,background:"var(--line)",margin:"20px 0 14px"}}),
+    React.createElement(TRSync,{state:state,set:set,totals:totals}),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
   ));
 }
@@ -5516,15 +5608,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         React.createElement("button",{style:btnGhost,onClick:function(){ setManageBanks(true); }}, t("bp_manage")+" →")
       );
     })(),
-    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,onClose:function(){ setManageBanks(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }}), document.body),
+    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onClose:function(){ setManageBanks(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }}), document.body),
     // Aviso: el lector de gastos TR sin acceso a notificaciones (los gastos no entran solos)
     !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
       t("na_body"),
       React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix"))
     ),
-    // Trade Republic: conexión y sincro de cartera (solo opera en la app Android; en web avisa)
-    React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
-    React.createElement(TRSync,{state:state,set:set}),
     React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
     React.createElement("div",{style:lbl},t("backup")),
     React.createElement("button",{style:btnGhost,onClick:doExport},t("do_export")),
@@ -5537,7 +5626,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
 /* ============================================================
    ONBOARDING — bienvenida para usuarios nuevos (arranque vacío)
    ============================================================ */
+/* Onboarding renovado (2026-07-06): wizard de 3 pasos — (0) bienvenida con lo que hace la app
+   hoy + recuperar cuenta, (1) presupuesto con atajos, (2) cuentas. El arranque vacío sigue
+   siendo seguro y todo se puede cambiar luego. */
 function Onboarding({set, onCloud}){
+  const [step,setStep]=useState(0);
   const [budget,setBudget]=useState("");
   const [accs,setAccs]=useState([]);
   const [ent,setEnt]=useState("sabadell");
@@ -5545,9 +5638,10 @@ function Onboarding({set, onCloud}){
   const [val,setVal]=useState("");
   const wrap={position:"fixed",inset:0,zIndex:90,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 28px) 22px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
   const inner={maxWidth:480,margin:"0 auto"};
-  const lbl={fontSize:"12px",color:"var(--muted)",margin:"18px 0 6px",fontWeight:700};
   const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
   const btn={width:"100%",padding:"14px",borderRadius:"14px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:"15px",cursor:"pointer"};
+  const ghost=Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"});
+  const backLk={background:"none",border:"none",color:"var(--blue)",fontSize:14,fontWeight:700,cursor:"pointer",padding:"6px 0",margin:"2px 0 0"};
   const addAcc=function(){ const v=parseFloat(String(val).replace(',','.'))||0; setAccs(function(a){ return a.concat([{id:uid(),ent:ent,name:name||entOf(ent).label,value:v,note:""}]); }); setName(""); setVal(""); };
   const delAcc=function(id){ setAccs(function(a){ return a.filter(function(x){return x.id!==id;}); }); };
   const finish=function(){
@@ -5555,39 +5649,70 @@ function Onboarding({set, onCloud}){
     const base=accs.reduce(function(t,x){ return t+(x.value||0); },0);
     set(function(s){ return Object.assign({},s,{ accounts:accs.slice(), budget:b, monthStartNet:base, history:[base], onboarded:true }); });
   };
-  return React.createElement("div",{style:wrap},
-    React.createElement("div",{style:inner},
-      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:11,marginBottom:6}},
-        React.createElement("div",{className:"brand-mark"},React.createElement(I.logo,{width:22,height:22})),
-        React.createElement("div",{style:{fontWeight:800,fontSize:20}},"Mi Cartera")),
-      React.createElement("div",{className:"serif",style:{fontSize:26,margin:"14px 0 6px"}},t("ob_welcome")),
-      React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.5}},t("ob_intro")),
+  const dots=React.createElement("div",{style:{display:"flex",gap:6,justifyContent:"center",margin:"18px 0 0"}},
+    [0,1,2].map(function(i){ return React.createElement("span",{key:i,style:{width:i===step?22:8,height:8,borderRadius:8,background:i===step?"var(--mint)":"var(--line)",transition:"all .25s"}}); }));
+  const feat=function(emoji,k){ return React.createElement("div",{style:{display:"flex",gap:11,alignItems:"flex-start",padding:"11px 12px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)"}},
+    React.createElement("span",{style:{fontSize:20,lineHeight:1.2}},emoji),
+    React.createElement("div",null,
+      React.createElement("div",{style:{fontWeight:800,fontSize:13.5}},t(k+"_t")),
+      React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.45,marginTop:2}},t(k+"_d")))); };
+  const header=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:11,marginBottom:6}},
+    React.createElement("div",{className:"brand-mark"},React.createElement(I.logo,{width:22,height:22})),
+    React.createElement("div",{style:{fontWeight:800,fontSize:20}},"Mi Cartera"));
 
-      // CTA prominente para quien REINSTALA / cambia de móvil: iniciar sesión recupera todo al instante.
-      onCloud && React.createElement("div",{style:{marginTop:16,padding:"14px",borderRadius:14,border:"1px solid var(--mint)",background:"rgba(95,208,138,.08)"}},
-        React.createElement("div",{style:{color:"var(--text)",fontSize:13.5,lineHeight:1.5,marginBottom:10}},t("ob_returning")),
-        React.createElement("button",{style:{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"},onClick:onCloud},t("ob_haveacc"))
-      ),
+  // PASO 0 · bienvenida: qué hace la app + recuperar cuenta (reinstalación/cambio de móvil)
+  if(step===0) return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
+    header,
+    React.createElement("div",{className:"serif",style:{fontSize:27,margin:"16px 0 6px"}},t("ob_welcome")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.55}},t("ob2_claim")),
+    onCloud && React.createElement("div",{style:{marginTop:16,padding:"14px",borderRadius:14,border:"1px solid var(--mint)",background:"rgba(95,208,138,.08)"}},
+      React.createElement("div",{style:{color:"var(--text)",fontSize:13.5,lineHeight:1.5,marginBottom:10}},t("ob_returning")),
+      React.createElement("button",{style:{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"},onClick:onCloud},t("ob_haveacc"))),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr",gap:8,marginTop:18}},
+      feat("✍️","ob2_f1"),
+      feat("📅","ob2_f2"),
+      feat("📈","ob2_f3"),
+      feat("🎯","ob2_f4")),
+    React.createElement("button",{style:Object.assign({},btn,{marginTop:20}),onClick:function(){ setStep(1); }},t("ob2_go")+" →"),
+    dots,
+    React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:12}},t("ob_foot"))
+  ));
 
-      React.createElement("div",{style:lbl},t("ob_budget")),
-      React.createElement("input",{style:inp,type:"number",inputMode:"decimal",placeholder:"ej. 700",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
+  // PASO 1 · presupuesto mensual (con atajos rápidos)
+  if(step===1) return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
+    header,
+    React.createElement("button",{style:backLk,onClick:function(){ setStep(0); }},"‹ "+t("bp_back")),
+    React.createElement("div",{className:"serif",style:{fontSize:24,margin:"6px 0 6px"}},t("ob2_budget_t")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55}},t("ob2_budget_d")),
+    React.createElement("input",{style:Object.assign({},inp,{marginTop:16,fontSize:22,textAlign:"center",fontWeight:800}),type:"number",inputMode:"decimal",placeholder:"700",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
+    React.createElement("div",{style:{display:"flex",gap:8,marginTop:10}},
+      [300,500,700,1000].map(function(v){ const on=String(v)===String(budget); return React.createElement("button",{key:v,style:Object.assign({},ghost,{marginTop:0,padding:"10px 0",flex:1,fontSize:14,borderColor:on?"var(--mint)":"var(--line)",color:on?"var(--mint)":"var(--text)"}),onClick:function(){ setBudget(String(v)); }}, v+" €"); })),
+    React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:10,lineHeight:1.5}},t("ob2_budget_h")),
+    React.createElement("button",{style:Object.assign({},btn,{marginTop:18}),onClick:function(){ setStep(2); }},t("ob2_next")+" →"),
+    dots
+  ));
 
-      React.createElement("div",{style:lbl},t("ob_accounts")),
+  // PASO 2 · cuentas (opcional: puedes empezar vacío y conectarlas luego)
+  return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
+    header,
+    React.createElement("button",{style:backLk,onClick:function(){ setStep(1); }},"‹ "+t("bp_back")),
+    React.createElement("div",{className:"serif",style:{fontSize:24,margin:"6px 0 6px"}},t("ob2_acc_t")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55}},t("ob2_acc_d")),
+    React.createElement("div",{style:{marginTop:14}},
       accs.map(function(a){ return React.createElement("div",{key:a.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:8}},
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement(Mono,{ent:a.ent,size:34}),React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,fontSize:14}},a.name),React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}},entOf(a.ent).label))),
         React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{className:"num",style:{fontWeight:700}},eur(a.value)),React.createElement("button",{onClick:function(){ delAcc(a.id); },style:{background:"none",border:"none",color:"var(--coral)",fontSize:16,cursor:"pointer"}},"×"))
-      ); }),
-      React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
-        React.createElement("select",{style:Object.assign({},inp,{flex:"0 0 38%"}),value:ent,onChange:function(e){ setEnt(e.target.value); }}, Object.keys(ENT).filter(function(k){return k!=="familia";}).map(function(k){ return React.createElement("option",{key:k,value:k},ENT[k].label); })),
-        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob_balance_ph"),inputMode:"decimal",value:val,onChange:function(e){ setVal(e.target.value); }})
-      ),
-      React.createElement("input",{style:Object.assign({},inp,{marginTop:8}),placeholder:t("ob_name_ph"),value:name,onChange:function(e){ setName(e.target.value); }}),
-      React.createElement("button",{style:Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)",marginTop:10}),onClick:addAcc},t("ob_addacc")),
-
-      React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:finish}, accs.length?t("ob_start"):t("ob_start_empty")),
-      React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:14}},t("ob_foot"))
-    )
-  );
+      ); })),
+    React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
+      React.createElement("select",{style:Object.assign({},inp,{flex:"0 0 38%"}),value:ent,onChange:function(e){ setEnt(e.target.value); }}, Object.keys(ENT).filter(function(k){return k!=="familia";}).map(function(k){ return React.createElement("option",{key:k,value:k},ENT[k].label); })),
+      React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob_balance_ph"),inputMode:"decimal",value:val,onChange:function(e){ setVal(e.target.value); }})
+    ),
+    React.createElement("input",{style:Object.assign({},inp,{marginTop:8}),placeholder:t("ob_name_ph"),value:name,onChange:function(e){ setName(e.target.value); }}),
+    React.createElement("button",{style:Object.assign({},ghost,{marginTop:10}),onClick:addAcc},t("ob_addacc")),
+    React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:finish}, accs.length?t("ob_start"):t("ob_start_empty")),
+    React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:10,lineHeight:1.5,textAlign:"center"}},t("ob2_acc_h")),
+    dots
+  ));
 }
 
 /* ============================================================
