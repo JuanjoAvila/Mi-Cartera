@@ -19,6 +19,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.79.3] — 2026-07-06
+### ¡Trade Republic sincroniza de verdad! (APK 4.0.0-alpha6)
+- 🎉 **Sync de Trade Republic COMPLETO y funcionando de punta a punta.** Login → 2FA → posiciones + valor en vivo + efectivo → re-anclaje automático por ISIN/nombre. Verificado en el móvil real: trae el FTSE All-World (6,819272 particip., 1.133 €) y Meta (0,0539 particip., 27,91 €) + efectivo (6.795 €), y re-ancla las 2 posiciones con un toque. **Sin exportar nada a mano.**
+- 🔧 **Protocolo WebSocket de TR descifrado en vivo:** `connect 31` → `connected`; posiciones = topic `compactPortfolioByType` (categorías → posiciones con isin/participaciones/coste medio); efectivo = `availableCash`; precio en vivo = `ticker` con sufijo de mercado `.LSX` (Lang & Schwarz, EUR). **Los IDs de suscripción deben ser numéricos** (con letras TR los ignora en silencio — era el bug que traía «0 posiciones»).
+- 🔑 **Sesión más robusta:** «conectado» ahora es un flag persistente (antes se adivinaba por el nombre de la cookie). Si la sesión de TR caduca (son cortas), el sync lo detecta (`AUTHENTICATION_ERROR`), te avisa claro («tu sesión caducó, vuelve a conectar») y la tarjeta vuelve al login sola, en vez de traer 0 posiciones en silencio.
+
 ## [3.79.1] — 2026-07-05
 ### Fixes de la app nativa tras probarla (APK 4.0.0-alpha4)
 - 🐛 **Doble «Ya tengo cuenta» en la bienvenida:** salía el botón dos veces (el destacado del aviso de arriba + uno al pie). Quitado el del pie.

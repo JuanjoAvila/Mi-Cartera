@@ -1,6 +1,8 @@
 package com.micartera.app;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceError;
@@ -47,15 +49,24 @@ public class TradeRepublicPlugin extends Plugin {
     private WebView web;
     private boolean loaded = false;
     private final ConcurrentHashMap<String, PluginCall> pending = new ConcurrentHashMap<>();
+    private final java.util.Set<String> verifyIds = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     // ---- Puente JS → nativo: el JS async llama esto al resolver su Promesa ----------
     private class Bridge {
         @JavascriptInterface
         public void result(String id, String json) {
             PluginCall call = pending.remove(id);
+            boolean wasVerify = verifyIds.remove(id);
             if (call == null) return;
             try {
-                call.resolve(new JSObject(json));
+                JSObject res = new JSObject(json);
+                if (wasVerify && res.optBoolean("ok", false)) {
+                    prefs().edit().putBoolean("connected", true).apply();   // sesión TR establecida
+                }
+                if (res.optBoolean("authExpired", false)) {
+                    prefs().edit().putBoolean("connected", false).apply();  // sesión caducó → pedir reconexión
+                }
+                call.resolve(res);
             } catch (Exception e) {
                 resolveErr(call, "respuesta ilegible de TR");
             }
@@ -111,12 +122,16 @@ public class TradeRepublicPlugin extends Plugin {
 
     // ---- Métodos del contrato -------------------------------------------------------
 
+    private SharedPreferences prefs() {
+        return getContext().getSharedPreferences("tr_bridge", Context.MODE_PRIVATE);
+    }
+
     @PluginMethod
     public void status(PluginCall call) {
-        String cookies = CookieManager.getInstance().getCookie(TR_APP);
-        boolean connected = cookies != null && (cookies.contains("tr_session") || cookies.contains("session"));
+        // "conectado" = verify tuvo éxito alguna vez (flag persistente). Más fiable que
+        // adivinar el nombre de la cookie de sesión (que cambia entre versiones de TR).
         JSObject r = new JSObject();
-        r.put("connected", connected);
+        r.put("connected", prefs().getBoolean("connected", false));
         call.resolve(r);
     }
 
@@ -142,6 +157,7 @@ public class TradeRepublicPlugin extends Plugin {
         final String code = call.getString("code", "");
         if (processId.isEmpty() || code.isEmpty()) { resolveErr(call, "faltan processId o código"); return; }
         final String id = track(call);
+        verifyIds.add(id);   // al resolver ok=true, el Bridge marca "connected" (lo lee status())
         ensureWeb(() -> run(id,
             "const r=await fetch('https://api.traderepublic.com/api/v1/auth/web/login/'+" + jsStr(processId) + "+'/'+" + jsStr(code) + ",{" +
             "method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}});" +
@@ -149,7 +165,6 @@ public class TradeRepublicPlugin extends Plugin {
             "if(r.status===200||r.status===201)return JSON.stringify({ok:true});" +
             "return JSON.stringify({ok:false,status:r.status,error:(j.errors&&j.errors[0]&&j.errors[0].errorMessage)||('código HTTP '+r.status)});"
         ));
-        // persiste cookies tras la respuesta
         CookieManager.getInstance().flush();
     }
 
@@ -157,35 +172,49 @@ public class TradeRepublicPlugin extends Plugin {
     public void sync(final PluginCall call) {
         final String id = track(call);
         ensureWeb(() -> run(id,
-            // WebSocket dentro de la página de TR: la cookie de sesión viaja en el upgrade.
-            // Protocolo TR: "connect 31 {...}" → "sub 1 {compactPortfolio}" + "sub 2 {cash}".
-            // Frames del servidor: "<id> <code> <payload>" (code A=answer, C=continue, E=error).
+            // Protocolo real de TR (mapeado en vivo 2026-07): connect 31 → "connected";
+            //   sub {id} {type:compactPortfolioByType} → {categories:[{positions:[{isin,netSize,averageBuyIn,name}]}]}
+            //   sub {id} {type:availableCash}          → [{currencyId,amount}]
+            //   sub {id} {type:ticker,id:"ISIN.LSX"}   → {last:{price},bid,ask}  (precio EUR en vivo)
+            // value = precio × participaciones; cost = averageBuyIn × participaciones. Todo EUR.
+            // IMPORTANTE: los IDs de suscripción DEBEN ser numéricos (TR ignora en silencio los de letra).
+            // Posiciones=1, efectivo=2, tickers=100+i.
             "const ws=new WebSocket('wss://api.traderepublic.com/');" +
-            "const out={positions:null,cash:null};" +
+            "let positions=null,cash=null,posDone=false;const price={};" +
             "return await new Promise((resolve)=>{" +
             "let done=false;const fin=(o)=>{if(done)return;done=true;try{ws.close()}catch(e){};resolve(JSON.stringify(o));};" +
-            "const to=setTimeout(()=>fin({ok:false,error:'timeout WS'}),25000);" +
-            "ws.onopen=()=>ws.send('connect 31 '+JSON.stringify({locale:'es',platformId:'webtrading',platformVersion:'app',clientId:'app.traderepublic.com',clientVersion:'3.0.0'}));" +
-            "ws.onerror=()=>fin({ok:false,error:'error WS (sesión caducada?)'});" +
-            "const ready=()=>{if(out.positions!=null&&out.cash!=null){clearTimeout(to);" +
-            "const pos=out.positions.map(p=>({isin:p.instrumentId||p.isin,shares:Number(p.netSize||0)," +
-            "cost:(p.averageBuyIn!=null?Number(p.averageBuyIn)*Number(p.netSize||0):undefined)," +
-            "value:(p.netValue!=null?Number(p.netValue):undefined),name:''}));" +
-            "fin({ok:true,positions:pos,cash:out.cash});}};" +
+            "const hardTo=setTimeout(()=>finishOk(),15000);let graceTo=null;" +
+            "const finishOk=()=>{clearTimeout(hardTo);if(graceTo)clearTimeout(graceTo);" +
+              "const pos=(positions||[]).map(p=>{const sh=Number(p.netSize||0);const pr=price[p.isin];" +
+              "return {isin:p.isin,shares:sh,name:p.name||''," +
+              "cost:(p.averageBuyIn!=null?Number(p.averageBuyIn)*sh:undefined)," +
+              "value:(pr!=null?pr*sh:undefined)};});" +
+              "fin({ok:true,positions:pos,cash:cash});};" +
+            "const maybeGrace=()=>{if(posDone&&cash!=null&&!graceTo)graceTo=setTimeout(finishOk,3500);};" +
+            "ws.onopen=()=>ws.send('connect 31 '+JSON.stringify({locale:'es',platformId:'webtrading',platformVersion:'chrome - 138.0',clientId:'app.traderepublic.com',clientVersion:'1.0.0'}));" +
+            "ws.onerror=()=>fin({ok:false,error:'error de conexión con TR'});" +
+            "ws.onclose=(e)=>{if(!done)fin({ok:false,error:'TR cerró la conexión ('+e.code+') · vuelve a conectar'});};" +
             "ws.onmessage=(m)=>{const d=String(m.data);" +
-            "if(d==='connect ok'){ws.send('sub 1 '+JSON.stringify({type:'compactPortfolio'}));ws.send('sub 2 '+JSON.stringify({type:'cash'}));return;}" +
+            "if(d==='connected'){ws.send('sub 1 '+JSON.stringify({type:'compactPortfolioByType'}));ws.send('sub 2 '+JSON.stringify({type:'availableCash'}));return;}" +
             "const sp=d.indexOf(' ');if(sp<0)return;const fid=d.slice(0,sp);const rest=d.slice(sp+1);" +
             "const sp2=rest.indexOf(' ');const code=sp2<0?rest:rest.slice(0,sp2);const body=sp2<0?'':rest.slice(sp2+1);" +
-            "if(code==='E'){clearTimeout(to);fin({ok:false,error:'TR: '+body});return;}" +
-            "let j=null;try{j=JSON.parse(body)}catch(e){return;}" +
-            "if(fid==='1'&&j){out.positions=j.positions||[];ready();}" +
-            "if(fid==='2'&&j){let c=0;if(Array.isArray(j)){j.forEach(x=>{if(x&&x.amount!=null)c+=Number(x.amount);});}else if(j.amount!=null){c=Number(j.amount);}out.cash=c;ready();}" +
+            "let j=null;try{j=JSON.parse(body)}catch(e){}" +
+            "if(code==='E'){const ec=j&&j.errors&&j.errors[0]&&j.errors[0].errorCode;" +
+              "if(String(ec).indexOf('AUTHENTICATION')>=0){return fin({ok:false,authExpired:true,error:'Tu sesión de TR caducó. Pulsa «Desconectar» y vuelve a conectar.'});}return;}" +
+            "if(fid==='1'&&j&&j.categories&&positions==null){positions=[];j.categories.forEach(c=>(c.positions||[]).forEach(p=>positions.push(p)));posDone=true;" +
+              "positions.forEach((p,i)=>{try{ws.send('sub '+(100+i)+' '+JSON.stringify({type:'ticker',id:p.isin+'.LSX'}));}catch(e){}});" +
+              "if(positions.length===0)finishOk();else maybeGrace();}" +
+            "if(fid==='2'&&j&&cash==null){let c=0;if(Array.isArray(j)){j.forEach(x=>{if(x&&x.amount!=null)c+=Number(x.amount);});}else if(j.amount!=null){c=Number(j.amount);}cash=c;maybeGrace();}" +
+            "if(Number(fid)>=100&&code==='A'&&j){const idx=Number(fid)-100;const p=positions&&positions[idx];" +
+              "if(p&&price[p.isin]==null){const pr=(j.last&&j.last.price)||(j.bid&&j.bid.price)||(j.ask&&j.ask.price);if(pr!=null){price[p.isin]=Number(pr);try{ws.send('unsub '+fid);}catch(e){}}}" +
+              "if(positions&&Object.keys(price).length>=positions.length&&cash!=null)finishOk();}" +
             "};});"
         ));
     }
 
     @PluginMethod
     public void logout(PluginCall call) {
+        prefs().edit().putBoolean("connected", false).apply();
         CookieManager cm = CookieManager.getInstance();
         cm.removeAllCookies(null);
         cm.flush();
