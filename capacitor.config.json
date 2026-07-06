@@ -1,9 +1,16 @@
 {
   "appId": "com.micartera.app",
   "appName": "Mi Cartera",
-  "webDir": "public",
+  "webDir": "www",
   "server": {
-    "url": "https://juanjoavila.github.io/Mi-Cartera/",
     "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorUpdater": {
+      "autoUpdate": false,
+      "statsUrl": "",
+      "channelUrl": "",
+      "updateUrl": ""
+    }
   }
 }

@@ -2,8 +2,10 @@ package com.micartera.app;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.provider.Settings;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
@@ -27,6 +29,9 @@ import com.getcapacitor.annotation.PermissionCallback;
  *   - updateWidget({...})     -> guarda los datos del mes y refresca el widget de pantalla de inicio
  *   - showNotification({...}) -> notificación local (título + cuerpo)   [ojo: "notify" es final en Object]
  *   - ensureNotifPerm()       -> pide el permiso POST_NOTIFICATIONS (Android 13+) si falta
+ *   - notifAccess()           -> { granted } ¿el lector de notis TR tiene acceso a notificaciones?
+ *                                (se PIERDE al desinstalar/reinstalar — bug Consum 2026-07-06)
+ *   - openNotifAccess()       -> abre Ajustes → Acceso a notificaciones para reactivarlo
  */
 @CapacitorPlugin(
         name = "MiCartera",
@@ -123,5 +128,27 @@ public class MiCarteraPlugin extends Plugin {
     @PermissionCallback
     private void notifPermDone(PluginCall call) {
         call.resolve();   // conceda o no, la app sigue (sin permiso simplemente no hay notis)
+    }
+
+    @PluginMethod
+    public void notifAccess(PluginCall call) {
+        boolean granted = androidx.core.app.NotificationManagerCompat
+                .getEnabledListenerPackages(getContext())
+                .contains(getContext().getPackageName());
+        JSObject r = new JSObject();
+        r.put("granted", granted);
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void openNotifAccess(PluginCall call) {
+        try {
+            Intent i = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
     }
 }

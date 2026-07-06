@@ -38,6 +38,17 @@ jobs:
           npm install --no-save --no-audit --no-fund esbuild@0.25.5
           node scripts/minify-html.mjs
 
+      # Bundle OTA para la app Android (capgo/capacitor-updater self-hosted):
+      # zip de public/ (ya sellado+minificado) + version.json con la versión.
+      # La app lo consulta al arrancar y hot-swapea el bundle en el siguiente arranque.
+      - name: Empaquetar bundle OTA (bundle.zip + version.json)
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          (cd public && zip -qr ../bundle.zip .)
+          mv bundle.zip public/bundle.zip
+          printf '{"version":"%s","url":"https://juanjoavila.github.io/Mi-Cartera/bundle.zip"}\n' "$VERSION" > public/version.json
+          echo "OTA $VERSION → $(du -h public/bundle.zip | cut -f1)"
+
       - name: Configurar Pages
         uses: actions/configure-pages@v5
 
