@@ -19,6 +19,10 @@ verify_jwt = true
 [functions.bank-sync]
 verify_jwt = true
 
+# bank-disconnect: quita un banco enlazado del usuario (revoca en EB + borra la fila) → JWT.
+[functions.bank-disconnect]
+verify_jwt = true
+
 # bank-aspsps: lista los bancos soportados para el selector → la llama la app (con JWT).
 [functions.bank-aspsps]
 verify_jwt = true

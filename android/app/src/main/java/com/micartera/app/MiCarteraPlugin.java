@@ -32,6 +32,8 @@ import com.getcapacitor.annotation.PermissionCallback;
  *   - notifAccess()           -> { granted } ¿el lector de notis TR tiene acceso a notificaciones?
  *                                (se PIERDE al desinstalar/reinstalar — bug Consum 2026-07-06)
  *   - openNotifAccess()       -> abre Ajustes → Acceso a notificaciones para reactivarlo
+ *   - consumeGoto()           -> { goto? } deep-link pendiente al tocar la noti de un gasto (punto 5);
+ *                                la web salta a Gastos y abre la ficha. Se limpia al leerlo.
  */
 @CapacitorPlugin(
         name = "MiCartera",
@@ -137,6 +139,17 @@ public class MiCarteraPlugin extends Plugin {
                 .contains(getContext().getPackageName());
         JSObject r = new JSObject();
         r.put("granted", granted);
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void consumeGoto(PluginCall call) {
+        // Punto 5: entrega (y limpia) el deep-link que dejó MainActivity al tocar la noti de un gasto.
+        SharedPreferences sp = getContext().getSharedPreferences("micartera_goto", Context.MODE_PRIVATE);
+        String g = sp.getString("pending", null);
+        if (g != null) sp.edit().remove("pending").apply();
+        JSObject r = new JSObject();
+        if (g != null) r.put("goto", g);
         call.resolve(r);
     }
 

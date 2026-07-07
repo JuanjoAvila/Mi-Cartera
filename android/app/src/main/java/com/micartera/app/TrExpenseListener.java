@@ -112,12 +112,14 @@ public class TrExpenseListener extends NotificationListenerService {
             String comercio = r.optString("comercio", "");
             int id = (int) (System.currentTimeMillis() % 100000);
 
+            // Punto 5: deep-link a la ficha del gasto — al tocar la noti, la web abre este gasto en Gastos.
+            String gotoTok = "exp|" + importe + "|" + comercio;
             if (tipo.equals("ingreso")) {
-                Notif.show(this, "💰 Dinero recibido", "+" + eur(-importe) + " · " + comercio, id);
+                Notif.show(this, "💰 Dinero recibido", "+" + eur(-importe) + " · " + comercio, id, gotoTok);
             } else if (tipo.equals("gasto_nocard")) {
-                Notif.show(this, "🔄 Bizum enviado apuntado", eur(importe) + " · " + comercio, id);
+                Notif.show(this, "🔄 Bizum enviado apuntado", eur(importe) + " · " + comercio, id, gotoTok);
             } else {
-                Notif.show(this, "✓ Gasto apuntado", eur(importe) + " en " + comercio, id);
+                Notif.show(this, "✓ Gasto apuntado", eur(importe) + " en " + comercio, id, gotoTok);
             }
 
             JSONObject alert = r.optJSONObject("alert");

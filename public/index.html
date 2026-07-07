@@ -993,6 +993,14 @@ const cloud = (function(){
       if(!data || !data.ok) throw new Error((data&&data.error)||"sync falló");
       return data;   // { ok, dryRun, links:[{aspsp, iban, balances, transactions}] }
     },
+    // Quita un banco enlazado (revoca en Enable Banking + borra la fila). Reversible: reconectar.
+    async bankDisconnect(aspsp_name){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('bank-disconnect',{ body:{ aspsp_name } });
+      if(error) throw error;
+      if(!data || !data.ok) throw new Error((data&&data.error)||"no se pudo quitar el banco");
+      return data;   // { ok }
+    },
     // Estado de los enlaces para pintar "conectado ✓" / caducidad (RLS: solo lo del usuario).
     async bankLinks(){
       if(!sb) return [];
@@ -1200,7 +1208,7 @@ Object.assign(LANG.es,{
   tour_3:"📅 En «{fijos}» están los pagos de cada mes (luz, agua, hipoteca…). La app te avisa si no te va a llegar.",
   tour_4:"⚙️ Aquí están los Ajustes: idioma, colores, letra grande y el modo sencillo.",
   tour_5:"☁️ Con tu cuenta, todo se guarda solo y no se pierde aunque cambies de móvil. ¡Ya está!",
-  tour_6:"👆 Las pestañas son tuyas: mantén una pulsada y arrástrala para cambiarla de sitio, o suéltala en la papelera para quitarla. Con el «+» añades las que quieras.",
+  tour_6:"👆 Las pestañas son tuyas: reordénalas, ocúltalas o vuelve a añadirlas desde Ajustes › «✎ Editar pestañas». Con el «+» de la barra añades las que quieras.",
   tour_7:"🏛 En «{patri}» está TODO lo tuyo junto: cuentas, inversiones, bienes y deudas. Toca «Editar» para corregir cualquier saldo: la app se re-cuadra sola.",
   tour_8:"❓ Si ves un «?» en una tarjeta, tócalo: te explica esa tarjeta en cristiano, sin jerga. Hay uno en casi todas.",
   tour_next:"Siguiente", tour_skip:"Saltar", tour_done:"¡Listo!",
@@ -1241,7 +1249,7 @@ Object.assign(LANG.en,{
   tour_3:"📅 In “{fijos}” live the monthly payments (power, water, mortgage…). The app warns you if you won't make it.",
   tour_4:"⚙️ Here are the Settings: language, colours, large text and simple mode.",
   tour_5:"☁️ With your account everything saves itself and survives changing phones. That's it!",
-  tour_6:"👆 The tabs are yours: press and hold one, drag to reorder, or drop it on the bin to remove it. Add more with the «+».",
+  tour_6:"👆 The tabs are yours: reorder, hide or add them back from Settings › «✎ Edit tabs». Add more with the «+» in the bar.",
   tour_7:"🏛 «{patri}» holds EVERYTHING you own: accounts, investments, assets and debts. Tap “Edit” to fix any balance — the app re-balances itself.",
   tour_8:"❓ See a «?» on a card? Tap it: it explains that card in plain words, no jargon. Almost every card has one.",
   tour_next:"Next", tour_skip:"Skip", tour_done:"Done!",
@@ -1282,7 +1290,7 @@ Object.assign(LANG.ca,{
   tour_3:"📅 A «{fijos}» hi ha els pagaments de cada mes (llum, aigua, hipoteca…). L'app t'avisa si no hi arribaràs.",
   tour_4:"⚙️ Aquí hi ha la Configuració: idioma, colors, lletra gran i el mode senzill.",
   tour_5:"☁️ Amb el teu compte tot es desa sol i no es perd encara que canviïs de mòbil. Ja està!",
-  tour_6:"👆 Les pestanyes són teves: mantén-ne una premuda i arrossega-la per canviar-la de lloc, o deixa-la a la paperera per treure-la. Amb el «+» n'afegeixes més.",
+  tour_6:"👆 Les pestanyes són teves: reordena-les, amaga-les o torna-les a afegir des d'Ajustos › «✎ Edita pestanyes». Amb el «+» de la barra n'afegeixes més.",
   tour_7:"🏛 A «{patri}» hi ha TOT el que és teu: comptes, inversions, béns i deutes. Toca «Edita» per corregir qualsevol saldo: l'app es re-quadra sola.",
   tour_8:"❓ Si veus un «?» en una targeta, toca'l: t'explica aquella targeta en cristià, sense argot. N'hi ha un a gairebé totes.",
   tour_next:"Següent", tour_skip:"Omet", tour_done:"Fet!",
@@ -1495,6 +1503,7 @@ const loc = ()=> LOCALE[CURLANG] || "es-ES";
 /* --- Diccionario: pestaña RESUMEN (Dashboard) --- */
 Object.assign(LANG.es,{
   d_networth:"Patrimonio neto", d_assets:"Activos", d_debts:"Deudas", d_dist:"Distribución de activos",
+  hp_hint:"mantén pulsada la cifra para oírla",
   d_liquid:"Liquidez", d_invest:"Inversiones", d_goods:"Bienes",
   d_budget:"Presupuesto", d_streak:"Racha sin pasarte", d_months:"meses",
   d_inbudget:"{m} va dentro de límite ✓", d_overbudget:"{m} se ha pasado",
@@ -1506,7 +1515,12 @@ Object.assign(LANG.es,{
   recap_title:"📅 Cómo fue {m}", recap_spent:"gastado", recap_under:"bajo presupuesto 🟢", recap_over:"sobre presupuesto 🔴", recap_subs:"subs activas", recap_ok:"¡Entendido!",
   d_noexp_t:"Aún sin gastos", d_noexp_d:"Sincroniza o apunta un gasto.", d_culprit_hint:"👑 {name} se lleva {pct}% de tu gasto este mes.",
   wl_budget:"Presupuesto y racha", wl_culpa:"Sin culpa (lo que te queda)", wl_fixedsave:"Gastos fijos y ahorro", wl_savings:"A dónde va tu ahorro",
+  wl_letter:"Resumen del mes (carta)",
+  lt_title:"{m}, hasta ahora", lt_open_good:"Vas con calma.", lt_open_tight:"Vas ajustando bien.", lt_open_over:"Este mes te has estirado un poco.",
+  lt_spent:"Has gastado {s} de los {b} que te marcaste", lt_rem_ok:": te quedan {r} para lo que quieras sin darle vueltas.", lt_rem_over:": te has pasado {r}, nada grave — el mes que viene lo ajustas.",
+  lt_top:" {cat} se lleva la mayor parte, como casi siempre.", lt_net_up:" Tu patrimonio ha subido un poco este mes.", lt_net_down:" Tu patrimonio ha bajado un poco este mes.",
   personalize:"✎ Personalizar", done:"Listo ✓", drag_hint:"mantén pulsada una tarjeta para moverla",
+  et_tabs:"✎ Editar pestañas", et_intro:"Antes las pestañas se movían manteniendo una pulsada y arrastrándola (un gesto oculto, fácil de tocar sin querer). Ahora se editan aquí: reordénalas con ▲▼, quita con ✕ o vuelve a añadir con +.", et_fixed:"fija", et_hidden:"Pestañas ocultas (toca para añadirlas):",
   w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
@@ -1561,6 +1575,7 @@ Object.assign(LANG.es,{
 });
 Object.assign(LANG.en,{
   d_networth:"Net worth", d_assets:"Assets", d_debts:"Debts", d_dist:"Asset distribution",
+  hp_hint:"hold the amount to hear it",
   d_liquid:"Cash", d_invest:"Investments", d_goods:"Property",
   d_budget:"Budget", d_streak:"Streak under budget", d_months:"months",
   d_inbudget:"{m} is within budget ✓", d_overbudget:"{m} went over budget",
@@ -1572,7 +1587,12 @@ Object.assign(LANG.en,{
   recap_title:"📅 How {m} went", recap_spent:"spent", recap_under:"under budget 🟢", recap_over:"over budget 🔴", recap_subs:"active subs", recap_ok:"Got it!",
   d_noexp_t:"No spending yet", d_noexp_d:"Sync or add an expense.", d_culprit_hint:"👑 {name} takes {pct}% of your spending this month.",
   wl_budget:"Budget & streak", wl_culpa:"Guilt-free (what's left)", wl_fixedsave:"Fixed costs & saving", wl_savings:"Where your saving goes",
+  wl_letter:"Month letter",
+  lt_title:"{m}, so far", lt_open_good:"Taking it easy.", lt_open_tight:"Keeping it tidy.", lt_open_over:"You stretched a little this month.",
+  lt_spent:"You've spent {s} of the {b} you set yourself", lt_rem_ok:": you've got {r} left for whatever you like, no worries.", lt_rem_over:": you went {r} over — no drama, you'll tune it next month.",
+  lt_top:" {cat} takes the biggest share, as almost always.", lt_net_up:" Your net worth ticked up a little this month.", lt_net_down:" Your net worth dipped a little this month.",
   personalize:"✎ Customise", done:"Done ✓", drag_hint:"press and hold a card to move it",
+  et_tabs:"✎ Edit tabs", et_intro:"Tabs used to move by pressing and holding one and dragging it (a hidden gesture, easy to trigger by accident). Now you edit them here: reorder with ▲▼, remove with ✕, or add back with +.", et_fixed:"fixed", et_hidden:"Hidden tabs (tap to add them):",
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
   g_search:"Search merchant or category…",
@@ -1625,6 +1645,7 @@ Object.assign(LANG.en,{
 });
 Object.assign(LANG.ca,{
   d_networth:"Patrimoni net", d_assets:"Actius", d_debts:"Deutes", d_dist:"Distribució d'actius",
+  hp_hint:"mantén premuda la xifra per escoltar-la",
   d_liquid:"Liquiditat", d_invest:"Inversions", d_goods:"Béns",
   d_budget:"Pressupost", d_streak:"Ratxa sense passar-te", d_months:"mesos",
   d_inbudget:"{m} va dins del límit ✓", d_overbudget:"{m} s'ha passat",
@@ -1636,7 +1657,12 @@ Object.assign(LANG.ca,{
   recap_title:"📅 Com va anar {m}", recap_spent:"gastat", recap_under:"sota pressupost 🟢", recap_over:"sobre pressupost 🔴", recap_subs:"subs actives", recap_ok:"Entesos!",
   d_noexp_t:"Encara sense despeses", d_noexp_d:"Sincronitza o apunta una despesa.", d_culprit_hint:"👑 {name} s'emporta el {pct}% de la teva despesa aquest mes.",
   wl_budget:"Pressupost i ratxa", wl_culpa:"Sense culpa (el que et queda)", wl_fixedsave:"Despeses fixes i estalvi", wl_savings:"On va el teu estalvi",
+  wl_letter:"Resum del mes (carta)",
+  lt_title:"{m}, fins ara", lt_open_good:"Vas amb calma.", lt_open_tight:"Ho vas ajustant bé.", lt_open_over:"Aquest mes t'has estirat una mica.",
+  lt_spent:"Has gastat {s} dels {b} que et vas marcar", lt_rem_ok:": et queden {r} per al que vulguis, sense donar-hi voltes.", lt_rem_over:": t'has passat {r}, res greu — el mes que ve ho ajustes.",
+  lt_top:" {cat} s'emporta la major part, com gairebé sempre.", lt_net_up:" El teu patrimoni ha pujat una mica aquest mes.", lt_net_down:" El teu patrimoni ha baixat una mica aquest mes.",
   personalize:"✎ Personalitza", done:"Fet ✓", drag_hint:"mantén premuda una targeta per moure-la",
+  et_tabs:"✎ Edita pestanyes", et_intro:"Abans les pestanyes es movien mantenint-ne una premuda i arrossegant-la (un gest ocult, fàcil de tocar sense voler). Ara s'editen aquí: reordena amb ▲▼, treu amb ✕ o torna a afegir amb +.", et_fixed:"fixa", et_hidden:"Pestanyes ocultes (toca per afegir-les):",
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
   g_search:"Cerca comerç o categoria…",
@@ -1701,6 +1727,8 @@ Object.assign(LANG.es,{
   inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones de Revolut. El oro, el ETF de TR y el fondo de MyInvestor se editan a mano con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
   inv_sold_part:"Vendí parte →", inv_value:"Valor", inv_invested:"Invertido", inv_sell_prompt:"¿Qué % de {name} has vendido? (ej. 30)",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"redondeo ×{m} activo", ru_sub_off:"desactivado",
+  ru_title_simple:"Redondeo y regalo por pagar", ru_sub_simple:"cada compra suma un poquito a tu inversión",
+  ru_hint_simple:"Cada vez que pagas con la tarjeta, la app redondea la compra al euro y esa diferencia se invierte sola. Además, Trade Republic te devuelve un 1% de lo que pagas con su tarjeta, y también se invierte.",
   ru_mult:"Multiplicador del redondeo", ru_off:"Off", ru_dest:"Inversión destino", ru_pick:"Elige una inversión…",
   ru_saveback:"Saveback 1% (cashback de TR, máx 15€/mes)",
   ru_month_ru:"Round-up ya invertido (este mes)", ru_month_sb:"Saveback ya invertido (este mes)", ru_total:"Aportado vía TR (total acumulado)",
@@ -1741,6 +1769,8 @@ Object.assign(LANG.en,{
   inv_hint_view:"«USD prices» fetches Revolut stock quotes automatically. Gold, the TR ETF and the MyInvestor fund are edited by hand with «Edit manually». USD→EUR rate: {fx} · live ECB.",
   inv_sold_part:"Sold part →", inv_value:"Value", inv_invested:"Invested", inv_sell_prompt:"What % of {name} did you sell? (e.g. 30)",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"round-up ×{m} on", ru_sub_off:"off",
+  ru_title_simple:"Round-ups & card reward", ru_sub_simple:"each purchase adds a little to your investing",
+  ru_hint_simple:"Every time you pay by card, the app rounds the purchase up to the whole euro and that difference is invested on its own. Plus, Trade Republic gives you 1% back on what you pay with its card, and that's invested too.",
   ru_mult:"Round-up multiplier", ru_off:"Off", ru_dest:"Target investment", ru_pick:"Pick an investment…",
   ru_saveback:"Saveback 1% (TR cashback, max €15/mo)",
   ru_month_ru:"Round-up invested (this month)", ru_month_sb:"Saveback invested (this month)", ru_total:"Contributed via TR (running total)",
@@ -1781,6 +1811,8 @@ Object.assign(LANG.ca,{
   inv_hint_view:"«Preus USD» porta sols les cotitzacions de les accions de Revolut. L'or, l'ETF de TR i el fons de MyInvestor s'editen a mà amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
   inv_sold_part:"He venut part →", inv_value:"Valor", inv_invested:"Invertit", inv_sell_prompt:"Quin % de {name} has venut? (ex. 30)",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"arrodoniment ×{m} actiu", ru_sub_off:"desactivat",
+  ru_title_simple:"Arrodoniment i regal per pagar", ru_sub_simple:"cada compra suma una miqueta a la teva inversió",
+  ru_hint_simple:"Cada cop que pagues amb la targeta, l'app arrodoneix la compra a l'euro i aquesta diferència s'inverteix sola. A més, Trade Republic et torna un 1% del que pagues amb la seva targeta, i també s'inverteix.",
   ru_mult:"Multiplicador de l'arrodoniment", ru_off:"Off", ru_dest:"Inversió destí", ru_pick:"Tria una inversió…",
   ru_saveback:"Saveback 1% (cashback de TR, màx 15€/mes)",
   ru_month_ru:"Arrodoniment ja invertit (aquest mes)", ru_month_sb:"Saveback ja invertit (aquest mes)", ru_total:"Aportat via TR (total acumulat)",
@@ -1812,7 +1844,7 @@ Object.assign(LANG.ca,{
 
 /* ---- Metas de ahorro (#15) ---- */
 Object.assign(LANG.es,{
-  tab_metas:"Metas",
+  tab_metas:"Metas", tab_logros:"Logros",
   gl_total:"Ahorrado en metas", gl_total_sub:"de {x} en total",
   gl_new:"Nueva meta", gl_create:"Crear meta", gl_cancel:"Cancelar",
   gl_name_ph:"Nombre (ej. Vacaciones)", gl_target_ph:"Objetivo €", gl_saved_ph:"Ya ahorrado €", gl_deadline:"Fecha límite (opcional)", gl_monthly_ph:"Aporte al mes € (opcional)",
@@ -1824,6 +1856,9 @@ Object.assign(LANG.es,{
   gl_eta_reached:"🎉 ¡Conseguida!", gl_eta_overdue:"La fecha ya pasó 🟠 · ajústala", gl_eta_nosaving:"Empieza a ahorrar para ver la previsión",
   gl_done_badge:"🏅 Cumplida", gl_celebrate:"🎉 ¡Meta «{name}» cumplida!",
   gm_level:"Tu nivel", gm_next:"{x} para nivel {n}", gm_maxlvl:"¡Nivel máximo alcanzado! 👑", gm_score:"Ahorro acumulado",
+  st_good_h:"Vas muy bien", st_good_l:"Sigues dentro de tu presupuesto, mes tras mes.",
+  st_tight_h:"Ojo, apurando", st_tight_l:"Te queda poco margen, pero aún dentro de lo tuyo.",
+  st_over_h:"Te has pasado un poco", st_over_l:"Este mes te fuiste del presupuesto. Se ajusta y ya.",
   gm_lvl_0:"Aprendiz", gm_lvl_1:"Ahorrador", gm_lvl_2:"Constante", gm_lvl_3:"Experto", gm_lvl_4:"Maestro del ahorro",
   gm_retos:"Retos del mes", gm_logros:"Logros",
   gm_reto_budget:"Mes bajo presupuesto", gm_reto_budget_ok:"Te quedan {x} de margen 🟢", gm_reto_budget_over:"Te has pasado {x} 🔴", gm_reto_budget_done:"¡Mes cerrado bajo presupuesto! 🏆",
@@ -1841,7 +1876,7 @@ Object.assign(LANG.es,{
   gl_widget_title:"Tu meta", wl_goal:"Meta",
 });
 Object.assign(LANG.en,{
-  tab_metas:"Goals",
+  tab_metas:"Goals", tab_logros:"Achievements",
   gl_total:"Saved towards goals", gl_total_sub:"of {x} total",
   gl_new:"New goal", gl_create:"Create goal", gl_cancel:"Cancel",
   gl_name_ph:"Name (e.g. Holidays)", gl_target_ph:"Target €", gl_saved_ph:"Already saved €", gl_deadline:"Deadline (optional)", gl_monthly_ph:"Monthly amount € (optional)",
@@ -1853,6 +1888,9 @@ Object.assign(LANG.en,{
   gl_eta_reached:"🎉 Reached!", gl_eta_overdue:"Deadline has passed 🟠 · adjust it", gl_eta_nosaving:"Start saving to see the forecast",
   gl_done_badge:"🏅 Reached", gl_celebrate:"🎉 Goal “{name}” reached!",
   gm_level:"Your level", gm_next:"{x} to level {n}", gm_maxlvl:"Max level reached! 👑", gm_score:"Total saved",
+  st_good_h:"Doing great", st_good_l:"Still within your budget, month after month.",
+  st_tight_h:"Cutting it close", st_tight_l:"Not much margin left, but still within yours.",
+  st_over_h:"A little over", st_over_l:"You went past your budget this month. Easy to adjust.",
   gm_lvl_0:"Beginner", gm_lvl_1:"Saver", gm_lvl_2:"Steady", gm_lvl_3:"Expert", gm_lvl_4:"Savings Master",
   gm_retos:"Monthly challenges", gm_logros:"Achievements",
   gm_reto_budget:"Month under budget", gm_reto_budget_ok:"{x} margin left 🟢", gm_reto_budget_over:"{x} over 🔴", gm_reto_budget_done:"Month closed under budget! 🏆",
@@ -1870,7 +1908,7 @@ Object.assign(LANG.en,{
   gl_widget_title:"Your goal", wl_goal:"Goal",
 });
 Object.assign(LANG.ca,{
-  tab_metas:"Objectius",
+  tab_metas:"Objectius", tab_logros:"Assoliments",
   gl_total:"Estalviat en objectius", gl_total_sub:"de {x} en total",
   gl_new:"Nou objectiu", gl_create:"Crea objectiu", gl_cancel:"Cancel·la",
   gl_name_ph:"Nom (ex. Vacances)", gl_target_ph:"Objectiu €", gl_saved_ph:"Ja estalviat €", gl_deadline:"Data límit (opcional)", gl_monthly_ph:"Aportació al mes € (opcional)",
@@ -1882,6 +1920,9 @@ Object.assign(LANG.ca,{
   gl_eta_reached:"🎉 Assolit!", gl_eta_overdue:"La data ja ha passat 🟠 · ajusta-la", gl_eta_nosaving:"Comença a estalviar per veure la previsió",
   gl_done_badge:"🏅 Assolit", gl_celebrate:"🎉 Objectiu «{name}» assolit!",
   gm_level:"El teu nivell", gm_next:"{x} per al nivell {n}", gm_maxlvl:"Nivell màxim assolit! 👑", gm_score:"Estalvi acumulat",
+  st_good_h:"Molt bé", st_good_l:"Segueixes dins del teu pressupost, mes rere mes.",
+  st_tight_h:"Compte, just", st_tight_l:"Et queda poc marge, però encara dins del teu.",
+  st_over_h:"T'has passat una mica", st_over_l:"Aquest mes has sortit del pressupost. S'ajusta i ja.",
   gm_lvl_0:"Aprenent", gm_lvl_1:"Estalviador", gm_lvl_2:"Constant", gm_lvl_3:"Expert", gm_lvl_4:"Mestre de l'estalvi",
   gm_retos:"Reptes del mes", gm_logros:"Assoliments",
   gm_reto_budget:"Mes sota pressupost", gm_reto_budget_ok:"Et queden {x} de marge 🟢", gm_reto_budget_over:"T'has passat {x} 🔴", gm_reto_budget_done:"Mes tancat sota pressupost! 🏆",
@@ -1964,6 +2005,8 @@ Object.assign(LANG.es,{
   bp_st_active:"activo", bp_st_soon:"caduca pronto", bp_st_pending:"pendiente", bp_st_expired:"caducado", bp_st_noacct:"sin cuentas",
   bp_noacct_help:"Autorizaste el banco pero no llegó ninguna cuenta. En modo restringido, Enable Banking solo trae las cuentas que has dado de alta en su panel de control. Entra en el panel de Enable Banking, enlaza (whitelistea) esta cuenta y pulsa «Volver a intentar».",
   bp_retry_link:"Volver a intentar", bp_naccts:"{n} cuentas",
+  bp_remove:"Quitar", bp_remove_q:"¿Quitar {bank}?", bp_remove_yes:"Sí, quitar", bp_remove_no:"Cancelar",
+  bp_removing:"Quitando…", bp_removed:"{bank} quitado · puedes reconectarlo cuando quieras",
   bp_foot:"Trade Republic no está en Open Banking (es un bróker): su gasto con tarjeta sigue siendo manual.",
 });
 Object.assign(LANG.en,{
@@ -1977,6 +2020,8 @@ Object.assign(LANG.en,{
   bp_st_active:"active", bp_st_soon:"expires soon", bp_st_pending:"pending", bp_st_expired:"expired", bp_st_noacct:"no accounts",
   bp_noacct_help:"You authorised the bank but no account came through. In restricted mode, Enable Banking only returns accounts you've registered in its control panel. Open the Enable Banking panel, link (whitelist) this account and tap «Try again».",
   bp_retry_link:"Try again", bp_naccts:"{n} accounts",
+  bp_remove:"Remove", bp_remove_q:"Remove {bank}?", bp_remove_yes:"Yes, remove", bp_remove_no:"Cancel",
+  bp_removing:"Removing…", bp_removed:"{bank} removed · you can reconnect it whenever you want",
   bp_foot:"Trade Republic isn't in Open Banking (it's a broker): its card spending stays manual.",
 });
 Object.assign(LANG.ca,{
@@ -1990,6 +2035,8 @@ Object.assign(LANG.ca,{
   bp_st_active:"actiu", bp_st_soon:"caduca aviat", bp_st_pending:"pendent", bp_st_expired:"caducat", bp_st_noacct:"sense comptes",
   bp_noacct_help:"Vas autoritzar el banc però no va arribar cap compte. En mode restringit, Enable Banking només porta els comptes que has donat d'alta al seu panell de control. Entra al panell d'Enable Banking, enllaça (whitelist) aquest compte i prem «Torna-ho a provar».",
   bp_retry_link:"Torna-ho a provar", bp_naccts:"{n} comptes",
+  bp_remove:"Treu", bp_remove_q:"Treure {bank}?", bp_remove_yes:"Sí, treu", bp_remove_no:"Cancel·la",
+  bp_removing:"Traient…", bp_removed:"{bank} tret · pots reconnectar-lo quan vulguis",
   bp_foot:"Trade Republic no és a Open Banking (és un bróker): la seva despesa amb targeta segueix sent manual.",
 });
 Object.assign(LANG.en,{
@@ -2171,19 +2218,48 @@ function goalEta(g, monthlySaving){
 }
 // confeti DOM: ligero, se autolimpia. Para celebrar una meta cumplida.
 function celebrate(){
+  // Rediseño: confeti reservado SOLO a metas cumplidas y más suave (26 piezas, paleta calmada
+  // mint+dorado, opacidad ~.85). Antes: 90 piezas y 5 colores (competía con los momentos silenciosos).
   try{
-    const colors=["#5FD08A","#7FB5E8","#F2C14E","#E2705F","#C9A6F0"];
-    for(let i=0;i<90;i++){
+    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+    const colors=["#5FD08A","#7DE8A8","#E6C36A"];
+    for(let i=0;i<26;i++){
       const c=document.createElement("div"); c.className="confetti";
       c.style.left=(Math.random()*100)+"vw";
       c.style.background=colors[i%colors.length];
       c.style.animationDelay=(Math.random()*0.35)+"s";
-      c.style.animationDuration=(2.4+Math.random()*1.6)+"s";
-      c.style.opacity="0."+(6+Math.floor(Math.random()*4));
+      c.style.animationDuration=(2.6+Math.random()*1.5)+"s";
+      c.style.opacity="0.85";
       document.body.appendChild(c);
       setTimeout(function(){ c.remove(); },4600);
     }
   }catch(e){}
+}
+
+// Rediseño · toque 2: convierte un entero a palabras en español (hasta millones), para "ver/oír"
+// el patrimonio al mantener pulsada la cifra. Apócopes: "un"/"veintiún", "cien"/"ciento".
+function words(num){
+  num=Math.round(Math.abs(num));
+  if(num===0) return "cero";
+  const U=["","uno","dos","tres","cuatro","cinco","seis","siete","ocho","nueve","diez","once","doce","trece","catorce","quince","dieciséis","diecisiete","dieciocho","diecinueve","veinte","veintiuno","veintidós","veintitrés","veinticuatro","veinticinco","veintiséis","veintisiete","veintiocho","veintinueve"];
+  const D=["","","","treinta","cuarenta","cincuenta","sesenta","setenta","ochenta","noventa"];
+  const C=["","ciento","doscientos","trescientos","cuatrocientos","quinientos","seiscientos","setecientos","ochocientos","novecientos"];
+  const tens=function(n){ return n<30?U[n]:D[Math.floor(n/10)]+(n%10?" y "+U[n%10]:""); };
+  const hund=function(n){ return n===100?"cien":(Math.floor(n/100)?C[Math.floor(n/100)]:"")+(Math.floor(n/100)&&n%100?" ":"")+(n%100?tens(n%100):""); };
+  const apo=function(s){ return s.replace(/uno$/,"un").replace(/veintiuno$/,"veintiún"); };
+  const mill=Math.floor(num/1000000), miles=Math.floor((num%1000000)/1000), resto=num%1000;
+  let out="";
+  if(mill) out+=(mill===1?"un millón":apo(hund(mill))+" millones");
+  if(miles) out+=(out?" ":"")+(miles===1?"mil":apo(hund(miles))+" mil");
+  if(resto) out+=(out?" ":"")+hund(resto);
+  return out.trim();
+}
+// Rediseño · toque 4: mezcla dos hex (mint↔coral) en JS → "r,g,b". Evita depender de color-mix
+// del WebView; con t=0 devuelve exactamente el mint del hero actual (0 cambios visibles).
+function mixHex(a,b,t){
+  const h=function(s,i){ return parseInt(s.slice(i,i+2),16); };
+  const r=Math.round(h(a,1)+(h(b,1)-h(a,1))*t), g=Math.round(h(a,3)+(h(b,3)-h(a,3))*t), bl=Math.round(h(a,5)+(h(b,5)-h(a,5))*t);
+  return r+","+g+","+bl;
 }
 
 /* ============================================================
@@ -2550,6 +2626,7 @@ const I = {
   gear:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2"},p),React.createElement("circle",{cx:12,cy:12,r:3}),React.createElement("path",{d:"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 3.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.05a1.65 1.65 0 0 0 1-1.51V2a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.05a1.65 1.65 0 0 0 1.51 1H22a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"})),
   goal:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("circle",{cx:12,cy:12,r:9}),React.createElement("circle",{cx:12,cy:12,r:5}),React.createElement("circle",{cx:12,cy:12,r:1.5,fill:"currentColor"})),
   share:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("circle",{cx:18,cy:5,r:3}),React.createElement("circle",{cx:6,cy:12,r:3}),React.createElement("circle",{cx:18,cy:19,r:3}),React.createElement("path",{d:"M8.6 10.6l6.8-4M8.6 13.4l6.8 4"})),
+  medal:(p)=>React.createElement("svg",Object.assign({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2.2"},p),React.createElement("path",{d:"M8 3l3 6M16 3l-3 6"}),React.createElement("circle",{cx:12,cy:15,r:6})),
 };
 
 /* ============================================================
@@ -2873,6 +2950,34 @@ function Dashboard({state, totals, set}){
   const [bEdit,setBEdit]=useState(false);
   const [bDraft,setBDraft]=useState("");
   const saveBudget=function(){ const b=parseFloat(String(bDraft).replace(',','.')); if(b>=0) set(function(s){ return Object.assign({},s,{budget:b}); }); setBEdit(false); };
+  // Rediseño · toque 1: conteo suave del patrimonio. Anima solo cuando el número cambia de verdad
+  // (p.ej. tras sincronizar), no al abrir la app ni al cambiar de pestaña. Respeta reduce-motion.
+  const [shownNet,setShownNet]=useState(tt.netWorth);
+  const netRef=useRef(tt.netWorth), rafRef=useRef(0);
+  useEffect(function(){
+    const target=tt.netWorth;
+    if(Math.abs(target-netRef.current)<0.005) return;
+    cancelAnimationFrame(rafRef.current);
+    const reduce=window.matchMedia && window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+    if(reduce){ netRef.current=target; setShownNet(target); return; }
+    const start=netRef.current, t0=performance.now(), dur=1100, ease=function(x){ return 1-Math.pow(1-x,3); };
+    netRef.current=target;
+    const step=function(now){ const p=Math.min(1,(now-t0)/dur); setShownNet(start+(target-start)*ease(p)); if(p<1) rafRef.current=requestAnimationFrame(step); };
+    rafRef.current=requestAnimationFrame(step);
+  },[tt.netWorth]);
+  useEffect(function(){ return function(){ cancelAnimationFrame(rafRef.current); }; },[]);
+  // Rediseño · toque 2: mantener pulsada la cifra (~380ms) → overlay con la cifra en palabras + voz.
+  const [saying,setSaying]=useState(null);
+  const holdRef=useRef(0);
+  const startHear=function(){
+    clearTimeout(holdRef.current);
+    holdRef.current=setTimeout(function(){
+      const w=words(Math.round(shownNet));
+      setSaying(w.charAt(0).toUpperCase()+w.slice(1));
+      try{ if(window.speechSynthesis){ const u=new SpeechSynthesisUtterance(w+" euros"); u.lang="es-ES"; u.rate=0.92; speechSynthesis.cancel(); speechSynthesis.speak(u); } }catch(e){}
+    },380);
+  };
+  const endHear=function(){ clearTimeout(holdRef.current); if(saying) setSaying(null); try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){} };
   const ratio=tt.thisMonthSpent/state.budget;
   const monthName=monthLong(new Date().getMonth());
 
@@ -2902,10 +3007,15 @@ function Dashboard({state, totals, set}){
 
   // ---- Widgets del Resumen (cada uno con su render) ----
   const W=[];
+  // Rediseño · toque 4: tinte ambiental del hero (mint→ámbar→coral, muy sutil) según cómo va el mes.
+  const tintT = state.budget>0 ? Math.max(0,Math.min(1,(ratio-0.6)/0.6)) : 0;
+  const heroStyle={ background:"radial-gradient(140% 90% at 50% -20%, rgba("+mixHex("#5FD08A","#E2705F",tintT)+",.16), transparent 60%),linear-gradient(180deg,var(--surface),var(--bg-2))", transition:"background .6s ease" };
   W.push({id:"hero", label:t("d_networth"), lock:true, el:
-    React.createElement("div",{className:"hero"},
+    React.createElement(React.Fragment,null,
+    React.createElement("div",{className:"hero",style:heroStyle},
       React.createElement("div",{className:"hero-label"},t("d_networth")),
-      (function(){ const p=eurParts(tt.netWorth); return React.createElement("div",{className:"hero-amount serif num"}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
+      (function(){ const p=eurParts(shownNet); return React.createElement("div",{className:"hero-amount serif num",style:{cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"},onMouseDown:startHear,onMouseUp:endHear,onMouseLeave:endHear,onTouchStart:startHear,onTouchEnd:endHear}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}, "🔊 "+t("hp_hint")),
       React.createElement("div",{className:"hero-pills"},
         React.createElement("div",{className:"pill "+(tt.delta>=0?"pos":"neg")},
           React.createElement(tt.delta>=0?I.up:I.down,null), (tt.delta>=0?"+":"")+eur(tt.delta)+" · "+(tt.delta>=0?"+":"")+tt.deltaPct.toFixed(1)+"%"),
@@ -2913,6 +3023,15 @@ function Dashboard({state, totals, set}){
         React.createElement("div",{className:"pill ghost"},t("d_debts")+" "+eur0(tt.debtTotal))
       ),
       React.createElement(Sparkline,{data:state.history,current:tt.netWorth})
+    ),
+    saying && ReactDOM.createPortal(
+      React.createElement("div",{onClick:endHear,style:{position:"fixed",inset:0,background:"rgba(4,8,6,.72)",display:"flex",alignItems:"center",justifyContent:"center",padding:34,zIndex:9999}},
+        React.createElement("div",{style:{textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:30,marginBottom:14}}, "🔊"),
+          React.createElement("div",{className:"serif",style:{fontSize:26,lineHeight:1.35,color:"var(--cream)",fontWeight:500}}, saying),
+          React.createElement("div",{className:"serif",style:{fontSize:26,color:"var(--mint)",fontWeight:500}}, "euros")
+        )
+      ), document.body)
     )});
   (function(){
     const gs=(state.goals||[]);
@@ -2952,18 +3071,27 @@ function Dashboard({state, totals, set}){
               React.createElement("button",{className:"edit-link save",onClick:saveBudget},"OK"))
           : React.createElement(Ring,{ratio:ratio,spent:tt.thisMonthSpent,budget:state.budget})
       ),
-      React.createElement("div",{className:"metric"},
-        React.createElement("div",{className:"mlabel"},t("d_streak")),
-        React.createElement("div",{className:"streak-row"},
-          React.createElement("span",{className:"streak-flame"},state.streak>=3?"🔥":"✨"),
-          React.createElement("div",null,
-            React.createElement("div",{className:"streak-n num"},state.streak),
-            React.createElement("div",{style:{fontSize:12,color:"#5E7468",fontWeight:600}},t("d_months"))
-          )
-        ),
-        React.createElement("div",{className:"pips"}, pips.map((on,i)=>React.createElement("span",{key:i,className:"pip"+(on?" on":"")}))),
-        React.createElement("div",{className:"hint",style:{marginTop:8}}, ratio<=1?tf("d_inbudget",{m:monthName}):tf("d_overbudget",{m:monthName}))
-      )
+      // Rediseño 1b: racha + nivel fusionados en UN titular de estado (icono + frase), con
+      // 2 acentos (mint/coral) + ámbar de aviso. El detalle de nivel/medallas sigue en Metas.
+      (function(){
+        const streakN=state.streak||0;
+        const gm=gamifOf(state, totals);
+        let stIcon,stHead,stLine,stColor;
+        if(ratio<=0.85){ stIcon="🌱"; stHead=t("st_good_h"); stLine=t("st_good_l"); stColor="var(--mint)"; }
+        else if(ratio<=1){ stIcon="👀"; stHead=t("st_tight_h"); stLine=t("st_tight_l"); stColor="var(--tan)"; }
+        else { stIcon="🍂"; stHead=t("st_over_h"); stLine=t("st_over_l"); stColor="var(--coral)"; }
+        return React.createElement("div",{className:"metric",style:{textAlign:"left"}},
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:11}},
+            React.createElement("span",{style:{fontSize:32,lineHeight:1,filter:"drop-shadow(0 4px 10px rgba(95,208,138,.25))"}}, stIcon),
+            React.createElement("div",{style:{flex:1,minWidth:0}},
+              React.createElement("div",{className:"serif",style:{fontSize:18,fontWeight:600,color:stColor,lineHeight:1.15}}, stHead),
+              React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.4}}, stLine))),
+          React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"12px 0 10px"}}),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,fontSize:12,color:"var(--muted-2)"}},
+            React.createElement("span",{style:{fontWeight:700,color:streakN>=3?"var(--tan)":"var(--muted-2)"}}, (streakN>=3?"🔥":"✨")+" "+streakN+" "+t("d_months")),
+            React.createElement("span",null, "Nv "+(gm.lvl+1)+" · "+t("gm_lvl_"+gm.lvl)))
+        );
+      })()
     )});
   W.push({id:"culpa", label:t("wl_culpa"), el:
     (function(){ const rem=state.budget-tt.thisMonthSpent; return React.createElement("div",{className:"culpa"+(rem>=0?"":" over")},
@@ -2971,6 +3099,22 @@ function Dashboard({state, totals, set}){
         ? React.createElement(React.Fragment,null, React.createElement("span",{className:"big num"},eur0(rem)), React.createElement("span",null," "+t("d_guilt_ok")))
         : React.createElement(React.Fragment,null, React.createElement("span",null,t("d_guilt_over_a")), React.createElement("span",{className:"big num"},eur0(-rem)), React.createElement("span",null," 😬"))
     ); })() });
+  // Rediseño · toque 3: "Resumen del mes" en formato CARTA (Fraunces, tono personal), no otro dashboard.
+  W.push({id:"letter", label:t("wl_letter"), el:
+    (function(){
+      const spent=tt.thisMonthSpent, b=state.budget, rem=b-spent, over=rem<0;
+      const topCat = top ? catName(top.id) : null;
+      const netUp = tt.delta>=0;
+      const openKey = over ? "lt_open_over" : (ratio<=0.85 ? "lt_open_good" : "lt_open_tight");
+      let body = t(openKey)+" "+tf("lt_spent",{s:eur0(spent),b:eur0(b)})+(over ? tf("lt_rem_over",{r:eur0(-rem)}) : tf("lt_rem_ok",{r:eur0(rem)}));
+      if(topCat) body += tf("lt_top",{cat:topCat});
+      body += (netUp ? t("lt_net_up") : t("lt_net_down"));
+      return React.createElement("div",{style:{background:"linear-gradient(180deg,#14231a,var(--bg-2))",border:"1px solid var(--line)",borderRadius:20,padding:"20px 20px 18px",boxShadow:"var(--shadow)"}},
+        React.createElement("div",{className:"serif",style:{fontSize:20,fontWeight:600,color:"var(--text)",marginBottom:10}}, tf("lt_title",{m:monthName})),
+        React.createElement("div",{className:"serif",style:{fontSize:15.5,lineHeight:1.75,color:"#cfe0d4",fontWeight:400}}, body),
+        React.createElement("div",{className:"serif",style:{fontStyle:"italic",fontSize:14,color:"var(--mint)",marginTop:14,textAlign:"right"}}, "— Mi Cartera")
+      );
+    })()});
   W.push({id:"fixedsave", label:t("wl_fixedsave"), el:
     React.createElement("div",{className:"grid2"},
       React.createElement("div",{className:"metric tall"},
@@ -3192,7 +3336,7 @@ function inPreset(d,preset,range){
   if(preset==="custom"){ let ok=true; if(range.from) ok=ok&&d>=new Date(range.from); if(range.to){ const tt=new Date(range.to); tt.setHours(23,59,59); ok=ok&&d<=tt; } return ok; }
   return true;
 }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, focusExp, clearFocus}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -3234,6 +3378,19 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // que entraron como gasto…). En la nube la clave es fecha|importe|comercio → se hace tombstone
   // de la fila vieja (deleted + deleteExpense) y se inserta la corregida, o el pull la resucitaría.
   const [editExp,setEditExp]=useState(null);   // {id, merchant, amount, income}
+  // PUNTO 5: al tocar la noti de un gasto, App pasa focusExp ({amount,merchant}) → abrimos la ficha
+  // del gasto que casa (mismo importe y comercio parecido, el más reciente; si no, el último gasto).
+  useEffect(function(){
+    if(!focusExp) return;
+    const cands=(state.expenses||[]).filter(function(e){
+      if(Math.abs(Math.abs(e.amount)-focusExp.amount)>0.005) return false;
+      if(focusExp.merchant){ const m=(e.merchant||"").toLowerCase(), fm=focusExp.merchant.toLowerCase(); if(m.indexOf(fm.slice(0,Math.min(6,fm.length)))<0 && fm.indexOf(m)<0) return false; }
+      return true;
+    }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
+    const e=cands[0] || (state.expenses||[]).slice().sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+    if(e) setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0});
+    if(clearFocus) clearFocus();
+  },[focusExp]);
   const saveEdit=function(orig){
     const amt=parseFloat(String(editExp.amount).replace(',','.'))||0;
     if(amt<=0){ showToast(t("g_invalid")); return; }
@@ -3794,7 +3951,7 @@ function Investments({state, set, fetchPrices, pricing}){
       const ru=(trAcc.roundupManual!=null)?trAcc.roundupManual:ruAuto, sb=(trAcc.savebackManual!=null)?trAcc.savebackManual:sbAuto, tot=state.trRewardsTotal||0;
       const iv=state.investments.find(function(i){ return i.id===trAcc.rewardInv; });
       const invName=iv?iv.name:t("ru_pick");
-      return React.createElement(CollapsibleCard,{key:"ru",title:t("ru_title"),sub:mult>0?tf("ru_sub_on",{m:mult}):t("ru_sub_off"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_ru",help:t("h_ru")},
+      return React.createElement(CollapsibleCard,{key:"ru",title:SIMPLEMODE?t("ru_title_simple"):t("ru_title"),sub:SIMPLEMODE?t("ru_sub_simple"):(mult>0?tf("ru_sub_on",{m:mult}):t("ru_sub_off")),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_ru",help:t("h_ru")},
         React.createElement("div",{className:"mlabel",style:{textAlign:"left",marginBottom:6}},t("ru_mult")),
         React.createElement("div",{className:"curtoggle",style:{flexWrap:"wrap",justifyContent:"flex-start"}},
           RU_MULTS.map(function(m){ return React.createElement("button",{key:m,type:"button",className:"curbtn"+(mult===m?" on":""),onClick:function(){ setTr({roundup:m}); }}, m===0?t("ru_off"):"×"+m); })),
@@ -3825,7 +3982,7 @@ function Investments({state, set, fetchPrices, pricing}){
         React.createElement("div",{className:"ru-edit"},
           React.createElement("span",{className:"muted"},t("ru_total")),
           React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:tot||"",onChange:function(e){ setTot(parseFloat(String(e.target.value).replace(',','.'))||0); }})),
-        React.createElement("div",{className:"hint",style:{marginTop:8}}, (mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))+" "+t("ru_manual_hint"))
+        React.createElement("div",{className:"hint",style:{marginTop:8}}, SIMPLEMODE?t("ru_hint_simple"):((mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))+" "+t("ru_manual_hint")))
       );
     })(),
     React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg",help:t("h_cvg")},
@@ -5167,10 +5324,17 @@ function Goals({state, set, totals, showToast}){
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addGoal},t("gl_create")),
           React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAdding(false); setForm(blank); }},t("gl_cancel"))
         )
-      : (!editing || goals.length===0) && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:function(){ setAdding(true); }},React.createElement(I.plus,{width:16,height:16}),t("gl_new")),
+      : (!editing || goals.length===0) && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:function(){ setAdding(true); }},React.createElement(I.plus,{width:16,height:16}),t("gl_new"))
+  );
+}
 
+/* Pantalla "Logros" (rediseño 1a): la gamificación (nivel + retos + medallas) vive aquí, FUERA de
+   "Metas". El Resumen resume racha+nivel en un titular; el detalle (medallas/retos) vive en esta pantalla. */
+function Achievements({state, totals}){
+  const gm=gamifOf(state, totals);
+  return React.createElement("div",null,
     /* ---------- NIVEL ---------- */
-    React.createElement("div",{className:"card gm-level",style:{marginTop:16,padding:"15px 16px"}},
+    React.createElement("div",{className:"card gm-level",style:{marginTop:4,padding:"15px 16px"}},
       React.createElement("div",{className:"gm-lvl-top"},
         React.createElement("span",{className:"gm-lvl-ic"}, GM_ICONS[gm.lvl]),
         React.createElement("div",{style:{flex:1,minWidth:0}},
@@ -5226,6 +5390,7 @@ function Goals({state, set, totals, showToast}){
 const TABS=[
   {id:"dash",label:"Resumen",icon:I.dash},
   {id:"metas",label:"Metas",icon:I.goal},
+  {id:"logros",label:"Logros",icon:I.medal},
   {id:"gastos",label:"Gastos",icon:I.expense},
   {id:"fijos",label:"Fijos",icon:I.fixed},
   {id:"inv",label:"Inversiones",icon:I.invest},
@@ -5234,7 +5399,7 @@ const TABS=[
   {id:"compartido",label:"Compartido",icon:I.share},
 ];
 // Pestañas avanzadas: se ocultan en "modo simple" (settings.simpleMode) para gente que quiere lo básico.
-const ADVANCED_TABS=["metas","inv","patri","debt","compartido"];
+const ADVANCED_TABS=["metas","logros","inv","patri","debt","compartido"];
 // Widgets del Resumen que el modo simple esconde (deja hero + presupuesto + frase "puedes gastar").
 const SIMPLE_DASH_HIDDEN=["goal","dist","fixedsave","savings","culprit","trend"];
 // Pestañas ocultas: settings.tabHidden (elegidas por el usuario con + / papelera). Si el usuario
@@ -5380,6 +5545,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
   const [q,setQ]=useState("");
   const [busy,setBusy]=useState("");              // aspsp en curso / "__sync"
   const [picking,setPicking]=useState(false);
+  const [confirming,setConfirming]=useState("");  // aspsp cuyo "¿quitar?" está abierto
   useBackClose(picking, function(){ setPicking(false); setQ(""); });   // gesto atrás: sale del picker, no de la app
   const loadLinks=function(){ if(!cloud.enabled()){ setLinks([]); return; } cloud.bankLinks().then(function(rows){ setLinks(rows||[]); if((rows||[]).some(function(r){return r.status==='active'||r.status==='pending';})) set(function(s){ return s.hasBankLink?s:Object.assign({},s,{hasBankLink:true}); }); }).catch(function(){ setLinks([]); }); };
   useEffect(loadLinks,[uid]);
@@ -5387,6 +5553,8 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
   const openPicker=function(){ setPicking(true); loadAspsps(); };
   const connect=function(name,country){ if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; } setBusy(name); showToast(t("bank_connecting")); set(function(s){ return Object.assign({},s,{hasBankLink:true}); }); cloud.bankConnect(name, country||"ES").then(function(d){ location.href=d.url; }).catch(function(e){ setBusy(""); showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); }); };
   const refresh=function(){ if(!onBankSync){ return; } setBusy("__sync"); Promise.resolve(onBankSync()).finally(function(){ setBusy(""); loadLinks(); }); };
+  // Quitar banco (revoca en EB + borra la fila). Reversible: reaparece el picker para reconectar.
+  const remove=function(name){ setBusy(name); cloud.bankDisconnect(name).then(function(){ setConfirming(""); showToast(tf("bp_removed",{bank:bankLabel(name)})); loadLinks(); }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setBusy(""); }); };
 
   const fmtD=function(x){ try{ return new Date(x).toLocaleDateString(); }catch(e){ return String(x); } };
   const fmtDT=function(x){ try{ return new Date(x).toLocaleString(); }catch(e){ return String(x); } };
@@ -5461,9 +5629,15 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
             l.valid_until?React.createElement("div",{style:{fontSize:11,color:soon?"var(--coral)":"var(--muted-2)",marginTop:1}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
           sp),
         noAcct && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",background:"#E2A05F14",border:"1px solid #E2A05F44",borderRadius:12,padding:"9px 12px",margin:"-2px 0 12px"}}, "⚠ "+t("bp_noacct_help")),
-        React.createElement("div",{style:{display:"flex",gap:8,margin:"-4px 0 14px"}},
-          React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:refresh}, busy==="__sync"?t("bp_syncing"):t("bank_refresh")),
-          React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ connect(l.aspsp_name, l.aspsp_country||"ES"); }}, noAcct?t("bp_retry_link"):t("bank_reconnect")))
+        (confirming===l.aspsp_name
+          ? React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"-4px 0 14px"}},
+              React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 auto",minWidth:120}}, tf("bp_remove_q",{bank:bankLabel(l.aspsp_name)})),
+              React.createElement("button",{style:Object.assign({},mb,{color:"var(--coral)",borderColor:"var(--coral)",opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ remove(l.aspsp_name); }}, busy===l.aspsp_name?t("bp_removing"):t("bp_remove_yes")),
+              React.createElement("button",{style:mb,disabled:!!busy,onClick:function(){ setConfirming(""); }}, t("bp_remove_no")))
+          : React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",margin:"-4px 0 14px"}},
+              React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:refresh}, busy==="__sync"?t("bp_syncing"):t("bank_refresh")),
+              React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ connect(l.aspsp_name, l.aspsp_country||"ES"); }}, noAcct?t("bp_retry_link"):t("bank_reconnect")),
+              React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1,marginLeft:"auto",color:"var(--muted)"}),disabled:!!busy,onClick:function(){ setConfirming(l.aspsp_name); }}, t("bp_remove"))))
       );
     }),
     React.createElement("button",{style:bigBtn,onClick:openPicker}, "+ "+t("bp_add")),
@@ -5478,6 +5652,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals}){
   const [budget,setBudget]=useState(String(state.budget||0));
+  const [editTabs,setEditTabs]=useState(false);   // rediseño 3: modo explícito de editar pestañas
   const fileRef=useRef(null);
   // ¿El lector de gastos TR tiene acceso a notificaciones? (se pierde al reinstalar la app).
   // Se re-chequea al volver a la app (visibilitychange): al activar el permiso y volver, el aviso se quita solo.
@@ -5567,6 +5742,42 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       })
     ),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6}}, t("st_mode_hint")),
+    // Rediseño 3: editar pestañas (reordenar ▲▼ / ocultar ✕ / añadir +) de forma explícita.
+    (function(){
+      const order=tabOrderOf(state);
+      const hidden=TABS.map(function(tb){return tb.id;}).filter(function(id){ return order.indexOf(id)<0; });
+      const moveTab=function(id,dir){ set(function(s){ const o=tabOrderOf(s); const i=o.indexOf(id), j=i+dir; if(i<0||j<0||j>=o.length) return s; const n=o.slice(); n[i]=o[j]; n[j]=id; return Object.assign({},s,{settings:Object.assign({},s.settings,{tabOrder:n})}); }); };
+      const hideTab=function(id){ if(id==="dash") return; set(function(s){ const hid=tabHiddenOf(s); const nh=hid.indexOf(id)<0?hid.concat([id]):hid; const ord=tabOrderOf(s).filter(function(x){return x!==id;}); return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:nh, tabOrder:ord})}); }); showToast(t("tb_removed")); };
+      const showTab=function(id){ set(function(s){ const hid=tabHiddenOf(s).filter(function(x){return x!==id;}); const ord=tabOrderOf(s).concat([id]); return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:hid, tabOrder:ord})}); }); };
+      const rowBtn={width:34,height:34,borderRadius:9,background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--muted)",fontSize:13,cursor:"pointer",flex:"0 0 auto"};
+      return React.createElement(React.Fragment,null,
+        React.createElement("button",{onClick:function(){ setEditTabs(!editTabs); },style:Object.assign({},btn,{marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:editTabs?"var(--mint)":"var(--surface-2)",color:editTabs?"#06120C":"var(--text)",border:editTabs?"none":"1px solid var(--line)"})}, editTabs?t("done"):t("et_tabs")),
+        editTabs && React.createElement("div",{style:{marginTop:10}},
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginBottom:10,padding:"9px 11px",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:11}}, t("et_intro")),
+          order.map(function(id,i){
+            const tb=TABS.find(function(x){return x.id===id;}); if(!tb) return null;
+            const fixed=(id==="dash");
+            return React.createElement("div",{key:id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",borderRadius:11,background:"var(--surface)",border:"1px solid var(--line)",marginBottom:7}},
+              React.createElement("span",{style:{color:"var(--muted)",display:"flex"}}, React.createElement(tb.icon,{width:16,height:16})),
+              React.createElement("span",{style:{flex:1,fontWeight:700,fontSize:14,color:"var(--text)"}}, t("tab_"+id)),
+              React.createElement("button",{disabled:i===0,onClick:function(){ moveTab(id,-1); },style:Object.assign({},rowBtn,{opacity:i===0?0.35:1})}, "▲"),
+              React.createElement("button",{disabled:i===order.length-1,onClick:function(){ moveTab(id,1); },style:Object.assign({},rowBtn,{opacity:i===order.length-1?0.35:1})}, "▼"),
+              fixed
+                ? React.createElement("span",{style:{fontSize:10.5,color:"var(--muted-2)",width:34,textAlign:"center",flex:"0 0 auto"}}, t("et_fixed"))
+                : React.createElement("button",{onClick:function(){ hideTab(id); },style:Object.assign({},rowBtn,{color:"var(--coral)",borderColor:"var(--coral)"})}, "✕")
+            );
+          }),
+          hidden.length>0 && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"12px 2px 6px"}}, t("et_hidden")),
+          hidden.map(function(id){
+            const tb=TABS.find(function(x){return x.id===id;}); if(!tb) return null;
+            return React.createElement("button",{key:id,onClick:function(){ showTab(id); },style:{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"8px 11px",borderRadius:11,background:"var(--surface-2)",border:"1px dashed var(--line)",color:"var(--text)",fontWeight:700,fontSize:14,marginBottom:7,cursor:"pointer"}},
+              React.createElement("span",{style:{color:"var(--mint)",fontSize:16,fontWeight:800}}, "+"),
+              React.createElement("span",{style:{color:"var(--muted)",display:"flex"}}, React.createElement(tb.icon,{width:16,height:16})),
+              React.createElement("span",null, t("tab_"+id)));
+          })
+        )
+      );
+    })(),
     // Letra grande (accesibilidad) + relanzar el tutorial
     (function(){
       const on=!!(state.settings&&state.settings.bigText);
@@ -5875,11 +6086,10 @@ class ErrorBoundary extends React.Component{
 function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
-  const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
-  const tabDrag=useRef(null);
+  const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
+  const [tabOrderState,setTabOrderState]=useState(null);   // (histórico) orden transitorio; hoy siempre null tras quitar el arrastre
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
-  const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
-  const trashRef=useRef(null);
+  const [gotoExp,setGotoExp]=useState(null);               // punto 5: gasto a enfocar al tocar la noti ({amount,merchant,ts})
   const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
   const [toast,setToast]=useState(null);
   const [syncing,setSyncing]=useState(false);
@@ -6033,6 +6243,33 @@ function App(){
     return function(){ document.removeEventListener("visibilitychange", onVis); };
   },[uid]);
 
+  // PUNTO 5 · Noti → ficha del gasto. Al tocar la notificación de un gasto, la parte nativa deja un
+  // "goto" (token) que aquí consumimos: saltamos a la pestaña Gastos y abrimos la ficha del gasto.
+  // Token: "exp|<importe>|<comercio>" (o "gastos" a secas). En frío se lee al arrancar; en caliente,
+  // al volver a primer plano (visibilitychange). Solo hace algo en la app nativa (natPlugin+consumeGoto).
+  const handleGoto=function(g){
+    if(!g||typeof g!=="string") return;
+    if(g==="gastos" || g.indexOf("exp|")===0){
+      const gi=tabOrderOf(stateRef.current).indexOf("gastos");
+      if(gi>=0) setTab(gi);
+      if(g.indexOf("exp|")===0){
+        const parts=g.split("|");
+        const amount=Math.abs(parseFloat(String(parts[1]||"").replace(',','.'))||0);
+        const merchant=parts.slice(2).join("|").trim();   // el comercio podría llevar "|"
+        setGotoExp({amount:amount, merchant:merchant, ts:Date.now()});
+      }
+    }
+  };
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat || !nat.consumeGoto) return;
+    const pull=function(){ try{ nat.consumeGoto().then(function(r){ if(r&&r.goto) handleGoto(r.goto); }).catch(function(){}); }catch(e){} };
+    pull();
+    const onGoto=function(){ if(document.visibilityState==="visible") pull(); };
+    document.addEventListener("visibilitychange", onGoto);
+    return function(){ document.removeEventListener("visibilitychange", onGoto); };
+  },[]);
+
   // Copia de seguridad diaria del estado completo en la nube (1×/día, tras asentarse el arranque).
   useEffect(function(){
     if(!uid) return;
@@ -6085,7 +6322,7 @@ function App(){
   // app nativa Capacitor NO enruta el gesto por el historial de la WebView (cierra la Activity y SALE),
   // así que lo capturamos con @capacitor/app: cerramos el overlay de arriba (_mcBackStack) o vamos al
   // Resumen; solo salimos si no hay nada que cerrar y ya estás en el Resumen.
-  // (tabRef, sincronizado con la pestaña activa, se declara más abajo para el drag de pestañas.)
+  // (tabRef, sincronizado con la pestaña activa, se declara arriba junto a `tab`.)
   useEffect(function(){
     const A=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
     if(!A||!A.addListener) return undefined;
@@ -6327,7 +6564,7 @@ function App(){
     const levelUp=seeded && g.lvl>state.gmLevel;
     if(!fresh.length && !levelUp && seeded) return;
     set(function(s){ return Object.assign({},s,{badges:Array.from(new Set((s.badges||[]).concat(nowUnlocked))),gmLevel:g.lvl}); });
-    if(levelUp){ celebrate(); showToast(tf("gm_levelup",{n:g.lvl+1})); }
+    if(levelUp){ showToast(tf("gm_levelup",{n:g.lvl+1})); }   // rediseño 1c: subir de nivel = aviso tranquilo, sin confeti (el confeti se reserva a metas)
     else if(fresh.length && seeded){ showToast(tf("gm_badge_new",{x:t("gm_b_"+fresh[0])})); }
   },[state.expenses,state.goals,state.budget,state.trRewardsTotal]);
   const fetchPrices=function(silent){
@@ -6450,71 +6687,10 @@ function App(){
     const left = btn.offsetLeft - (bar.clientWidth/2) + (btn.clientWidth/2);
     try{ bar.scrollTo({left:Math.max(0,left),behavior:"smooth"}); }catch(e){ bar.scrollLeft=Math.max(0,left); }
   },[tab]);
-  /* ARRASTRE de pestañas por mantener pulsado (como los widgets del Resumen): reordena tabs+páginas */
-  const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });
-  useEffect(function(){
-    const bar=tabbarRef.current; if(!bar) return;
-    const onTS=function(e){
-      const btn=e.target.closest && e.target.closest('[data-ti]'); if(!btn) return;
-      const tch=e.touches[0];
-      const order=tabOrderOf(stateRef.current);
-      // se arrastra la pestaña que TOCAS (no la activa): más natural
-      const ti=parseInt(btn.getAttribute('data-ti'),10);
-      const d={startX:tch.clientX,startY:tch.clientY,active:false,order:order,activeId:order[ti]||order[tabRef.current],timer:null,overTrash:false};
-      d.timer=setTimeout(function(){ d.active=true; bar.classList.add('reordering'); setTab(order.indexOf(d.activeId)); setTabOrderState(d.order.slice()); try{navigator.vibrate&&navigator.vibrate(15);}catch(_){} },380);
-      tabDrag.current=d;
-    };
-    const onTM=function(e){
-      const d=tabDrag.current; if(!d) return; const tch=e.touches[0];
-      if(!d.active){ if(Math.abs(tch.clientX-d.startX)>10||Math.abs(tch.clientY-d.startY)>10){ clearTimeout(d.timer); tabDrag.current=null; } return; }
-      e.preventDefault();
-      // ¿está el dedo sobre la papelera? → resáltala y no reordenes
-      const tr=trashRef.current;
-      if(tr){
-        const r=tr.getBoundingClientRect();
-        const over = tch.clientX>=r.left-10 && tch.clientX<=r.right+10 && tch.clientY>=r.top-10 && tch.clientY<=r.bottom+10;
-        if(over!==d.overTrash){ d.overTrash=over; setTrashHot(over); try{ if(over&&navigator.vibrate) navigator.vibrate(10); }catch(_){} }
-        if(over) return;
-      }
-      const kids=Array.prototype.slice.call(bar.querySelectorAll('[data-ti]'));
-      let target=-1,best=1e9;
-      kids.forEach(function(k,idx){ const r=k.getBoundingClientRect(); const c=r.left+r.width/2; const dist=Math.abs(c-tch.clientX); if(dist<best){best=dist;target=idx;} });
-      if(target<0) return;
-      const cur=d.order.indexOf(d.activeId);
-      if(target!==cur){ const o=d.order.slice(); o.splice(cur,1); o.splice(target,0,d.activeId); d.order=o; setTabOrderState(o.slice()); setTab(target); }
-    };
-    const onTE=function(){
-      const d=tabDrag.current; if(!d) return; clearTimeout(d.timer);
-      if(d.active){
-        bar.classList.remove('reordering'); setTrashHot(false);
-        if(d.overTrash && d.activeId!=="dash"){
-          // soltada en la papelera → se oculta (se recupera cuando quieras con el botón +)
-          const id=d.activeId; const fin=d.order.filter(function(x){ return x!==id; });
-          set(function(s){
-            const hid=tabHiddenOf(s); const nh=hid.indexOf(id)<0?hid.concat([id]):hid;
-            return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:nh, tabOrder:fin})});
-          });
-          setTab(Math.max(0, Math.min(d.order.indexOf(id), fin.length-1)));
-          setTabOrderState(null);
-          showToast(t("tb_removed"));
-        } else {
-          if(d.overTrash) showToast(t("tb_nodel"));   // el Resumen es fijo
-          const fin=d.order.slice();
-          set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{tabOrder:fin})}); });
-          setTab(fin.indexOf(d.activeId)); setTabOrderState(null);
-        }
-      }
-      tabDrag.current=null;
-    };
-    bar.addEventListener('touchstart',onTS,{passive:true});
-    bar.addEventListener('touchmove',onTM,{passive:false});
-    bar.addEventListener('touchend',onTE,{passive:true});
-    bar.addEventListener('touchcancel',onTE,{passive:true});
-    return function(){ bar.removeEventListener('touchstart',onTS); bar.removeEventListener('touchmove',onTM); bar.removeEventListener('touchend',onTE); bar.removeEventListener('touchcancel',onTE); };
-    // deps: si la app arranca en el candado o el onboarding, la tabbar aún no existe en el
-    // primer montaje y los listeners no se instalaban NUNCA (bug "no se pueden arrastrar ni
-    // quitar las pestañas a veces"). Al desbloquear/terminar onboarding se re-ejecuta y engancha.
-  },[locked, state.onboarded]);
+  // Rediseño 3: se ELIMINA el gesto oculto de reordenar la tabbar (mantener pulsado + arrastrar a
+  // una papelera) — se disparaba sin querer. Reordenar/ocultar pestañas ahora se hace de forma
+  // explícita en Ajustes › «✎ Editar pestañas» (settings.tabOrder / settings.tabHidden). La tabbar
+  // vuelve a ser solo scroll + tap. El botón «+» sigue sirviendo para volver a añadir pestañas ocultas.
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
   const tabIds = tabOrderState || tabOrderOf(state);
@@ -6524,7 +6700,8 @@ function App(){
   const pageFor=function(id){
     if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set});
     if(id==="metas") return React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe});
+    if(id==="logros") return React.createElement(Achievements,{state:state,totals:totals});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
     if(id==="fijos") return React.createElement(Fijos,{state:state,set:set,totals:totals});
     if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
     if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
@@ -6560,9 +6737,6 @@ function App(){
         hiddenTabIds.length>0 && React.createElement("button",{key:"__add",className:"tab tab-add",onClick:function(){ setAddTab(true); },"aria-label":t("tb_add")},"+")
       )
     ),
-    // Papelera: aparece mientras arrastras una pestaña; suéltala encima para quitarla
-    tabOrderState && React.createElement("div",{ref:trashRef,className:"tab-trash"+(trashHot?" hot":"")},
-      React.createElement("span",{className:"tt-ic"},"🗑"), " ", t("tb_trash")),
     // Hoja "añadir pestaña": lista de tabs ocultas; tocar una la añade al final de la barra
     addTab && React.createElement("div",{className:"tabsheet-back",onClick:function(){ setAddTab(false); }},
       React.createElement("div",{className:"tabsheet",onClick:function(e){ e.stopPropagation(); }},

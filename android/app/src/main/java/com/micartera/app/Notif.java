@@ -31,10 +31,19 @@ class Notif {
     }
 
     static void show(Context ctx, String title, String body, int id) {
+        show(ctx, title, body, id, null);
+    }
+
+    /** Igual que show(...), pero la notificación lleva un deep-link: al tocarla, la web salta a la
+     *  ficha del gasto (punto 5). gotoTarget viaja como extra "mc_goto" (p.ej. "exp|12.34|Mercadona");
+     *  MainActivity lo guarda y MiCartera.consumeGoto() lo entrega a la web. null = abre el inicio. */
+    static void show(Context ctx, String title, String body, int id, String gotoTarget) {
         try {
             ensureChannel(ctx);
             Intent open = new Intent(ctx, MainActivity.class);
             open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            if (gotoTarget != null && !gotoTarget.isEmpty()) open.putExtra("mc_goto", gotoTarget);
+            // requestCode = id (único por noti) → cada PendingIntent es distinto y sus extras no se pisan.
             PendingIntent pi = PendingIntent.getActivity(ctx, id, open,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
