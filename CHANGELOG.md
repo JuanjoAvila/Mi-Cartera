@@ -19,6 +19,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.83.0] — 2026-07-07
+### Pestaña «Logros», editar pestañas explícito y noti → ficha del gasto (APK nuevo)
+- 🏅 **Nueva pestaña «Logros»:** la gamificación (nivel, retos del mes, medallas) sale de «Metas» y tiene su propia pantalla. «Metas» queda limpia (solo tus metas de ahorro); el Resumen resume racha+nivel en el titular y el detalle vive en Logros. Se oculta en modo sencillo.
+- ✎ **Editar pestañas explícito (adiós al gesto oculto):** se elimina el reordenar arrastrando a una papelera manteniendo pulsado (se disparaba sin querer). Ahora en Ajustes › «✎ Editar pestañas»: reordena con ▲▼, oculta con ✕ (Resumen es fija) y vuelve a añadir las ocultas. La barra vuelve a ser solo scroll + tap; el «+» sigue para añadir.
+- 🔔 **La notificación de un gasto abre su ficha (punto 5):** al tocar «✓ Gasto apuntado …», la app salta a la pestaña Gastos y abre directamente la ficha editable de ese gasto (empareja por importe + comercio, el más reciente). Requiere cambios nativos → **APK nuevo** (Notif deep-link + `MiCartera.consumeGoto()`).
+
+## [3.82.0] — 2026-07-07
+### Rediseño Claude Design (toques silenciosos) + quitar banco
+- 🎬 **El patrimonio se cuenta solo:** al sincronizar, la cifra del hero anima suavemente del valor anterior al nuevo (ease-out 1,1 s; respeta «reducir movimiento»). Nada de saltos bruscos.
+- 🔊 **Mantén pulsada la cifra para oírla/verla en palabras:** overlay «ciento ochenta y nueve mil…» + lectura por voz (es-ES). Accesibilidad y un guiño para público mayor.
+- 🌡️ **Tinte ambiental del hero:** el fondo pasa muy sutilmente de verde → ámbar → coral según cómo va el mes (gasto/presupuesto). Un termómetro de reojo, calculado en JS (sin depender de `color-mix` del WebView).
+- 📝 **«Resumen del mes» en formato carta:** una tarjeta en Fraunces, tono personal, generada de tus datos («Julio, hasta ahora… — Mi Cartera»). Un widget más del Resumen, reordenable/ocultable.
+- 🌱🍂 **Racha + nivel, una sola narrativa:** en el Resumen se fusionan en un titular de estado con 2 acentos (mint/coral + ámbar de aviso): «Vas muy bien / Ojo, apurando / Te has pasado un poco», con la racha y el nivel debajo. El detalle de medallas/retos sigue en Metas.
+- 🎊 **Confeti al mínimo:** reservado a metas cumplidas y más suave (26 piezas, paleta calmada). Subir de nivel ya no lanza confeti — solo un aviso tranquilo. Así destacan los momentos silenciosos (carta, conteo, tinte).
+- 🍃 **Menos jerga en modo sencillo:** la tarjeta «Round-up & Saveback (TR)» pasa a «Redondeo y regalo por pagar» con explicación en lenguaje llano (ES/EN/CA).
+- 🗑️ **Quitar banco:** en «Mis bancos», cada banco tiene botón **Quitar** con confirmación (revoca el consentimiento en Enable Banking + borra el enlace). Reversible: reconectas cuando quieras. Nueva Edge Function `bank-disconnect`.
+
 ## [3.81.0] — 2026-07-06
 ### Tanda de feedback: gastos editables, conciliación sensata y onboarding nuevo
 - ✏️ **Los gastos variables ya se pueden EDITAR** (lápiz ✎): comercio, importe y gasto↔ingreso. Para corregir lo que la ingesta parsea mal — la financiación de Cofidis que notifica el total (99,99) cuando TR solo cobra la cuota (25,02), o un bizum antiguo que entró como gasto. La corrección se sincroniza bien con la nube (se retira la fila vieja y se inserta la corregida).
