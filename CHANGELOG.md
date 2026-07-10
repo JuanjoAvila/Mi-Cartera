@@ -19,6 +19,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.85.1] — 2026-07-10
+### Cobro doble arreglado, Actividad desbloqueada y TR que aguanta el frío (APK alpha11)
+- 💳 **Los pagos con confirmación ya no entran DOS veces:** un pago 3DS (p. ej. una multa) genera dos notificaciones de TR («confirma el pago» + «has pagado») y ambas se apuntaban como gasto. Ahora la de autorización se ignora y, además, un mismo importe en menos de 10 minutos se trata como el mismo movimiento. *(Servidor: al desplegarse vale para todos, sin actualizar la app. El 50 € duplicado que ya está apuntado bórralo en Gastos: toca el gasto → borrar.)*
+- 👁 **El panel «Actividad» ya funciona:** la tabla de telemetría existía pero al rol de usuario le faltaban los permisos base («permission denied») — migración 0007 con los grants. Los pings y errores empiezan a registrarse a partir de ahora.
+- 🔐 **Sincronizar TR ya no caduca al abrir la app en frío:** el diagnóstico nuevo cantó la causa real («refresh: Failed to fetch») — el token del AWS WAF caduca y su challenge revienta la llamada. Ahora, si eso pasa, se pide token fresco al SDK del WAF de la propia página de TR y se reintenta (también en el login). **(nativo → APK alpha11, llega por el botón de actualizar)**
+
 ## [3.85.0] — 2026-07-10
 ### Personalización total, telemetría del admin y alpha10 (estreno del botón de actualizar)
 - 🖐️ **Vuelve arrastrar pestañas:** mantén pulsada una pestaña para moverla o arrastrarla a la papelera para quitarla (se pidió de vuelta — se quitó en 3.83). El editor de Ajustes sigue existiendo: son dos caminos al mismo sitio.
