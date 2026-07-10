@@ -2827,7 +2827,7 @@ function Tour({onDone}){
     {k:"tour_3", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_fijos"); })||null; }},
     {k:"tour_6", sel:function(){ return document.querySelector(".tabbar"); }},
     {k:"tour_7", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_patri"); })||null; }},
-    {k:"tour_8", sel:function(){ return document.querySelector(".helpq")||document.querySelector(".hero")||document.querySelector(".page"); }},
+    {k:"tour_8", sel:function(){ return document.querySelector(".helpq"); }},
     {k:"tour_4", sel:function(){ return document.querySelector(".topbar .icon-btn"); }},
     {k:"tour_5", sel:function(){ const b=document.querySelectorAll(".topbar .icon-btn"); return b[1]||b[0]||null; }},
   ];

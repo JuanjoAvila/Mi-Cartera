@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.86.1] — 2026-07-10
+### El paso del tutorial sobre el «?» ya no señala a lo que no toca
+- 🐛 **Tutorial (paso 6, «Si ves un `?`…»):** cuando no había ningún botón `?` visible en el Resumen (p. ej. con las tarjetas de Meta/Reparto/Ahorro/Culpable/Tendencia ocultas), el paso caía a un *fallback* que resaltaba la tarjeta de Patrimonio Neto en su lugar — el texto hablaba de un interrogante que no estaba ahí. Ahora, si no encuentra ningún `?` real, el tutorial salta ese paso en vez de señalar algo que no corresponde.
+
 ## [3.86.0] — 2026-07-10
 ### TR en frío (vuelta 4, con red de seguridad), volver del banco sin ver código fuente y quitar bancos que se quitan de verdad
 - 🔐 **TR en frío, diagnóstico nuevo (APK alpha14):** la causa real no era «token rancio» a secas sino **timing** — la web propia de TR hace estas mismas llamadas en frío y le funcionan; la diferencia es que el challenge del AWS WAF tarda unos segundos en generar un token válido y nosotros disparábamos a los 600 ms, demasiado pronto. Ahora el refresh **reintenta con esperas crecientes** (0→1,2→2,5→4→6→8 s, ~22 s) forzando token nuevo entre intentos hasta que entra (en caliente entra al primer intento sin esperar); se **caduca la cookie `aws-waf-token` rancia** al abrir en frío (sin tocar la sesión) para forzar un challenge nuevo; y el timeout sube a 60 s. **(nativo → APK alpha14, llega por el botón de actualizar)**
