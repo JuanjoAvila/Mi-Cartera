@@ -1,6 +1,6 @@
 {
-  "versionCode": 9,
-  "versionName": "4.0.0-alpha9",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha9/Mi-Cartera.apk",
-  "notes": "Vuelta a la app tras conectar el banco, notis sin duplicados, toggle de confirmaciones TR y botón de actualizar la app sin cable."
+  "versionCode": 10,
+  "versionName": "4.0.0-alpha10",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha10/Mi-Cartera.apk",
+  "notes": "Fix definitivo del 2FA de Trade Republic en cada sincronización + tanda de personalización (arrastrar pestañas, ocultar bloques, buscar actualización)."
 }

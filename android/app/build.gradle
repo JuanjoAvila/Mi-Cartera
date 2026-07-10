@@ -19,8 +19,8 @@ android {
         applicationId "com.micartera.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "4.0.0-alpha9"
+        versionCode 10
+        versionName "4.0.0-alpha10"
         buildConfigField "String", "INGEST_URL", "\"${ingestUrl}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

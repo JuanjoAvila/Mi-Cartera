@@ -1027,6 +1027,37 @@ const cloud = (function(){
       if(error) throw error;
       return data||[];
     },
+    // --- Telemetría solo-admin (0006_app_events): errores y pings de quien usa la app.
+    // best-effort SIEMPRE (nunca rompe nada); máx 20 por sesión y dedupe del mismo mensaje.
+    async logEvent(kind, message, detail){
+      try{
+        if(!sb) return;
+        this._evSent=this._evSent||{}; this._evN=this._evN||0;
+        const key=kind+"|"+String(message).slice(0,120);
+        if(this._evSent[key] || this._evN>=20) return;
+        this._evSent[key]=1; this._evN++;
+        const {data:{session}}=await sb.auth.getSession();
+        if(!session) return;
+        await sb.from('app_events').insert({
+          user_id:session.user.id,
+          email:session.user.email||null,
+          kind:kind||'error',
+          message:String(message||"").slice(0,500),
+          detail:detail?String(detail).slice(0,2000):null,
+          app_version:CONFIG.APP_VERSION,
+          platform:(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())?'android':'web'
+        });
+      }catch(e){}
+    },
+    // Panel del admin: últimos eventos de TODOS los usuarios (RLS deja leer solo al admin).
+    async adminEvents(limit){
+      if(!sb) return [];
+      const {data,error}=await sb.from('app_events')
+        .select('email,kind,message,detail,app_version,platform,created_at')
+        .order('created_at',{ascending:false}).limit(limit||60);
+      if(error) throw error;
+      return data||[];
+    },
   };
 })();
 
@@ -1153,6 +1184,10 @@ const LANG = {
     apk_ready:"⬇️ App {v} lista · toca para instalar", apk_downloading:"Descargando la actualización… se abrirá el instalador", apk_perm:"Permite «instalar apps desconocidas» a Mi Cartera y vuelve a tocar el botón",
     ob_signup:"Crear cuenta nueva",
     st_custom:"Personalización", st_widgets:"Personalizar widgets del Resumen", st_notifs:"Notificaciones", st_simple_lbl:"Modo sencillo",
+    st_blocks:"Ocultar bloques de las pestañas", st_blocks_hint:"Con esto activado, cada bloque de cualquier pestaña muestra un botón «Ocultar». Los ocultos se quedan atenuados mientras editas; al desactivarlo desaparecen del todo (y aquí los recuperas).",
+    cc_hide:"Ocultar", cc_show:"Mostrar",
+    st_updates:"Actualizaciones", st_update:"Buscar actualización",
+    st_up_ok:"✓ Estás a la última", st_up_web:"Hay versión web nueva: se instala sola — cierra y abre la app para estrenarla", st_up_apk:"⬇️ App {v} disponible · descargando, se abrirá el instalador",
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
@@ -1180,6 +1215,10 @@ const LANG = {
     apk_ready:"⬇️ App {v} ready · tap to install", apk_downloading:"Downloading the update… the installer will open", apk_perm:"Allow «install unknown apps» for Mi Cartera and tap the button again",
     ob_signup:"Create a new account",
     st_custom:"Customisation", st_widgets:"Customise Summary widgets", st_notifs:"Notifications", st_simple_lbl:"Simple mode",
+    st_blocks:"Hide blocks in tabs", st_blocks_hint:"With this on, every block in any tab shows a «Hide» button. Hidden ones stay dimmed while editing; turn it off and they disappear entirely (and you recover them here).",
+    cc_hide:"Hide", cc_show:"Show",
+    st_updates:"Updates", st_update:"Check for updates",
+    st_up_ok:"✓ You're up to date", st_up_web:"New web version available: it installs itself — close and reopen the app", st_up_apk:"⬇️ App {v} available · downloading, the installer will open",
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
@@ -1207,6 +1246,10 @@ const LANG = {
     apk_ready:"⬇️ App {v} a punt · toca per instal·lar", apk_downloading:"Baixant l'actualització… s'obrirà l'instal·lador", apk_perm:"Permet «instal·lar apps desconegudes» a Mi Cartera i torna a tocar el botó",
     ob_signup:"Crea un compte nou",
     st_custom:"Personalització", st_widgets:"Personalitza els widgets del Resum", st_notifs:"Notificacions", st_simple_lbl:"Mode senzill",
+    st_blocks:"Amaga blocs de les pestanyes", st_blocks_hint:"Amb això activat, cada bloc de qualsevol pestanya mostra un botó «Amaga». Els amagats queden atenuats mentre edites; en desactivar-ho desapareixen del tot (i aquí els recuperes).",
+    cc_hide:"Amaga", cc_show:"Mostra",
+    st_updates:"Actualitzacions", st_update:"Cerca actualització",
+    st_up_ok:"✓ Estàs a l'última", st_up_web:"Hi ha versió web nova: s'instal·la sola — tanca i obre l'app per estrenar-la", st_up_apk:"⬇️ App {v} disponible · baixant, s'obrirà l'instal·lador",
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
@@ -2836,13 +2879,27 @@ function CollapsibleCard({title, sub, dot, defaultOpen, right, children, storage
     return defaultOpen!==false;
   });
   const toggle=()=>{ const n=!open; setOpen(n); if(storageKey) store.set("col_"+storageKey,n); };
-  return React.createElement("div",{className:"card"},
+  // Ocultar bloques en CUALQUIER pestaña (petición 2026-07-10, como los widgets del Resumen).
+  // App publica en cada render __mcBlocksEdit (modo edición, se activa en Ajustes) y
+  // __mcCardHidden (settings.cardHidden); el toggle viaja por evento porque esta tarjeta
+  // no recibe set(). Oculta y fuera de edición → no se pinta; en edición → atenuada + botón.
+  const blocksEdit=!!window.__mcBlocksEdit;
+  const cardHidden=(storageKey && Array.isArray(window.__mcCardHidden) && window.__mcCardHidden.indexOf(storageKey)>=0);
+  if(cardHidden && !blocksEdit) return null;
+  const hideBtn=(blocksEdit && storageKey) ? React.createElement("button",{
+    onClick:function(e){ e.stopPropagation(); try{ window.dispatchEvent(new CustomEvent("mc-card-toggle",{detail:storageKey})); }catch(_){} },
+    style:{fontSize:11.5,fontWeight:700,padding:"4px 9px",borderRadius:9,cursor:"pointer",
+      background:cardHidden?"var(--mint)":"var(--surface-2)",color:cardHidden?"#06120C":"var(--coral)",
+      border:cardHidden?"none":"1px solid var(--coral)"}
+  }, cardHidden?t("cc_show"):t("cc_hide")) : null;
+  return React.createElement("div",{className:"card",style:cardHidden?{opacity:.45,borderStyle:"dashed"}:null},
     React.createElement("div",{className:"card-head",onClick:toggle},
       React.createElement("div",{className:"card-title"},
         dot && React.createElement("span",{className:"dot",style:{background:dot}}),
         React.createElement("div",null, title, sub && React.createElement("div",{className:"sub"},sub))
       ),
       React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+        hideBtn,
         help && React.createElement(HelpTip,{text:help}),
         right, React.createElement(I.chev,{className:"chev"+(open?" open":"")})
       )
@@ -3010,18 +3067,8 @@ function Dashboard({state, totals, set}){
     rafRef.current=requestAnimationFrame(step);
   },[tt.netWorth]);
   useEffect(function(){ return function(){ cancelAnimationFrame(rafRef.current); }; },[]);
-  // Rediseño · toque 2: mantener pulsada la cifra (~380ms) → overlay con la cifra en palabras + voz.
-  const [saying,setSaying]=useState(null);
-  const holdRef=useRef(0);
-  const startHear=function(){
-    clearTimeout(holdRef.current);
-    holdRef.current=setTimeout(function(){
-      const w=words(Math.round(shownNet));
-      setSaying(w.charAt(0).toUpperCase()+w.slice(1));
-      try{ if(window.speechSynthesis){ const u=new SpeechSynthesisUtterance(w+" euros"); u.lang="es-ES"; u.rate=0.92; speechSynthesis.cancel(); speechSynthesis.speak(u); } }catch(e){}
-    },380);
-  };
-  const endHear=function(){ clearTimeout(holdRef.current); if(saying) setSaying(null); try{ window.speechSynthesis && speechSynthesis.cancel(); }catch(e){} };
+  // (2026-07-10: quitado el mantener-pulsado sobre la cifra que la leía en voz alta — feedback:
+  // se disparaba sin querer al seleccionar/tocar el importe. words() queda sin uso.)
   const ratio=tt.thisMonthSpent/state.budget;
   const monthName=monthLong(new Date().getMonth());
 
@@ -3058,8 +3105,7 @@ function Dashboard({state, totals, set}){
     React.createElement(React.Fragment,null,
     React.createElement("div",{className:"hero",style:heroStyle},
       React.createElement("div",{className:"hero-label"},t("d_networth")),
-      (function(){ const p=eurParts(shownNet); return React.createElement("div",{className:"hero-amount serif num",style:{cursor:"pointer",userSelect:"none",WebkitUserSelect:"none"},onMouseDown:startHear,onMouseUp:endHear,onMouseLeave:endHear,onTouchStart:startHear,onTouchEnd:endHear}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
-      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",fontWeight:600,marginBottom:6,display:"flex",alignItems:"center",justifyContent:"center",gap:5}}, "🔊 "+t("hp_hint")),
+      (function(){ const p=eurParts(shownNet); return React.createElement("div",{className:"hero-amount serif num"}, p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym)); })(),
       React.createElement("div",{className:"hero-pills"},
         React.createElement("div",{className:"pill "+(tt.delta>=0?"pos":"neg")},
           React.createElement(tt.delta>=0?I.up:I.down,null), (tt.delta>=0?"+":"")+eur(tt.delta)+" · "+(tt.delta>=0?"+":"")+tt.deltaPct.toFixed(1)+"%"),
@@ -3067,15 +3113,7 @@ function Dashboard({state, totals, set}){
         React.createElement("div",{className:"pill ghost"},t("d_debts")+" "+eur0(tt.debtTotal))
       ),
       React.createElement(Sparkline,{data:state.history,current:tt.netWorth})
-    ),
-    saying && ReactDOM.createPortal(
-      React.createElement("div",{onClick:endHear,style:{position:"fixed",inset:0,background:"rgba(4,8,6,.72)",display:"flex",alignItems:"center",justifyContent:"center",padding:34,zIndex:9999}},
-        React.createElement("div",{style:{textAlign:"center"}},
-          React.createElement("div",{style:{fontSize:30,marginBottom:14}}, "🔊"),
-          React.createElement("div",{className:"serif",style:{fontSize:26,lineHeight:1.35,color:"var(--cream)",fontWeight:500}}, saying),
-          React.createElement("div",{className:"serif",style:{fontSize:26,color:"var(--mint)",fontWeight:500}}, "euros")
-        )
-      ), document.body)
+    )
     )});
   (function(){
     const gs=(state.goals||[]);
@@ -3322,9 +3360,11 @@ function Dashboard({state, totals, set}){
       ),
       React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},onClick:dismissRecap}, t("recap_ok"))
     ),
-    React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10,marginBottom:8}},
-      !editing && React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},t("drag_hint")),
-      React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:function(){ setEditing(!editing); }}, editing?t("done"):t("personalize"))
+    // El botón «✎ Personalizar» se quitó del Resumen (2026-07-10): se entra desde Ajustes ›
+    // «Personalizar widgets del Resumen». La barra solo aparece EN modo edición, para salir.
+    editing && React.createElement("div",{style:{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10,marginBottom:8}},
+      React.createElement("span",{style:{fontSize:11,color:"var(--muted-2)"}},t("drag_hint")),
+      React.createElement("button",{className:"edit-link save",onClick:function(){ setEditing(false); }}, t("done"))
     ),
     editing
       ? order.map(function(id,idx){
@@ -5737,8 +5777,41 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals}){
   const [budget,setBudget]=useState(String(state.budget||0));
-  const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "theme" | "tabs" | null
+  const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "theme" | "tabs" | "act" | null
   const fileRef=useRef(null);
+  // Telemetría: el panel «Actividad» SOLO existe para el admin (gate por email de la sesión;
+  // la RLS de app_events lo re-valida en servidor — sin sesión de admin no devuelve filas).
+  const [meEmail,setMeEmail]=useState(null);
+  useEffect(function(){ if(!cloud.enabled()){ return; } cloud.session().then(function(s){ setMeEmail((s&&s.user&&s.user.email)||null); }).catch(function(){}); },[uid]);
+  const isAdmin = meEmail==="juanjo.avila.chavero@gmail.com";
+  // «Buscar actualización» a mano (feedback 2026-07-10: «no me sale ningún botón para actualizar
+  // manualmente»): consulta apk.json (APK) y version.json (web) al momento, sin esperar al arranque.
+  const checkUpdates=function(){
+    const nat=natPlugin();
+    if(!nat||!nat.appInfo) return;
+    const BASE="https://juanjoavila.github.io/Mi-Cartera/";
+    Promise.all([
+      fetch(BASE+"apk.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      fetch(BASE+"version.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      Promise.resolve(nat.appInfo()).catch(function(){ return null; })
+    ]).then(function(res){
+      const apk=res[0], ver=res[1], info=res[2];
+      if(apk&&info&&apk.url&&Number(apk.versionCode)>Number(info.versionCode)){
+        showToast(tf("st_up_apk",{v:apk.versionName||("v"+apk.versionCode)}));
+        nat.installApk({url:apk.url}).then(function(r){ if(r&&r.needsPermission) showToast(t("apk_perm")); }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
+        return;
+      }
+      if(ver&&ver.version&&ver.version!==CONFIG.APP_VERSION){ showToast(t("st_up_web")); return; }
+      showToast(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+(info&&info.versionName?" · app "+info.versionName:""));
+    });
+  };
+  const [events,setEvents]=useState(null);
+  const loadEvents=function(){
+    cloud.adminEvents(60).then(function(rows){
+      setEvents(rows||[]);
+      try{ localStorage.setItem("_evSeen", String(Date.now())); }catch(e){}   // el aviso de "errores nuevos" se resetea
+    }).catch(function(e){ setEvents([]); showToast("⚠ "+((e&&e.message)||e)); });
+  };
   // ¿El lector de gastos TR tiene acceso a notificaciones? (se pierde al reinstalar la app).
   // Se re-chequea al volver a la app (visibilitychange): al activar el permiso y volver, el aviso se quita solo.
   const [notifOk,setNotifOk]=useState(true);
@@ -5896,6 +5969,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           })
         );
       })()),
+      (function(){
+        const on=!!(state.settings&&state.settings.blocksEdit);
+        return row("blocks","🧩",t("st_blocks"),null,function(){ setS({blocksEdit:!on}); }, sw(on));
+      })(),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("st_blocks_hint")),
       onTour && row("tour","🎓",t("st_tour").replace(/^[^ ]+ /,""),null,onTour),
       totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals); })
     ),
@@ -5942,6 +6020,34 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint"))
       );
     })(),
+    // ── Tarjeta admin · actividad de los usuarios (SOLO el dueño la ve; RLS re-valida en servidor).
+    // Sin traducir a propósito: es la consola privada del admin.
+    isAdmin && React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
+      React.createElement("div",{className:"sc-title"},"👁 Actividad (solo tú)"),
+      row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ toggleExp("act"); if(events===null) loadEvents(); }),
+      expand==="act" && React.createElement("div",{className:"set-exp"},
+        events===null && React.createElement("div",{style:{fontSize:12,color:"var(--muted)",padding:"8px 0"}},"Cargando…"),
+        events!==null && events.length===0 && React.createElement("div",{style:{fontSize:12,color:"var(--muted)",padding:"8px 0"}},"Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
+        (events||[]).map(function(ev,i){
+          const d=new Date(ev.created_at);
+          const when=d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+          return React.createElement("div",{key:i,style:{padding:"8px 0",borderBottom:"1px dashed var(--line)",fontSize:12,lineHeight:1.5}},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",gap:8}},
+              React.createElement("span",{style:{fontWeight:800}},(ev.kind==="error"?"🐞 ":"👋 ")+(ev.email||"¿?")),
+              React.createElement("span",{style:{color:"var(--muted-2)",flex:"0 0 auto"}},when)),
+            ev.kind==="error" && React.createElement("div",{style:{color:"var(--coral)",overflowWrap:"anywhere"}},ev.message),
+            ev.kind==="error" && ev.detail && React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5,overflowWrap:"anywhere",maxHeight:60,overflow:"hidden"}},ev.detail),
+            React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5}},"v"+(ev.app_version||"?")+" · "+(ev.platform||"?"))
+          );
+        }),
+        events!==null && React.createElement("button",{style:Object.assign({},btnGhost,{marginTop:8}),onClick:loadEvents},"↻ Recargar")
+      )
+    ),
+    // ── Tarjeta · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
+    natPlugin() && React.createElement("div",{className:"set-card"},
+      React.createElement("div",{className:"sc-title"},t("st_updates")),
+      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates)
+    ),
     // ── Tarjeta 6 · copia de seguridad ──
     React.createElement("div",{className:"set-card"},
       React.createElement("div",{className:"sc-title"},t("backup")),
@@ -6187,7 +6293,11 @@ function Shared({state, set}){
 class ErrorBoundary extends React.Component{
   constructor(props){ super(props); this.state={err:null}; }
   static getDerivedStateFromError(err){ return {err:err}; }
-  componentDidCatch(err,info){ try{ console.error("App crash:",err,info); }catch(e){} }
+  componentDidCatch(err,info){
+    try{ console.error("App crash:",err,info); }catch(e){}
+    // telemetría solo-admin: el crash viaja a app_events para poder ayudar en remoto
+    try{ cloud.logEvent('error','CRASH: '+((err&&err.message)||String(err)), ((err&&err.stack)||'')+(info&&info.componentStack?'\n'+info.componentStack.slice(0,600):'')); }catch(e){}
+  }
   render(){
     if(!this.state.err) return this.props.children;
     const wrap={position:"fixed",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:13,padding:24,textAlign:"center",background:"#0B1410",color:"#E8F0EB",fontFamily:"Manrope,sans-serif",zIndex:9999};
@@ -6209,7 +6319,10 @@ function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
-  const [tabOrderState,setTabOrderState]=useState(null);   // (histórico) orden transitorio; hoy siempre null tras quitar el arrastre
+  const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
+  const tabDrag=useRef(null);
+  const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
+  const trashRef=useRef(null);
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
   const [gotoExp,setGotoExp]=useState(null);               // punto 5: gasto a enfocar al tocar la noti ({amount,merchant,ts})
   const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
@@ -6685,6 +6798,35 @@ function App(){
     // desinstalar/reinstalar y el gasto NO llega — bug Consum 2026-07-06). Arreglo en Ajustes.
     if(nat && nat.notifAccess){ try{ nat.notifAccess().then(function(r){ if(r&&r.granted===false) showToast(t("na_toast")); }).catch(function(){}); }catch(e){} }
   },[]);
+  // Telemetría solo-admin: errores no capturados de CUALQUIER usuario → app_events (RLS: solo
+  // los lee el admin) + ping 1×/día para saber quién usa la app. Cero datos financieros.
+  useEffect(function(){
+    const onErr=function(ev){ try{ cloud.logEvent('error', ev.message||'error', ((ev.error&&ev.error.stack)||String(ev.filename||'')+':'+(ev.lineno||'')) ); }catch(e){} };
+    const onRej=function(ev){ try{ const r=ev.reason; cloud.logEvent('error', 'Promise: '+(((r&&r.message)||String(r))).slice(0,300), r&&r.stack); }catch(e){} };
+    window.addEventListener("error", onErr);
+    window.addEventListener("unhandledrejection", onRej);
+    return function(){ window.removeEventListener("error", onErr); window.removeEventListener("unhandledrejection", onRej); };
+  },[]);
+  useEffect(function(){
+    if(!uid) return;
+    const today=new Date().toISOString().slice(0,10);
+    try{
+      if(localStorage.getItem("_evPing")===today) return;
+      localStorage.setItem("_evPing", today);
+    }catch(e){}
+    cloud.logEvent('ping','app abierta');
+  },[uid]);
+  // Solo admin: al abrir la app, avisa si hay errores NUEVOS de otros usuarios desde la última
+  // vez que miró el panel (Ajustes → Actividad lo marca como visto).
+  useEffect(function(){
+    const em=session&&session.user&&session.user.email;
+    if(em!=="juanjo.avila.chavero@gmail.com") return;
+    cloud.adminEvents(40).then(function(rows){
+      let seen=0; try{ seen=parseInt(localStorage.getItem("_evSeen")||"0",10)||0; }catch(e){}
+      const errs=(rows||[]).filter(function(r){ return r.kind==="error" && new Date(r.created_at).getTime()>seen; });
+      if(errs.length) showToast("🐞 "+errs.length+" error(es) nuevos de usuarios · Ajustes → Actividad");
+    }).catch(function(){});
+  },[session]);
   // Propaga al lector nativo si debe confirmar cada gasto con una noti (ajuste st_trnotif).
   // Se re-envía siempre que cambia Y al arrancar (una reinstalación pierde las prefs nativas).
   useEffect(function(){
@@ -6863,14 +7005,91 @@ function App(){
     const left = btn.offsetLeft - (bar.clientWidth/2) + (btn.clientWidth/2);
     try{ bar.scrollTo({left:Math.max(0,left),behavior:"smooth"}); }catch(e){ bar.scrollLeft=Math.max(0,left); }
   },[tab]);
-  // Rediseño 3: se ELIMINA el gesto oculto de reordenar la tabbar (mantener pulsado + arrastrar a
-  // una papelera) — se disparaba sin querer. Reordenar/ocultar pestañas ahora se hace de forma
-  // explícita en Ajustes › «✎ Editar pestañas» (settings.tabOrder / settings.tabHidden). La tabbar
-  // vuelve a ser solo scroll + tap. El botón «+» sigue sirviendo para volver a añadir pestañas ocultas.
+  /* ARRASTRE de pestañas por mantener pulsado, RESTAURADO a petición del usuario (2026-07-10;
+     se quitó en 3.83 y lo echaba de menos). Convive con Ajustes › «Editar pestañas»: los dos
+     escriben settings.tabOrder/tabHidden. Suelta sobre la papelera para ocultar (+ para recuperar). */
+  useEffect(function(){
+    const bar=tabbarRef.current; if(!bar) return;
+    const onTS=function(e){
+      const btn=e.target.closest && e.target.closest('[data-ti]'); if(!btn) return;
+      const tch=e.touches[0];
+      const order=tabOrderOf(stateRef.current);
+      // se arrastra la pestaña que TOCAS (no la activa): más natural
+      const ti=parseInt(btn.getAttribute('data-ti'),10);
+      const d={startX:tch.clientX,startY:tch.clientY,active:false,order:order,activeId:order[ti]||order[tabRef.current],timer:null,overTrash:false};
+      d.timer=setTimeout(function(){ d.active=true; bar.classList.add('reordering'); setTab(order.indexOf(d.activeId)); setTabOrderState(d.order.slice()); try{navigator.vibrate&&navigator.vibrate(15);}catch(_){} },380);
+      tabDrag.current=d;
+    };
+    const onTM=function(e){
+      const d=tabDrag.current; if(!d) return; const tch=e.touches[0];
+      if(!d.active){ if(Math.abs(tch.clientX-d.startX)>10||Math.abs(tch.clientY-d.startY)>10){ clearTimeout(d.timer); tabDrag.current=null; } return; }
+      e.preventDefault();
+      // ¿está el dedo sobre la papelera? → resáltala y no reordenes
+      const tr=trashRef.current;
+      if(tr){
+        const r=tr.getBoundingClientRect();
+        const over = tch.clientX>=r.left-10 && tch.clientX<=r.right+10 && tch.clientY>=r.top-10 && tch.clientY<=r.bottom+10;
+        if(over!==d.overTrash){ d.overTrash=over; setTrashHot(over); try{ if(over&&navigator.vibrate) navigator.vibrate(10); }catch(_){} }
+        if(over) return;
+      }
+      const kids=Array.prototype.slice.call(bar.querySelectorAll('[data-ti]'));
+      let target=-1,best=1e9;
+      kids.forEach(function(k,idx){ const r=k.getBoundingClientRect(); const c=r.left+r.width/2; const dist=Math.abs(c-tch.clientX); if(dist<best){best=dist;target=idx;} });
+      if(target<0) return;
+      const cur=d.order.indexOf(d.activeId);
+      if(target!==cur){ const o=d.order.slice(); o.splice(cur,1); o.splice(target,0,d.activeId); d.order=o; setTabOrderState(o.slice()); setTab(target); }
+    };
+    const onTE=function(){
+      const d=tabDrag.current; if(!d) return; clearTimeout(d.timer);
+      if(d.active){
+        bar.classList.remove('reordering'); setTrashHot(false);
+        if(d.overTrash && d.activeId!=="dash"){
+          // soltada en la papelera → se oculta (se recupera cuando quieras con el botón +)
+          const id=d.activeId; const fin=d.order.filter(function(x){ return x!==id; });
+          set(function(s){
+            const hid=tabHiddenOf(s); const nh=hid.indexOf(id)<0?hid.concat([id]):hid;
+            return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:nh, tabOrder:fin})});
+          });
+          setTab(Math.max(0, Math.min(d.order.indexOf(id), fin.length-1)));
+          setTabOrderState(null);
+          showToast(t("tb_removed"));
+        } else {
+          if(d.overTrash) showToast(t("tb_nodel"));   // el Resumen es fijo
+          const fin=d.order.slice();
+          set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{tabOrder:fin})}); });
+          setTab(fin.indexOf(d.activeId)); setTabOrderState(null);
+        }
+      }
+      tabDrag.current=null;
+    };
+    bar.addEventListener('touchstart',onTS,{passive:true});
+    bar.addEventListener('touchmove',onTM,{passive:false});
+    bar.addEventListener('touchend',onTE,{passive:true});
+    bar.addEventListener('touchcancel',onTE,{passive:true});
+    return function(){ bar.removeEventListener('touchstart',onTS); bar.removeEventListener('touchmove',onTM); bar.removeEventListener('touchend',onTE); bar.removeEventListener('touchcancel',onTE); };
+    // deps: si la app arranca en el candado o el onboarding, la tabbar aún no existe en el
+    // primer montaje y los listeners no se instalarían nunca; al desbloquear se re-ejecuta.
+  },[locked, state.onboarded]);
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
   const tabIds = tabOrderState || tabOrderOf(state);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
+  // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
+  // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.
+  window.__mcBlocksEdit = !!(state.settings && state.settings.blocksEdit);
+  window.__mcCardHidden = (state.settings && state.settings.cardHidden) || [];
+  useEffect(function(){
+    const h=function(e){
+      const k=e&&e.detail; if(!k) return;
+      set(function(s){
+        const cur=(s.settings&&s.settings.cardHidden)||[];
+        const n=cur.indexOf(k)>=0?cur.filter(function(x){return x!==k;}):cur.concat([k]);
+        return Object.assign({},s,{settings:Object.assign({},s.settings,{cardHidden:n})});
+      });
+    };
+    window.addEventListener("mc-card-toggle",h);
+    return function(){ window.removeEventListener("mc-card-toggle",h); };
+  },[]);
   const TABBYID={}; TABS.forEach(function(tt){ TABBYID[tt.id]=tt; });
   const hiddenTabIds = TABS.map(function(tt){return tt.id;}).filter(function(id){ return tabIds.indexOf(id)<0; });
   const pageFor=function(id){
@@ -6913,6 +7132,9 @@ function App(){
         hiddenTabIds.length>0 && React.createElement("button",{key:"__add",className:"tab tab-add",onClick:function(){ setAddTab(true); },"aria-label":t("tb_add")},"+")
       )
     ),
+    // Papelera: aparece mientras arrastras una pestaña; suéltala encima para quitarla
+    tabOrderState && React.createElement("div",{ref:trashRef,className:"tab-trash"+(trashHot?" hot":"")},
+      React.createElement("span",{className:"tt-ic"},"🗑"), " ", t("tb_trash")),
     // Hoja "añadir pestaña": lista de tabs ocultas; tocar una la añade al final de la barra
     addTab && React.createElement("div",{className:"tabsheet-back",onClick:function(){ setAddTab(false); }},
       React.createElement("div",{className:"tabsheet",onClick:function(e){ e.stopPropagation(); }},

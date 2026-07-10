@@ -19,6 +19,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.85.0] — 2026-07-10
+### Personalización total, telemetría del admin y alpha10 (estreno del botón de actualizar)
+- 🖐️ **Vuelve arrastrar pestañas:** mantén pulsada una pestaña para moverla o arrastrarla a la papelera para quitarla (se pidió de vuelta — se quitó en 3.83). El editor de Ajustes sigue existiendo: son dos caminos al mismo sitio.
+- 🧩 **Ocultar bloques en cualquier pestaña:** nuevo interruptor en Ajustes › Personalización — cada tarjeta de Gastos/Fijos/Inversiones/Patrimonio/Deudas muestra «Ocultar»; las ocultas se recuperan reactivando el modo. Se sincroniza entre dispositivos.
+- 🧹 **Fuera personalizaciones del creador:** eliminado el mantener-pulsado sobre el patrimonio que lo leía en voz alta (se disparaba sin querer) y el botón «✎ Personalizar» del Resumen (ya vive en Ajustes).
+- 👁 **Telemetría solo-admin:** los errores de la app (crashes, promesas rotas) y un ping diario de uso viajan a una tabla que SOLO puede leer el dueño (RLS por email). Panel «Actividad» en Ajustes + aviso al abrir si hay errores nuevos de otros usuarios. Sin datos financieros. *(Requiere migración 0006_app_events.sql.)*
+- 🔎 **«Buscar actualización» en Ajustes (app Android):** consulta al momento si hay APK o web nueva, sin esperar al arranque; muestra las versiones instaladas.
+- 📦 **APK alpha10:** lleva el fix del 2FA de Trade Republic en cada sincronización (el APK que circuló de alpha9 podía ser anterior al fix). Es la primera actualización que llega por el botón «Actualizar app».
+
 ## [3.84.0] — 2026-07-10
 ### Feedback de la pareja: actualizar sin cable, el banco vuelve a la app y notis domadas (APK alpha9)
 - ⬇️ **Actualizar la app sin cable:** cuando hay APK nuevo, aparece el botón «App … lista · toca para instalar»: la app lo descarga sola (GitHub Releases) y abre el instalador de Android — se instala encima manteniendo datos, sesión y permisos. Se acabó el `adb install` y pasarse el archivo. La primera vez Android pide permitir «instalar apps desconocidas» para Mi Cartera (una sola vez). Los cambios solo-web siguen llegando solos por OTA como hasta ahora.
