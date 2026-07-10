@@ -11,10 +11,31 @@ import { ebApi, ebConfig, makeJWT } from "../_shared/enablebanking.ts";
 
 const APP_URL = Deno.env.get("APP_URL") || "https://juanjoavila.github.io/Mi-Cartera/";
 
+// Vuelta a la app o a la web según de dónde salió el usuario (bank-connect marca el state
+// con ".app" cuando la petición vino de la APK). En la web basta un 302 a Pages; en la app
+// el navegador del sistema no puede "volver" solo → servimos una página puente que navega a
+// micartera://bank (deep-link que reabre Mi Cartera; MainActivity lo convierte en un goto).
+// El botón queda de fallback por si el navegador bloquea la navegación automática al esquema.
+function backToApp(ok: boolean, msg?: string): Response {
+  const target = "micartera://bank" + (ok ? "?ok=1" : `?msg=${encodeURIComponent(msg || "error")}`);
+  const icon = ok ? "✅" : "⚠️";
+  const label = ok ? "Banco conectado" : "No se pudo conectar el banco";
+  const html = `<!doctype html><html lang="es"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Mi Cartera</title>
+<body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0B1410;color:#E8F0EB;font-family:sans-serif;text-align:center;padding:24px;box-sizing:border-box">
+<div style="font-size:44px">${icon}</div><div style="font-size:17px;font-weight:700">${label}</div>
+${ok ? "" : `<div style="font-size:13px;color:#9fb3a8;max-width:340px;overflow-wrap:anywhere">${(msg || "").replace(/[<>&]/g, "")}</div>`}
+<a href="${target}" style="background:#5FD08A;color:#06120C;padding:14px 26px;border-radius:14px;font-weight:800;text-decoration:none;font-size:15px">Volver a Mi Cartera</a>
+<script>setTimeout(function(){ location.href=${JSON.stringify(target)}; }, 400);</script>
+</body></html>`;
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
+  const fromApp = !!state && state.endsWith(".app");
   const ebError = url.searchParams.get("error") || url.searchParams.get("error_description");
   const rawQuery = url.search || "(vacío)";
   try {
@@ -107,7 +128,9 @@ Deno.serve(async (req) => {
       // No es un bug de código: hay que enlazarla en el control panel. Devolvemos un código corto
       // (`nolink:<banco>`) que la app traduce a un mensaje accionable en el idioma del usuario.
       if (sessionId) {
-        return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent("nolink:" + (link.aspsp_name || ""))}`, 302);
+        const nolink = "nolink:" + (link.aspsp_name || "");
+        if (fromApp) return backToApp(false, nolink);
+        return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent(nolink)}`, 302);
       }
       // Caso raro y distinto (ni siquiera hubo sesión): diagnóstico crudo para depurar.
       const nAcc = Array.isArray(session.accounts) ? session.accounts.length : -1;
@@ -115,11 +138,15 @@ Deno.serve(async (req) => {
       const status = session.status || session.session_status || "?";
       const accessTxt = session.access ? JSON.stringify(session.access).slice(0, 140) : "(sin access)";
       const detail = `sin cuenta · POST a${nAcc}/d${nData} st:${status} · GET ${getDiag} · access:${accessTxt}`;
+      if (fromApp) return backToApp(false, detail);
       return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent(detail)}`, 302);
     }
 
+    if (fromApp) return backToApp(true);
     return Response.redirect(`${APP_URL}?bank=ok`, 302);
   } catch (e) {
-    return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent(String((e as Error)?.message || e))}`, 302);
+    const msg = String((e as Error)?.message || e);
+    if (fromApp) return backToApp(false, msg);
+    return Response.redirect(`${APP_URL}?bank=error&msg=${encodeURIComponent(msg)}`, 302);
   }
 });

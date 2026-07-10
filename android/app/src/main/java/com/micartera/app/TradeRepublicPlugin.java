@@ -66,6 +66,10 @@ public class TradeRepublicPlugin extends Plugin {
                 if (res.optBoolean("authExpired", false)) {
                     prefs().edit().putBoolean("connected", false).apply();  // sesión caducó → pedir reconexión
                 }
+                // Persistir cookies AHORA (tr_session/tr_refresh acaban de sentarse o rotar).
+                // Antes se hacía flush() síncrono en verify(), ANTES de que el fetch async
+                // terminara → la sesión podía no llegar a disco y el 2FA volvía tras reiniciar.
+                CookieManager.getInstance().flush();
                 call.resolve(res);
             } catch (Exception e) {
                 resolveErr(call, "respuesta ilegible de TR");
@@ -165,21 +169,21 @@ public class TradeRepublicPlugin extends Plugin {
             "if(r.status===200||r.status===201)return JSON.stringify({ok:true});" +
             "return JSON.stringify({ok:false,status:r.status,error:(j.errors&&j.errors[0]&&j.errors[0].errorMessage)||('código HTTP '+r.status)});"
         ));
-        CookieManager.getInstance().flush();
+        // (el flush de cookies se hace en Bridge.result, CUANDO el verify async ha terminado)
     }
 
     @PluginMethod
     public void sync(final PluginCall call) {
         final String id = track(call);
         ensureWeb(() -> run(id,
-            // REFRESCO DE SESIÓN (2026-07-06): las sesiones web de TR caducan rápido, pero la
-            // cookie tr_refresh permite renovar tr_session SIN 2FA llamando al endpoint de
-            // sesión (el mismo que usa la web de TR). Se intenta SIEMPRE antes del WS
-            // (best-effort: si el endpoint cambia o falla, el WS dirá authExpired y la UI
-            // vuelve al login, como antes). Si el refresh renueva, el usuario ni se entera.
-            "const refresh=async()=>{const tries=[['POST','/api/v1/auth/web/session'],['GET','/api/v1/auth/web/session'],['GET','/api/v2/auth/web/session']];" +
-            "for(const t of tries){try{const r=await fetch('https://api.traderepublic.com'+t[1],{method:t[0],credentials:'include'});" +
-            "if(r.status===200||r.status===201)return true;}catch(e){}}return false;};" +
+            // REFRESCO DE SESIÓN (corregido 2026-07-10): tr_session dura ~290 s y se renueva
+            // SIN 2FA con GET /api/v1/auth/web/session (cookie tr_refresh) — exactamente lo que
+            // hace pytr antes de cada petición. La versión anterior probaba PRIMERO un POST a
+            // ese endpoint y si devolvía 200 se saltaba el GET: el POST no renueva y el usuario
+            // acababa en el login+2FA en CADA sync. Devuelve "" si ok o el motivo si falla
+            // (viaja en el mensaje de error para poder diagnosticar en remoto).
+            "const refresh=async()=>{try{const r=await fetch('https://api.traderepublic.com/api/v1/auth/web/session',{method:'GET',credentials:'include'});" +
+            "if(r.status===200||r.status===201)return '';return 'HTTP '+r.status;}catch(e){return String(e&&e.message||e);}};" +
             // Protocolo real de TR (mapeado en vivo 2026-07): connect 31 → "connected";
             //   sub {id} {type:compactPortfolioByType} → {categories:[{positions:[{isin,netSize,averageBuyIn,name}]}]}
             //   sub {id} {type:availableCash}          → [{currencyId,amount}]
@@ -218,10 +222,10 @@ public class TradeRepublicPlugin extends Plugin {
               "if(positions&&Object.keys(price).length>=positions.length&&cash!=null)finishOk();}" +
             "};});" +
             // Orquestación: refresca → sincroniza → si aún caduca, refresca otra vez y reintenta 1 vez.
-            "const refreshed=await refresh();" +
+            "const rerr=await refresh();" +
             "let r=await trySync();" +
-            "if(!r.ok&&r.authExpired&&!refreshed){if(await refresh())r=await trySync();}" +
-            "if(!r.ok&&r.authExpired)r.error='Tu sesión de TR caducó. Pulsa «Desconectar» y vuelve a conectar.';" +
+            "if(!r.ok&&r.authExpired&&rerr){if(!(await refresh()))r=await trySync();}" +
+            "if(!r.ok&&r.authExpired)r.error='Tu sesión de TR caducó (refresh: '+(rerr===''?'ok':rerr)+'). Pulsa «Desconectar» y vuelve a conectar.';" +
             "return r;"
         ));
     }

@@ -4,8 +4,16 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.biometric.BiometricManager;
@@ -34,6 +42,14 @@ import com.getcapacitor.annotation.PermissionCallback;
  *   - openNotifAccess()       -> abre Ajustes → Acceso a notificaciones para reactivarlo
  *   - consumeGoto()           -> { goto? } deep-link pendiente al tocar la noti de un gasto (punto 5);
  *                                la web salta a Gastos y abre la ficha. Se limpia al leerlo.
+ *   - appInfo()               -> { versionName, versionCode } del APK instalado (la web lo
+ *                                compara con apk.json de Pages para el botón «Actualizar app»)
+ *   - installApk({url})       -> descarga el APK nuevo y abre el instalador del sistema
+ *                                (actualización SIN cable; instala encima, mantiene datos).
+ *                                { ok:false, needsPermission:true } si falta el permiso
+ *                                "instalar apps desconocidas" (se abre el ajuste; reintentar).
+ *   - setNotifPrefs({expenseConfirm}) -> si el lector TR enseña la noti "✓ Gasto apuntado"
+ *                                (los avisos de presupuesto salen siempre).
  */
 @CapacitorPlugin(
         name = "MiCartera",
@@ -151,6 +167,79 @@ public class MiCarteraPlugin extends Plugin {
         JSObject r = new JSObject();
         if (g != null) r.put("goto", g);
         call.resolve(r);
+    }
+
+    @PluginMethod
+    public void appInfo(PluginCall call) {
+        try {
+            PackageInfo pi = getContext().getPackageManager().getPackageInfo(getContext().getPackageName(), 0);
+            long code = Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+            JSObject r = new JSObject();
+            r.put("versionName", pi.versionName);
+            r.put("versionCode", (int) code);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
+    @PluginMethod
+    public void installApk(PluginCall call) {
+        final String url = call.getString("url", "");
+        if (url == null || url.isEmpty()) { call.reject("falta url"); return; }
+        final Context ctx = getContext();
+        // Android 8+: sin el permiso "instalar apps desconocidas" el instalador ni se abre.
+        // Lo llevamos a su ajuste (es un toggle por app, se concede UNA vez) y la web reintenta.
+        if (Build.VERSION.SDK_INT >= 26 && !ctx.getPackageManager().canRequestPackageInstalls()) {
+            try {
+                Intent i = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + ctx.getPackageName()));
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
+            } catch (Exception ignored) {}
+            JSObject r = new JSObject();
+            r.put("ok", false);
+            r.put("needsPermission", true);
+            call.resolve(r);
+            return;
+        }
+        new Thread(() -> {
+            try {
+                File dir = new File(ctx.getCacheDir(), "updates");
+                //noinspection ResultOfMethodCallIgnored
+                dir.mkdirs();
+                File apk = new File(dir, "mi-cartera-update.apk");
+                HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+                conn.setConnectTimeout(20000);
+                conn.setReadTimeout(120000);
+                conn.setInstanceFollowRedirects(true);   // GitHub Releases redirige al CDN
+                try (InputStream in = conn.getInputStream(); FileOutputStream out = new FileOutputStream(apk)) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) != -1) out.write(buf, 0, n);
+                }
+                conn.disconnect();
+                Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                        ctx, ctx.getPackageName() + ".fileprovider", apk);
+                Intent install = new Intent(Intent.ACTION_VIEW);
+                install.setDataAndType(uri, "application/vnd.android.package-archive");
+                install.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                ctx.startActivity(install);
+                JSObject r = new JSObject();
+                r.put("ok", true);
+                call.resolve(r);
+            } catch (Exception e) {
+                call.reject("descarga falló: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    @PluginMethod
+    public void setNotifPrefs(PluginCall call) {
+        Boolean confirm = call.getBoolean("expenseConfirm", true);
+        getContext().getSharedPreferences("micartera_notifprefs", Context.MODE_PRIVATE)
+                .edit().putBoolean("expenseConfirm", confirm == null || confirm).apply();
+        call.resolve();
     }
 
     @PluginMethod

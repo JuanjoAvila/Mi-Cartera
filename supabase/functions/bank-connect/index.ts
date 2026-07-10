@@ -25,7 +25,10 @@ Deno.serve(async (req) => {
 
     const { appId, pem } = ebConfig();
     const jwt = await makeJWT(appId, pem);
-    const state = crypto.randomUUID();
+    // Si la petición viene de la APP Android (body.platform), el state lleva el sufijo ".app":
+    // bank-callback lo detecta y en vez de volver a la web devuelve la página puente que salta
+    // a micartera://bank (deep-link de vuelta a la app). Sin tocar el esquema de bank_links.
+    const state = crypto.randomUUID() + (body.platform === "app" ? ".app" : "");
     const redirect = Deno.env.get("EB_REDIRECT_URL") || `${SUPABASE_URL}/functions/v1/bank-callback`;
     const validUntil = new Date(Date.now() + 89 * 24 * 3600 * 1000).toISOString();
 

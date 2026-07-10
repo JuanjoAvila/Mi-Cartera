@@ -19,6 +19,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.84.0] — 2026-07-10
+### Feedback de la pareja: actualizar sin cable, el banco vuelve a la app y notis domadas (APK alpha9)
+- ⬇️ **Actualizar la app sin cable:** cuando hay APK nuevo, aparece el botón «App … lista · toca para instalar»: la app lo descarga sola (GitHub Releases) y abre el instalador de Android — se instala encima manteniendo datos, sesión y permisos. Se acabó el `adb install` y pasarse el archivo. La primera vez Android pide permitir «instalar apps desconocidas» para Mi Cartera (una sola vez). Los cambios solo-web siguen llegando solos por OTA como hasta ahora.
+- 🏦 **Conectar el banco ya no te abandona en el navegador (bloqueante 3):** al autorizar en Revolut/Sabadell/etc., la página de vuelta salta directa a la app (deep-link `micartera://`), que confirma la conexión y sincroniza al momento. Antes te quedabas en el navegador viendo la versión web.
+- 🔕 **Notis de gasto sin duplicados (punto 7):** Android re-entrega la misma notificación de TR cuando esta se actualiza y salía otra confirmación; ahora se ignoran las repeticiones (mismo texto en <3 min).
+- ⚙️ **«Avisar de cada gasto apuntado» es opcional (punto 9):** nuevo interruptor en Ajustes — si TR ya te avisa del cargo, puedes apagar la confirmación de Mi Cartera; los avisos de presupuesto (80 %, superado, gasto tocho) siguen llegando siempre.
+- 🎯 **La noti abre el gasto CORRECTO (punto 8):** al tocarla, la app sincroniza primero y espera a que el gasto baje de la nube antes de abrir su ficha (antes podía abrir el último gasto a ciegas si la sincronización no había terminado).
+- 🧭 **Onboarding y bancos, cada cosa en su sitio (puntos 4 y 5):** «Mis bancos» vacío ahora explica que las cuentas apuntadas a mano viven en Patrimonio y que conectar el banco (Open Banking) es opcional; y en la bienvenida hay botón «Crear cuenta nueva» directo (antes tocaba pasar por «Iniciar sesión» y buscar el enlace pequeño).
+- 👻 **Fuera brókers fantasma (punto 6):** Inversiones y Patrimonio solo muestran los brókers donde tienes posiciones; a los usuarios nuevos ya no les aparece MyInvestor/Revolut/TR sin haberlos tocado.
+- 🤝 **TR utilizable sin cartera previa:** al sincronizar Trade Republic, las posiciones que no casan con nada se pueden **crear** como posiciones nuevas (opción «➕ Crear como posición nueva», por defecto si empiezas de cero) y el efectivo crea la cuenta TR si no existe. Antes un usuario nuevo se quedaba clavado en «Aplicar a 0 posiciones».
+- 🔁 **Adiós al 2FA en cada sincronización de TR (esperemos):** el refresco de sesión llamaba primero a un endpoint que NO renueva y se daba por satisfecho; ahora renueva como pytr (`GET /auth/web/session` con la cookie `tr_refresh`) y las cookies se persisten cuando de verdad existen (tras el verify, no antes). Si aún caduca, el error ahora dice POR QUÉ falló el refresh. **(nativo, APK alpha9)**
+- 💅 **Ajustes rediseñados (Claude Design):** tarjetas con filas agrupadas — Idioma y Tema con su valor y desplegable, Letra grande y Modo sencillo con interruptor, sección «Personalización» (widgets del Resumen + editar pestañas), presupuesto, moneda, bancos, notificaciones y copia de seguridad, cada cosa en su tarjeta. «Personalizar widgets del Resumen» ahora vive en Ajustes y te lleva directo al modo edición.
+
 ## [3.83.0] — 2026-07-07
 ### Pestaña «Logros», editar pestañas explícito y noti → ficha del gasto (APK nuevo)
 - 🏅 **Nueva pestaña «Logros»:** la gamificación (nivel, retos del mes, medallas) sale de «Metas» y tiene su propia pantalla. «Metas» queda limpia (solo tus metas de ahorro); el Resumen resume racha+nivel en el titular y el detalle vive en Logros. Se oculta en modo sencillo.

@@ -22,6 +22,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep-link micartera:// — la vuelta del login del banco (Open Banking): bank-callback
+                 sirve una página puente que navega a micartera://bank?ok=1 (o ?msg=...). MainActivity
+                 lo guarda como "goto" y la web lo consume al volver (mismo mecanismo que las notis). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="micartera" />
+            </intent-filter>
+
         </activity>
 
         <!-- Lector de la notificación de gasto de Trade Republic (reemplazo de MacroDroid).
@@ -68,4 +78,6 @@
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Notificaciones locales (Android 13+): confirmación de gasto capturado y avisos de presupuesto -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Botón «Actualizar app»: descargar el APK nuevo y abrir el instalador (sin cable) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

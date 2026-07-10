@@ -19,5 +19,8 @@ Thumbs.db
 /tmp/
 # Bundle local de la app Android (lo genera scripts/build-www.mjs desde public/)
 /www/
+# APKs generadas localmente para compartir (build/outputs ya está gitignored por Android;
+# esta es la copia suelta en la raíz para pasar por WhatsApp/Drive, no es código del repo)
+*.apk
 # Tooling local de Claude (preview launch.json, settings locales) — no es código de la app
 .claude/
