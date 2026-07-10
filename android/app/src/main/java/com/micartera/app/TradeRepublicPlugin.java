@@ -145,6 +145,11 @@ public class TradeRepublicPlugin extends Plugin {
                 web.addJavascriptInterface(new Bridge(), "AndroidTR");
                 CookieManager.getInstance().setAcceptCookie(true);
                 CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
+                // ARRANQUE EN FRÍO (alpha14): la cookie aws-waf-token sobrevive al matar la app y el
+                // SDK la reutiliza RANCIA (el WAF ya la rechaza) → challenge que nunca se rehace →
+                // "Failed to fetch" eterno. La purgamos SOLO a ella (no tr_session/tr_refresh) para
+                // forzar un challenge nuevo en esta primera carga.
+                clearWafToken();
                 web.setWebViewClient(new WebViewClient() {
                     @Override public void onPageFinished(WebView v, String url) {
                         loaded = true; loading = false;
@@ -169,9 +174,20 @@ public class TradeRepublicPlugin extends Plugin {
         if (act == null || web == null) { if (then != null) then.run(); return; }
         act.runOnUiThread(() -> {
             loaded = false; loading = true;
+            clearWafToken();   // recarga = challenge WAF de cero: fuera el token viejo antes
             if (then != null) readyQueue.add(then);
             web.loadUrl(TR_APP);
         });
+    }
+
+    /** Caduca SOLO la cookie aws-waf-token en los dominios de TR (no toca la sesión). */
+    private void clearWafToken() {
+        CookieManager cm = CookieManager.getInstance();
+        String expire = "aws-waf-token=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Path=/;";
+        cm.setCookie("https://app.traderepublic.com", expire);
+        cm.setCookie("https://api.traderepublic.com", expire);
+        cm.setCookie("https://traderepublic.com", expire);
+        cm.flush();
     }
 
     private void drainReady() {
@@ -204,7 +220,7 @@ public class TradeRepublicPlugin extends Plugin {
             PluginCall stale = pending.remove(id);
             bodies.remove(id); retriedIds.remove(id); verifyIds.remove(id);
             if (stale != null) resolveErr(stale, "TR no respondió (timeout) · reintenta");
-        }, 45000);
+        }, 60000);
         return id;
     }
 
@@ -275,13 +291,18 @@ public class TradeRepublicPlugin extends Plugin {
             // dominio app.* que NO viaja a api.* → nunca arreglaba nada. Ahora wfetch() usa el wrapper
             // oficial AwsWafIntegration.fetch (cabecera x-aws-waf-token, que SÍ cruza subdominios).
             // Devuelve "" si ok, o el motivo (con estado del SDK) si falla — ya no a ciegas.
+            // ARRANQUE EN FRÍO (alpha14): el challenge del AWS WAF tarda unos segundos en producir un
+            // token VÁLIDO tras cargar la página. Disparar una sola vez (a los 600 ms) llega demasiado
+            // pronto → "Failed to fetch". Reintentamos con espera creciente (~22 s) forzando token
+            // nuevo entre intentos, hasta que el refresh entre. En caliente el token ya vale → entra al
+            // primer intento sin esperar. 401 = sesión de VERDAD caducada (2FA) → no insistir.
+            "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));" +
             "const refreshOnce=async()=>{const r=await wfetch('https://api.traderepublic.com/api/v1/auth/web/session',{method:'GET',credentials:'include',headers:{}});return r.status;};" +
-            "const refresh=async()=>{" +
-            "try{const s=await refreshOnce();if(s===200||s===201)return '';" +
-            "if(s===401||s===403||s===405){await wafToken(true);const s2=await refreshOnce();return (s2===200||s2===201)?'':('HTTP '+s2);}" +
-            "return 'HTTP '+s;}" +
-            "catch(e){await wafToken(true);try{const s3=await refreshOnce();return (s3===200||s3===201)?'':('HTTP '+s3);}" +
-            "catch(e2){return String(e2&&e2.message||e2)+' ['+wafInfo()+']';}}};" +
+            "const refresh=async()=>{const delays=[0,1200,2500,4000,6000,8000];let last='';" +
+            "for(let i=0;i<delays.length;i++){if(delays[i])await sleep(delays[i]);if(i>0)await wafToken(true);" +
+            "try{const s=await refreshOnce();if(s===200||s===201)return '';if(s===401){return 'HTTP 401';}last='HTTP '+s;}" +
+            "catch(e){last=String(e&&e.message||e)+' ['+wafInfo()+']';}}" +
+            "return last;};" +
             // Protocolo real de TR (mapeado en vivo 2026-07): connect 31 → "connected";
             //   sub {id} {type:compactPortfolioByType} → {categories:[{positions:[{isin,netSize,averageBuyIn,name}]}]}
             //   sub {id} {type:availableCash}          → [{currencyId,amount}]
@@ -319,10 +340,12 @@ public class TradeRepublicPlugin extends Plugin {
               "if(p&&price[p.isin]==null){const pr=(j.last&&j.last.price)||(j.bid&&j.bid.price)||(j.ask&&j.ask.price);if(pr!=null){price[p.isin]=Number(pr);try{ws.send('unsub '+fid);}catch(e){}}}" +
               "if(positions&&Object.keys(price).length>=positions.length&&cash!=null)finishOk();}" +
             "};});" +
-            // Orquestación: refresca → sincroniza → si aún caduca, refresca otra vez y reintenta 1 vez.
+            // Orquestación: refresca (con backoff ~22s) → sincroniza → si aún caduca, UN disparo
+            // forzado más (no otro backoff, para no reventar el timeout) y reintenta 1 vez.
+            "const refreshForced=async()=>{await wafToken(true);try{const s=await refreshOnce();return (s===200||s===201)?'':('HTTP '+s);}catch(e){return String(e&&e.message||e);}};" +
             "const rerr=await refresh();" +
             "let r=await trySync();" +
-            "if(!r.ok&&r.authExpired&&rerr){if(!(await refresh()))r=await trySync();}" +
+            "if(!r.ok&&r.authExpired&&rerr){if(!(await refreshForced()))r=await trySync();}" +
             "if(!r.ok&&r.authExpired)r.error='Tu sesión de TR caducó (refresh: '+(rerr===''?'ok':rerr)+'). Pulsa «Desconectar» y vuelve a conectar.';" +
             "return r;"
         ));

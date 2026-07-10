@@ -1,6 +1,6 @@
 {
-  "versionCode": 13,
-  "versionName": "4.0.0-alpha13",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha13/Mi-Cartera.apk",
-  "notes": "TR en frío con red de seguridad: token del WAF forzado y, si aun así falla, la app recarga la página de TR por dentro y reintenta sola (+ timeout para que el botón nunca se quede girando)."
+  "versionCode": 14,
+  "versionName": "4.0.0-alpha14",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha14/Mi-Cartera.apk",
+  "notes": "TR en frío, diagnóstico nuevo: el problema era de TIEMPO, no de token rancio. El challenge del AWS WAF tarda unos segundos en dar un token válido y antes disparábamos demasiado pronto. Ahora se reintenta con esperas crecientes (~22 s) hasta que entra, se limpia el token viejo del WAF al abrir en frío, y sube el margen del timeout a 60 s."
 }
