@@ -145,13 +145,20 @@ public class TradeRepublicPlugin extends Plugin {
         final String pin = call.getString("pin", "");
         if (phone.isEmpty() || pin.isEmpty()) { resolveErr(call, "faltan teléfono o PIN"); return; }
         final String id = track(call);
+        // El login también pasa por el AWS WAF: en frío (token caducado) el primer POST puede
+        // fallar sin CORS o con 403/405 → token fresco del SDK de la página y UN reintento.
         ensureWeb(() -> run(id,
-            "const r=await fetch('https://api.traderepublic.com/api/v1/auth/web/login',{" +
+            "const wafReady=async()=>{try{if(window.AwsWafIntegration&&window.AwsWafIntegration.getToken){await window.AwsWafIntegration.getToken();return true;}}catch(e){}" +
+            "await new Promise(r=>setTimeout(r,2500));return false;};" +
+            "const call=async()=>{const r=await fetch('https://api.traderepublic.com/api/v1/auth/web/login',{" +
             "method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}," +
             "body:JSON.stringify({phoneNumber:" + jsStr(phone) + ",pin:" + jsStr(pin) + "})});" +
-            "const t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}" +
-            "if(r.status===200||r.status===201)return JSON.stringify({ok:true,processId:j.processId||j.processID||null,countdown:j.countdownInSeconds||null});" +
-            "return JSON.stringify({ok:false,status:r.status,error:(j.errors&&j.errors[0]&&j.errors[0].errorMessage)||('login HTTP '+r.status)});"
+            "const t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}return {status:r.status,j:j};};" +
+            "let res;" +
+            "try{res=await call();}catch(e){await wafReady();res=await call();}" +
+            "if(res.status===403||res.status===405){await wafReady();res=await call();}" +
+            "if(res.status===200||res.status===201)return JSON.stringify({ok:true,processId:res.j.processId||res.j.processID||null,countdown:res.j.countdownInSeconds||null});" +
+            "return JSON.stringify({ok:false,status:res.status,error:(res.j.errors&&res.j.errors[0]&&res.j.errors[0].errorMessage)||('login HTTP '+res.status)});"
         ));
     }
 
@@ -178,12 +185,21 @@ public class TradeRepublicPlugin extends Plugin {
         ensureWeb(() -> run(id,
             // REFRESCO DE SESIÓN (corregido 2026-07-10): tr_session dura ~290 s y se renueva
             // SIN 2FA con GET /api/v1/auth/web/session (cookie tr_refresh) — exactamente lo que
-            // hace pytr antes de cada petición. La versión anterior probaba PRIMERO un POST a
-            // ese endpoint y si devolvía 200 se saltaba el GET: el POST no renueva y el usuario
-            // acababa en el login+2FA en CADA sync. Devuelve "" si ok o el motivo si falla
-            // (viaja en el mensaje de error para poder diagnosticar en remoto).
-            "const refresh=async()=>{try{const r=await fetch('https://api.traderepublic.com/api/v1/auth/web/session',{method:'GET',credentials:'include'});" +
-            "if(r.status===200||r.status===201)return '';return 'HTTP '+r.status;}catch(e){return String(e&&e.message||e);}};" +
+            // hace pytr antes de cada petición. Devuelve "" si ok o el motivo si falla.
+            // SEGUNDA VUELTA (diagnóstico real del usuario: «refresh: Failed to fetch»): con el
+            // token del AWS WAF caducado (arranque en frío), el challenge del WAF responde SIN
+            // cabeceras CORS y el fetch peta a nivel de red. La página de TR que tenemos cargada
+            // trae el SDK del WAF (window.AwsWafIntegration): le pedimos token fresco y
+            // reintentamos. Cubre también 403/405 (challenge CON respuesta).
+            "const wafReady=async()=>{try{if(window.AwsWafIntegration&&window.AwsWafIntegration.getToken){await window.AwsWafIntegration.getToken();return true;}}catch(e){}" +
+            "await new Promise(r=>setTimeout(r,2500));return false;};" +   // sin SDK: dar aire al challenge de la página
+            "const refreshOnce=async()=>{const r=await fetch('https://api.traderepublic.com/api/v1/auth/web/session',{method:'GET',credentials:'include'});return r.status;};" +
+            "const refresh=async()=>{" +
+            "try{const s=await refreshOnce();if(s===200||s===201)return '';" +
+            "if(s===403||s===405){await wafReady();const s2=await refreshOnce();return (s2===200||s2===201)?'':('HTTP '+s2);}" +
+            "return 'HTTP '+s;}" +
+            "catch(e){try{await wafReady();const s3=await refreshOnce();return (s3===200||s3===201)?'':('HTTP '+s3);}" +
+            "catch(e2){return String(e2&&e2.message||e2);}}};" +
             // Protocolo real de TR (mapeado en vivo 2026-07): connect 31 → "connected";
             //   sub {id} {type:compactPortfolioByType} → {categories:[{positions:[{isin,netSize,averageBuyIn,name}]}]}
             //   sub {id} {type:availableCash}          → [{currencyId,amount}]

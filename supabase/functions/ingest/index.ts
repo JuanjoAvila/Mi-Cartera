@@ -69,6 +69,11 @@ function clasificar(texto: string, titulo: string): Tipo {
     "deposito", "has anadido", "anadido dinero", "ingresado en tu cuenta", "recarga", "top up", "top-up",
     "alerta de precio", "precio objetivo", "cotizacion",
     "inicio de sesion", "codigo", "seguridad", "dispositivo",
+    // Pagos con confirmación 3DS (bug cobro doble 2026-07-10: multa DGT de 50 € entró 2 veces):
+    // TR notifica primero "confirma/autoriza el pago" y DESPUÉS "has pagado". La primera es un
+    // aviso de autorización, no un cargo → fuera. (La ventana anti-duplicado de abajo remata.)
+    "confirma", "confirmar", "autoriza", "autorizacion", "aprueba", "aprobacion",
+    "verifica el pago", "verificacion", "3d secure", "3ds", "pendiente de confirmacion",
   ];
   if (IGNORAR.some((k) => t.includes(k))) return "ignorado";
 
@@ -173,6 +178,21 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  // VENTANA ANTI-DUPLICADO (bug cobro doble 2026-07-10): el índice de dedup exige el MISMO
+  // timestamp, pero un pago con confirmación genera dos notis con minutos de diferencia
+  // (autorizar → cargo) y entraba dos veces. Mismo usuario + mismo importe a <10 min = el
+  // mismo movimiento → se ignora. (Dos compras REALES idénticas en <10 min es rarísimo;
+  // si pasa, se apunta a mano — mejor eso que cobros fantasma duplicados.)
+  const t0 = new Date(fecha).getTime();
+  const { data: dupRows } = await supabase
+    .from("expenses").select("fecha")
+    .eq("user_id", userId).eq("importe", importe)
+    .gte("fecha", new Date(t0 - 10 * 60 * 1000).toISOString())
+    .lte("fecha", new Date(t0 + 10 * 60 * 1000).toISOString())
+    .limit(1);
+  if (dupRows && dupRows.length) return json({ ok: true, tipo, skipped: true, dup: true });
+
   const { error } = await supabase
     .from("expenses")
     .upsert(
