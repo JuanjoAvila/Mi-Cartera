@@ -65,7 +65,12 @@ public class TradeRepublicPlugin extends Plugin {
      */
     private static final String WFETCH =
         "const wafInfo=()=>{const a=window.AwsWafIntegration;return a?('waf:fetch='+(typeof a.fetch)+'/token='+(typeof a.getToken)):'waf:absent';};" +
-        "const wafToken=async()=>{try{const a=window.AwsWafIntegration;if(a&&typeof a.getToken==='function')return await a.getToken();}catch(e){}return null;};" +
+        // wafToken(force): con force=true intenta forceRefreshToken() (SDK moderno) — el getToken()
+        // normal devuelve el token CACHEADO aunque el WAF ya lo rechace (diagnóstico alpha12: el SDK
+        // estaba [waf:fetch=function/token=function] y aun así fallaba en frío → token rancio).
+        "const wafToken=async(force)=>{try{const a=window.AwsWafIntegration;if(!a)return null;" +
+        "if(force&&typeof a.forceRefreshToken==='function'){try{return await a.forceRefreshToken();}catch(e){}}" +
+        "if(typeof a.getToken==='function')return await a.getToken();}catch(e){}return null;};" +
         "const wfetch=async(url,opts)=>{opts=opts||{};const a=window.AwsWafIntegration;" +
         "if(a&&typeof a.fetch==='function'){return await a.fetch(url,opts);}" +               // wrapper oficial: cabecera x-aws-waf-token
         "const tok=await wafToken();" +
@@ -74,15 +79,36 @@ public class TradeRepublicPlugin extends Plugin {
 
     private WebView web;
     private boolean loaded = false;
+    private boolean loading = false;
+    private final java.util.List<Runnable> readyQueue = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
     private final ConcurrentHashMap<String, PluginCall> pending = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, String> bodies = new ConcurrentHashMap<>();      // id → JS (para reintentar tras recargar)
     private final java.util.Set<String> verifyIds = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final java.util.Set<String> retriedIds = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
 
     // ---- Puente JS → nativo: el JS async llama esto al resolver su Promesa ----------
     private class Bridge {
         @JavascriptInterface
         public void result(String id, String json) {
+            // ÚLTIMO RECURSO frío (alpha13): si aun con el token en cabecera el fetch peta a nivel
+            // de red y todavía no lo hemos intentado, RECARGAMOS app.traderepublic.com (re-ejecuta
+            // el challenge del AWS WAF desde cero, como haría un navegador de verdad) y reinyectamos
+            // el MISMO JS una vez. La recarga destruye el contexto JS anterior, por eso se orquesta
+            // aquí en nativo y no dentro del propio script.
+            try {
+                JSObject peek = new JSObject(json);
+                String err = peek.getString("error", "");
+                if (!peek.optBoolean("ok", false) && err != null && err.contains("Failed to fetch")
+                        && pending.containsKey(id) && !retriedIds.contains(id)) {
+                    retriedIds.add(id);
+                    String body = bodies.get(id);
+                    if (body != null) { reloadThen(() -> run(id, body)); return; }
+                }
+            } catch (Exception ignored) {}
             PluginCall call = pending.remove(id);
             boolean wasVerify = verifyIds.remove(id);
+            retriedIds.remove(id); bodies.remove(id);
             if (call == null) return;
             try {
                 JSObject res = new JSObject(json);
@@ -104,6 +130,9 @@ public class TradeRepublicPlugin extends Plugin {
     }
 
     // ---- WebView oculta (perezosa, en el hilo de UI) --------------------------------
+    // Los que esperan la página van a readyQueue (varios a la vez, y sobrevive recargas);
+    // onPageFinished la drena. Antes el onReady se capturaba al crear el WebViewClient →
+    // solo el PRIMER llamador se enteraba de la carga.
     @SuppressLint({"SetJavaScriptEnabled", "JavascriptInterface", "AddJavascriptInterface"})
     private void ensureWeb(Runnable onReady) {
         AppCompatActivity act = getActivity();
@@ -118,23 +147,45 @@ public class TradeRepublicPlugin extends Plugin {
                 CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
                 web.setWebViewClient(new WebViewClient() {
                     @Override public void onPageFinished(WebView v, String url) {
-                        loaded = true;
-                        if (onReady != null) onReady.run();
+                        loaded = true; loading = false;
+                        drainReady();
                     }
                     @Override public void onReceivedError(WebView v, WebResourceRequest req, WebResourceError err) {
-                        if (req != null && req.isForMainFrame()) { loaded = true; }
+                        if (req != null && req.isForMainFrame()) { loaded = true; loading = false; drainReady(); }
                     }
                 });
             }
             if (loaded) { if (onReady != null) onReady.run(); }
-            else web.loadUrl(TR_APP);
+            else {
+                if (onReady != null) readyQueue.add(onReady);
+                if (!loading) { loading = true; web.loadUrl(TR_APP); }
+            }
         });
+    }
+
+    /** Recarga app.traderepublic.com y ejecuta `then` cuando termine (challenge WAF fresco). */
+    private void reloadThen(Runnable then) {
+        AppCompatActivity act = getActivity();
+        if (act == null || web == null) { if (then != null) then.run(); return; }
+        act.runOnUiThread(() -> {
+            loaded = false; loading = true;
+            if (then != null) readyQueue.add(then);
+            web.loadUrl(TR_APP);
+        });
+    }
+
+    private void drainReady() {
+        java.util.List<Runnable> jobs;
+        synchronized (readyQueue) { jobs = new java.util.ArrayList<>(readyQueue); readyQueue.clear(); }
+        // pequeño respiro tras cargar: deja al SDK del WAF de la página inicializarse
+        for (Runnable r : jobs) main.postDelayed(r, 600);
     }
 
     /** Inyecta un cuerpo JS async cuyo `return` (string JSON) vuelve por AndroidTR.result(id,...). */
     private void run(String id, String asyncBody) {
         AppCompatActivity act = getActivity();
         if (act == null || web == null) return;
+        bodies.put(id, asyncBody);
         String wrapped =
             "(async()=>{let r;try{r=await (async()=>{" + asyncBody + "})();}" +
             "catch(e){r=JSON.stringify({ok:false,error:String(e&&e.message||e)});}" +
@@ -147,6 +198,13 @@ public class TradeRepublicPlugin extends Plugin {
         String id = String.valueOf(System.nanoTime());
         pending.put(id, call);
         call.setKeepAlive(true);   // la respuesta llega asíncrona por el puente
+        // Red de seguridad: si una recarga se come el contexto JS y nada responde, resolvemos
+        // con error a los 45 s en vez de dejar el botón girando para siempre.
+        main.postDelayed(() -> {
+            PluginCall stale = pending.remove(id);
+            bodies.remove(id); retriedIds.remove(id); verifyIds.remove(id);
+            if (stale != null) resolveErr(stale, "TR no respondió (timeout) · reintenta");
+        }, 45000);
         return id;
     }
 
@@ -180,8 +238,8 @@ public class TradeRepublicPlugin extends Plugin {
             "body:JSON.stringify({phoneNumber:" + jsStr(phone) + ",pin:" + jsStr(pin) + "})});" +
             "const t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}return {status:r.status,j:j};};" +
             "let res;" +
-            "try{res=await call();}catch(e){await wafToken();try{res=await call();}catch(e2){return JSON.stringify({ok:false,error:String(e2&&e2.message||e2)+' ['+wafInfo()+']'});}}" +
-            "if(res.status===403||res.status===405){await wafToken();res=await call();}" +
+            "try{res=await call();}catch(e){await wafToken(true);try{res=await call();}catch(e2){return JSON.stringify({ok:false,error:String(e2&&e2.message||e2)+' ['+wafInfo()+']'});}}" +
+            "if(res.status===403||res.status===405){await wafToken(true);res=await call();}" +
             "if(res.status===200||res.status===201)return JSON.stringify({ok:true,processId:res.j.processId||res.j.processID||null,countdown:res.j.countdownInSeconds||null});" +
             "return JSON.stringify({ok:false,status:res.status,error:(res.j.errors&&res.j.errors[0]&&res.j.errors[0].errorMessage)||('login HTTP '+res.status)});"
         ));
@@ -197,7 +255,7 @@ public class TradeRepublicPlugin extends Plugin {
         ensureWeb(() -> run(id, WFETCH +
             "const doVerify=async()=>await wfetch('https://api.traderepublic.com/api/v1/auth/web/login/'+" + jsStr(processId) + "+'/'+" + jsStr(code) + ",{" +
             "method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}});" +
-            "let r;try{r=await doVerify();}catch(e){await wafToken();try{r=await doVerify();}catch(e2){return JSON.stringify({ok:false,error:String(e2&&e2.message||e2)+' ['+wafInfo()+']'});}}" +
+            "let r;try{r=await doVerify();}catch(e){await wafToken(true);try{r=await doVerify();}catch(e2){return JSON.stringify({ok:false,error:String(e2&&e2.message||e2)+' ['+wafInfo()+']'});}}" +
             "const t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}" +
             "if(r.status===200||r.status===201)return JSON.stringify({ok:true});" +
             "return JSON.stringify({ok:false,status:r.status,error:(j.errors&&j.errors[0]&&j.errors[0].errorMessage)||('código HTTP '+r.status)});"
@@ -220,9 +278,9 @@ public class TradeRepublicPlugin extends Plugin {
             "const refreshOnce=async()=>{const r=await wfetch('https://api.traderepublic.com/api/v1/auth/web/session',{method:'GET',credentials:'include',headers:{}});return r.status;};" +
             "const refresh=async()=>{" +
             "try{const s=await refreshOnce();if(s===200||s===201)return '';" +
-            "if(s===401||s===403||s===405){await wafToken();const s2=await refreshOnce();return (s2===200||s2===201)?'':('HTTP '+s2);}" +
+            "if(s===401||s===403||s===405){await wafToken(true);const s2=await refreshOnce();return (s2===200||s2===201)?'':('HTTP '+s2);}" +
             "return 'HTTP '+s;}" +
-            "catch(e){await wafToken();try{const s3=await refreshOnce();return (s3===200||s3===201)?'':('HTTP '+s3);}" +
+            "catch(e){await wafToken(true);try{const s3=await refreshOnce();return (s3===200||s3===201)?'':('HTTP '+s3);}" +
             "catch(e2){return String(e2&&e2.message||e2)+' ['+wafInfo()+']';}}};" +
             // Protocolo real de TR (mapeado en vivo 2026-07): connect 31 → "connected";
             //   sub {id} {type:compactPortfolioByType} → {categories:[{positions:[{isin,netSize,averageBuyIn,name}]}]}

@@ -13,22 +13,14 @@ const APP_URL = Deno.env.get("APP_URL") || "https://juanjoavila.github.io/Mi-Car
 
 // Vuelta a la app o a la web según de dónde salió el usuario (bank-connect marca el state
 // con ".app" cuando la petición vino de la APK). En la web basta un 302 a Pages; en la app
-// el navegador del sistema no puede "volver" solo → servimos una página puente que navega a
-// micartera://bank (deep-link que reabre Mi Cartera; MainActivity lo convierte en un goto).
-// El botón queda de fallback por si el navegador bloquea la navegación automática al esquema.
+// el navegador del sistema no puede "volver" solo → 302 a la página PUENTE public/back.html
+// (en Pages), que navega a micartera://bank (deep-link que reabre Mi Cartera).
+// ANTES servíamos el HTML puente desde aquí, pero el gateway de Supabase ahora machaca el
+// Content-Type a text/plain + CSP sandbox (anti-phishing) y el navegador enseñaba el código
+// fuente en crudo (visto 2026-07-10) → el HTML tiene que vivir en nuestro dominio.
 function backToApp(ok: boolean, msg?: string): Response {
-  const target = "micartera://bank" + (ok ? "?ok=1" : `?msg=${encodeURIComponent(msg || "error")}`);
-  const icon = ok ? "✅" : "⚠️";
-  const label = ok ? "Banco conectado" : "No se pudo conectar el banco";
-  const html = `<!doctype html><html lang="es"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Mi Cartera</title>
-<body style="margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0B1410;color:#E8F0EB;font-family:sans-serif;text-align:center;padding:24px;box-sizing:border-box">
-<div style="font-size:44px">${icon}</div><div style="font-size:17px;font-weight:700">${label}</div>
-${ok ? "" : `<div style="font-size:13px;color:#9fb3a8;max-width:340px;overflow-wrap:anywhere">${(msg || "").replace(/[<>&]/g, "")}</div>`}
-<a href="${target}" style="background:#5FD08A;color:#06120C;padding:14px 26px;border-radius:14px;font-weight:800;text-decoration:none;font-size:15px">Volver a Mi Cartera</a>
-<script>setTimeout(function(){ location.href=${JSON.stringify(target)}; }, 400);</script>
-</body></html>`;
-  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+  const qs = ok ? "?ok=1" : `?msg=${encodeURIComponent(msg || "error")}`;
+  return Response.redirect(`${APP_URL}back.html${qs}`, 302);
 }
 
 Deno.serve(async (req) => {
