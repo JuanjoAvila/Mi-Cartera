@@ -647,6 +647,22 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .bar > i{display:block;height:100%;border-radius:6px;}
   .rendbar{height:6px;border-radius:5px;background:var(--surface-2);overflow:hidden;}
   .rendbar > i{display:block;height:100%;border-radius:5px;}
+  /* Ajustes rediseñados (Claude Design): tarjetas con filas agrupadas + switches */
+  .set-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;margin-top:14px;overflow:hidden;}
+  .set-card .sc-title{font-weight:800;font-size:13px;color:var(--muted);padding:13px 16px 2px;letter-spacing:.2px;}
+  .set-row{display:flex;align-items:center;gap:11px;padding:13px 16px;border:none;border-top:1px solid var(--line);width:100%;background:none;color:var(--text);font-size:14.5px;font-family:inherit;text-align:left;cursor:pointer;box-sizing:border-box;}
+  .set-card>.set-row:first-child{border-top:none;}
+  .set-row .sr-ic{font-size:17px;flex:0 0 22px;text-align:center;line-height:1;}
+  .set-row .sr-lb{flex:1;font-weight:700;min-width:0;}
+  .set-row .sr-val{color:var(--muted);font-size:13.5px;font-weight:600;flex:0 1 auto;text-align:right;}
+  .set-row .sr-chev{color:var(--muted-2);font-size:17px;line-height:1;transition:transform .2s;flex:0 0 auto;}
+  .set-row .sr-chev.open{transform:rotate(90deg);}
+  .set-exp{padding:4px 14px 14px;border-top:1px dashed var(--line);}
+  /* .swx (no ".sw": ese nombre ya es el swatch de las leyendas de gráficos) */
+  .swx{position:relative;width:44px;height:26px;border-radius:13px;background:var(--surface-2);border:1px solid var(--line);transition:background .2s,border-color .2s;flex:0 0 auto;display:inline-block;}
+  .swx.on{background:var(--mint);border-color:var(--mint);}
+  .swx::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .swx.on::after{left:20px;}
   .wedit{border:1px dashed var(--line);border-radius:16px;padding:8px;margin-bottom:12px;background:var(--bg-2);}
   .wedit.off{opacity:.5;}
   .wedit-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding:0 2px;}
@@ -972,7 +988,10 @@ const cloud = (function(){
     // Genera el enlace de login del banco (la Edge Function guarda el 'pending').
     async bankConnect(aspsp_name, country){
       if(!sb) throw new Error("nube no disponible");
-      const {data,error}=await sb.functions.invoke('bank-connect',{ body:{ aspsp_name:aspsp_name||"Banco de Sabadell", country:(country||"ES") } });
+      // platform:"app" → bank-callback devuelve la página puente micartera:// (vuelve a la APP,
+      // no al navegador — bloqueante 3 del feedback pareja). En web, redirect normal con ?bank=.
+      const native=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+      const {data,error}=await sb.functions.invoke('bank-connect',{ body:{ aspsp_name:aspsp_name||"Banco de Sabadell", country:(country||"ES"), platform:(native?"app":"web") } });
       if(error) throw error;
       if(!data || !data.ok) throw new Error((data&&data.error)||"no se pudo conectar");
       return data;   // { ok, url }
@@ -1131,6 +1150,11 @@ const LANG = {
     eb_title:"Algo se ha torcido", eb_msg:"La app ha tenido un error al dibujar. Tus datos están a salvo. Descarga una copia por si acaso y recarga.", eb_export:"⬇️ Descargar copia de seguridad", eb_reload:"🔄 Recargar la app",
     off_pill:"📴 Sin conexión · se guarda y sincroniza al volver",
     upd_ready:"✨ Nueva versión · toca para actualizar",
+    apk_ready:"⬇️ App {v} lista · toca para instalar", apk_downloading:"Descargando la actualización… se abrirá el instalador", apk_perm:"Permite «instalar apps desconocidas» a Mi Cartera y vuelve a tocar el botón",
+    ob_signup:"Crear cuenta nueva",
+    st_custom:"Personalización", st_widgets:"Personalizar widgets del Resumen", st_notifs:"Notificaciones", st_simple_lbl:"Modo sencillo",
+    st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
+    bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
     ob_intro:"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas.",
@@ -1153,6 +1177,11 @@ const LANG = {
     eb_title:"Something went wrong", eb_msg:"The app hit a rendering error. Your data is safe. Download a backup just in case and reload.", eb_export:"⬇️ Download backup", eb_reload:"🔄 Reload the app",
     off_pill:"📴 Offline · saved and synced when you're back",
     upd_ready:"✨ New version · tap to update",
+    apk_ready:"⬇️ App {v} ready · tap to install", apk_downloading:"Downloading the update… the installer will open", apk_perm:"Allow «install unknown apps» for Mi Cartera and tap the button again",
+    ob_signup:"Create a new account",
+    st_custom:"Customisation", st_widgets:"Customise Summary widgets", st_notifs:"Notifications", st_simple_lbl:"Simple mode",
+    st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
+    bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
     ob_intro:"Let's set up your wallet in 1 minute. Start with your accounts and budget; you can add investments, debts and fixed costs later in their tabs.",
@@ -1175,6 +1204,11 @@ const LANG = {
     eb_title:"Alguna cosa ha fallat", eb_msg:"L'app ha tingut un error en dibuixar. Les teves dades estan segures. Descarrega una còpia per si de cas i recarrega.", eb_export:"⬇️ Descarrega còpia de seguretat", eb_reload:"🔄 Recarrega l'app",
     off_pill:"📴 Sense connexió · es desa i sincronitza en tornar",
     upd_ready:"✨ Nova versió · toca per actualitzar",
+    apk_ready:"⬇️ App {v} a punt · toca per instal·lar", apk_downloading:"Baixant l'actualització… s'obrirà l'instal·lador", apk_perm:"Permet «instal·lar apps desconegudes» a Mi Cartera i torna a tocar el botó",
+    ob_signup:"Crea un compte nou",
+    st_custom:"Personalització", st_widgets:"Personalitza els widgets del Resum", st_notifs:"Notificacions", st_simple_lbl:"Mode senzill",
+    st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
+    bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
     ob_intro:"Muntem la teva cartera en 1 minut. Comença pels comptes i el pressupost; les inversions, deutes i despeses fixes les afegeixes després a les seves pestanyes.",
@@ -1392,6 +1426,7 @@ Object.assign(LANG.es,{
   na_toast:"⚠ El apunte automático de gastos está desactivado — actívalo en Ajustes",
   na_body:"⚠ El apunte automático de gastos (lector de notificaciones de TR) no tiene permiso — los gastos NO entran solos. Pasa al reinstalar la app: actívalo para Mi Cartera.",
   na_fix:"Activar acceso a notificaciones",
+  na_restricted:"Si Android dice «acceso denegado» o «ajuste restringido» (pasa al instalar la app fuera de la Play Store): ve a Ajustes de Android → Aplicaciones → Mi Cartera → menú ⋮ (arriba a la derecha) → «Permitir ajustes restringidos», y vuelve a intentarlo. Es una sola vez.",
   tr_tos:"⚠ Conexión NO oficial: usa la misma vía que la web de TR. Puede pedir el código de 2FA de tu app cada cierto tiempo y podría dejar de funcionar si TR cambia algo. Tus credenciales no se guardan en la nube de Mi Cartera.",
   tr_phone_ph:"Teléfono (+34…)", tr_pin_ph:"PIN de Trade Republic",
   tr_connect:"Conectar", tr_connecting:"Conectando…",
@@ -1415,7 +1450,7 @@ Object.assign(LANG.es,{
   ob2_budget_h:"Lo cambias cuando quieras desde el Resumen o Ajustes.",
   ob2_acc_t:"Tus cuentas", ob2_acc_d:"Añade tus bancos con el saldo de hoy para ver tu dinero total. Si prefieres, sáltatelo: también se pueden conectar por Open Banking después.",
   ob2_acc_h:"Todo se puede editar luego en Patrimonio y Ajustes.",
-  tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
+  tr_createnew:"➕ Crear como posición nueva", tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
   tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
   tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
 });
@@ -1427,6 +1462,7 @@ Object.assign(LANG.en,{
   na_toast:"⚠ Automatic expense capture is off — enable it in Settings",
   na_body:"⚠ Automatic expense capture (TR notification reader) has no permission — expenses will NOT come in on their own. This happens after reinstalling: enable it for Mi Cartera.",
   na_fix:"Enable notification access",
+  na_restricted:"If Android says \"access denied\" or \"restricted setting\" (happens when the app is installed outside the Play Store): go to Android Settings → Apps → Mi Cartera → ⋮ menu (top right) → \"Allow restricted settings\", then try again. One time only.",
   tr_tos:"⚠ UNofficial connection: uses the same path as TR's web. It may ask for your app's 2FA code every so often and could stop working if TR changes something. Your credentials are not stored in Mi Cartera's cloud.",
   tr_phone_ph:"Phone (+34…)", tr_pin_ph:"Trade Republic PIN",
   tr_connect:"Connect", tr_connecting:"Connecting…",
@@ -1450,7 +1486,7 @@ Object.assign(LANG.en,{
   ob2_budget_h:"You can change it anytime from Overview or Settings.",
   ob2_acc_t:"Your accounts", ob2_acc_d:"Add your banks with today's balance to see your total money. Or skip it: you can also connect them via Open Banking later.",
   ob2_acc_h:"Everything can be edited later in Wealth and Settings.",
-  tr_apply:"Apply to {n} positions", tr_apply_hint:"On apply: shares, value and cost are re-anchored to what Trade Republic says right now (live data, no need to refresh prices).",
+  tr_createnew:"➕ Create as a new position", tr_apply:"Apply to {n} positions", tr_apply_hint:"On apply: shares, value and cost are re-anchored to what Trade Republic says right now (live data, no need to refresh prices).",
   tr_done:"✓ {n} positions updated from Trade Republic",
   tr_err:"Couldn't connect to Trade Republic. Check phone/PIN or the code, and try again.",
 });
@@ -1462,6 +1498,7 @@ Object.assign(LANG.ca,{
   na_toast:"⚠ L'apunt automàtic de despeses està desactivat — activa'l a Ajustos",
   na_body:"⚠ L'apunt automàtic de despeses (lector de notificacions de TR) no té permís — les despeses NO entren soles. Passa en reinstal·lar l'app: activa'l per a Mi Cartera.",
   na_fix:"Activar accés a notificacions",
+  na_restricted:"Si Android diu «accés denegat» o «configuració restringida» (passa en instal·lar l'app fora de la Play Store): ves a Configuració d'Android → Aplicacions → Mi Cartera → menú ⋮ (a dalt a la dreta) → «Permet configuracions restringides», i torna-ho a provar. Només un cop.",
   tr_tos:"⚠ Connexió NO oficial: fa servir la mateixa via que la web de TR. Pot demanar el codi de 2FA de la teva app cada cert temps i podria deixar de funcionar si TR canvia alguna cosa. Les teves credencials no es guarden al núvol de Mi Cartera.",
   tr_phone_ph:"Telèfon (+34…)", tr_pin_ph:"PIN de Trade Republic",
   tr_connect:"Connecta", tr_connecting:"Connectant…",
@@ -1485,7 +1522,7 @@ Object.assign(LANG.ca,{
   ob2_budget_h:"El canvies quan vulguis des del Resum o Ajustos.",
   ob2_acc_t:"Els teus comptes", ob2_acc_d:"Afegeix els teus bancs amb el saldo d'avui per veure els teus diners totals. O salta-t'ho: també es poden connectar per Open Banking després.",
   ob2_acc_h:"Tot es pot editar després a Patrimoni i Ajustos.",
-  tr_apply:"Aplica a {n} posicions", tr_apply_hint:"En aplicar: participacions, valor i cost es re-ancoren amb el que diu Trade Republic ara mateix (és dada en viu, no cal actualitzar preus).",
+  tr_createnew:"➕ Crea com a posició nova", tr_apply:"Aplica a {n} posicions", tr_apply_hint:"En aplicar: participacions, valor i cost es re-ancoren amb el que diu Trade Republic ara mateix (és dada en viu, no cal actualitzar preus).",
   tr_done:"✓ {n} posicions actualitzades des de Trade Republic",
   tr_err:"No s'ha pogut connectar amb Trade Republic. Revisa telèfon/PIN o el codi, i torna-ho a provar.",
 });
@@ -1724,7 +1761,7 @@ Object.assign(LANG.es,{
   inv_evo:"Evolución", inv_evo_sub:"valor invertido", inv_evo_hint:"📈 La evolución del valor invertido se irá dibujando a partir de hoy (un punto por día).",
   inv_sold:"💸 Líquido vendido (realizado)", inv_proj:"Proyección de tu ahorro", inv_proj_sub:"Interés compuesto",
   inv_hint_edit:"Escribe el valor actual de cada posición (al tocar se selecciona solo). El % de ganancia se calcula automáticamente.",
-  inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones de Revolut. El oro, el ETF de TR y el fondo de MyInvestor se editan a mano con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
+  inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones con ticker. Lo que no tiene precio automático (fondos, oro, algunos ETF) se edita con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
   inv_sold_part:"Vendí parte →", inv_value:"Valor", inv_invested:"Invertido", inv_sell_prompt:"¿Qué % de {name} has vendido? (ej. 30)",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"redondeo ×{m} activo", ru_sub_off:"desactivado",
   ru_title_simple:"Redondeo y regalo por pagar", ru_sub_simple:"cada compra suma un poquito a tu inversión",
@@ -1766,7 +1803,7 @@ Object.assign(LANG.en,{
   inv_evo:"Evolution", inv_evo_sub:"invested value", inv_evo_hint:"📈 The invested value chart will build up from today (one point per day).",
   inv_sold:"💸 Cash from sales (realised)", inv_proj:"Your savings projection", inv_proj_sub:"Compound interest",
   inv_hint_edit:"Type the current value of each position (tap to select). The gain % is calculated automatically.",
-  inv_hint_view:"«USD prices» fetches Revolut stock quotes automatically. Gold, the TR ETF and the MyInvestor fund are edited by hand with «Edit manually». USD→EUR rate: {fx} · live ECB.",
+  inv_hint_view:"«USD prices» fetches quotes for tickered stocks automatically. Anything without an automatic price (funds, gold, some ETFs) is edited via «Edit manually». USD→EUR rate: {fx} · live ECB.",
   inv_sold_part:"Sold part →", inv_value:"Value", inv_invested:"Invested", inv_sell_prompt:"What % of {name} did you sell? (e.g. 30)",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"round-up ×{m} on", ru_sub_off:"off",
   ru_title_simple:"Round-ups & card reward", ru_sub_simple:"each purchase adds a little to your investing",
@@ -1808,7 +1845,7 @@ Object.assign(LANG.ca,{
   inv_evo:"Evolució", inv_evo_sub:"valor invertit", inv_evo_hint:"📈 L'evolució del valor invertit es dibuixarà a partir d'avui (un punt per dia).",
   inv_sold:"💸 Líquid venut (realitzat)", inv_proj:"Projecció del teu estalvi", inv_proj_sub:"Interès compost",
   inv_hint_edit:"Escriu el valor actual de cada posició (en tocar se selecciona sol). El % de guany es calcula automàticament.",
-  inv_hint_view:"«Preus USD» porta sols les cotitzacions de les accions de Revolut. L'or, l'ETF de TR i el fons de MyInvestor s'editen a mà amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
+  inv_hint_view:"«Preus USD» porta soles les cotitzacions de les accions amb ticker. El que no té preu automàtic (fons, or, alguns ETF) s'edita amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
   inv_sold_part:"He venut part →", inv_value:"Valor", inv_invested:"Invertit", inv_sell_prompt:"Quin % de {name} has venut? (ex. 30)",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"arrodoniment ×{m} actiu", ru_sub_off:"desactivat",
   ru_title_simple:"Arrodoniment i regal per pagar", ru_sub_simple:"cada compra suma una miqueta a la teva inversió",
@@ -2947,6 +2984,13 @@ function dashOrderOf(s, allIds){
 function Dashboard({state, totals, set}){
   const tt=totals;
   const [editing,setEditing]=useState(false);
+  // Ajustes › "Personalizar widgets del Resumen" (rediseño): App ya saltó al Resumen; aquí
+  // encendemos el modo edición al recibir el evento.
+  useEffect(function(){
+    const h=function(){ setEditing(true); };
+    window.addEventListener("mc-dash-edit",h);
+    return function(){ window.removeEventListener("mc-dash-edit",h); };
+  },[]);
   const [bEdit,setBEdit]=useState(false);
   const [bDraft,setBDraft]=useState("");
   const saveBudget=function(){ const b=parseFloat(String(bDraft).replace(',','.')); if(b>=0) set(function(s){ return Object.assign({},s,{budget:b}); }); setBEdit(false); };
@@ -3387,10 +3431,22 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       if(focusExp.merchant){ const m=(e.merchant||"").toLowerCase(), fm=focusExp.merchant.toLowerCase(); if(m.indexOf(fm.slice(0,Math.min(6,fm.length)))<0 && fm.indexOf(m)<0) return false; }
       return true;
     }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
-    const e=cands[0] || (state.expenses||[]).slice().sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
-    if(e) setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0});
-    if(clearFocus) clearFocus();
-  },[focusExp]);
+    if(cands[0]){
+      setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0});
+      if(clearFocus) clearFocus();
+      return;
+    }
+    // Sin match todavía: lo normal es que el gasto de la noti AÚN esté bajando de la nube
+    // (App ya lanzó syncCloudExpenses) → esperamos a que lleguen gastos nuevos (dep state.expenses
+    // re-ejecuta) en vez de abrir "el último" a ciegas (abría la ficha EQUIVOCADA — feedback
+    // pareja 2026-07-10, punto 8). Si en 12s no aparece, abrimos el más reciente como antes.
+    const tm=setTimeout(function(){
+      const e=(state.expenses||[]).slice().sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+      if(e) setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0});
+      if(clearFocus) clearFocus();
+    }, 12000);
+    return function(){ clearTimeout(tm); };
+  },[focusExp, state.expenses]);
   const saveEdit=function(orig){
     const amt=parseFloat(String(editExp.amount).replace(',','.'))||0;
     if(amt<=0){ showToast(t("g_invalid")); return; }
@@ -3634,7 +3690,13 @@ function TRSync({state, set, totals}){
       if(r&&r.authExpired){ setConnected(false); setStep("idle"); fail(r); return; }   // sesión caducó → volver al login
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
-      r.positions.forEach(function(po){ const sug=brokerSuggest(po, state.investments); if(sug) m[po.isin]=sug; });
+      r.positions.forEach(function(po){
+        const sug=brokerSuggest(po, state.investments);
+        // Sin cartera previa (usuario nuevo, p.ej. la pareja) el mapeo por defecto es CREAR la
+        // posición: antes todo quedaba en "no tocar" y el botón se moría en "Aplicar a 0".
+        if(sug) m[po.isin]=sug;
+        else if(state.investments.length===0) m[po.isin]="__new";
+      });
       setMap(m); setPositions(r.positions); setCash(r.cash!=null?r.cash:null); setStep("preview");
     }).catch(fail);
   };
@@ -3668,17 +3730,28 @@ function TRSync({state, set, totals}){
         if(po.cost!=null)  patch.cost  = i.cur==="USD" ? (state.fx>0?po.cost/state.fx:po.cost)  : po.cost;
         return Object.assign({},i,patch);
       })});
+      // Posiciones mapeadas a "__new" → se CREAN en Inversiones (usuario sin cartera previa).
+      const created=pos.filter(function(p){ return map[p.isin]==="__new"; }).map(function(po){
+        return { id:uid(), ent:"trade_republic", name:po.name||po.isin, isin:po.isin,
+                 shares:po.shares, value:po.value!=null?po.value:0,
+                 cost:po.cost!=null?po.cost:(po.value!=null?po.value:0), cur:"EUR" };
+      });
+      if(created.length) next.investments=next.investments.concat(created);
       // EFECTIVO de TR (availableCash) → re-ancla la cuenta TR para que HOY muestre exactamente
       // ese saldo (misma fórmula que la edición manual de Patrimonio: se despeja la base del mes).
+      // Si no existe cuenta TR (usuario nuevo), se crea con ese saldo.
       if(trCash!=null && totals){
-        next.accounts=s.accounts.map(function(a){
-          if(a.ent!=="trade_republic") return a;
-          const pn=(totals.paidNetByBank&&totals.paidNetByBank[a.ent])||0;
-          const stored = accDaily(a)
-            ? trCash-(totals.injTR||0)+(totals.thisMonthSpent||0)+(totals.roundupThisMonth||0)+(totals.monthlyInvestThisMonth||0)-(accRole(a)==="ambos"?pn:0)
-            : trCash-pn;
-          return Object.assign({},a,{value:+stored.toFixed(2)});
-        });
+        const hasTR=s.accounts.some(function(a){ return a.ent==="trade_republic"; });
+        next.accounts = hasTR
+          ? s.accounts.map(function(a){
+              if(a.ent!=="trade_republic") return a;
+              const pn=(totals.paidNetByBank&&totals.paidNetByBank[a.ent])||0;
+              const stored = accDaily(a)
+                ? trCash-(totals.injTR||0)+(totals.thisMonthSpent||0)+(totals.roundupThisMonth||0)+(totals.monthlyInvestThisMonth||0)-(accRole(a)==="ambos"?pn:0)
+                : trCash-pn;
+              return Object.assign({},a,{value:+stored.toFixed(2)});
+            })
+          : s.accounts.concat([{ id:uid(), ent:"trade_republic", name:"Trade Republic", value:+trCash.toFixed(2), note:"" }]);
       }
       return next;
     });
@@ -3731,6 +3804,7 @@ function TRSync({state, set, totals}){
                 ),
                 React.createElement("select",{className:"af-in",value:map[po.isin]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.isin]=v; return n; }); }},
                   React.createElement("option",{value:""},t("bi_notouch")),
+                  React.createElement("option",{value:"__new"},t("tr_createnew")),
                   state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
                 )
               );
@@ -3851,7 +3925,10 @@ function Investments({state, set, fetchPrices, pricing}){
     if(autoOn && hasTickers && !didAuto.current){ didAuto.current=true; fetchPrices(true); }
   },[]);
   const toggleAuto=()=> set(s=>Object.assign({},s,{settings:Object.assign({},s.settings,{autoPrices:!(s.settings&&s.settings.autoPrices)})}));
-  const groups=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]];
+  // Solo los brókers donde el usuario TIENE posiciones (antes salían los 3 fijos — a un usuario
+  // nuevo le aparecía "MyInvestor" sin haberlo conectado nunca; feedback pareja 2026-07-10).
+  const groups=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
+    .filter(function(g){ return state.investments.some(function(i){ return i.ent===g[0]; }); });
   const start=()=>{ const d={}; state.investments.forEach(i=>d[i.id]={value:i.value,cost:i.cost}); setDraft(d); setEditing(true); };
   const cancel=()=>{ setEditing(false); setShowCost(false); };
   const save=()=>{
@@ -4128,7 +4205,8 @@ function Wealth({state, set, totals}){
     ),
     // (el desglose de efectivo de TR se quitó 2026-07-06: los movimientos ya viven en Gastos)
     React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv",help:t("h_ptinv")},
-      ["revolut","trade_republic","myinvestor"].map(g=>{
+      // Solo brókers con posiciones (los 3 fijos confundían a usuarios nuevos — feedback 2026-07-10)
+      ["revolut","trade_republic","myinvestor"].filter(g=>state.investments.some(i=>i.ent===g)).map(g=>{
         const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+(i.cur==="USD"?i.value*state.fx:i.value),0);
         return React.createElement("div",{className:"row",key:g},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g,size:38}),React.createElement("div",{className:"rname"},entOf(g).label)),
@@ -5442,9 +5520,11 @@ function LockScreen({onUnlock}){
 }
 
 /* Panel de cuenta: login/registro con contraseña y toggle de huella. */
-function AuthPanel({session, onClose, showToast, recovery}){
+function AuthPanel({session, onClose, showToast, recovery, startMode}){
   const uid = session && session.user ? session.user.id : null;
-  const [mode,setMode]=useState(recovery?"newpass":"in");
+  // startMode: "up" abre directo en "Crear cuenta" (onboarding → registro sin pasar por login;
+  // feedback pareja 2026-07-10, punto 5). Por defecto "in" (iniciar sesión), como siempre.
+  const [mode,setMode]=useState(recovery?"newpass":(startMode||"in"));
   const [email,setEmail]=useState((session&&session.user&&session.user.email)||"");
   const [pass,setPass]=useState("");
   const [busy,setBusy]=useState(false);
@@ -5610,7 +5690,12 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
       React.createElement("div",{className:"serif",style:{fontSize:25}}, t("bp_title"))),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:16}}, t("bp_intro")),
     links===null && React.createElement("div",{style:{color:"var(--muted)",fontSize:13}}, "…"),
-    links!==null && links.length===0 && React.createElement("div",{style:{textAlign:"center",color:"var(--muted)",fontSize:13,padding:"10px 0 16px"}}, t("bp_empty")),
+    // Vacío ≠ roto: las cuentas del onboarding son manuales y viven en Patrimonio; esto es la
+    // sincronización real (feedback pareja 2026-07-10, punto 4 — la lista vacía descolocaba).
+    links!==null && links.length===0 && React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{textAlign:"center",color:"var(--muted)",fontSize:13,padding:"10px 0 6px"}}, t("bp_empty")),
+      React.createElement("div",{style:{fontSize:12,lineHeight:1.55,color:"var(--muted)",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:12,padding:"10px 12px",margin:"0 0 16px"}}, "💡 "+t("bp_empty_hint"))
+    ),
     (links||[]).map(function(l){
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
@@ -5652,7 +5737,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals}){
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals}){
   const [budget,setBudget]=useState(String(state.budget||0));
-  const [editTabs,setEditTabs]=useState(false);   // rediseño 3: modo explícito de editar pestañas
+  const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "theme" | "tabs" | null
   const fileRef=useRef(null);
   // ¿El lector de gastos TR tiene acceso a notificaciones? (se pierde al reinstalar la app).
   // Se re-chequea al volver a la app (visibilitychange): al activar el permiso y volver, el aviso se quita solo.
@@ -5722,42 +5807,76 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     };
     r.readAsText(f);
   };
+  // --- Rediseño Claude Design (2026-07-10): tarjetas con filas agrupadas (.set-card/.set-row),
+  // valores a la derecha, acordeones para las opciones y switches iOS (.sw). El contenido y la
+  // lógica son los mismos de siempre; solo cambia la presentación.
+  const setS=function(patch){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,patch)}); }); };
+  const toggleExp=function(k){ setExpand(expand===k?null:k); };
+  const row=function(k,icon,label,value,onClick,right){
+    return React.createElement("button",{key:k,className:"set-row",onClick:onClick},
+      React.createElement("span",{className:"sr-ic"},icon),
+      React.createElement("span",{className:"sr-lb"},label),
+      value!=null && React.createElement("span",{className:"sr-val"},value),
+      right!==undefined ? right : React.createElement("span",{className:"sr-chev"+(expand===k?" open":"")},"›")
+    );
+  };
+  const sw=function(on){ return React.createElement("span",{className:"swx"+(on?" on":"")}); };
+  const curLang=(state.settings&&state.settings.lang)||"es";
+  const curTheme=(state.settings&&state.settings.theme)||"green";
+  const curCur=(state.settings&&state.settings.currency)||"EUR";
+  const bigOn=!!(state.settings&&state.settings.bigText);
+  const simOn=!!(state.settings&&state.settings.simpleMode);
+  const segBtn=function(on){ return Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}); };
   return React.createElement(React.Fragment,null,
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
       React.createElement("div",{style:{fontWeight:700,fontSize:"18px",color:"var(--text)"}},t("settings")),
       React.createElement("button",{style:{background:"none",border:"none",color:"var(--muted)",fontSize:"22px",cursor:"pointer",lineHeight:1},onClick:onClose},"×")
     ),
-    React.createElement("div",{style:lbl},t("language")),
-    React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-      LANGS.map(function(L){
-        const on=((state.settings&&state.settings.lang)||"es")===L[0];
-        return React.createElement("button",{key:L[0],onClick:function(){ CURLANG=L[0]; set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{lang:L[0]})}); }); },style:Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, L[1]);
-      })
+    // ── Tarjeta 1 · general: idioma / tema / letra grande / modo sencillo ──
+    React.createElement("div",{className:"set-card"},
+      row("lang","🌐",t("language"),(LANGS.find(function(L){return L[0]===curLang;})||LANGS[0])[1],function(){ toggleExp("lang"); }),
+      expand==="lang" && React.createElement("div",{className:"set-exp"},
+        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
+          LANGS.map(function(L){
+            return React.createElement("button",{key:L[0],onClick:function(){ CURLANG=L[0]; setS({lang:L[0]}); },style:segBtn(curLang===L[0])}, L[1]);
+          }))),
+      row("theme","🎨",t("theme"),t("th_"+curTheme),function(){ toggleExp("theme"); }),
+      expand==="theme" && React.createElement("div",{className:"set-exp"},
+        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
+          THEMES.map(function(th){
+            return React.createElement("button",{key:th[0],onClick:function(){ applyTheme(th[0]); setS({theme:th[0]}); },
+              style:Object.assign({},segBtn(curTheme===th[0]),{flex:"1 1 40%",display:"flex",alignItems:"center",justifyContent:"center",gap:8})},
+              React.createElement("span",{style:{width:14,height:14,borderRadius:"50%",background:th[2],border:"1px solid rgba(128,128,128,.35)",flex:"0 0 auto"}}), t("th_"+th[0]));
+          }))),
+      row("big","🔠",t("st_bigtext").replace(/^[^ ]+ /,""),null,function(){ applyBigText(!bigOn); setS({bigText:!bigOn}); }, sw(bigOn)),
+      row("simple","🍃",t("st_simple_lbl"),null,function(){
+        const sim=!simOn;
+        setS({simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[], dashHidden: sim?SIMPLE_DASH_HIDDEN.slice():[]});
+      }, sw(simOn))
     ),
-    React.createElement("div",{style:lbl},t("st_mode")),
-    React.createElement("div",{style:{display:"flex",gap:8}},
-      [["false","st_mode_full"],["true","st_mode_simple"]].map(function(m){
-        const on=(!!(state.settings&&state.settings.simpleMode))===(m[0]==="true");
-        return React.createElement("button",{key:m[0],onClick:function(){ const sim=m[0]==="true"; set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[], dashHidden: sim?SIMPLE_DASH_HIDDEN.slice():[]})}); }); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t(m[1]));
-      })
-    ),
-    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6}}, t("st_mode_hint")),
-    // Rediseño 3: editar pestañas (reordenar ▲▼ / ocultar ✕ / añadir +) de forma explícita.
-    (function(){
-      const order=tabOrderOf(state);
-      const hidden=TABS.map(function(tb){return tb.id;}).filter(function(id){ return order.indexOf(id)<0; });
-      const moveTab=function(id,dir){ set(function(s){ const o=tabOrderOf(s); const i=o.indexOf(id), j=i+dir; if(i<0||j<0||j>=o.length) return s; const n=o.slice(); n[i]=o[j]; n[j]=id; return Object.assign({},s,{settings:Object.assign({},s.settings,{tabOrder:n})}); }); };
-      const hideTab=function(id){ if(id==="dash") return; set(function(s){ const hid=tabHiddenOf(s); const nh=hid.indexOf(id)<0?hid.concat([id]):hid; const ord=tabOrderOf(s).filter(function(x){return x!==id;}); return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:nh, tabOrder:ord})}); }); showToast(t("tb_removed")); };
-      const showTab=function(id){ set(function(s){ const hid=tabHiddenOf(s).filter(function(x){return x!==id;}); const ord=tabOrderOf(s).concat([id]); return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:hid, tabOrder:ord})}); }); };
-      const rowBtn={width:34,height:34,borderRadius:9,background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--muted)",fontSize:13,cursor:"pointer",flex:"0 0 auto"};
-      return React.createElement(React.Fragment,null,
-        React.createElement("button",{onClick:function(){ setEditTabs(!editTabs); },style:Object.assign({},btn,{marginTop:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:editTabs?"var(--mint)":"var(--surface-2)",color:editTabs?"#06120C":"var(--text)",border:editTabs?"none":"1px solid var(--line)"})}, editTabs?t("done"):t("et_tabs")),
-        editTabs && React.createElement("div",{style:{marginTop:10}},
-          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginBottom:10,padding:"9px 11px",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:11}}, t("et_intro")),
+    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6,padding:"0 2px"}}, t("st_mode_hint")),
+    // ── Tarjeta 2 · personalización ──
+    React.createElement("div",{className:"set-card"},
+      React.createElement("div",{className:"sc-title"},t("st_custom")),
+      row("widgets","✎",t("st_widgets"),null,function(){
+        // cierra el cajón, salta al Resumen y enciende su modo "Personalizar" (evento → App + Dashboard)
+        onClose();
+        try{ window.dispatchEvent(new CustomEvent("mc-dash-edit")); }catch(e){}
+      }),
+      row("tabs","✎",t("et_tabs").replace("✎ ",""),null,function(){ toggleExp("tabs"); }),
+      expand==="tabs" && React.createElement("div",{className:"set-exp"},(function(){
+        const order=tabOrderOf(state);
+        const hidden=TABS.map(function(tb){return tb.id;}).filter(function(id){ return order.indexOf(id)<0; });
+        const moveTab=function(id,dir){ set(function(s){ const o=tabOrderOf(s); const i=o.indexOf(id), j=i+dir; if(i<0||j<0||j>=o.length) return s; const n=o.slice(); n[i]=o[j]; n[j]=id; return Object.assign({},s,{settings:Object.assign({},s.settings,{tabOrder:n})}); }); };
+        const hideTab=function(id){ if(id==="dash") return; set(function(s){ const hid=tabHiddenOf(s); const nh=hid.indexOf(id)<0?hid.concat([id]):hid; const ord=tabOrderOf(s).filter(function(x){return x!==id;}); return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:nh, tabOrder:ord})}); }); showToast(t("tb_removed")); };
+        const showTab=function(id){ set(function(s){ const hid=tabHiddenOf(s).filter(function(x){return x!==id;}); const ord=tabOrderOf(s).concat([id]); return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:hid, tabOrder:ord})}); }); };
+        const rowBtn={width:34,height:34,borderRadius:9,background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--muted)",fontSize:13,cursor:"pointer",flex:"0 0 auto"};
+        return React.createElement("div",{style:{marginTop:8}},
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginBottom:10}}, t("et_intro")),
           order.map(function(id,i){
             const tb=TABS.find(function(x){return x.id===id;}); if(!tb) return null;
             const fixed=(id==="dash");
-            return React.createElement("div",{key:id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",borderRadius:11,background:"var(--surface)",border:"1px solid var(--line)",marginBottom:7}},
+            return React.createElement("div",{key:id,style:{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",borderRadius:11,background:"var(--surface-2)",border:"1px solid var(--line)",marginBottom:7}},
               React.createElement("span",{style:{color:"var(--muted)",display:"flex"}}, React.createElement(tb.icon,{width:16,height:16})),
               React.createElement("span",{style:{flex:1,fontWeight:700,fontSize:14,color:"var(--text)"}}, t("tab_"+id)),
               React.createElement("button",{disabled:i===0,onClick:function(){ moveTab(id,-1); },style:Object.assign({},rowBtn,{opacity:i===0?0.35:1})}, "▲"),
@@ -5775,60 +5894,60 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
               React.createElement("span",{style:{color:"var(--muted)",display:"flex"}}, React.createElement(tb.icon,{width:16,height:16})),
               React.createElement("span",null, t("tab_"+id)));
           })
-        )
-      );
-    })(),
-    // Letra grande (accesibilidad) + relanzar el tutorial
-    (function(){
-      const on=!!(state.settings&&state.settings.bigText);
-      return React.createElement("button",{onClick:function(){ applyBigText(!on); set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{bigText:!on})}); }); },
-        style:Object.assign({},btn,{marginTop:10,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, t("st_bigtext"));
-    })(),
-    onTour && React.createElement("button",{onClick:onTour,style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"})}, t("st_tour")),
-    totals && React.createElement("button",{onClick:function(){ shareMonthReport(state, totals); },style:Object.assign({},btn,{marginTop:8,background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"})}, t("rp_btn")),
-    React.createElement("div",{style:lbl},t("budget_month")),
-    React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
-    React.createElement("button",{style:btn,onClick:saveNums},t("save")),
-    React.createElement("div",{style:lbl},t("theme")),
-    React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
-      THEMES.map(function(th){
-        const on=((state.settings&&state.settings.theme)||"green")===th[0];
-        return React.createElement("button",{key:th[0],onClick:function(){ applyTheme(th[0]); set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{theme:th[0]})}); }); },
-          style:Object.assign({},btn,{flex:"1 1 40%",marginTop:0,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})},
-          React.createElement("span",{style:{width:14,height:14,borderRadius:"50%",background:th[2],border:"1px solid rgba(128,128,128,.35)",flex:"0 0 auto"}}), t("th_"+th[0]));
+        );
+      })()),
+      onTour && row("tour","🎓",t("st_tour").replace(/^[^ ]+ /,""),null,onTour),
+      totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals); })
+    ),
+    // ── Tarjeta 3 · presupuesto y moneda ──
+    React.createElement("div",{className:"set-card"},
+      React.createElement("div",{className:"sc-title"},t("budget_month")),
+      React.createElement("div",{style:{padding:"8px 14px 14px"}},
+        React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
+        React.createElement("button",{style:btn,onClick:saveNums},t("save"))
+      ),
+      row("cur","💱",t("currency"),curCur==="EUR"?t("cur_eur"):t("cur_usd"),function(){
+        const c=curCur==="EUR"?"USD":"EUR";
+        setS({currency:c}); showToast(c==="USD"?"Mostrando en $":"Mostrando en €");
       })
     ),
-    React.createElement("div",{style:lbl},t("currency")),
-    React.createElement("div",{style:{display:"flex",gap:8}},
-      ["EUR","USD"].map(function(c){
-        const on=((state.settings&&state.settings.currency)||"EUR")===c;
-        return React.createElement("button",{key:c,onClick:function(){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})}); }); showToast(c==="USD"?"Mostrando en $":"Mostrando en €"); },style:Object.assign({},btn,{flex:1,marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"})}, c==="EUR"?t("cur_eur"):t("cur_usd"));
-      })
-    ),
+    // ── Tarjeta 4 · bancos (Open Banking) ──
     cloud.enabled() && (function(){
       const links=bankLinks;
       const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length;
-      const small={fontSize:11.5,color:"var(--muted-2)",marginTop:4,lineHeight:1.45};
       const summary = links===null ? "…"
         : nActive>0 ? tf("bp_summary_n",{n:nActive})
         : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
-      return React.createElement(React.Fragment,null,
-        React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
-        React.createElement("div",{style:lbl}, t("bank_section")),
-        React.createElement("div",{style:small}, summary),
-        React.createElement("button",{style:btnGhost,onClick:function(){ setManageBanks(true); }}, t("bp_manage")+" →")
+      return React.createElement("div",{className:"set-card"},
+        React.createElement("div",{className:"sc-title"},t("bank_section")),
+        row("banks","🏦",t("bp_manage"),summary,function(){ setManageBanks(true); })
       );
     })(),
     manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onClose:function(){ setManageBanks(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }}), document.body),
-    // Aviso: el lector de gastos TR sin acceso a notificaciones (los gastos no entran solos)
+    // ── Tarjeta 5 · notificaciones (solo app nativa) ──
     !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
       t("na_body"),
-      React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix"))
+      React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix")),
+      // Bloqueante 2 del feedback (captura 2026-07-10): Android 13+ BLOQUEA este permiso a las
+      // apps instaladas fuera de la Play Store («ajustes restringidos») — pasos para permitirlo.
+      React.createElement("div",{style:{fontSize:11.5,lineHeight:1.5,marginTop:10,opacity:.85}}, "🔓 "+t("na_restricted"))
     ),
-    React.createElement("div",{style:{height:"1px",background:"var(--line)",margin:"18px 0 4px"}}),
-    React.createElement("div",{style:lbl},t("backup")),
-    React.createElement("button",{style:btnGhost,onClick:doExport},t("do_export")),
-    React.createElement("button",{style:btnGhost,onClick:function(){ fileRef.current&&fileRef.current.click(); }},t("do_import")),
+    (function(){
+      const nat=natPlugin();
+      if(!nat || !nat.setNotifPrefs) return null;
+      const on=!(state.settings&&state.settings.trNotifyConfirm===false);
+      return React.createElement("div",{className:"set-card"},
+        React.createElement("div",{className:"sc-title"},t("st_notifs")),
+        row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint"))
+      );
+    })(),
+    // ── Tarjeta 6 · copia de seguridad ──
+    React.createElement("div",{className:"set-card"},
+      React.createElement("div",{className:"sc-title"},t("backup")),
+      row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
+      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
+    ),
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
   );
@@ -5840,7 +5959,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
 /* Onboarding renovado (2026-07-06): wizard de 3 pasos — (0) bienvenida con lo que hace la app
    hoy + recuperar cuenta, (1) presupuesto con atajos, (2) cuentas. El arranque vacío sigue
    siendo seguro y todo se puede cambiar luego. */
-function Onboarding({set, onCloud}){
+function Onboarding({set, onCloud, onSignup}){
   const [step,setStep]=useState(0);
   const [budget,setBudget]=useState("");
   const [accs,setAccs]=useState([]);
@@ -5878,7 +5997,10 @@ function Onboarding({set, onCloud}){
     React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.55}},t("ob2_claim")),
     onCloud && React.createElement("div",{style:{marginTop:16,padding:"14px",borderRadius:14,border:"1px solid var(--mint)",background:"rgba(95,208,138,.08)"}},
       React.createElement("div",{style:{color:"var(--text)",fontSize:13.5,lineHeight:1.5,marginBottom:10}},t("ob_returning")),
-      React.createElement("button",{style:{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"},onClick:onCloud},t("ob_haveacc"))),
+      React.createElement("button",{style:{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"},onClick:onCloud},t("ob_haveacc")),
+      // Registro a la vista desde el minuto 0 (punto 5): antes solo había "Ya tengo cuenta" y
+      // crear una obligaba a pasar por la pantalla de login y buscar el enlace pequeño.
+      onSignup && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontWeight:800,fontSize:14,cursor:"pointer",marginTop:8},onClick:onSignup},t("ob_signup"))),
     React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr",gap:8,marginTop:18}},
       feat("✍️","ob2_f1"),
       feat("📅","ob2_f2"),
@@ -6249,6 +6371,21 @@ function App(){
   // al volver a primer plano (visibilitychange). Solo hace algo en la app nativa (natPlugin+consumeGoto).
   const handleGoto=function(g){
     if(!g||typeof g!=="string") return;
+    // Vuelta del banco vía deep-link micartera://bank (solo app nativa; en web llega por ?bank=).
+    // Mismos avisos que la CAPA 2 de abajo + sincroniza el saldo recién autorizado.
+    if(g.indexOf("bank|")===0){
+      const parts=g.split("|");
+      if(parts[1]==="ok"){
+        showToast("✓ "+t("bank_connected"));
+        set(function(s){ return s.hasBankLink?s:Object.assign({},s,{hasBankLink:true}); });
+        runBankSync({manual:true});
+      } else {
+        const m=parts.slice(2).join("|");
+        if(m.indexOf("nolink:")===0){ const nm=m.slice(7), en=entFromAspsp(nm), lbl=en?entOf(en).label:(nm||"🏦"); showToast("⚠ "+lbl+": "+t("bank_nolink")); }
+        else showToast("⚠ "+t("bank_error")+(m?": "+m:""));
+      }
+      return;
+    }
     if(g==="gastos" || g.indexOf("exp|")===0){
       const gi=tabOrderOf(stateRef.current).indexOf("gastos");
       if(gi>=0) setTab(gi);
@@ -6256,6 +6393,7 @@ function App(){
         const parts=g.split("|");
         const amount=Math.abs(parseFloat(String(parts[1]||"").replace(',','.'))||0);
         const merchant=parts.slice(2).join("|").trim();   // el comercio podría llevar "|"
+        syncCloudExpenses().catch(function(){});   // el gasto de la noti puede no haber bajado aún
         setGotoExp({amount:amount, merchant:merchant, ts:Date.now()});
       }
     }
@@ -6346,6 +6484,30 @@ function App(){
     window.addEventListener("mc-sw-update", h);
     return function(){ window.removeEventListener("mc-sw-update", h); };
   },[]);
+  // Ajustes › "Personalizar widgets del Resumen": salta a la pestaña Resumen (Dashboard
+  // enciende su modo edición con el mismo evento).
+  useEffect(function(){
+    const h=function(){ const i=tabOrderOf(stateRef.current).indexOf("dash"); if(i>=0) setTab(i); };
+    window.addEventListener("mc-dash-edit",h);
+    return function(){ window.removeEventListener("mc-dash-edit",h); };
+  },[]);
+  // Aviso "hay APK nuevo" (solo app nativa; lo dispara el chequeo de apk.json del bloque OTA).
+  // Al tocar: MiCartera.installApk descarga y abre el instalador — actualización SIN cable.
+  const [apkUpd,setApkUpd]=useState(window._mcApkUpdate||null);
+  useEffect(function(){
+    const h=function(){ setApkUpd(window._mcApkUpdate||null); };
+    window.addEventListener("mc-apk-update", h);
+    return function(){ window.removeEventListener("mc-apk-update", h); };
+  },[]);
+  const doApkInstall=function(){
+    const nat=natPlugin();
+    if(!nat||!nat.installApk||!apkUpd) return;
+    showToast(t("apk_downloading"));
+    nat.installApk({url:apkUpd.url}).then(function(r){
+      if(r&&r.needsPermission){ showToast(t("apk_perm")); return; }   // Android abrió el ajuste; reintocar el botón
+      // ok: el instalador del sistema se abre solo encima de la app
+    }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
+  };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
     window.addEventListener("online",on); window.addEventListener("offline",off);
@@ -6386,8 +6548,15 @@ function App(){
     dAx.current=null;
   };
 
+  const [authStart,setAuthStart]=useState("in");   // modo con el que se abre AuthPanel ("in"/"up")
   const onCloudClick=function(){
     if(!cloud.enabled()){ showToast("Nube no disponible"); return; }
+    setAuthStart("in");
+    setShowAuth(true);
+  };
+  const onSignupClick=function(){
+    if(!cloud.enabled()){ showToast("Nube no disponible"); return; }
+    setAuthStart("up");   // onboarding → "Crear cuenta" directo, sin pasar por el login (punto 5)
     setShowAuth(true);
   };
   const [showDots,setShowDots]=useState(false);
@@ -6516,6 +6685,13 @@ function App(){
     // desinstalar/reinstalar y el gasto NO llega — bug Consum 2026-07-06). Arreglo en Ajustes.
     if(nat && nat.notifAccess){ try{ nat.notifAccess().then(function(r){ if(r&&r.granted===false) showToast(t("na_toast")); }).catch(function(){}); }catch(e){} }
   },[]);
+  // Propaga al lector nativo si debe confirmar cada gasto con una noti (ajuste st_trnotif).
+  // Se re-envía siempre que cambia Y al arrancar (una reinstalación pierde las prefs nativas).
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat || !nat.setNotifPrefs) return;
+    try{ nat.setNotifPrefs({expenseConfirm:!(state.settings&&state.settings.trNotifyConfirm===false)}).catch(function(){}); }catch(e){}
+  },[state.settings&&state.settings.trNotifyConfirm]);
   // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
   const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
   const widgetCash=trAccW ? Math.round((totals.bankBal[trAccW.ent]||0)*100)/100 : null;
@@ -6712,8 +6888,8 @@ function App(){
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
   if(state.onboarded===false) return React.createElement(React.Fragment,null,
-    React.createElement(Onboarding,{set:set, onCloud:(cloud.enabled()?onCloudClick:null)}),
-    showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery}),
+    React.createElement(Onboarding,{set:set, onCloud:(cloud.enabled()?onCloudClick:null), onSignup:(cloud.enabled()?onSignupClick:null)}),
+    showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
@@ -6761,9 +6937,10 @@ function App(){
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
     tourOpen && React.createElement(Tour,{onDone:endTour}),
     updateReady && React.createElement("button",{className:"update-pill",onClick:function(){ if(window.__mcApplyUpdate) window.__mcApplyUpdate(); }}, t("upd_ready")),
+    apkUpd && React.createElement("button",{className:"update-pill",onClick:doApkInstall}, tf("apk_ready",{v:apkUpd.versionName})),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
-    showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery}),
+    showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
     React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
       React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals})
@@ -6791,12 +6968,34 @@ try{ _mcNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Ca
         .then(function(v){
           if(!v||!v.version) return;
           if(v.version===CONFIG.APP_VERSION){ try{ localStorage.removeItem("_otaPending"); }catch(e){} return; }   // ya al día
+          // SOLO hacia adelante: si Pages aún sirve una versión ANTERIOR a la del bundle local
+          // (APK recién compilado antes del deploy), no tocar nada. Sin este guard, la alpha9
+          // se auto-DEGRADÓ a la web 3.83 nada más estrenarse (bug 2026-07-10).
+          var newer=(function(a,b){ a=String(a).split("."); b=String(b).split(".");
+            for(var i=0;i<Math.max(a.length,b.length);i++){ var x=parseInt(a[i]||0,10), y=parseInt(b[i]||0,10); if(x!==y) return x>y; } return false; })(v.version, CONFIG.APP_VERSION);
+          if(!newer) return;
           var pend=null; try{ pend=localStorage.getItem("_otaPending"); }catch(e){}
           if(pend===v.version) return;                                    // ya descargado; entra al siguiente arranque
           return up.download({url:(v.url||BASE+"bundle.zip"),version:v.version}).then(function(b){
             return up.next({id:b.id});                                    // hot-swap en el próximo arranque (sin recargas a media sesión)
           }).then(function(){ try{ localStorage.setItem("_otaPending",v.version); }catch(e){} });
         }).catch(function(){});                                           // sin red o aún sin desplegar: la app sigue con su bundle
+      // APK: cambios NATIVOS sin cable. public/apk.json (en Pages) dice el último versionCode;
+      // si es mayor que el instalado (MiCartera.appInfo), la app enseña el botón «Actualizar app»
+      // → MiCartera.installApk descarga el APK (GitHub Releases) y abre el instalador del sistema.
+      // Instala encima (misma firma) = mantiene datos, sesión y el acceso a notificaciones.
+      fetch(BASE+"apk.json?ts="+Date.now(),{cache:"no-store"})
+        .then(function(r){ return r.json(); })
+        .then(function(a){
+          var mc=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
+          if(!a||!a.versionCode||!a.url||!mc||!mc.appInfo) return;
+          return mc.appInfo().then(function(info){
+            if(info&&info.versionCode&&Number(a.versionCode)>Number(info.versionCode)){
+              window._mcApkUpdate={url:a.url, versionName:a.versionName||("v"+a.versionCode)};
+              try{ window.dispatchEvent(new CustomEvent("mc-apk-update")); }catch(e){}
+            }
+          });
+        }).catch(function(){});                                           // sin apk.json publicado aún: nada que hacer
     },4000);
   }catch(e){}
 })();

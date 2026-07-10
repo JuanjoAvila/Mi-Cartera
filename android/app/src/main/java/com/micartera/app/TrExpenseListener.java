@@ -50,6 +50,17 @@ public class TrExpenseListener extends NotificationListenerService {
         if (text.isEmpty()) return;
         if (!text.contains("€") && !HAS_AMOUNT.matcher(text).find()) return;
 
+        // DEDUPE (bug pareja 2026-07-10): Android re-entrega la MISMA notificación cuando TR la
+        // actualiza (y al reconectar el listener) → cada re-entrega disparaba otro POST y otra
+        // noti de confirmación ("a veces 2"). El servidor ya dedupea el GASTO (expenses_dedup_idx),
+        // pero la confirmación local salía igual. Mismo texto en <3 min ⇒ ya procesada, fuera.
+        android.content.SharedPreferences dd =
+                getSharedPreferences("micartera_ingest_dedupe", MODE_PRIVATE);
+        int sig = (title + "|" + text).hashCode();
+        long now = System.currentTimeMillis();
+        if (dd.getInt("sig", 0) == sig && now - dd.getLong("ts", 0) < 180000) return;
+        dd.edit().putInt("sig", sig).putLong("ts", now).apply();
+
         new Thread(() -> {
             try {
                 String body = new JSONObject()
@@ -112,14 +123,21 @@ public class TrExpenseListener extends NotificationListenerService {
             String comercio = r.optString("comercio", "");
             int id = (int) (System.currentTimeMillis() % 100000);
 
+            // Ajuste "confirmar gastos" (punto 9): TR ya avisa del cargo, así que la confirmación
+            // "✓ Gasto apuntado" es opcional (MiCartera.setNotifPrefs). Los avisos de presupuesto
+            // de abajo salen SIEMPRE — esos no los da el banco.
+            boolean confirm = getSharedPreferences("micartera_notifprefs", MODE_PRIVATE)
+                    .getBoolean("expenseConfirm", true);
             // Punto 5: deep-link a la ficha del gasto — al tocar la noti, la web abre este gasto en Gastos.
             String gotoTok = "exp|" + importe + "|" + comercio;
-            if (tipo.equals("ingreso")) {
-                Notif.show(this, "💰 Dinero recibido", "+" + eur(-importe) + " · " + comercio, id, gotoTok);
-            } else if (tipo.equals("gasto_nocard")) {
-                Notif.show(this, "🔄 Bizum enviado apuntado", eur(importe) + " · " + comercio, id, gotoTok);
-            } else {
-                Notif.show(this, "✓ Gasto apuntado", eur(importe) + " en " + comercio, id, gotoTok);
+            if (confirm) {
+                if (tipo.equals("ingreso")) {
+                    Notif.show(this, "💰 Dinero recibido", "+" + eur(-importe) + " · " + comercio, id, gotoTok);
+                } else if (tipo.equals("gasto_nocard")) {
+                    Notif.show(this, "🔄 Bizum enviado apuntado", eur(importe) + " · " + comercio, id, gotoTok);
+                } else {
+                    Notif.show(this, "✓ Gasto apuntado", eur(importe) + " en " + comercio, id, gotoTok);
+                }
             }
 
             JSONObject alert = r.optJSONObject("alert");
