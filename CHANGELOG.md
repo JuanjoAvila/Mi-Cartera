@@ -19,6 +19,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.86.0] — 2026-07-10
+### TR en frío (vuelta 4, con red de seguridad), volver del banco sin ver código fuente y quitar bancos que se quitan de verdad
+- 🔐 **TR en frío, tercera capa (APK alpha13):** el diagnóstico de alpha12 confirmó que el SDK del WAF está presente y aun así falla → el token cacheado que devuelve `getToken()` está rancio. Ahora: (1) se pide token FORZADO (`forceRefreshToken`) al reintentar, y (2) si aun así el fetch revienta, se **recarga la página de TR en la WebView oculta** (challenge del WAF desde cero, como haría un navegador de verdad) y se reintenta una vez — orquestado en nativo porque la recarga destruye el contexto JS. De regalo: timeout de 45 s para que el botón no se quede girando para siempre. **(nativo → APK alpha13)**
+- 🏦 **Volver del banco ya no te enseña código fuente:** Supabase ahora machaca el `Content-Type` de sus funciones (anti-phishing: `text/plain` + sandbox) y la página «Banco conectado» salía en crudo, sin botón para volver a la app. El callback ahora redirige a una página puente en nuestro dominio (`back.html`) que sí es HTML de verdad y salta a la app sola.
+- 🏦 **Quitar un banco lo quita de verdad:** sus cuentas sincronizadas desaparecen del patrimonio al momento (antes se quedaban sumando hasta el siguiente sync) y el contador de «Gestionar mis bancos» se actualiza al instante. Además Trade Republic ya cuenta como conexión en ese número.
+- 🏷 **Etiqueta «extra» jubilada:** las cuentas que llegan del banco por Open Banking ahora llevan la etiqueta genérica «del banco» (la palabra «extra» era jerga interna y confundía).
+
 ## [3.85.1] — 2026-07-10
 ### Cobro doble arreglado, Actividad desbloqueada y TR que aguanta el frío (APK alpha11)
 - 💳 **Los pagos con confirmación ya no entran DOS veces:** un pago 3DS (p. ej. una multa) genera dos notificaciones de TR («confirma el pago» + «has pagado») y ambas se apuntaban como gasto. Ahora la de autorización se ignora y, además, un mismo importe en menos de 10 minutos se trata como el mismo movimiento. *(Servidor: al desplegarse vale para todos, sin actualizar la app. El 50 € duplicado que ya está apuntado bórralo en Gastos: toca el gasto → borrar.)*
