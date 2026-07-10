@@ -1,6 +1,6 @@
 {
-  "versionCode": 11,
-  "versionName": "4.0.0-alpha11",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha11/Mi-Cartera.apk",
-  "notes": "Sincronizar Trade Republic ya no caduca en frío (token WAF renovado al vuelo) y los pagos con confirmación del banco ya no entran dos veces."
+  "versionCode": 12,
+  "versionName": "4.0.0-alpha12",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha12/Mi-Cartera.apk",
+  "notes": "Sincronizar Trade Republic ya no muere en frío con «Failed to fetch»: el token del AWS WAF ahora viaja como cabecera x-aws-waf-token (cruza subdominios), no como cookie que se quedaba en app.traderepublic.com."
 }
