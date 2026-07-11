@@ -1012,6 +1012,15 @@ const cloud = (function(){
       if(!data || !data.ok) throw new Error((data&&data.error)||"sync falló");
       return data;   // { ok, dryRun, links:[{aspsp, iban, balances, transactions}] }
     },
+    // IMPORTAR HISTÓRICO: trae movimientos desde dateFrom (YYYY-MM-DD, tope PSD2 ~90 días).
+    // Modo lectura pura del servidor (no toca saldos). Devuelve { links:[{aspsp, accounts:[{transactions}]}] }.
+    async bankSyncHistory(dateFrom){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('bank-sync',{ body:{ dateFrom:dateFrom } });
+      if(error) throw error;
+      if(!data || !data.ok) throw new Error((data&&data.error)||"histórico falló");
+      return data;
+    },
     // Quita un banco enlazado (revoca en Enable Banking + borra la fila). Reversible: reconectar.
     async bankDisconnect(aspsp_name){
       if(!sb) throw new Error("nube no disponible");
@@ -2102,6 +2111,7 @@ Object.assign(LANG.es,{
   bp_title:"Mis bancos", bp_intro:"Conecta uno o varios bancos por Open Banking. Solo lectura, sin tarjeta. Cada permiso se renueva cada ~3 meses.",
   bp_manage:"Gestionar mis bancos", bp_close:"Ajustes", bp_back:"Mis bancos",
   bp_empty:"Aún no has conectado ningún banco.", bp_add:"Conectar un banco",
+  bp_hist_btn:"Importar histórico de gastos", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae los gastos de los últimos meses de tu cuenta de gasto diario ({bank}) y elige cuáles apuntar. Solo cargos; las compras con tarjeta vienen pre-marcadas.", bp_hist_nodaily:"Para importar histórico, primero pon una cuenta de banco conectada como «gasto diario» en Patrimonio (editar cuenta → rol). Trade Republic no vale: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay gastos nuevos que importar en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos encontrados · marca los que quieras apuntar", bp_hist_notcard:"no es tarjeta (¿recibo?)", bp_hist_import:"Importar {n} gastos", bp_hist_done:"✓ {n} gastos importados",
   bp_summary_n:"{n} conectado(s)", bp_summary_none:"Ningún banco conectado todavía",
   bp_pick_title:"Elige tu banco", bp_pick_sub:"Busca tu banco en la lista. Solo verás datos de las cuentas que autorices.",
   bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
@@ -2117,6 +2127,7 @@ Object.assign(LANG.en,{
   bp_title:"My banks", bp_intro:"Connect one or more banks via Open Banking. Read-only, no card. Each consent renews every ~3 months.",
   bp_manage:"Manage my banks", bp_close:"Settings", bp_back:"My banks",
   bp_empty:"You haven't connected any bank yet.", bp_add:"Connect a bank",
+  bp_hist_btn:"Import spending history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months of spending from your daily-spend account ({bank}) and pick which to log. Debits only; card purchases are pre-checked.", bp_hist_nodaily:"To import history, first set a connected bank account as «daily spend» in Net worth (edit account → role). Trade Republic won't work: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new expenses to import in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions found · check the ones to log", bp_hist_notcard:"not a card purchase (a bill?)", bp_hist_import:"Import {n} expenses", bp_hist_done:"✓ {n} expenses imported",
   bp_summary_n:"{n} connected", bp_summary_none:"No bank connected yet",
   bp_pick_title:"Choose your bank", bp_pick_sub:"Find your bank in the list. You'll only see data from the accounts you authorize.",
   bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
@@ -2132,6 +2143,7 @@ Object.assign(LANG.ca,{
   bp_title:"Els meus bancs", bp_intro:"Connecta un o més bancs per Open Banking. Només lectura, sense targeta. Cada permís es renova cada ~3 mesos.",
   bp_manage:"Gestiona els meus bancs", bp_close:"Ajustos", bp_back:"Els meus bancs",
   bp_empty:"Encara no has connectat cap banc.", bp_add:"Connecta un banc",
+  bp_hist_btn:"Importar històric de despeses", bp_hist_title:"Importar històric", bp_hist_sub:"Porta les despeses dels últims mesos del teu compte de despesa diària ({bank}) i tria quines apuntar. Només càrrecs; les compres amb targeta vénen pre-marcades.", bp_hist_nodaily:"Per importar històric, primer posa un compte de banc connectat com a «despesa diària» a Patrimoni (edita compte → rol). Trade Republic no val: no està a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha despeses noves per importar en aquest període (o ja estan totes apuntades). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments trobats · marca els que vulguis apuntar", bp_hist_notcard:"no és targeta (rebut?)", bp_hist_import:"Importar {n} despeses", bp_hist_done:"✓ {n} despeses importades",
   bp_summary_n:"{n} connectat(s)", bp_summary_none:"Cap banc connectat encara",
   bp_pick_title:"Tria el teu banc", bp_pick_sub:"Cerca el teu banc a la llista. Només veuràs dades dels comptes que autoritzis.",
   bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
@@ -5695,7 +5707,96 @@ function AuthPanel({session, onClose, showToast, recovery, startMode}){
    ve su estado y elige de la lista REAL de Enable Banking (con buscador y logos).
    Overlay a pantalla completa que abre SettingsPanel.
    ============================================================ */
+/* IMPORTAR HISTÓRICO de gastos vía Open Banking (tope PSD2 ~90 días). Trae los movimientos de
+   la cuenta de GASTO DIARIO (rol "diario"/"ambos") conectada al banco y deja ELEGIR cuáles
+   apuntar como gasto variable (compras con tarjeta pre-marcadas; recibos/otros desmarcados).
+   Idempotente: descarta lo ya importado (ext_id) y lo que ya existe (fecha|importe|comercio).
+   Para Trade Republic no aplica: TR no está en Open Banking (no hay movimientos que traer). */
+function BankHistoryImport({state, set, showToast, onClose}){
+  const dailyAcc=(state.accounts||[]).find(function(a){ return accDaily(a); });
+  const dailyEnt=dailyAcc&&dailyAcc.ent;
+  const [months,setMonths]=useState(3);
+  const [loading,setLoading]=useState(false);
+  const [cands,setCands]=useState(null);          // null = aún no se ha buscado
+  const [sel,setSel]=useState({});                // índice -> bool
+  const [importing,setImporting]=useState(false);
+  useBackClose(true, onClose);
+  const kOf=function(dt,am,mc){ return String(dt).slice(0,10)+"|"+am+"|"+(mc||""); };
+  const search=function(){
+    if(!dailyEnt){ showToast(t("bp_hist_nodaily")); return; }
+    setLoading(true); setCands(null);
+    const d=new Date(); d.setMonth(d.getMonth()-months); const dateFrom=d.toISOString().slice(0,10);
+    cloud.bankSyncHistory(dateFrom).then(function(res){
+      const links=(res&&res.links)||[];
+      const seen={}; (state.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
+      const keys={}; (state.expenses||[]).forEach(function(e){ keys[kOf(e.date,e.amount,e.merchant)]=1; });
+      const out=[], uniq={};
+      links.forEach(function(lk){
+        const ent=entFromAspsp(lk&&lk.aspsp); if(ent!==dailyEnt) return;
+        (lk.accounts||[]).forEach(function(ac){
+          (ac.transactions||[]).forEach(function(tx){
+            const dt=String(tx.date||"").slice(0,10), am=Number(tx.amount)||0;
+            if(!dt || !(am>0)) return;                              // solo cargos (gasto)
+            if(tx.ext_id && seen[tx.ext_id]) return;                // ya importado
+            if(keys[kOf(dt,am,tx.merchant)]) return;                // ya existe a mano/otro origen
+            const k=tx.ext_id||kOf(dt,am,tx.merchant); if(uniq[k]) return; uniq[k]=1;   // dedup entre páginas
+            out.push({ id:tx.ext_id||null, date:dt, amount:am, merchant:tx.merchant||"Compra", card:!!tx.card });
+          });
+        });
+      });
+      out.sort(function(a,b){ return b.date.localeCompare(a.date); });
+      setCands(out);
+      const s0={}; out.forEach(function(x,i){ s0[i]=!!x.card; }); setSel(s0);   // tarjeta = pre-marcado
+    }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); setCands([]); }).finally(function(){ setLoading(false); });
+  };
+  const toggle=function(i){ setSel(function(p){ const n=Object.assign({},p); n[i]=!n[i]; return n; }); };
+  const selCount=cands? cands.filter(function(x,i){ return sel[i]; }).length : 0;
+  const doImport=function(){
+    if(!cands || !selCount) return;
+    setImporting(true);
+    const adds=cands.filter(function(x,i){ return sel[i]; }).map(function(x){
+      const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:x.amount, category:autoCategory(x.merchant||""), source:"ob-hist" };
+      if(x.id) e.extId=x.id; return e;
+    });
+    set(function(s){ return Object.assign({},s,{expenses:adds.concat(s.expenses||[])}); });
+    setTimeout(function(){ adds.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); },0);
+    showToast(tf("bp_hist_done",{n:adds.length}));
+    setImporting(false); onClose();
+  };
+  const wrap={position:"fixed",inset:0,zIndex:97,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const chip=function(n){ const on=months===n; return React.createElement("button",{key:n,onClick:function(){ setMonths(n); },style:{flex:1,padding:"9px 0",borderRadius:10,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)":"var(--surface)",color:on?"#06120C":"var(--text)",fontWeight:800,fontSize:13,cursor:"pointer"}}, tf("bp_hist_m",{n:n})); };
+  const bigBtn={width:"100%",padding:"14px",borderRadius:14,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer",marginTop:12};
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("bp_close")),
+    React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px"}}, t("bp_hist_title")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}},
+      dailyEnt? tf("bp_hist_sub",{bank:entOf(dailyEnt).label}) : t("bp_hist_nodaily")),
+    dailyEnt && React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}}, [1,2,3].map(chip)),
+      React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:800,fontSize:14,cursor:"pointer"},disabled:loading,onClick:search}, loading?t("bp_hist_searching"):t("bp_hist_search")),
+      cands!==null && cands.length===0 && !loading && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,textAlign:"center",padding:"20px 0"}}, t("bp_hist_none")),
+      cands!==null && cands.length>0 && React.createElement("div",{style:{marginTop:14}},
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginBottom:8}}, tf("bp_hist_found",{n:cands.length})),
+        cands.map(function(x,i){
+          const on=!!sel[i];
+          return React.createElement("button",{key:i,onClick:function(){ toggle(i); },style:{display:"flex",alignItems:"center",gap:11,width:"100%",padding:"10px 12px",borderRadius:12,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)14":"var(--surface)",marginBottom:7,cursor:"pointer",textAlign:"left"}},
+            React.createElement("span",{style:{width:20,height:20,borderRadius:6,border:"2px solid "+(on?"var(--mint)":"var(--muted-2)"),background:on?"var(--mint)":"transparent",color:"#06120C",fontWeight:900,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, on?"✓":""),
+            React.createElement("div",{style:{flex:1,minWidth:0}},
+              React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, x.merchant),
+              React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, x.card?"":" · "+t("bp_hist_notcard"))),
+            React.createElement("span",{style:{fontWeight:800,fontSize:14,flexShrink:0}}, eur(x.amount))
+          );
+        }),
+        React.createElement("button",{style:Object.assign({},bigBtn,{opacity:(selCount&&!importing)?1:0.5}),disabled:!selCount||importing,onClick:doImport}, tf("bp_hist_import",{n:selCount}))
+      )
+    )
+  ));
+}
+
 function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks}){
+  const [histOpen,setHistOpen]=useState(false);
   const [links,setLinks]=useState(null);          // null = cargando
   const [aspsps,setAspsps]=useState(null);        // null = sin cargar
   const [loadingA,setLoadingA]=useState(false);
@@ -5814,6 +5915,9 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       );
     }),
     React.createElement("button",{style:bigBtn,onClick:openPicker}, "+ "+t("bp_add")),
+    // Importar histórico de gastos (Open Banking, tope ~90 días) de la cuenta de gasto diario.
+    ((links||[]).some(function(l){ return l.status==='active'; })) && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:700,fontSize:13.5,cursor:"pointer",marginTop:10},onClick:function(){ setHistOpen(true); }}, "⏳ "+t("bp_hist_btn")),
+    histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
     // Trade Republic también es un banco: su conexión (integración propia vía app Android) vive
     // aquí con el resto de bancos, no perdida en Inversiones/Ajustes (feedback 2026-07-06).
     React.createElement("div",{style:{height:1,background:"var(--line)",margin:"20px 0 14px"}}),

@@ -19,6 +19,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.89.0] — 2026-07-11
+### Importar histórico de gastos (Open Banking)
+- ✨ **Traer meses pasados a Gastos:** en **Ajustes → Bancos → «Importar histórico de gastos»**, la app trae los movimientos de los últimos 1-3 meses de tu **cuenta de gasto diario** conectada al banco y te deja **elegir cuáles apuntar** (lista con casillas; las compras con tarjeta vienen pre-marcadas, los cargos que parecen recibos desmarcados). Idempotente: descarta lo ya importado (`ext_id`) y lo que ya existe (fecha·importe·comercio). Server-side (`bank-sync` con `dateFrom`) es **lectura pura**: pagina con `continuation_key` y **no toca saldos ni el estado de los enlaces**. Textos ES/EN/CA.
+- ⚠️ **Límites (PSD2):** el banco solo deja ver **~90 días** de histórico en accesos desatendidos, por eso el selector llega a 3 meses. **No aplica a Trade Republic** (no está en Open Banking): para TR se usa el apuntado por notificaciones. Requiere desplegar la función `bank-sync`.
+
 ## [3.88.0] — 2026-07-11
 ### Apuntado de Trade Republic MULTIUSUARIO (0008)
 - ✨ **Cada persona apunta sus gastos de TR en SU cuenta:** hasta ahora el lector de notificaciones (`ingest`) escribía siempre para el único usuario del secreto `INGEST_USER_ID` (el creador). Por eso, cuando a una pareja/amigo le llegaba la noti de un gasto de Trade Republic, **no se apuntaba** en su cuenta (o iba a la del creador). Ahora, en **Ajustes → notificaciones**, un toggle **«Apuntar aquí mis gastos de Trade Republic»** genera un **token propio** por usuario (tabla nueva `ingest_tokens` con RLS, migración `0008`), lo guarda y pasa la URL de `ingest` al lector nativo (plugin `setIngestUrl` → `SharedPreferences`). El lector lee esa URL (y cae a `BuildConfig.INGEST_URL` si no la hay), así que **el token del creador sigue funcionando igual** — cero disrupción. `ingest` resuelve `token → user_id` (fallback al secreto legado). Textos ES/EN/CA. **Requiere APK nuevo** (cambia el lector nativo) y desplegar la función + migración.
