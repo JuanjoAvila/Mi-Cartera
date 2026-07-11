@@ -215,12 +215,15 @@ public class TradeRepublicPlugin extends Plugin {
         pending.put(id, call);
         call.setKeepAlive(true);   // la respuesta llega asíncrona por el puente
         // Red de seguridad: si una recarga se come el contexto JS y nada responde, resolvemos
-        // con error a los 45 s en vez de dejar el botón girando para siempre.
+        // con error en vez de dejar el botón girando para siempre. 90 s: el peor camino en frío
+        // (backoff ~9,5 s + WS 15 s + recarga + segunda pasada completa) ronda los 55 s — con el
+        // timeout de 60 s de alpha14 el segundo intento moría a medias y el usuario veía un
+        // "timeout" falso tras un minuto de espera (feedback 2026-07-11).
         main.postDelayed(() -> {
             PluginCall stale = pending.remove(id);
             bodies.remove(id); retriedIds.remove(id); verifyIds.remove(id);
             if (stale != null) resolveErr(stale, "TR no respondió (timeout) · reintenta");
-        }, 60000);
+        }, 90000);
         return id;
     }
 
@@ -291,14 +294,17 @@ public class TradeRepublicPlugin extends Plugin {
             // dominio app.* que NO viaja a api.* → nunca arreglaba nada. Ahora wfetch() usa el wrapper
             // oficial AwsWafIntegration.fetch (cabecera x-aws-waf-token, que SÍ cruza subdominios).
             // Devuelve "" si ok, o el motivo (con estado del SDK) si falla — ya no a ciegas.
-            // ARRANQUE EN FRÍO (alpha14): el challenge del AWS WAF tarda unos segundos en producir un
-            // token VÁLIDO tras cargar la página. Disparar una sola vez (a los 600 ms) llega demasiado
-            // pronto → "Failed to fetch". Reintentamos con espera creciente (~22 s) forzando token
-            // nuevo entre intentos, hasta que el refresh entre. En caliente el token ya vale → entra al
-            // primer intento sin esperar. 401 = sesión de VERDAD caducada (2FA) → no insistir.
+            // ARRANQUE EN FRÍO (alpha14→15): el challenge del AWS WAF tarda unos segundos en producir
+            // un token VÁLIDO tras cargar la página. Disparar una sola vez (a los 600 ms) llega
+            // demasiado pronto → "Failed to fetch". Reintentamos con espera creciente (~9,5 s)
+            // forzando token nuevo entre intentos; si aun así no entra, la mejor apuesta NO es seguir
+            // esperando (alpha14 gastaba ~22 s aquí y el total se comía el timeout) sino la RECARGA
+            // de la página (Bridge.result → reloadThen): challenge de cero y segunda pasada completa.
+            // En caliente el token ya vale → entra al primer intento sin esperar.
+            // 401 = sesión de VERDAD caducada (2FA) → no insistir.
             "const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));" +
             "const refreshOnce=async()=>{const r=await wfetch('https://api.traderepublic.com/api/v1/auth/web/session',{method:'GET',credentials:'include',headers:{}});return r.status;};" +
-            "const refresh=async()=>{const delays=[0,1200,2500,4000,6000,8000];let last='';" +
+            "const refresh=async()=>{const delays=[0,1500,3000,5000];let last='';" +
             "for(let i=0;i<delays.length;i++){if(delays[i])await sleep(delays[i]);if(i>0)await wafToken(true);" +
             "try{const s=await refreshOnce();if(s===200||s===201)return '';if(s===401){return 'HTTP 401';}last='HTTP '+s;}" +
             "catch(e){last=String(e&&e.message||e)+' ['+wafInfo()+']';}}" +
@@ -340,13 +346,21 @@ public class TradeRepublicPlugin extends Plugin {
               "if(p&&price[p.isin]==null){const pr=(j.last&&j.last.price)||(j.bid&&j.bid.price)||(j.ask&&j.ask.price);if(pr!=null){price[p.isin]=Number(pr);try{ws.send('unsub '+fid);}catch(e){}}}" +
               "if(positions&&Object.keys(price).length>=positions.length&&cash!=null)finishOk();}" +
             "};});" +
-            // Orquestación: refresca (con backoff ~22s) → sincroniza → si aún caduca, UN disparo
+            // Orquestación: refresca (backoff ~9,5 s) → sincroniza → si aún caduca, UN disparo
             // forzado más (no otro backoff, para no reventar el timeout) y reintenta 1 vez.
+            // · 401 REAL en el refresh → sesión caducada de verdad: fuera ya, sin gastar 15 s de WS.
+            // · authExpired con el refresh BLOQUEADO por el WAF (no-401) ≠ sesión caducada: se marca
+            //   wafBlocked (la sesión sigue viva, NO desconectar) — antes esto ponía connected=false
+            //   y pedía re-hacer el 2FA sin necesidad (feedback 2026-07-11). El texto conserva el
+            //   motivo (p.ej. "Failed to fetch") para que Bridge.result dispare la recarga+reintento.
             "const refreshForced=async()=>{await wafToken(true);try{const s=await refreshOnce();return (s===200||s===201)?'':('HTTP '+s);}catch(e){return String(e&&e.message||e);}};" +
             "const rerr=await refresh();" +
+            "if(rerr==='HTTP 401')return JSON.stringify({ok:false,authExpired:true,error:'Tu sesión de TR caducó. Pulsa «Desconectar» y vuelve a conectar.'});" +
             "let r=await trySync();" +
             "if(!r.ok&&r.authExpired&&rerr){if(!(await refreshForced()))r=await trySync();}" +
-            "if(!r.ok&&r.authExpired)r.error='Tu sesión de TR caducó (refresh: '+(rerr===''?'ok':rerr)+'). Pulsa «Desconectar» y vuelve a conectar.';" +
+            "if(!r.ok&&r.authExpired){" +
+            "if(rerr){delete r.authExpired;r.wafBlocked=true;r.error='TR aún no deja pasar (control anti-bot · '+rerr+'). Espera unos segundos y vuelve a sincronizar.';}" +
+            "else{r.error='Tu sesión de TR caducó (refresh: ok). Pulsa «Desconectar» y vuelve a conectar.';}}" +
             "return r;"
         ));
     }

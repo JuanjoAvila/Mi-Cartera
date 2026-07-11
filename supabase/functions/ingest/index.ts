@@ -32,10 +32,10 @@ const CATEGORIAS: Record<string, string[]> = {
   bares:      ["restaurante","bar","cafe","cafè","cafeteria","mcdonalds","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","just eat","justeat","glovo","uber eats","ubereats","vending","expendedor"],
   super:      ["mercadona","lidl","aldi","carrefour","dia ","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verdura","fruteria"],
   transporte: ["renfe","fgc","tmb","metro","bus","taxi","cabify","uber","parking","gasolina","repsol","cepsa","bp ","shell","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto"],
-  ocio:       ["cinema","cines","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","game ","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport"],
+  ocio:       ["cinema","cines","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","game ","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","anthropic","claude","openai","chatgpt","google one","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo"],
   compras:    ["zara","mango","hm ","h&m","primark","stradivarius","bershka","pull","cortefiel","el corte","amazon","aliexpress","pccomponentes","mediamarkt","leroy","ikea","worten","nike","adidas","foot locker","cofidis"],
   hogar:      ["ikea","leroy merlin","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
-  salud:      ["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","barberia","estetica","belleza","depilacion"],
+  salud:      ["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
   regalos:    ["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
 };
 
@@ -151,7 +151,10 @@ Deno.serve(async (req) => {
       .from("ingest_tokens").select("user_id").eq("token", token).maybeSingle();
     userId = tok?.user_id || null;
   }
-  if (!userId) return json({ ok: false, error: "token inválido" }, 403);
+  if (!userId) {
+    await logIngestError(supabase, null, "token inválido (lector nativo con token no registrado)", "token=" + token.slice(0, 8) + "…");
+    return json({ ok: false, error: "token inválido" }, 403);
+  }
 
   // 2) Parseo del cuerpo (JSON o form-urlencoded, compat MacroDroid)
   const raw = await req.text();
@@ -212,7 +215,10 @@ Deno.serve(async (req) => {
       { user_id: userId, fecha, importe, comercio, cat, source: "macrodroid", no_card: noCard },
       { onConflict: "user_id,fecha,importe,comercio", ignoreDuplicates: true },
     );
-  if (error) return json({ ok: false, error: error.message }, 500);
+  if (error) {
+    await logIngestError(supabase, userId, "no se pudo guardar el gasto: " + error.message, comercio + " · " + importe + "€");
+    return json({ ok: false, error: error.message }, 500);
+  }
 
   // 4) Total del mes + alerta de presupuesto server-side (best-effort): el lector
   //    nativo lo usa para refrescar el WIDGET y lanzar la notificación aunque la
@@ -247,4 +253,21 @@ function json(obj: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+// Telemetría solo-admin: los fallos del ingest eran INVISIBLES (pasaban en el servidor, lejos
+// de la app → app_events no se enteraba y el gasto "desaparecía" sin rastro — bug 2026-07-11).
+// Best-effort: nunca rompe el ingest. Sin user resuelto se apunta al del creador (es su panel).
+// deno-lint-ignore no-explicit-any
+async function logIngestError(supabase: any, userId: string | null, message: string, detail?: string) {
+  try {
+    const uid = userId || Deno.env.get("INGEST_USER_ID");
+    if (!uid) return;
+    await supabase.from("app_events").insert({
+      user_id: uid, email: null, kind: "error",
+      message: ("INGEST: " + message).slice(0, 500),
+      detail: detail ? String(detail).slice(0, 2000) : null,
+      app_version: "edge", platform: "android",
+    });
+  } catch (_) { /* opcional */ }
 }
