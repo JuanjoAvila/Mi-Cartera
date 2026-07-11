@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.87.0] — 2026-07-11
+### Quitar a mano una cuenta del Patrimonio
+- ✨ **Cuentas manuales borrables:** las cuentas añadidas a mano en el onboarding viven en `state.accounts`, no en las de Open Banking (`obAccounts`). Al desconectar/desloguear un banco, la purga automática (`bankDisconnect`) solo limpia las de Open Banking, así que una cuenta manual (p. ej. la de una pareja que se deslogueó de Revolut) seguía sumando al Patrimonio **sin forma de quitarla**. Ahora, en **Patrimonio → Cuentas → Editar**, cada cuenta manual tiene un botón 🗑 con **confirmación inline** para quitarla del patrimonio, y un aviso que recuerda que las cuentas conectadas al banco se desconectan desde **Ajustes → Bancos**. Textos en ES/EN/CA.
+
 ## [3.86.1] — 2026-07-10
 ### El paso del tutorial sobre el «?» ya no señala a lo que no toca
 - 🐛 **Tutorial (paso 6, «Si ves un `?`…»):** cuando no había ningún botón `?` visible en el Resumen (p. ej. con las tarjetas de Meta/Reparto/Ahorro/Culpable/Tendencia ocultas), el paso caía a un *fallback* que resaltaba la tarjeta de Patrimonio Neto en su lugar — el texto hablaba de un interrogante que no estaba ahí. Ahora, si no encuentra ningún `?` real, el tutorial salta ese paso en vez de señalar algo que no corresponde.
