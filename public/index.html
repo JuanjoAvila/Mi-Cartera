@@ -812,6 +812,7 @@ const CONFIG = {
 /* ---------- Categorías de gasto variable ---------- */
 const CATEGORIES = [
   { id:"super",      name:"Supermercado",        color:"#5FD08A", icon:"🛒" },
+  { id:"pan",        name:"Panadería",           color:"#E0B080", icon:"🥖" },
   { id:"bares",      name:"Bares y restaurantes", color:"#E6C36A", icon:"🍽️" },
   { id:"ocio",       name:"Ocio",                color:"#9BD0E0", icon:"🎬" },
   { id:"transporte", name:"Transporte",          color:"#7FB5E8", icon:"🚇" },
@@ -838,7 +839,10 @@ const MERCHANT_OVERRIDES = {};
 let USER_OVERRIDES = {};
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
 const KW = {
-  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin","vending","expendedor"],
+  // "pan" va ANTES que "bares" (el for..in respeta el orden): si no, "panaderia"/"pasteleria"
+  // caerían en bares al comprobarse primero.
+  pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano"],
+  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin","vending","expendedor"],
   super:["mercadona","lidl","aldi","carrefour","dia","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria"],
   transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing","blablacar","flixbus"],
   parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal"],
@@ -1434,6 +1438,8 @@ Object.assign(LANG.ca,{
 /* Roles de cuenta + import OB + informe mensual */
 Object.assign(LANG.es,{
   rl_fijos:"🏦 Recibos", rl_diario:"🛒 Gasto diario", rl_ambos:"🔁 Todo",
+  rl_ob_q:"¿Para qué usas esta cuenta? Dale un rol y podrás asignarle gastos fijos y del día a día:",
+  rl_ob_done:"✓ «{n}» activada como {r}. Ya puedes elegirla en tus gastos.",
   rl_hint:"El rol dice qué papel juega cada cuenta: de las de «Recibos» salen los fijos y cuotas; de la de «Gasto diario» sale lo que apuntas en Gastos; «Todo» = una sola cuenta para ambas cosas. Solo puede haber una de gasto diario; al cambiar el rol, el saldo mostrado se conserva.",
   ob_imported:"🏦 {n} compras con tarjeta añadidas a Gastos",
   rp_btn:"📸 Informe del mes (imagen)", rp_spent:"Gastado este mes", rp_of_budget:"de {b} de presupuesto ({p}%)",
@@ -1441,6 +1447,8 @@ Object.assign(LANG.es,{
 });
 Object.assign(LANG.en,{
   rl_fijos:"🏦 Bills", rl_diario:"🛒 Daily spending", rl_ambos:"🔁 Everything",
+  rl_ob_q:"What do you use this account for? Give it a role and you'll be able to assign it fixed and day-to-day expenses:",
+  rl_ob_done:"✓ \"{n}\" activated as {r}. You can now pick it for your expenses.",
   rl_hint:"The role sets what each account does: «Bills» accounts pay fixed costs and instalments; the «Daily spending» one funds what you log in Spending; «Everything» = one account for both. Only one daily-spending account; when you switch roles the shown balance is preserved.",
   ob_imported:"🏦 {n} card purchases added to Spending",
   rp_btn:"📸 Month report (image)", rp_spent:"Spent this month", rp_of_budget:"of {b} budget ({p}%)",
@@ -1448,6 +1456,8 @@ Object.assign(LANG.en,{
 });
 Object.assign(LANG.ca,{
   rl_fijos:"🏦 Rebuts", rl_diario:"🛒 Despesa diària", rl_ambos:"🔁 Tot",
+  rl_ob_q:"Per a què fas servir aquest compte? Dona-li un rol i podràs assignar-li despeses fixes i del dia a dia:",
+  rl_ob_done:"✓ «{n}» activat com a {r}. Ja pots triar-lo a les teves despeses.",
   rl_hint:"El rol diu quin paper juga cada compte: dels de «Rebuts» surten els fixos i quotes; del de «Despesa diària» surt el que apuntes a Despeses; «Tot» = un sol compte per a les dues coses. Només n'hi pot haver un de despesa diària; en canviar el rol, el saldo mostrat es conserva.",
   ob_imported:"🏦 {n} compres amb targeta afegides a Despeses",
   rp_btn:"📸 Informe del mes (imatge)", rp_spent:"Gastat aquest mes", rp_of_budget:"de {b} de pressupost ({p}%)",
@@ -1636,11 +1646,12 @@ Object.assign(LANG.es,{
   et_tabs:"✎ Editar pestañas", et_intro:"Antes las pestañas se movían manteniendo una pulsada y arrastrándola (un gesto oculto, fácil de tocar sin querer). Ahora se editan aquí: reordénalas con ▲▼, quita con ✕ o vuelve a añadir con +.", et_fixed:"fija", et_hidden:"Pestañas ocultas (toca para añadirlas):",
   w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
   // Gastos
-  g_month:"Este mes", g_last:"Mes pasado", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
+  g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
+  g_cycle_from:"Del {d} (cobro de {x}) a hoy", g_cycle_none:"No encuentro ningún cobro reciente: apunta tu nómina como 💰 ingreso y este filtro irá de cobro a cobro.",
   g_search:"Buscar comercio o categoría…",
   sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.",
   sub_hint:"Cargos al mismo comercio en ≥3 meses con importe parecido. Revisa si alguna ya no la usas.",
-  g_totalfilt:"Total filtrado", g_n_one:"gasto", g_n_many:"gastos",
+  g_totalfilt:"Total filtrado", g_n_one:"gasto", g_n_many:"gastos", g_inc_one:"ingreso", g_inc_many:"ingresos", g_balance:"Balance",
   g_sync:"Sincronizar", g_syncing:"Sincronizando…", g_add:"Apuntar",
   g_lastsync:"Última sincronización: {d}", g_nosync:"Sin sincronizar todavía",
   g_gasto:"💸 Gasto", g_ingreso:"💰 Ingreso", g_concept_g:"Concepto (ej. Cena)", g_concept_i:"Concepto (ej. me devolvió Ana)",
@@ -1648,7 +1659,7 @@ Object.assign(LANG.es,{
   g_card:"Con tarjeta (cuenta round-up)", g_nocard:"Bizum/transfer · sin round-up",
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -1707,11 +1718,12 @@ Object.assign(LANG.en,{
   personalize:"✎ Customise", done:"Done ✓", drag_hint:"press and hold a card to move it",
   et_tabs:"✎ Edit tabs", et_intro:"Tabs used to move by pressing and holding one and dragging it (a hidden gesture, easy to trigger by accident). Now you edit them here: reorder with ▲▼, remove with ✕, or add back with +.", et_fixed:"fixed", et_hidden:"Hidden tabs (tap to add them):",
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
-  g_month:"This month", g_last:"Last month", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
+  g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
+  g_cycle_from:"From {d} (payday, {x}) to today", g_cycle_none:"No recent payday found: log your salary as a 💰 income and this filter will run payday to payday.",
   g_search:"Search merchant or category…",
   sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.",
   sub_hint:"Charges to the same merchant in ≥3 months with similar amounts. Check if you still use them.",
-  g_totalfilt:"Filtered total", g_n_one:"expense", g_n_many:"expenses",
+  g_totalfilt:"Filtered total", g_n_one:"expense", g_n_many:"expenses", g_inc_one:"income", g_inc_many:"incomes", g_balance:"Net",
   g_sync:"Sync", g_syncing:"Syncing…", g_add:"Add",
   g_lastsync:"Last sync: {d}", g_nosync:"Not synced yet",
   g_gasto:"💸 Expense", g_ingreso:"💰 Income", g_concept_g:"What (e.g. Dinner)", g_concept_i:"What (e.g. Ana paid me back)",
@@ -1719,7 +1731,7 @@ Object.assign(LANG.en,{
   g_card:"Card (counts round-up)", g_nocard:"Bizum/transfer · no round-up",
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -1777,11 +1789,12 @@ Object.assign(LANG.ca,{
   personalize:"✎ Personalitza", done:"Fet ✓", drag_hint:"mantén premuda una targeta per moure-la",
   et_tabs:"✎ Edita pestanyes", et_intro:"Abans les pestanyes es movien mantenint-ne una premuda i arrossegant-la (un gest ocult, fàcil de tocar sense voler). Ara s'editen aquí: reordena amb ▲▼, treu amb ✕ o torna a afegir amb +.", et_fixed:"fixa", et_hidden:"Pestanyes ocultes (toca per afegir-les):",
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
-  g_month:"Aquest mes", g_last:"Mes passat", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
+  g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
+  g_cycle_from:"Del {d} (cobrament de {x}) a avui", g_cycle_none:"No trobo cap cobrament recent: apunta la nòmina com a 💰 ingrés i aquest filtre anirà de cobrament a cobrament.",
   g_search:"Cerca comerç o categoria…",
   sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.",
   sub_hint:"Càrrecs al mateix comerç en ≥3 mesos amb import semblant. Revisa si ja no n'uses alguna.",
-  g_totalfilt:"Total filtrat", g_n_one:"despesa", g_n_many:"despeses",
+  g_totalfilt:"Total filtrat", g_n_one:"despesa", g_n_many:"despeses", g_inc_one:"ingrés", g_inc_many:"ingressos", g_balance:"Balanç",
   g_sync:"Sincronitza", g_syncing:"Sincronitzant…", g_add:"Apunta",
   g_lastsync:"Última sincronització: {d}", g_nosync:"Encara sense sincronitzar",
   g_gasto:"💸 Despesa", g_ingreso:"💰 Ingrés", g_concept_g:"Concepte (ex. Sopar)", g_concept_i:"Concepte (ex. l'Ana m'ho ha tornat)",
@@ -1789,7 +1802,7 @@ Object.assign(LANG.ca,{
   g_card:"Amb targeta (compta round-up)", g_nocard:"Bizum/transfer · sense round-up",
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -3106,7 +3119,9 @@ function useEditable(items, onChange, opts){
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState({});
   const start=()=>{ const d={}; items.forEach(i=>d[i.id]=disp(i)); setDraft(d); setEditing(true); };
-  const save=()=>{ onChange(items.map(i=>{ const typed=parseFloat(String(draft[i.id]).replace(',','.'))||0; const extra=opts.extra?opts.extra(i,typed):null; return Object.assign({},i,{value: toStored(i,typed) }, extra||{}); })); setEditing(false); };
+  // un item SIN borrador (añadido en pleno modo edición, p.ej. cuenta OB promocionada) se deja
+  // tal cual: antes parseFloat(undefined)→0 machacaba su valor al pulsar Guardar.
+  const save=()=>{ onChange(items.map(i=>{ if(draft[i.id]==null) return i; const typed=parseFloat(String(draft[i.id]).replace(',','.'))||0; const extra=opts.extra?opts.extra(i,typed):null; return Object.assign({},i,{value: toStored(i,typed) }, extra||{}); })); setEditing(false); };
   return { editing, start, save, draft, setDraft };
 }
 
@@ -3488,12 +3503,24 @@ function Dashboard({state, totals, set}){
    TAB: GASTOS
    ============================================================ */
 const DATE_PRESETS=[
-  {id:"month",label:"Este mes"},{id:"last",label:"Mes pasado"},
+  {id:"month",label:"Este mes"},{id:"cycle",label:"Mi ciclo"},{id:"last",label:"Mes pasado"},
   {id:"3m",label:"Últimos 3 meses"},{id:"all",label:"Todo"},{id:"custom",label:"Rango…"},
 ];
-function inPreset(d,preset,range){
+// «Mi ciclo» (petición pareja 2026-07-11): su nómina no cae en día fijo (23, 24…), así que el mes
+// natural le descuadra el ahorro. El ciclo se ancla al ÚLTIMO COBRO REAL apuntado: el ingreso
+// más reciente ≥200 € de los últimos 45 días (los bizums pequeños no cuentan). Sin cobro → mes.
+function lastPaydayOf(expenses){
+  const cut=Date.now()-45*86400000;
+  const cands=(expenses||[]).filter(function(e){ return e.amount<=-200 && parseDate(e.date).getTime()>=cut; })
+    .sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
+  if(!cands[0]) return null;
+  const d=parseDate(cands[0].date);
+  return { start:new Date(d.getFullYear(),d.getMonth(),d.getDate()), inc:cands[0] };   // desde las 00:00 del día del cobro
+}
+function inPreset(d,preset,range,cycleStart){
   const now=new Date();
   if(preset==="month") return d>=startOfMonth();
+  if(preset==="cycle") return d>=(cycleStart||startOfMonth());
   if(preset==="last"){ const s=startOfMonth(new Date(now.getFullYear(),now.getMonth()-1,1)); const e=startOfMonth(); return d>=s&&d<e; }
   if(preset==="3m"){ return d>=new Date(now.getFullYear(),now.getMonth()-2,1); }
   if(preset==="all") return true;
@@ -3584,14 +3611,18 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     setEditExp(null); showToast(t("g_edited"));
   };
 
+  const cycle=useMemo(()=>lastPaydayOf(state.expenses),[state.expenses]);
   const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return state.expenses
-    .filter(e=>inPreset(parseDate(e.date),preset,range))
+    .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
     .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
     .filter(e=> !needle || (e.merchant||"").toLowerCase().indexOf(needle)!==-1 || catName(e.category).toLowerCase().indexOf(needle)!==-1)
     .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
-  },[state.expenses,preset,range,sel,q]);
+  },[state.expenses,preset,range,sel,q,cycle]);
 
-  const total=useMemo(()=>filtered.reduce((a,e)=>a+e.amount,0),[filtered]);
+  // Total con SIGNO CLARO (bug pareja 2026-07-11: con un ingreso en el filtro, el total mostraba
+  // «gastos − ingresos» en positivo — ilegible). Desglose: gastos (−, como las filas), y si hay
+  // ingresos, línea con «+ingresos · Balance» (balance = ingresos − gastos; verde si ahorras).
+  const sums=useMemo(()=>{ let g=0,i=0,ng=0,ni=0; filtered.forEach(e=>{ if(e.amount>0){ g+=e.amount; ng++; } else { i-=e.amount; ni++; } }); return {g:g,i:i,ng:ng,ni:ni,bal:i-g}; },[filtered]);
   const subs=useMemo(()=>detectSubscriptions(state.expenses),[state.expenses]);
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,q]);
   useEffect(()=>{
@@ -3641,6 +3672,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
       ),
       React.createElement("div",Object.assign({className:"chips"},stopSwipe), DATE_PRESETS.map(p=>React.createElement("button",{key:p.id,className:"chip"+(preset===p.id?" active":""),onClick:()=>setPreset(p.id)},t("g_"+p.id)))),
+      // «Mi ciclo»: enseña QUÉ cobro ancla el ciclo (si el detectado no es el bueno, se corrige
+      // apuntando la nómina real como ingreso, o usando Rango…).
+      preset==="cycle" && React.createElement("div",{className:"hint",style:{margin:"2px 2px 0"}},
+        cycle
+          ? "📅 "+tf("g_cycle_from",{d:cycle.start.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}), x:"+"+eur0(Math.abs(cycle.inc.amount))+((cycle.inc.merchant&&cycle.inc.merchant!=="Ingreso")?" · "+cycle.inc.merchant:"")})
+          : "💡 "+t("g_cycle_none")
+      ),
       preset==="custom" && React.createElement("div",Object.assign({className:"range"},stopSwipe),
         React.createElement("input",{type:"date",value:range.from,onChange:e=>setRange(Object.assign({},range,{from:e.target.value}))}),
         React.createElement("span",null,"→"),
@@ -3656,9 +3694,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement("div",{className:"total-bar"},
       React.createElement("div",null,
         React.createElement("div",{className:"tl"},t("g_totalfilt")),
-        React.createElement("div",{className:"tn num"},eur(total))
+        React.createElement("div",{className:"tn num"},(sums.g>0?"−":"")+eur(sums.g)),
+        sums.ni>0 && React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
+          React.createElement("span",{style:{color:"var(--mint)"}},"💰 +"+eur(sums.i)),
+          React.createElement("span",{style:{color:"var(--muted)"}}," · "+t("g_balance")+" "),
+          React.createElement("span",{style:{color:sums.bal>=0?"var(--mint)":"var(--coral)",fontWeight:700}},(sums.bal>=0?"+":"−")+eur(Math.abs(sums.bal)))
+        )
       ),
-      React.createElement("div",{className:"cnt"}, filtered.length+" "+(filtered.length===1?t("g_n_one"):t("g_n_many")))
+      React.createElement("div",{className:"cnt"},
+        sums.ng+" "+(sums.ng===1?t("g_n_one"):t("g_n_many")),
+        sums.ni>0 && React.createElement("div",null, sums.ni+" "+(sums.ni===1?t("g_inc_one"):t("g_inc_many")))
+      )
     ),
     React.createElement("div",{className:"action-row"},
       React.createElement("button",{className:"btn btn-primary",style:{flex:1},onClick:onSync,disabled:syncing}, syncing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),t("g_syncing")):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:16,height:16}),t("g_sync"))),
@@ -4338,7 +4384,8 @@ function Wealth({state, set, totals}){
       // Cuentas extra de Open Banking (compartidas, 2ª cuenta de un banco…): saldo real sincronizado.
       // Nombre editable (obLabels) con un default "bonito" (niceObName); el saldo es solo lectura.
       (state.obAccounts||[]).map(function(o){ const custom=(state.obLabels||{})[o.key]; const disp=(custom!=null&&custom!=="")?custom:niceObName(o);
-        return React.createElement("div",{className:"row",key:"ob_"+o.key},
+        return React.createElement(React.Fragment,{key:"ob_"+o.key},
+        React.createElement("div",{className:"row"},
         React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:o.ent||"",size:38}),
           React.createElement("div",{style:{minWidth:0}},
             accEd.editing
@@ -4348,6 +4395,20 @@ function Wealth({state, set, totals}){
                   : React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
             React.createElement("div",{className:"rsub"}, entOf(o.ent).label))),
         React.createElement("div",{className:"rval num"}, eur(o.cur==="USD"? (o.value||0)*state.fx : (o.value||0)))
+        ),
+        // ROL también para las cuentas OB (bug pareja 2026-07-11: sin rol no podían recibir
+        // gastos fijos ni diarios — al elegir uno, la cuenta se «promociona» a cuenta con rol,
+        // sale de esta lista y aparece arriba con las manuales; el banco la sigue re-anclando).
+        accEd.editing && o.ent && React.createElement("div",{className:"rolechips"},
+          [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+            return React.createElement("button",{key:rr[0],className:"rchip",onClick:function(){
+              const nid=uid();
+              set(function(s){ return promoteObAccount(s, totals, o.key, rr[0], nid); });
+              // siembra el borrador del editor con el saldo real: sin esto la fila nueva salía vacía
+              accEd.setDraft(function(d){ const nd=Object.assign({},d); nd[nid]=+(o.cur==="USD"?(o.value||0)*(state.fx||1):(o.value||0)).toFixed(2); return nd; });
+            }}, t(rr[1]));
+          })
+        )
       ); }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_liquid")),React.createElement("span",{className:"num"},eur(accSum)))
     ),
@@ -4523,6 +4584,24 @@ function niceObName(o){
   if(nm) return nm.length>22 ? nm.slice(0,20)+"…" : nm;
   return o&&o.iban ? "···"+String(o.iban).slice(-4) : t("pt_ob_extra");
 }
+// PROMOCIONAR una cuenta OB a cuenta CON ROL (bug pareja 2026-07-11: sus cuentas de Revolut/
+// CaixaBank vivían solo en obAccounts —sin rol— y al crear un gasto fijo solo salía Trade
+// Republic). Crea la cuenta manual anclada al saldo real del banco (misma fórmula «fijos» de
+// applyBankBalances), la saca de obAccounts (sin doble conteo) y, si el rol pedido no es
+// «fijos», re-ancla con applyAccountRole (que además garantiza UNA sola cuenta de gasto diario).
+function promoteObAccount(s, totals, key, role, id){
+  const o=(s.obAccounts||[]).find(function(x){ return x.key===key; });
+  if(!o || !o.ent) return s;
+  const now=new Date();
+  const bal=o.cur==="USD" ? (o.value||0)*(s.fx||1) : (o.value||0);
+  const base=+((bal - monthNetForAccount(s, o.ent, now.getFullYear(), now.getMonth()+1, now.getDate())).toFixed(2));
+  const name=((s.obLabels||{})[o.key]) || niceObName(o);
+  const acc={ id:id||uid(), ent:o.ent, name:name, value:base, role:"fijos", spendFrom:false };
+  if(o.iban) acc.bankIban=o.iban;                            // el sync del banco la re-ancla por IBAN
+  let ns=Object.assign({},s,{ accounts:(s.accounts||[]).concat([acc]), obAccounts:(s.obAccounts||[]).filter(function(x){ return x.key!==key; }) });
+  if(role && role!=="fijos") ns=applyAccountRole(ns, totals, acc.id, role);
+  return ns;
+}
 // MULTI-CUENTA: aplica los saldos reales de TODAS las cuentas de los bancos enlazados.
 // · La cuenta PRIMARIA de cada banco (la que ya tienes creada en la app) se RE-ANCLA igual que
 //   editar a mano: value = saldoBanco − movimientosYaOcurridosEsteMes, para que dynBal muestre
@@ -4555,16 +4634,24 @@ function applyBankBalances(s, links){
       accs.forEach(function(ac){ const bal=pickBankBalance(ac.balances); if(bal!=null) obAccts.push(mkObAcct(lk,ac,bal)); });
       return;
     }
-    // hay ent conocido: localiza la cuenta MANUAL para re-anclarla. Cualquier rol vale: si un
-    // banco OB es tu cuenta de gasto diario (o "todo"), su saldo real también re-ancla. La TR
-    // de gasto del creador nunca entra aquí porque TR no está en Open Banking (sin link posible).
-    const pidx=accounts.findIndex(function(a,i){ return a.ent===ent && !usedPrimary[i]; });
-    let primaryAc=null;
-    if(pidx>=0){ const manIban=accounts[pidx].bankIban; primaryAc=(manIban && accs.find(function(a){ return a.iban && a.iban===manIban; })) || accs[0]; usedPrimary[pidx]=true; }
-    accs.forEach(function(ac){
+    // hay ent conocido: re-ancla CADA cuenta MANUAL de ese banco (puede haber varias desde que
+    // una cuenta OB se puede promocionar con rol, 2026-07-11): 1º casa por IBAN guardado; si no,
+    // la primera cuenta del banco aún libre. Cualquier rol vale: si un banco OB es tu cuenta de
+    // gasto diario (o "todo"), su saldo real también re-ancla. La TR de gasto del creador nunca
+    // entra aquí porque TR no está en Open Banking (sin link posible).
+    const ownerOf={};                                        // idx de accs → idx de accounts
+    accounts.forEach(function(a,i){
+      if(a.ent!==ent || usedPrimary[i]) return;
+      let j=-1;
+      if(a.bankIban) j=accs.findIndex(function(ac,k){ return ownerOf[k]==null && ac.iban && ac.iban===a.bankIban; });
+      if(j<0) j=accs.findIndex(function(ac,k){ return ownerOf[k]==null; });
+      if(j<0) return;
+      ownerOf[j]=i; usedPrimary[i]=true;
+    });
+    accs.forEach(function(ac,k){
       const bal=pickBankBalance(ac.balances); if(bal==null) return;
-      if(pidx>=0 && ac===primaryAc){
-        const a=accounts[pidx];
+      if(ownerOf[k]!=null){
+        const a=accounts[ownerOf[k]];
         // re-anclaje = despejar `value` de la fórmula de dynBal para que HOY muestre el saldo real.
         // fijos:  dyn = value + paidNet
         // diario: dyn = value + inyección − gasto − round-up − aporte
@@ -4583,7 +4670,7 @@ function applyBankBalances(s, links){
         }
         synced.push({ ent:ent, bal:bal, iban:ac.iban||null });
         if(Math.abs((a.value||0)-newBase)>0.005 || (ac.iban && a.bankIban!==ac.iban)){
-          accounts[pidx]=Object.assign({}, a, { value:newBase, bankIban:ac.iban||a.bankIban });
+          accounts[ownerOf[k]]=Object.assign({}, a, { value:newBase, bankIban:ac.iban||a.bankIban });
           changed=true;
         }
       } else {
@@ -4947,6 +5034,9 @@ function Fijos({state, set, totals}){
   // bancos disponibles (de las cuentas que tiene el usuario), Sabadell primero
   const banks=Array.from(new Set(state.accounts.map(a=>a.ent)));
   if(banks.indexOf("sabadell")>0){ banks.splice(banks.indexOf("sabadell"),1); banks.unshift("sabadell"); }
+  // el default "sabadell" solo vale si ESTE usuario tiene Sabadell; si no, el <select> enseñaba un
+  // banco pero se guardaba otro (multiusuario 2026-07-11) → siempre un banco de SU lista
+  const bankOr=(b)=> banks.indexOf(b)>=0 ? b : (banks[0]||"sabadell");
 
   // lecturas robustas: si el borrador no tiene el id (p.ej. recién añadido en modo edición), usa el valor real
   const dAmt=(e)=> draft[e.id]!=null ? draft[e.id] : e.amount;
@@ -4972,7 +5062,7 @@ function Fijos({state, set, totals}){
   const toggleDraftM=(id,m)=> setDraftM(dm=>{ const base=dm[id]!=null?dm[id]:(((state.fixed.find(x=>x.id===id)||{}).months)||[]); const cur=base.slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},dm,{[id]:cur}); });
   const del=(id)=> set(s=>Object.assign({},s,{fixed:s.fixed.filter(e=>e.id!==id)}));
   const toggleFormM=(m)=> setForm(f=>{ const cur=(f.months||[]).slice(); const i=cur.indexOf(m); if(i>=0)cur.splice(i,1); else cur.push(m); return Object.assign({},f,{months:cur}); });
-  const addFixed=()=>{ const amt=parseFloat(String(form.amount).replace(',','.'))||0; if(amt===0){ return; } const it={id:uid(),name:form.name||"Gasto fijo",amount:amt,freq:form.freq,account:form.account||"sabadell"}; const dd=cleanDay(form.day); if(dd) it.day=dd; if(form.freq!=="mes"&&form.months&&form.months.length) it.months=form.months.slice().sort((a,b)=>a-b); set(s=>Object.assign({},s,{fixed:s.fixed.concat([it])})); setForm({name:"",amount:"",freq:"mes",months:[],day:"",account:(form.account||"sabadell")}); setAdding(false); };
+  const addFixed=()=>{ const amt=parseFloat(String(form.amount).replace(',','.'))||0; if(amt===0){ return; } const it={id:uid(),name:form.name||"Gasto fijo",amount:amt,freq:form.freq,account:bankOr(form.account||"sabadell")}; const dd=cleanDay(form.day); if(dd) it.day=dd; if(form.freq!=="mes"&&form.months&&form.months.length) it.months=form.months.slice().sort((a,b)=>a-b); set(s=>Object.assign({},s,{fixed:s.fixed.concat([it])})); setForm({name:"",amount:"",freq:"mes",months:[],day:"",account:(form.account||"sabadell")}); setAdding(false); };
 
   // --- edición de cuotas de deuda (día + banco + cuota), igual que los gastos fijos ---
   const [editingD,setEditingD]=useState(false);
@@ -5004,7 +5094,7 @@ function Fijos({state, set, totals}){
   // --- cargos puntuales (un solo cobro): imprevistos, amortizaciones… ---
   const [addingO,setAddingO]=useState(false);
   const [formO,setFormO]=useState({name:"",amount:"",month:new Date().getMonth()+1,year:new Date().getFullYear(),day:"",account:"sabadell"});
-  const addOneoff=()=>{ const amt=parseFloat(String(formO.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),name:formO.name||"Cargo puntual",amount:amt,month:parseInt(formO.month,10)||(new Date().getMonth()+1),year:parseInt(formO.year,10)||new Date().getFullYear(),account:formO.account||"sabadell"}; const dd=cleanDay(formO.day); if(dd) it.day=dd; set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).concat([it])})); setFormO({name:"",amount:"",month:new Date().getMonth()+1,year:new Date().getFullYear(),day:"",account:"sabadell"}); setAddingO(false); };
+  const addOneoff=()=>{ const amt=parseFloat(String(formO.amount).replace(',','.'))||0; if(amt===0) return; const it={id:uid(),name:formO.name||"Cargo puntual",amount:amt,month:parseInt(formO.month,10)||(new Date().getMonth()+1),year:parseInt(formO.year,10)||new Date().getFullYear(),account:bankOr(formO.account||"sabadell")}; const dd=cleanDay(formO.day); if(dd) it.day=dd; set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).concat([it])})); setFormO({name:"",amount:"",month:new Date().getMonth()+1,year:new Date().getFullYear(),day:"",account:"sabadell"}); setAddingO(false); };
   const delOneoff=(id)=> set(s=>Object.assign({},s,{oneoffs:(s.oneoffs||[]).filter(o=>o.id!==id)}));
   const [editingO,setEditingO]=useState(false);   // modo edición GLOBAL de la tarjeta (como Servicios)
   const [draftsO,setDraftsO]=useState({});
@@ -5173,7 +5263,7 @@ function Fijos({state, set, totals}){
             ),
             React.createElement("div",{className:"edit-extra"},
               React.createElement("span",{className:"rsub"},t("fj_chargedin")),
-              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:form.account||"sabadell",onChange:e=>setForm(Object.assign({},form,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
+              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:bankOr(form.account||"sabadell"),onChange:e=>setForm(Object.assign({},form,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label))),
               React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_day")),
               React.createElement("input",{className:"af-in num",style:{width:60,padding:"8px 10px"},inputMode:"numeric",placeholder:"—",value:form.day,onChange:e=>setForm(Object.assign({},form,{day:e.target.value}))})
             ),
@@ -5340,7 +5430,7 @@ function Fijos({state, set, totals}){
               React.createElement("span",{className:"rsub"},t("fj_year_lbl")),
               React.createElement("input",{className:"af-in num",style:{width:74,padding:"8px 10px"},inputMode:"numeric",value:formO.year,onChange:e=>setFormO(Object.assign({},formO,{year:e.target.value}))}),
               React.createElement("span",{className:"rsub",style:{marginLeft:4}},t("fj_bank")),
-              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:formO.account,onChange:e=>setFormO(Object.assign({},formO,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
+              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"8px 11px"},value:bankOr(formO.account),onChange:e=>setFormO(Object.assign({},formO,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
             ),
             React.createElement("div",{className:"af-row"},
               React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:()=>{setAddingO(false); setFormO({name:"",amount:"",month:cm,year:cy,day:"",account:"sabadell"});}},t("fj_cancel")),
@@ -5986,7 +6076,29 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
                 showToast("✓ "+bankLabel(l.aspsp_name)+" → "+t(rr[1]));
               }}, t(rr[1]));
             }))),
-        !roleAcc && !noAcct && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"-2px 0 12px"}}, "ℹ "+t("bp_role_obonly")),
+        // Cuentas del banco SIN rol todavía (viven en obAccounts): chips para «promocionarlas» a
+        // cuenta con rol aquí mismo (bug pareja 2026-07-11: sin esto, al crear un gasto fijo solo
+        // salía Trade Republic y este panel decía que el banco no tenía cuenta con rol, sin salida).
+        !noAcct && (function(){
+          const obs=(state.obAccounts||[]).filter(function(o){ return (o.aspsp && l.aspsp_name && String(o.aspsp).toLowerCase()===String(l.aspsp_name).toLowerCase()) || (ent && o.ent===ent); });
+          if(!obs.length) return roleAcc ? null : React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"-2px 0 12px"}}, "ℹ "+t("bp_role_obonly"));
+          return React.createElement("div",{style:{margin:"-2px 0 12px"}},
+            React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginBottom:6,lineHeight:1.45}}, t("rl_ob_q")),
+            obs.map(function(o){ const nm=((state.obLabels||{})[o.key])||niceObName(o);
+              return React.createElement("div",{key:o.key,style:{marginBottom:8}},
+                React.createElement("div",{style:{fontSize:12.5,fontWeight:700,marginBottom:4}}, nm+" · "+eur(o.cur==="USD"?(o.value||0)*(state.fx||1):(o.value||0))),
+                React.createElement("div",{className:"rolechips",style:{margin:0}},
+                  [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+                    return React.createElement("button",{key:rr[0],className:"rchip",onClick:function(){
+                      if(!o.ent) return;
+                      set(function(s){ return promoteObAccount(s, totals, o.key, rr[0]); });
+                      showToast(tf("rl_ob_done",{n:nm,r:t(rr[1])}));
+                    }}, t(rr[1]));
+                  }))
+              );
+            })
+          );
+        })(),
         (confirming===l.aspsp_name
           ? React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"-4px 0 14px"}},
               React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 auto",minWidth:120}}, tf("bp_remove_q",{bank:bankLabel(l.aspsp_name)})),
