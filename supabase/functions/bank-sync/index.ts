@@ -28,10 +28,15 @@ Deno.serve(async (req) => {
     const dateFrom = (typeof body?.dateFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dateFrom))
       ? body.dateFrom : null;
 
+    // OJO (bug CaixaBank 2026-07-11): también se devuelven los enlaces caducados/rotos, marcados
+    // ok:false. Antes solo venían los 'active' → un banco caducado desaparecía del sync, la app
+    // reconstruía obAccounts sin él y sus cuentas se ESFUMABAN del patrimonio sin ningún aviso.
     const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const { data: links } = await admin
+    const { data: allLinks } = await admin
       .from("bank_links").select("*")
-      .eq("user_id", user.id).eq("status", "active");
+      .eq("user_id", user.id).in("status", ["active", "expired", "error"]);
+    const links = (allLinks || []).filter((l) => l.status === "active");
+    const deadLinks = (allLinks || []).filter((l) => l.status !== "active");
 
     const { appId, pem } = ebConfig();
     const jwt = await makeJWT(appId, pem);
@@ -134,6 +139,17 @@ Deno.serve(async (req) => {
         error: anyAcctOk ? undefined : lastErr,
         balances: primary.balances, count: primary.count, transactions: primary.transactions,
         accounts: acctOut,
+      });
+    }
+
+    // Enlaces caducados/rotos: van en la respuesta SIN llamar a Enable Banking (fallaría igual).
+    // La app así conserva sus saldos en el patrimonio (marcados rancios) y puede avisar «reconecta».
+    for (const link of deadLinks) {
+      out.push({
+        aspsp: link.aspsp_name, iban: link.iban, ok: false, skipped: true,
+        expired: link.status === "expired", noacct: link.status === "error",
+        error: "enlace " + link.status + " · reconecta",
+        balances: [], count: 0, transactions: [], accounts: [],
       });
     }
 

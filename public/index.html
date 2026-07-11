@@ -842,10 +842,10 @@ const KW = {
   super:["mercadona","lidl","aldi","carrefour","dia","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria"],
   transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing","blablacar","flixbus"],
   parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal"],
-  ocio:["cinema","cine","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","bolera"],
+  ocio:["cinema","cine","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","bolera","anthropic","claude","openai","chatgpt","google one","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo"],
   compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","amzn","openbank","open bank","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","saona","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis"],
   hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
-  salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","barberia","estetica","belleza","depilacion"],
+  salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
   regalos:["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
 };
 function autoCategory(merchant){
@@ -1214,7 +1214,7 @@ const LANG = {
     st_blocks:"Ocultar bloques de las pestañas", st_blocks_hint:"Con esto activado, cada bloque de cualquier pestaña muestra un botón «Ocultar». Los ocultos se quedan atenuados mientras editas; al desactivarlo desaparecen del todo (y aquí los recuperas).",
     cc_hide:"Ocultar", cc_show:"Mostrar",
     st_updates:"Actualizaciones", st_update:"Buscar actualización",
-    st_up_ok:"✓ Estás a la última", st_up_web:"Hay versión web nueva: se instala sola — cierra y abre la app para estrenarla", st_up_apk:"⬇️ App {v} disponible · descargando, se abrirá el instalador",
+    st_up_ok:"✓ Estás a la última", st_up_web:"Hay versión web nueva: se instala sola — cierra y abre la app para estrenarla", st_up_applying:"⬇️ Actualizando a la v{v}… la app se recarga sola en unos segundos", st_up_apk:"⬇️ App {v} disponible · descargando, se abrirá el instalador",
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
     st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
@@ -1246,7 +1246,7 @@ const LANG = {
     st_blocks:"Hide blocks in tabs", st_blocks_hint:"With this on, every block in any tab shows a «Hide» button. Hidden ones stay dimmed while editing; turn it off and they disappear entirely (and you recover them here).",
     cc_hide:"Hide", cc_show:"Show",
     st_updates:"Updates", st_update:"Check for updates",
-    st_up_ok:"✓ You're up to date", st_up_web:"New web version available: it installs itself — close and reopen the app", st_up_apk:"⬇️ App {v} available · downloading, the installer will open",
+    st_up_ok:"✓ You're up to date", st_up_web:"New web version available: it installs itself — close and reopen the app", st_up_applying:"⬇️ Updating to v{v}… the app will reload itself in a few seconds", st_up_apk:"⬇️ App {v} available · downloading, the installer will open",
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
     st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
@@ -1278,7 +1278,7 @@ const LANG = {
     st_blocks:"Amaga blocs de les pestanyes", st_blocks_hint:"Amb això activat, cada bloc de qualsevol pestanya mostra un botó «Amaga». Els amagats queden atenuats mentre edites; en desactivar-ho desapareixen del tot (i aquí els recuperes).",
     cc_hide:"Amaga", cc_show:"Mostra",
     st_updates:"Actualitzacions", st_update:"Cerca actualització",
-    st_up_ok:"✓ Estàs a l'última", st_up_web:"Hi ha versió web nova: s'instal·la sola — tanca i obre l'app per estrenar-la", st_up_apk:"⬇️ App {v} disponible · baixant, s'obrirà l'instal·lador",
+    st_up_ok:"✓ Estàs a l'última", st_up_web:"Hi ha versió web nova: s'instal·la sola — tanca i obre l'app per estrenar-la", st_up_applying:"⬇️ Actualitzant a la v{v}… l'app es recarrega sola en uns segons", st_up_apk:"⬇️ App {v} disponible · baixant, s'obrirà l'instal·lador",
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
     st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
@@ -1638,13 +1638,13 @@ Object.assign(LANG.es,{
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
   g_search:"Buscar comercio o categoría…",
-  sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes",
+  sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.",
   sub_hint:"Cargos al mismo comercio en ≥3 meses con importe parecido. Revisa si alguna ya no la usas.",
   g_totalfilt:"Total filtrado", g_n_one:"gasto", g_n_many:"gastos",
   g_sync:"Sincronizar", g_syncing:"Sincronizando…", g_add:"Apuntar",
   g_lastsync:"Última sincronización: {d}", g_nosync:"Sin sincronizar todavía",
   g_gasto:"💸 Gasto", g_ingreso:"💰 Ingreso", g_concept_g:"Concepto (ej. Cena)", g_concept_i:"Concepto (ej. me devolvió Ana)",
-  g_addgasto:"Añadir gasto", g_addingreso:"Añadir ingreso",
+  g_addgasto:"Añadir gasto", g_addingreso:"Añadir ingreso", g_date:"Fecha (vacía = hoy)",
   g_card:"Con tarjeta (cuenta round-up)", g_nocard:"Bizum/transfer · sin round-up",
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
@@ -1709,13 +1709,13 @@ Object.assign(LANG.en,{
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
   g_search:"Search merchant or category…",
-  sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo",
+  sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.",
   sub_hint:"Charges to the same merchant in ≥3 months with similar amounts. Check if you still use them.",
   g_totalfilt:"Filtered total", g_n_one:"expense", g_n_many:"expenses",
   g_sync:"Sync", g_syncing:"Syncing…", g_add:"Add",
   g_lastsync:"Last sync: {d}", g_nosync:"Not synced yet",
   g_gasto:"💸 Expense", g_ingreso:"💰 Income", g_concept_g:"What (e.g. Dinner)", g_concept_i:"What (e.g. Ana paid me back)",
-  g_addgasto:"Add expense", g_addingreso:"Add income",
+  g_addgasto:"Add expense", g_addingreso:"Add income", g_date:"Date (empty = today)",
   g_card:"Card (counts round-up)", g_nocard:"Bizum/transfer · no round-up",
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
@@ -1779,13 +1779,13 @@ Object.assign(LANG.ca,{
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
   g_search:"Cerca comerç o categoria…",
-  sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes",
+  sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.",
   sub_hint:"Càrrecs al mateix comerç en ≥3 mesos amb import semblant. Revisa si ja no n'uses alguna.",
   g_totalfilt:"Total filtrat", g_n_one:"despesa", g_n_many:"despeses",
   g_sync:"Sincronitza", g_syncing:"Sincronitzant…", g_add:"Apunta",
   g_lastsync:"Última sincronització: {d}", g_nosync:"Encara sense sincronitzar",
   g_gasto:"💸 Despesa", g_ingreso:"💰 Ingrés", g_concept_g:"Concepte (ex. Sopar)", g_concept_i:"Concepte (ex. l'Ana m'ho ha tornat)",
-  g_addgasto:"Afegeix despesa", g_addingreso:"Afegeix ingrés",
+  g_addgasto:"Afegeix despesa", g_addingreso:"Afegeix ingrés", g_date:"Data (buida = avui)",
   g_card:"Amb targeta (compta round-up)", g_nocard:"Bizum/transfer · sense round-up",
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
@@ -2112,11 +2112,14 @@ Object.assign(LANG.es,{
   bp_manage:"Gestionar mis bancos", bp_close:"Ajustes", bp_back:"Mis bancos",
   bp_empty:"Aún no has conectado ningún banco.", bp_add:"Conectar un banco",
   bp_hist_btn:"Importar histórico de gastos", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae los gastos de los últimos meses de tu cuenta de gasto diario ({bank}) y elige cuáles apuntar. Solo cargos; las compras con tarjeta vienen pre-marcadas.", bp_hist_nodaily:"Para importar histórico, primero pon una cuenta de banco conectada como «gasto diario» en Patrimonio (editar cuenta → rol). Trade Republic no vale: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay gastos nuevos que importar en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos encontrados · marca los que quieras apuntar", bp_hist_notcard:"no es tarjeta (¿recibo?)", bp_hist_import:"Importar {n} gastos", bp_hist_done:"✓ {n} gastos importados",
-  bp_summary_n:"{n} conectado(s)", bp_summary_none:"Ningún banco conectado todavía",
+  bp_summary_n:"{n} conectado(s)", bp_summary_exp:"⚠ {n} caducado(s) — reconéctalo", bp_summary_none:"Ningún banco conectado todavía",
   bp_pick_title:"Elige tu banco", bp_pick_sub:"Busca tu banco en la lista. Solo verás datos de las cuentas que autorices.",
   bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
   bp_need_login:"Inicia sesión para conectar tu banco", bp_syncing:"Actualizando…",
   bp_st_active:"activo", bp_st_soon:"caduca pronto", bp_st_pending:"pendiente", bp_st_expired:"caducado", bp_st_noacct:"sin cuentas",
+  bp_roles_hint:"Dile a la app para qué usas cada banco: «Recibos» = de ahí salen tus gastos fijos y cuotas; «Gasto diario» = ahí se apuntan las compras del día a día (solo puede haber uno); «Todo» = las dos cosas en la misma cuenta. Así cada cargo cae donde toca.",
+  bp_role_q:"¿Para qué usas este banco?",
+  bp_role_obonly:"Este banco solo aporta su saldo al Patrimonio (no tiene cuenta con rol en la app).",
   bp_noacct_help:"Autorizaste el banco pero no llegó ninguna cuenta. En modo restringido, Enable Banking solo trae las cuentas que has dado de alta en su panel de control. Entra en el panel de Enable Banking, enlaza (whitelistea) esta cuenta y pulsa «Volver a intentar».",
   bp_retry_link:"Volver a intentar", bp_naccts:"{n} cuentas",
   bp_remove:"Quitar", bp_remove_q:"¿Quitar {bank}?", bp_remove_yes:"Sí, quitar", bp_remove_no:"Cancelar",
@@ -2128,11 +2131,14 @@ Object.assign(LANG.en,{
   bp_manage:"Manage my banks", bp_close:"Settings", bp_back:"My banks",
   bp_empty:"You haven't connected any bank yet.", bp_add:"Connect a bank",
   bp_hist_btn:"Import spending history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months of spending from your daily-spend account ({bank}) and pick which to log. Debits only; card purchases are pre-checked.", bp_hist_nodaily:"To import history, first set a connected bank account as «daily spend» in Net worth (edit account → role). Trade Republic won't work: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new expenses to import in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions found · check the ones to log", bp_hist_notcard:"not a card purchase (a bill?)", bp_hist_import:"Import {n} expenses", bp_hist_done:"✓ {n} expenses imported",
-  bp_summary_n:"{n} connected", bp_summary_none:"No bank connected yet",
+  bp_summary_n:"{n} connected", bp_summary_exp:"⚠ {n} expired — reconnect it", bp_summary_none:"No bank connected yet",
   bp_pick_title:"Choose your bank", bp_pick_sub:"Find your bank in the list. You'll only see data from the accounts you authorize.",
   bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
   bp_need_login:"Sign in to connect your bank", bp_syncing:"Refreshing…",
   bp_st_active:"active", bp_st_soon:"expires soon", bp_st_pending:"pending", bp_st_expired:"expired", bp_st_noacct:"no accounts",
+  bp_roles_hint:"Tell the app what each bank is for: \"Bills\" = your fixed expenses and instalments come out of it; \"Daily spending\" = day-to-day purchases get logged there (only one allowed); \"Everything\" = both in the same account. That way every charge lands where it should.",
+  bp_role_q:"What do you use this bank for?",
+  bp_role_obonly:"This bank only adds its balance to Net worth (it has no role account in the app).",
   bp_noacct_help:"You authorised the bank but no account came through. In restricted mode, Enable Banking only returns accounts you've registered in its control panel. Open the Enable Banking panel, link (whitelist) this account and tap «Try again».",
   bp_retry_link:"Try again", bp_naccts:"{n} accounts",
   bp_remove:"Remove", bp_remove_q:"Remove {bank}?", bp_remove_yes:"Yes, remove", bp_remove_no:"Cancel",
@@ -2144,11 +2150,14 @@ Object.assign(LANG.ca,{
   bp_manage:"Gestiona els meus bancs", bp_close:"Ajustos", bp_back:"Els meus bancs",
   bp_empty:"Encara no has connectat cap banc.", bp_add:"Connecta un banc",
   bp_hist_btn:"Importar històric de despeses", bp_hist_title:"Importar històric", bp_hist_sub:"Porta les despeses dels últims mesos del teu compte de despesa diària ({bank}) i tria quines apuntar. Només càrrecs; les compres amb targeta vénen pre-marcades.", bp_hist_nodaily:"Per importar històric, primer posa un compte de banc connectat com a «despesa diària» a Patrimoni (edita compte → rol). Trade Republic no val: no està a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha despeses noves per importar en aquest període (o ja estan totes apuntades). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments trobats · marca els que vulguis apuntar", bp_hist_notcard:"no és targeta (rebut?)", bp_hist_import:"Importar {n} despeses", bp_hist_done:"✓ {n} despeses importades",
-  bp_summary_n:"{n} connectat(s)", bp_summary_none:"Cap banc connectat encara",
+  bp_summary_n:"{n} connectat(s)", bp_summary_exp:"⚠ {n} caducat(s) — reconnecta'l", bp_summary_none:"Cap banc connectat encara",
   bp_pick_title:"Tria el teu banc", bp_pick_sub:"Cerca el teu banc a la llista. Només veuràs dades dels comptes que autoritzis.",
   bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
   bp_need_login:"Inicia sessió per connectar el teu banc", bp_syncing:"Actualitzant…",
   bp_st_active:"actiu", bp_st_soon:"caduca aviat", bp_st_pending:"pendent", bp_st_expired:"caducat", bp_st_noacct:"sense comptes",
+  bp_roles_hint:"Digues a l'app per a què uses cada banc: «Rebuts» = d'allà surten les despeses fixes i quotes; «Despesa diària» = allà s'apunten les compres del dia a dia (només n'hi pot haver un); «Tot» = les dues coses al mateix compte. Així cada càrrec cau on toca.",
+  bp_role_q:"Per a què uses aquest banc?",
+  bp_role_obonly:"Aquest banc només aporta el seu saldo al Patrimoni (no té compte amb rol a l'app).",
   bp_noacct_help:"Vas autoritzar el banc però no va arribar cap compte. En mode restringit, Enable Banking només porta els comptes que has donat d'alta al seu panell de control. Entra al panell d'Enable Banking, enllaça (whitelist) aquest compte i prem «Torna-ho a provar».",
   bp_retry_link:"Torna-ho a provar", bp_naccts:"{n} comptes",
   bp_remove:"Treu", bp_remove_q:"Treure {bank}?", bp_remove_yes:"Sí, treu", bp_remove_no:"Cancel·la",
@@ -2226,6 +2235,27 @@ function nominaYaEntro(now){                                        // ¿ya pas�
    UNA cuenta diario/ambos a la vez (la UI degrada las demás a fijos). */
 function accRole(a){ return (a&&a.role) || (a&&a.spendFrom ? "diario" : "fijos"); }
 function accDaily(a){ const r=accRole(a); return r==="diario"||r==="ambos"; }   // gasto variable sale de aquí
+// Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
+// despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si
+// otra lo era, pasa a «fijos» con el mismo re-anclaje. Transform PURO de estado — lo usan el
+// editor de Patrimonio y el selector de «Gestionar mis bancos» (UX 2026-07-11).
+function applyAccountRole(s, totals, id, r){
+  const pn=function(i){ return (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0; };
+  const ruM=totals.roundupThisMonth||0, miM=totals.monthlyInvestThisMonth||0;
+  const spendBal=function(i){ return i.value + totals.injTR - totals.thisMonthSpent - ruM - miM + (accRole(i)==="ambos"?pn(i):0); };
+  const ruOfA=function(a){ return (a.roundupManual!=null)?a.roundupManual:(a.roundup?ruM:0); };
+  const injOfA=function(a){ return nominaYaEntro()? accInject(a):0; };
+  const shownOf=function(a){ return accDaily(a)? spendBal(a) : ((a.value||0) + pn(a)); };
+  const valueForRole=function(a,rr,shown){
+    if(rr==="fijos") return +(shown - pn(a)).toFixed(2);
+    return +((shown - injOfA(a) + (totals.thisMonthSpent||0) + ruOfA(a) + (a.monthlyInvest||0) - (rr==="ambos"?pn(a):0))).toFixed(2);
+  };
+  return Object.assign({},s,{accounts:s.accounts.map(function(a){
+    if(a.id===id){ if(accRole(a)===r) return a; return Object.assign({},a,{role:r, spendFrom:r!=="fijos", value:valueForRole(a,r,shownOf(a))}); }
+    if(r!=="fijos" && accDaily(a)) return Object.assign({},a,{role:"fijos", spendFrom:false, value:valueForRole(a,"fijos",shownOf(a))});
+    return a;
+  })});
+}
 function accFixed(a){ const r=accRole(a); return r==="fijos"||r==="ambos"; }    // participa en el motor de fijos
 // Inyección de nómina de la cuenta de gasto (€ que entran cada mes FUERA del sistema de flujos).
 // Antes era CONFIG.TR_INJECTION hardcodeado para todos; ahora es por cuenta (a.inject). Fallback
@@ -2649,9 +2679,23 @@ function seedFlows(s){
   if(!s.oneoffs) s.oneoffs = [];
   if(!s.flows) s.flows = [];
   if(!s.goals) s.goals = [];
+  // Sin estos dos, la app entera REVIENTA al pintar (totals lee aportaciones.reduce y el
+  // Sparkline history.concat): un estado en la nube sin ellos = pantalla de crash (2026-07-11).
+  if(!s.aportaciones) s.aportaciones = [];
+  if(!s.history) s.history = [];
   if(!s.shared) s.shared = [];
   if(!s.obAccounts) s.obAccounts = [];
   if(!s.obLabels) s.obLabels = {};
+  // Limpieza puntual (petición 2026-07-11): una cuenta OB quedó re-etiquetada "personalizado
+  // solo mío" (dato heredado, la cadena nunca fue de la app). Se borra la etiqueta para que
+  // vuelva el nombre bonito por defecto (Conjunta + «del banco»), como el resto.
+  Object.keys(s.obLabels).forEach(function(k){
+    if(/personalizad[oa]\s*[·(\-—]?\s*solo\s*m[ií][oa]/i.test(String(s.obLabels[k]||""))) delete s.obLabels[k];
+  });
+  if(s.accounts){ s.accounts = s.accounts.map(function(a){
+    if(a && /personalizad[oa]\s*[·(\-—]?\s*solo\s*m[ií][oa]/i.test(String(a.name||""))) return Object.assign({},a,{name:""});
+    return a;
+  }); }
   if(!s.catOverrides) s.catOverrides = {};
   USER_OVERRIDES = Object.assign({}, s.catOverrides);    // overrides personales (comercio→cat) activos
   // recategoriza lo que quedó en "Otros" (gastos auto, no manuales) con las keywords/overrides mejorados
@@ -3463,7 +3507,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
-  const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false});
+  const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
   const [catEdit,setCatEdit]=useState(null);   // id del gasto al que estás cambiando la categoría
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -3564,8 +3608,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     const amt=parseFloat(String(form.amount).replace(',','.'))||0;
     if(amt<=0){ showToast(t("g_invalid")); return; }
     const signed=form.income? -amt : amt;   // ingreso = negativo (resta del gasto del mes)
-    const ex={ id:uid(), date:new Date().toISOString(), merchant:form.merchant||(form.income?"Ingreso":"Gasto"), amount:signed, category:form.income?"ingreso":form.category, source:"manual" };
-    if(!form.income && form.noCard) ex.noCard=true;   // bizum/transfer: no cuenta round-up
+    // Fecha elegible (petición 2026-07-11: una transferencia de hace días no podía apuntarse en su
+    // día). Vacía = ahora; con fecha = ese día a las 12:00 local (evita bailes de zona horaria).
+    const when=form.date? new Date(form.date+"T12:00:00") : new Date();
+    const ex={ id:uid(), date:(isNaN(when.getTime())?new Date():when).toISOString(), merchant:form.merchant||(form.income?"Ingreso":"Gasto"), amount:signed, category:form.income?"ingreso":form.category, source:"manual" };
+    if(form.income) ex.noCard=true;                   // un ingreso nunca alimenta el round-up (igual que al editar)
+    else if(form.noCard) ex.noCard=true;              // bizum/transfer: no cuenta round-up
     set(s=>Object.assign({},s,{expenses:[ex].concat(s.expenses)}));
     if(cloud.enabled()) cloud.addExpense(ex).catch(function(){});   // lo guarda también en la BD
     // Avisos al apuntar (notificaciones "de andar por casa", las push reales llegarán con el APK):
@@ -3582,7 +3630,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     }
     // En la app Android los avisos también salen como notificación de verdad (quedan en la bandeja).
     if(isAlert){ const nat=natPlugin(); if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} } }
-    setForm({merchant:"",amount:"",category:form.category,income:false,noCard:false}); setAdding(false); showToast(msg);
+    setForm({merchant:"",amount:"",category:form.category,income:false,noCard:false,date:""}); setAdding(false); showToast(msg);
   };
 
   return React.createElement("div",null,
@@ -3600,7 +3648,9 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       ),
       React.createElement("div",Object.assign({className:"cat-select"},stopSwipe),
         React.createElement("button",{className:"chip"+(sel.length===0?" active":""),onClick:()=>setSel([])},t("g_allcats")),
-        CATEGORIES.map(c=>React.createElement("button",{key:c.id,className:"chip"+(sel.indexOf(c.id)!==-1?" active":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+        // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
+        // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
+        CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"chip"+(sel.indexOf(c.id)!==-1?" active":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       )
     ),
     React.createElement("div",{className:"total-bar"},
@@ -3628,15 +3678,35 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:form.amount,onChange:e=>setForm(Object.assign({},form,{amount:e.target.value}))}),
         !form.income && React.createElement("select",{className:"af-in",value:form.category,onChange:e=>setForm(Object.assign({},form,{category:e.target.value}))}, CATEGORIES.map(c=>React.createElement("option",{key:c.id,value:c.id},c.icon+" "+catName(c.id))))
       ),
+      // Fecha del movimiento (opcional): sin tocar = hoy. Para apuntar a posteriori un gasto o
+      // una transferencia de hace días con su día real (petición 2026-07-11).
+      React.createElement("div",{className:"af-row",style:{alignItems:"center"}},
+        React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",whiteSpace:"nowrap"}},"📅 "+t("g_date")),
+        React.createElement("input",{className:"af-in",type:"date",max:new Date().toISOString().slice(0,10),value:form.date,onChange:e=>setForm(Object.assign({},form,{date:e.target.value}))})
+      ),
       !form.income && React.createElement("button",{type:"button",className:"cardflag"+(form.noCard?" off":""),onClick:()=>setForm(Object.assign({},form,{noCard:!form.noCard}))}, form.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?t("g_addingreso"):t("g_addgasto"))
     ),
     subs.length>0 && React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title"),sub:tf("sub_sub",{n:subs.length,y:eur0(subs.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:false,storageKey:"g_subs",help:t("h_subs")},
-      subs.map(function(sp){ const c=catOf(sp.cat); return React.createElement("div",{key:sp.key,className:"sub-row"+(sp.active?"":" off")},
+      subs.map(function(sp){ const c=catOf(sp.cat);
+        // Sugerencia (petición 2026-07-11): una suscripción recurrente pinta más en Gastos FIJOS
+        // (presupuesto previsible) que goteando en variables. Un toque la crea allí, con el banco
+        // de recibos y el día real del último cargo. Si ya existe un fijo con ese nombre: ✓.
+        const inFixed=(state.fixed||[]).some(function(f){ return catKey(f.name)===sp.key; });
+        const toFixed=function(){
+          const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+          const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
+          const it={ id:uid(), name:sp.name, amount:sp.amount, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
+          const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
+          set(function(s){ return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
+          showToast(tf("sub_tofixed_done",{n:sp.name,b:entOf((acc&&acc.ent)||"sabadell").label}));
+        };
+        return React.createElement("div",{key:sp.key,className:"sub-row"+(sp.active?"":" off")},
         React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
         React.createElement("div",{className:"sub-mid"},
           React.createElement("div",{className:"sub-name"}, sp.name, !sp.active && React.createElement("span",{className:"sub-tag"}," "+t("sub_inactive"))),
-          React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)}))),
+          React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)})),
+          sp.active && React.createElement("button",{className:"chip",style:{marginTop:5,fontSize:11.5,padding:"3px 10px",opacity:inFixed?0.7:1},disabled:inFixed,onClick:inFixed?null:toFixed}, inFixed? "✓ "+t("sub_infixed") : "→ "+t("sub_tofixed"))),
         React.createElement("div",{className:"sub-amt num"}, eur(sp.amount)+t("sub_permonth"))
       ); }),
       React.createElement("div",{className:"hint",style:{marginTop:8}}, t("sub_hint"))
@@ -3749,8 +3819,10 @@ function TRSync({state, set, totals}){
     if(!bridge||!bridge.status) return;
     Promise.resolve(bridge.status()).then(function(r){ if(r&&r.connected) setConnected(true); }).catch(function(){});
   },[]);
-  // fail(e): muestra el error REAL de TR si lo hay (r.error), o el genérico.
-  const fail=function(e){ setBusy(false); setErr(true); setErrMsg((e&&(e.error||e.message))||(typeof e==="string"?e:"")); };
+  // fail(e): muestra el error REAL de TR si lo hay (r.error), o el genérico. También viaja a
+  // app_events: la saga del TR-en-frío se depuraba a ciegas sin ver el error del móvil del otro.
+  const fail=function(e){ setBusy(false); setErr(true); const m=(e&&(e.error||e.message))||(typeof e==="string"?e:""); setErrMsg(m);
+    try{ cloud.logEvent('error','TR sync: '+(m||'error desconocido')); }catch(x){} };
   // Normaliza el teléfono a formato internacional (TR exige +CC…). Sin prefijo → asume España (+34).
   const normPhone=function(p){
     let s=(p||"").replace(/[\s().-]/g,"");
@@ -4211,22 +4283,7 @@ function Wealth({state, set, totals}){
   const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM - miM + (accRole(i)==="ambos"?pn(i):0);
   // ROLES DE CUENTA: al cambiar el rol se RE-ANCLA `value` para que el saldo mostrado no cambie
   // (despejamos value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario.
-  const ruOfA=(a)=> (a.roundupManual!=null)?a.roundupManual:(a.roundup?(totals.roundupThisMonth||0):0);
-  const injOfA=(a)=> nominaYaEntro()? accInject(a):0;
-  const shownOf=(a)=> accDaily(a)? spendBal(a) : ((a.value||0) + pn(a));
-  const valueForRole=(a,r,shown)=>{
-    if(r==="fijos") return +(shown - pn(a)).toFixed(2);
-    return +((shown - injOfA(a) + (totals.thisMonthSpent||0) + ruOfA(a) + (a.monthlyInvest||0) - (r==="ambos"?pn(a):0))).toFixed(2);
-  };
-  const setRole=(id,r)=>{
-    set(function(s){
-      return Object.assign({},s,{accounts:s.accounts.map(function(a){
-        if(a.id===id){ if(accRole(a)===r) return a; return Object.assign({},a,{role:r, spendFrom:r!=="fijos", value:valueForRole(a,r,shownOf(a))}); }
-        if(r!=="fijos" && accDaily(a)) return Object.assign({},a,{role:"fijos", spendFrom:false, value:valueForRole(a,"fijos",shownOf(a))});
-        return a;
-      })});
-    });
-  };
+  const setRole=(id,r)=>{ set(function(s){ return applyAccountRole(s, totals, id, r); }); };   // lógica compartida (applyAccountRole)
   const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})),{
     // Editas el SALDO REAL de hoy; por dentro se guarda la base (inicio de mes) correcta.
     display:  i => accDaily(i) ? spendBal(i) : (i.value + pn(i)),
@@ -4286,7 +4343,9 @@ function Wealth({state, set, totals}){
           React.createElement("div",{style:{minWidth:0}},
             accEd.editing
               ? React.createElement("input",{className:"af-in",style:{fontSize:13,padding:"5px 9px",maxWidth:170},value:custom!=null?custom:disp,placeholder:disp,onChange:function(e){ const v=e.target.value; set(function(s){ const ob=Object.assign({},s.obLabels); ob[o.key]=v; return Object.assign({},s,{obLabels:ob}); }); }})
-              : React.createElement("div",{className:"rname"}, disp, React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
+              : React.createElement("div",{className:"rname"}, disp, o.stale
+                  ? React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#E2A05F22",color:"#E2A05F"}}, t("pt_ob_badge")+" · "+t("bp_st_expired"))
+                  : React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
             React.createElement("div",{className:"rsub"}, entOf(o.ent).label))),
         React.createElement("div",{className:"rval num"}, eur(o.cur==="USD"? (o.value||0)*state.fx : (o.value||0)))
       ); }),
@@ -4479,7 +4538,14 @@ function applyBankBalances(s, links){
   const accounts=(s.accounts||[]).slice();
   let changed=false; const synced=[]; const obAccts=[]; const usedPrimary={};
   links.forEach(function(lk){
-    if(lk && lk.ok===false) return;   // banco que falló este sync: no toques nada suyo
+    if(lk && lk.ok===false){
+      // Banco que falló/caducó este sync: CONSERVA sus cuentas sincronizadas tal y como estaban,
+      // marcadas rancias (stale) para que Patrimonio enseñe «caducado» en vez de esfumarlas.
+      // (Bug CaixaBank 2026-07-11: al reconstruir obAccounts sin el banco caído, desaparecía.)
+      const asp=String((lk&&lk.aspsp)||"").toLowerCase();
+      (s.obAccounts||[]).forEach(function(o){ if(String(o.aspsp||"").toLowerCase()===asp) obAccts.push(Object.assign({},o,{stale:true})); });
+      return;
+    }
     const ent=entFromAspsp(lk && lk.aspsp);
     // cuentas del banco: shape nuevo (lk.accounts) o antiguo (una sola, de lk.balances)
     const accs=(Array.isArray(lk.accounts)&&lk.accounts.length)
@@ -5885,10 +5951,15 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       React.createElement("div",{style:{textAlign:"center",color:"var(--muted)",fontSize:13,padding:"10px 0 6px"}}, t("bp_empty")),
       React.createElement("div",{style:{fontSize:12,lineHeight:1.55,color:"var(--muted)",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:12,padding:"10px 12px",margin:"0 0 16px"}}, "💡 "+t("bp_empty_hint"))
     ),
+    // Explicación de los roles UNA vez, encima de la lista (petición 2026-07-11: clasificar cada
+    // banco hacia fijos/variables/todo estaba escondido en Patrimonio → Editar y nadie lo veía).
+    (links||[]).length>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.55,color:"var(--muted)",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:12,padding:"10px 12px",margin:"0 0 14px"}}, "🎯 "+t("bp_roles_hint")),
     (links||[]).map(function(l){
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
+      // cuenta manual del banco en la app → su rol decide a dónde van los cargos de este banco
+      const roleAcc=ent?(state.accounts||[]).find(function(a){ return a.ent===ent; }):null;
       const noAcct = l.status==='error';   // autorizó pero volvió sin cuentas dadas de alta (modo restringido)
       const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
@@ -5903,6 +5974,19 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
             l.valid_until?React.createElement("div",{style:{fontSize:11,color:soon?"var(--coral)":"var(--muted-2)",marginTop:1}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
           sp),
         noAcct && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",background:"#E2A05F14",border:"1px solid #E2A05F44",borderRadius:12,padding:"9px 12px",margin:"-2px 0 12px"}}, "⚠ "+t("bp_noacct_help")),
+        // Rol del banco (fijos / gasto diario / todo) editable AQUÍ, sin pasar por Patrimonio→Editar.
+        roleAcc && React.createElement("div",{style:{margin:"-2px 0 12px"}},
+          React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginBottom:5}}, t("bp_role_q")),
+          React.createElement("div",{className:"rolechips",style:{margin:0}},
+            [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+              const on=accRole(roleAcc)===rr[0];
+              return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){
+                if(on) return;
+                set(function(s){ return applyAccountRole(s, totals, roleAcc.id, rr[0]); });
+                showToast("✓ "+bankLabel(l.aspsp_name)+" → "+t(rr[1]));
+              }}, t(rr[1]));
+            }))),
+        !roleAcc && !noAcct && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"-2px 0 12px"}}, "ℹ "+t("bp_role_obonly")),
         (confirming===l.aspsp_name
           ? React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"-4px 0 14px"}},
               React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 auto",minWidth:120}}, tf("bp_remove_q",{bank:bankLabel(l.aspsp_name)})),
@@ -5953,7 +6037,22 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         nat.installApk({url:apk.url}).then(function(r){ if(r&&r.needsPermission) showToast(t("apk_perm")); }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
         return;
       }
-      if(ver&&ver.version&&ver.version!==CONFIG.APP_VERSION){ showToast(t("st_up_web")); return; }
+      // Versión web nueva: se baja el bundle y se APLICA YA (up.set recarga la WebView al
+      // momento) — antes solo decía «cierra y abre la app», que no es un botón de actualizar
+      // (feedback 2026-07-11). Guard «solo hacia adelante» como el OTA de arranque.
+      const newer=(function(a,b){ a=String(a).split("."); b=String(b).split(".");
+        for(var i=0;i<Math.max(a.length,b.length);i++){ var x=parseInt(a[i]||0,10), y=parseInt(b[i]||0,10); if(x!==y) return x>y; } return false; });
+      if(ver&&ver.version&&newer(ver.version,CONFIG.APP_VERSION)){
+        const up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+        const BASE2="https://juanjoavila.github.io/Mi-Cartera/";
+        if(up){
+          showToast(tf("st_up_applying",{v:ver.version}));
+          up.download({url:(ver.url||BASE2+"bundle.zip"),version:ver.version})
+            .then(function(b){ try{ localStorage.setItem("_otaPending",ver.version); }catch(e){} return up.set({id:b.id}); })
+            .catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
+        } else { showToast(t("st_up_web")); }
+        return;
+      }
       showToast(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+(info&&info.versionName?" · app "+info.versionName:""));
     });
   };
@@ -5962,6 +6061,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     cloud.adminEvents(60).then(function(rows){
       setEvents(rows||[]);
       try{ localStorage.setItem("_evSeen", String(Date.now())); }catch(e){}   // el aviso de "errores nuevos" se resetea
+      // feedback visible: sin esto, recargar con los mismos datos parecía "no hacer nada" (2026-07-11)
+      const nErr=(rows||[]).filter(function(r){ return r.kind==="error"; }).length;
+      showToast("↻ "+(rows||[]).length+" eventos · "+nErr+" error(es)");
     }).catch(function(e){ setEvents([]); showToast("⚠ "+((e&&e.message)||e)); });
   };
   // ¿El lector de gastos TR tiene acceso a notificaciones? (se pierde al reinstalar la app).
@@ -6147,8 +6249,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     cloud.enabled() && (function(){
       const links=bankLinks;
       const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
+      // Los caducados/rotos se CANTAN aquí (bug CaixaBank 2026-07-11: parecía conectado pero
+      // llevaba semanas caducado y fuera del patrimonio, sin ninguna pista en Ajustes).
+      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
       const summary = links===null ? "…"
-        : nActive>0 ? tf("bp_summary_n",{n:nActive})
+        : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
+        : nDead>0 ? tf("bp_summary_exp",{n:nDead})
         : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
       return React.createElement("div",{className:"set-card"},
         React.createElement("div",{className:"sc-title"},t("bank_section")),
@@ -6510,7 +6616,12 @@ function App(){
   const [syncStatus,setSyncStatus]=useState({type:"idle",msg:""});
 
   const set=useCallback((updater)=>{ setStateRaw(prev=>{ const next=typeof updater==="function"?updater(prev):updater; if(next===prev) return prev; const stamped=Object.assign({},next,{_savedAt:Date.now()}); store.set("micartera_v3",stamped); return stamped; }); },[]);
-  const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(null),2200); };
+  const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(null),2200);
+    // Telemetría: TODO error que ve el usuario en pantalla viaja a app_events. Antes solo se
+    // subían los crashes/errores no capturados — los fallos "domados" (✕/⚠ en un toast, como el
+    // permission denied del ingest) eran invisibles para el admin (bug 2026-07-11).
+    try{ const s=String(m||""); if(/^[✕⚠✗]/.test(s)) cloud.logEvent('error','TOAST: '+s.slice(0,300)); }catch(e){}
+  };
   // Moneda de visualización: convierte todos los importes (en €) a la moneda elegida en Ajustes.
   (function(){ const c=(state.settings&&state.settings.currency)||"EUR"; DISP.sym=c==="USD"?"$":"€"; DISP.k=c==="USD"?((state.fx>0)?1/state.fx:1):1; })();
   CURLANG = (state.settings&&state.settings.lang) || "es";   // idioma activo (i18n)
