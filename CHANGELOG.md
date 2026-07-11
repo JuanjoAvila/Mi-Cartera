@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.93.0] — 2026-07-11
+### Editar el saldo de una deuda con plazo ya no resetea el contador de cuotas
+- 🐛 **«Editar saldos pendientes» alargaba la deuda:** re-anclaba la proyección al mes actual sin ajustar el plazo, así que una deuda de 4 cuotas con 3 pagadas volvía a enseñar «Quedan 4/4» tras corregir el saldo (y la proyección la alargaba otros 4 meses). Ahora, en deudas con plazo, el saldo tecleado se convierte en el pendiente real **sin tocar el ancla** (mismo patrón que Amortizar) y las cuotas restantes se recalculan con la misma amortización: editar a 100 € una deuda de 400 €/4 cuotas deja «Quedan 1/4», como debe. Las deudas sin plazo siguen re-anclando como siempre.
+
 ## [3.92.0] — 2026-07-11
 ### Más feedback de la pareja: deudas mudas al fallar, amortizar y deudas ya empezadas
 - 🐛 **Añadir deuda fallaba en silencio:** si faltaba el importe (o no había ni cuota ni plazo), «Añadir deuda» no hacía nada y no avisaba. Ahora sale un toast claro con lo que falta («⚠ Falta el importe total de la deuda», «⚠ Pon la cuota/mes o el plazo en meses») y un «✓ Deuda añadida» al guardar bien.

@@ -5457,8 +5457,18 @@ function Fijos({state, set, totals}){
    TAB: DEUDAS
    ============================================================ */
 function Debts({state, set, showToast}){
-  // editar el saldo re-ancla al mes de hoy (asOf) para que la proyección siga desde ahí
-  const ed=useEditable(state.debts,it=>set(s=>Object.assign({},s,{debts:it})), { display:d=>Math.round(debtBalance(d)*100)/100, extra:()=>({asOf:ymNow()}) });
+  // editar el saldo re-ancla la proyección para que siga desde ahí. Sin plazo: se re-ancla asOf.
+  // Con plazo: asOf NO se toca (re-anclarlo resetearía debtPaidCount y el «Quedan n/tot» volvería
+  // al plazo completo); en su lugar se ajusta value para que el pendiente sea lo tecleado y se
+  // recalculan las cuotas que quedan con la misma amortización (como amortize()).
+  const ed=useEditable(state.debts,it=>set(s=>Object.assign({},s,{debts:it})), { display:d=>Math.round(debtBalance(d)*100)/100, extra:(d,typed)=>{
+    const am=debtAmort(d);
+    if(d.months==null || !(am>0)) return {asOf:ymNow()};
+    const paid=debtPaidCount(d);
+    const viaM=Math.max(0,typed-(d.balloon||0));
+    const left=viaM>0?Math.ceil(viaM/am):((d.balloon>0&&typed>0.005)?1:0);
+    return { value:+(typed+am*paid).toFixed(2), months:paid+left };
+  } });
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell",down:"",balloon:"",paid:""});
   const banks=(function(){ const b=[]; (state.accounts||[]).forEach(a=>{ if(b.indexOf(a.ent)<0) b.push(a.ent); }); ["sabadell","trade_republic","familia"].forEach(x=>{ if(b.indexOf(x)<0) b.push(x); }); return b; })();
