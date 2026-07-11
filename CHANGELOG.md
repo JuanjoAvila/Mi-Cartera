@@ -19,6 +19,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.88.0] — 2026-07-11
+### Apuntado de Trade Republic MULTIUSUARIO (0008)
+- ✨ **Cada persona apunta sus gastos de TR en SU cuenta:** hasta ahora el lector de notificaciones (`ingest`) escribía siempre para el único usuario del secreto `INGEST_USER_ID` (el creador). Por eso, cuando a una pareja/amigo le llegaba la noti de un gasto de Trade Republic, **no se apuntaba** en su cuenta (o iba a la del creador). Ahora, en **Ajustes → notificaciones**, un toggle **«Apuntar aquí mis gastos de Trade Republic»** genera un **token propio** por usuario (tabla nueva `ingest_tokens` con RLS, migración `0008`), lo guarda y pasa la URL de `ingest` al lector nativo (plugin `setIngestUrl` → `SharedPreferences`). El lector lee esa URL (y cae a `BuildConfig.INGEST_URL` si no la hay), así que **el token del creador sigue funcionando igual** — cero disrupción. `ingest` resuelve `token → user_id` (fallback al secreto legado). Textos ES/EN/CA. **Requiere APK nuevo** (cambia el lector nativo) y desplegar la función + migración.
+- ⚠️ **Nota:** solo apunta gastos **desde que se activa** (tiempo real, sin histórico). El histórico pasado de TR no existe por esta vía (las notificaciones no tienen pasado).
+
 ## [3.87.0] — 2026-07-11
 ### Quitar a mano una cuenta del Patrimonio
 - ✨ **Cuentas manuales borrables:** las cuentas añadidas a mano en el onboarding viven en `state.accounts`, no en las de Open Banking (`obAccounts`). Al desconectar/desloguear un banco, la purga automática (`bankDisconnect`) solo limpia las de Open Banking, así que una cuenta manual (p. ej. la de una pareja que se deslogueó de Revolut) seguía sumando al Patrimonio **sin forma de quitarla**. Ahora, en **Patrimonio → Cuentas → Editar**, cada cuenta manual tiene un botón 🗑 con **confirmación inline** para quitarla del patrimonio, y un aviso que recuerda que las cuentas conectadas al banco se desconectan desde **Ajustes → Bancos**. Textos en ES/EN/CA.

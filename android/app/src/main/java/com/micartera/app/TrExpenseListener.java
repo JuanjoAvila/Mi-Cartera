@@ -39,7 +39,14 @@ public class TrExpenseListener extends NotificationListenerService {
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         if (!TR_PACKAGE.equals(sbn.getPackageName())) return;
-        if (BuildConfig.INGEST_URL == null || BuildConfig.INGEST_URL.isEmpty()) return;
+        // MULTIUSUARIO (migración 0008): la URL de `ingest` con el token del usuario la guarda la
+        // web en estas prefs (Ajustes → "Apuntar aquí mis gastos de TR"). Si no la hay, caemos a
+        // BuildConfig.INGEST_URL (solo la tiene el APK del creador). Sin ninguna de las dos, no hay
+        // a dónde mandar → no hacemos nada (evita apuntar en la cuenta de otro).
+        String ingestUrl = getSharedPreferences("micartera_ingest", MODE_PRIVATE).getString("url", "");
+        if (ingestUrl == null || ingestUrl.isEmpty()) ingestUrl = BuildConfig.INGEST_URL;
+        if (ingestUrl == null || ingestUrl.isEmpty()) return;
+        final String INGEST_URL = ingestUrl;
 
         CharSequence titleCs = sbn.getNotification().extras.getCharSequence("android.title");
         CharSequence textCs = sbn.getNotification().extras.getCharSequence("android.text");
@@ -69,7 +76,7 @@ public class TrExpenseListener extends NotificationListenerService {
                         .put("fecha", String.valueOf(System.currentTimeMillis()))
                         .toString();
 
-                HttpURLConnection conn = (HttpURLConnection) new URL(BuildConfig.INGEST_URL).openConnection();
+                HttpURLConnection conn = (HttpURLConnection) new URL(INGEST_URL).openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");
                 conn.setConnectTimeout(15000);

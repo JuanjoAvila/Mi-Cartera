@@ -127,13 +127,31 @@ function parseFecha(t: string): string {
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
 
-  // 1) Autenticación propia (token compartido con el lector)
+  // Cliente service role (salta RLS): lo usamos para resolver el token → usuario y para escribir.
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // 1) Autenticación + MULTIUSUARIO (migración 0008): el lector nativo manda un token propio.
+  //    · Token del CREADOR (secreto INGEST_TOKEN → INGEST_USER_ID): sigue igual, cero disrupción.
+  //    · Cualquier otro token: se busca en `ingest_tokens` y se apunta el gasto en SU cuenta.
+  //    Así una pareja/amigo apunta sus gastos de TR en su propia cuenta, no en la del creador.
   const url = new URL(req.url);
   const token = url.searchParams.get("token") || req.headers.get("x-ingest-token") || "";
-  if (token !== Deno.env.get("INGEST_TOKEN")) return json({ ok: false, error: "token inválido" }, 403);
+  if (!token) return json({ ok: false, error: "sin token" }, 403);
 
-  const userId = Deno.env.get("INGEST_USER_ID");
-  if (!userId) return json({ ok: false, error: "INGEST_USER_ID no configurado" }, 500);
+  let userId: string | null = null;
+  const legacyToken = Deno.env.get("INGEST_TOKEN");
+  if (legacyToken && token === legacyToken) {
+    userId = Deno.env.get("INGEST_USER_ID") || null;
+    if (!userId) return json({ ok: false, error: "INGEST_USER_ID no configurado" }, 500);
+  } else {
+    const { data: tok } = await supabase
+      .from("ingest_tokens").select("user_id").eq("token", token).maybeSingle();
+    userId = tok?.user_id || null;
+  }
+  if (!userId) return json({ ok: false, error: "token inválido" }, 403);
 
   // 2) Parseo del cuerpo (JSON o form-urlencoded, compat MacroDroid)
   const raw = await req.text();
@@ -173,12 +191,7 @@ Deno.serve(async (req) => {
     cat = categorizar(comercio);
   }
 
-  // 3) Inserción (service role → salta RLS). Dedup contra expenses_dedup_idx.
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-
+  // 3) Inserción (service role → salta RLS, cliente creado arriba). Dedup contra expenses_dedup_idx.
   // VENTANA ANTI-DUPLICADO (bug cobro doble 2026-07-10): el índice de dedup exige el MISMO
   // timestamp, pero un pago con confirmación genera dos notis con minutos de diferencia
   // (autorizar → cargo) y entraba dos veces. Mismo usuario + mismo importe a <10 min = el

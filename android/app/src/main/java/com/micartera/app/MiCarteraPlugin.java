@@ -242,6 +242,18 @@ public class MiCarteraPlugin extends Plugin {
         call.resolve();
     }
 
+    // Multiusuario del lector de gastos TR (migración 0008): la web guarda aquí la URL de
+    // `ingest` con el token del usuario logueado. TrExpenseListener la lee de estas prefs (y
+    // si no hay, cae a BuildConfig.INGEST_URL, que solo tiene el APK del creador). Así cada
+    // persona apunta sus gastos de Trade Republic en SU propia cuenta. url vacía = desactivar.
+    @PluginMethod
+    public void setIngestUrl(PluginCall call) {
+        String url = call.getString("url", "");
+        getContext().getSharedPreferences("micartera_ingest", Context.MODE_PRIVATE)
+                .edit().putString("url", url != null ? url : "").apply();
+        call.resolve();
+    }
+
     @PluginMethod
     public void openNotifAccess(PluginCall call) {
         try {
