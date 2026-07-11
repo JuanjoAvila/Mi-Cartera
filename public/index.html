@@ -1874,6 +1874,9 @@ Object.assign(LANG.es,{
   db_months_ph:"Plazo (meses)", db_day_ph:"Día", db_left:"Quedan {n}/{tot} cuotas · {x}/mes", db_paidoff_done:"✓ Financiación pagada", db_financing_hint:"Pon el plazo en meses para una financiación: la cuota aparece sola en Gastos fijos cada mes y se para al acabar. Si es 0% deja la cuota vacía (la calculo). Para interés, escribe la cuota real.",
   db_down_ph:"Entrada € (opcional)", db_balloon_ph:"Pago final € (coche)", db_balloon_tag:"(pago final)", db_balloon_hint:"¿Coche? Entrada al inicio + cuotas + un PAGO FINAL grande al acabar el plazo. Pon el importe financiado, el pago final y el plazo: la cuota se calcula sola y el pago final aparece como cargo el último mes.", db_balloon_line:"Pago final: {x}", db_down_line:"Entrada: {x}",
   db_hint:"El saldo baja solo cada mes según lo que amortizas. Cuando te llegue el saldo real del banco, edítalo aquí y se vuelve a anclar. La cuota y la amortización (si difieren, p.ej. pagas 197 € pero amortizas 250 €) se ponen en Fijos → Cuotas de deuda.",
+  db_err_amount:"⚠ Falta el importe total de la deuda", db_err_quota:"⚠ Pon la cuota/mes o el plazo en meses", db_err_paid:"⚠ Has pagado tantas cuotas como el plazo: esa deuda ya está liquidada", db_added:"✓ Deuda añadida",
+  db_paid_ph:"Cuotas ya pagadas", db_paid_hint:"¿Ya la tienes empezada? Pon cuántas cuotas llevas pagadas y el pendiente se calcula solo.",
+  db_amortize:"Amortizar", db_amortize_prompt:"¿Cuánto amortizas de «{name}»? (€) · pendiente {x}", db_amortized:"✓ Amortizado {x} · pendiente {y}", db_amortize_full:"🎉 ¡Deuda liquidada!",
   lk_unlock:"Desbloquea para continuar", lk_failed:"No se pudo verificar. Inténtalo de nuevo.", lk_unlockbtn:"Desbloquear con huella", lk_cant:"No puedo desbloquear",
   lk_escape:"¿Quitar el candado de huella en este dispositivo? Podrás volver a activarlo desde tu cuenta.",
   au_account:"Tu cuenta", au_bio_off:"🔒 Desactivar desbloqueo con huella", au_bio_on:"🔓 Activar desbloqueo con huella", au_nobio:"Este dispositivo/navegador no soporta huella.",
@@ -1916,6 +1919,9 @@ Object.assign(LANG.en,{
   db_months_ph:"Term (months)", db_day_ph:"Day", db_left:"{n}/{tot} payments left · {x}/mo", db_paidoff_done:"✓ Financing paid off", db_financing_hint:"Set a term in months for a financing: the payment shows up by itself in Fixed costs each month and stops when it ends. If 0%, leave the payment empty (I compute it). For interest, enter the real payment.",
   db_down_ph:"Down payment € (optional)", db_balloon_ph:"Final payment € (car)", db_balloon_tag:"(final payment)", db_balloon_hint:"Car? Down payment upfront + installments + a big FINAL PAYMENT at term end. Enter the financed amount, the final payment and the term: the installment is computed and the final payment shows as a charge in the last month.", db_balloon_line:"Final payment: {x}", db_down_line:"Down payment: {x}",
   db_hint:"The balance drops on its own each month based on what you pay off. When you get the real bank balance, edit it here and it re-anchors. The payment and payoff (if different, e.g. you pay 197 € but pay off 250 €) are set in Fixed → Debt payments.",
+  db_err_amount:"⚠ Missing the total debt amount", db_err_quota:"⚠ Set the payment/mo or the term in months", db_err_paid:"⚠ You've paid as many installments as the term: that debt is already settled", db_added:"✓ Debt added",
+  db_paid_ph:"Installments already paid", db_paid_hint:"Already partway through? Enter how many installments you've paid and the outstanding balance is computed for you.",
+  db_amortize:"Pay down", db_amortize_prompt:"How much of “{name}” do you pay down? (€) · outstanding {x}", db_amortized:"✓ Paid down {x} · outstanding {y}", db_amortize_full:"🎉 Debt settled!",
   lk_unlock:"Unlock to continue", lk_failed:"Couldn't verify. Try again.", lk_unlockbtn:"Unlock with fingerprint", lk_cant:"I can't unlock",
   lk_escape:"Remove the fingerprint lock on this device? You can re-enable it from your account.",
   au_account:"Your account", au_bio_off:"🔒 Turn off fingerprint unlock", au_bio_on:"🔓 Turn on fingerprint unlock", au_nobio:"This device/browser doesn't support fingerprint.",
@@ -1958,6 +1964,9 @@ Object.assign(LANG.ca,{
   db_months_ph:"Termini (mesos)", db_day_ph:"Dia", db_left:"Queden {n}/{tot} quotes · {x}/mes", db_paidoff_done:"✓ Finançament pagat", db_financing_hint:"Posa el termini en mesos per a un finançament: la quota apareix sola a Despeses fixes cada mes i s'atura en acabar. Si és 0%, deixa la quota buida (la calculo). Per interès, escriu la quota real.",
   db_down_ph:"Entrada € (opcional)", db_balloon_ph:"Pagament final € (cotxe)", db_balloon_tag:"(pagament final)", db_balloon_hint:"Cotxe? Entrada a l'inici + quotes + un PAGAMENT FINAL gran en acabar el termini. Posa l'import finançat, el pagament final i el termini: la quota es calcula sola i el pagament final surt com a càrrec l'últim mes.", db_balloon_line:"Pagament final: {x}", db_down_line:"Entrada: {x}",
   db_hint:"El saldo baixa sol cada mes segons el que amortitzes. Quan et arribi el saldo real del banc, edita'l aquí i es torna a ancorar. La quota i l'amortització (si difereixen, ex. pagues 197 € però amortitzes 250 €) es posen a Fixes → Quotes de deute.",
+  db_err_amount:"⚠ Falta l'import total del deute", db_err_quota:"⚠ Posa la quota/mes o el termini en mesos", db_err_paid:"⚠ Has pagat tantes quotes com el termini: aquest deute ja està liquidat", db_added:"✓ Deute afegit",
+  db_paid_ph:"Quotes ja pagades", db_paid_hint:"Ja el tens començat? Posa quantes quotes portes pagades i el pendent es calcula sol.",
+  db_amortize:"Amortitza", db_amortize_prompt:"Quant amortitzes de «{name}»? (€) · pendent {x}", db_amortized:"✓ Amortitzat {x} · pendent {y}", db_amortize_full:"🎉 Deute liquidat!",
   lk_unlock:"Desbloqueja per continuar", lk_failed:"No s'ha pogut verificar. Torna-ho a provar.", lk_unlockbtn:"Desbloqueja amb empremta", lk_cant:"No puc desbloquejar",
   lk_escape:"Treure el bloqueig d'empremta en aquest dispositiu? Podràs tornar a activar-lo des del teu compte.",
   au_account:"El teu compte", au_bio_off:"🔒 Desactiva el desbloqueig amb empremta", au_bio_on:"🔓 Activa el desbloqueig amb empremta", au_nobio:"Aquest dispositiu/navegador no admet empremta.",
@@ -5447,31 +5456,56 @@ function Fijos({state, set, totals}){
 /* ============================================================
    TAB: DEUDAS
    ============================================================ */
-function Debts({state, set}){
+function Debts({state, set, showToast}){
   // editar el saldo re-ancla al mes de hoy (asOf) para que la proyección siga desde ahí
   const ed=useEditable(state.debts,it=>set(s=>Object.assign({},s,{debts:it})), { display:d=>Math.round(debtBalance(d)*100)/100, extra:()=>({asOf:ymNow()}) });
   const [adding,setAdding]=useState(false);
-  const [form,setForm]=useState({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell",down:"",balloon:""});
+  const [form,setForm]=useState({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell",down:"",balloon:"",paid:""});
   const banks=(function(){ const b=[]; (state.accounts||[]).forEach(a=>{ if(b.indexOf(a.ent)<0) b.push(a.ent); }); ["sabadell","trade_republic","familia"].forEach(x=>{ if(b.indexOf(x)<0) b.push(x); }); return b; })();
   const total=state.debts.reduce((a,d)=>a+debtBalance(d),0);
   const monthly=state.debts.reduce((a,d)=>a+(debtActive(d)?(d.monthly||0):0),0);
   const addDebt=()=>{
-    const v=parseFloat(String(form.value).replace(',','.'))||0; if(v<=0) return;
+    const v=parseFloat(String(form.value).replace(',','.'))||0;
     const months=parseInt(form.months,10)||0;
     const balloon=parseFloat(String(form.balloon).replace(',','.'))||0;
     const down=parseFloat(String(form.down).replace(',','.'))||0;
+    const paid=parseInt(form.paid,10)||0;
     const viaMonthly=Math.max(0, v-balloon);                 // lo que cubren las cuotas (el resto = pago final)
     let m=parseFloat(String(form.monthly).replace(',','.'))||0;
+    if(v<=0){ showToast(t("db_err_amount")); return; }
+    if(m<=0 && months<=0){ showToast(t("db_err_quota")); return; }
+    if(paid>0 && months>0 && paid>=months){ showToast(t("db_err_paid")); return; }
     if(months>0 && m<=0) m=+(viaMonthly/months).toFixed(2);  // 0%: cuota = (financiado − pago final) / plazo
     const it={id:uid(),ent:"familia",name:form.name||t("db_newdebt"),value:v,original:v,monthly:m,asOf:ymNow(),account:form.account||"sabadell",note:t("db_addedmanual")};
     const day=cleanDay(form.day); if(day) it.day=day;
     if(months>0){ it.months=months; it.amort=+(viaMonthly/months).toFixed(2); }   // amortiza principal lineal; el pago final limpia el resto
     if(balloon>0) it.balloon=balloon;
     if(down>0) it.downPayment=down;
+    // deuda ya empezada: retrasa el ancla tantos meses como cuotas pagadas para que
+    // debtPaidCount()===paid hoy (compensa el +1 que suma si la cuota de este mes ya pasó)
+    if(paid>0){ let anchor=ymNow()-paid; if(months>0 && it.day!=null && it.day<=new Date().getDate()) anchor+=1; it.asOf=anchor; }
     set(s=>Object.assign({},s,{debts:s.debts.concat([it])}));
-    setForm({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell",down:"",balloon:""}); setAdding(false);
+    setForm({name:"",value:"",monthly:"",months:"",day:"",account:"sabadell",down:"",balloon:"",paid:""}); setAdding(false);
+    showToast(t("db_added"));
   };
   const delDebt=(id)=> set(s=>Object.assign({},s,{debts:s.debts.filter(d=>d.id!==id)}));
+  // amortización anticipada: baja el pendiente y acorta el plazo (misma cuota, menos meses)
+  const amortize=(d)=>{
+    const bal=debtBalance(d);
+    const raw=window.prompt(tf("db_amortize_prompt",{name:d.name,x:eur0(bal)}),"");
+    if(raw==null) return;
+    const amt=Math.min(parseFloat(String(raw).replace(',','.'))||0, bal);
+    if(amt<=0) return;
+    const nb=+(bal-amt).toFixed(2);
+    set(s=>Object.assign({},s,{debts:s.debts.map(x=>{
+      if(x.id!==d.id) return x;
+      const o=Object.assign({},x,{value:+(x.value-amt).toFixed(2)});   // el ancla no se toca: el pendiente baja justo lo amortizado
+      if(nb<=0.005){ if(x.months!=null) o.months=debtPaidCount(x); delete o.balloon; }
+      else if(x.months!=null){ const am=debtAmort(x); if(am>0){ const viaM=Math.max(0,nb-(x.balloon||0)); o.months=debtPaidCount(x)+(viaM>0?Math.ceil(viaM/am):(x.balloon>0?1:0)); } }
+      return o;
+    })}));
+    showToast(nb<=0.005?t("db_amortize_full"):tf("db_amortized",{x:eur(amt),y:eur(nb)}));
+  };
   return React.createElement("div",null,
     React.createElement("div",{className:"total-bar"},
       React.createElement("div",null,React.createElement("div",{className:"tl"},t("db_total")),React.createElement("div",{className:"tn num",style:{color:"#E2705F"}},eur(total))),
@@ -5500,6 +5534,7 @@ function Debts({state, set}){
           ed.editing
             ? React.createElement("input",{className:"editv num",value:ed.draft[d.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;ed.setDraft(dr=>Object.assign({},dr,{[d.id]:v}));}})
             : React.createElement("div",{className:"rval num",style:{color:"#E2705F"}},eur(bal))),
+        !ed.editing && bal>0.005 && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:()=>amortize(d)},"💸 "+t("db_amortize")),
         ed.editing && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"#E2705F"},onClick:()=>delDebt(d.id)},t("db_delete"))
       );
     }),
@@ -5520,6 +5555,8 @@ function Debts({state, set}){
             React.createElement("input",{className:"af-in num",placeholder:t("db_down_ph"),inputMode:"decimal",value:form.down,onChange:e=>setForm(Object.assign({},form,{down:e.target.value}))}),
             React.createElement("input",{className:"af-in num",placeholder:t("db_balloon_ph"),inputMode:"decimal",value:form.balloon,onChange:e=>setForm(Object.assign({},form,{balloon:e.target.value}))})
           ),
+          React.createElement("input",{className:"af-in num",placeholder:t("db_paid_ph"),inputMode:"numeric",value:form.paid,onChange:e=>setForm(Object.assign({},form,{paid:e.target.value}))}),
+          React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_paid_hint")),
           React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_financing_hint")),
           React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_balloon_hint")),
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addDebt},t("db_add"))
@@ -7513,7 +7550,7 @@ function App(){
     if(id==="fijos") return React.createElement(Fijos,{state:state,set:set,totals:totals});
     if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
     if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
-    if(id==="debt") return React.createElement(Debts,{state:state,set:set});
+    if(id==="debt") return React.createElement(Debts,{state:state,set:set,showToast:showToast});
     if(id==="compartido") return React.createElement(Shared,{state:state,set:set});
     return null;
   };
