@@ -20,6 +20,14 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supa.auth.getUser();
     if (!user) return jsonResp({ ok: false, error: "sin sesión" }, 401);
 
+    // IMPORTAR HISTÓRICO (opcional): la app manda { dateFrom:"YYYY-MM-DD" } para traer los
+    // movimientos desde esa fecha (tope PSD2 ~90 días). Modo LECTURA PURA: NO toca saldos ni el
+    // estado de los enlaces (a diferencia del sync normal). Solo devuelve las transacciones para
+    // que la app enseñe un selector "elige qué gastos importar".
+    const body = await req.json().catch(() => ({}));
+    const dateFrom = (typeof body?.dateFrom === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dateFrom))
+      ? body.dateFrom : null;
+
     const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: links } = await admin
       .from("bank_links").select("*")
@@ -27,6 +35,41 @@ Deno.serve(async (req) => {
 
     const { appId, pem } = ebConfig();
     const jwt = await makeJWT(appId, pem);
+
+    if (dateFrom) {
+      const hist: unknown[] = [];
+      for (const link of links || []) {
+        // deno-lint-ignore no-explicit-any
+        const acctList: any[] = (Array.isArray(link.accounts) && link.accounts.length)
+          ? link.accounts
+          : (link.account_uid ? [{ uid: link.account_uid, iban: link.iban, name: null }] : []);
+        // deno-lint-ignore no-explicit-any
+        const accts: any[] = [];
+        for (const ac of acctList) {
+          const uid = ac?.uid;
+          if (!uid || typeof uid !== "string") continue;
+          try {
+            // deno-lint-ignore no-explicit-any
+            let all: any[] = [];
+            let contKey: string | null = null;
+            let pages = 0;
+            do {
+              const qs = `?date_from=${dateFrom}` + (contKey ? `&continuation_key=${encodeURIComponent(contKey)}` : "");
+              const tx = await ebApi(jwt, `/accounts/${uid}/transactions${qs}`);
+              // deno-lint-ignore no-explicit-any
+              all = all.concat((tx.transactions || []).map((t: any) => mapTransaction(t)));
+              contKey = tx.continuation_key || null;
+              pages++;
+            } while (contKey && pages < 12 && all.length < 2000);   // tope duro anti-runaway
+            accts.push({ uid, iban: ac.iban || null, name: ac.name || null, ok: true, count: all.length, transactions: all });
+          } catch (err) {
+            accts.push({ uid, iban: ac.iban || null, ok: false, error: String((err as Error)?.message || err), transactions: [] });
+          }
+        }
+        hist.push({ aspsp: link.aspsp_name, iban: link.iban, accounts: accts });
+      }
+      return jsonResp({ ok: true, history: true, dateFrom, links: hist });
+    }
 
     // RESILIENCIA (bug Sabadell): cada banco se sincroniza por separado dentro de su try/catch.
     // Si UNO falla (sesión caducada, banco caído, rate-limit PSD2…) NO tumba a los demás: la app
