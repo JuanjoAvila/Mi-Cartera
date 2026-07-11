@@ -19,6 +19,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.92.0] — 2026-07-11
+### Más feedback de la pareja: deudas mudas al fallar, amortizar y deudas ya empezadas
+- 🐛 **Añadir deuda fallaba en silencio:** si faltaba el importe (o no había ni cuota ni plazo), «Añadir deuda» no hacía nada y no avisaba. Ahora sale un toast claro con lo que falta («⚠ Falta el importe total de la deuda», «⚠ Pon la cuota/mes o el plazo en meses») y un «✓ Deuda añadida» al guardar bien.
+- ✨ **Botón «💸 Amortizar» en cada deuda:** para pagos anticipados. Pregunta cuánto amortizas (recordando el pendiente), baja el saldo justo eso y **acorta el plazo** manteniendo la cuota (recalcula las cuotas que quedan; con pago final lo respeta). Si liquidas todo: «🎉 ¡Deuda liquidada!» y la financiación queda marcada pagada.
+- ✨ **«Cuotas ya pagadas» al crear una deuda:** para deudas ya empezadas (su caso: 4 cuotas y ya van 3). El campo nuevo retrasa el ancla esos meses, así el pendiente, el % amortizado y el «Quedan n/tot» salen bien desde el primer día en vez de empezar la deuda desde cero.
+
 ## [3.91.0] — 2026-07-11
 ### Feedback de la pareja usando la app de verdad: total con ingresos ilegible, cuentas OB sin rol, ciclo de cobro
 - 🐛 **«Total filtrado» con ingresos era un galimatías:** el total sumaba `gastos − ingresos` y lo enseñaba en crudo, con el signo AL REVÉS que las filas (una nómina de +757 con ~1.560 de gastos salía como «+802 €» — parecía que habías ganado dinero cuando habías gastado de más; y al revés, un mes ahorrador salía en negativo). Ahora la barra enseña **los gastos con «−»** (como las filas) y, si el filtro incluye ingresos, una línea con **«💰 +ingresos · Balance ±X»** (verde si ahorras, rojo si no) y el contador separa «N gastos · M ingresos».
