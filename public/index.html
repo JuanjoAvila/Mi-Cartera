@@ -1027,6 +1027,24 @@ const cloud = (function(){
       if(error) throw error;
       return data||[];
     },
+    // --- ingest MULTIUSUARIO (0008_ingest_tokens): cada persona apunta SUS gastos de TR en SU
+    // cuenta. Guarda/actualiza el token del usuario (upsert por user_id, RLS: solo el suyo).
+    async setIngestToken(token){
+      if(!sb) throw new Error("nube no disponible");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      const {error}=await sb.from('ingest_tokens').upsert(
+        { token:token, user_id:session.user.id },
+        { onConflict:'user_id' }
+      );
+      if(error) throw error;
+    },
+    async clearIngestToken(){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      try{ await sb.from('ingest_tokens').delete().eq('user_id',session.user.id); }catch(e){}
+    },
     // --- Telemetría solo-admin (0006_app_events): errores y pings de quien usa la app.
     // best-effort SIEMPRE (nunca rompe nada); máx 20 por sesión y dedupe del mismo mensaje.
     async logEvent(kind, message, detail){
@@ -1189,6 +1207,7 @@ const LANG = {
     st_updates:"Actualizaciones", st_update:"Buscar actualización",
     st_up_ok:"✓ Estás a la última", st_up_web:"Hay versión web nueva: se instala sola — cierra y abre la app para estrenarla", st_up_apk:"⬇️ App {v} disponible · descargando, se abrirá el instalador",
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
+    st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
@@ -1220,6 +1239,7 @@ const LANG = {
     st_updates:"Updates", st_update:"Check for updates",
     st_up_ok:"✓ You're up to date", st_up_web:"New web version available: it installs itself — close and reopen the app", st_up_apk:"⬇️ App {v} available · downloading, the installer will open",
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
+    st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
@@ -1251,6 +1271,7 @@ const LANG = {
     st_updates:"Actualitzacions", st_update:"Cerca actualització",
     st_up_ok:"✓ Estàs a l'última", st_up_web:"Hi ha versió web nova: s'instal·la sola — tanca i obre l'app per estrenar-la", st_up_apk:"⬇️ App {v} disponible · baixant, s'obrirà l'instal·lador",
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
+    st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
@@ -6043,8 +6064,33 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       const nat=natPlugin();
       if(!nat || !nat.setNotifPrefs) return null;
       const on=!(state.settings&&state.settings.trNotifyConfirm===false);
+      // Apuntado MULTIUSUARIO de TR (0008): activar = generar token propio, guardarlo (ingest_tokens)
+      // y pasar la URL de ingest al lector nativo. Así cada persona apunta sus gastos en SU cuenta.
+      const ingOn=!!(state.settings&&state.settings.trIngest);
+      const toggleIng=function(){
+        if(!ingOn){
+          try{ if(nat.ensureNotifPerm) nat.ensureNotifPerm().catch(function(){}); }catch(e){}
+          let tok=(state.settings&&state.settings.ingestToken);
+          if(!tok){
+            const rnd=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random();
+            tok=String(rnd).replace(/-/g,"")+Math.random().toString(36).slice(2,10);
+          }
+          cloud.setIngestToken(tok).then(function(){
+            const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
+            try{ if(nat.setIngestUrl) return nat.setIngestUrl({url:url}); }catch(e){}
+          }).then(function(){
+            setS({trIngest:true, ingestToken:tok}); showToast(t("st_tring_on"));
+          }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+        } else {
+          try{ if(nat.setIngestUrl) nat.setIngestUrl({url:""}).catch(function(){}); }catch(e){}
+          cloud.clearIngestToken();
+          setS({trIngest:false}); showToast(t("st_tring_off"));
+        }
+      };
       return React.createElement("div",{className:"set-card"},
         React.createElement("div",{className:"sc-title"},t("st_notifs")),
+        row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
         row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint"))
       );
@@ -6863,6 +6909,17 @@ function App(){
     if(!nat || !nat.setNotifPrefs) return;
     try{ nat.setNotifPrefs({expenseConfirm:!(state.settings&&state.settings.trNotifyConfirm===false)}).catch(function(){}); }catch(e){}
   },[state.settings&&state.settings.trNotifyConfirm]);
+  // Re-propaga al lector nativo la URL de ingest con el token del usuario (apuntado multiusuario
+  // de TR, 0008). Se re-envía al arrancar y al cambiar: una reinstalación pierde las prefs nativas.
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat || !nat.setIngestUrl) return;
+    const on=!!(state.settings&&state.settings.trIngest);
+    const tok=state.settings&&state.settings.ingestToken;
+    if(!on || !tok) return;
+    const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
+    try{ nat.setIngestUrl({url:url}).catch(function(){}); }catch(e){}
+  },[state.settings&&state.settings.trIngest, state.settings&&state.settings.ingestToken]);
   // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
   const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
   const widgetCash=trAccW ? Math.round((totals.bankBal[trAccW.ent]||0)*100)/100 : null;
