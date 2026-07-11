@@ -1483,6 +1483,7 @@ Object.assign(LANG.es,{
   g_edit:"Editar", g_edited:"✓ Gasto corregido",
   rec_hide:"Ocultar aviso",
   pt_name_ph:"Nombre (ej. Personal)",
+  pt_acc_del:"Quitar cuenta", pt_acc_del_q:"¿Quitar esta cuenta del patrimonio?", pt_acc_del_yes:"Sí, quitar", pt_acc_del_no:"Cancelar", pt_acc_del_hint:"Quita del patrimonio una cuenta que añadiste a mano (p. ej. de una pareja que ya no usas). Si la cuenta está conectada al banco, desconéctala en Ajustes → Bancos.",
   ob2_claim:"Tu dinero claro y sin trabajo: gastos que se apuntan solos, tus bancos conectados y tus inversiones al día.",
   ob2_f1_t:"Gastos sin teclear", ob2_f1_d:"Apunta un gasto en dos toques… o deja que entren solos con tu tarjeta de Trade Republic.",
   ob2_f2_t:"Tus fijos, vigilados", ob2_f2_d:"Recibos, nómina y cuotas con su calendario: sabrás si llegas a fin de mes antes de que pase.",
@@ -1519,6 +1520,7 @@ Object.assign(LANG.en,{
   g_edit:"Edit", g_edited:"✓ Expense fixed",
   rec_hide:"Hide alert",
   pt_name_ph:"Name (e.g. Personal)",
+  pt_acc_del:"Remove account", pt_acc_del_q:"Remove this account from net worth?", pt_acc_del_yes:"Yes, remove", pt_acc_del_no:"Cancel", pt_acc_del_hint:"Removes from net worth an account you added by hand (e.g. a partner's you no longer use). If the account is connected to a bank, disconnect it in Settings → Banks.",
   ob2_claim:"Your money, clear and effortless: expenses that log themselves, your banks connected and your investments up to date.",
   ob2_f1_t:"No-typing expenses", ob2_f1_d:"Log an expense in two taps… or let them come in on their own with your Trade Republic card.",
   ob2_f2_t:"Your bills, watched", ob2_f2_d:"Bills, payroll and instalments on their calendar: you'll know if you make it to month's end before it happens.",
@@ -1555,6 +1557,7 @@ Object.assign(LANG.ca,{
   g_edit:"Edita", g_edited:"✓ Despesa corregida",
   rec_hide:"Amaga l'avís",
   pt_name_ph:"Nom (ex. Personal)",
+  pt_acc_del:"Treu compte", pt_acc_del_q:"Treure aquest compte del patrimoni?", pt_acc_del_yes:"Sí, treu", pt_acc_del_no:"Cancel·la", pt_acc_del_hint:"Treu del patrimoni un compte que vas afegir a mà (p. ex. d'una parella que ja no fas servir). Si el compte està connectat al banc, desconnecta'l a Configuració → Bancs.",
   ob2_claim:"Els teus diners clars i sense feina: despeses que s'apunten soles, els teus bancs connectats i les inversions al dia.",
   ob2_f1_t:"Despeses sense teclejar", ob2_f1_d:"Apunta una despesa en dos tocs… o deixa que entrin soles amb la teva targeta de Trade Republic.",
   ob2_f2_t:"Les teves fixes, vigilades", ob2_f2_d:"Rebuts, nòmina i quotes amb el seu calendari: sabràs si arribes a final de mes abans que passi.",
@@ -4165,6 +4168,10 @@ function Investments({state, set, fetchPrices, pricing}){
    TAB: PATRIMONIO
    ============================================================ */
 function Wealth({state, set, totals}){
+  const [delAcc,setDelAcc]=React.useState("");   // id de la cuenta manual pendiente de confirmar borrado
+  // Quitar a mano una cuenta manual del patrimonio (la del onboarding no se va sola al desloguear el banco:
+  // las manuales viven en state.accounts, no en obAccounts, y bankDisconnect solo purga obAccounts).
+  const removeAccount=(id)=>{ setDelAcc(""); set(function(s){ return Object.assign({},s,{accounts:(s.accounts||[]).filter(function(a){ return a.id!==id; })}); }); };
   const pn=(i)=> (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0;   // movimientos ya ocurridos este mes
   const ruM=totals.roundupThisMonth||0;                                     // round-up del mes (sale del efectivo de gasto)
   const miM=totals.monthlyInvestThisMonth||0;                               // aporte periódico del mes (idem)
@@ -4221,13 +4228,22 @@ function Wealth({state, set, totals}){
             ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
             : React.createElement("div",{className:"rval num"},eur(accDaily(a)? spendBal(a) : a.value + pn(a)))
         ),
-        // rol de la cuenta (solo en modo edición): recibos / gasto diario / todo
+        // rol de la cuenta (solo en modo edición): recibos / gasto diario / todo + quitar cuenta
         accEd.editing && React.createElement("div",{className:"rolechips"},
           [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
             const on=accRole(a)===rr[0];
             return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){ setRole(a.id, rr[0]); }}, t(rr[1]));
-          }))
+          }),
+          React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:t("pt_acc_del"),onClick:function(){ setDelAcc(a.id); }},"🗑")
+        ),
+        // confirmación de borrado de la cuenta manual (inline, para no borrar sin querer)
+        accEd.editing && delAcc===a.id && React.createElement("div",{className:"rolechips",style:{alignItems:"center",flexWrap:"wrap"}},
+          React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 100%",marginBottom:2}}, t("pt_acc_del_q")),
+          React.createElement("button",{className:"rchip",style:{color:"var(--coral)",borderColor:"var(--coral)"},onClick:function(){ removeAccount(a.id); }}, t("pt_acc_del_yes")),
+          React.createElement("button",{className:"rchip",onClick:function(){ setDelAcc(""); }}, t("pt_acc_del_no"))
+        )
       )),
+      accEd.editing && state.accounts.length>0 && React.createElement("div",{className:"hint"}, t("pt_acc_del_hint")),
       accEd.editing && React.createElement("div",{className:"hint"}, t("rl_hint")),
       // Cuentas extra de Open Banking (compartidas, 2ª cuenta de un banco…): saldo real sincronizado.
       // Nombre editable (obLabels) con un default "bonito" (niceObName); el saldo es solo lectura.
