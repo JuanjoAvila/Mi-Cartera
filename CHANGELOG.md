@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.89.1] — 2026-07-11
+### fix: «descarga falló» al buscar actualización
+- 🐛 **apk.json apuntaba a un release inexistente:** la 3.88.0 subió `apk.json` a `versionCode 15` / `v4.0.0-alpha15`, pero ese APK **no se ha compilado ni publicado** todavía. Como la app instala el APK cuando `apk.json.versionCode > instalado` (`index.html`), intentaba descargar `…/releases/download/v4.0.0-alpha15/Mi-Cartera.apk` → **404 «descarga falló»**. Se revierte `apk.json` al último APK **realmente publicado** (`versionCode 14` / `alpha14`). Las features web (import histórico, toggle multiusuario) siguen llegando por el bundle OTA, que es independiente del APK. Cuando se compile y publique el alpha15, se vuelve a subir `apk.json` a 15.
+
 ## [3.89.0] — 2026-07-11
 ### Importar histórico de gastos (Open Banking)
 - ✨ **Traer meses pasados a Gastos:** en **Ajustes → Bancos → «Importar histórico de gastos»**, la app trae los movimientos de los últimos 1-3 meses de tu **cuenta de gasto diario** conectada al banco y te deja **elegir cuáles apuntar** (lista con casillas; las compras con tarjeta vienen pre-marcadas, los cargos que parecen recibos desmarcados). Idempotente: descarta lo ya importado (`ext_id`) y lo que ya existe (fecha·importe·comercio). Server-side (`bank-sync` con `dateFrom`) es **lectura pura**: pagina con `continuation_key` y **no toca saldos ni el estado de los enlaces**. Textos ES/EN/CA.
