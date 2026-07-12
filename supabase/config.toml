@@ -31,3 +31,15 @@ verify_jwt = true
 # Se protege por el `state` aleatorio que casa con el enlace 'pending'.
 [functions.bank-callback]
 verify_jwt = false
+
+# --- MyInvestor (API no oficial, fondos indexados) ---
+# connect/sync/disconnect: las llama la app (usuario logueado) → exigen JWT. La contraseña
+# de MyInvestor viaja SOLO en connect (HTTPS) y no se guarda; solo se persisten los tokens.
+[functions.myinvestor-connect]
+verify_jwt = true
+
+[functions.myinvestor-sync]
+verify_jwt = true
+
+[functions.myinvestor-disconnect]
+verify_jwt = true

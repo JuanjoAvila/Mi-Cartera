@@ -1040,6 +1040,34 @@ const cloud = (function(){
       if(error) throw error;
       return data||[];
     },
+    // --- MyInvestor (API no oficial, fondos indexados) — mismo patrón que Trade Republic pero
+    // por Edge Function (funciona en web y app; MyInvestor no lleva WAF en frío como TR). La
+    // contraseña viaja SOLO en connect y NUNCA se guarda: se persisten solo los tokens.
+    async myinvestorConnect(payload){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('myinvestor-connect',{ body:payload });
+      if(error) throw error;
+      return data;
+    },
+    async myinvestorSync(){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('myinvestor-sync');
+      if(error) throw error;
+      return data;
+    },
+    async myinvestorDisconnect(){
+      if(!sb) return;
+      try{ await sb.functions.invoke('myinvestor-disconnect'); }catch(e){}
+    },
+    async myinvestorStatus(){
+      if(!sb) return null;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return null;
+      // Solo columnas NO sensibles (grant a nivel de columna; los tokens no se exponen).
+      const {data,error}=await sb.from('myinvestor_links').select('status,last_sync,updated_at').eq('user_id',session.user.id).maybeSingle();
+      if(error) return null;
+      return data||null;
+    },
     // --- ingest MULTIUSUARIO (0008_ingest_tokens): cada persona apunta SUS gastos de TR en SU
     // cuenta. Guarda/actualiza el token del usuario (upsert por user_id, RLS: solo el suyo).
     async setIngestToken(token){
@@ -1507,8 +1535,10 @@ Object.assign(LANG.es,{
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operaciones",
   bi_cash_info:"ℹ Detectados {int} de intereses y {div} de dividendos en el extracto. La app no los suma sola: si quieres cuadrar el efectivo, re-ancla el saldo de la cuenta.",
   bi_usd_hint:"Los importes del CSV se leen en €. Cuidado al mapear a posiciones en $ (marcadas).",
-  bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker). El valor de mercado se recalcula al actualizar precios.",
+  bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker). Revolut no da ISIN, así que el precio en vivo no se descarga: el valor arranca igual al coste y lo afinas a mano si quieres.",
   bi_done:"✓ {n} posiciones re-ancladas con el extracto",
+  bi_rev_title:"Importar de Revolut (CSV)", bi_rev_steps_btn:"Cómo exportar el CSV de Revolut",
+  bi_rev_steps:["Abre la app de Revolut → pestaña «Invest».","«More» (Más) → «Documents» (Documentos).","Elige la cuenta de inversión → «Stocks» → «Account statement».","Formato «Excel», desde la apertura de la cuenta hasta hoy → «Get statement».","En el móvil ábrelo con Google Sheets → «Hacer una copia» y descárgalo como CSV (o guárdalo/compártelo y súbelo aquí).","Sube el fichero abajo o pega su contenido. Se procesa en tu móvil, no se sube a ningún sitio."],
 });
 Object.assign(LANG.en,{
   bi_title:"Import from broker (CSV)", bi_sub:"re-anchor positions with your statement",
@@ -1519,8 +1549,10 @@ Object.assign(LANG.en,{
   bi_notouch:"— don't touch —", bi_shares:"shares", bi_ops:"{n} trades",
   bi_cash_info:"ℹ Found {int} of interest and {div} of dividends in the statement. The app doesn't add them automatically: to square the cash, re-anchor the account balance.",
   bi_usd_hint:"CSV amounts are read as €. Careful mapping to $ positions (marked).",
-  bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth). Market value recalculates when you refresh prices.",
+  bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth). Revolut gives no ISIN, so live prices aren't fetched: value starts equal to cost and you can fine-tune it by hand.",
   bi_done:"✓ {n} positions re-anchored to the statement",
+  bi_rev_title:"Import from Revolut (CSV)", bi_rev_steps_btn:"How to export the Revolut CSV",
+  bi_rev_steps:["Open the Revolut app → «Invest» tab.","«More» → «Documents».","Pick the investment account → «Stocks» → «Account statement».","Format «Excel», from account opening to today → «Get statement».","On the phone open it with Google Sheets → «Make a copy» and download as CSV (or save/share it and upload here).","Upload the file below or paste its contents. Processed on your phone, never uploaded."],
 });
 Object.assign(LANG.ca,{
   bi_title:"Importa del bròker (CSV)", bi_sub:"re-ancora posicions amb el teu extracte",
@@ -1531,8 +1563,10 @@ Object.assign(LANG.ca,{
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operacions",
   bi_cash_info:"ℹ Detectats {int} d'interessos i {div} de dividends a l'extracte. L'app no els suma sola: per quadrar l'efectiu, re-ancora el saldo del compte.",
   bi_usd_hint:"Els imports del CSV es llegeixen en €. Compte en mapar a posicions en $ (marcades).",
-  bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker). El valor de mercat es recalcula en actualitzar preus.",
+  bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker). Revolut no dona ISIN, així que el preu en viu no es descarrega: el valor arrenca igual al cost i l'afines a mà si vols.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
+  bi_rev_title:"Importa de Revolut (CSV)", bi_rev_steps_btn:"Com exportar el CSV de Revolut",
+  bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","Tria el compte d'inversió → «Stocks» → «Account statement».","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja el fitxer a sota o enganxa'n el contingut. Es processa al teu mòbil, no es puja enlloc."],
 });
 /* Sincronización Trade Republic (beta · nativa en Android) */
 Object.assign(LANG.es,{
@@ -1571,6 +1605,17 @@ Object.assign(LANG.es,{
   tr_createnew:"➕ Crear como posición nueva", tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
   tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
   tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
+  mi_title:"Conectar MyInvestor", mi_sub:"trae tus fondos indexados",
+  mi_hint:"Usa tu usuario y contraseña de MyInvestor. La contraseña se usa solo para el login y NO se guarda en ningún sitio: solo se guarda la sesión (como cuando entras en su web).",
+  mi_need_login:"Para conectar MyInvestor primero inicia sesión en Mi Cartera (arriba, «Iniciar sesión»).",
+  mi_user_ph:"Usuario / DNI de MyInvestor", mi_pass_ph:"Contraseña de MyInvestor",
+  mi_connect:"Conectar", mi_connecting:"Conectando…", mi_nostore:"🔒 Tu contraseña no se guarda. Viaja cifrada solo para el login.",
+  mi_otp_intro:"MyInvestor te ha mandado un código por SMS. Escríbelo aquí:", mi_otp_ph:"Código SMS", mi_verify:"Verificar", mi_verifying:"Verificando…",
+  mi_recaptcha:"MyInvestor pide una verificación extra ahora mismo (reCAPTCHA). Espera un rato y vuelve a intentarlo.",
+  mi_connected:"✓ MyInvestor conectado", mi_sync:"Sincronizar posiciones", mi_syncing:"Sincronizando…", mi_disconnect:"Desconectar",
+  mi_preview:"{n} posiciones encontradas. Elige a cuál de tus posiciones va cada una:",
+  mi_apply:"Aplicar a {n} posiciones", mi_done:"✓ {n} posiciones actualizadas desde MyInvestor",
+  mi_err:"No se pudo conectar con MyInvestor. Revisa usuario/contraseña o el código, e inténtalo otra vez.",
 });
 Object.assign(LANG.en,{
   tr_title:"Connect Trade Republic", tr_sub:"one button · pulls your positions",
@@ -1606,6 +1651,17 @@ Object.assign(LANG.en,{
   ob2_acc_t:"Your accounts", ob2_acc_d:"Add your banks with today's balance to see your total money. Or skip it: you can also connect them via Open Banking later.",
   ob2_acc_h:"Everything can be edited later in Wealth and Settings.",
   tr_createnew:"➕ Create as a new position", tr_apply:"Apply to {n} positions", tr_apply_hint:"On apply: shares, value and cost are re-anchored to what Trade Republic says right now (live data, no need to refresh prices).",
+  mi_title:"Connect MyInvestor", mi_sub:"pulls your index funds",
+  mi_hint:"Use your MyInvestor username and password. The password is used only to log in and is NOT stored anywhere: only the session is kept (like logging into their website).",
+  mi_need_login:"To connect MyInvestor, first sign in to Mi Cartera (top, «Sign in»).",
+  mi_user_ph:"MyInvestor username / ID", mi_pass_ph:"MyInvestor password",
+  mi_connect:"Connect", mi_connecting:"Connecting…", mi_nostore:"🔒 Your password is never stored. It travels encrypted only for the login.",
+  mi_otp_intro:"MyInvestor texted you a code. Type it here:", mi_otp_ph:"SMS code", mi_verify:"Verify", mi_verifying:"Verifying…",
+  mi_recaptcha:"MyInvestor is asking for an extra check right now (reCAPTCHA). Wait a bit and try again.",
+  mi_connected:"✓ MyInvestor connected", mi_sync:"Sync positions", mi_syncing:"Syncing…", mi_disconnect:"Disconnect",
+  mi_preview:"{n} positions found. Choose which of your positions each maps to:",
+  mi_apply:"Apply to {n} positions", mi_done:"✓ {n} positions updated from MyInvestor",
+  mi_err:"Couldn't connect to MyInvestor. Check username/password or the code, and try again.",
   tr_done:"✓ {n} positions updated from Trade Republic",
   tr_err:"Couldn't connect to Trade Republic. Check phone/PIN or the code, and try again.",
 });
@@ -1643,6 +1699,17 @@ Object.assign(LANG.ca,{
   ob2_acc_t:"Els teus comptes", ob2_acc_d:"Afegeix els teus bancs amb el saldo d'avui per veure els teus diners totals. O salta-t'ho: també es poden connectar per Open Banking després.",
   ob2_acc_h:"Tot es pot editar després a Patrimoni i Ajustos.",
   tr_createnew:"➕ Crea com a posició nova", tr_apply:"Aplica a {n} posicions", tr_apply_hint:"En aplicar: participacions, valor i cost es re-ancoren amb el que diu Trade Republic ara mateix (és dada en viu, no cal actualitzar preus).",
+  mi_title:"Connecta MyInvestor", mi_sub:"porta els teus fons indexats",
+  mi_hint:"Fes servir el teu usuari i contrasenya de MyInvestor. La contrasenya s'usa només per al login i NO es desa enlloc: només es desa la sessió (com quan entres a la seva web).",
+  mi_need_login:"Per connectar MyInvestor primer inicia sessió a Mi Cartera (a dalt, «Inicia sessió»).",
+  mi_user_ph:"Usuari / DNI de MyInvestor", mi_pass_ph:"Contrasenya de MyInvestor",
+  mi_connect:"Connecta", mi_connecting:"Connectant…", mi_nostore:"🔒 La teva contrasenya no es desa. Viatja xifrada només per al login.",
+  mi_otp_intro:"MyInvestor t'ha enviat un codi per SMS. Escriu-lo aquí:", mi_otp_ph:"Codi SMS", mi_verify:"Verifica", mi_verifying:"Verificant…",
+  mi_recaptcha:"MyInvestor demana una verificació extra ara mateix (reCAPTCHA). Espera una estona i torna-ho a provar.",
+  mi_connected:"✓ MyInvestor connectat", mi_sync:"Sincronitza posicions", mi_syncing:"Sincronitzant…", mi_disconnect:"Desconnecta",
+  mi_preview:"{n} posicions trobades. Tria a quina de les teves posicions va cada una:",
+  mi_apply:"Aplica a {n} posicions", mi_done:"✓ {n} posicions actualitzades des de MyInvestor",
+  mi_err:"No s'ha pogut connectar amb MyInvestor. Revisa usuari/contrasenya o el codi, i torna-ho a provar.",
   tr_done:"✓ {n} posicions actualitzades des de Trade Republic",
   tr_err:"No s'ha pogut connectar amb Trade Republic. Revisa telèfon/PIN o el codi, i torna-ho a provar.",
 });
@@ -1685,8 +1752,8 @@ Object.assign(LANG.es,{
   g_search:"Buscar comercio o categoría…",
   sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.",
   sub_hint:"Cargos al mismo comercio en ≥3 meses con importe parecido. Revisa si alguna ya no la usas.",
-  g_totalfilt:"Total filtrado", g_n_one:"gasto", g_n_many:"gastos", g_inc_one:"ingreso", g_inc_many:"ingresos", g_balance:"Balance",
-  g_totalnet:"Lo que te queda", st_gview:"Total de Gastos", st_gview_split:"Desglosado", st_gview_split_d:"Arriba el total de gastos; debajo, los ingresos y el balance por separado.", st_gview_net:"Lo que te queda", st_gview_net_d:"Un solo número: ingresos − gastos del período filtrado. Verde si te queda dinero, rojo si gastaste de más.",
+  g_totalfilt:"Gastos del período", g_n_one:"gasto", g_n_many:"gastos", g_inc_one:"ingreso", g_inc_many:"ingresos", g_balance:"Balance", g_lbl_spent:"Gastos", g_lbl_income:"Ingresos",
+  g_totalnet:"Balance del período", st_gview:"Total de Gastos", st_gview_split:"Gastos e ingresos", st_gview_split_d:"El total de gastos arriba; debajo, los ingresos y el balance (ingresos − gastos) en una línea.", st_gview_net:"Balance", st_gview_net_d:"Manda el balance (ingresos − gastos del período); debajo, gastos e ingresos en pequeño. Verde si te queda dinero, rojo si gastaste de más.",
   sv_add:"Añadir aportación", sv_name_ph:"Concepto (ej. MSCI World)", sv_edit_hint:"Cambia importe, nombre o banco; ✕ borra. Solo ajusta la cifra de «Ahorro/mes»: no mueve dinero de verdad.", sv_empty:"Aún no has apuntado aportaciones. Toca «Editar» para añadir lo que apartas cada mes.",
   sec_order:"⇅ Ordenar secciones", bp_role_nodata:"Este banco está conectado pero no ha traído ninguna cuenta con saldo utilizable. Prueba «Actualizar saldo» y, si sigue igual, «Reconectar».",
   g_sync:"Sincronizar", g_syncing:"Sincronizando…", g_add:"Apuntar",
@@ -1760,8 +1827,8 @@ Object.assign(LANG.en,{
   g_search:"Search merchant or category…",
   sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.",
   sub_hint:"Charges to the same merchant in ≥3 months with similar amounts. Check if you still use them.",
-  g_totalfilt:"Filtered total", g_n_one:"expense", g_n_many:"expenses", g_inc_one:"income", g_inc_many:"incomes", g_balance:"Net",
-  g_totalnet:"What's left", st_gview:"Expenses total", st_gview_split:"Breakdown", st_gview_split_d:"Total spent on top; incomes and net balance below, separately.", st_gview_net:"What's left", st_gview_net_d:"A single number: incomes − expenses for the filtered period. Green if money is left, red if you overspent.",
+  g_totalfilt:"Spending", g_n_one:"expense", g_n_many:"expenses", g_inc_one:"income", g_inc_many:"incomes", g_balance:"Net", g_lbl_spent:"Spent", g_lbl_income:"Income",
+  g_totalnet:"Net balance", st_gview:"Expenses total", st_gview_split:"Spending & income", st_gview_split_d:"Total spent on top; income and net balance (income − spending) below, on one line.", st_gview_net:"Balance", st_gview_net_d:"The balance leads (income − spending for the period); spending and income shown small below. Green if money is left, red if you overspent.",
   sv_add:"Add contribution", sv_name_ph:"Name (e.g. MSCI World)", sv_edit_hint:"Change amount, name or bank; ✕ deletes. It only adjusts the «Savings/month» figure: no real money moves.", sv_empty:"No contributions yet. Tap «Edit» to add what you set aside each month.",
   sec_order:"⇅ Reorder sections", bp_role_nodata:"This bank is connected but returned no account with a usable balance. Try «Refresh balance» and, if it persists, «Reconnect».",
   g_sync:"Sync", g_syncing:"Syncing…", g_add:"Add",
@@ -1834,8 +1901,8 @@ Object.assign(LANG.ca,{
   g_search:"Cerca comerç o categoria…",
   sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.",
   sub_hint:"Càrrecs al mateix comerç en ≥3 mesos amb import semblant. Revisa si ja no n'uses alguna.",
-  g_totalfilt:"Total filtrat", g_n_one:"despesa", g_n_many:"despeses", g_inc_one:"ingrés", g_inc_many:"ingressos", g_balance:"Balanç",
-  g_totalnet:"El que et queda", st_gview:"Total de Despeses", st_gview_split:"Desglossat", st_gview_split_d:"A dalt el total de despeses; a sota, els ingressos i el balanç per separat.", st_gview_net:"El que et queda", st_gview_net_d:"Un sol número: ingressos − despeses del període filtrat. Verd si et queden diners, vermell si has gastat de més.",
+  g_totalfilt:"Despeses del període", g_n_one:"despesa", g_n_many:"despeses", g_inc_one:"ingrés", g_inc_many:"ingressos", g_balance:"Balanç", g_lbl_spent:"Despeses", g_lbl_income:"Ingressos",
+  g_totalnet:"Balanç del període", st_gview:"Total de Despeses", st_gview_split:"Despeses i ingressos", st_gview_split_d:"El total de despeses a dalt; a sota, els ingressos i el balanç (ingressos − despeses) en una línia.", st_gview_net:"Balanç", st_gview_net_d:"Mana el balanç (ingressos − despeses del període); a sota, despeses i ingressos en petit. Verd si et queden diners, vermell si has gastat de més.",
   sv_add:"Afegeix aportació", sv_name_ph:"Concepte (p. ex. MSCI World)", sv_edit_hint:"Canvia import, nom o banc; ✕ esborra. Només ajusta la xifra d'«Estalvi/mes»: no mou diners de veritat.", sv_empty:"Encara no has apuntat aportacions. Toca «Edita» per afegir el que apartes cada mes.",
   sec_order:"⇅ Ordena les seccions", bp_role_nodata:"Aquest banc està connectat però no ha portat cap compte amb saldo utilitzable. Prova «Actualitza el saldo» i, si continua igual, «Reconnecta».",
   g_sync:"Sincronitza", g_syncing:"Sincronitzant…", g_add:"Apunta",
@@ -3827,24 +3894,27 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       // Dos vistas del total (petición 2026-07-11, Ajustes › «Total de Gastos»): «desglosado»
       // (gastos arriba, ingresos+balance debajo — el modelo de 3.91) o «lo que te queda» (el
       // modelo antiguo que gustaba: un solo número = ingresos − gastos del filtro).
+      // Dos vistas del total de Gastos (Ajustes › «Total de Gastos»). MISMO diseño en ambas
+      // (petición 2026-07-12): título + número protagonista + una línea de desglose con los otros
+      // dos importes, con idéntico estilo (💸 gastos en gris · 💰 ingresos en verde · Balance en
+      // color). Solo cambia QUÉ número manda arriba: «Balance» destaca ingresos−gastos; «Gastos e
+      // ingresos» destaca el gasto. Sin «−» en ningún sitio: el color rojo/verde ya lo dice.
       ((state.settings&&state.settings.gTotalMode)==="net")
         ? React.createElement("div",null,
             React.createElement("div",{className:"tl"},t("g_totalnet")),
-            // Sin «−» cuando sobregastas (2026-07-12, mismo criterio que el resto): el color rojo/verde
-            // ya dice si ahorras o te pasas; el «+» se queda solo quien ahorra, como los ingresos.
             React.createElement("div",{className:"tn num",style:{color:sums.bal>=0?"var(--mint)":"var(--coral)"}},(sums.bal>=0?"+":"")+eur(Math.abs(sums.bal))),
             React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
-              React.createElement("span",{style:{color:"var(--muted)"}},"💸 "+eur(sums.g)),
-              sums.ni>0 && React.createElement("span",{style:{color:"var(--mint)"}}," · 💰 +"+eur(sums.i))
+              React.createElement("span",{style:{color:"var(--muted)"}},"💸 "+t("g_lbl_spent")+" "+eur(sums.g)),
+              sums.ni>0 && React.createElement("span",{style:{color:"var(--mint)"}}," · 💰 "+t("g_lbl_income")+" +"+eur(sums.i))
             )
           )
         : React.createElement("div",null,
             React.createElement("div",{className:"tl"},t("g_totalfilt")),
             React.createElement("div",{className:"tn num"},eur(sums.g)),
             sums.ni>0 && React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
-              React.createElement("span",{style:{color:"var(--mint)"}},"💰 +"+eur(sums.i)),
+              React.createElement("span",{style:{color:"var(--mint)"}},"💰 "+t("g_lbl_income")+" +"+eur(sums.i)),
               React.createElement("span",{style:{color:"var(--muted)"}}," · "+t("g_balance")+" "),
-              React.createElement("span",{style:{color:sums.bal>=0?"var(--mint)":"var(--coral)",fontWeight:700}},(sums.bal>=0?"+":"−")+eur(Math.abs(sums.bal)))
+              React.createElement("span",{style:{color:sums.bal>=0?"var(--mint)":"var(--coral)",fontWeight:700}},(sums.bal>=0?"+":"")+eur(Math.abs(sums.bal)))
             )
           ),
       React.createElement("div",{className:"cnt"},
@@ -3965,6 +4035,334 @@ function brokerSuggest(pos, investments){
     if(score>bestScore){ bestScore=score; best=i.id; }
   });
   return best;
+}
+
+/* ============================================================
+   IMPORTADOR CSV DE BRÓKER — Revolut Invest (petición 2026-07-12)
+   ============================================================
+   Revolut exporta (Invest → More → Documents → Stocks → Account statement → «Excel»,
+   que en realidad es un CSV de texto) UNA sola tabla de actividad, SIN snapshot de
+   posiciones. Cabecera real verificada (2019→2025):
+     Date,Ticker,Type,Quantity,Price per share,Total Amount,Currency,FX Rate
+   Reconstruimos las posiciones sumando la actividad. Todo se procesa EN EL MÓVIL: el
+   fichero no se sube a ningún sitio. Dos cosas del formato real que hay que respetar:
+   (1) importes con símbolo de divisa pegado y coma de miles ("$1,108.22 ", "€50"),
+       negativos en paréntesis contable "($0.01)" o con signo "-$30.93";
+   (2) la CANTIDAD usa el separador decimal del IDIOMA de la cuenta Revolut → una cuenta
+       en español da COMA y el campo va entrecomillado ("0,76672417"). */
+
+// Divide una línea CSV respetando comillas dobles (campos con comas dentro).
+function csvSplitLine(line){
+  const out=[]; let cur=""; let q=false;
+  for(let i=0;i<line.length;i++){ const c=line[i];
+    if(q){ if(c==='"'){ if(line[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=c; }
+    else { if(c==='"') q=true; else if(c===','){ out.push(cur); cur=""; } else cur+=c; }
+  }
+  out.push(cur); return out;
+}
+// "$1,108.22 " / "€88.94" / "($0.01)" / "-$30.93" / "$0" → número con signo (decimal = punto).
+function revoAmt(s){
+  s=String(s==null?"":s).trim(); if(!s) return null;
+  let neg=false;
+  if(/^\(.*\)$/.test(s)){ neg=true; s=s.slice(1,-1); }      // negativo estilo contable
+  if(s.indexOf('-')>=0) neg=true;
+  s=s.replace(/[^0-9.]/g,"");                                // fuera símbolo, comas de miles, espacios, signo
+  if(s===""||s===".") return null;
+  const n=parseFloat(s); if(!isFinite(n)) return null;
+  return neg?-n:n;
+}
+// Participaciones: el decimal puede ser punto ("1.63453043") o coma ("0,76672417", cuenta ES).
+function revoQty(s){
+  s=String(s==null?"":s).trim().replace(/\s/g,""); if(!s) return null;
+  if(s.indexOf(',')>=0 && s.indexOf('.')<0) s=s.replace(',', '.');   // coma decimal
+  else s=s.replace(/,/g,'');                                          // coma de miles
+  const n=parseFloat(s); return isFinite(n)?n:null;
+}
+// Divisa: primero por el símbolo del importe ($→USD, €→EUR, £→GBP), si no por el campo Currency.
+function revoCur(amountStr, curField){
+  const a=String(amountStr||""); if(a.indexOf('€')>=0) return "EUR"; if(a.indexOf('$')>=0) return "USD"; if(a.indexOf('£')>=0) return "GBP";
+  const c=String(curField||"").trim().toUpperCase(); return c||"EUR";
+}
+// Tipo de fila → clase (substring, robusto a variantes no vistas como BUY - LIMIT).
+function revoClassify(type){
+  const t=String(type||"").toLowerCase();
+  if(t.indexOf('buy')>=0) return 'buy';
+  if(t.indexOf('sell')>=0) return 'sell';
+  if(t.indexOf('dividend')>=0) return 'dividend';
+  if(t.indexOf('split')>=0) return 'split';
+  if(t.indexOf('transfer')>=0) return 'transfer';
+  if(t.indexOf('fee')>=0||t.indexOf('custody')>=0) return 'fee';
+  if(t.indexOf('trade')>=0) return 'trade';     // formato antiguo "TRADE - MARKET" (el signo decide)
+  return 'other';                               // cash top-up / withdrawal / interest → sin ticker, informativo
+}
+// Parsea el CSV → {rows:[{date,ticker,type,kind,qty,price,amount,cur}], skipped, from, to}. null si no es un CSV reconocible.
+function revoParse(text){
+  const lines=String(text||"").replace(/\r/g,"").split("\n").filter(function(l){ return l.trim()!==""; });
+  if(!lines.length) return null;
+  let hi=-1;
+  for(let i=0;i<Math.min(lines.length,6);i++){ const low=lines[i].toLowerCase();
+    if(low.indexOf('ticker')>=0 && low.indexOf('type')>=0 && low.indexOf('quantity')>=0){ hi=i; break; } }
+  if(hi<0) return null;
+  const head=csvSplitLine(lines[hi]).map(function(h){ return h.trim().toLowerCase(); });
+  const col=function(n){ return head.indexOf(n); };
+  const ci={ date:col('date'), ticker:col('ticker'), type:col('type'), qty:col('quantity'),
+             price:col('price per share'), amount:col('total amount'), cur:col('currency') };
+  if(ci.ticker<0||ci.type<0) return null;
+  const rows=[]; let skipped=0; let from=null,to=null;
+  for(let i=hi+1;i<lines.length;i++){
+    const f=csvSplitLine(lines[i]); if(f.length<3){ skipped++; continue; }
+    const ticker=(f[ci.ticker]||"").trim().toUpperCase();
+    const type=(f[ci.type]||"").trim(); const kind=revoClassify(type);
+    const amountStr=ci.amount>=0?f[ci.amount]:"";
+    const row={ date:(f[ci.date]||"").slice(0,10), ticker:ticker, type:type, kind:kind,
+      qty:ci.qty>=0?revoQty(f[ci.qty]):null, price:ci.price>=0?revoAmt(f[ci.price]):null,
+      amount:revoAmt(amountStr), cur:revoCur(amountStr, ci.cur>=0?f[ci.cur]:"") };
+    if(!ticker && (kind==='buy'||kind==='sell'||kind==='split'||kind==='transfer')){ skipped++; continue; }
+    rows.push(row);
+    const d=row.date; if(d){ if(!from||d<from) from=d; if(!to||d>to) to=d; }
+  }
+  return { rows:rows, skipped:skipped, from:from, to:to };
+}
+// Agrega la actividad por ticker → posiciones {ticker,name,shares,cost,cur,divi,fees}. Coste MEDIO;
+// las ventas restan coste proporcional (no el importe de venta); splits/traspasos ajustan solo shares.
+function revoAggregate(parsed){
+  const by={};
+  const get=function(tk,cur){ if(!by[tk]) by[tk]={ticker:tk,name:tk,shares:0,cost:0,cur:cur||"EUR",buys:0,sells:0,divi:0,fees:0}; return by[tk]; };
+  let dividends=0, fees=0;
+  (parsed.rows||[]).forEach(function(r){
+    if(r.kind==='dividend'){ dividends+=Math.abs(r.amount||0); if(r.ticker) get(r.ticker,r.cur).divi+=Math.abs(r.amount||0); return; }
+    if(r.kind==='fee'){ fees+=Math.abs(r.amount||0); if(r.ticker) get(r.ticker,r.cur).fees+=Math.abs(r.amount||0); return; }
+    if(!r.ticker) return;
+    const p=get(r.ticker,r.cur); if(r.cur) p.cur=r.cur;
+    const q=Number(r.qty||0); const amt=Math.abs(Number(r.amount||0));
+    if(r.kind==='buy' || (r.kind==='trade' && (r.amount==null||r.amount>=0))){ p.shares+=q; p.cost+=amt; p.buys++; }
+    else if(r.kind==='sell' || (r.kind==='trade' && r.amount<0)){
+      const avg=p.shares>0?p.cost/p.shares:0; const sq=Math.min(q,p.shares);
+      p.shares-=sq; p.cost-=avg*sq; p.sells++;
+    }
+    else if(r.kind==='split' || r.kind==='transfer'){ p.shares+=q; }   // coste 0: solo ajusta participaciones
+  });
+  const positions=Object.keys(by).map(function(k){ const p=by[k];
+      return { ticker:p.ticker, name:p.name, shares:+p.shares.toFixed(8), cost:+Math.max(0,p.cost).toFixed(2), cur:p.cur, divi:+p.divi.toFixed(2) }; })
+    .filter(function(p){ return p.shares>0.00000001; })
+    .sort(function(a,b){ return b.cost-a.cost; });
+  return { positions:positions, dividends:+dividends.toFixed(2), fees:+fees.toFixed(2) };
+}
+
+/* Tarjeta de importación CSV de Revolut. Vive junto a Trade Republic en «Mis bancos»
+   (Revolut es un bróker más). Previsualización obligatoria + mapeo por posición antes
+   de aplicar: el usuario cuadra contra su app de Revolut y decide. Re-ancla shares+coste
+   a las posiciones mapeadas (o crea nuevas). No pisa un ISIN real con el ticker. */
+function BrokerImport({state, set}){
+  const [text,setText]=useState("");
+  const [parsed,setParsed]=useState(null);
+  const [map,setMap]=useState({});
+  const [err,setErr]=useState(false);
+  const [doneN,setDoneN]=useState(null);
+  const [steps,setSteps]=useState(false);
+  const analyze=function(txt){
+    setErr(false); setDoneN(null);
+    const p=revoParse(txt!=null?txt:text);
+    const agg=p?revoAggregate(p):null;
+    if(!p||!agg||!agg.positions.length){ setErr(true); setParsed(null); return; }
+    const m={};
+    agg.positions.forEach(function(po){
+      const sug=brokerSuggest({isin:po.ticker,name:po.name}, state.investments);
+      m[po.ticker]=sug||"__new";
+    });
+    setParsed(Object.assign({},agg,{from:p.from,to:p.to,skipped:p.skipped})); setMap(m);
+  };
+  const onFile=function(e){
+    const file=e.target.files&&e.target.files[0]; if(!file) return;
+    const r=new FileReader(); r.onload=function(){ const txt=String(r.result||""); setText(txt); analyze(txt); }; r.readAsText(file);
+  };
+  const mappedN=parsed?parsed.positions.filter(function(p){ return map[p.ticker]; }).length:0;
+  const apply=function(){
+    const pos=parsed.positions;
+    set(function(s){
+      let inv=(s.investments||[]).map(function(i){
+        const po=pos.find(function(p){ return map[p.ticker]===i.id; });
+        if(!po) return i;
+        const patch={ shares:po.shares, cost:po.cost };
+        if(!i.isin) patch.ticker=po.ticker;      // nunca pisar un ISIN real con un ticker
+        return Object.assign({},i,patch);
+      });
+      const created=pos.filter(function(p){ return map[p.ticker]==="__new"; }).map(function(po){
+        // sin precio en vivo (Revolut no da ISIN para el feed) → value arranca = coste; el usuario lo afina a mano
+        return { id:uid(), ent:"revolut", name:po.name, ticker:po.ticker, shares:po.shares, value:po.cost, cost:po.cost, cur:po.cur||"EUR" };
+      });
+      if(created.length) inv=inv.concat(created);
+      return Object.assign({},s,{investments:inv});
+    });
+    setDoneN(mappedN); setParsed(null); setText("");
+  };
+  return React.createElement(CollapsibleCard,{title:t("bi_rev_title"),sub:t("bi_sub"),dot:"#9BD0E0",defaultOpen:false,storageKey:"inv_brokerimp"},
+    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("bi_hint")),
+    React.createElement("button",{className:"chip",style:{marginBottom:10},onClick:function(){ setSteps(!steps); }}, (steps?"▾ ":"▸ ")+t("bi_rev_steps_btn")),
+    steps && React.createElement("ol",{style:{margin:"0 0 12px",paddingLeft:18,fontSize:12.5,color:"var(--muted)",lineHeight:1.6}},
+      (t("bi_rev_steps")||[]).map(function(st,i){ return React.createElement("li",{key:i,style:{marginBottom:4}}, st); })
+    ),
+    !parsed && doneN==null && React.createElement(React.Fragment,null,
+      React.createElement("label",{className:"btn btn-ghost btn-block",style:{cursor:"pointer",marginBottom:8}}, t("bi_file"),
+        React.createElement("input",{type:"file",accept:".csv,text/csv,text/plain",style:{display:"none"},onChange:onFile})),
+      React.createElement("textarea",{className:"af-in",style:{width:"100%",minHeight:70,fontFamily:"monospace",fontSize:11,boxSizing:"border-box"},placeholder:t("bi_paste_ph"),value:text,onChange:function(e){ setText(e.target.value); }}),
+      React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:8},disabled:!text.trim(),onClick:function(){ analyze(); }}, t("bi_analyze"))
+    ),
+    err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, t("bi_err")),
+    parsed && React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("bi_summary",{n:parsed.positions.length, from:parsed.from||"—", to:parsed.to||"—"})),
+      parsed.skipped>0 && React.createElement("div",{className:"hint",style:{marginTop:0}}, tf("bi_skipped",{n:parsed.skipped})),
+      parsed.positions.map(function(po){
+        return React.createElement("div",{key:po.ticker,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
+            React.createElement("div",{style:{minWidth:0}},
+              React.createElement("div",{className:"rname"},po.ticker+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):"")),
+              React.createElement("div",{className:"rsub"}, po.shares+" "+t("bi_shares"))),
+            React.createElement("div",{className:"rval num"}, eur(po.cost))),
+          React.createElement("select",{className:"af-in",value:map[po.ticker]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.ticker]=v; return n; }); }},
+            React.createElement("option",{value:""},t("bi_notouch")),
+            React.createElement("option",{value:"__new"},t("tr_createnew")),
+            (state.investments||[]).map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+          )
+        );
+      }),
+      (parsed.dividends>0) && React.createElement("div",{className:"hint",style:{marginTop:2}}, tf("bi_cash_info",{int:eur(0), div:eur(parsed.dividends)})),
+      React.createElement("div",{className:"hint",style:{marginTop:2}}, t("bi_usd_hint")),
+      React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply}, tf("bi_apply",{n:mappedN})),
+      React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:function(){ setParsed(null); }}, t("fj_cancel")),
+      React.createElement("div",{className:"hint"},t("bi_apply_hint"))
+    ),
+    doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}}, tf("bi_done",{n:doneN}))
+  );
+}
+
+/* ============================================================
+   SINCRONIZACIÓN MYINVESTOR (beta) — API no oficial vía Edge Function.
+   ============================================================
+   A diferencia de Trade Republic (puente NATIVO por el WAF de AWS), MyInvestor va por
+   Edge Function (funciona en web Y app). El usuario mete usuario+contraseña de MyInvestor:
+   la contraseña viaja SOLO al hacer login (HTTPS, edge con verify_jwt) y NUNCA se guarda —
+   solo se persisten los tokens de sesión. Puede pedir un código por SMS (OTP) y, de vez en
+   cuando, un reCAPTCHA (verificación condicional que aquí no resolvemos: se avisa y se
+   reintenta más tarde). Trae fondos indexados / fondos / acciones. Ver [[mi-cartera-escalado]]. */
+function MyInvestorSync({state, set}){
+  const [step,setStep]=useState("idle");     // idle | otp | connected | preview
+  const [cid,setCid]=useState("");
+  const [pass,setPass]=useState("");
+  const [code,setCode]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [err,setErr]=useState("");
+  const [otpInfo,setOtpInfo]=useState(null);
+  const [positions,setPositions]=useState(null);
+  const [map,setMap]=useState({});
+  const [doneN,setDoneN]=useState(null);
+  const [noSession,setNoSession]=useState(false);
+  const devRef=useRef(null);
+  const deviceId=function(){ if(!devRef.current){ try{ devRef.current=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("mi-"+Date.now()+"-"+Math.random().toString(36).slice(2)); }catch(e){ devRef.current="mi-"+Date.now(); } } return devRef.current; };
+  useEffect(function(){
+    if(!cloud.enabled()){ setNoSession(true); return; }
+    cloud.session().then(function(se){ if(!se){ setNoSession(true); return; } cloud.myinvestorStatus().then(function(r){ if(r&&r.status==="active") setStep("connected"); }).catch(function(){}); }).catch(function(){ setNoSession(true); });
+  },[]);
+  const fail=function(r){ setBusy(false); const m=(r&&(r.error||r.message))||t("mi_err"); setErr(m); try{ cloud.logEvent('error','MI: '+m); }catch(e){} };
+  const doConnect=function(){
+    if(!cid.trim()||!pass) return; setBusy(true); setErr("");
+    cloud.myinvestorConnect({ customerId:cid.trim(), password:pass, deviceId:deviceId() }).then(function(r){
+      setBusy(false);
+      if(!r){ fail(r); return; }
+      if(r.recaptcha){ setErr(r.error||t("mi_recaptcha")); return; }
+      if(r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
+      if(r.connected){ setStep("connected"); doSync(); return; }
+      fail(r);
+    }).catch(fail);
+  };
+  const doOtp=function(){
+    if(code.trim().length<4||!otpInfo) return; setBusy(true); setErr("");
+    cloud.myinvestorConnect({ customerId:cid.trim(), password:pass, deviceId:deviceId(), otpId:otpInfo.otpId, signatureRequestId:otpInfo.signatureRequestId, code:code.trim() }).then(function(r){
+      setBusy(false);
+      if(r&&r.connected){ setPass(""); setCode(""); setStep("connected"); doSync(); return; }
+      fail(r);
+    }).catch(fail);
+  };
+  const doSync=function(){
+    setBusy(true); setErr(""); setDoneN(null);
+    cloud.myinvestorSync().then(function(r){
+      setBusy(false);
+      if(r&&r.authExpired){ setStep("idle"); fail(r); return; }
+      if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
+      const m={};
+      r.positions.forEach(function(po){ const k=po.isin||po.name; const sug=brokerSuggest({isin:po.isin,name:po.name}, state.investments); m[k]=sug||"__new"; });
+      setPositions(r.positions); setMap(m); setStep("preview");
+    }).catch(fail);
+  };
+  const keyOf=function(p){ return p.isin||p.name; };
+  const mappedN=positions?positions.filter(function(p){ return map[keyOf(p)]; }).length:0;
+  const apply=function(){
+    const pos=positions;
+    set(function(s){
+      let inv=(s.investments||[]).map(function(i){
+        const po=pos.find(function(p){ return map[keyOf(p)]===i.id; });
+        if(!po) return i;
+        const patch={ shares:po.shares };
+        if(po.cost!=null) patch.cost=po.cost;
+        if(po.value!=null) patch.value=po.value;      // MI da valor en la divisa del fondo (normalmente €)
+        if(po.isin&&!i.isin) patch.isin=po.isin;
+        return Object.assign({},i,patch);
+      });
+      const created=pos.filter(function(p){ return map[keyOf(p)]==="__new"; }).map(function(po){
+        return { id:uid(), ent:"myinvestor", name:po.name, isin:po.isin||null, shares:po.shares, value:po.value!=null?po.value:0, cost:po.cost!=null?po.cost:(po.value||0), cur:po.cur||"EUR" };
+      });
+      if(created.length) inv=inv.concat(created);
+      return Object.assign({},s,{investments:inv});
+    });
+    setDoneN(mappedN); setPositions(null); setStep("connected");
+  };
+  const disconnect=function(){ cloud.myinvestorDisconnect(); setStep("idle"); setPositions(null); setCid(""); setPass(""); setOtpInfo(null); };
+  const inpStyle={marginTop:8};
+  return React.createElement(CollapsibleCard,{title:t("mi_title"),sub:t("tr_beta")+" · "+t("mi_sub"),dot:"#E85D9A",defaultOpen:false,storageKey:"inv_misync"},
+    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("mi_hint")),
+    noSession
+      ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_need_login"))
+      : React.createElement(React.Fragment,null,
+          step==="idle" && React.createElement(React.Fragment,null,
+            React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
+            React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
+            React.createElement("div",{className:"hint",style:{marginTop:8}},t("mi_nostore"))
+          ),
+          step==="otp" && React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
+            React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:8,placeholder:t("mi_otp_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doOtp}, busy?t("mi_verifying"):t("mi_verify"))
+          ),
+          step==="connected" && React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("mi_connected")),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("mi_syncing"):t("mi_sync")),
+            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("mi_disconnect"))
+          ),
+          step==="preview" && positions && React.createElement(React.Fragment,null,
+            React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("mi_preview",{n:positions.length})),
+            positions.map(function(po){
+              return React.createElement("div",{key:keyOf(po),className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
+                React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
+                  React.createElement("div",{style:{minWidth:0}},
+                    React.createElement("div",{className:"rname"},po.name),
+                    React.createElement("div",{className:"rsub"},(po.isin||"")+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):""))),
+                  React.createElement("div",{className:"rval num"}, (po.shares!=null?po.shares:"")+" "+t("bi_shares"),
+                    React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0)))),
+                React.createElement("select",{className:"af-in",value:map[keyOf(po)]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[keyOf(po)]=v; return n; }); }},
+                  React.createElement("option",{value:""},t("bi_notouch")),
+                  React.createElement("option",{value:"__new"},t("tr_createnew")),
+                  (state.investments||[]).map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+                )
+              );
+            }),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("mi_apply",{n:mappedN})),
+            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:function(){ setStep("connected"); setPositions(null); }},t("fj_cancel"))
+          ),
+          doneN!=null && step==="connected" && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}},tf("mi_done",{n:doneN})),
+          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
+        )
+  );
 }
 
 /* ============================================================
@@ -6346,6 +6744,12 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     // aquí con el resto de bancos, no perdida en Inversiones/Ajustes (feedback 2026-07-06).
     React.createElement("div",{style:{height:1,background:"var(--line)",margin:"20px 0 14px"}}),
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
+    // MyInvestor: fondos indexados vía su API (Edge Function). Funciona en web y app.
+    React.createElement("div",{style:{height:8}}),
+    React.createElement(MyInvestorSync,{state:state,set:set}),
+    // Revolut es un bróker más: como no tiene sync automático viable (antibot), va por CSV.
+    React.createElement("div",{style:{height:8}}),
+    React.createElement(BrokerImport,{state:state,set:set}),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
   ));
 }
@@ -6400,6 +6804,14 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.96.0", d:"12 jul 2026", t:"Conectar MyInvestor, importar Revolut y las vistas de Gastos con nombres claros", items:[
+    "📈 Conectar MyInvestor (beta): en Ajustes → Gestionar mis bancos. Metes usuario y contraseña (puede pedir un SMS) y trae tus fondos indexados. Tu contraseña NO se guarda, solo la sesión.",
+    "💹 Importar Revolut por CSV (beta): junto a Trade Republic, con un paso a paso para exportar el extracto desde la app de Revolut. Re-ancla tus acciones/ETF. Se procesa en tu móvil, no se sube nada.",
+    "🧮 Las dos vistas del total de Gastos ahora se llaman «Gastos e ingresos» y «Balance» (antes «Desglosado» y «Lo que te queda»), comparten el mismo diseño y ninguna enseña ya el «−»."
+  ]},
+  {v:"3.95.1", d:"12 jul 2026", t:"Retoque: el «−» que se colaba en «Lo que te queda»", items:[
+    "En la vista «Lo que te queda» de Gastos, cuando te pasabas de gasto seguía saliendo un «−» delante del número. Ya no: el color rojo o verde te dice solo si ahorras o te pasas, igual que en el resto de la app."
+  ]},
   {v:"3.95.0", d:"12 jul 2026", t:"Novedades a la vista, sugerencias sin salir de la app y gastos sin «−»", items:[
     "🎉 Este popup: a partir de ahora, cada actualización te cuenta qué trae. Se abre solo una vez por versión.",
     "📜 Histórico en Ajustes → «✨ Novedades y sugerencias»: relee las novedades de cualquier versión cuando quieras.",
