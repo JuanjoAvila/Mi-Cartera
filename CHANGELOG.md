@@ -19,6 +19,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.94.0] — 2026-07-11
+### Ahorro editable, dos vistas del total de Gastos, secciones a tu gusto y Actividad con pantalla propia
+- ✨ **Aportaciones de ahorro editables:** la tarjeta «¿A dónde va tu ahorro?» del Resumen venía con importes sembrados que no se podían tocar (y un usuario nuevo no podía añadir los suyos). Ahora tiene «Editar»: cambia importe, nombre y banco de cada aportación, borra con 🗑 o añade nuevas con «＋ Añadir aportación». Solo ajusta la cifra de «Ahorro/mes» (no mueve dinero).
+- ✨ **Dos vistas del total en Gastos** (Ajustes › Personalización › «Total de Gastos»): **Desglosado** (el actual: total de gastos arriba; ingresos y balance debajo) o **Lo que te queda** (el modelo antiguo que gustaba: un solo número = ingresos − gastos del filtro, verde/rojo). Con explicación de cada modo al elegirlo.
+- ✨ **Reordenar secciones dentro de Fijos, Patrimonio, Deudas, Inversiones y Metas:** botón discreto «⇅ Ordenar secciones» al pie de cada pestaña → flechas ▲▼ por tarjeta (como los widgets del Resumen). En Deudas y Metas reordena las propias deudas/metas.
+- ✨ **Actividad (admin) con pantalla propia:** el acordeón de Ajustes crecía sin límite con cada error. Ahora abre una pantalla aparte (como Gestionar mis bancos) con filtro «🐞 Solo errores», hasta 200 eventos y gesto atrás para volver.
+- 🐛 **Banco conectado que no aporta nada (caso CaixaBank):** si un banco sincroniza «bien» pero no trae ninguna cuenta con saldo utilizable, antes decía «solo aporta su saldo al Patrimonio» (falso) y no había salida. Ahora: aviso accionable en Gestionar mis bancos («prueba Actualizar saldo / Reconectar»), telemetría a Actividad con el detalle por cuenta para diagnosticarlo, y sus cuentas anteriores se conservan marcadas «caducado» en vez de esfumarse del patrimonio.
+
 ## [3.93.0] — 2026-07-11
 ### Editar el saldo de una deuda con plazo ya no resetea el contador de cuotas
 - 🐛 **«Editar saldos pendientes» alargaba la deuda:** re-anclaba la proyección al mes actual sin ajustar el plazo, así que una deuda de 4 cuotas con 3 pagadas volvía a enseñar «Quedan 4/4» tras corregir el saldo (y la proyección la alargaba otros 4 meses). Ahora, en deudas con plazo, el saldo tecleado se convierte en el pendiente real **sin tocar el ancla** (mismo patrón que Amortizar) y las cuotas restantes se recalculan con la misma amortización: editar a 100 € una deuda de 400 €/4 cuotas deja «Quedan 1/4», como debe. Las deudas sin plazo siguen re-anclando como siempre.

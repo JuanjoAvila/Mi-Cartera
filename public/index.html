@@ -1652,6 +1652,9 @@ Object.assign(LANG.es,{
   sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.",
   sub_hint:"Cargos al mismo comercio en ≥3 meses con importe parecido. Revisa si alguna ya no la usas.",
   g_totalfilt:"Total filtrado", g_n_one:"gasto", g_n_many:"gastos", g_inc_one:"ingreso", g_inc_many:"ingresos", g_balance:"Balance",
+  g_totalnet:"Lo que te queda", st_gview:"Total de Gastos", st_gview_split:"Desglosado", st_gview_split_d:"Arriba el total de gastos; debajo, los ingresos y el balance por separado.", st_gview_net:"Lo que te queda", st_gview_net_d:"Un solo número: ingresos − gastos del período filtrado. Verde si te queda dinero, rojo si gastaste de más.",
+  sv_add:"Añadir aportación", sv_name_ph:"Concepto (ej. MSCI World)", sv_edit_hint:"Cambia importe, nombre o banco; ✕ borra. Solo ajusta la cifra de «Ahorro/mes»: no mueve dinero de verdad.", sv_empty:"Aún no has apuntado aportaciones. Toca «Editar» para añadir lo que apartas cada mes.",
+  sec_order:"⇅ Ordenar secciones", bp_role_nodata:"Este banco está conectado pero no ha traído ninguna cuenta con saldo utilizable. Prueba «Actualizar saldo» y, si sigue igual, «Reconectar».",
   g_sync:"Sincronizar", g_syncing:"Sincronizando…", g_add:"Apuntar",
   g_lastsync:"Última sincronización: {d}", g_nosync:"Sin sincronizar todavía",
   g_gasto:"💸 Gasto", g_ingreso:"💰 Ingreso", g_concept_g:"Concepto (ej. Cena)", g_concept_i:"Concepto (ej. me devolvió Ana)",
@@ -1724,6 +1727,9 @@ Object.assign(LANG.en,{
   sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.",
   sub_hint:"Charges to the same merchant in ≥3 months with similar amounts. Check if you still use them.",
   g_totalfilt:"Filtered total", g_n_one:"expense", g_n_many:"expenses", g_inc_one:"income", g_inc_many:"incomes", g_balance:"Net",
+  g_totalnet:"What's left", st_gview:"Expenses total", st_gview_split:"Breakdown", st_gview_split_d:"Total spent on top; incomes and net balance below, separately.", st_gview_net:"What's left", st_gview_net_d:"A single number: incomes − expenses for the filtered period. Green if money is left, red if you overspent.",
+  sv_add:"Add contribution", sv_name_ph:"Name (e.g. MSCI World)", sv_edit_hint:"Change amount, name or bank; ✕ deletes. It only adjusts the «Savings/month» figure: no real money moves.", sv_empty:"No contributions yet. Tap «Edit» to add what you set aside each month.",
+  sec_order:"⇅ Reorder sections", bp_role_nodata:"This bank is connected but returned no account with a usable balance. Try «Refresh balance» and, if it persists, «Reconnect».",
   g_sync:"Sync", g_syncing:"Syncing…", g_add:"Add",
   g_lastsync:"Last sync: {d}", g_nosync:"Not synced yet",
   g_gasto:"💸 Expense", g_ingreso:"💰 Income", g_concept_g:"What (e.g. Dinner)", g_concept_i:"What (e.g. Ana paid me back)",
@@ -1795,6 +1801,9 @@ Object.assign(LANG.ca,{
   sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.",
   sub_hint:"Càrrecs al mateix comerç en ≥3 mesos amb import semblant. Revisa si ja no n'uses alguna.",
   g_totalfilt:"Total filtrat", g_n_one:"despesa", g_n_many:"despeses", g_inc_one:"ingrés", g_inc_many:"ingressos", g_balance:"Balanç",
+  g_totalnet:"El que et queda", st_gview:"Total de Despeses", st_gview_split:"Desglossat", st_gview_split_d:"A dalt el total de despeses; a sota, els ingressos i el balanç per separat.", st_gview_net:"El que et queda", st_gview_net_d:"Un sol número: ingressos − despeses del període filtrat. Verd si et queden diners, vermell si has gastat de més.",
+  sv_add:"Afegeix aportació", sv_name_ph:"Concepte (p. ex. MSCI World)", sv_edit_hint:"Canvia import, nom o banc; ✕ esborra. Només ajusta la xifra d'«Estalvi/mes»: no mou diners de veritat.", sv_empty:"Encara no has apuntat aportacions. Toca «Edita» per afegir el que apartes cada mes.",
+  sec_order:"⇅ Ordena les seccions", bp_role_nodata:"Aquest banc està connectat però no ha portat cap compte amb saldo utilitzable. Prova «Actualitza el saldo» i, si continua igual, «Reconnecta».",
   g_sync:"Sincronitza", g_syncing:"Sincronitzant…", g_add:"Apunta",
   g_lastsync:"Última sincronització: {d}", g_nosync:"Encara sense sincronitzar",
   g_gasto:"💸 Despesa", g_ingreso:"💰 Ingrés", g_concept_g:"Concepte (ex. Sopar)", g_concept_i:"Concepte (ex. l'Ana m'ho ha tornat)",
@@ -3134,6 +3143,50 @@ function useEditable(items, onChange, opts){
   return { editing, start, save, draft, setDraft };
 }
 
+/* Secciones ordenables por pestaña (petición 2026-07-11): como el orden de widgets del Resumen,
+   pero para las tarjetas de Fijos/Patrimonio/Deudas/Inversiones/Metas. El orden se guarda en
+   settings.secOrder[tab]; onMove opcional para pestañas cuyo orden vive en los propios datos
+   (deudas, metas → se reordena el array del estado y sincroniza igual que todo lo demás). */
+function secOrderOf(s, tab, allIds){
+  const saved=((((s&&s.settings)||{}).secOrder||{})[tab]||[]).filter(function(id){ return allIds.indexOf(id)>=0; });
+  return saved.concat(allIds.filter(function(id){ return saved.indexOf(id)<0; }));
+}
+function OrderableSections({tab, state, set, items, onMove}){
+  const [ordering,setOrdering]=useState(false);
+  const real=(items||[]).filter(function(i){ return i && i.el; });
+  const allIds=real.map(function(i){ return i.id; });
+  const order=onMove?allIds:secOrderOf(state,tab,allIds);
+  const map={}; real.forEach(function(i){ map[i.id]=i; });
+  const move=function(id,dir){
+    if(onMove) return onMove(id,dir);
+    set(function(s){
+      const o=secOrderOf(s,tab,allIds); const i=o.indexOf(id), j=i+dir;
+      if(i<0||j<0||j>=o.length) return s;
+      const n=o.slice(); n[i]=o[j]; n[j]=id;
+      return Object.assign({},s,{settings:Object.assign({},s.settings,{secOrder:Object.assign({},((s.settings||{}).secOrder)||{},{[tab]:n})})});
+    });
+  };
+  return React.createElement(React.Fragment,null,
+    order.map(function(id,idx){
+      const it=map[id]; if(!it) return null;
+      if(!ordering) return React.createElement(React.Fragment,{key:id},it.el);
+      return React.createElement("div",{key:id,className:"wedit"},
+        React.createElement("div",{className:"wedit-bar"},
+          React.createElement("span",{className:"wedit-lbl"},it.label),
+          React.createElement("div",{className:"wedit-btns"},
+            React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
+            React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓"))),
+        React.createElement("div",{className:"wedit-body"},it.el)
+      );
+    }),
+    real.length>1 && React.createElement("button",{
+      className:"btn btn-ghost btn-block",
+      style:ordering?{marginTop:10}:{marginTop:10,fontSize:12.5,color:"var(--muted-2)",border:"none",background:"none"},
+      onClick:function(){ setOrdering(!ordering); }
+    }, ordering?("✓ "+t("done")):t("sec_order"))
+  );
+}
+
 /* ============================================================
    TAB: DASHBOARD
    ============================================================ */
@@ -3155,6 +3208,23 @@ function Dashboard({state, totals, set}){
   const [bEdit,setBEdit]=useState(false);
   const [bDraft,setBDraft]=useState("");
   const saveBudget=function(){ const b=parseFloat(String(bDraft).replace(',','.')); if(b>=0) set(function(s){ return Object.assign({},s,{budget:b}); }); setBEdit(false); };
+  // --- Aportaciones de ahorro EDITABLES (petición 2026-07-11): los importes de «¿A dónde va tu
+  // ahorro?» venían sembrados «a piñón» (500+500+50) y no había forma de tocarlos ni de que un
+  // usuario nuevo (la pareja) añadiera los suyos. Editar aquí solo ajusta la cifra de ahorro/mes.
+  const [apEdit,setApEdit]=useState(false);
+  const [apDrafts,setApDrafts]=useState({});
+  const apStart=function(){ const d={}; (state.aportaciones||[]).forEach(function(a){ d[a.id]={name:a.name||"",amount:String(a.amount||0),ent:a.ent||"myinvestor"}; }); setApDrafts(d); setApEdit(true); };
+  const apSave=function(){
+    set(function(s){ return Object.assign({},s,{aportaciones:(s.aportaciones||[]).map(function(a){
+      const d=apDrafts[a.id]; if(!d) return a;
+      return Object.assign({},a,{name:d.name||a.name||t("d_saving"),amount:parseFloat(String(d.amount).replace(',','.'))||0,ent:d.ent||a.ent});
+    })}); });
+    setApEdit(false);
+  };
+  const apSet=function(id,k,v){ setApDrafts(function(dr){ const n=Object.assign({},dr); n[id]=Object.assign({},n[id],{[k]:v}); return n; }); };
+  const apAdd=function(){ const nid=uid(); set(function(s){ return Object.assign({},s,{aportaciones:(s.aportaciones||[]).concat([{id:nid,ent:"myinvestor",name:"",amount:0}])}); }); setApDrafts(function(dr){ const n=Object.assign({},dr); n[nid]={name:"",amount:"",ent:"myinvestor"}; return n; }); };
+  const apDel=function(id){ set(function(s){ return Object.assign({},s,{aportaciones:(s.aportaciones||[]).filter(function(a){ return a.id!==id; })}); }); };
+  const AP_ENTS=Object.keys(ENT).filter(function(k){ return k!=="familia"; });
   // Rediseño · toque 1: conteo suave del patrimonio. Anima solo cuando el número cambia de verdad
   // (p.ej. tras sincronizar), no al abrir la app ni al cambiar de pestaña. Respeta reduce-motion.
   const [shownNet,setShownNet]=useState(tt.netWorth);
@@ -3315,13 +3385,31 @@ function Dashboard({state, totals, set}){
       )
     )});
   W.push({id:"savings", label:t("wl_savings"), el:
-    React.createElement(CollapsibleCard,{title:t("d_saving_card"),sub:tf("d_saving_card_sub",{x:eur0(tt.ahorroMensual)}),dot:"#5FD08A",defaultOpen:false,storageKey:"d_ahorro",help:t("h_savings")},
-      state.aportaciones.map(function(ap){
+    React.createElement(CollapsibleCard,{title:t("d_saving_card"),sub:tf("d_saving_card_sub",{x:eur0(tt.ahorroMensual)}),dot:"#5FD08A",defaultOpen:false,storageKey:"d_ahorro",help:t("h_savings"),
+      right:React.createElement("button",{className:"edit-link"+(apEdit?" save":""),onClick:function(e){ e.stopPropagation(); apEdit?apSave():apStart(); }},apEdit?t("fj_save"):t("fj_edit"))},
+      (state.aportaciones||[]).length===0 && !apEdit && React.createElement("div",{className:"hint"},t("sv_empty")),
+      (state.aportaciones||[]).map(function(ap){
+        if(apEdit){
+          const d=apDrafts[ap.id]||{name:ap.name||"",amount:String(ap.amount||0),ent:ap.ent||"myinvestor"};
+          return React.createElement("div",{key:ap.id,style:{padding:"8px 0",borderBottom:"1px solid var(--line-soft)"}},
+            React.createElement("div",{className:"af-row"},
+              React.createElement("input",{className:"af-in",placeholder:t("sv_name_ph"),value:d.name,onChange:function(e){ apSet(ap.id,"name",e.target.value); }}),
+              React.createElement("input",{className:"af-in num",style:{maxWidth:96},placeholder:"0 €",inputMode:"decimal",value:d.amount,onChange:function(e){ apSet(ap.id,"amount",e.target.value); }})
+            ),
+            React.createElement("div",{className:"edit-extra",style:{marginTop:6}},
+              React.createElement("select",{className:"af-in",style:{width:"auto",padding:"6px 9px",fontSize:12.5},value:d.ent,onChange:function(e){ apSet(ap.id,"ent",e.target.value); }},
+                AP_ENTS.map(function(k){ return React.createElement("option",{key:k,value:k},entOf(k).label); })),
+              React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:"✕",onClick:function(){ apDel(ap.id); }},"🗑")
+            )
+          );
+        }
         return React.createElement("div",{className:"row",key:ap.id},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:ap.ent,size:38}),
             React.createElement("div",null,React.createElement("div",{className:"rname"},ap.name),React.createElement("div",{className:"rsub"},entOf(ap.ent).label))),
           React.createElement("div",{className:"rval num",style:{color:"#5FD08A"}},eur0(ap.amount)+"/mes"));
       }),
+      apEdit && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:apAdd},React.createElement(I.plus,{width:16,height:16}),t("sv_add")),
+      apEdit && React.createElement("div",{className:"hint",style:{marginTop:8}},t("sv_edit_hint")),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("d_saving_total")),React.createElement("span",{className:"num"},eur(tt.ahorroMensual)))
     )});
   W.push({id:"culprit", label:t("d_culprit"), el:
@@ -3701,15 +3789,27 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       )
     ),
     React.createElement("div",{className:"total-bar"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"tl"},t("g_totalfilt")),
-        React.createElement("div",{className:"tn num"},(sums.g>0?"−":"")+eur(sums.g)),
-        sums.ni>0 && React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
-          React.createElement("span",{style:{color:"var(--mint)"}},"💰 +"+eur(sums.i)),
-          React.createElement("span",{style:{color:"var(--muted)"}}," · "+t("g_balance")+" "),
-          React.createElement("span",{style:{color:sums.bal>=0?"var(--mint)":"var(--coral)",fontWeight:700}},(sums.bal>=0?"+":"−")+eur(Math.abs(sums.bal)))
-        )
-      ),
+      // Dos vistas del total (petición 2026-07-11, Ajustes › «Total de Gastos»): «desglosado»
+      // (gastos arriba, ingresos+balance debajo — el modelo de 3.91) o «lo que te queda» (el
+      // modelo antiguo que gustaba: un solo número = ingresos − gastos del filtro).
+      ((state.settings&&state.settings.gTotalMode)==="net")
+        ? React.createElement("div",null,
+            React.createElement("div",{className:"tl"},t("g_totalnet")),
+            React.createElement("div",{className:"tn num",style:{color:sums.bal>=0?"var(--mint)":"var(--coral)"}},(sums.bal>=0?"+":"−")+eur(Math.abs(sums.bal))),
+            React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
+              React.createElement("span",{style:{color:"var(--muted)"}},"−"+eur(sums.g)),
+              sums.ni>0 && React.createElement("span",{style:{color:"var(--mint)"}}," · 💰 +"+eur(sums.i))
+            )
+          )
+        : React.createElement("div",null,
+            React.createElement("div",{className:"tl"},t("g_totalfilt")),
+            React.createElement("div",{className:"tn num"},(sums.g>0?"−":"")+eur(sums.g)),
+            sums.ni>0 && React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
+              React.createElement("span",{style:{color:"var(--mint)"}},"💰 +"+eur(sums.i)),
+              React.createElement("span",{style:{color:"var(--muted)"}}," · "+t("g_balance")+" "),
+              React.createElement("span",{style:{color:sums.bal>=0?"var(--mint)":"var(--coral)",fontWeight:700}},(sums.bal>=0?"+":"−")+eur(Math.abs(sums.bal)))
+            )
+          ),
       React.createElement("div",{className:"cnt"},
         sums.ng+" "+(sums.ng===1?t("g_n_one"):t("g_n_many")),
         sums.ni>0 && React.createElement("div",null, sums.ni+" "+(sums.ni===1?t("g_inc_one"):t("g_inc_many")))
@@ -4219,6 +4319,8 @@ function Investments({state, set, fetchPrices, pricing}){
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,t("inv_alsoinvested"))
     ),
+    React.createElement(OrderableSections,{tab:"inv",state:state,set:set,items:[
+      {id:"ru",label:SIMPLEMODE?t("ru_title_simple"):t("ru_title"),el:
     (function(){
       const trAcc=state.accounts.find(function(a){ return a.spendFrom; });
       if(!trAcc) return null;
@@ -4264,7 +4366,8 @@ function Investments({state, set, fetchPrices, pricing}){
           React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:tot||"",onChange:function(e){ setTot(parseFloat(String(e.target.value).replace(',','.'))||0); }})),
         React.createElement("div",{className:"hint",style:{marginTop:8}}, SIMPLEMODE?t("ru_hint_simple"):((mult>0||trAcc.saveback?tf("ru_hint",{inv:invName}):t("ru_hint_off"))+" "+t("ru_manual_hint")))
       );
-    })(),
+    })()},
+      {id:"cvg",label:t("inv_cvg"),el:
     React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg",help:t("h_cvg")},
       // desglose por bróker, para poder comparar cada uno con su app (p.ej. Revolut en $)
       groups.map(function(g){ const o=byBroker[g[0]]; if(!o||o.v===0) return null; const gain=o.v-o.c; const pl=o.c>0?gain/o.c*100:0;
@@ -4279,10 +4382,12 @@ function Investments({state, set, fetchPrices, pricing}){
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("inv_gain_lat")),React.createElement("span",{className:"num",style:{fontWeight:700,color:(total-costTotal)>=0?"var(--mint)":"var(--coral)"}},((total-costTotal)>=0?"+":"")+f0(total-costTotal))),
       React.createElement("div",{style:{marginTop:10}}, React.createElement(StackedBar,{segments:[{label:t("inv_contributed"),value:costTotal,color:"#2f6b4a"},{label:t("inv_gain"),value:Math.max(0,total-costTotal),color:"var(--mint)"}]})),
       React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:8}},t("inv_cvg_hint"))
-    ),
+    )},
+      {id:"bytype",label:t("inv_bytype"),el:
     React.createElement(CollapsibleCard,{title:t("inv_bytype"),sub:f0(total),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_tipo",help:t("h_bytype")},
       React.createElement(StackedBar,{segments:typeSegs})
-    ),
+    )},
+      {id:"rend",label:t("inv_rend"),el:
     posList.length>0 && React.createElement(CollapsibleCard,{title:t("inv_rend"),sub:best&&worst?tf("inv_best_worst",{best:best.name,worst:worst.name}):"",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_rend",help:t("h_rend")},
       posList.map(function(p){
         const pos=p.gain>=0; const wpct=Math.min(100,Math.abs(p.gain)/maxAbsGain*100);
@@ -4295,14 +4400,17 @@ function Investments({state, set, fetchPrices, pricing}){
           React.createElement("div",{className:"rendbar"},React.createElement("i",{style:{width:wpct+"%",background:pos?"var(--mint)":"var(--coral)"}}))
         );
       })
-    ),
+    )},
+      {id:"evo",label:t("inv_evo"),el:React.createElement(React.Fragment,null,
     invHist.length>=2 && React.createElement(CollapsibleCard,{title:t("inv_evo"),sub:t("inv_evo_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_evo",help:t("h_evo")},
       React.createElement(Sparkline,{data:invHist.map(function(h){return h.v;}),current:null}),
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--muted)",marginTop:6}},
         React.createElement("span",null,new Date(invHist[0].d).toLocaleDateString(loc(),{day:'2-digit',month:'short'})),
         React.createElement("span",{className:"num"}, f2(total)))
     ),
-    invHist.length<2 && total>0 && React.createElement("div",{className:"hint",style:{padding:"0 4px 6px"}},t("inv_evo_hint")),
+    invHist.length<2 && total>0 && React.createElement("div",{className:"hint",style:{padding:"0 4px 6px"}},t("inv_evo_hint"))
+    )},
+      {id:"brokers",label:t("pt_byBroker"),el:React.createElement(React.Fragment,null,
     groups.map(function(g){
       const items=state.investments.filter(i=>i.ent===g[0]);
       if(items.length===0) return null;
@@ -4314,10 +4422,13 @@ function Investments({state, set, fetchPrices, pricing}){
     (state.soldCash>0) && React.createElement("div",{className:"costtoggle",style:{justifyContent:"space-between"}},
       React.createElement("span",null,t("inv_sold")),
       React.createElement("span",{className:"num",style:{fontWeight:700,color:"var(--mint)"}}, f0(state.soldCash))
-    ),
+    )
+    )},
+      {id:"proj",label:t("inv_proj"),el:
     React.createElement(CollapsibleCard,{title:t("inv_proj"),sub:t("inv_proj_sub"),dot:"#5FD08A",defaultOpen:false,storageKey:"inv_proj",help:t("h_proj")},
       React.createElement(Projection,{invested:total, defMonthly: state.aportaciones.reduce(function(a,x){ return a+x.amount; },0)})
-    ),
+    )}
+    ]}),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
       ? t("inv_hint_edit")
       : tf("inv_hint_view",{fx:fx}))
@@ -4358,6 +4469,8 @@ function Wealth({state, set, totals}){
         React.createElement("div",{className:"pill neg"},t("d_debts")+" "+eur0(tt.debtTotal))
       )
     ),
+    React.createElement(OrderableSections,{tab:"patri",state:state,set:set,items:[
+      {id:"acc",label:t("pt_accounts"),el:
     React.createElement(CollapsibleCard,{title:t("pt_accounts"),sub:t("pt_cash_avail"),dot:"#5FD08A",storageKey:"w_acc",help:t("h_roles"),
       right:React.createElement("button",{className:"edit-link"+(accEd.editing?" save":""),onClick:e=>{e.stopPropagation();accEd.editing?accEd.save():accEd.start();}},accEd.editing?t("fj_save"):t("fj_edit"))},
       state.accounts.map(a=>React.createElement(React.Fragment,{key:a.id},
@@ -4420,8 +4533,9 @@ function Wealth({state, set, totals}){
         )
       ); }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_liquid")),React.createElement("span",{className:"num"},eur(accSum)))
-    ),
-    // (el desglose de efectivo de TR se quitó 2026-07-06: los movimientos ya viven en Gastos)
+    )},
+      // (el desglose de efectivo de TR se quitó 2026-07-06: los movimientos ya viven en Gastos)
+      {id:"inv",label:t("pt_investments"),el:
     React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv",help:t("h_ptinv")},
       // Solo brókers con posiciones (los 3 fijos confundían a usuarios nuevos — feedback 2026-07-10)
       ["revolut","trade_republic","myinvestor"].filter(g=>state.investments.some(i=>i.ent===g)).map(g=>{
@@ -4431,7 +4545,8 @@ function Wealth({state, set, totals}){
           React.createElement("div",{className:"rval num"},eur(v)));
       }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_inv")),React.createElement("span",{className:"num"},eur(totals.invested)))
-    ),
+    )},
+      {id:"goods",label:t("pt_goods"),el:
     React.createElement(CollapsibleCard,{title:t("pt_goods"),sub:t("pt_nonliquid"),dot:"#E6C36A",storageKey:"w_ast",help:t("h_goods"),
       right:React.createElement("button",{className:"edit-link"+(astEd.editing?" save":""),onClick:e=>{e.stopPropagation();astEd.editing?astEd.save():astEd.start();}},astEd.editing?t("fj_save"):t("fj_edit"))},
       state.assets.map(a=>React.createElement("div",{className:"row",key:a.id},
@@ -4442,7 +4557,8 @@ function Wealth({state, set, totals}){
           : React.createElement("div",{className:"rval num"},eur0(a.value))
       )),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_goods")),React.createElement("span",{className:"num"},eur0(astSum)))
-    )
+    )}
+    ]})
   );
 }
 
@@ -4635,12 +4751,22 @@ function applyBankBalances(s, links){
       return;
     }
     const ent=entFromAspsp(lk && lk.aspsp);
+    // Si este banco al final no aporta NINGUNA cuenta utilizable (todas ok:false o sin saldo),
+    // conserva las que ya tenía marcadas rancias, igual que un banco caído: reconstruir
+    // obAccounts sin él las esfumaría en silencio (caso CaixaBank 2026-07-11, segunda variante).
+    const keepStale=function(){
+      const asp=String((lk&&lk.aspsp)||"").toLowerCase();
+      (s.obAccounts||[]).forEach(function(o){ if(String(o.aspsp||"").toLowerCase()===asp) obAccts.push(Object.assign({},o,{stale:true})); });
+    };
     // cuentas del banco: shape nuevo (lk.accounts) o antiguo (una sola, de lk.balances)
     const accs=(Array.isArray(lk.accounts)&&lk.accounts.length)
       ? lk.accounts.filter(function(a){ return a && a.ok!==false; })
       : [{ uid:lk.iban||lk.aspsp, iban:lk.iban||null, name:null, balances:(lk&&lk.balances) }];
+    if(!accs.length){ keepStale(); return; }
     if(ent==null){   // banco SIN cuenta manual en la app → TODAS sus cuentas van a obAccounts
-      accs.forEach(function(ac){ const bal=pickBankBalance(ac.balances); if(bal!=null) obAccts.push(mkObAcct(lk,ac,bal)); });
+      let pushed=0;
+      accs.forEach(function(ac){ const bal=pickBankBalance(ac.balances); if(bal!=null){ obAccts.push(mkObAcct(lk,ac,bal)); pushed++; } });
+      if(!pushed) keepStale();
       return;
     }
     // hay ent conocido: re-ancla CADA cuenta MANUAL de ese banco (puede haber varias desde que
@@ -4657,8 +4783,10 @@ function applyBankBalances(s, links){
       if(j<0) return;
       ownerOf[j]=i; usedPrimary[i]=true;
     });
+    let contributed=0;
     accs.forEach(function(ac,k){
       const bal=pickBankBalance(ac.balances); if(bal==null) return;
+      contributed++;
       if(ownerOf[k]!=null){
         const a=accounts[ownerOf[k]];
         // re-anclaje = despejar `value` de la fórmula de dynBal para que HOY muestre el saldo real.
@@ -4687,6 +4815,7 @@ function applyBankBalances(s, links){
         synced.push({ ent:ent, bal:bal, iban:ac.iban||null });
       }
     });
+    if(!contributed) keepStale();
   });
   const obChanged=JSON.stringify(s.obAccounts||[])!==JSON.stringify(obAccts);
   const newState=(changed||obChanged) ? Object.assign({},s,{accounts:accounts, obAccounts:obAccts}) : s;
@@ -5155,9 +5284,11 @@ function Fijos({state, set, totals}){
       React.createElement("span",{className:"big",style:{fontSize:15}}, top.name),
       React.createElement("span",null,tf("fj_top_b",{x:eur0(monthly(top))}))
     ),
-    React.createElement(AffordSim,{state:state, totals:totals, set:set}),
-    React.createElement(Reconcile,{state:state, set:set}),
-    /* MOTOR DINÁMICO: próximos cargos */
+    React.createElement(OrderableSections,{tab:"fijos",state:state,set:set,items:[
+      {id:"afford",label:t("af_title"),el:React.createElement(AffordSim,{state:state, totals:totals, set:set})},
+      {id:"recon",label:t("rec_title"),el:React.createElement(Reconcile,{state:state, set:set})},
+      /* MOTOR DINÁMICO: próximos cargos */
+      {id:"prox",label:tf("fj_prox",{m:monthShort(cm-1)}),el:
     React.createElement(CollapsibleCard,{title:tf("fj_prox",{m:monthShort(cm-1)}),sub:tf("fj_prox_sub",{x:eur0(totals.cargosMes)}),dot:"#E2A05F",storageKey:"f_prox",defaultOpen:true},
       // estado del banco principal (Sabadell): cash-flow del mes (saldo + nómina − transfers − fijos)
       React.createElement("div",{className:"liqbox"+((totals.mainMin<0||totals.mainProjected<0)?" danger":"")},
@@ -5197,7 +5328,8 @@ function Fijos({state, set, totals}){
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_pend_tot",{m:monthShort(cm-1)})),React.createElement("span",{className:"num"},eur(totals.pendingThisMonth))),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},tf("fj_next_m",{m:monthShort(nm-1)})),React.createElement("span",{className:"num"},eur(nextSum))),
       totals.sinProgramar>0 && React.createElement("div",{className:"hint",style:{marginTop:8,color:"#E2A05F"}},tf("fj_noprog",{n:totals.sinProgramar}))
-    ),
+    )},
+      {id:"serv",label:t("fj_serv"),el:
     React.createElement(CollapsibleCard,{title:t("fj_serv"),sub:tf("fj_permonth",{x:eur0(servSum)}),dot:"#7FB5E8",storageKey:"f_serv",help:t("h_serv"),
       right:React.createElement("button",{className:"edit-link"+(editing?" save":""),onClick:e=>{e.stopPropagation(); editing?saveEdit():startEdit();}},editing?t("fj_save"):t("fj_edit"))},
       list.map(e=>{
@@ -5283,7 +5415,8 @@ function Fijos({state, set, totals}){
             )
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addfixed"))
-    ),
+    )},
+      {id:"cuotas",label:t("fj_debts"),el:
     React.createElement(CollapsibleCard,{title:t("fj_debts"),sub:tf("fj_permonth",{x:eur0(cuotas)}),dot:"#E2705F",storageKey:"f_cuotas",help:t("h_debts"),
       right:React.createElement("button",{className:"edit-link"+(editingD?" save":""),onClick:e=>{e.stopPropagation(); editingD?saveEditD():startEditD();}},editingD?t("fj_save"):t("fj_edit"))},
       state.debts.map(d=>{
@@ -5321,7 +5454,8 @@ function Fijos({state, set, totals}){
       }),
       React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("fj_debts_tot")),React.createElement("span",{className:"num"},eur(cuotas))),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_debts_hint"))
-    ),
+    )},
+      {id:"flows",label:t("fj_flows"),el:
     React.createElement(CollapsibleCard,{title:t("fj_flows"),sub:t("fj_flows_sub"),dot:"#5FD08A",storageKey:"f_flows",defaultOpen:false,help:t("h_flows"),
       right:React.createElement("button",{className:"edit-link"+(editingF?" save":""),onClick:e=>{e.stopPropagation(); editingF?saveEditF():startEditF();}},editingF?t("fj_save"):t("fj_edit"))},
       flows.filter(f=>!flowOncePast(f,cy,cm)).map(f=>{
@@ -5397,7 +5531,8 @@ function Fijos({state, set, totals}){
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingF(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addflow")),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_flows_hint"))
-    ),
+    )},
+      {id:"oneoffs",label:t("fj_oneoffs"),el:
     (function(){ const up=oneoffs.filter(o=>!oneoffPast(o,cy,cm)).sort((a,b)=> (a.year-b.year)||(a.month-b.month) );
       return React.createElement(CollapsibleCard,{title:t("fj_oneoffs"),sub:t("fj_oneoffs_sub"),dot:"#E2A05F",storageKey:"f_oneoff",defaultOpen:false,help:t("h_oneoffs"),
         right: up.length? React.createElement("button",{className:"edit-link"+(editingO?" save":""),onClick:e=>{ e.stopPropagation(); editingO?saveAllO():startEditAllO(up); }}, editingO?t("fj_save"):t("fj_edit")) : null},
@@ -5448,7 +5583,8 @@ function Fijos({state, set, totals}){
           )
         : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:12},onClick:()=>setAddingO(true)},React.createElement(I.plus,{width:16,height:16}),t("fj_addoneoff")),
       React.createElement("div",{className:"hint",style:{fontSize:11.5,marginTop:6}},t("fj_oneoff_hint"))
-    ); })(),
+    ); })()}
+    ]}),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}},tf("fj_foot",{x:eur0(grand*12)}))
   );
 }
@@ -5521,13 +5657,15 @@ function Debts({state, set, showToast}){
       React.createElement("div",null,React.createElement("div",{className:"tl"},t("db_total")),React.createElement("div",{className:"tn num",style:{color:"#E2705F"}},eur(total))),
       React.createElement("div",{className:"cnt"},tf("db_quota",{x:eur0(monthly)}))
     ),
-    state.debts.map(d=>{
+    React.createElement(OrderableSections,{tab:"debt",state:state,set:set,
+      onMove:function(id,dir){ set(function(s){ const arr=(s.debts||[]).slice(); const i=arr.findIndex(function(x){ return x.id===id; }); const j=i+dir; if(i<0||j<0||j>=arr.length) return s; const tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; return Object.assign({},s,{debts:arr}); }); },
+      items: state.debts.map(d=>{
       const bal=debtBalance(d);
       const paid=Math.max(0,(d.original||bal)-bal);
       const pct=Math.min(100,(paid/(d.original||bal))*100);
       const amortNote=(d.amort!=null && d.amort!==d.monthly) ? tf("db_amort_q",{x:eur0(d.amort),y:eur0(d.monthly)}) : tf("db_amort",{x:eur0(debtAmort(d))});
       const dc=entOf(d.ent).color;   // mismo color para la bolita y la barra
-      return React.createElement(CollapsibleCard,{key:d.id,title:d.name,sub:d.note,dot:dc,storageKey:"debt_"+d.id,
+      return {id:d.id,label:d.name,el:React.createElement(CollapsibleCard,{key:d.id,title:d.name,sub:d.note,dot:dc,storageKey:"debt_"+d.id,
         right:React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:14}},eur0(bal))},
         React.createElement("div",{className:"bar"},React.createElement("i",{style:{width:pct+"%",background:"linear-gradient(90deg,"+dc+"88,"+dc+")"}})),
         React.createElement("div",{className:"debt-meta"},
@@ -5546,8 +5684,8 @@ function Debts({state, set, showToast}){
             : React.createElement("div",{className:"rval num",style:{color:"#E2705F"}},eur(bal))),
         !ed.editing && bal>0.005 && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:()=>amortize(d)},"💸 "+t("db_amortize")),
         ed.editing && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"#E2705F"},onClick:()=>delDebt(d.id)},t("db_delete"))
-      );
-    }),
+      )};
+    })}),
     React.createElement("button",{className:"btn btn-block "+(ed.editing?"btn-primary":"btn-ghost"),onClick:()=>ed.editing?ed.save():ed.start()}, ed.editing?t("db_savechanges"):t("db_editbalances")),
     adding
       ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
@@ -5646,9 +5784,11 @@ function Goals({state, set, totals, showToast}){
     goals.length===0 && !adding && React.createElement("div",{className:"empty"},
       React.createElement("div",{className:"ttl"},t("gl_empty_t")), t("gl_empty_d")),
 
-    goals.map(function(g){
+    React.createElement(OrderableSections,{tab:"metas",state:state,set:set,
+      onMove:function(id,dir){ set(function(s){ const arr=(s.goals||[]).slice(); const i=arr.findIndex(function(x){ return x.id===id; }); const j=i+dir; if(i<0||j<0||j>=arr.length) return s; const tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; return Object.assign({},s,{goals:arr}); }); },
+      items: goals.map(function(g){
       const pct=goalPct(g); const eta=goalEta(g, tt.ahorroMensual||0); const ed=editing&&drafts[g.id];
-      return React.createElement("div",{className:"card",key:g.id,style:{padding:"15px 16px"}},
+      return {id:g.id,label:(g.emoji||"🎯")+" "+g.name,el:React.createElement("div",{className:"card",key:g.id,style:{padding:"15px 16px"}},
         React.createElement("div",{className:"goal-top"},
           React.createElement("span",{className:"goal-emoji"}, ed?ed.emoji:(g.emoji||"🎯")),
           React.createElement("div",{style:{flex:1,minWidth:0}},
@@ -5675,8 +5815,8 @@ function Goals({state, set, totals, showToast}){
               React.createElement("div",{className:"goal-eta "+eta.cls}, eta.text),
               !g.done && React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:11},onClick:function(){ contribute(g); }}, t("gl_contribute"))
             )
-      );
-    }),
+      )};
+    })}),
 
     goals.length>0 && React.createElement("button",{className:"btn btn-block "+(editing?"btn-primary":"btn-ghost"),style:{marginTop:4},onClick:function(){ editing?saveEdit():startEdit(); }}, editing?t("gl_save"):t("gl_edit")),
 
@@ -6128,7 +6268,10 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         // salía Trade Republic y este panel decía que el banco no tenía cuenta con rol, sin salida).
         !noAcct && (function(){
           const obs=(state.obAccounts||[]).filter(function(o){ return (o.aspsp && l.aspsp_name && String(o.aspsp).toLowerCase()===String(l.aspsp_name).toLowerCase()) || (ent && o.ent===ent); });
-          if(!obs.length) return roleAcc ? null : React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"-2px 0 12px"}}, "ℹ "+t("bp_role_obonly"));
+          // Banco activo SIN cuenta con rol y SIN cuentas OB que promocionar = el sync no trajo
+          // nada utilizable (caso CaixaBank 2026-07-11: decía «solo aporta su saldo» y era mentira,
+          // no aportaba nada y no había salida). Aviso accionable + telemetría en runBankSync.
+          if(!obs.length) return roleAcc ? null : React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",background:"#E2A05F14",border:"1px solid #E2A05F44",borderRadius:12,padding:"9px 12px",margin:"-2px 0 12px"}}, "⚠ "+t("bp_role_nodata"));
           return React.createElement("div",{style:{margin:"-2px 0 12px"}},
             React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginBottom:6,lineHeight:1.45}}, t("rl_ob_q")),
             obs.map(function(o){ const nm=((state.obLabels||{})[o.key])||niceObName(o);
@@ -6166,6 +6309,44 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     React.createElement("div",{style:{height:1,background:"var(--line)",margin:"20px 0 14px"}}),
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
+  ));
+}
+
+/* Página «Actividad» del admin (petición 2026-07-11): antes era un acordeón dentro de Ajustes y
+   con los errores acumulándose el cajón se hacía gigante; ahora es una pantalla propia (patrón
+   BankPanel) con filtro «solo errores». Sin traducir a propósito: consola privada del admin. */
+function ActivityPanel({events, onReload, onClose}){
+  const [onlyErr,setOnlyErr]=useState(false);
+  useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const chip=function(on){ return {background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)",borderRadius:20,padding:"6px 13px",fontSize:12.5,fontWeight:700,cursor:"pointer"}; };
+  const nErr=(events||[]).filter(function(ev){ return ev.kind==="error"; }).length;
+  const list=(events||[]).filter(function(ev){ return !onlyErr || ev.kind==="error"; });
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "👁 Actividad"),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}},
+      events===null ? "Cargando…" : ((events||[]).length+" eventos · "+nErr+" error(es) · solo tú ves esto")),
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
+      React.createElement("button",{style:chip(!onlyErr),onClick:function(){ setOnlyErr(false); }},"Todo"),
+      React.createElement("button",{style:chip(onlyErr),onClick:function(){ setOnlyErr(true); }},"🐞 Solo errores"+(nErr?" ("+nErr+")":""))),
+    events!==null && list.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)",padding:"14px 0"}},
+      onlyErr ? "Sin errores en los últimos eventos. 🎉" : "Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
+    list.map(function(ev,i){
+      const d=new Date(ev.created_at);
+      const when=d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+      return React.createElement("div",{key:i,style:{padding:"10px 12px",borderRadius:12,border:"1px solid "+(ev.kind==="error"?"var(--coral)":"var(--line)"),background:"var(--surface)",marginBottom:8,fontSize:12,lineHeight:1.5}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",gap:8}},
+          React.createElement("span",{style:{fontWeight:800}},(ev.kind==="error"?"🐞 ":"👋 ")+(ev.email||"¿?")),
+          React.createElement("span",{style:{color:"var(--muted-2)",flex:"0 0 auto"}},when)),
+        ev.kind==="error" && React.createElement("div",{style:{color:"var(--coral)",overflowWrap:"anywhere"}},ev.message),
+        ev.kind==="error" && ev.detail && React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5,overflowWrap:"anywhere"}},ev.detail),
+        React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5}},"v"+(ev.app_version||"?")+" · "+(ev.platform||"?"))
+      );
+    }),
+    React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontWeight:700,fontSize:14,marginTop:8,cursor:"pointer"},onClick:onReload},"↻ Recargar")
   ));
 }
 
@@ -6216,8 +6397,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     });
   };
   const [events,setEvents]=useState(null);
+  const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
   const loadEvents=function(){
-    cloud.adminEvents(60).then(function(rows){
+    cloud.adminEvents(200).then(function(rows){
       setEvents(rows||[]);
       try{ localStorage.setItem("_evSeen", String(Date.now())); }catch(e){}   // el aviso de "errores nuevos" se resetea
       // feedback visible: sin esto, recargar con los mismos datos parecía "no hacer nada" (2026-07-11)
@@ -6384,6 +6566,21 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           })
         );
       })()),
+      // Vista del total de la pestaña Gastos: desglosado (3.91) o «lo que te queda» (petición 2026-07-11)
+      (function(){
+        const gm=(state.settings&&state.settings.gTotalMode)||"split";
+        return React.createElement(React.Fragment,null,
+          row("gview","🧮",t("st_gview"),t(gm==="net"?"st_gview_net":"st_gview_split"),function(){ toggleExp("gview"); }),
+          expand==="gview" && React.createElement("div",{className:"set-exp"},
+            [["split","st_gview_split","st_gview_split_d"],["net","st_gview_net","st_gview_net_d"]].map(function(op){
+              return React.createElement("div",{key:op[0],style:{marginTop:8}},
+                React.createElement("button",{onClick:function(){ setS({gTotalMode:op[0]}); },style:segBtn(gm===op[0])}, (gm===op[0]?"✓ ":"")+t(op[1])),
+                React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"5px 2px 0"}}, t(op[2]))
+              );
+            })
+          )
+        );
+      })(),
       (function(){
         const on=!!(state.settings&&state.settings.blocksEdit);
         return row("blocks","🧩",t("st_blocks"),null,function(){ setS({blocksEdit:!on}); }, sw(on));
@@ -6468,25 +6665,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     // Sin traducir a propósito: es la consola privada del admin.
     isAdmin && React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
       React.createElement("div",{className:"sc-title"},"👁 Actividad (solo tú)"),
-      row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ toggleExp("act"); if(events===null) loadEvents(); }),
-      expand==="act" && React.createElement("div",{className:"set-exp"},
-        events===null && React.createElement("div",{style:{fontSize:12,color:"var(--muted)",padding:"8px 0"}},"Cargando…"),
-        events!==null && events.length===0 && React.createElement("div",{style:{fontSize:12,color:"var(--muted)",padding:"8px 0"}},"Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
-        (events||[]).map(function(ev,i){
-          const d=new Date(ev.created_at);
-          const when=d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
-          return React.createElement("div",{key:i,style:{padding:"8px 0",borderBottom:"1px dashed var(--line)",fontSize:12,lineHeight:1.5}},
-            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",gap:8}},
-              React.createElement("span",{style:{fontWeight:800}},(ev.kind==="error"?"🐞 ":"👋 ")+(ev.email||"¿?")),
-              React.createElement("span",{style:{color:"var(--muted-2)",flex:"0 0 auto"}},when)),
-            ev.kind==="error" && React.createElement("div",{style:{color:"var(--coral)",overflowWrap:"anywhere"}},ev.message),
-            ev.kind==="error" && ev.detail && React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5,overflowWrap:"anywhere",maxHeight:60,overflow:"hidden"}},ev.detail),
-            React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5}},"v"+(ev.app_version||"?")+" · "+(ev.platform||"?"))
-          );
-        }),
-        events!==null && React.createElement("button",{style:Object.assign({},btnGhost,{marginTop:8}),onClick:loadEvents},"↻ Recargar")
-      )
+      row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
     ),
+    actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     // ── Tarjeta · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
     natPlugin() && React.createElement("div",{className:"set-card"},
       React.createElement("div",{className:"sc-title"},t("st_updates")),
@@ -6860,6 +7041,20 @@ function App(){
     bankSyncing.current=true;
     return cloud.bankSync().then(function(res){
       const links=(res&&res.links)||[];
+      // Telemetría (caso CaixaBank 2026-07-11): banco que sincroniza «bien» (ok!==false) pero no
+      // trae NINGUNA cuenta con saldo utilizable → invisible para el usuario (ni rol ni patrimonio).
+      // Se canta a app_events con el detalle por cuenta para poder diagnosticarlo desde Actividad.
+      try{
+        links.forEach(function(l){
+          if(!l || l.ok===false) return;
+          const accs=Array.isArray(l.accounts)?l.accounts:[];
+          const usable=accs.filter(function(a){ return a && a.ok!==false && pickBankBalance(a.balances)!=null; }).length;
+          if(accs.length && !usable){
+            cloud.logEvent('error','OB '+(l.aspsp||'?')+': sync ok pero sin cuentas con saldo utilizable',
+              JSON.stringify(accs.slice(0,6).map(function(a){ return {ok:a&&a.ok, nbal:((a&&a.balances)||[]).length, types:((a&&a.balances)||[]).map(function(b){ return b&&b.type; })}; })));
+          }
+        });
+      }catch(e){}
       const preview=applyBankBalances(stateRef.current, links);   // función pura: solo para decidir el aviso
       let obAdded=[];                                             // compras de tarjeta importadas (roles de cuenta)
       set(function(prev){
