@@ -1080,6 +1080,25 @@ const cloud = (function(){
         });
       }catch(e){}
     },
+    // Sugerencias/errores del popup de Novedades → app_events con kind 'feedback'.
+    // A diferencia de logEvent, NO comparte el tope de 20/sesión ni el dedupe (un feedback
+    // no puede perderse en silencio) y FALLA visible (el caller avisa si no se pudo enviar).
+    async feedback(text){
+      if(!sb) throw new Error("sin nube");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      const s=String(text||"");
+      const {error}=await sb.from('app_events').insert({
+        user_id:session.user.id,
+        email:session.user.email||null,
+        kind:'feedback',
+        message:s.slice(0,500),
+        detail:s.length>500?s.slice(0,2000):null,
+        app_version:CONFIG.APP_VERSION,
+        platform:(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())?'android':'web'
+      });
+      if(error) throw error;
+    },
     // Panel del admin: últimos eventos de TODOS los usuarios (RLS deja leer solo al admin).
     async adminEvents(limit){
       if(!sb) return [];
@@ -1219,6 +1238,11 @@ const LANG = {
     cc_hide:"Ocultar", cc_show:"Mostrar",
     st_updates:"Actualizaciones", st_update:"Buscar actualización",
     st_up_ok:"✓ Estás a la última", st_up_web:"Hay versión web nueva: se instala sola — cierra y abre la app para estrenarla", st_up_applying:"⬇️ Actualizando a la v{v}… la app se recarga sola en unos segundos", st_up_apk:"⬇️ App {v} disponible · descargando, se abrirá el instalador",
+    st_news:"Novedades", st_news_row:"Novedades y sugerencias",
+    wn_title:"Novedades", wn_sub:"Qué ha cambiado en cada versión. Toca una versión para ver su detalle.", wn_current:"tu versión",
+    wn_fb_title:"💬 ¿Algo que contar?", wn_fb_hint:"Sugerencias, errores o cosas raras: quedan apuntadas aquí abajo y le llegan a Juanjo con tu versión, para que no se olviden.",
+    wn_fb_ph:"Escribe la sugerencia o el error que has visto…", wn_fb_send:"Enviar", wn_fb_sent:"✓ Apuntado y enviado", wn_fb_offline:"✓ Apuntado en tus notas (no se pudo enviar; se queda guardado)",
+    wn_yours:"Tus apuntes", wn_close:"¡Entendido!",
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
     st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
@@ -1251,6 +1275,11 @@ const LANG = {
     cc_hide:"Hide", cc_show:"Show",
     st_updates:"Updates", st_update:"Check for updates",
     st_up_ok:"✓ You're up to date", st_up_web:"New web version available: it installs itself — close and reopen the app", st_up_applying:"⬇️ Updating to v{v}… the app will reload itself in a few seconds", st_up_apk:"⬇️ App {v} available · downloading, the installer will open",
+    st_news:"What's new", st_news_row:"What's new & feedback",
+    wn_title:"What's new", wn_sub:"What changed in each version. Tap a version for details.", wn_current:"your version",
+    wn_fb_title:"💬 Anything to share?", wn_fb_hint:"Suggestions, bugs or oddities: they're saved below and reach Juanjo with your version, so nothing gets lost.",
+    wn_fb_ph:"Write your suggestion or the bug you saw…", wn_fb_send:"Send", wn_fb_sent:"✓ Saved and sent", wn_fb_offline:"✓ Saved to your notes (couldn't send; it stays stored)",
+    wn_yours:"Your notes", wn_close:"Got it!",
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
     st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
@@ -1283,6 +1312,11 @@ const LANG = {
     cc_hide:"Amaga", cc_show:"Mostra",
     st_updates:"Actualitzacions", st_update:"Cerca actualització",
     st_up_ok:"✓ Estàs a l'última", st_up_web:"Hi ha versió web nova: s'instal·la sola — tanca i obre l'app per estrenar-la", st_up_applying:"⬇️ Actualitzant a la v{v}… l'app es recarrega sola en uns segons", st_up_apk:"⬇️ App {v} disponible · baixant, s'obrirà l'instal·lador",
+    st_news:"Novetats", st_news_row:"Novetats i suggeriments",
+    wn_title:"Novetats", wn_sub:"Què ha canviat a cada versió. Toca una versió per veure'n el detall.", wn_current:"la teva versió",
+    wn_fb_title:"💬 Alguna cosa a dir?", wn_fb_hint:"Suggeriments, errors o coses rares: queden apuntades aquí sota i arriben al Juanjo amb la teva versió, perquè no s'oblidin.",
+    wn_fb_ph:"Escriu el suggeriment o l'error que has vist…", wn_fb_send:"Envia", wn_fb_sent:"✓ Apuntat i enviat", wn_fb_offline:"✓ Apuntat a les teves notes (no s'ha pogut enviar; queda desat)",
+    wn_yours:"Els teus apunts", wn_close:"Entesos!",
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
     st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
@@ -2595,7 +2629,7 @@ function buildEmpty(){
   return {
     fx: 0.92, budget: 0, monthStartNet: 0, history: [],
     accounts: [], investments: [], assets: [], debts: [], fixed: [], flows: [], oneoffs: [], aportaciones: [],
-    expenses: [], goals: [], shared: [], catOverrides: {}, obAccounts: [], obLabels: {}, streak: 0,
+    expenses: [], goals: [], shared: [], catOverrides: {}, obAccounts: [], obLabels: {}, verNotes: [], streak: 0,
     tourSeen: false,   // usuario nuevo → tour de bienvenida tras el onboarding
     settings: { autoPrices:false },
     lastSync: null, lastPriceSync: null,
@@ -2717,6 +2751,7 @@ function seedFlows(s){
   if(!s.shared) s.shared = [];
   if(!s.obAccounts) s.obAccounts = [];
   if(!s.obLabels) s.obLabels = {};
+  if(!s.verNotes) s.verNotes = [];   // apuntes/sugerencias del popup de Novedades (sincroniza)
   // Limpieza puntual (petición 2026-07-11): una cuenta OB quedó re-etiquetada "personalizado
   // solo mío" (dato heredado, la cadena nunca fue de la app). Se borra la etiqueta para que
   // vuelva el nombre bonito por defecto (Conjunta + «del banco»), como el resto.
@@ -3717,8 +3752,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   },[state.expenses,preset,range,sel,q,cycle]);
 
   // Total con SIGNO CLARO (bug pareja 2026-07-11: con un ingreso en el filtro, el total mostraba
-  // «gastos − ingresos» en positivo — ilegible). Desglose: gastos (−, como las filas), y si hay
-  // ingresos, línea con «+ingresos · Balance» (balance = ingresos − gastos; verde si ahorras).
+  // «gastos − ingresos» en positivo — ilegible). Desglose: gastos sin signo (2026-07-12: el «−»
+  // les parecía feo), y si hay ingresos, línea «+ingresos · Balance» (ingresos − gastos; verde si ahorras).
   const sums=useMemo(()=>{ let g=0,i=0,ng=0,ni=0; filtered.forEach(e=>{ if(e.amount>0){ g+=e.amount; ng++; } else { i-=e.amount; ni++; } }); return {g:g,i:i,ng:ng,ni:ni,bal:i-g}; },[filtered]);
   const subs=useMemo(()=>detectSubscriptions(state.expenses),[state.expenses]);
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,q]);
@@ -3797,13 +3832,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
             React.createElement("div",{className:"tl"},t("g_totalnet")),
             React.createElement("div",{className:"tn num",style:{color:sums.bal>=0?"var(--mint)":"var(--coral)"}},(sums.bal>=0?"+":"−")+eur(Math.abs(sums.bal))),
             React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
-              React.createElement("span",{style:{color:"var(--muted)"}},"−"+eur(sums.g)),
+              React.createElement("span",{style:{color:"var(--muted)"}},"💸 "+eur(sums.g)),
               sums.ni>0 && React.createElement("span",{style:{color:"var(--mint)"}}," · 💰 +"+eur(sums.i))
             )
           )
         : React.createElement("div",null,
             React.createElement("div",{className:"tl"},t("g_totalfilt")),
-            React.createElement("div",{className:"tn num"},(sums.g>0?"−":"")+eur(sums.g)),
+            React.createElement("div",{className:"tn num"},eur(sums.g)),
             sums.ni>0 && React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
               React.createElement("span",{style:{color:"var(--mint)"}},"💰 +"+eur(sums.i)),
               React.createElement("span",{style:{color:"var(--muted)"}}," · "+t("g_balance")+" "),
@@ -3883,7 +3918,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                       )
                     ),
                     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-                      React.createElement("div",{className:"ex-amt num",style: isIncome?{color:"var(--mint)"}:null}, (isIncome?"+":"−")+eur(Math.abs(g.e.amount))),
+                      // Sin «−» en gastos (petición 2026-07-12: quedaba feo); el «+» de ingresos se queda.
+                      React.createElement("div",{className:"ex-amt num",style: isIncome?{color:"var(--mint)"}:null}, (isIncome?"+":"")+eur(Math.abs(g.e.amount))),
                       React.createElement("button",{className:"ex-del",title:t("g_edit"),onClick:function(ev){ ev.stopPropagation(); setEditExp(ed?null:{id:g.e.id, merchant:g.e.merchant||"", amount:String(Math.abs(g.e.amount)).replace('.',','), income:g.e.amount<0}); setCatEdit(null); }},"✎"),
                       React.createElement("button",{className:"ex-del",title:t("w_hide"),onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
                     )
@@ -6316,33 +6352,38 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
    con los errores acumulándose el cajón se hacía gigante; ahora es una pantalla propia (patrón
    BankPanel) con filtro «solo errores». Sin traducir a propósito: consola privada del admin. */
 function ActivityPanel({events, onReload, onClose}){
-  const [onlyErr,setOnlyErr]=useState(false);
+  const [flt,setFlt]=useState("all");   // all | error | feedback
   useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
   const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
   const inner={maxWidth:480,margin:"0 auto"};
   const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
   const chip=function(on){ return {background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)",borderRadius:20,padding:"6px 13px",fontSize:12.5,fontWeight:700,cursor:"pointer"}; };
   const nErr=(events||[]).filter(function(ev){ return ev.kind==="error"; }).length;
-  const list=(events||[]).filter(function(ev){ return !onlyErr || ev.kind==="error"; });
+  const nFb=(events||[]).filter(function(ev){ return ev.kind==="feedback"; }).length;
+  const list=(events||[]).filter(function(ev){ return flt==="all" || ev.kind===flt; });
   return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "👁 Actividad"),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}},
       events===null ? "Cargando…" : ((events||[]).length+" eventos · "+nErr+" error(es) · solo tú ves esto")),
-    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}},
-      React.createElement("button",{style:chip(!onlyErr),onClick:function(){ setOnlyErr(false); }},"Todo"),
-      React.createElement("button",{style:chip(onlyErr),onClick:function(){ setOnlyErr(true); }},"🐞 Solo errores"+(nErr?" ("+nErr+")":""))),
+    React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}},
+      React.createElement("button",{style:chip(flt==="all"),onClick:function(){ setFlt("all"); }},"Todo"),
+      React.createElement("button",{style:chip(flt==="error"),onClick:function(){ setFlt("error"); }},"🐞 Solo errores"+(nErr?" ("+nErr+")":"")),
+      React.createElement("button",{style:chip(flt==="feedback"),onClick:function(){ setFlt("feedback"); }},"💬 Sugerencias"+(nFb?" ("+nFb+")":""))),
     events!==null && list.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)",padding:"14px 0"}},
-      onlyErr ? "Sin errores en los últimos eventos. 🎉" : "Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
+      flt==="error" ? "Sin errores en los últimos eventos. 🎉" : flt==="feedback" ? "Sin sugerencias todavía (llegan desde el popup de Novedades)." : "Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
     list.map(function(ev,i){
       const d=new Date(ev.created_at);
       const when=d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
-      return React.createElement("div",{key:i,style:{padding:"10px 12px",borderRadius:12,border:"1px solid "+(ev.kind==="error"?"var(--coral)":"var(--line)"),background:"var(--surface)",marginBottom:8,fontSize:12,lineHeight:1.5}},
+      const bd=ev.kind==="error"?"var(--coral)":ev.kind==="feedback"?"var(--blue)":"var(--line)";
+      const ic=ev.kind==="error"?"🐞 ":ev.kind==="feedback"?"💬 ":"👋 ";
+      return React.createElement("div",{key:i,style:{padding:"10px 12px",borderRadius:12,border:"1px solid "+bd,background:"var(--surface)",marginBottom:8,fontSize:12,lineHeight:1.5}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",gap:8}},
-          React.createElement("span",{style:{fontWeight:800}},(ev.kind==="error"?"🐞 ":"👋 ")+(ev.email||"¿?")),
+          React.createElement("span",{style:{fontWeight:800}},ic+(ev.email||"¿?")),
           React.createElement("span",{style:{color:"var(--muted-2)",flex:"0 0 auto"}},when)),
         ev.kind==="error" && React.createElement("div",{style:{color:"var(--coral)",overflowWrap:"anywhere"}},ev.message),
-        ev.kind==="error" && ev.detail && React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5,overflowWrap:"anywhere"}},ev.detail),
+        ev.kind==="feedback" && React.createElement("div",{style:{overflowWrap:"anywhere"}},ev.message),
+        ev.kind!=="ping" && ev.detail && React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5,overflowWrap:"anywhere"}},ev.detail),
         React.createElement("div",{style:{color:"var(--muted-2)",fontSize:10.5}},"v"+(ev.app_version||"?")+" · "+(ev.platform||"?"))
       );
     }),
@@ -6350,10 +6391,108 @@ function ActivityPanel({events, onReload, onClose}){
   ));
 }
 
+/* ============================================================
+   ✨ NOVEDADES — popup al actualizar + histórico + sugerencias
+   ============================================================
+   El CONTENIDO de las notas va solo en castellano a propósito (release notes para el
+   círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
+   añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
+var RELEASE_NOTES=[
+  {v:"3.95.0", d:"12 jul 2026", t:"Novedades a la vista, sugerencias sin salir de la app y gastos sin «−»", items:[
+    "🎉 Este popup: a partir de ahora, cada actualización te cuenta qué trae. Se abre solo una vez por versión.",
+    "📜 Histórico en Ajustes → «✨ Novedades y sugerencias»: relee las novedades de cualquier versión cuando quieras.",
+    "💬 Caja de sugerencias aquí mismo: apunta errores o ideas en el momento — quedan en «Tus apuntes» y le llegan a Juanjo con tu versión.",
+    "Los gastos ya no llevan el signo «−» delante (quedaba feo); los ingresos conservan su «+».",
+    "✨ En la app Android vuelve el botoncito de arriba «Nueva versión · toca para actualizar»: sale cuando la actualización está descargada y lista (antes se instalaba en silencio al reabrir la app)."
+  ]},
+  {v:"3.94.0", d:"11 jul 2026", t:"Ahorro editable, dos vistas de Gastos y secciones a tu gusto", items:[
+    "La tarjeta «¿A dónde va tu ahorro?» del Resumen ya se puede editar: importes, nombres, banco, borrar y añadir aportaciones.",
+    "El total de Gastos tiene dos vistas (Ajustes → Personalización): «Desglosado» o «Lo que te queda» (ingresos − gastos, un solo número verde/rojo).",
+    "Botón «⇅ Ordenar secciones» al pie de Fijos, Patrimonio, Deudas, Inversiones y Metas: ordena las tarjetas como quieras.",
+    "La pantalla «Actividad» (admin) ahora va aparte, con filtro de solo errores.",
+    "Si un banco conectado no trae ninguna cuenta utilizable, ahora avisa con pasos claros (antes se quedaba mudo)."
+  ]},
+  {v:"3.93.0", d:"11 jul 2026", t:"Editar el saldo de una deuda ya no resetea las cuotas", items:[
+    "Corregir el saldo pendiente de una deuda con plazo respetaba mal las cuotas: volvía a «Quedan 4/4» aunque llevaras 3 pagadas. Arreglado: el contador y el % amortizado se mantienen."
+  ]},
+  {v:"3.92.0", d:"11 jul 2026", t:"Deudas más completas", items:[
+    "Añadir una deuda incompleta ahora avisa de qué falta (antes fallaba en silencio y parecía que el botón no iba).",
+    "Botón «💸 Amortizar» en cada deuda: pagas anticipado, baja el pendiente y se acorta el plazo manteniendo la cuota.",
+    "Campo «Cuotas ya pagadas» al crear una deuda que ya estaba empezada: el pendiente y el «Quedan n/tot» salen bien desde el primer día."
+  ]},
+  {v:"3.91.0", d:"11 jul 2026", t:"Total de Gastos legible, cuentas del banco con rol y filtro «Mi ciclo»", items:[
+    "El total de Gastos con ingresos ya no engaña: gastos por un lado y «💰 +ingresos · Balance» por otro (verde si ahorras).",
+    "Las cuentas conectadas por banco (Revolut, CaixaBank…) pueden tener rol — Recibos / Gasto diario / Todo — para domiciliarles gastos fijos.",
+    "Filtro «Mi ciclo» en Gastos: de tu último cobro a hoy. El Balance de ese filtro es tu ahorro real del ciclo, aunque la nómina no caiga en día fijo.",
+    "Categoría nueva 🥖 Panadería (los cruasanes ya no son «Bares»)."
+  ]},
+  {v:"3.90.0", d:"11 jul 2026", t:"Gastos de TR por persona, bancos que no se esfuman y más", items:[
+    "Cada persona apunta sus gastos de Trade Republic en SU cuenta: interruptor «Apuntar aquí mis gastos de TR» en Ajustes → Notificaciones.",
+    "Un banco con el permiso caducado ya no desaparece del Patrimonio: se queda con aviso «caducado» hasta que lo reconectes.",
+    "Alta manual de Gastos con fecha (para apuntar cosas de hace días), filtro 💰 Ingreso, y las suscripciones detectadas ofrecen «pasar a Gastos fijos».",
+    "«Buscar actualización» en Ajustes aplica la versión nueva al momento."
+  ]}
+];
+/* Panel de Novedades. Se usa desde App (popup automático al estrenar versión) y desde
+   Ajustes (histórico). Portal a body: sobrevive al transform del cajón de Ajustes. */
+function WhatsNew({onClose, showToast, set, state}){
+  useBackClose(true, onClose);
+  const [openV,setOpenV]=useState(RELEASE_NOTES.length?RELEASE_NOTES[0].v:null);
+  const [fb,setFb]=useState("");
+  const [sending,setSending]=useState(false);
+  const notes=(state&&state.verNotes)||[];
+  const sendFb=function(){
+    const txt=fb.trim(); if(!txt||sending) return;
+    // El apunte se guarda SIEMPRE en el estado (sincroniza con su nube y se ve en «Tus
+    // apuntes»); el envío a app_events es aparte y avisa si no pudo (sin perder nada).
+    const note={id:uid(), v:CONFIG.APP_VERSION, text:txt, date:new Date().toISOString()};
+    set(function(s){ return Object.assign({},s,{verNotes:[note].concat(s.verNotes||[])}); });
+    setSending(true);
+    Promise.resolve().then(function(){ return cloud.feedback(txt); })
+      .then(function(){ showToast(t("wn_fb_sent")); })
+      .catch(function(){ showToast(t("wn_fb_offline")); })
+      .then(function(){ setSending(false); });
+    setFb("");
+  };
+  const delNote=function(id){ set(function(s){ return Object.assign({},s,{verNotes:(s.verNotes||[]).filter(function(n){ return n.id!==id; })}); }); };
+  const wrap={position:"fixed",inset:0,zIndex:97,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const card=function(cur){ return {padding:"12px 14px",borderRadius:14,border:"1px solid "+(cur?"var(--mint)":"var(--line)"),background:"var(--surface)",marginBottom:10}; };
+  const inp={width:"100%",minHeight:74,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:14,fontFamily:"'Manrope',sans-serif",boxSizing:"border-box",resize:"vertical"};
+  return ReactDOM.createPortal(React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "✨ "+t("wn_title")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}}, t("wn_sub")),
+    RELEASE_NOTES.map(function(r){
+      const open=openV===r.v, cur=r.v===CONFIG.APP_VERSION;
+      return React.createElement("div",{key:r.v,style:card(cur)},
+        React.createElement("button",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,width:"100%",background:"none",border:"none",color:"var(--text)",padding:0,cursor:"pointer",textAlign:"left"},onClick:function(){ setOpenV(open?null:r.v); }},
+          React.createElement("span",{style:{fontWeight:800,fontSize:14}},"v"+r.v+(cur?" · "+t("wn_current")+" ✓":"")),
+          React.createElement("span",{style:{color:"var(--muted-2)",fontSize:11.5,flex:"0 0 auto"}},r.d+(open?" ▴":" ▾"))),
+        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},r.t),
+        open && r.items.map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
+      );
+    }),
+    React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)",margin:"16px 0 10px"}},
+      React.createElement("div",{style:{fontWeight:800,fontSize:14,marginBottom:4}}, t("wn_fb_title")),
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:12,lineHeight:1.5,marginBottom:9}}, t("wn_fb_hint")),
+      React.createElement("textarea",{style:inp,placeholder:t("wn_fb_ph"),value:fb,onChange:function(e){ setFb(e.target.value); }}),
+      React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:9},disabled:!fb.trim()||sending,onClick:sendFb}, sending?"…":("💬 "+t("wn_fb_send"))),
+      notes.length>0 && React.createElement("div",{style:{marginTop:12}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"var(--muted)",marginBottom:6}}, t("wn_yours")),
+        notes.map(function(n){ return React.createElement("div",{key:n.id,style:{display:"flex",gap:8,alignItems:"flex-start",padding:"7px 0",borderTop:"1px solid var(--line)",fontSize:12,lineHeight:1.5}},
+          React.createElement("div",{style:{flex:1,overflowWrap:"anywhere"}}, React.createElement("span",{style:{color:"var(--muted-2)"}},"v"+n.v+" · "+new Date(n.date).toLocaleDateString(loc(),{day:"2-digit",month:"2-digit"})+" — "), n.text),
+          React.createElement("button",{className:"ex-del",title:"🗑",onClick:function(){ delNote(n.id); }},"🗑")); })
+      )
+    ),
+    React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:4},onClick:onClose}, t("wn_close"))
+  )), document.body);
+}
+
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "theme" | "tabs" | "act" | null
+  const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
   const fileRef=useRef(null);
   // Telemetría: el panel «Actividad» SOLO existe para el admin (gate por email de la sesión;
   // la RLS de app_events lo re-valida en servidor — sin sesión de admin no devuelve filas).
@@ -6668,6 +6807,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
     ),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
+    // ── Tarjeta · Novedades (histórico + sugerencias). La ven todos, también en web. ──
+    React.createElement("div",{className:"set-card"},
+      React.createElement("div",{className:"sc-title"},t("st_news")),
+      row("news","✨",t("st_news_row"),"v"+CONFIG.APP_VERSION,function(){ setNewsOpen(true); })
+    ),
+    newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
     // ── Tarjeta · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
     natPlugin() && React.createElement("div",{className:"set-card"},
       React.createElement("div",{className:"sc-title"},t("st_updates")),
@@ -6708,6 +6853,9 @@ function Onboarding({set, onCloud, onSignup}){
   const finish=function(){
     const b=parseFloat(String(budget).replace(',','.'))||0;
     const base=accs.reduce(function(t,x){ return t+(x.value||0); },0);
+    // Usuario recién onboarded: sella la versión para que NO le salte el popup de Novedades de
+    // la versión con la que estrena la app (solo lo verá a partir de la SIGUIENTE actualización).
+    try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
     set(function(s){ return Object.assign({},s,{ accounts:accs.slice(), budget:b, monthStartNet:base, history:[base], onboarded:true }); });
   };
   const dots=React.createElement("div",{style:{display:"flex",gap:6,justifyContent:"center",margin:"18px 0 0"}},
@@ -7241,6 +7389,16 @@ function App(){
     window.addEventListener("mc-sw-update", h);
     return function(){ window.removeEventListener("mc-sw-update", h); };
   },[]);
+  // App nativa: cuando el OTA descarga un bundle web nuevo y lo deja listo, volvemos a enseñar
+  // el botoncito de arriba «Nueva versión · toca para actualizar» (feedback 2026-07-12: había
+  // desaparecido al pasar el OTA a modo silencioso «entra al próximo arranque»). Tocarlo lo
+  // estrena al momento (up.set); si no se toca, entra solo en el siguiente arranque igual.
+  const [otaReady,setOtaReady]=useState(!!window._mcOtaReady);
+  useEffect(function(){
+    const h=function(){ setOtaReady(!!window._mcOtaReady); };
+    window.addEventListener("mc-ota-ready", h);
+    return function(){ window.removeEventListener("mc-ota-ready", h); };
+  },[]);
   // Ajustes › "Personalizar widgets del Resumen": salta a la pestaña Resumen (Dashboard
   // enciende su modo edición con el mismo evento).
   useEffect(function(){
@@ -7513,6 +7671,27 @@ function App(){
     if(stateRef.current.tourSeen===false) set(function(s){ return Object.assign({},s,{tourSeen:true}); });
   };
   const openTour=function(){ setDrawerOpen(false); setTab(0); setTourOpen(true); };
+  // ✨ Novedades: al estrenar una versión nueva, popup UNA vez (petición 2026-07-12: la pareja
+  // no se entera de qué trae cada update). No en el primer arranque de un usuario nuevo (sella
+  // silencioso tras el onboarding), ni encima del login/candado/tour.
+  const [whatsNew,setWhatsNew]=useState(false);
+  const newsTimer=useRef(null); const newsDone=useRef(false);
+  useEffect(function(){
+    if(newsDone.current) return;
+    // Espera a que la app esté lista (no encima del onboarding/candado/login/tour).
+    if(state.onboarded===false || locked || showAuth || tourOpen) return;
+    var seen=null; try{ seen=localStorage.getItem("_seenVersion"); }catch(e){}
+    if(seen===CONFIG.APP_VERSION){ newsDone.current=true; return; }   // ya vista esta versión
+    if(newsTimer.current) return;                                     // ya programado: no reprogramar ni cancelar
+    // OJO: NO sellamos aquí ni devolvemos cleanup que mate el timer — un re-render que cambie las
+    // deps cancelaría el popup y, al re-entrar ya sellado, no volvería a disparar (bug 2026-07-12).
+    // Sellamos al DISPARAR. Los usuarios nuevos ya vienen sellados por el onboarding (finish).
+    newsTimer.current=setTimeout(function(){
+      newsDone.current=true;
+      try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
+      setWhatsNew(true);
+    },900);
+  },[state.onboarded,locked,showAuth,tourOpen]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución. Una vez por sesión.
   const snapDone=useRef(false);
   useEffect(function(){
@@ -7813,7 +7992,8 @@ function App(){
     ),
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
     tourOpen && React.createElement(Tour,{onDone:endTour}),
-    updateReady && React.createElement("button",{className:"update-pill",onClick:function(){ if(window.__mcApplyUpdate) window.__mcApplyUpdate(); }}, t("upd_ready")),
+    whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
+    (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){ if(otaReady && window.__mcApplyOta){ window.__mcApplyOta(); } else if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); } }}, t("upd_ready")),
     apkUpd && React.createElement("button",{className:"update-pill",onClick:doApkInstall}, tf("apk_ready",{v:apkUpd.versionName})),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
@@ -7854,7 +8034,13 @@ try{ _mcNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Ca
           var pend=null; try{ pend=localStorage.getItem("_otaPending"); }catch(e){}
           if(pend===v.version) return;                                    // ya descargado; entra al siguiente arranque
           return up.download({url:(v.url||BASE+"bundle.zip"),version:v.version}).then(function(b){
-            return up.next({id:b.id});                                    // hot-swap en el próximo arranque (sin recargas a media sesión)
+            return up.next({id:b.id}).then(function(){                     // deja el bundle para el próximo arranque (sin recargas a media sesión)
+              // …y además ofrece el botón de arriba «Nueva versión · toca para actualizar»
+              // para estrenarla YA (up.set = hot-swap al momento). Feedback 2026-07-12.
+              window._mcOtaReady={id:b.id, version:v.version};
+              window.__mcApplyOta=function(){ try{ up.set({id:b.id}); }catch(e){} };
+              try{ window.dispatchEvent(new CustomEvent("mc-ota-ready")); }catch(e){}
+            });
           }).then(function(){ try{ localStorage.setItem("_otaPending",v.version); }catch(e){} });
         }).catch(function(){});                                           // sin red o aún sin desplegar: la app sigue con su bundle
       // APK: cambios NATIVOS sin cable. public/apk.json (en Pages) dice el último versionCode;

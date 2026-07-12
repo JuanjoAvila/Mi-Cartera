@@ -1,6 +1,6 @@
 {
-  "versionCode": 15,
-  "versionName": "4.0.0-alpha15",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha15/Mi-Cartera.apk",
-  "notes": "Ingest multiusuario de verdad (cada persona apunta sus gastos de TR en SU cuenta — este APK trae el lector nativo que faltaba), TR en frío con timeout 90 s y sin desconectarte cuando el anti-bot de TR bloquea, y «Buscar actualización» aplica la web nueva al momento."
+  "versionCode": 16,
+  "versionName": "4.0.0-alpha16",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha16/Mi-Cartera.apk",
+  "notes": "TR en frío, nuevo intento: la WebView oculta ahora se ata al render (1×1 px, invisible) para que el anti-bot de TR (AWS WAF) pueda resolver su challenge — antes el WebView desacoplado estrangulaba el requestAnimationFrame y el token nunca se generaba. Trae también el bundle web 3.95.0 (popup de Novedades + caja de sugerencias, gastos sin «−», y vuelve el botón de arriba «Nueva versión · toca para actualizar»)."
 }

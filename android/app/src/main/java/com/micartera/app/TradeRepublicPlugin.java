@@ -3,6 +3,8 @@ package com.micartera.app;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceError;
@@ -145,6 +147,19 @@ public class TradeRepublicPlugin extends Plugin {
                 web.addJavascriptInterface(new Bridge(), "AndroidTR");
                 CookieManager.getInstance().setAcceptCookie(true);
                 CookieManager.getInstance().setAcceptThirdPartyCookies(web, true);
+                // ARRANQUE EN FRÍO (alpha16, hipótesis (a) de la saga TR): el challenge del AWS WAF
+                // usa requestAnimationFrame/layout para generar el token. Un WebView creado pero
+                // NUNCA añadido a la jerarquía de vistas está desacoplado de la ventana → su rAF y
+                // sus pasadas de layout se estrangulan o no corren, así que el challenge nunca acaba
+                // («Failed to fetch» eterno). Lo ATAMOS a la vista a 1×1 px con alpha 0 (imperceptible
+                // pero "visible" para el pipeline de render, que es lo que el challenge necesita).
+                // View.INVISIBLE/GONE NO sirven: rAF también se estrangula para vistas no visibles.
+                try {
+                    web.setAlpha(0f);
+                    web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+                    act.addContentView(web, new ViewGroup.LayoutParams(1, 1));
+                    web.setOnTouchListener((v, e) -> true);   // 1px no molesta, pero por si acaso no capta toques útiles
+                } catch (Throwable ignore) { /* si falla el attach, seguimos con el WebView desacoplado (comportamiento previo) */ }
                 // ARRANQUE EN FRÍO (alpha14): la cookie aws-waf-token sobrevive al matar la app y el
                 // SDK la reutiliza RANCIA (el WAF ya la rechaza) → challenge que nunca se rehace →
                 // "Failed to fetch" eterno. La purgamos SOLO a ella (no tr_session/tr_refresh) para

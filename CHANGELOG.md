@@ -19,6 +19,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.95.0] — 2026-07-12
+### Novedades a la vista, sugerencias sin salir de la app, gastos sin «−» y el botón de actualizar de vuelta
+- ✨ **Popup de Novedades al actualizar:** cada vez que estrenas una versión nueva, la app te cuenta qué trae con un popup (una sola vez por versión, textos en cristiano y sin jerga). Los usuarios nuevos no lo ven en su primer arranque (se sella tras el onboarding); lo verán a partir de la siguiente actualización.
+- 📜 **Histórico de Novedades en Ajustes → «✨ Novedades y sugerencias»:** relee las novedades de cualquier versión pasada cuando quieras, con acordeón por versión.
+- 💬 **Caja de sugerencias por versión:** dentro del popup/histórico puedes apuntar errores, ideas o cosas raras. Quedan guardadas en «Tus apuntes» (sincroniza entre tus dispositivos) y le llegan a Juanjo junto con tu versión y plataforma (nuevo filtro «💬 Sugerencias» en el panel Actividad del admin). Pensado para que la pareja/amigos no tengan que acordarse de contarlo por otro lado.
+- 🎨 **Gastos sin el signo «−»:** las cantidades de gasto ya no llevan el «−» delante (quedaba feo); los ingresos conservan su «+» y el balance su ±. Aplica a las filas de Gastos y a las dos vistas del total.
+- ✨ **Vuelve el botón de arriba «✨ Nueva versión · toca para actualizar» (app Android):** había desaparecido al pasar el OTA a modo silencioso. Ahora, cuando la actualización web está descargada y lista, sale el botón para estrenarla al momento; si no lo tocas, entra sola en el siguiente arranque igual que hasta ahora.
+
 ## [3.94.0] — 2026-07-11
 ### Ahorro editable, dos vistas del total de Gastos, secciones a tu gusto y Actividad con pantalla propia
 - ✨ **Aportaciones de ahorro editables:** la tarjeta «¿A dónde va tu ahorro?» del Resumen venía con importes sembrados que no se podían tocar (y un usuario nuevo no podía añadir los suyos). Ahora tiene «Editar»: cambia importe, nombre y banco de cada aportación, borra con 🗑 o añade nuevas con «＋ Añadir aportación». Solo ajusta la cifra de «Ahorro/mes» (no mueve dinero).
