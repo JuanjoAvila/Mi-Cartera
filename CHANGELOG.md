@@ -19,6 +19,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.96.0] — 2026-07-12
+### Inversiones: conectar MyInvestor e importar Revolut, y las dos vistas de Gastos con nombres claros
+- 📈 **Conectar MyInvestor (beta):** en Ajustes → Gestionar mis bancos, «Conectar MyInvestor». Metes tu usuario y contraseña de MyInvestor (puede pedir un código por SMS) y trae tus **fondos indexados** con sus participaciones, valor y coste, para re-anclar tus posiciones con previsualización. La contraseña **no se guarda** en ningún sitio: solo se guarda la sesión (como al entrar en su web). Va por la API propia de MyInvestor (funciona en web y app). De vez en cuando MyInvestor pide un reCAPTCHA de seguridad; si pasa, avisa y se reintenta más tarde.
+- 💹 **Importar Revolut por CSV (beta):** junto a Trade Republic, tarjeta «Importar de Revolut (CSV)» con un **paso a paso** para exportar el extracto desde la app de Revolut (Invest → More → Documents → Stocks → Account statement → Excel). Subes el fichero (o lo pegas) y re-ancla tus acciones/ETF con previsualización. Todo se procesa en tu móvil; el fichero no se sube a ningún sitio.
+- 🧮 **Las dos vistas del total de Gastos, con nombres claros y el mismo diseño:** «Desglosado» pasa a llamarse **«Gastos e ingresos»** y «Lo que te queda» pasa a **«Balance»**. Las dos comparten ahora el mismo diseño (número protagonista arriba + una línea de desglose con 💸 Gastos · 💰 Ingresos · Balance) y ninguna enseña ya el «−» (el color rojo/verde lo dice).
+
 ## [3.95.1] — 2026-07-12
 ### fix: el modo «Lo que te queda» seguía enseñando el «−» al sobregastar
 - 🐛 Se me había quedado uno: la vista «Lo que te queda» de Gastos (Ajustes → Personalización → Total de Gastos) mostraba «−1.400,00 €» en rojo al sobregastar. Mismo criterio que el resto de la 3.95.0: el color rojo/verde ya dice si ahorras o te pasas, así que el «−» sobra (el «+» de ahorro se queda).

@@ -1,0 +1,93 @@
+// ============================================================
+// Edge Function: myinvestor-connect  (verify_jwt = true)
+// La llama la app (usuario logueado en Mi Cartera). Hace el login en la API de MyInvestor
+// y guarda SOLO los tokens de sesión (nunca la contraseña) en myinvestor_links.
+//
+// Flujo (dos pasos posibles, como la app oficial):
+//   1) body { customerId, password, deviceId }  → login
+//        · 200 → tokens guardados, { ok:true, connected:true }
+//        · 202 → pide OTP (SMS): { ok:true, otp:true, otpId, signatureRequestId }
+//        · 403 SECURITY_001 → reCAPTCHA condicional: { ok:false, recaptcha:true }
+//        · 400 → credenciales incorrectas
+//   2) body { customerId, password, deviceId, otpId, signatureRequestId, code } → valida OTP
+//
+// La CONTRASEÑA se usa de paso para el login (MyInvestor la re-pide en el paso OTP) y NUNCA
+// se guarda ni se loguea. verify_jwt ata el enlace al usuario de Mi Cartera.
+// ============================================================
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { CORS, jsonResp, MI_BASE, miHeaders } from "../_shared/myinvestor.ts";
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const supa = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: req.headers.get("Authorization") || "" } },
+    });
+    const { data: { user } } = await supa.auth.getUser();
+    if (!user) return jsonResp({ ok: false, error: "sin sesión" }, 401);
+
+    const body = await req.json().catch(() => ({}));
+    const customerId = String(body?.customerId || "").trim();
+    const password = String(body?.password || "");
+    const deviceId = String(body?.deviceId || "").trim();
+    const otpId = body?.otpId ? String(body.otpId) : null;
+    const signatureRequestId = body?.signatureRequestId ? String(body.signatureRequestId) : null;
+    const code = body?.code ? String(body.code).trim() : null;
+    if (!customerId || !password || !deviceId) return jsonResp({ ok: false, error: "faltan datos" }, 400);
+
+    // Cuerpo del login: base + (si es el paso OTP) los tres campos de OTP.
+    // deno-lint-ignore no-explicit-any
+    const loginBody: any = { customerId, password };
+    if (code && otpId && signatureRequestId) {
+      loginBody.otpId = otpId;
+      loginBody.signatureRequestId = signatureRequestId;
+      loginBody.code = code;
+    }
+
+    const res = await fetch(MI_BASE + "/login/api/v2/auth/token", {
+      method: "POST",
+      headers: miHeaders(deviceId),
+      body: JSON.stringify(loginBody),
+    });
+    const text = await res.text();
+    // deno-lint-ignore no-explicit-any
+    let j: any = {}; try { j = JSON.parse(text); } catch { /* deja {} */ }
+
+    // 202 → pide OTP por SMS
+    if (res.status === 202) {
+      const d = (j && j.payload && j.payload.data) || {};
+      return jsonResp({ ok: true, otp: true, otpId: d.otpId || null, signatureRequestId: d.signatureRequestId || null });
+    }
+    // 403 SECURITY_001 → reCAPTCHA condicional (no lo resolvemos aquí)
+    if (res.status === 403 && j?.status?.code === "SECURITY_001") {
+      return jsonResp({ ok: false, recaptcha: true, error: j?.status?.message || "MyInvestor pide una verificación extra (reCAPTCHA). Inténtalo de nuevo en un rato." });
+    }
+    // 200/201 → éxito: guarda tokens
+    if (res.status === 200 || res.status === 201) {
+      const d = (j && j.payload && j.payload.data) || {};
+      const access = d.accessToken;
+      const refresh = d.refreshToken;
+      const refreshSecs = Number(d.refreshExpiresIn || 0);
+      if (!access) return jsonResp({ ok: false, error: "respuesta de login sin token" }, 502);
+      const refreshExp = refreshSecs > 0 ? new Date(Date.now() + refreshSecs * 1000).toISOString() : null;
+      const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await admin.from("myinvestor_links").upsert({
+        user_id: user.id,
+        device_id: deviceId,
+        access_token: access,
+        refresh_token: refresh || null,
+        refresh_expires_at: refreshExp,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+      return jsonResp({ ok: true, connected: true });
+    }
+    // 400 u otros → credenciales/entrada inválidas
+    const msg = (j?.status?.message) || (j?.payload?.data?.message) || ("login HTTP " + res.status);
+    return jsonResp({ ok: false, status: res.status, error: msg });
+  } catch (e) {
+    return jsonResp({ ok: false, error: String((e as Error)?.message || e) }, 500);
+  }
+});
