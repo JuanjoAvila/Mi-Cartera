@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ⚙️ Pantalla de Settings: toggle moneda, presupuesto, objetivo de ahorro, export/import JSON, reset, manejo de errores visible.
 - 🔐 Endurecer `GAS_URL` con token compartido.
 
+## [3.95.1] — 2026-07-12
+### fix: el modo «Lo que te queda» seguía enseñando el «−» al sobregastar
+- 🐛 Se me había quedado uno: la vista «Lo que te queda» de Gastos (Ajustes → Personalización → Total de Gastos) mostraba «−1.400,00 €» en rojo al sobregastar. Mismo criterio que el resto de la 3.95.0: el color rojo/verde ya dice si ahorras o te pasas, así que el «−» sobra (el «+» de ahorro se queda).
+
 ## [3.95.0] — 2026-07-12
 ### Novedades a la vista, sugerencias sin salir de la app, gastos sin «−» y el botón de actualizar de vuelta
 - ✨ **Popup de Novedades al actualizar:** cada vez que estrenas una versión nueva, la app te cuenta qué trae con un popup (una sola vez por versión, textos en cristiano y sin jerga). Los usuarios nuevos no lo ven en su primer arranque (se sella tras el onboarding); lo verán a partir de la siguiente actualización.

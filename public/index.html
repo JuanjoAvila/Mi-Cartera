@@ -3830,7 +3830,9 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       ((state.settings&&state.settings.gTotalMode)==="net")
         ? React.createElement("div",null,
             React.createElement("div",{className:"tl"},t("g_totalnet")),
-            React.createElement("div",{className:"tn num",style:{color:sums.bal>=0?"var(--mint)":"var(--coral)"}},(sums.bal>=0?"+":"−")+eur(Math.abs(sums.bal))),
+            // Sin «−» cuando sobregastas (2026-07-12, mismo criterio que el resto): el color rojo/verde
+            // ya dice si ahorras o te pasas; el «+» se queda solo quien ahorra, como los ingresos.
+            React.createElement("div",{className:"tn num",style:{color:sums.bal>=0?"var(--mint)":"var(--coral)"}},(sums.bal>=0?"+":"")+eur(Math.abs(sums.bal))),
             React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
               React.createElement("span",{style:{color:"var(--muted)"}},"💸 "+eur(sums.g)),
               sums.ni>0 && React.createElement("span",{style:{color:"var(--mint)"}}," · 💰 +"+eur(sums.i))
