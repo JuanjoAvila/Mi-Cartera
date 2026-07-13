@@ -141,6 +141,10 @@ public class TradeRepublicPlugin extends Plugin {
         if (act == null) return;
         act.runOnUiThread(() -> {
             if (web == null) {
+                // alpha17 (hipótesis (c) de la saga TR): expone TODAS las WebViews del proceso a
+                // chrome://inspect / CDP por adb para poder VER qué hace el challenge del WAF en frío.
+                // Solo depurable con USB debugging aprobado en el móvil; quitar cuando se cierre la saga.
+                try { WebView.setWebContentsDebuggingEnabled(true); } catch (Throwable ignore) {}
                 web = new WebView(act);
                 web.getSettings().setJavaScriptEnabled(true);
                 web.getSettings().setDomStorageEnabled(true);

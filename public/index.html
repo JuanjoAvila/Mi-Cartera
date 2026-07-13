@@ -975,9 +975,11 @@ const cloud = (function(){
         .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
       if(error) throw error;
     },
-    async prices(){
+    async prices(symbols){
       if(!sb) throw new Error("nube no disponible");
-      const {data,error}=await sb.functions.invoke('prices');
+      // manda los tickers reales de la cartera: la función ya no está clavada a 6 símbolos
+      const opts=(symbols&&symbols.length)?{body:{symbols:symbols}}:undefined;
+      const {data,error}=await sb.functions.invoke('prices',opts);
       if(error) throw error;
       return data;
     },
@@ -1546,7 +1548,7 @@ Object.assign(LANG.es,{
   bi_unmatched_hint:"⚠ Las posiciones sin pareja clara se quedan en «no tocar»: elige tú a cuál corresponden (o crear nueva). Cuadra participaciones y coste contra la app de Revolut antes de aplicar — solo se toca lo que mapees.",
   bi_cash_info:"ℹ Detectados {int} de intereses y {div} de dividendos en el extracto. La app no los suma sola: si quieres cuadrar el efectivo, re-ancla el saldo de la cuenta.",
   bi_usd_hint:"Los importes del CSV se leen en €. Cuidado al mapear a posiciones en $ (marcadas).",
-  bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker). Revolut no da ISIN, así que el precio en vivo no se descarga: el valor arranca igual al coste y lo afinas a mano si quieres.",
+  bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker) y el valor se recalcula con el último precio conocido. Justo después, los precios en vivo se actualizan solos por ticker.",
   bi_done:"✓ {n} posiciones re-ancladas con el extracto",
   bi_rev_title:"Importar de Revolut (CSV)", bi_rev_steps_btn:"Cómo exportar el CSV de Revolut",
   bi_rev_steps:["Abre la app de Revolut → pestaña «Invest».","«More» (Más) → «Documents» (Documentos).","Elige la cuenta de inversión → «Stocks» → «Account statement».","Formato «Excel», desde la apertura de la cuenta hasta hoy → «Get statement».","En el móvil ábrelo con Google Sheets → «Hacer una copia» y descárgalo como CSV (o guárdalo/compártelo y súbelo aquí).","Sube el fichero abajo o pega su contenido. Se procesa en tu móvil, no se sube a ningún sitio."],
@@ -1562,7 +1564,7 @@ Object.assign(LANG.en,{
   bi_unmatched_hint:"⚠ Positions without a clear match stay on «don't touch»: pick where each one goes (or create new). Square shares and cost against your Revolut app before applying — only what you map gets touched.",
   bi_cash_info:"ℹ Found {int} of interest and {div} of dividends in the statement. The app doesn't add them automatically: to square the cash, re-anchor the account balance.",
   bi_usd_hint:"CSV amounts are read as €. Careful mapping to $ positions (marked).",
-  bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth). Revolut gives no ISIN, so live prices aren't fetched: value starts equal to cost and you can fine-tune it by hand.",
+  bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth) and value is rescaled to the last known price. Right after, live prices refresh automatically by ticker.",
   bi_done:"✓ {n} positions re-anchored to the statement",
   bi_rev_title:"Import from Revolut (CSV)", bi_rev_steps_btn:"How to export the Revolut CSV",
   bi_rev_steps:["Open the Revolut app → «Invest» tab.","«More» → «Documents».","Pick the investment account → «Stocks» → «Account statement».","Format «Excel», from account opening to today → «Get statement».","On the phone open it with Google Sheets → «Make a copy» and download as CSV (or save/share it and upload here).","Upload the file below or paste its contents. Processed on your phone, never uploaded."],
@@ -1578,7 +1580,7 @@ Object.assign(LANG.ca,{
   bi_unmatched_hint:"⚠ Les posicions sense parella clara es queden a «no tocar»: tria tu a quina corresponen (o crear-ne una de nova). Quadra participacions i cost amb l'app de Revolut abans d'aplicar — només es toca el que mapegis.",
   bi_cash_info:"ℹ Detectats {int} d'interessos i {div} de dividends a l'extracte. L'app no els suma sola: per quadrar l'efectiu, re-ancora el saldo del compte.",
   bi_usd_hint:"Els imports del CSV es llegeixen en €. Compte en mapar a posicions en $ (marcades).",
-  bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker). Revolut no dona ISIN, així que el preu en viu no es descarrega: el valor arrenca igual al cost i l'afines a mà si vols.",
+  bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker) i el valor es recalcula amb l'últim preu conegut. Just després, els preus en viu s'actualitzen sols per ticker.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
   bi_rev_title:"Importa de Revolut (CSV)", bi_rev_steps_btn:"Com exportar el CSV de Revolut",
   bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","Tria el compte d'inversió → «Stocks» → «Account statement».","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja el fitxer a sota o enganxa'n el contingut. Es processa al teu mòbil, no es puja enlloc."],
@@ -2017,6 +2019,7 @@ Object.assign(LANG.es,{
   inv_hint_edit:"Escribe el valor actual de cada posición (al tocar se selecciona solo). El % de ganancia se calcula automáticamente.",
   inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones con ticker. Lo que no tiene precio automático (fondos, oro, algunos ETF) se edita con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
   inv_sold_part:"Vendí parte →", inv_value:"Valor", inv_invested:"Invertido", inv_sell_prompt:"¿Qué % de {name} has vendido? (ej. 30)",
+  inv_delete:"Borrar", inv_delete_confirm:"¿Borrar «{name}» de tu cartera? Esto no toca tu bróker, solo la quita de la app.",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"redondeo ×{m} activo", ru_sub_off:"desactivado",
   ru_title_simple:"Redondeo y regalo por pagar", ru_sub_simple:"cada compra suma un poquito a tu inversión",
   ru_hint_simple:"Cada vez que pagas con la tarjeta, la app redondea la compra al euro y esa diferencia se invierte sola. Además, Trade Republic te devuelve un 1% de lo que pagas con su tarjeta, y también se invierte.",
@@ -2078,6 +2081,7 @@ Object.assign(LANG.en,{
   inv_hint_edit:"Type the current value of each position (tap to select). The gain % is calculated automatically.",
   inv_hint_view:"«USD prices» fetches quotes for tickered stocks automatically. Anything without an automatic price (funds, gold, some ETFs) is edited via «Edit manually». USD→EUR rate: {fx} · live ECB.",
   inv_sold_part:"Sold part →", inv_value:"Value", inv_invested:"Invested", inv_sell_prompt:"What % of {name} did you sell? (e.g. 30)",
+  inv_delete:"Delete", inv_delete_confirm:"Delete «{name}» from your portfolio? This doesn't touch your broker, it only removes it from the app.",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"round-up ×{m} on", ru_sub_off:"off",
   ru_title_simple:"Round-ups & card reward", ru_sub_simple:"each purchase adds a little to your investing",
   ru_hint_simple:"Every time you pay by card, the app rounds the purchase up to the whole euro and that difference is invested on its own. Plus, Trade Republic gives you 1% back on what you pay with its card, and that's invested too.",
@@ -2139,6 +2143,7 @@ Object.assign(LANG.ca,{
   inv_hint_edit:"Escriu el valor actual de cada posició (en tocar se selecciona sol). El % de guany es calcula automàticament.",
   inv_hint_view:"«Preus USD» porta soles les cotitzacions de les accions amb ticker. El que no té preu automàtic (fons, or, alguns ETF) s'edita amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
   inv_sold_part:"He venut part →", inv_value:"Valor", inv_invested:"Invertit", inv_sell_prompt:"Quin % de {name} has venut? (ex. 30)",
+  inv_delete:"Esborra", inv_delete_confirm:"Esborrar «{name}» de la teva cartera? Això no toca el teu bròker, només la treu de l'app.",
   ru_title:"Round-up & Saveback (TR)", ru_sub_on:"arrodoniment ×{m} actiu", ru_sub_off:"desactivat",
   ru_title_simple:"Arrodoniment i regal per pagar", ru_sub_simple:"cada compra suma una miqueta a la teva inversió",
   ru_hint_simple:"Cada cop que pagues amb la targeta, l'app arrodoneix la compra a l'euro i aquesta diferència s'inverteix sola. A més, Trade Republic et torna un 1% del que pagues amb la seva targeta, i també s'inverteix.",
@@ -2903,6 +2908,18 @@ function fixInvAuto(s){
   s._invFixAuto = true;
   return s;
 }
+// Limpieza única de los duplicados que sembró el importador Revolut de la 3.96.0 (bug
+// 2026-07-13): creaba posiciones nuevas nombradas por su ticker («NVDA» al lado de tu
+// «NVIDIA») que quedaron a 0 € y −100% para siempre. Cadáver = ent revolut, nombre==ticker
+// y valor ~0. Idempotente con flag, como fixInvSold/fixInvAuto.
+function fixRevoDupes(s){
+  if(!s || s._invFixRevoDupes || !s.investments) return s;
+  s.investments = s.investments.filter(function(i){
+    return !(i.ent==="revolut" && i.ticker && i.name===i.ticker && !(i.value>0.01));
+  });
+  s._invFixRevoDupes = true;
+  return s;
+}
 // Motor de cash-flow: si el estado no tiene movimientos recurrentes, siembra los del usuario
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
@@ -2987,7 +3004,7 @@ const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","
 function loadState(){
   const saved = store.get("micartera_v3");
   if(saved && saved.accounts){
-    const s = seedFlows(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)))));
+    const s = seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))))));
     store.set("micartera_v3", s);
     applyTheme(s.settings&&s.settings.theme);
     applyBigText(s.settings&&s.settings.bigText);
@@ -4133,7 +4150,9 @@ function brokerSuggest(pos, investments){
   // ticker exacto (Revolut solo da ticker: «NVDA» no casa por nombre con «NVIDIA» y sin esto
   // el importador proponía crear duplicados de posiciones que ya existían — feedback 2026-07-13)
   const tk=String(pos.ticker||pos.isin||"").toUpperCase();
-  if(tk){ const byTicker=investments.find(function(i){ return i.ticker && String(i.ticker).toUpperCase()===tk; }); if(byTicker) return byTicker.id; }
+  if(tk){ const ms=investments.filter(function(i){ return i.ticker && String(i.ticker).toUpperCase()===tk; });
+    // con ticker repetido (duplicados históricos del import), manda la posición VIVA (value>0)
+    const byTicker=ms.find(function(i){ return i.value>0; })||ms[0]; if(byTicker) return byTicker.id; }
   const words=String(pos.name||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^a-z0-9&]+/).filter(function(w){ return w.length>=4; });
   let best=null, bestScore=0;
   investments.forEach(function(i){
@@ -4277,7 +4296,7 @@ function revoAggregate(parsed){
    (Revolut es un bróker más). Previsualización obligatoria + mapeo por posición antes
    de aplicar: el usuario cuadra contra su app de Revolut y decide. Re-ancla shares+coste
    a las posiciones mapeadas (o crea nuevas). No pisa un ISIN real con el ticker. */
-function BrokerImport({state, set}){
+function BrokerImport({state, set, fetchPrices}){
   const [text,setText]=useState("");
   const [parsed,setParsed]=useState(null);
   const [map,setMap]=useState({});
@@ -4312,6 +4331,12 @@ function BrokerImport({state, set}){
         if(!po) return i;
         const patch={ shares:po.shares, cost:po.cost };
         if(!i.isin) patch.ticker=po.ticker;      // nunca pisar un ISIN real con un ticker
+        // el valor se re-escala al nuevo nº de participaciones con el último precio conocido
+        // (value/shares viejos). Antes el valor se quedaba tal cual y el % contra el coste
+        // nuevo salía disparatado: un Broadcom con más acciones que ayer aparecía a −39%
+        // cuando Revolut decía −6% (feedback 2026-07-13, «rotísimo»).
+        const pps=(i.shares>0 && i.value>0)?(i.value/i.shares):null;
+        patch.value=+((pps!=null?pps*po.shares:po.cost)).toFixed(2);
         return Object.assign({},i,patch);
       });
       const created=pos.filter(function(p){ return map[p.ticker]==="__new"; }).map(function(po){
@@ -4322,6 +4347,8 @@ function BrokerImport({state, set}){
       return Object.assign({},s,{investments:inv});
     });
     setDoneN(mappedN); setParsed(null); setText("");
+    // y nada más re-anclar, precios en vivo en silencio: el valor pasa de «último conocido» a real
+    if(fetchPrices) setTimeout(function(){ fetchPrices(true); },50);
   };
   return React.createElement(CollapsibleCard,{title:t("bi_rev_title"),sub:t("bi_sub"),dot:"#9BD0E0",defaultOpen:false,storageKey:"inv_brokerimp"},
     React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("bi_hint")),
@@ -4691,7 +4718,7 @@ function TRSync({state, set, totals}){
   );
 }
 
-function InvRows({items, fx, fmt, editing, showCost, draft, setF, onSell}){
+function InvRows({items, fx, fmt, editing, showCost, draft, setF, onSell, onDelete}){
   const eurVal=(it)=> it.cur==="USD"? it.value*fx : it.value;
   const show=fmt||eur;   // moneda local de la tab (fallback a €)
   return items.map(function(it){
@@ -4701,7 +4728,8 @@ function InvRows({items, fx, fmt, editing, showCost, draft, setF, onSell}){
         React.createElement("div",null,
           React.createElement("div",{className:"rname"},it.name),
           React.createElement("div",{className:"rsub"}, entOf(it.ent).label + (it.cur==="USD"?" \u00b7 USD":"")),
-          editing && React.createElement("button",{style:{background:"none",border:"none",color:"#9BD0E0",cursor:"pointer",fontSize:11,fontWeight:700,padding:"4px 0 0"},onClick:function(){ onSell(it); }},t("inv_sold_part"))
+          editing && React.createElement("button",{style:{background:"none",border:"none",color:"#9BD0E0",cursor:"pointer",fontSize:11,fontWeight:700,padding:"4px 0 0"},onClick:function(){ onSell(it); }},t("inv_sold_part")),
+          editing && React.createElement("button",{style:{background:"none",border:"none",color:"var(--coral)",cursor:"pointer",fontSize:11,fontWeight:700,padding:"4px 0 0",marginLeft:12},onClick:function(){ onDelete(it); }},"🗑 "+t("inv_delete"))
         )
       ),
       editing
@@ -4814,6 +4842,12 @@ function Investments({state, set, fetchPrices, pricing}){
     setEditing(false); setShowCost(false);
   };
   const setF=(id,field,v)=> setDraft(d=>Object.assign({},d,{[id]:Object.assign({},d[id],{[field]:v})}));
+  // Borrar una posición del todo (duplicados de un import, valores liquidados…). Antes NO se
+  // podía desde la UI y los cadáveres se quedaban para siempre (feedback 2026-07-13).
+  const onDelete=function(it){
+    if(!window.confirm(tf("inv_delete_confirm",{name:it.name}))) return;
+    set(function(s){ return Object.assign({},s,{investments:s.investments.filter(function(i){ return i.id!==it.id; })}); });
+  };
   // Venta parcial: reduce valor, coste y participaciones proporcionalmente y registra el líquido vendido.
   const onSell=function(it){
     const pStr=window.prompt(tf("inv_sell_prompt",{name:it.name}));
@@ -4986,7 +5020,7 @@ function Investments({state, set, fetchPrices, pricing}){
       if(items.length===0) return null;
       const sub=items.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
       return React.createElement(CollapsibleCard,{key:g[0],title:g[1],sub:f0(sub),dot:entOf(g[0]).color,storageKey:"inv_"+g[0]},
-        React.createElement(InvRows,{items:items,fx:fx,fmt:f2,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell})
+        React.createElement(InvRows,{items:items,fx:fx,fmt:f2,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete})
       );
     }),
     (state.soldCash>0) && React.createElement("div",{className:"costtoggle",style:{justifyContent:"space-between"}},
@@ -6793,7 +6827,7 @@ function BankHistoryImport({state, set, showToast, onClose}){
   ));
 }
 
-function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks}){
+function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks, fetchPrices}){
   const [histOpen,setHistOpen]=useState(false);
   const [links,setLinks]=useState(null);          // null = cargando
   const [aspsps,setAspsps]=useState(null);        // null = sin cargar
@@ -6968,7 +7002,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     React.createElement(MyInvestorSync,{state:state,set:set}),
     // Revolut es un bróker más: como no tiene sync automático viable (antibot), va por CSV.
     React.createElement("div",{style:{height:8}}),
-    React.createElement(BrokerImport,{state:state,set:set}),
+    React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
   ));
 }
@@ -7023,6 +7057,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.98.0", d:"13 jul 2026", t:"Revolut cuadrado: fuera duplicados y precios en vivo de verdad", items:[
+    "🧹 Los duplicados fantasma de Revolut (esos «NVDA 0,00 € · −100%» al lado de tu NVIDIA de verdad) se van solos al abrir la app: eran restos del importador antiguo.",
+    "💹 Al aplicar un extracto de Revolut, el valor de cada posición también se recalcula (antes solo se tocaban participaciones y coste, y el % salía disparatado: un Broadcom a −39% que en Revolut estaba a −6%). Y nada más aplicar, los precios se actualizan en vivo solos.",
+    "📈 «Precios USD» ahora cotiza cualquier ticker de tu cartera (antes estaba clavado a 6 valores fijos) y también el oro (XAU).",
+    "🗑️ Ya puedes borrar una posición a mano: «Editar a mano» → 🗑 Borrar. Antes los cadáveres se quedaban en la lista para siempre."
+  ]},
   {v:"3.97.0", d:"13 jul 2026", t:"Importar Revolut arreglado, asesor de amortización y Ajustes con buscador", items:[
     "💹 El importador de Revolut ya lee bien los números: entiende importes con coma española («88,94 €»), ventas sin cantidad, y no resucita posiciones que ya vendiste. Además, por defecto NO crea posiciones nuevas — tú decides qué se toca, y cada posición enseña sus compras/ventas para poder cuadrarla con la app de Revolut.",
     "💡 Nuevo en Deudas: el asesor «¿Cuándo amortizar?». Ponle el interés a la deuda, di cuánto amortizarías y te dice cuántas cuotas te quitas, cuánto ahorras en intereses y si te compensa frente a tu efectivo remunerado.",
@@ -7130,7 +7170,7 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "theme" | "tabs" | "act" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
@@ -7419,7 +7459,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
       );
     })(),
-    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
+    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
     // ── Tarjeta 5 · notificaciones (solo app nativa) ──
     !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
       t("na_body"),
@@ -7829,7 +7869,7 @@ function App(){
           const localNewer=!freshLogin && (prev._savedAt||0) > (cloudState._savedAt||0);
           const baseObj = localNewer ? Object.assign({},prev,{expenses:merged.list})
                                      : Object.assign({},prev,cloudState,{expenses:merged.list});
-          return seedFlows(fixInvAuto(fixInvSold(reconcileTR(baseObj))));
+          return seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR(baseObj)))));
         });
       } else if(cloudState){
         // llegó algo pero con forma inválida (corrupto/parcial) → NO machacar lo local; resube lo bueno
@@ -8385,7 +8425,8 @@ function App(){
     if(withTicker.length===0){ if(!silent) showToast("No hay tickers configurados"); return Promise.resolve(); }
     if(!(cloud.enabled() && uid)){ if(!silent) showToast("Inicia sesión para actualizar precios"); return Promise.resolve(); }
     if(!silent){ setPricing(true); showToast("Actualizando precios…"); }
-    return Promise.resolve(cloud.prices()).then(function(data){
+    const symbols=Array.from(new Set(withTicker.map(function(i){ return String(i.ticker).toUpperCase(); })));
+    return Promise.resolve(cloud.prices(symbols)).then(function(data){
       if(data && data.ok===false) throw new Error(data.error||"el servidor devolvió un error");
       const prices = data && (data.prices||data.quotes||data); // admite {prices:{...}} o {...}
       // si el servidor responde OK pero sin cotizaciones, no es "sin cambios": es un fallo de Finnhub
@@ -8660,7 +8701,7 @@ function App(){
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
     React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
-      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals})
+      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     )
   );
 }
