@@ -43,3 +43,8 @@ verify_jwt = true
 
 [functions.myinvestor-disconnect]
 verify_jwt = true
+
+# keepalive: la llama pg_cron (migración 0011), no un usuario → sin JWT; se protege con
+# x-cron-key contra public.cron_secrets (secreto generado en la BD, nunca en el repo).
+[functions.myinvestor-keepalive]
+verify_jwt = false

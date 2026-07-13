@@ -607,6 +607,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .liqrow{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:2px 0;}
   .liqrow.strong{font-weight:800;font-size:15px;border-top:1px solid var(--line-soft);margin-top:5px;padding-top:7px;}
   .alarmbox{background:rgba(226,112,95,.12);border:1px solid rgba(226,112,95,.45);color:var(--coral);border-radius:12px;padding:11px 13px;font-size:13px;font-weight:600;margin-bottom:8px;line-height:1.45;}
+  /* Mini-tutorial por pestaña */
+  .coach-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;}
+  .coach-pill{display:block;margin:0 0 8px auto;background:none;border:none;color:var(--muted-2);font-size:12px;cursor:pointer;padding:2px 4px;}
 
   .ex-row{display:flex;align-items:center;gap:13px;padding:13px 4px;border-bottom:1px solid var(--line-soft);}
   .ex-row:last-child{border-bottom:none;}
@@ -819,6 +822,7 @@ const CATEGORIES = [
   { id:"parking",    name:"Parking",             color:"#8AA0B8", icon:"🅿️" },
   { id:"compras",    name:"Compras",             color:"#C9A0E0", icon:"🛍️" },
   { id:"salud",      name:"Salud",               color:"#6FD6C9", icon:"💊" },
+  { id:"pelu",       name:"Peluquería",          color:"#D8A3C8", icon:"💇" },
   { id:"hogar",      name:"Hogar",               color:"#B7C98A", icon:"🏠" },
   { id:"regalos",    name:"Regalos",             color:"#E89CB0", icon:"🎁" },
   { id:"otros",      name:"Otros",               color:"#8FA89A", icon:"📦" },
@@ -849,7 +853,9 @@ const KW = {
   ocio:["cinema","cine","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","bolera","anthropic","claude","openai","chatgpt","google one","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo"],
   compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","amzn","openbank","open bank","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","saona","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis"],
   hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
-  salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
+  // "pelu" ANTES que salud: peluquería/estética dejan de caer en Salud (categoría propia, backlog 2026-07)
+  pelu:["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
+  salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje"],
   regalos:["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
 };
 function autoCategory(merchant){
@@ -1262,6 +1268,7 @@ const LANG = {
     apk_ready:"⬇️ App {v} lista · toca para instalar", apk_downloading:"Descargando la actualización… se abrirá el instalador", apk_perm:"Permite «instalar apps desconocidas» a Mi Cartera y vuelve a tocar el botón",
     ob_signup:"Crear cuenta nueva",
     st_custom:"Personalización", st_widgets:"Personalizar widgets del Resumen", st_notifs:"Notificaciones", st_simple_lbl:"Modo sencillo",
+    st_g_general:"General", st_search_ph:"🔍 Buscar en ajustes…", st_search_none:"Nada con ese nombre. Prueba con «tema», «banco», «copia»…",
     st_blocks:"Ocultar bloques de las pestañas", st_blocks_hint:"Con esto activado, cada bloque de cualquier pestaña muestra un botón «Ocultar». Los ocultos se quedan atenuados mientras editas; al desactivarlo desaparecen del todo (y aquí los recuperas).",
     cc_hide:"Ocultar", cc_show:"Mostrar",
     st_updates:"Actualizaciones", st_update:"Buscar actualización",
@@ -1299,6 +1306,7 @@ const LANG = {
     apk_ready:"⬇️ App {v} ready · tap to install", apk_downloading:"Downloading the update… the installer will open", apk_perm:"Allow «install unknown apps» for Mi Cartera and tap the button again",
     ob_signup:"Create a new account",
     st_custom:"Customisation", st_widgets:"Customise Summary widgets", st_notifs:"Notifications", st_simple_lbl:"Simple mode",
+    st_g_general:"General", st_search_ph:"🔍 Search settings…", st_search_none:"Nothing by that name. Try “theme”, “bank”, “backup”…",
     st_blocks:"Hide blocks in tabs", st_blocks_hint:"With this on, every block in any tab shows a «Hide» button. Hidden ones stay dimmed while editing; turn it off and they disappear entirely (and you recover them here).",
     cc_hide:"Hide", cc_show:"Show",
     st_updates:"Updates", st_update:"Check for updates",
@@ -1336,6 +1344,7 @@ const LANG = {
     apk_ready:"⬇️ App {v} a punt · toca per instal·lar", apk_downloading:"Baixant l'actualització… s'obrirà l'instal·lador", apk_perm:"Permet «instal·lar apps desconegudes» a Mi Cartera i torna a tocar el botó",
     ob_signup:"Crea un compte nou",
     st_custom:"Personalització", st_widgets:"Personalitza els widgets del Resum", st_notifs:"Notificacions", st_simple_lbl:"Mode senzill",
+    st_g_general:"General", st_search_ph:"🔍 Cerca als ajustos…", st_search_none:"Res amb aquest nom. Prova amb «tema», «banc», «còpia»…",
     st_blocks:"Amaga blocs de les pestanyes", st_blocks_hint:"Amb això activat, cada bloc de qualsevol pestanya mostra un botó «Amaga». Els amagats queden atenuats mentre edites; en desactivar-ho desapareixen del tot (i aquí els recuperes).",
     cc_hide:"Amaga", cc_show:"Mostra",
     st_updates:"Actualitzacions", st_update:"Cerca actualització",
@@ -1533,6 +1542,8 @@ Object.assign(LANG.es,{
   bi_err:"No he podido leer el CSV (¿formato raro?). Pega unas líneas y dime qué columnas tiene.",
   bi_summary:"{n} posiciones detectadas · {from} → {to}", bi_skipped:"{n} filas no reconocidas (ignoradas)",
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operaciones",
+  bi_buys:"{n} compras", bi_sells:"{n} ventas", bi_splits:"{n} splits/traspasos",
+  bi_unmatched_hint:"⚠ Las posiciones sin pareja clara se quedan en «no tocar»: elige tú a cuál corresponden (o crear nueva). Cuadra participaciones y coste contra la app de Revolut antes de aplicar — solo se toca lo que mapees.",
   bi_cash_info:"ℹ Detectados {int} de intereses y {div} de dividendos en el extracto. La app no los suma sola: si quieres cuadrar el efectivo, re-ancla el saldo de la cuenta.",
   bi_usd_hint:"Los importes del CSV se leen en €. Cuidado al mapear a posiciones en $ (marcadas).",
   bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker). Revolut no da ISIN, así que el precio en vivo no se descarga: el valor arranca igual al coste y lo afinas a mano si quieres.",
@@ -1547,6 +1558,8 @@ Object.assign(LANG.en,{
   bi_err:"Couldn't read the CSV (odd format?). Paste a few lines and tell me its columns.",
   bi_summary:"{n} positions detected · {from} → {to}", bi_skipped:"{n} unrecognised rows (ignored)",
   bi_notouch:"— don't touch —", bi_shares:"shares", bi_ops:"{n} trades",
+  bi_buys:"{n} buys", bi_sells:"{n} sells", bi_splits:"{n} splits/transfers",
+  bi_unmatched_hint:"⚠ Positions without a clear match stay on «don't touch»: pick where each one goes (or create new). Square shares and cost against your Revolut app before applying — only what you map gets touched.",
   bi_cash_info:"ℹ Found {int} of interest and {div} of dividends in the statement. The app doesn't add them automatically: to square the cash, re-anchor the account balance.",
   bi_usd_hint:"CSV amounts are read as €. Careful mapping to $ positions (marked).",
   bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth). Revolut gives no ISIN, so live prices aren't fetched: value starts equal to cost and you can fine-tune it by hand.",
@@ -1561,12 +1574,51 @@ Object.assign(LANG.ca,{
   bi_err:"No he pogut llegir el CSV (format estrany?). Enganxa unes línies i digue'm quines columnes té.",
   bi_summary:"{n} posicions detectades · {from} → {to}", bi_skipped:"{n} files no reconegudes (ignorades)",
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operacions",
+  bi_buys:"{n} compres", bi_sells:"{n} vendes", bi_splits:"{n} splits/traspassos",
+  bi_unmatched_hint:"⚠ Les posicions sense parella clara es queden a «no tocar»: tria tu a quina corresponen (o crear-ne una de nova). Quadra participacions i cost amb l'app de Revolut abans d'aplicar — només es toca el que mapegis.",
   bi_cash_info:"ℹ Detectats {int} d'interessos i {div} de dividends a l'extracte. L'app no els suma sola: per quadrar l'efectiu, re-ancora el saldo del compte.",
   bi_usd_hint:"Els imports del CSV es llegeixen en €. Compte en mapar a posicions en $ (marcades).",
   bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker). Revolut no dona ISIN, així que el preu en viu no es descarrega: el valor arrenca igual al cost i l'afines a mà si vols.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
   bi_rev_title:"Importa de Revolut (CSV)", bi_rev_steps_btn:"Com exportar el CSV de Revolut",
   bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","Tria el compte d'inversió → «Stocks» → «Account statement».","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja el fitxer a sota o enganxa'n el contingut. Es processa al teu mòbil, no es puja enlloc."],
+});
+/* Mini-tutoriales por pestaña (backlog 2026-07: «tu pareja no encontraba el lápiz de editar gastos») */
+Object.assign(LANG.es,{
+  coach_btn:"¿Cómo va esto?", coach_title:"Trucos de «{tab}»", coach_ok:"¡Entendido!",
+  coach_dash:["Desliza a los lados para cambiar de pestaña (o toca los puntitos de abajo).","El ⚙️ de arriba abre Ajustes: tema, idioma, bancos, copias… ahora con buscador.","¿Más o menos tarjetas en el Resumen? Ajustes → Personalización → «Personalizar widgets»."],
+  coach_metas:["Una meta es una hucha: ponle nombre, emoji e importe objetivo.","Apunta lo que ya llevas y ve actualizándolo: la barra enseña el progreso.","Puedes ponerle fecha límite y una aportación mensual para verla venir."],
+  coach_logros:["Aquí no hay que rellenar nada: las insignias se desbloquean solas usando la app y ahorrando.","Tu nivel sube con la constancia — de Aprendiz a Maestro del ahorro."],
+  coach_gastos:["Toca cualquier gasto para abrir su ficha: ahí están el lápiz ✎ (corregir comercio, importe o pasarlo a ingreso) y el borrar.","¿Categoría equivocada? Cámbiala desde la ficha: la app se acuerda del comercio para la próxima.","Arriba puedes buscar por texto y filtrar por mes, «Mi ciclo» (de cobro a cobro) o un rango de fechas.","El «+» añade un gasto a mano; la categoría se detecta sola."],
+  coach_fijos:["Aquí viven los pagos que se repiten: recibos, suscripciones y las cuotas de tus deudas.","Las cuotas de deuda entran solas desde la pestaña Deudas; no las dupliques aquí.","Para un pago de una sola vez (imprevisto, amortización) usa «Cargos puntuales»."],
+  coach_inv:["Conecta Trade Republic o MyInvestor, o importa el CSV de Revolut, desde sus tarjetas (beta): re-anclan tus posiciones con la verdad del bróker.","Lo manual también vale: añade una posición y edítala tocándola.","La calculadora de proyección simula cuánto tendrás aportando X al mes."],
+  coach_patri:["Tu foto completa: cuentas, inversiones y bienes, todo sumado.","Lo conectado (banco/bróker) se refresca solo; lo manual se edita tocándolo."],
+  coach_debt:["El pendiente baja solo cada mes con lo que amortizas; cuando te llegue el saldo real del banco, edítalo y se re-ancla.","💸 «Amortizar» adelanta pago: baja el pendiente y acorta el plazo (misma cuota, menos meses).","💡 En «¿Cuándo amortizar?» pones el interés de la deuda y te digo cuánto ahorras y si te compensa."],
+  coach_compartido:["Grupos para gastos a medias (viaje, casa, cena): añade personas y apunta quién pagó qué.","La app calcula el reparto y quién debe a quién."],
+});
+Object.assign(LANG.en,{
+  coach_btn:"How does this work?", coach_title:"Tips for “{tab}”", coach_ok:"Got it!",
+  coach_dash:["Swipe sideways to switch tabs (or tap the dots below).","The ⚙️ up top opens Settings: theme, language, banks, backups… now with a search box.","Want more or fewer cards on the Summary? Settings → Customisation → “Customise widgets”."],
+  coach_metas:["A goal is a piggy bank: give it a name, an emoji and a target amount.","Log what you've saved so far and keep it updated: the bar shows progress.","Add a deadline and a monthly contribution to see it coming."],
+  coach_logros:["Nothing to fill in here: badges unlock by themselves as you use the app and save.","Your level grows with consistency — from Apprentice to Savings Master."],
+  coach_gastos:["Tap any expense to open its card: there you'll find the pencil ✎ (fix merchant, amount or flip to income) and delete.","Wrong category? Change it from the card: the app remembers the merchant next time.","Up top you can search by text and filter by month, “My cycle” (payday to payday) or a date range.","The “+” adds an expense by hand; the category is detected automatically."],
+  coach_fijos:["Recurring payments live here: bills, subscriptions and your debt instalments.","Debt instalments flow in automatically from the Debts tab; don't duplicate them here.","For one-off charges (surprise bill, early repayment) use “One-off charges”."],
+  coach_inv:["Connect Trade Republic or MyInvestor, or import the Revolut CSV, from their cards (beta): they re-anchor your positions to the broker's truth.","Manual works too: add a position and tap it to edit.","The projection calculator simulates what you'd have contributing X per month."],
+  coach_patri:["Your full picture: accounts, investments and assets, all added up.","Connected stuff (bank/broker) refreshes itself; manual entries are edited by tapping."],
+  coach_debt:["The outstanding drops by itself each month by what you amortise; when the bank's real balance arrives, edit it and it re-anchors.","💸 “Pay down” makes an early payment: the balance drops and the term shortens (same instalment, fewer months).","💡 In “When to pay down?” set the debt's interest and I'll tell you what you save and whether it's worth it."],
+  coach_compartido:["Groups for shared expenses (trip, house, dinner): add people and log who paid what.","The app works out the split and who owes whom."],
+});
+Object.assign(LANG.ca,{
+  coach_btn:"Com va això?", coach_title:"Trucs de «{tab}»", coach_ok:"Entesos!",
+  coach_dash:["Llisca als costats per canviar de pestanya (o toca els puntets de sota).","L'⚙️ de dalt obre Ajustos: tema, idioma, bancs, còpies… ara amb cercador.","Més o menys targetes al Resum? Ajustos → Personalització → «Personalitza widgets»."],
+  coach_metas:["Una meta és una guardiola: posa-li nom, emoji i import objectiu.","Apunta el que ja portes i ves actualitzant-ho: la barra ensenya el progrés.","Pots posar-li data límit i una aportació mensual per veure-la venir."],
+  coach_logros:["Aquí no cal omplir res: les insígnies es desbloquegen soles fent servir l'app i estalviant.","El teu nivell puja amb la constància — d'Aprenent a Mestre de l'estalvi."],
+  coach_gastos:["Toca qualsevol despesa per obrir la seva fitxa: allà hi ha el llapis ✎ (corregir comerç, import o passar-la a ingrés) i l'esborrar.","Categoria equivocada? Canvia-la des de la fitxa: l'app recorda el comerç per a la propera.","A dalt pots cercar per text i filtrar per mes, «El meu cicle» (de cobrament a cobrament) o un rang de dates.","El «+» afegeix una despesa a mà; la categoria es detecta sola."],
+  coach_fijos:["Aquí viuen els pagaments que es repeteixen: rebuts, subscripcions i les quotes dels teus deutes.","Les quotes de deute entren soles des de la pestanya Deutes; no les dupliquis aquí.","Per a un pagament d'una sola vegada (imprevist, amortització) fes servir «Càrrecs puntuals»."],
+  coach_inv:["Connecta Trade Republic o MyInvestor, o importa el CSV de Revolut, des de les seves targetes (beta): re-ancoren les teves posicions amb la veritat del bròker.","Lo manual també val: afegeix una posició i edita-la tocant-la.","La calculadora de projecció simula quant tindràs aportant X al mes."],
+  coach_patri:["La teva foto completa: comptes, inversions i béns, tot sumat.","El que està connectat (banc/bròker) es refresca sol; el manual s'edita tocant-lo."],
+  coach_debt:["El pendent baixa sol cada mes amb el que amortitzes; quan t'arribi el saldo real del banc, edita'l i es re-ancora.","💸 «Amortitza» avança pagament: baixa el pendent i s'escurça el termini (mateixa quota, menys mesos).","💡 A «Quan amortitzar?» poses l'interès del deute i et dic quant estalvies i si et compensa."],
+  coach_compartido:["Grups per a despeses a mitges (viatge, casa, sopar): afegeix persones i apunta qui va pagar què.","L'app calcula el repartiment i qui deu a qui."],
 });
 /* Sincronización Trade Republic (beta · nativa en Android) */
 Object.assign(LANG.es,{
@@ -1606,6 +1658,7 @@ Object.assign(LANG.es,{
   tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
   tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
   mi_title:"Conectar MyInvestor", mi_sub:"trae tus fondos indexados",
+  mi_expired:"Tu sesión de MyInvestor caducó y no se pudo renovar sola. Vuelve a entrar (usuario recordado): contraseña y, si lo pide, el código SMS.",
   mi_hint:"Usa tu usuario y contraseña de MyInvestor. La contraseña se usa solo para el login y NO se guarda en ningún sitio: solo se guarda la sesión (como cuando entras en su web).",
   mi_need_login:"Para conectar MyInvestor primero inicia sesión en Mi Cartera (arriba, «Iniciar sesión»).",
   mi_user_ph:"Usuario / DNI de MyInvestor", mi_pass_ph:"Contraseña de MyInvestor",
@@ -1652,6 +1705,7 @@ Object.assign(LANG.en,{
   ob2_acc_h:"Everything can be edited later in Wealth and Settings.",
   tr_createnew:"➕ Create as a new position", tr_apply:"Apply to {n} positions", tr_apply_hint:"On apply: shares, value and cost are re-anchored to what Trade Republic says right now (live data, no need to refresh prices).",
   mi_title:"Connect MyInvestor", mi_sub:"pulls your index funds",
+  mi_expired:"Your MyInvestor session expired and couldn't renew itself. Sign in again (username remembered): password and, if asked, the SMS code.",
   mi_hint:"Use your MyInvestor username and password. The password is used only to log in and is NOT stored anywhere: only the session is kept (like logging into their website).",
   mi_need_login:"To connect MyInvestor, first sign in to Mi Cartera (top, «Sign in»).",
   mi_user_ph:"MyInvestor username / ID", mi_pass_ph:"MyInvestor password",
@@ -1700,6 +1754,7 @@ Object.assign(LANG.ca,{
   ob2_acc_h:"Tot es pot editar després a Patrimoni i Ajustos.",
   tr_createnew:"➕ Crea com a posició nova", tr_apply:"Aplica a {n} posicions", tr_apply_hint:"En aplicar: participacions, valor i cost es re-ancoren amb el que diu Trade Republic ara mateix (és dada en viu, no cal actualitzar preus).",
   mi_title:"Connecta MyInvestor", mi_sub:"porta els teus fons indexats",
+  mi_expired:"La teva sessió de MyInvestor ha caducat i no s'ha pogut renovar sola. Torna a entrar (usuari recordat): contrasenya i, si el demana, el codi SMS.",
   mi_hint:"Fes servir el teu usuari i contrasenya de MyInvestor. La contrasenya s'usa només per al login i NO es desa enlloc: només es desa la sessió (com quan entres a la seva web).",
   mi_need_login:"Per connectar MyInvestor primer inicia sessió a Mi Cartera (a dalt, «Inicia sessió»).",
   mi_user_ph:"Usuari / DNI de MyInvestor", mi_pass_ph:"Contrasenya de MyInvestor",
@@ -1763,7 +1818,7 @@ Object.assign(LANG.es,{
   g_card:"Con tarjeta (cuenta round-up)", g_nocard:"Bizum/transfer · sin round-up",
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_compras:"Compras", cat_salud:"Salud", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -1838,7 +1893,7 @@ Object.assign(LANG.en,{
   g_card:"Card (counts round-up)", g_nocard:"Bizum/transfer · no round-up",
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_compras:"Shopping", cat_salud:"Health", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -1912,7 +1967,7 @@ Object.assign(LANG.ca,{
   g_card:"Amb targeta (compta round-up)", g_nocard:"Bizum/transfer · sense round-up",
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_compras:"Compres", cat_salud:"Salut", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -1987,6 +2042,22 @@ Object.assign(LANG.es,{
   db_err_amount:"⚠ Falta el importe total de la deuda", db_err_quota:"⚠ Pon la cuota/mes o el plazo en meses", db_err_paid:"⚠ Has pagado tantas cuotas como el plazo: esa deuda ya está liquidada", db_added:"✓ Deuda añadida",
   db_paid_ph:"Cuotas ya pagadas", db_paid_hint:"¿Ya la tienes empezada? Pon cuántas cuotas llevas pagadas y el pendiente se calcula solo.",
   db_amortize:"Amortizar", db_amortize_prompt:"¿Cuánto amortizas de «{name}»? (€) · pendiente {x}", db_amortized:"✓ Amortizado {x} · pendiente {y}", db_amortize_full:"🎉 ¡Deuda liquidada!",
+  da_title:"¿Cuándo amortizar?", da_sub:"simula y decide con números",
+  da_rate:"Interés anual (TAE %)", da_rate_hint:"Ponle el interés a la deuda (sale en tu contrato o en la app del banco) y te digo cuánto te ahorras amortizando. Si es una financiación sin intereses, pon 0.",
+  da_amount:"¿Cuánto amortizarías?",
+  da_cut:"Te quitas {n} cuotas: acabarías en {d} en vez de {d0}.",
+  da_nocut:"Con ese importe no te quitas una cuota entera (recorta el último pago).",
+  da_saved:"≈ {x} menos de intereses de aquí al final.",
+  da_saved_yr:"≈ {x} menos de intereses al año.",
+  da_wait:"Cada mes que esperas, esta deuda te cuesta ≈ {x} en intereses: si vas a amortizar, cuanto antes mejor.",
+  da_rate0:"Al 0 % no hay prisa por amortizar{p}: ese dinero trabaja más en tu bolsillo.",
+  da_rate0_cash:" (tu efectivo remunerado da un {b}%)",
+  da_beats_cash:"Amortizar te «renta» un {a}% garantizado, más que el {b}% de tu efectivo remunerado: sale a cuenta.",
+  da_under_cash:"Ojo: tu efectivo remunerado da un {b}%, más que el {a}% de esta deuda. Matemáticamente gana el efectivo… aunque quitarte deuda también da paz.",
+  da_first:"🥇 Con varias deudas, amortiza primero la de mayor interés: «{name}» ({p}%).",
+  da_apply:"💸 Amortizar {x} ahora",
+  da_apply_q:"¿Amortizar {x} de «{name}»? El pendiente baja y el plazo se acorta con la misma cuota.",
+  da_est:"Estimación con el modelo lineal de la app: la cifra exacta depende de cómo calcule tu banco.",
   lk_unlock:"Desbloquea para continuar", lk_failed:"No se pudo verificar. Inténtalo de nuevo.", lk_unlockbtn:"Desbloquear con huella", lk_cant:"No puedo desbloquear",
   lk_escape:"¿Quitar el candado de huella en este dispositivo? Podrás volver a activarlo desde tu cuenta.",
   au_account:"Tu cuenta", au_bio_off:"🔒 Desactivar desbloqueo con huella", au_bio_on:"🔓 Activar desbloqueo con huella", au_nobio:"Este dispositivo/navegador no soporta huella.",
@@ -2032,6 +2103,22 @@ Object.assign(LANG.en,{
   db_err_amount:"⚠ Missing the total debt amount", db_err_quota:"⚠ Set the payment/mo or the term in months", db_err_paid:"⚠ You've paid as many installments as the term: that debt is already settled", db_added:"✓ Debt added",
   db_paid_ph:"Installments already paid", db_paid_hint:"Already partway through? Enter how many installments you've paid and the outstanding balance is computed for you.",
   db_amortize:"Pay down", db_amortize_prompt:"How much of “{name}” do you pay down? (€) · outstanding {x}", db_amortized:"✓ Paid down {x} · outstanding {y}", db_amortize_full:"🎉 Debt settled!",
+  da_title:"When to pay down?", da_sub:"simulate and decide with numbers",
+  da_rate:"Annual interest (APR %)", da_rate_hint:"Give the debt its interest rate (it's in your contract or the bank's app) and I'll tell you what early repayment saves. For 0% financing, put 0.",
+  da_amount:"How much would you pay down?",
+  da_cut:"You'd drop {n} payments: done by {d} instead of {d0}.",
+  da_nocut:"That amount doesn't remove a whole payment (it trims the last one).",
+  da_saved:"≈ {x} less interest between now and the end.",
+  da_saved_yr:"≈ {x} less interest per year.",
+  da_wait:"Every month you wait, this debt costs ≈ {x} in interest: if you're going to do it, sooner is better.",
+  da_rate0:"At 0% there's no rush to pay down{p}: that money works harder in your pocket.",
+  da_rate0_cash:" (your interest-bearing cash pays {b}%)",
+  da_beats_cash:"Paying down “earns” you a guaranteed {a}%, beating the {b}% on your cash: worth it.",
+  da_under_cash:"Heads-up: your cash earns {b}%, more than this debt's {a}%. The math favours the cash… though killing debt buys peace of mind too.",
+  da_first:"🥇 With several debts, pay down the highest interest first: “{name}” ({p}%).",
+  da_apply:"💸 Pay down {x} now",
+  da_apply_q:"Pay down {x} of “{name}”? The balance drops and the term shortens with the same payment.",
+  da_est:"Estimate using the app's linear model: the exact figure depends on your bank's math.",
   lk_unlock:"Unlock to continue", lk_failed:"Couldn't verify. Try again.", lk_unlockbtn:"Unlock with fingerprint", lk_cant:"I can't unlock",
   lk_escape:"Remove the fingerprint lock on this device? You can re-enable it from your account.",
   au_account:"Your account", au_bio_off:"🔒 Turn off fingerprint unlock", au_bio_on:"🔓 Turn on fingerprint unlock", au_nobio:"This device/browser doesn't support fingerprint.",
@@ -2077,6 +2164,22 @@ Object.assign(LANG.ca,{
   db_err_amount:"⚠ Falta l'import total del deute", db_err_quota:"⚠ Posa la quota/mes o el termini en mesos", db_err_paid:"⚠ Has pagat tantes quotes com el termini: aquest deute ja està liquidat", db_added:"✓ Deute afegit",
   db_paid_ph:"Quotes ja pagades", db_paid_hint:"Ja el tens començat? Posa quantes quotes portes pagades i el pendent es calcula sol.",
   db_amortize:"Amortitza", db_amortize_prompt:"Quant amortitzes de «{name}»? (€) · pendent {x}", db_amortized:"✓ Amortitzat {x} · pendent {y}", db_amortize_full:"🎉 Deute liquidat!",
+  da_title:"Quan amortitzar?", da_sub:"simula i decideix amb números",
+  da_rate:"Interès anual (TAE %)", da_rate_hint:"Posa-li l'interès al deute (surt al contracte o a l'app del banc) i et dic quant t'estalvies amortitzant. Si és un finançament sense interessos, posa 0.",
+  da_amount:"Quant amortitzaries?",
+  da_cut:"Et treus {n} quotes: acabaries el {d} en comptes del {d0}.",
+  da_nocut:"Amb aquest import no et treus una quota sencera (retalla l'últim pagament).",
+  da_saved:"≈ {x} menys d'interessos d'aquí al final.",
+  da_saved_yr:"≈ {x} menys d'interessos l'any.",
+  da_wait:"Cada mes que esperes, aquest deute et costa ≈ {x} en interessos: si has d'amortitzar, com més aviat millor.",
+  da_rate0:"Al 0 % no hi ha pressa per amortitzar{p}: aquests diners treballen més a la teva butxaca.",
+  da_rate0_cash:" (el teu efectiu remunerat dona un {b}%)",
+  da_beats_cash:"Amortitzar et «renta» un {a}% garantit, més que el {b}% del teu efectiu remunerat: surt a compte.",
+  da_under_cash:"Compte: el teu efectiu remunerat dona un {b}%, més que l'{a}% d'aquest deute. Matemàticament guanya l'efectiu… tot i que treure't deute també dona pau.",
+  da_first:"🥇 Amb diversos deutes, amortitza primer el de més interès: «{name}» ({p}%).",
+  da_apply:"💸 Amortitza {x} ara",
+  da_apply_q:"Amortitzar {x} de «{name}»? El pendent baixa i el termini s'escurça amb la mateixa quota.",
+  da_est:"Estimació amb el model lineal de l'app: la xifra exacta depèn de com calculi el teu banc.",
   lk_unlock:"Desbloqueja per continuar", lk_failed:"No s'ha pogut verificar. Torna-ho a provar.", lk_unlockbtn:"Desbloqueja amb empremta", lk_cant:"No puc desbloquejar",
   lk_escape:"Treure el bloqueig d'empremta en aquest dispositiu? Podràs tornar a activar-lo des del teu compte.",
   au_account:"El teu compte", au_bio_off:"🔒 Desactiva el desbloqueig amb empremta", au_bio_on:"🔓 Activa el desbloqueig amb empremta", au_nobio:"Aquest dispositiu/navegador no admet empremta.",
@@ -4027,6 +4130,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 function brokerSuggest(pos, investments){
   const byIsin=investments.find(function(i){ return i.isin && i.isin===pos.isin; });
   if(byIsin) return byIsin.id;
+  // ticker exacto (Revolut solo da ticker: «NVDA» no casa por nombre con «NVIDIA» y sin esto
+  // el importador proponía crear duplicados de posiciones que ya existían — feedback 2026-07-13)
+  const tk=String(pos.ticker||pos.isin||"").toUpperCase();
+  if(tk){ const byTicker=investments.find(function(i){ return i.ticker && String(i.ticker).toUpperCase()===tk; }); if(byTicker) return byTicker.id; }
   const words=String(pos.name||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").split(/[^a-z0-9&]+/).filter(function(w){ return w.length>=4; });
   let best=null, bestScore=0;
   investments.forEach(function(i){
@@ -4060,13 +4167,28 @@ function csvSplitLine(line){
   }
   out.push(cur); return out;
 }
-// "$1,108.22 " / "€88.94" / "($0.01)" / "-$30.93" / "$0" → número con signo (decimal = punto).
+// Normaliza un número con separadores ambiguos a "decimal = punto". Cubre los DOS formatos
+// que Revolut mezcla según el idioma de la cuenta (feedback 2026-07-13: una cuenta ES exporta
+// "88,94 €" y el parser viejo lo leía como 8894 → posiciones con costes disparatados):
+//   US "1,108.22" · EU "1.108,22" · solo coma "88,94" (decimal) / "1,108" (miles) · solo punto.
+function revoNum(s){
+  if(s.indexOf('.')>=0 && s.indexOf(',')>=0){
+    if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,"").replace(/,/g,".");  // EU: punto=miles, coma=decimal
+    else s=s.replace(/,/g,"");                                                          // US: coma=miles
+  } else if(s.indexOf(',')>=0){
+    const parts=s.split(',');
+    if(parts.length===2 && parts[1].length!==3) s=parts[0]+"."+parts[1];   // "88,94" / "0,76672417" → decimal
+    else s=s.replace(/,/g,"");                                             // "1,108" / "1,234,567" → miles
+  } else if(s.split('.').length>2){ s=s.replace(/\./g,""); }               // "1.234.567" → miles EU
+  return s;
+}
+// "$1,108.22 " / "€88,94" / "($0.01)" / "-$30.93" / "$0" → número con signo (decimal = punto).
 function revoAmt(s){
   s=String(s==null?"":s).trim(); if(!s) return null;
   let neg=false;
   if(/^\(.*\)$/.test(s)){ neg=true; s=s.slice(1,-1); }      // negativo estilo contable
-  if(s.indexOf('-')>=0) neg=true;
-  s=s.replace(/[^0-9.]/g,"");                                // fuera símbolo, comas de miles, espacios, signo
+  if(s.indexOf('-')>=0||s.indexOf('−')>=0) neg=true;    // guion ASCII o signo menos unicode
+  s=revoNum(s.replace(/[^0-9.,]/g,""));                      // fuera símbolo, espacios, signo → decimal=punto
   if(s===""||s===".") return null;
   const n=parseFloat(s); if(!isFinite(n)) return null;
   return neg?-n:n;
@@ -4074,9 +4196,8 @@ function revoAmt(s){
 // Participaciones: el decimal puede ser punto ("1.63453043") o coma ("0,76672417", cuenta ES).
 function revoQty(s){
   s=String(s==null?"":s).trim().replace(/\s/g,""); if(!s) return null;
-  if(s.indexOf(',')>=0 && s.indexOf('.')<0) s=s.replace(',', '.');   // coma decimal
-  else s=s.replace(/,/g,'');                                          // coma de miles
-  const n=parseFloat(s); return isFinite(n)?n:null;
+  s=revoNum(s.replace(/[^0-9.,\-]/g,""));
+  const n=parseFloat(s); return isFinite(n)?Math.abs(n):null;   // el signo lo pone el tipo de fila, no la cantidad
 }
 // Divisa: primero por el símbolo del importe ($→USD, €→EUR, £→GBP), si no por el campo Currency.
 function revoCur(amountStr, curField){
@@ -4127,24 +4248,27 @@ function revoParse(text){
 // las ventas restan coste proporcional (no el importe de venta); splits/traspasos ajustan solo shares.
 function revoAggregate(parsed){
   const by={};
-  const get=function(tk,cur){ if(!by[tk]) by[tk]={ticker:tk,name:tk,shares:0,cost:0,cur:cur||"EUR",buys:0,sells:0,divi:0,fees:0}; return by[tk]; };
+  const get=function(tk,cur){ if(!by[tk]) by[tk]={ticker:tk,name:tk,shares:0,cost:0,cur:cur||"EUR",buys:0,sells:0,splits:0,divi:0,fees:0}; return by[tk]; };
   let dividends=0, fees=0;
   (parsed.rows||[]).forEach(function(r){
     if(r.kind==='dividend'){ dividends+=Math.abs(r.amount||0); if(r.ticker) get(r.ticker,r.cur).divi+=Math.abs(r.amount||0); return; }
     if(r.kind==='fee'){ fees+=Math.abs(r.amount||0); if(r.ticker) get(r.ticker,r.cur).fees+=Math.abs(r.amount||0); return; }
     if(!r.ticker) return;
     const p=get(r.ticker,r.cur); if(r.cur) p.cur=r.cur;
-    const q=Number(r.qty||0); const amt=Math.abs(Number(r.amount||0));
+    let q=Number(r.qty||0); const amt=Math.abs(Number(r.amount||0));
+    // fila sin cantidad pero con precio+importe (pasa en extractos viejos) → cantidad = importe/precio.
+    // Sin este fallback una VENTA sin cantidad no restaba nada y la posición «vendida» reaparecía entera.
+    if(!(q>0) && r.price>0 && amt>0) q=amt/r.price;
     if(r.kind==='buy' || (r.kind==='trade' && (r.amount==null||r.amount>=0))){ p.shares+=q; p.cost+=amt; p.buys++; }
     else if(r.kind==='sell' || (r.kind==='trade' && r.amount<0)){
       const avg=p.shares>0?p.cost/p.shares:0; const sq=Math.min(q,p.shares);
       p.shares-=sq; p.cost-=avg*sq; p.sells++;
     }
-    else if(r.kind==='split' || r.kind==='transfer'){ p.shares+=q; }   // coste 0: solo ajusta participaciones
+    else if(r.kind==='split' || r.kind==='transfer'){ p.shares+=q; p.splits++; }   // coste 0: solo ajusta participaciones
   });
   const positions=Object.keys(by).map(function(k){ const p=by[k];
-      return { ticker:p.ticker, name:p.name, shares:+p.shares.toFixed(8), cost:+Math.max(0,p.cost).toFixed(2), cur:p.cur, divi:+p.divi.toFixed(2) }; })
-    .filter(function(p){ return p.shares>0.00000001; })
+      return { ticker:p.ticker, name:p.name, shares:+p.shares.toFixed(8), cost:+Math.max(0,p.cost).toFixed(2), cur:p.cur, divi:+p.divi.toFixed(2), buys:p.buys, sells:p.sells, splits:p.splits }; })
+    .filter(function(p){ return p.shares>0.0001; })   // fuera el «polvo» de posiciones liquidadas (antes 1e-8: resucitaba restos)
     .sort(function(a,b){ return b.cost-a.cost; });
   return { positions:positions, dividends:+dividends.toFixed(2), fees:+fees.toFixed(2) };
 }
@@ -4167,8 +4291,11 @@ function BrokerImport({state, set}){
     if(!p||!agg||!agg.positions.length){ setErr(true); setParsed(null); return; }
     const m={};
     agg.positions.forEach(function(po){
-      const sug=brokerSuggest({isin:po.ticker,name:po.name}, state.investments);
-      m[po.ticker]=sug||"__new";
+      const sug=brokerSuggest({ticker:po.ticker,name:po.name}, state.investments);
+      // Sin sugerencia clara el defecto es NO TOCAR (antes era «crear nueva» y el import
+      // sembraba posiciones extra de valores ya vendidos — feedback 2026-07-13). Solo con
+      // la cartera vacía compensa crear todo de serie.
+      m[po.ticker]=sug||((state.investments||[]).length?"":"__new");
     });
     setParsed(Object.assign({},agg,{from:p.from,to:p.to,skipped:p.skipped})); setMap(m);
   };
@@ -4212,12 +4339,16 @@ function BrokerImport({state, set}){
     parsed && React.createElement(React.Fragment,null,
       React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("bi_summary",{n:parsed.positions.length, from:parsed.from||"—", to:parsed.to||"—"})),
       parsed.skipped>0 && React.createElement("div",{className:"hint",style:{marginTop:0}}, tf("bi_skipped",{n:parsed.skipped})),
+      mappedN<parsed.positions.length && React.createElement("div",{className:"hint",style:{marginTop:4}}, t("bi_unmatched_hint")),
       parsed.positions.map(function(po){
+        // desglose de la reconstrucción («N compras · M ventas · splits») para poder auditar
+        // por qué salen estas participaciones cuando no cuadran con la app de Revolut
+        const ops=[ po.buys>0?tf("bi_buys",{n:po.buys}):null, po.sells>0?tf("bi_sells",{n:po.sells}):null, po.splits>0?tf("bi_splits",{n:po.splits}):null ].filter(Boolean).join(" · ");
         return React.createElement("div",{key:po.ticker,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
           React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
             React.createElement("div",{style:{minWidth:0}},
               React.createElement("div",{className:"rname"},po.ticker+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):"")),
-              React.createElement("div",{className:"rsub"}, po.shares+" "+t("bi_shares"))),
+              React.createElement("div",{className:"rsub"}, po.shares+" "+t("bi_shares")+(ops?(" · "+ops):""))),
             React.createElement("div",{className:"rval num"}, eur(po.cost))),
           React.createElement("select",{className:"af-in",value:map[po.ticker]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.ticker]=v; return n; }); }},
             React.createElement("option",{value:""},t("bi_notouch")),
@@ -4247,7 +4378,9 @@ function BrokerImport({state, set}){
    reintenta más tarde). Trae fondos indexados / fondos / acciones. Ver [[mi-cartera-escalado]]. */
 function MyInvestorSync({state, set}){
   const [step,setStep]=useState("idle");     // idle | otp | connected | preview
-  const [cid,setCid]=useState("");
+  // usuario recordado (NUNCA la contraseña): reconectar tras una caducidad = solo contraseña+OTP
+  const [cid,setCid]=useState(function(){ try{ return localStorage.getItem("_miCid")||""; }catch(e){ return ""; } });
+  const [expired,setExpired]=useState(false);
   const [pass,setPass]=useState("");
   const [code,setCode]=useState("");
   const [busy,setBusy]=useState(false);
@@ -4261,7 +4394,7 @@ function MyInvestorSync({state, set}){
   const deviceId=function(){ if(!devRef.current){ try{ devRef.current=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("mi-"+Date.now()+"-"+Math.random().toString(36).slice(2)); }catch(e){ devRef.current="mi-"+Date.now(); } } return devRef.current; };
   useEffect(function(){
     if(!cloud.enabled()){ setNoSession(true); return; }
-    cloud.session().then(function(se){ if(!se){ setNoSession(true); return; } cloud.myinvestorStatus().then(function(r){ if(r&&r.status==="active") setStep("connected"); }).catch(function(){}); }).catch(function(){ setNoSession(true); });
+    cloud.session().then(function(se){ if(!se){ setNoSession(true); return; } cloud.myinvestorStatus().then(function(r){ if(r&&r.status==="active") setStep("connected"); else if(r&&r.status==="expired") setExpired(true); }).catch(function(){}); }).catch(function(){ setNoSession(true); });
   },[]);
   const fail=function(r){ setBusy(false); const m=(r&&(r.error||r.message))||t("mi_err"); setErr(m); try{ cloud.logEvent('error','MI: '+m); }catch(e){} };
   const doConnect=function(){
@@ -4271,7 +4404,7 @@ function MyInvestorSync({state, set}){
       if(!r){ fail(r); return; }
       if(r.recaptcha){ setErr(r.error||t("mi_recaptcha")); return; }
       if(r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
-      if(r.connected){ setStep("connected"); doSync(); return; }
+      if(r.connected){ try{ localStorage.setItem("_miCid",cid.trim()); }catch(e){} setExpired(false); setStep("connected"); doSync(); return; }
       fail(r);
     }).catch(fail);
   };
@@ -4279,7 +4412,7 @@ function MyInvestorSync({state, set}){
     if(code.trim().length<4||!otpInfo) return; setBusy(true); setErr("");
     cloud.myinvestorConnect({ customerId:cid.trim(), password:pass, deviceId:deviceId(), otpId:otpInfo.otpId, signatureRequestId:otpInfo.signatureRequestId, code:code.trim() }).then(function(r){
       setBusy(false);
-      if(r&&r.connected){ setPass(""); setCode(""); setStep("connected"); doSync(); return; }
+      if(r&&r.connected){ try{ localStorage.setItem("_miCid",cid.trim()); }catch(e){} setExpired(false); setPass(""); setCode(""); setStep("connected"); doSync(); return; }
       fail(r);
     }).catch(fail);
   };
@@ -4287,7 +4420,7 @@ function MyInvestorSync({state, set}){
     setBusy(true); setErr(""); setDoneN(null);
     cloud.myinvestorSync().then(function(r){
       setBusy(false);
-      if(r&&r.authExpired){ setStep("idle"); fail(r); return; }
+      if(r&&r.authExpired){ setStep("idle"); setExpired(true); fail(r); return; }
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
       r.positions.forEach(function(po){ const k=po.isin||po.name; const sug=brokerSuggest({isin:po.isin,name:po.name}, state.investments); m[k]=sug||"__new"; });
@@ -4316,7 +4449,7 @@ function MyInvestorSync({state, set}){
     });
     setDoneN(mappedN); setPositions(null); setStep("connected");
   };
-  const disconnect=function(){ cloud.myinvestorDisconnect(); setStep("idle"); setPositions(null); setCid(""); setPass(""); setOtpInfo(null); };
+  const disconnect=function(){ cloud.myinvestorDisconnect(); try{ localStorage.removeItem("_miCid"); }catch(e){} setExpired(false); setStep("idle"); setPositions(null); setCid(""); setPass(""); setOtpInfo(null); };
   const inpStyle={marginTop:8};
   return React.createElement(CollapsibleCard,{title:t("mi_title"),sub:t("tr_beta")+" · "+t("mi_sub"),dot:"#E85D9A",defaultOpen:false,storageKey:"inv_misync"},
     React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("mi_hint")),
@@ -4324,6 +4457,7 @@ function MyInvestorSync({state, set}){
       ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_need_login"))
       : React.createElement(React.Fragment,null,
           step==="idle" && React.createElement(React.Fragment,null,
+            expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
             React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
             React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
             React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
@@ -6028,6 +6162,69 @@ function Fijos({state, set, totals}){
 /* ============================================================
    TAB: DEUDAS
    ============================================================ */
+/* ASESOR DE AMORTIZACIÓN (#11) — «¿cuándo amortizar?»
+   El interés (TAE) es opcional por deuda (d.apr, se edita aquí mismo): con él la tarjeta
+   estima intereses ahorrados, el coste de esperar y compara contra el efectivo remunerado
+   (interestApr de las cuentas, p.ej. TR). Sin él, al menos simula cuántas cuotas te quitas.
+   Los números usan el modelo lineal de la app (ver debtBalance): son una estimación honesta,
+   no la liquidación exacta del banco. */
+function AmortAdvisor({state, set, onAmort}){
+  const debts=(state.debts||[]).filter(function(d){ return debtBalance(d)>0.005; });
+  const [selId,setSelId]=useState(null);
+  const [amtStr,setAmtStr]=useState("500");
+  if(!debts.length) return null;
+  const d=debts.find(function(x){ return x.id===selId; })||debts[0];
+  const bal=debtBalance(d);
+  const apr=d.apr!=null?d.apr:null;
+  const setApr=function(v){ set(function(s){ return Object.assign({},s,{debts:s.debts.map(function(x){ return x.id===d.id?Object.assign({},x,{apr:v}):x; })}); }); };
+  const amt=Math.min(Math.max(0,parseFloat(String(amtStr).replace(',','.'))||0), bal);
+  const am=debtAmort(d), leftNow=debtLeft(d);
+  const nb=+(bal-amt).toFixed(2);
+  let leftNew=null, cut=null;
+  if(d.months!=null && am>0){
+    const viaM=Math.max(0, nb-(d.balloon||0));
+    leftNew=viaM>0?Math.ceil(viaM/am):((d.balloon>0&&nb>0.005)?1:0);
+    cut=Math.max(0,(leftNow||0)-leftNew);
+  }
+  const inMonths=function(k){ const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+k); return monthLong(dt.getMonth())+" "+dt.getFullYear(); };
+  const r=(apr||0)/1200;
+  // ahorro ≈ el importe deja de «deber» durante lo que queda de vida del préstamo + la cola que se corta
+  const savedTerm=(apr>0&&leftNew!=null)?(amt*r*leftNew+(amt/2)*r*(cut||0)):null;
+  const savedYr=(apr>0&&leftNew==null)?amt*(apr/100):null;
+  const waitCost=(apr>0)?bal*r:null;
+  const cashApr=(state.accounts||[]).reduce(function(mx,a){ return Math.max(mx,a.interestApr||0); },0);
+  const ranked=debts.filter(function(x){ return x.apr>0; }).sort(function(a,b){ return b.apr-a.apr; });
+  const res=function(txt,color){ return React.createElement("div",{className:"hint",style:{marginTop:6,color:color||"var(--text)",lineHeight:1.5}}, txt); };
+  return React.createElement(CollapsibleCard,{title:"💡 "+t("da_title"),sub:t("da_sub"),dot:"#E2C05F",defaultOpen:false,storageKey:"debt_advisor"},
+    debts.length>1 && React.createElement("select",{className:"af-in",style:{marginBottom:8},value:d.id,onChange:function(e){ setSelId(e.target.value); }},
+      debts.map(function(x){ return React.createElement("option",{key:x.id,value:x.id}, x.name+" · "+eur0(debtBalance(x))); })),
+    React.createElement("div",{className:"row",style:{marginTop:0}},
+      React.createElement("span",{className:"muted"},t("da_rate")),
+      React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"—",value:apr!=null?apr:"",onChange:function(e){ const v=String(e.target.value).trim(); setApr(v===""?null:(parseFloat(v.replace(',','.'))||0)); }})),
+    apr==null && React.createElement("div",{className:"hint",style:{marginTop:4}}, t("da_rate_hint")),
+    React.createElement("div",{className:"row",style:{marginTop:6}},
+      React.createElement("span",{className:"muted"},t("da_amount")),
+      React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",value:amtStr,onChange:function(e){ setAmtStr(e.target.value); }})),
+    React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}},
+      [100,250,500,1000].filter(function(v){ return v<=bal; }).map(function(v){
+        return React.createElement("button",{key:v,className:"chip",onClick:function(){ setAmtStr(String(v)); }}, eur0(v)); })),
+    amt>0 && React.createElement("div",{style:{marginTop:10,padding:"10px 12px",borderRadius:12,background:"var(--surface-2)",border:"1px solid var(--line)"}},
+      cut!=null && (cut>0 ? res("📆 "+tf("da_cut",{n:cut,d:inMonths(leftNew),d0:inMonths(leftNow)})) : res("📆 "+t("da_nocut"))),
+      savedTerm!=null && savedTerm>=0.5 && res("💶 "+tf("da_saved",{x:eur(savedTerm)}),"var(--mint)"),
+      savedYr!=null && savedYr>=0.5 && res("💶 "+tf("da_saved_yr",{x:eur(savedYr)}),"var(--mint)"),
+      waitCost!=null && waitCost>=0.5 && res("⏳ "+tf("da_wait",{x:eur(waitCost)})),
+      apr===0 && res("🧊 "+tf("da_rate0",{p:cashApr>0?tf("da_rate0_cash",{b:cashApr}):""})),
+      apr>0 && cashApr>0 && (apr>=cashApr
+        ? res("✅ "+tf("da_beats_cash",{a:apr,b:cashApr}))
+        : res("⚖️ "+tf("da_under_cash",{a:apr,b:cashApr}))),
+      ranked.length>1 && res(tf("da_first",{name:ranked[0].name,p:ranked[0].apr}))
+    ),
+    amt>0 && React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},onClick:function(){
+      if(window.confirm(tf("da_apply_q",{x:eur0(amt),name:d.name}))) onAmort(d, amt);
+    }}, tf("da_apply",{x:eur0(amt)})),
+    React.createElement("div",{className:"hint",style:{marginTop:8,fontSize:11.5}}, t("da_est"))
+  );
+}
 function Debts({state, set, showToast}){
   // editar el saldo re-ancla la proyección para que siga desde ahí. Sin plazo: se re-ancla asOf.
   // Con plazo: asOf NO se toca (re-anclarlo resetearía debtPaidCount y el «Quedan n/tot» volvería
@@ -6071,12 +6268,11 @@ function Debts({state, set, showToast}){
     showToast(t("db_added"));
   };
   const delDebt=(id)=> set(s=>Object.assign({},s,{debts:s.debts.filter(d=>d.id!==id)}));
-  // amortización anticipada: baja el pendiente y acorta el plazo (misma cuota, menos meses)
-  const amortize=(d)=>{
+  // amortización anticipada: baja el pendiente y acorta el plazo (misma cuota, menos meses).
+  // doAmort es la operación; amortize solo pregunta el importe. El asesor (#11) llama a doAmort.
+  const doAmort=(d,rawAmt)=>{
     const bal=debtBalance(d);
-    const raw=window.prompt(tf("db_amortize_prompt",{name:d.name,x:eur0(bal)}),"");
-    if(raw==null) return;
-    const amt=Math.min(parseFloat(String(raw).replace(',','.'))||0, bal);
+    const amt=Math.min(rawAmt||0, bal);
     if(amt<=0) return;
     const nb=+(bal-amt).toFixed(2);
     set(s=>Object.assign({},s,{debts:s.debts.map(x=>{
@@ -6087,6 +6283,11 @@ function Debts({state, set, showToast}){
       return o;
     })}));
     showToast(nb<=0.005?t("db_amortize_full"):tf("db_amortized",{x:eur(amt),y:eur(nb)}));
+  };
+  const amortize=(d)=>{
+    const raw=window.prompt(tf("db_amortize_prompt",{name:d.name,x:eur0(debtBalance(d))}),"");
+    if(raw==null) return;
+    doAmort(d, parseFloat(String(raw).replace(',','.'))||0);
   };
   return React.createElement("div",null,
     React.createElement("div",{className:"total-bar"},
@@ -6123,6 +6324,7 @@ function Debts({state, set, showToast}){
       )};
     })}),
     React.createElement("button",{className:"btn btn-block "+(ed.editing?"btn-primary":"btn-ghost"),onClick:()=>ed.editing?ed.save():ed.start()}, ed.editing?t("db_savechanges"):t("db_editbalances")),
+    React.createElement(AmortAdvisor,{state:state,set:set,onAmort:doAmort}),
     adding
       ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
           React.createElement("input",{className:"af-in",placeholder:t("db_concept"),value:form.name,onChange:e=>setForm(Object.assign({},form,{name:e.target.value}))}),
@@ -6333,6 +6535,23 @@ function Achievements({state, totals}){
 /* ============================================================
    APP
    ============================================================ */
+/* Mini-tutorial por pestaña: la primera vez que se abre una pestaña sale desplegado
+   (feedback: «mi pareja no encontraba el lápiz de editar gastos»); al cerrarlo queda un
+   botoncito «💡 ¿Cómo va esto?» para releerlo. Estado por pestaña en localStorage. */
+function TabCoach({tabId}){
+  const tips=t("coach_"+tabId);
+  const [seen,setSeen]=useState(function(){ try{ return localStorage.getItem("_coach_"+tabId)==="1"; }catch(e){ return true; } });
+  const [open,setOpen]=useState(!seen);
+  if(!Array.isArray(tips)||!tips.length) return null;
+  const dismiss=function(){ try{ localStorage.setItem("_coach_"+tabId,"1"); }catch(e){} setSeen(true); setOpen(false); };
+  if(!open) return React.createElement("button",{className:"coach-pill",onClick:function(){ setOpen(true); }},"💡 "+t("coach_btn"));
+  return React.createElement("div",{className:"coach-card"},
+    React.createElement("div",{style:{fontWeight:800,fontSize:13.5,color:"var(--text)",marginBottom:4}},"💡 "+tf("coach_title",{tab:t("tab_"+tabId)})),
+    tips.map(function(tip,i){ return React.createElement("div",{key:i,style:{display:"flex",gap:8,fontSize:12.5,color:"var(--muted)",lineHeight:1.5,marginTop:5}},
+      React.createElement("span",{style:{flex:"0 0 auto"}},"·"),React.createElement("span",null,tip)); }),
+    React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:dismiss},t("coach_ok"))
+  );
+}
 const TABS=[
   {id:"dash",label:"Resumen",icon:I.dash},
   {id:"metas",label:"Metas",icon:I.goal},
@@ -6804,6 +7023,14 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.97.0", d:"13 jul 2026", t:"Importar Revolut arreglado, asesor de amortización y Ajustes con buscador", items:[
+    "💹 El importador de Revolut ya lee bien los números: entiende importes con coma española («88,94 €»), ventas sin cantidad, y no resucita posiciones que ya vendiste. Además, por defecto NO crea posiciones nuevas — tú decides qué se toca, y cada posición enseña sus compras/ventas para poder cuadrarla con la app de Revolut.",
+    "💡 Nuevo en Deudas: el asesor «¿Cuándo amortizar?». Ponle el interés a la deuda, di cuánto amortizarías y te dice cuántas cuotas te quitas, cuánto ahorras en intereses y si te compensa frente a tu efectivo remunerado.",
+    "⚙️ Ajustes reorganizado: secciones plegadas y buscador arriba («tema», «banco», «copia»…). Se acabó el scroll kilométrico.",
+    "🎓 Mini-tutoriales por pestaña: la primera vez que entras en cada una te cuenta sus trucos (p.ej. el lápiz ✎ para editar un gasto). Los relees cuando quieras con el botoncito «💡 ¿Cómo va esto?».",
+    "📈 La sesión de MyInvestor ahora se mantiene viva sola (el servidor la renueva cada 10 minutos). Si aún así caduca, la app te lo canta y recuerda tu usuario — la contraseña nunca se guarda.",
+    "💇 Categoría nueva: Peluquería (cortes, uñas y estética ya no caen en «Salud»)."
+  ]},
   {v:"3.96.0", d:"12 jul 2026", t:"Conectar MyInvestor, importar Revolut y las vistas de Gastos con nombres claros", items:[
     "📈 Conectar MyInvestor (beta): en Ajustes → Gestionar mis bancos. Metes usuario y contraseña (puede pedir un SMS) y trae tus fondos indexados. Tu contraseña NO se guarda, solo la sesión.",
     "💹 Importar Revolut por CSV (beta): junto a Trade Republic, con un paso a paso para exportar el extracto desde la app de Revolut. Re-ancla tus acciones/ETF. Se procesa en tu móvil, no se sube nada.",
@@ -7050,13 +7277,38 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const bigOn=!!(state.settings&&state.settings.bigText);
   const simOn=!!(state.settings&&state.settings.simpleMode);
   const segBtn=function(on){ return Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}); };
+  // ── Secciones colapsables + buscador (feedback 2026-07-13: «Ajustes se está haciendo
+  // kilométrico»). Cada tarjeta es ahora un grupo plegado (estado en localStorage); el
+  // buscador filtra grupos por título y palabras clave y los abre de golpe. ──
+  const [q,setQ]=useState("");
+  const normQ=function(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); };
+  const [grps,setGrps]=useState({});
+  const isOpen=function(id){ const v=grps[id]; if(v!=null) return v; try{ const st=localStorage.getItem("_setg_"+id); if(st!=null) return st==="1"; }catch(e){} return id==="general"; };
+  const toggleGrp=function(id){ const v=!isOpen(id); try{ localStorage.setItem("_setg_"+id, v?"1":"0"); }catch(e){} setGrps(function(g){ const n=Object.assign({},g); n[id]=v; return n; }); };
+  let grpMatches=0;   // cuántos grupos pasan el filtro del buscador (para el «sin resultados»)
+  const grp=function(id,icon,title,keywords,val){
+    const kids=Array.prototype.slice.call(arguments,5);
+    const nq=normQ(q).trim();
+    if(nq && normQ(title+" "+(keywords||"")).indexOf(nq)<0) return null;
+    grpMatches++;
+    const open=nq!==""?true:isOpen(id);
+    return React.createElement("div",{className:"set-card"},
+      React.createElement("button",{className:"set-row",onClick:function(){ toggleGrp(id); }},
+        React.createElement("span",{className:"sr-ic"},icon),
+        React.createElement("span",{className:"sr-lb",style:{fontWeight:800}},title),
+        val!=null && React.createElement("span",{className:"sr-val"},val),
+        React.createElement("span",{className:"sr-chev"+(open?" open":"")},"›")),
+      open && React.createElement.apply(null,[React.Fragment,null].concat(kids))
+    );
+  };
   return React.createElement(React.Fragment,null,
     React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
       React.createElement("div",{style:{fontWeight:700,fontSize:"18px",color:"var(--text)"}},t("settings")),
       React.createElement("button",{style:{background:"none",border:"none",color:"var(--muted)",fontSize:"22px",cursor:"pointer",lineHeight:1},onClick:onClose},"×")
     ),
-    // ── Tarjeta 1 · general: idioma / tema / letra grande / modo sencillo ──
-    React.createElement("div",{className:"set-card"},
+    React.createElement("input",{style:Object.assign({},inp,{marginTop:12}),placeholder:t("st_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
+    // ── Grupo · general: idioma / tema / letra grande / modo sencillo ──
+    grp("general","⚙️",t("st_g_general"),"idioma language tema theme color letra grande big text modo sencillo simple mode",null,
       row("lang","🌐",t("language"),(LANGS.find(function(L){return L[0]===curLang;})||LANGS[0])[1],function(){ toggleExp("lang"); }),
       expand==="lang" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
@@ -7075,12 +7327,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("simple","🍃",t("st_simple_lbl"),null,function(){
         const sim=!simOn;
         setS({simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[], dashHidden: sim?SIMPLE_DASH_HIDDEN.slice():[]});
-      }, sw(simOn))
+      }, sw(simOn)),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",padding:"0 14px 10px"}}, t("st_mode_hint"))
     ),
-    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6,padding:"0 2px"}}, t("st_mode_hint")),
-    // ── Tarjeta 2 · personalización ──
-    React.createElement("div",{className:"set-card"},
-      React.createElement("div",{className:"sc-title"},t("st_custom")),
+    // ── Grupo · personalización ──
+    grp("custom","🎛️",t("st_custom"),"personalizar widgets resumen pestañas tabs vista gastos bloques blocks tutorial tour informe report customise",null,
       row("widgets","✎",t("st_widgets"),null,function(){
         // cierra el cajón, salta al Resumen y enciende su modo "Personalizar" (evento → App + Dashboard)
         onClose();
@@ -7142,9 +7393,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       onTour && row("tour","🎓",t("st_tour").replace(/^[^ ]+ /,""),null,onTour),
       totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals); })
     ),
-    // ── Tarjeta 3 · presupuesto y moneda ──
-    React.createElement("div",{className:"set-card"},
-      React.createElement("div",{className:"sc-title"},t("budget_month")),
+    // ── Grupo · presupuesto y moneda ──
+    grp("budget","💶",t("budget_month"),"presupuesto budget moneda divisa currency euro dolar",eur0(state.budget||0),
       React.createElement("div",{style:{padding:"8px 14px 14px"}},
         React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
         React.createElement("button",{style:btn,onClick:saveNums},t("save"))
@@ -7165,9 +7415,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
         : nDead>0 ? tf("bp_summary_exp",{n:nDead})
         : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
-      return React.createElement("div",{className:"set-card"},
-        React.createElement("div",{className:"sc-title"},t("bank_section")),
-        row("banks","🏦",t("bp_manage"),summary,function(){ setManageBanks(true); })
+      return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
+        row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
       );
     })(),
     manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
@@ -7206,8 +7455,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           setS({trIngest:false}); showToast(t("st_tring_off"));
         }
       };
-      return React.createElement("div",{className:"set-card"},
-        React.createElement("div",{className:"sc-title"},t("st_notifs")),
+      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos",null,
         row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
         row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
@@ -7221,24 +7469,22 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
     ),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
-    // ── Tarjeta · Novedades (histórico + sugerencias). La ven todos, también en web. ──
-    React.createElement("div",{className:"set-card"},
-      React.createElement("div",{className:"sc-title"},t("st_news")),
-      row("news","✨",t("st_news_row"),"v"+CONFIG.APP_VERSION,function(){ setNewsOpen(true); })
+    // ── Grupo · Novedades (histórico + sugerencias). La ven todos, también en web. ──
+    grp("news","✨",t("st_news"),"novedades news version sugerencias historial whatsnew","v"+CONFIG.APP_VERSION,
+      row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
-    // ── Tarjeta · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
-    natPlugin() && React.createElement("div",{className:"set-card"},
-      React.createElement("div",{className:"sc-title"},t("st_updates")),
+    // ── Grupo · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar",null,
       row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates)
     ),
-    // ── Tarjeta 6 · copia de seguridad ──
-    React.createElement("div",{className:"set-card"},
-      React.createElement("div",{className:"sc-title"},t("backup")),
+    // ── Grupo · copia de seguridad ──
+    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
       row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
     ),
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
+    (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
   );
 }
@@ -8401,7 +8647,7 @@ function App(){
     ),
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
-        tabIds.map(function(id){ return React.createElement("div",{className:"page",key:id}, pageFor(id)); })
+        tabIds.map(function(id){ return React.createElement("div",{className:"page",key:id}, React.createElement(TabCoach,{tabId:id}), pageFor(id)); })
       )
     ),
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
