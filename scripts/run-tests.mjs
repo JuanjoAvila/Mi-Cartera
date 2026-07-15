@@ -26,7 +26,7 @@ for (const [name, cmd] of steps) {
 }
 
 console.log("\n── ingest-deno ──");
-const deno = spawnSync("deno", ["test", "--allow-none", "supabase/functions/ingest/ingest.test.ts"], {
+const deno = spawnSync("deno", ["test", "supabase/functions/ingest/ingest.test.ts"], {
   cwd: root, stdio: "pipe", shell: process.platform === "win32",
 });
 const denoOut = (deno.stderr?.toString() || "") + (deno.stdout?.toString() || "");
