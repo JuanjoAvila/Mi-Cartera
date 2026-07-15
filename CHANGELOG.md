@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.107.0] — 2026-07-15
+### Actualizaciones con aviso automático + cierre del backlog
+- 🔔 **Notificación al móvil** cuando hay bundle OTA o APK nuevo listo (toca la noti → aplica la actualización).
+- ✨ **Botón «Nueva versión»** restaurado al arrancar si el bundle ya estaba descargado (bug: `_otaPending` hacía `return` sin mostrar el pill).
+- 🔄 **Chequeo periódico:** arranque (~600 ms), al volver a primer plano y cada 30 min con la app abierta.
+- 📱 **Plugin Android:** `showNotification` acepta `gotoTarget` para deep-link a actualizar.
+- 📚 **Docs:** README/ARQUITECTURA/SETUP-ANDROID actualizados; guía rotación token `docs/SETUP-INGEST-TOKEN.md`.
+- ✅ **Tests:** `updates.test.mjs` (`newerVer`).
+- 🏁 **Issues cerradas:** #8 (APK Capacitor), #9 (rotación ingest), #15 (gamificación).
+
 ## [3.106.0] — 2026-07-15
 ### Documentación multi-usuario + financiación + precios manuales
 - 👥 **Ingest multi-usuario:** aclarado en código (`ingest_tokens` por persona; legacy `INGEST_TOKEN` intacto). Issue #5 cerrada.

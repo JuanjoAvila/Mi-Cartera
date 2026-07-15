@@ -4,12 +4,12 @@ Objetivo: empaquetar la PWA como app Android y añadir un **servicio nativo** qu
 notificación de gasto de Trade Republic y la manda a la Edge Function `ingest` — lo mismo que
 hacía MacroDroid, pero dentro de nuestro proyecto.
 
-La app **carga la PWA en vivo desde GitHub Pages** (ver `capacitor.config.json` → `server.url`),
-así tus cambios siguen llegando solos con cada deploy. Solo el trozo nativo va dentro del APK.
+La app **arranca del bundle web local** (rápido y offline). Tras el arranque, el bloque OTA
+descarga `version.json` + `bundle.zip` desde GitHub Pages y avisa con notificación + botón
+«Nueva versión · toca para actualizar». Cambios nativos (lector TR, permisos…) requieren APK
+nuevo vía `apk.json` → `installApk`.
 
-> ⚠️ Todo esto se hace en **tu PC** (no se puede desde el repo). El build y las pruebas necesitan
-> Android Studio. Ritmo realista: la primera vez lleva su rato; ten la **entrada manual** como
-> respaldo si MacroDroid caduca antes.
+> ⚠️ El build del APK se hace en **tu PC** (Android Studio). Ver secciones siguientes.
 
 ---
 

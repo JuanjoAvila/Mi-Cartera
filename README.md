@@ -10,12 +10,13 @@ PWA de finanzas personales: patrimonio neto, gastos variables, costes fijos, inv
 
 - **Frontend:** React 18 (inlineado, **sin paso de build en navegador**, usando `React.createElement` directo — NO JSX, NO Babel)
 - **Persistencia local:** `localStorage` con sistema de migraciones versionado (`_dataVer`)
-- **PWA:** Service Worker *network-first* + manifest
+- **PWA:** Service Worker *stale-while-revalidate* + manifest; botón «Nueva versión» cuando hay update esperando
+- **App Android:** Capacitor + bundle local + OTA (`version.json` / `bundle.zip`) + lector nativo de notificaciones TR
 - **Backend de datos:** Supabase (Postgres + Auth + Edge Functions). Login email+contraseña + desbloqueo biométrico
-- **Captura automática:** MacroDroid (Android) lee la notificación de Trade Republic → POST a la Edge Function `ingest`
+- **Captura automática:** lector nativo en la app Android (sustituye MacroDroid) → POST a Edge Function `ingest` con token por usuario
 - **Cotizaciones:** Finnhub (vía Edge Function `prices` para ocultar la key y evitar CORS)
 - **Hosting:** GitHub Pages
-- **CI/CD:** GitHub Actions (build + deploy en cada push a `main`)
+- **CI/CD:** GitHub Actions (tests + sellado SW + deploy en cada push a `main`)
 
 ## 📂 Estructura del repo
 
@@ -60,8 +61,10 @@ Push a `main` → GitHub Actions sella la versión del SW y publica `public/` en
 ## 🔐 Secretos
 
 - La **API key de Finnhub NO está en el repo**. Vive como secreto del proyecto Supabase (Edge Functions → Secrets), junto con `INGEST_TOKEN`, `INGEST_USER_ID` y **`TOKEN_ENCRYPTION_KEY`** (32 bytes en base64 — cifra tokens MyInvestor/Open Banking en reposo).
-- En `public/index.html` solo va la **anon key** de Supabase, que es pública por diseño (los datos están protegidos con Row Level Security). La función `ingest` se protege con `INGEST_TOKEN`.
+- En `public/index.html` solo va la **anon key** de Supabase, que es pública por diseño (los datos están protegidos con Row Level Security). La función `ingest` se protege con token por usuario (`ingest_tokens`) o el legacy `INGEST_TOKEN`.
 - Setup completo del backend en [docs/SETUP-SUPABASE.md](docs/SETUP-SUPABASE.md).
+- Rotación del token legacy: [docs/SETUP-INGEST-TOKEN.md](docs/SETUP-INGEST-TOKEN.md).
+- App Android: [docs/SETUP-ANDROID.md](docs/SETUP-ANDROID.md).
 - Política de privacidad: [public/privacy.html](public/privacy.html).
 
 ## 🗺️ Roadmap
