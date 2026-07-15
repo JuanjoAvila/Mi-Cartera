@@ -24,9 +24,9 @@ Sirve desde caché **al instante** (arranque inmediato incluso con red lenta o s
 
 ```
 [Notificación TR en Android]
-        │  MacroDroid detecta "Gastaste X€ en Comercio"
+        │  Lector nativo Mi Cartera (NotificationListenerService)
         ▼
-[POST → Edge Function `ingest`]   (protegida con INGEST_TOKEN)
+[POST → Edge Function `ingest`]   (?token= por usuario en ingest_tokens, o legacy INGEST_TOKEN)
         │  parsea importe/comercio/fecha + categoriza + service role
         ▼
 [Postgres: tabla `expenses`]   ← buzón de entrada (RLS por usuario)
@@ -34,6 +34,8 @@ Sirve desde caché **al instante** (arranque inmediato incluso con red lenta o s
         ▼
 [App: dedup + render]   → estado en `app_state` (JSONB) + caché localStorage
 ```
+
+**Actualizaciones (v3.107):** la PWA usa SW stale-while-revalidate con botón manual; la app Android usa bundle local + OTA Capacitor (`version.json` / `bundle.zip`) con notificación y pill cuando hay versión nueva. APK nativo vía `apk.json` + `installApk`.
 
 Cotizaciones: la app llama a la Edge Function `prices` → consulta Finnhub server-side (key oculta, evita CORS) → devuelve precios → la app calcula valor = acciones × precio.
 

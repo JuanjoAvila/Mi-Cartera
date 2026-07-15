@@ -128,9 +128,10 @@ public class MiCarteraPlugin extends Plugin {
     public void showNotification(PluginCall call) {
         String title = call.getString("title");
         String body = call.getString("body");
+        String gotoTarget = call.getString("gotoTarget");
         if (body == null || body.isEmpty()) { call.reject("body vacío"); return; }
         Notif.show(getContext(), title != null ? title : "Mi Cartera", body,
-                (int) (System.currentTimeMillis() % 100000));
+                (int) (System.currentTimeMillis() % 100000), gotoTarget);
         call.resolve();
     }
 

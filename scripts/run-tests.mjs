@@ -20,6 +20,7 @@ const steps = [
   ["onboarding", ["node", "tests/onboarding.test.mjs"]],
   ["inv-dashboard", ["node", "tests/inv-dashboard.test.mjs"]],
   ["financing", ["node", "tests/financing.test.mjs"]],
+  ["updates", ["node", "tests/updates.test.mjs"]],
 ];
 
 let failed = false;

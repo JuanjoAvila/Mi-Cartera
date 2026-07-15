@@ -791,6 +791,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(74px + var(--safe-bottom));background:var(--surface-2);border:1px solid var(--line);color:var(--text);padding:11px 18px;border-radius:14px;font-size:13px;font-weight:600;z-index:200;box-shadow:var(--shadow);animation:toastin .3s ease;}
   .offline-pill{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-top) + 8px);background:rgba(226,160,95,.16);border:1px solid rgba(226,160,95,.5);color:#E2A05F;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;z-index:210;white-space:nowrap;box-shadow:var(--shadow);}
   .update-pill{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--safe-top) + 8px);background:linear-gradient(160deg,var(--mint-bright),var(--mint));color:#08120C;padding:9px 18px;border-radius:20px;font-size:12.5px;font-weight:800;z-index:215;white-space:nowrap;box-shadow:0 8px 22px -8px rgba(95,208,138,.7);border:none;cursor:pointer;animation:updin .35s ease;}
+  .update-pill+.update-pill{top:calc(var(--safe-top) + 48px);}
   .update-pill:active{transform:translateX(-50%) translateY(1px);}
   @keyframes updin{from{opacity:0;transform:translate(-50%,-10px);}to{opacity:1;transform:translate(-50%,0);}}
   /* Cajón de Ajustes: página oculta a la IZQUIERDA del Resumen (estilo Revolut) */
@@ -1300,6 +1301,9 @@ const LANG = {
     eb_title:"Algo se ha torcido", eb_msg:"La app ha tenido un error al dibujar. Tus datos están a salvo. Descarga una copia por si acaso y recarga.", eb_export:"⬇️ Descargar copia de seguridad", eb_reload:"🔄 Recargar la app",
     off_pill:"📴 Sin conexión · se guarda y sincroniza al volver",
     upd_ready:"✨ Nueva versión · toca para actualizar",
+    upd_notif:"Hay una actualización (v{v}) lista. Toca para instalarla.",
+    upd_notif_web:"Hay una versión nueva de la app. Toca el botón de arriba para actualizar.",
+    upd_notif_apk:"Hay una app nueva (v{v}). Toca el botón de arriba para instalarla.",
     apk_ready:"⬇️ App {v} lista · toca para instalar", apk_downloading:"Descargando la actualización… se abrirá el instalador", apk_perm:"Permite «instalar apps desconocidas» a Mi Cartera y vuelve a tocar el botón",
     ob_signup:"Crear cuenta nueva",
     st_custom:"Personalización", st_widgets:"Personalizar widgets del Resumen", st_notifs:"Notificaciones", st_simple_lbl:"Modo sencillo",
@@ -1344,6 +1348,9 @@ const LANG = {
     eb_title:"Something went wrong", eb_msg:"The app hit a rendering error. Your data is safe. Download a backup just in case and reload.", eb_export:"⬇️ Download backup", eb_reload:"🔄 Reload the app",
     off_pill:"📴 Offline · saved and synced when you're back",
     upd_ready:"✨ New version · tap to update",
+    upd_notif:"An update (v{v}) is ready. Tap to install it.",
+    upd_notif_web:"A new app version is ready. Tap the button at the top to update.",
+    upd_notif_apk:"A new app (v{v}) is ready. Tap the button at the top to install it.",
     apk_ready:"⬇️ App {v} ready · tap to install", apk_downloading:"Downloading the update… the installer will open", apk_perm:"Allow «install unknown apps» for Mi Cartera and tap the button again",
     ob_signup:"Create a new account",
     st_custom:"Customisation", st_widgets:"Customise Summary widgets", st_notifs:"Notifications", st_simple_lbl:"Simple mode",
@@ -1388,6 +1395,9 @@ const LANG = {
     eb_title:"Alguna cosa ha fallat", eb_msg:"L'app ha tingut un error en dibuixar. Les teves dades estan segures. Descarrega una còpia per si de cas i recarrega.", eb_export:"⬇️ Descarrega còpia de seguretat", eb_reload:"🔄 Recarrega l'app",
     off_pill:"📴 Sense connexió · es desa i sincronitza en tornar",
     upd_ready:"✨ Nova versió · toca per actualitzar",
+    upd_notif:"Hi ha una actualització (v{v}) a punt. Toca per instal·lar-la.",
+    upd_notif_web:"Hi ha una versió nova de l'app. Toca el botó de dalt per actualitzar.",
+    upd_notif_apk:"Hi ha una app nova (v{v}). Toca el botó de dalt per instal·lar-la.",
     apk_ready:"⬇️ App {v} a punt · toca per instal·lar", apk_downloading:"Baixant l'actualització… s'obrirà l'instal·lador", apk_perm:"Permet «instal·lar apps desconegudes» a Mi Cartera i torna a tocar el botó",
     ob_signup:"Crea un compte nou",
     st_custom:"Personalització", st_widgets:"Personalitza els widgets del Resum", st_notifs:"Notificacions", st_simple_lbl:"Mode senzill",
@@ -7361,6 +7371,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.107.0", d:"15 jul 2026", t:"Actualizaciones que avisan solas", items:[
+    "🔔 Cuando hay una versión nueva lista, te llega una notificación al móvil (tú y quien use la app en su cuenta).",
+    "✨ El botón «Nueva versión · toca para actualizar» vuelve a aparecer en cuanto el bundle está descargado — también si cierras y abres la app.",
+    "🔄 La app busca updates al arrancar, al volver a primer plano y cada 30 minutos con la app abierta."
+  ]},
   {v:"3.106.0", d:"15 jul 2026", t:"Documentación y tests de lo que ya teníamos", items:[
     "👥 Multi-usuario en ingest: cada persona con su token en Ajustes → notificaciones TR (no hace falta JWT en el lector Android).",
     "🚗 Financiación coche: entrada + cuotas + pago final + asesor «¿Cuándo amortizar?» — ya estaba; ahora con tests automáticos.",
@@ -7535,36 +7550,22 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const checkUpdates=function(){
     const nat=natPlugin();
     if(!nat||!nat.appInfo) return;
-    const BASE="https://juanjoavila.github.io/Mi-Cartera/";
-    Promise.all([
-      fetch(BASE+"apk.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).catch(function(){ return null; }),
-      fetch(BASE+"version.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){ return r.json(); }).catch(function(){ return null; }),
-      Promise.resolve(nat.appInfo()).catch(function(){ return null; })
-    ]).then(function(res){
-      const apk=res[0], ver=res[1], info=res[2];
-      if(apk&&info&&apk.url&&Number(apk.versionCode)>Number(info.versionCode)){
-        showToast(tf("st_up_apk",{v:apk.versionName||("v"+apk.versionCode)}));
-        nat.installApk({url:apk.url}).then(function(r){ if(r&&r.needsPermission) showToast(t("apk_perm")); }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
-        return;
-      }
-      // Versión web nueva: se baja el bundle y se APLICA YA (up.set recarga la WebView al
-      // momento) — antes solo decía «cierra y abre la app», que no es un botón de actualizar
-      // (feedback 2026-07-11). Guard «solo hacia adelante» como el OTA de arranque.
-      const newer=(function(a,b){ a=String(a).split("."); b=String(b).split(".");
-        for(var i=0;i<Math.max(a.length,b.length);i++){ var x=parseInt(a[i]||0,10), y=parseInt(b[i]||0,10); if(x!==y) return x>y; } return false; });
-      if(ver&&ver.version&&newer(ver.version,CONFIG.APP_VERSION)){
-        const up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
-        const BASE2="https://juanjoavila.github.io/Mi-Cartera/";
-        if(up){
-          showToast(tf("st_up_applying",{v:ver.version}));
-          up.download({url:(ver.url||BASE2+"bundle.zip"),version:ver.version})
-            .then(function(b){ try{ localStorage.setItem("_otaPending",ver.version); }catch(e){} return up.set({id:b.id}); })
-            .catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
-        } else { showToast(t("st_up_web")); }
-        return;
-      }
-      showToast(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+(info&&info.versionName?" · app "+info.versionName:""));
-    });
+    const done=function(okMsg){
+      if(okMsg) showToast(okMsg);
+    };
+    Promise.resolve(window._mcCheckApkUpdate?window._mcCheckApkUpdate({manual:true, showToast:showToast}):false)
+      .then(function(apkDone){
+        if(apkDone) return;
+        if(window._mcCheckOtaUpdates){
+          return window._mcCheckOtaUpdates({manual:true, showToast:showToast}).then(function(otaDone){
+            if(otaDone) return;
+            return Promise.resolve(nat.appInfo()).then(function(info){
+              done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+(info&&info.versionName?" · app "+info.versionName:""));
+            });
+          });
+        }
+        done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION);
+      });
   };
   const [events,setEvents]=useState(null);
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
@@ -8480,8 +8481,6 @@ function App(){
   // al volver a primer plano (visibilitychange). Solo hace algo en la app nativa (natPlugin+consumeGoto).
   const handleGoto=function(g){
     if(!g||typeof g!=="string") return;
-    // Vuelta del banco vía deep-link micartera://bank (solo app nativa; en web llega por ?bank=).
-    // Mismos avisos que la CAPA 2 de abajo + sincroniza el saldo recién autorizado.
     if(g.indexOf("bank|")===0){
       const parts=g.split("|");
       if(parts[1]==="ok"){
@@ -8492,6 +8491,20 @@ function App(){
         const m=parts.slice(2).join("|");
         if(m.indexOf("nolink:")===0){ const nm=m.slice(7), en=entFromAspsp(nm), lbl=en?entOf(en).label:(nm||"🏦"); showToast("⚠ "+lbl+": "+t("bank_nolink")); }
         else showToast("⚠ "+t("bank_error")+(m?": "+m:""));
+      }
+      return;
+    }
+    if(g==="update|ota"||g.indexOf("update|")===0){
+      if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
+      if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
+      return;
+    }
+    if(g==="update|apk"){
+      if(window._mcApkUpdate){
+        const nat=natPlugin();
+        if(nat&&nat.installApk){
+          nat.installApk({url:window._mcApkUpdate.url}).catch(function(){});
+        }
       }
       return;
     }
@@ -8593,7 +8606,10 @@ function App(){
   // Aviso "hay una versión nueva" (lo dispara el registro del Service Worker cuando queda una esperando)
   const [updateReady,setUpdateReady]=useState(false);
   useEffect(function(){
-    const h=function(){ setUpdateReady(true); };
+    const h=function(){
+      setUpdateReady(true);
+      if(window._mcNotifyUpdate) window._mcNotifyUpdate(null);
+    };
     window.addEventListener("mc-sw-update", h);
     return function(){ window.removeEventListener("mc-sw-update", h); };
   },[]);
@@ -8601,11 +8617,30 @@ function App(){
   // el botoncito de arriba «Nueva versión · toca para actualizar» (feedback 2026-07-12: había
   // desaparecido al pasar el OTA a modo silencioso «entra al próximo arranque»). Tocarlo lo
   // estrena al momento (up.set); si no se toca, entra solo en el siguiente arranque igual.
-  const [otaReady,setOtaReady]=useState(!!window._mcOtaReady);
+  const [otaReady,setOtaReady]=useState(function(){
+    if(window._mcOtaReady&&window._mcOtaReady.id) return true;
+    try{
+      var p=localStorage.getItem("_otaPending");
+      return !!(p&&window._mcNewerVer&&window._mcNewerVer(p, CONFIG.APP_VERSION));
+    }catch(e){ return false; }
+  });
   useEffect(function(){
-    const h=function(){ setOtaReady(!!window._mcOtaReady); };
+    const h=function(){ setOtaReady(!!(window._mcOtaReady&&window._mcOtaReady.id)); };
     window.addEventListener("mc-ota-ready", h);
-    return function(){ window.removeEventListener("mc-ota-ready", h); };
+    if(window._mcRestoreOtaPending) window._mcRestoreOtaPending();
+    var tick=function(){
+      if(window._mcCheckOtaUpdates) window._mcCheckOtaUpdates();
+      if(window._mcCheckApkUpdate) window._mcCheckApkUpdate();
+    };
+    setTimeout(tick, 600);
+    var onVis=function(){ if(document.visibilityState==="visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    var iv=setInterval(tick, 30*60*1000);
+    return function(){
+      window.removeEventListener("mc-ota-ready", h);
+      document.removeEventListener("visibilitychange", onVis);
+      clearInterval(iv);
+    };
   },[]);
   // Ajustes › "Personalizar widgets del Resumen": salta a la pestaña Resumen (Dashboard
   // enciende su modo edición con el mismo evento).
@@ -9220,61 +9255,178 @@ function App(){
   );
 }
 
-/* ---------- OTA (solo app Android): bundle local + actualización en caliente ----------
-   La app nativa ya NO carga la web en vivo (server.url quitado): arranca del bundle
-   LOCAL (instantáneo, funciona offline) y este bloque baja el bundle nuevo de GitHub
-   Pages en segundo plano y lo deja listo para el SIGUIENTE arranque.
-   (capgo/capacitor-updater en modo manual self-hosted: el CI publica version.json +
-   bundle.zip junto a la web; sin cuenta de Capgo, gratis y reversible.) */
+/* ---------- Actualizaciones: OTA web bundle + APK nativo + aviso push/local ----------
+   La app nativa arranca del bundle LOCAL (instantáneo, offline) y este bloque baja el bundle
+   nuevo de GitHub Pages en segundo plano. Bug fix 2026-07-15: si _otaPending ya coincidía con
+   version.json, el chequeo salía sin enseñar el botón — ahora restauramos el bundle al arrancar.
+   Notificación al móvil cuando hay update lista (pareja no depende de enterarse a mano). */
 var _mcNative=false;
 try{ _mcNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); }catch(e){}
+var _mcOtaBASE="https://juanjoavila.github.io/Mi-Cartera/";
+var _mcOtaChecking=false;
+
+window._mcNewerVer=function(a,b){
+  a=String(a).split("."); b=String(b).split(".");
+  for(var i=0;i<Math.max(a.length,b.length);i++){
+    var x=parseInt(a[i]||0,10), y=parseInt(b[i]||0,10);
+    if(x!==y) return x>y;
+  }
+  return false;
+};
+
+window._mcNotifyUpdate=function(version, kind){
+  var title="Mi Cartera";
+  var body=kind==="apk"&&version?tf("upd_notif_apk",{v:version}):(version?tf("upd_notif",{v:version}):t("upd_notif_web"));
+  try{
+    var nat=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
+    if(nat&&nat.showNotification){
+      var opts={title:title, body:body};
+      if(_mcNative) opts.gotoTarget=kind==="apk"?"update|apk":"update|ota";
+      nat.showNotification(opts).catch(function(){});
+      return;
+    }
+  }catch(e){}
+  try{
+    if(typeof Notification!=="undefined"){
+      if(Notification.permission==="granted"){
+        new Notification(title,{body:body, tag:"mc-update-"+(version||"web")});
+      }else if(Notification.permission==="default"){
+        Notification.requestPermission().then(function(p){
+          if(p==="granted") new Notification(title,{body:body, tag:"mc-update-"+(version||"web")});
+        });
+      }
+    }
+  }catch(e){}
+};
+
+window._mcSignalOtaReady=function(id, version, opts){
+  if(!id||!version) return;
+  var silent=opts&&opts.silent;
+  var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+  window._mcOtaReady={id:id, version:version};
+  window.__mcApplyOta=function(){ try{ if(up) up.set({id:id}); }catch(e){} };
+  try{ localStorage.setItem("_otaPending", version); }catch(e){}
+  try{ window.dispatchEvent(new CustomEvent("mc-ota-ready")); }catch(e){}
+  var lastN=null; try{ lastN=localStorage.getItem("_otaNotifVer"); }catch(e){}
+  if(!silent&&lastN!==version){
+    try{ localStorage.setItem("_otaNotifVer", version); }catch(e){}
+    window._mcNotifyUpdate(version, "ota");
+  }
+};
+
+window._mcRestoreOtaPending=function(){
+  try{
+    var pend=localStorage.getItem("_otaPending");
+    if(!pend||!window._mcNewerVer(pend, CONFIG.APP_VERSION)) return;
+    if(window._mcOtaReady&&window._mcOtaReady.id) return;
+    var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+    if(!up||!up.getNext) return;
+    up.getNext().then(function(next){
+      if(next&&next.id) window._mcSignalOtaReady(next.id, next.version||pend, {silent:true});
+    }).catch(function(){});
+  }catch(e){}
+};
+
+window._mcDownloadOta=function(up, v, opts){
+  var manual=opts&&opts.manual;
+  var toast=opts&&opts.showToast;
+  if(manual&&toast) toast(tf("st_up_applying",{v:v.version}));
+  return up.download({url:(v.url||_mcOtaBASE+"bundle.zip"), version:v.version})
+    .then(function(b){
+      if(manual){
+        try{ localStorage.setItem("_otaPending", v.version); }catch(e){}
+        return up.set({id:b.id}).then(function(){ return true; });
+      }
+      return up.next({id:b.id}).then(function(){
+        window._mcSignalOtaReady(b.id, v.version, {silent:false});
+      }).then(function(){ try{ localStorage.setItem("_otaPending", v.version); }catch(e){} return true; });
+    });
+};
+
+window._mcCheckOtaUpdates=function(opts){
+  if(_mcOtaChecking) return Promise.resolve(false);
+  var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+  if(!up) return Promise.resolve(false);
+  _mcOtaChecking=true;
+  var manual=opts&&opts.manual;
+  return fetch(_mcOtaBASE+"version.json?ts="+Date.now(),{cache:"no-store"})
+    .then(function(r){ return r.json(); })
+    .then(function(v){
+      if(!v||!v.version) return false;
+      if(v.version===CONFIG.APP_VERSION){
+        try{ localStorage.removeItem("_otaPending"); localStorage.removeItem("_otaNotifVer"); }catch(e){}
+        return false;
+      }
+      if(!window._mcNewerVer(v.version, CONFIG.APP_VERSION)) return false;
+      var pend=null; try{ pend=localStorage.getItem("_otaPending"); }catch(e){}
+      if(pend===v.version){
+        if(window._mcOtaReady&&window._mcOtaReady.id){
+          if(manual&&window.__mcApplyOta) window.__mcApplyOta();
+          return true;
+        }
+        if(up.getNext){
+          return up.getNext().then(function(next){
+            if(next&&next.id){
+              window._mcSignalOtaReady(next.id, v.version, {silent:!manual});
+              if(manual&&window.__mcApplyOta) window.__mcApplyOta();
+              return true;
+            }
+            return window._mcDownloadOta(up, v, opts);
+          });
+        }
+      }
+      return window._mcDownloadOta(up, v, opts);
+    }).catch(function(e){
+      if(opts&&opts.showToast) opts.showToast("⚠ "+((e&&e.message)||e));
+      return false;
+    }).finally(function(){ _mcOtaChecking=false; });
+};
+
+window._mcSignalApkUpdate=function(info, silent){
+  window._mcApkUpdate=info;
+  try{ window.dispatchEvent(new CustomEvent("mc-apk-update")); }catch(e){}
+  var lastN=null; try{ lastN=localStorage.getItem("_apkNotifVer"); }catch(e){}
+  if(!silent&&lastN!==info.versionName){
+    try{ localStorage.setItem("_apkNotifVer", info.versionName); }catch(e){}
+    window._mcNotifyUpdate(info.versionName, "apk");
+  }
+};
+
+window._mcCheckApkUpdate=function(opts){
+  var mc=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
+  if(!mc||!mc.appInfo) return Promise.resolve(false);
+  var manual=opts&&opts.manual;
+  var toast=opts&&opts.showToast;
+  return fetch(_mcOtaBASE+"apk.json?ts="+Date.now(),{cache:"no-store"})
+    .then(function(r){ return r.json(); })
+    .then(function(a){
+      if(!a||!a.versionCode||!a.url) return false;
+      return mc.appInfo().then(function(info){
+        if(!info||!info.versionCode||Number(a.versionCode)<=Number(info.versionCode)) return false;
+        var payload={url:a.url, versionName:a.versionName||("v"+a.versionCode)};
+        if(manual){
+          if(toast) toast(tf("st_up_apk",{v:payload.versionName}));
+          return mc.installApk({url:payload.url}).then(function(r){
+            if(r&&r.needsPermission&&toast) toast(t("apk_perm"));
+            return true;
+          });
+        }
+        window._mcSignalApkUpdate(payload, false);
+        return true;
+      });
+    }).catch(function(){ return false; });
+};
+
 (function(){
   try{
     var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
     if(!up) return;
-    up.notifyAppReady().catch(function(){});   // confirma que este bundle arranca bien (si nadie avisa, el plugin hace rollback al anterior)
-    var BASE="https://juanjoavila.github.io/Mi-Cartera/";
+    up.notifyAppReady().catch(function(){});
+    window._mcRestoreOtaPending();
     setTimeout(function(){
-      fetch(BASE+"version.json?ts="+Date.now(),{cache:"no-store"})
-        .then(function(r){ return r.json(); })
-        .then(function(v){
-          if(!v||!v.version) return;
-          if(v.version===CONFIG.APP_VERSION){ try{ localStorage.removeItem("_otaPending"); }catch(e){} return; }   // ya al día
-          // SOLO hacia adelante: si Pages aún sirve una versión ANTERIOR a la del bundle local
-          // (APK recién compilado antes del deploy), no tocar nada. Sin este guard, la alpha9
-          // se auto-DEGRADÓ a la web 3.83 nada más estrenarse (bug 2026-07-10).
-          var newer=(function(a,b){ a=String(a).split("."); b=String(b).split(".");
-            for(var i=0;i<Math.max(a.length,b.length);i++){ var x=parseInt(a[i]||0,10), y=parseInt(b[i]||0,10); if(x!==y) return x>y; } return false; })(v.version, CONFIG.APP_VERSION);
-          if(!newer) return;
-          var pend=null; try{ pend=localStorage.getItem("_otaPending"); }catch(e){}
-          if(pend===v.version) return;                                    // ya descargado; entra al siguiente arranque
-          return up.download({url:(v.url||BASE+"bundle.zip"),version:v.version}).then(function(b){
-            return up.next({id:b.id}).then(function(){                     // deja el bundle para el próximo arranque (sin recargas a media sesión)
-              // …y además ofrece el botón de arriba «Nueva versión · toca para actualizar»
-              // para estrenarla YA (up.set = hot-swap al momento). Feedback 2026-07-12.
-              window._mcOtaReady={id:b.id, version:v.version};
-              window.__mcApplyOta=function(){ try{ up.set({id:b.id}); }catch(e){} };
-              try{ window.dispatchEvent(new CustomEvent("mc-ota-ready")); }catch(e){}
-            });
-          }).then(function(){ try{ localStorage.setItem("_otaPending",v.version); }catch(e){} });
-        }).catch(function(){});                                           // sin red o aún sin desplegar: la app sigue con su bundle
-      // APK: cambios NATIVOS sin cable. public/apk.json (en Pages) dice el último versionCode;
-      // si es mayor que el instalado (MiCartera.appInfo), la app enseña el botón «Actualizar app»
-      // → MiCartera.installApk descarga el APK (GitHub Releases) y abre el instalador del sistema.
-      // Instala encima (misma firma) = mantiene datos, sesión y el acceso a notificaciones.
-      fetch(BASE+"apk.json?ts="+Date.now(),{cache:"no-store"})
-        .then(function(r){ return r.json(); })
-        .then(function(a){
-          var mc=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
-          if(!a||!a.versionCode||!a.url||!mc||!mc.appInfo) return;
-          return mc.appInfo().then(function(info){
-            if(info&&info.versionCode&&Number(a.versionCode)>Number(info.versionCode)){
-              window._mcApkUpdate={url:a.url, versionName:a.versionName||("v"+a.versionCode)};
-              try{ window.dispatchEvent(new CustomEvent("mc-apk-update")); }catch(e){}
-            }
-          });
-        }).catch(function(){});                                           // sin apk.json publicado aún: nada que hacer
-    },4000);
+      window._mcCheckOtaUpdates();
+      window._mcCheckApkUpdate();
+    }, 600);
   }catch(e){}
 })();
 
