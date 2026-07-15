@@ -2096,6 +2096,7 @@ Object.assign(LANG.es,{
   inv_cvg_hint:"«Invertido» es el coste de lo que tienes ahora (base de coste). Tras ventas parciales puede no cuadrar con las «contribuciones netas» que muestra tu bróker. La ganancia aquí es la plusvalía latente (valor − coste).",
   inv_bytype:"Distribución por tipo", inv_rend:"Rendimiento por posición", inv_best_worst:"mejor {best} · peor {worst}",
   inv_evo:"Evolución", inv_evo_sub:"valor invertido", inv_evo_hint:"📈 La evolución del valor invertido se irá dibujando a partir de hoy (un punto por día).",
+  inv_evo_period:"{sign}{pct}% en {days} días ({x})", inv_evo_cost:"Coste aportado (línea discontinua)", inv_evo_today:"Primer punto guardado hoy — mañana verás la tendencia.",
   inv_sold:"💸 Líquido vendido (realizado)", inv_proj:"Proyección de tu ahorro", inv_proj_sub:"Interés compuesto",
   inv_hint_edit:"Escribe el valor actual de cada posición (al tocar se selecciona solo). El % de ganancia se calcula automáticamente.",
   inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones con ticker. Lo que no tiene precio automático (fondos, oro, algunos ETF) se edita con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
@@ -2159,6 +2160,7 @@ Object.assign(LANG.en,{
   inv_cvg_hint:"«Invested» is the cost of what you hold now (cost basis). After partial sells it may not match the «net contributions» your broker shows. The gain here is unrealised (value − cost).",
   inv_bytype:"By asset type", inv_rend:"Performance by position", inv_best_worst:"best {best} · worst {worst}",
   inv_evo:"Evolution", inv_evo_sub:"invested value", inv_evo_hint:"📈 The invested value chart will build up from today (one point per day).",
+  inv_evo_period:"{sign}{pct}% in {days} days ({x})", inv_evo_cost:"Cost basis (dashed line)", inv_evo_today:"First point saved today — check back tomorrow for the trend.",
   inv_sold:"💸 Cash from sales (realised)", inv_proj:"Your savings projection", inv_proj_sub:"Compound interest",
   inv_hint_edit:"Type the current value of each position (tap to select). The gain % is calculated automatically.",
   inv_hint_view:"«USD prices» fetches quotes for tickered stocks automatically. Anything without an automatic price (funds, gold, some ETFs) is edited via «Edit manually». USD→EUR rate: {fx} · live ECB.",
@@ -2222,6 +2224,7 @@ Object.assign(LANG.ca,{
   inv_cvg_hint:"«Invertit» és el cost del que tens ara (base de cost). Després de vendes parcials pot no quadrar amb les «contribucions netes» que mostra el teu bròker. El guany aquí és la plusvàlua latent (valor − cost).",
   inv_bytype:"Distribució per tipus", inv_rend:"Rendiment per posició", inv_best_worst:"millor {best} · pitjor {worst}",
   inv_evo:"Evolució", inv_evo_sub:"valor invertit", inv_evo_hint:"📈 L'evolució del valor invertit es dibuixarà a partir d'avui (un punt per dia).",
+  inv_evo_period:"{sign}{pct}% en {days} dies ({x})", inv_evo_cost:"Cost aportat (línia discontinua)", inv_evo_today:"Primer punt desat avui — demà veuràs la tendència.",
   inv_sold:"💸 Líquid venut (realitzat)", inv_proj:"Projecció del teu estalvi", inv_proj_sub:"Interès compost",
   inv_hint_edit:"Escriu el valor actual de cada posició (en tocar se selecciona sol). El % de guany es calcula automàticament.",
   inv_hint_view:"«Preus USD» porta soles les cotitzacions de les accions amb ticker. El que no té preu automàtic (fons, or, alguns ETF) s'edita amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
@@ -2999,6 +3002,7 @@ function seedFlows(s){
   if(!s.obAccounts) s.obAccounts = [];
   if(!s.obLabels) s.obLabels = {};
   if(!s.verNotes) s.verNotes = [];   // apuntes/sugerencias del popup de Novedades (sincroniza)
+  if(!s.invHistory) s.invHistory = [];   // evolución del total invertido (snapshot diario)
   // Limpieza puntual (petición 2026-07-11): una cuenta OB quedó re-etiquetada "personalizado
   // solo mío" (dato heredado, la cadena nunca fue de la app). Se borra la etiqueta para que
   // vuelva el nombre bonito por defecto (Conjunta + «del banco»), como el resto.
@@ -3310,7 +3314,7 @@ function Sparkline({data, current}){
   const w=320, h=70, pad=4;
   const min=Math.min.apply(null,pts), max=Math.max.apply(null,pts);
   const rng=(max-min)||1;
-  const xs=(i)=> pad + i*(w-2*pad)/(pts.length-1);
+  const xs=(i)=> pad + (pts.length>1 ? i*(w-2*pad)/(pts.length-1) : 0);
   const ys=(v)=> pad + (1-(v-min)/rng)*(h-2*pad);
   let d="M"+xs(0)+" "+ys(pts[0]);
   for(let i=1;i<pts.length;i++) d+=" L"+xs(i)+" "+ys(pts[i]);
@@ -3325,6 +3329,63 @@ function Sparkline({data, current}){
     ),
     React.createElement("path",{d:area,fill:"url(#sparkfill)"}),
     React.createElement("path",{d:d,fill:"none",stroke:"#5FD08A",strokeWidth:"2.4",strokeLinecap:"round",strokeLinejoin:"round",vectorEffect:"non-scaling-stroke"}),
+    React.createElement("circle",{cx:lastX,cy:lastY,r:"3.5",fill:"#7DE8A8"})
+  );
+}
+
+// Snapshot diario del total invertido (valor + coste opcional). Idempotente por día.
+function recordInvSnapshot(hist, today, value, cost){
+  const h=(hist||[]).slice();
+  const pt={d:today,v:+value.toFixed(2)};
+  if(cost!=null && cost>=0) pt.c=+cost.toFixed(2);
+  if(h.length && h[h.length-1].d===today) h[h.length-1]=pt;
+  else h.push(pt);
+  if(h.length>400) h.splice(0,h.length-400);
+  return h;
+}
+function invPeriodChange(hist){
+  if(!hist || hist.length<2) return null;
+  const a=hist[0], b=hist[hist.length-1];
+  if(!(a.v>0)) return null;
+  return {pct:(b.v-a.v)/a.v*100, abs:b.v-a.v, days:hist.length};
+}
+
+// Gráfico de evolución: valor (sólido) + coste aportado (discontinuo) si hay datos.
+function SparklineInv({hist}){
+  if(!hist || !hist.length) return null;
+  const vals=hist.map(function(h){ return h.v; });
+  const costPts=hist.map(function(h){ return h.c; });
+  const hasCost=costPts.some(function(c){ return c!=null && c>0; });
+  const w=320, h=82, pad=8;
+  const all=hasCost ? vals.concat(costPts.filter(function(c){ return c!=null; })) : vals.slice();
+  const min=Math.min.apply(null,all), max=Math.max.apply(null,all);
+  const rng=(max-min)||1;
+  const n=vals.length;
+  const xs=function(i){ return pad + (n>1 ? i*(w-2*pad)/(n-1) : (w-2*pad)/2); };
+  const ys=function(v){ return pad + (1-(v-min)/rng)*(h-2*pad); };
+  let dVal="M"+xs(0)+" "+ys(vals[0]);
+  for(let i=1;i<n;i++) dVal+=" L"+xs(i)+" "+ys(vals[i]);
+  const area=dVal+" L"+xs(n-1)+" "+h+" L"+xs(0)+" "+h+" Z";
+  let dCost=null;
+  if(hasCost){
+    let started=false;
+    for(let i=0;i<n;i++){
+      if(costPts[i]==null) continue;
+      const seg=(started?" L":"M")+xs(i)+" "+ys(costPts[i]);
+      dCost=(dCost||"")+seg; started=true;
+    }
+  }
+  const lastX=xs(n-1), lastY=ys(vals[n-1]);
+  return React.createElement("svg",{className:"spark",viewBox:"0 0 "+w+" "+h,preserveAspectRatio:"none",style:{height:82}},
+    React.createElement("defs",null,
+      React.createElement("linearGradient",{id:"invsparkfill",x1:"0",y1:"0",x2:"0",y2:"1"},
+        React.createElement("stop",{offset:"0",stopColor:"#5FD08A",stopOpacity:"0.22"}),
+        React.createElement("stop",{offset:"1",stopColor:"#5FD08A",stopOpacity:"0"})
+      )
+    ),
+    React.createElement("path",{d:area,fill:"url(#invsparkfill)"}),
+    dCost && React.createElement("path",{d:dCost,fill:"none",stroke:"#7FB5E8",strokeWidth:"1.8",strokeDasharray:"5 4",strokeLinecap:"round",vectorEffect:"non-scaling-stroke",opacity:0.85}),
+    React.createElement("path",{d:dVal,fill:"none",stroke:"#5FD08A",strokeWidth:"2.4",strokeLinecap:"round",strokeLinejoin:"round",vectorEffect:"non-scaling-stroke"}),
     React.createElement("circle",{cx:lastX,cy:lastY,r:"3.5",fill:"#7DE8A8"})
   );
 }
@@ -5139,6 +5200,7 @@ function Investments({state, set, fetchPrices, pricing}){
   const maxAbsGain=Math.max.apply(null,posList.map(function(p){return Math.abs(p.gain);}).concat([1]));
   const best=posList[0], worst=posList[posList.length-1];
   const invHist=(state.invHistory||[]);
+  const evoChg=invPeriodChange(invHist);
   // Desglose por tipo de activo (clasificación por id conocido, con respaldo por nombre)
   const TYPE_BY_ID={ "0mrszi5":"materias", "7zjaw0y":"etf", "0itlr5k":"fondo" };
   const invType=function(it){ if(TYPE_BY_ID[it.id]) return TYPE_BY_ID[it.id]; if(/oro|xau|materia|plata/i.test(it.name)) return "materias"; if(/etf|all.?world|s&p|amundi/i.test(it.name)) return "etf"; if(/fondo|indexad|fidelity|msci world/i.test(it.name)) return "fondo"; return "acciones"; };
@@ -5259,13 +5321,14 @@ function Investments({state, set, fetchPrices, pricing}){
       })
     )},
       {id:"evo",label:t("inv_evo"),el:React.createElement(React.Fragment,null,
-    invHist.length>=2 && React.createElement(CollapsibleCard,{title:t("inv_evo"),sub:t("inv_evo_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_evo",help:t("h_evo")},
-      React.createElement(Sparkline,{data:invHist.map(function(h){return h.v;}),current:null}),
-      React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--muted)",marginTop:6}},
+    invHist.length>=1 && total>0 && React.createElement(CollapsibleCard,{title:t("inv_evo"),sub:evoChg?tf("inv_evo_period",{sign:evoChg.pct>=0?"+":"",pct:Math.abs(evoChg.pct).toFixed(1),days:evoChg.days,x:f2(Math.abs(evoChg.abs))}):t("inv_evo_sub"),dot:"#7FB5E8",defaultOpen:false,storageKey:"inv_evo",help:t("h_evo")},
+      invHist.length>=2 ? React.createElement(SparklineInv,{hist:invHist}) : React.createElement("div",{className:"hint",style:{marginBottom:8}},t("inv_evo_today")),
+      invHist.length>=2 && React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,color:"var(--muted)",marginTop:6}},
         React.createElement("span",null,new Date(invHist[0].d).toLocaleDateString(loc(),{day:'2-digit',month:'short'})),
-        React.createElement("span",{className:"num"}, f2(total)))
+        React.createElement("span",{className:"num"}, f2(total))),
+      invHist.some(function(h){ return h.c>0; }) && React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:6}},t("inv_evo_cost"))
     ),
-    invHist.length<2 && total>0 && React.createElement("div",{className:"hint",style:{padding:"0 4px 6px"}},t("inv_evo_hint"))
+    invHist.length<1 && total>0 && React.createElement("div",{className:"hint",style:{padding:"0 4px 6px"}},t("inv_evo_hint"))
     )},
       {id:"brokers",label:t("pt_byBroker"),el:React.createElement(React.Fragment,null,
     groups.map(function(g){
@@ -7288,6 +7351,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.105.0", d:"15 jul 2026", t:"Dashboard de inversiones más completo", items:[
+    "📈 El gráfico de evolución muestra valor y coste aportado (línea discontinua) y el cambio % del periodo.",
+    "🔄 El histórico se actualiza al refrescar precios o editar posiciones, no solo al abrir la app.",
+    "📊 La tarjeta de evolución aparece desde el primer día; al segundo ya ves la tendencia."
+  ]},
   {v:"3.104.0", d:"15 jul 2026", t:"Onboarding completo para usuarios nuevos", items:[
     "👋 Si es tu primera vez, un asistente de 4 pasos te guía: presupuesto, cuentas y (opcional) una deuda o inversión. Empiezas con la cartera vacía, sin datos de ejemplo.",
     "📋 En el Resumen verás «Primeros pasos» hasta que lo cierres: un acceso rápido a Ajustes para conectar bancos o activar el apunte de Trade Republic.",
@@ -8644,7 +8712,9 @@ function App(){
     // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
     const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + (o.cur==="USD"? (o.value||0)*fx : (o.value||0)), 0);
     const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0) + obLiquid;
-    const invested=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0) + roundupThisMonth + savebackThisMonth + monthlyInvestThisMonth;
+    const investedBase=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
+    const investedCost=state.investments.reduce((a,i)=>a+(i.cur==="USD"?(i.cost||0)*fx:(i.cost||0)),0);
+    const invested=investedBase + roundupThisMonth + savebackThisMonth + monthlyInvestThisMonth;
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
     const activos=liquid+invested+assetsTotal;
@@ -8711,7 +8781,7 @@ function App(){
     // alarma: el saldo mínimo del mes se va a negativo (cubre tanto el bajón intra-mes como no llegar a fin de mes)
     const bankAlerts=Object.keys(minByBank).filter(b=> minByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
-    return {liquid,invested,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
+    return {liquid,invested,investedCost,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
   },[state]);
 
   const [pricing,setPricing]=useState(false);
@@ -8818,19 +8888,21 @@ function App(){
       setWhatsNew(true);
     },900);
   },[state.onboarded,locked,showAuth,tourOpen]);
-  // Snapshot diario del total invertido (€) para el gráfico de evolución. Una vez por sesión.
-  const snapDone=useRef(false);
+  // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
+  const invSnapRef=useRef("");
   useEffect(function(){
-    if(snapDone.current || !(totals.invested>0)) return;
-    snapDone.current=true;
-    const today=new Date().toISOString().slice(0,10), v=+totals.invested.toFixed(2);
-    set(function(s){ const h=(s.invHistory||[]).slice();
-      if(h.length && h[h.length-1].d===today){ h[h.length-1]={d:today,v:v}; }
-      else { h.push({d:today,v:v}); }
-      if(h.length>400) h.splice(0,h.length-400);
+    if(!(totals.invested>0)) return;
+    const today=new Date().toISOString().slice(0,10);
+    const v=+totals.invested.toFixed(2);
+    const c=+(totals.investedCost||0).toFixed(2);
+    const key=today+"|"+v+"|"+c;
+    if(invSnapRef.current===key) return;
+    invSnapRef.current=key;
+    set(function(s){
+      const h=recordInvSnapshot(s.invHistory, today, v, c);
       return Object.assign({},s,{invHistory:h});
     });
-  },[totals.invested]);
+  },[totals.invested, totals.investedCost]);
 
   // GAMIFICACIÓN: detecta logros nuevos y subidas de nivel → toast/confeti (1ª vez siembra sin avisar).
   useEffect(function(){

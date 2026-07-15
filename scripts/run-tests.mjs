@@ -18,6 +18,7 @@ const steps = [
   ["motor-debt", ["node", "tests/motor-debt.test.mjs"]],
   ["reconcile-bank", ["node", "tests/reconcile-bank.test.mjs"]],
   ["onboarding", ["node", "tests/onboarding.test.mjs"]],
+  ["inv-dashboard", ["node", "tests/inv-dashboard.test.mjs"]],
 ];
 
 let failed = false;
