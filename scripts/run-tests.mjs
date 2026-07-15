@@ -15,6 +15,8 @@ const steps = [
   ["ingest-classify", ["node", "tests/ingest-classify.test.mjs"]],
   ["revo-golden", ["node", "tests/revo-golden.test.mjs"]],
   ["parsers-revolut", ["node", "tests/parsers/revolut.test.mjs"]],
+  ["motor-debt", ["node", "tests/motor-debt.test.mjs"]],
+  ["reconcile-bank", ["node", "tests/reconcile-bank.test.mjs"]],
 ];
 
 let failed = false;

@@ -38,7 +38,7 @@ t("debtBalance: financiación con balloon se liquida entera al llegar al último
 
 t("debtLeft: financiación 4 cuotas recién creada", () => {
   const now = new Date();
-  const d = { value: 400, monthly: 100, months: 4, asOf: ymAbs(now.getFullYear(), now.getMonth()) };
+  const d = { value: 400, monthly: 100, months: 4, day: 28, asOf: ymAbs(now.getFullYear(), now.getMonth()) };
   assert.equal(ctx.debtLeft(d), 4);
 });
 

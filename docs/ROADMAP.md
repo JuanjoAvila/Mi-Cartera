@@ -4,7 +4,7 @@ Tablero de tareas en GitHub:
 - **Project (Kanban):** https://github.com/users/JuanjoAvila/projects/1
 - **Issues:** https://github.com/JuanjoAvila/Mi-Cartera/issues
 
-> Estado a 2026-07-15. Tras v3.102.0 (seguridad, RGPD, tests, sync multi-dispositivo).
+> Estado a 2026-07-15. Tras v3.103.0 (motor de deudas + tests reconcile/bank).
 
 ## 🔴 Prioridad alta (calidad / escala)
 
@@ -16,7 +16,7 @@ Tablero de tareas en GitHub:
 | — | Sync app_state sin pisar otro dispositivo | infra | ✅ v3.102 |
 | — | Tabla `profiles` / admin sin email en cliente | infra | ✅ v3.102 |
 | [#1](https://github.com/JuanjoAvila/Mi-Cartera/issues/1) | Motor dinámico: gastos fijos con periodicidad | motor | ✅ hecho |
-| [#2](https://github.com/JuanjoAvila/Mi-Cartera/issues/2) | Motor dinámico: deuda que resta su cuota cada mes | motor | pendiente |
+| [#2](https://github.com/JuanjoAvila/Mi-Cartera/issues/2) | Motor dinámico: deuda que resta su cuota cada mes | motor | ✅ v3.103 |
 | [#3](https://github.com/JuanjoAvila/Mi-Cartera/issues/3) | Onboarding: arranque limpio para usuarios nuevos | onboarding | parcial |
 
 ## 🟡 Prioridad media
@@ -26,7 +26,7 @@ Tablero de tareas en GitHub:
 | [#4](https://github.com/JuanjoAvila/Mi-Cartera/issues/4) | Temas de color (verde / oscuro / claro) | ui |
 | [#5](https://github.com/JuanjoAvila/Mi-Cartera/issues/5) | Multi-usuario en función ingest (verify_jwt + JWT) | infra |
 | [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | Dashboard inversiones más rico | inversiones |
-| — | Tests reconcile / bank engine | calidad |
+| — | Tests reconcile / bank engine | calidad | ✅ v3.103 |
 | — | Modularización fuente (concat, sin partir artefacto) | arquitectura |
 
 ## 🟢 Prioridad baja
@@ -43,7 +43,7 @@ Tablero de tareas en GitHub:
 
 ## ✅ Ya hecho (reciente)
 
-- **v3.102.0:** tokens cifrados (AES-GCM), política de privacidad, borrado de cuenta, sync optimista multi-dispositivo, perfiles/admin en BD, tests golden Revolut + crypto Deno.
+- **v3.103.0:** motor de deudas dinámico (#2), re-cifrado tokens legacy, tests reconcile/bank/motor-debt.
 - **v3.101.0:** tests automáticos (syntax, lógica pura, ingest Deno), guard privacidad CI, DATA sintética en repo, categorías ingest alineadas.
 - **Fase 0–1 Supabase:** auth, sync, ingest MacroDroid, Open Banking, MyInvestor, inversiones TR/MI, motor gastos fijos.
 

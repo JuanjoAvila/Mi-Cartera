@@ -46,6 +46,9 @@ mi-cartera/
 No hay paso de build obligatorio para tocar la app: editas `public/index.html` y abres el archivo en el navegador. El único script automatizado es el sellado de versión del Service Worker, que también corre en CI.
 
 ```bash
+# Tests (sintaxis, lógica pura, parsers Revolut, deudas, conciliación banco, ingest Deno)
+npm test
+
 # (opcional, local) sellar versión del SW manualmente
 node scripts/stamp-version.mjs
 ```
@@ -56,9 +59,10 @@ Push a `main` → GitHub Actions sella la versión del SW y publica `public/` en
 
 ## 🔐 Secretos
 
-- La **API key de Finnhub NO está en el repo**. Vive como secreto del proyecto Supabase (Edge Functions → Secrets), junto con `INGEST_TOKEN` e `INGEST_USER_ID`.
+- La **API key de Finnhub NO está en el repo**. Vive como secreto del proyecto Supabase (Edge Functions → Secrets), junto con `INGEST_TOKEN`, `INGEST_USER_ID` y **`TOKEN_ENCRYPTION_KEY`** (32 bytes en base64 — cifra tokens MyInvestor/Open Banking en reposo).
 - En `public/index.html` solo va la **anon key** de Supabase, que es pública por diseño (los datos están protegidos con Row Level Security). La función `ingest` se protege con `INGEST_TOKEN`.
 - Setup completo del backend en [docs/SETUP-SUPABASE.md](docs/SETUP-SUPABASE.md).
+- Política de privacidad: [public/privacy.html](public/privacy.html).
 
 ## 🗺️ Roadmap
 
