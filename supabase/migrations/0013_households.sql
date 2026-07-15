@@ -73,6 +73,7 @@ create policy household_members_select on public.household_members
   );
 
 drop policy if exists household_members_insert_owner on public.household_members;
+drop policy if exists household_members_insert_self on public.household_members;
 create policy household_members_insert_self on public.household_members
   for insert to authenticated
   with check (

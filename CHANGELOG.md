@@ -7,6 +7,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - 🏠 **Hogar Fase 1:** crear/unirse por código, publicar snapshot, patrimonio fusionado (Supabase `0013_households.sql`).
 - 📊 **Informe automático día 1** + imagen WhatsApp (Ajustes → Personalización).
 - ⚡ **Pestañas más fluidas:** pre-mount, `startTransition`, animación 280 ms.
+- 📦 **APK alpha21** (`versionCode 21`): bundle web 3.109.0 embebido.
 
 ## [3.108.0] — 2026-07-15
 ### Premium: modular + rendimiento + E2E + Sentry
