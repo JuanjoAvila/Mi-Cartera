@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.106.0] — 2026-07-15
+### Documentación multi-usuario + financiación + precios manuales
+- 👥 **Ingest multi-usuario:** aclarado en código (`ingest_tokens` por persona; legacy `INGEST_TOKEN` intacto). Issue #5 cerrada.
+- 🚗 **Financiación (#11):** tests `financing.test.mjs` (`debtBalloonIn`, plazo, balloon).
+- 📋 **Precios manuales (#10):** tarjeta en Inversiones para fondos MI / posiciones TR sin ticker.
+
 ## [3.105.0] — 2026-07-15
 ### Dashboard inversiones (#6)
 - 📈 **Evolución enriquecida:** gráfico valor + coste aportado (línea discontinua), cambio % del periodo en el subtítulo.
