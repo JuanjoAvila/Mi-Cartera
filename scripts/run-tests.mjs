@@ -17,6 +17,7 @@ const steps = [
   ["parsers-revolut", ["node", "tests/parsers/revolut.test.mjs"]],
   ["motor-debt", ["node", "tests/motor-debt.test.mjs"]],
   ["reconcile-bank", ["node", "tests/reconcile-bank.test.mjs"]],
+  ["onboarding", ["node", "tests/onboarding.test.mjs"]],
 ];
 
 let failed = false;
