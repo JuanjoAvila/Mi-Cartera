@@ -13,7 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CORS, jsonResp, MI_BASE, miHeaders, miPositionsFrom } from "../_shared/myinvestor.ts";
-import { miTokensFromRow, miTokensToRow } from "../_shared/token_store.ts";
+import { miTokensFromRow, miTokensToRow, ensureMiLinkEncrypted } from "../_shared/token_store.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: link } = await admin.from("myinvestor_links").select("*").eq("user_id", user.id).maybeSingle();
+    if (link) await ensureMiLinkEncrypted(admin, user.id, link);
     const tokens = link ? await miTokensFromRow(link) : null;
     if (!link || !tokens?.access || !tokens.deviceId) return jsonResp({ ok: false, error: "no conectado" });
 

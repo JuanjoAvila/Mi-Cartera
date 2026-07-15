@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.103.0] — 2026-07-15
+### Motor de deudas (#2) + tests reconcile/bank
+- 📉 **`debtChargeDay` / `isDebtPaidThisMonth`:** cuotas entran en el motor de líquido aunque no tengan día (default día 1); nueva deuda con día 1 por defecto.
+- 🔐 **Re-cifrado legacy:** `ensureMiLinkEncrypted` en `myinvestor-sync` migra tokens plaintext tras activar `TOKEN_ENCRYPTION_KEY`.
+- ✅ **Tests:** `motor-debt.test.mjs`, `reconcile-bank.test.mjs` (matching, conciliación, `applyBankBalances`).
+
 ## [3.102.0] — 2026-07-15
 ### Seguridad, RGPD y sync multi-dispositivo
 - 🔐 **Tokens cifrados:** `supabase/functions/_shared/crypto.ts` (AES-256-GCM) cifra access/refresh de MyInvestor y `session_id` de Open Banking; clave en secreto `TOKEN_ENCRYPTION_KEY` (retrocompat con plaintext).
