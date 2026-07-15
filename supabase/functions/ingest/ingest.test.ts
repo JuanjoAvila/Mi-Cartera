@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert";
-import { clasificar, extraerImporte, categorizar } from "./index.ts";
+import { clasificar, extraerImporte, categorizar } from "../_shared/ingest_logic.ts";
 
 Deno.test("clasificar: bizum enviado vs recibido", () => {
   assertEquals(clasificar("Has enviado 12,50 € a María por bizum", ""), "gasto_nocard");
