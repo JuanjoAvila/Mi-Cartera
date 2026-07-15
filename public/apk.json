@@ -1,6 +1,6 @@
 {
   "versionCode": 21,
   "versionName": "4.0.0-alpha21",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha21/Mi-Cartera.apk",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha21/Mi-Cartera-alpha21.apk",
   "notes": "Bundle web 3.109.0: Hogar compartido (crear/unirse por código), informe mensual día 1, pestañas más fluidas, modular src/ + Playwright + Sentry opcional."
 }
