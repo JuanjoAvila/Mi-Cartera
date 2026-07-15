@@ -25,6 +25,8 @@
      Antes venía de cdn.jsdelivr.net con la etiqueta @2 flotante: una versión nueva con breaking change
      podía romper la app sin tocar nosotros nada. Si falla (offline), la app sigue con localStorage. -->
 <script src="vendor/supabase.min.js"></script>
+<!-- Sentry (opcional): solo reporta si CONFIG.SENTRY_DSN está configurado -->
+<script src="vendor/sentry.bundle.min.js"></script>
 
 <script>/* React */
 /**
@@ -475,7 +477,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .viewport{flex:1 1 auto;overflow:hidden;min-height:0;}
   .track{display:flex;height:100%;transition:transform .34s cubic-bezier(.22,.61,.36,1);will-change:transform;}
   .track.dragging{transition:none;}
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 16px calc(96px + var(--safe-bottom));}
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 16px calc(96px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;}
+  .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
   .card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line-soft);border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;}
@@ -820,7 +823,34 @@ const CONFIG = {
   SUPABASE_URL: "https://sfyfjagbnhbplrljpbvh.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeWZqYWdibmhicGxybGpwYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NzYyODAsImV4cCI6MjA5NzM1MjI4MH0.umMHOZanC4aRSBqiNAjsegyXxcZ-Q-g2oTQtS1JXzZk",
   APP_VERSION: "dev",          // lo sella el CI en cada deploy (scripts/stamp-version.mjs)
+  SENTRY_DSN: "",              // opcional: inyectar SENTRY_DSN en CI (scripts/build-app.mjs)
 };
+
+/* ---------- Rendimiento: trabajo no urgente tras el primer pintado ---------- */
+function mcScheduleIdle(fn, timeoutMs){
+  timeoutMs=timeoutMs||2500;
+  try{
+    if(typeof requestIdleCallback==="function"){ requestIdleCallback(fn,{timeout:timeoutMs}); return; }
+  }catch(e){}
+  setTimeout(fn, 16);
+}
+
+function mcInitSentry(){
+  if(!CONFIG.SENTRY_DSN || typeof Sentry==="undefined") return;
+  try{
+    Sentry.init({
+      dsn: CONFIG.SENTRY_DSN,
+      release: "mi-cartera@"+CONFIG.APP_VERSION,
+      environment: (typeof _mcNative!=="undefined"&&_mcNative) ? "android" : "web",
+      tracesSampleRate: 0.05,
+      beforeSend: function(ev){ return ev; }
+    });
+  }catch(e){}
+}
+
+function mcCaptureError(err, ctx){
+  try{ if(typeof Sentry!=="undefined"&&CONFIG.SENTRY_DSN) Sentry.captureException(err, ctx?{extra:ctx}:undefined); }catch(e){}
+}
 
 /* ---------- Categorías de gasto variable ---------- */
 const CATEGORIES = [
@@ -6923,7 +6953,7 @@ function Achievements({state, totals}){
 /* Mini-tutorial por pestaña: la primera vez que se abre una pestaña sale desplegado
    (feedback: «mi pareja no encontraba el lápiz de editar gastos»); al cerrarlo queda un
    botoncito «💡 ¿Cómo va esto?» para releerlo. Estado por pestaña en localStorage. */
-function TabCoach({tabId}){
+const TabCoach=React.memo(function TabCoach({tabId}){
   const tips=t("coach_"+tabId);
   const [seen,setSeen]=useState(function(){ try{ return localStorage.getItem("_coach_"+tabId)==="1"; }catch(e){ return true; } });
   const [open,setOpen]=useState(!seen);
@@ -6936,7 +6966,7 @@ function TabCoach({tabId}){
       React.createElement("span",{style:{flex:"0 0 auto"}},"·"),React.createElement("span",null,tip)); }),
     React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:dismiss},t("coach_ok"))
   );
-}
+});
 const TABS=[
   {id:"dash",label:"Resumen",icon:I.dash},
   {id:"metas",label:"Metas",icon:I.goal},
@@ -7371,6 +7401,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.108.0", d:"15 jul 2026", t:"Más rápida, más sólida, lista para crecer", items:[
+    "⚡ Arranque más fluido: las pestañas que no ves aún no cargan su contenido hasta que las visitas (menos tirones en móviles modestos).",
+    "🧩 Código modular en src/ (13 módulos): más fácil de mantener y escalar sin partir el despliegue.",
+    "🛡️ Sentry opcional para crashes en producción; Playwright E2E + tests de borrado de cuenta."
+  ]},
   {v:"3.107.0", d:"15 jul 2026", t:"Actualizaciones que avisan solas", items:[
     "🔔 Cuando hay una versión nueva lista, te llega una notificación al móvil (tú y quien use la app en su cuenta).",
     "✨ El botón «Nueva versión · toca para actualizar» vuelve a aparecer en cuanto el bundle está descargado — también si cierras y abres la app.",
@@ -8197,6 +8232,7 @@ class ErrorBoundary extends React.Component{
     try{ console.error("App crash:",err,info); }catch(e){}
     // telemetría solo-admin: el crash viaja a app_events para poder ayudar en remoto
     try{ cloud.logEvent('error','CRASH: '+((err&&err.message)||String(err)), ((err&&err.stack)||'')+(info&&info.componentStack?'\n'+info.componentStack.slice(0,600):'')); }catch(e){}
+    mcCaptureError(err, {componentStack: info&&info.componentStack});
   }
   render(){
     if(!this.state.err) return this.props.children;
@@ -8218,6 +8254,8 @@ class ErrorBoundary extends React.Component{
 function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
+  // Lazy mount: solo monta pestañas visitadas + vecinas (swipe) → menos trabajo en arranque.
+  const [mountedTabs,setMountedTabs]=useState(function(){ return {}; });
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
@@ -8435,7 +8473,7 @@ function App(){
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
   useEffect(function(){
     if(!cloud.enabled()) return;
-    cloud.session().then(function(s){ sessionRef.current=s; setSession(s); if(s) syncFromCloud(s); });
+    cloud.session().then(function(s){ sessionRef.current=s; setSession(s); if(s) mcScheduleIdle(function(){ syncFromCloud(s); }); });
     cloud.onAuth(function(s, ev){
       const prev=sessionRef.current;
       const changed=(!prev&&s)||(prev&&!s)||(prev&&s&&prev.user.id!==s.user.id);
@@ -8575,7 +8613,7 @@ function App(){
 
   // Y lo mismo para los brókers que SÍ sincronizan solos (TR nativo + MyInvestor): al abrir,
   // en silencio y con throttle. Ver runBrokerSync: solo toca lo ya mapeado.
-  useEffect(function(){ runBrokerSync(); },[uid]);
+  useEffect(function(){ if(uid) mcScheduleIdle(function(){ runBrokerSync(); }); },[uid]);
 
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
@@ -8842,7 +8880,7 @@ function App(){
       if(r>0) set(function(s){ return Math.abs((s.fx||0)-r)<0.0001 ? s : Object.assign({},s,{fx:+(+r).toFixed(4)}); });
     }).catch(function(){});
   };
-  useEffect(function(){ refreshFx(); },[]);   // refresca el cambio al abrir la app
+  useEffect(function(){ mcScheduleIdle(refreshFx, 4000); },[]);   // FX tras primer pintado
   useEffect(function(){ applyTheme(state.settings&&state.settings.theme); },[state.settings&&state.settings.theme]);  // tema de color
   useEffect(function(){ applyBigText(state.settings&&state.settings.bigText); },[state.settings&&state.settings.bigText]);  // letra grande
   // App Android: pide el permiso de notificaciones (Android 13+) una sola vez al arrancar.
@@ -9156,6 +9194,11 @@ function App(){
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
   const tabIds = tabOrderState || tabOrderOf(state);
+  useEffect(function(){
+    var id=tabIds[tab];
+    if(!id) return;
+    setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
+  },[tab, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.
@@ -9236,7 +9279,14 @@ function App(){
     ),
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
-        tabIds.map(function(id){ return React.createElement("div",{className:"page",key:id}, React.createElement(TabCoach,{tabId:id}), pageFor(id)); })
+        tabIds.map(function(id,i){
+          var live=Math.abs(tab-i)<=1;
+          var show=live||!!mountedTabs[id];
+          return React.createElement("div",{className:"page"+(live?" page-live":""),key:id},
+            show && React.createElement(TabCoach,{tabId:id}),
+            show ? pageFor(id) : null
+          );
+        })
       )
     ),
     React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
@@ -9462,7 +9512,10 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0 && !_mc
     }).catch(function(){});
   });
 }
+mcInitSentry();
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
+</script>
+
 </script>
 
 <script>(function(){var t=setInterval(function(){var r=document.getElementById("root"),l=document.getElementById("mc-load");if(r&&l&&r.childElementCount>1){l.remove();clearInterval(t);}},60);setTimeout(function(){clearInterval(t);},10000);})();</script>

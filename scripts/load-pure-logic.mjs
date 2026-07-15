@@ -28,6 +28,7 @@ export function createLogicSandbox(extra = {}) {
     useRef: (v) => ({ current: v }),
     useMemo: (fn) => fn(),
     useCallback: (fn) => fn,
+    memo: (fn) => fn,
     Fragment: "Fragment",
   };
   const noop = () => {};
