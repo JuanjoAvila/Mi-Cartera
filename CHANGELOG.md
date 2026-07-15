@@ -8,6 +8,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - ✨ **Botón «Nueva versión»** restaurado al arrancar si el bundle ya estaba descargado (bug: `_otaPending` hacía `return` sin mostrar el pill).
 - 🔄 **Chequeo periódico:** arranque (~600 ms), al volver a primer plano y cada 30 min con la app abierta.
 - 📱 **Plugin Android:** `showNotification` acepta `gotoTarget` para deep-link a actualizar.
+- 📦 **APK alpha20** (`versionCode 20`): release con deep-link en notificaciones de update + bundle 3.107.0 de fábrica.
 - 📚 **Docs:** README/ARQUITECTURA/SETUP-ANDROID actualizados; guía rotación token `docs/SETUP-INGEST-TOKEN.md`.
 - ✅ **Tests:** `updates.test.mjs` (`newerVer`).
 - 🏁 **Issues cerradas:** #8 (APK Capacitor), #9 (rotación ingest), #15 (gamificación).
