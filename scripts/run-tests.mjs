@@ -13,6 +13,7 @@ const steps = [
   ["revo-num", ["node", "tests/revo-num.test.mjs"]],
   ["debts", ["node", "tests/debts.test.mjs"]],
   ["ingest-classify", ["node", "tests/ingest-classify.test.mjs"]],
+  ["revo-golden", ["node", "tests/revo-golden.test.mjs"]],
 ];
 
 let failed = false;
@@ -26,18 +27,25 @@ for (const [name, cmd] of steps) {
 }
 
 console.log("\n── ingest-deno ──");
-const deno = spawnSync("deno", ["test", "supabase/functions/ingest/ingest.test.ts"], {
-  cwd: root, stdio: "pipe", shell: process.platform === "win32",
-});
-const denoOut = (deno.stderr?.toString() || "") + (deno.stdout?.toString() || "");
-if (deno.status === 0) {
-  console.log("  ✓ supabase/functions/ingest/ingest.test.ts");
-} else if (deno.error?.code === "ENOENT" || /not found|no se reconoce|not recognized/i.test(denoOut)) {
-  console.log("  ⊘ deno no instalado, omitido");
-} else {
-  if (denoOut) process.stderr.write(denoOut);
-  failed = true;
-  console.error("FAILED: ingest-deno");
+const denoTests = [
+  "supabase/functions/ingest/ingest.test.ts",
+  "supabase/functions/_shared/crypto.test.ts",
+];
+for (const testFile of denoTests) {
+  const deno = spawnSync("deno", ["test", testFile], {
+    cwd: root, stdio: "pipe", shell: process.platform === "win32",
+  });
+  const denoOut = (deno.stderr?.toString() || "") + (deno.stdout?.toString() || "");
+  if (deno.status === 0) {
+    console.log(`  ✓ ${testFile}`);
+  } else if (deno.error?.code === "ENOENT" || /not found|no se reconoce|not recognized/i.test(denoOut)) {
+    console.log("  ⊘ deno no instalado, omitido");
+    break;
+  } else {
+    if (denoOut) process.stderr.write(denoOut);
+    failed = true;
+    console.error(`FAILED: ${testFile}`);
+  }
 }
 
 process.exit(failed ? 1 : 0);

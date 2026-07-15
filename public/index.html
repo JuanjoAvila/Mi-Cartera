@@ -939,17 +939,27 @@ const cloud = (function(){
     async updatePassword(newPass){ if(!sb) throw new Error("nube no disponible"); const {error}=await sb.auth.updateUser({ password:newPass }); if(error) throw error; },
     async pullState(){
       if(!sb) return null;
-      const {data,error}=await sb.from('app_state').select('data').maybeSingle();
+      const {data,error}=await sb.from('app_state').select('data,updated_at').maybeSingle();
       if(error) throw error;
-      return data ? data.data : null;
+      return data ? { data:data.data, updated_at:data.updated_at } : null;
     },
-    async pushState(uid, data){
-      if(!sb || !uid) return;
-      const {error}=await sb.from('app_state').upsert(
-        { user_id:uid, data:data, updated_at:new Date().toISOString() },
-        { onConflict:'user_id' }
-      );
+    async pushState(uid, data, lastKnownUpdatedAt){
+      if(!sb || !uid) return null;
+      const now=new Date().toISOString();
+      if(lastKnownUpdatedAt){
+        const {data:rows,error}=await sb.from('app_state')
+          .update({ user_id:uid, data:data, updated_at:now })
+          .eq('user_id', uid).eq('updated_at', lastKnownUpdatedAt)
+          .select('updated_at');
+        if(error) throw error;
+        if(!rows || !rows.length) return { conflict:true };
+        return { updated_at:rows[0].updated_at };
+      }
+      const {data:rows,error}=await sb.from('app_state')
+        .upsert({ user_id:uid, data:data, updated_at:now }, { onConflict:'user_id' })
+        .select('updated_at');
       if(error) throw error;
+      return { updated_at: rows && rows[0] && rows[0].updated_at };
     },
     async pullExpenses(){
       if(!sb) return [];
@@ -1153,6 +1163,20 @@ const cloud = (function(){
       if(error) throw error;
       return data||[];
     },
+    async fetchProfile(){
+      if(!sb) return null;
+      const {data,error}=await sb.from('profiles').select('is_admin').maybeSingle();
+      if(error) throw error;
+      return data;
+    },
+    async deleteAccount(password){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('delete-account',{ body:{ password:password } });
+      if(error) throw error;
+      if(!data || !data.ok) throw new Error((data&&data.error)||"no se pudo borrar la cuenta");
+      await sb.auth.signOut();
+      return data;
+    },
   };
 })();
 
@@ -1285,6 +1309,12 @@ const LANG = {
     st_updates:"Actualizaciones", st_update:"Buscar actualización",
     st_up_ok:"✓ Estás a la última", st_up_web:"Hay versión web nueva: se instala sola — cierra y abre la app para estrenarla", st_up_applying:"⬇️ Actualizando a la v{v}… la app se recarga sola en unos segundos", st_up_apk:"⬇️ App {v} disponible · descargando, se abrirá el instalador",
     st_news:"Novedades", st_news_row:"Novedades y sugerencias",
+    st_account:"Tu cuenta", st_privacy:"Privacidad y datos", st_delete_acc:"Borrar mi cuenta",
+    st_delete_acc_sub:"Se borrarán todos tus datos en la nube (gastos, cuentas, inversiones…). No se puede deshacer.",
+    st_delete_acc_ok:"Sí, borrar todo", st_delete_acc_pwd:"Confirma con tu contraseña",
+    st_delete_acc_pwd_sub:"Por seguridad, escribe la contraseña de tu cuenta de Mi Cartera.",
+    st_delete_acc_done:"✓ Cuenta borrada · datos eliminados",
+    st_sync_conflict:"⚠ Otro dispositivo guardó cambios antes: se ha recargado la versión de la nube",
     wn_title:"Novedades", wn_sub:"Qué ha cambiado en cada versión. Toca una versión para ver su detalle.", wn_current:"tu versión",
     wn_fb_title:"💬 ¿Algo que contar?", wn_fb_hint:"Sugerencias, errores o cosas raras: quedan apuntadas aquí abajo y le llegan a Juanjo con tu versión, para que no se olviden.",
     wn_fb_ph:"Escribe la sugerencia o el error que has visto…", wn_fb_send:"Enviar", wn_fb_sent:"✓ Apuntado y enviado", wn_fb_offline:"✓ Apuntado en tus notas (no se pudo enviar; se queda guardado)",
@@ -1323,6 +1353,12 @@ const LANG = {
     st_updates:"Updates", st_update:"Check for updates",
     st_up_ok:"✓ You're up to date", st_up_web:"New web version available: it installs itself — close and reopen the app", st_up_applying:"⬇️ Updating to v{v}… the app will reload itself in a few seconds", st_up_apk:"⬇️ App {v} available · downloading, the installer will open",
     st_news:"What's new", st_news_row:"What's new & feedback",
+    st_account:"Your account", st_privacy:"Privacy & data", st_delete_acc:"Delete my account",
+    st_delete_acc_sub:"All your cloud data will be deleted (expenses, accounts, investments…). This can't be undone.",
+    st_delete_acc_ok:"Yes, delete everything", st_delete_acc_pwd:"Confirm with your password",
+    st_delete_acc_pwd_sub:"For security, enter your Mi Cartera account password.",
+    st_delete_acc_done:"✓ Account deleted · data removed",
+    st_sync_conflict:"⚠ Another device saved changes first: reloaded from the cloud",
     wn_title:"What's new", wn_sub:"What changed in each version. Tap a version for details.", wn_current:"your version",
     wn_fb_title:"💬 Anything to share?", wn_fb_hint:"Suggestions, bugs or oddities: they're saved below and reach Juanjo with your version, so nothing gets lost.",
     wn_fb_ph:"Write your suggestion or the bug you saw…", wn_fb_send:"Send", wn_fb_sent:"✓ Saved and sent", wn_fb_offline:"✓ Saved to your notes (couldn't send; it stays stored)",
@@ -1361,6 +1397,12 @@ const LANG = {
     st_updates:"Actualitzacions", st_update:"Cerca actualització",
     st_up_ok:"✓ Estàs a l'última", st_up_web:"Hi ha versió web nova: s'instal·la sola — tanca i obre l'app per estrenar-la", st_up_applying:"⬇️ Actualitzant a la v{v}… l'app es recarrega sola en uns segons", st_up_apk:"⬇️ App {v} disponible · baixant, s'obrirà l'instal·lador",
     st_news:"Novetats", st_news_row:"Novetats i suggeriments",
+    st_account:"El teu compte", st_privacy:"Privacitat i dades", st_delete_acc:"Esborrar el meu compte",
+    st_delete_acc_sub:"S'esborraran totes les teves dades al núvol (despeses, comptes, inversions…). No es pot desfer.",
+    st_delete_acc_ok:"Sí, esborrar tot", st_delete_acc_pwd:"Confirma amb la contrasenya",
+    st_delete_acc_pwd_sub:"Per seguretat, escriu la contrasenya del teu compte de Mi Cartera.",
+    st_delete_acc_done:"✓ Compte esborrat · dades eliminades",
+    st_sync_conflict:"⚠ Un altre dispositiu ha desat canvis abans: s'ha recarregat des del núvol",
     wn_title:"Novetats", wn_sub:"Què ha canviat a cada versió. Toca una versió per veure'n el detall.", wn_current:"la teva versió",
     wn_fb_title:"💬 Alguna cosa a dir?", wn_fb_hint:"Suggeriments, errors o coses rares: queden apuntades aquí sota i arriben al Juanjo amb la teva versió, perquè no s'oblidin.",
     wn_fb_ph:"Escriu el suggeriment o l'error que has vist…", wn_fb_send:"Envia", wn_fb_sent:"✓ Apuntat i enviat", wn_fb_offline:"✓ Apuntat a les teves notes (no s'ha pogut enviar; queda desat)",
@@ -4179,7 +4221,8 @@ function AskHost(){
         React.createElement("div",{className:"ts-title"},cur.title),
         cur.sub && React.createElement("div",{className:"ts-hint"},cur.sub),
         cur.input && React.createElement("input",{className:"af-in num ask-in",autoFocus:true,
-          inputMode:cur.mode||"decimal", placeholder:cur.ph||"", value:val,
+          type:cur.secret?"password":"text",
+          inputMode:cur.secret?"text":(cur.mode||"decimal"), placeholder:cur.ph||"", value:val,
           onChange:function(e){ setVal(e.target.value); },
           onKeyDown:function(e){ if(e.key==="Enter") ok(); }}),
         cur.input && (cur.chips||[]).length>0 && React.createElement("div",{className:"ask-chips"},
@@ -7209,6 +7252,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.102.0", d:"15 jul 2026", t:"Más seguridad y control de tu cuenta", items:[
+    "🔐 Los tokens de sesión de MyInvestor y del banco se guardan cifrados en el servidor. Tus contraseñas nunca se almacenan — solo los tokens que devuelve el banco al conectar.",
+    "👤 Puedes leer la política de privacidad y borrar tu cuenta desde Ajustes → Tu cuenta. El borrado pide tu contraseña y elimina todos tus datos de la nube.",
+    "📱 Si editas en dos móviles a la vez, la app detecta el conflicto y recarga la versión más reciente de la nube en lugar de pisarla sin avisar."
+  ]},
   {v:"3.101.0", d:"15 jul 2026", t:"Más fiabilidad por detrás: tests automáticos y datos más seguros", items:[
     "🛡️ El repositorio ya no lleva datos financieros personales: la semilla del código es sintética y solo sirve para migraciones técnicas. Tus datos reales siguen en tu cuenta y en tu móvil, como siempre.",
     "✅ Antes de cada despliegue se ejecutan tests automáticos: comprueban que el código no tiene errores de sintaxis y que los cálculos clave (round-up, importadores Revolut, clasificación de gastos TR) siguen cuadrando.",
@@ -7346,8 +7394,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   // Telemetría: el panel «Actividad» SOLO existe para el admin (gate por email de la sesión;
   // la RLS de app_events lo re-valida en servidor — sin sesión de admin no devuelve filas).
   const [meEmail,setMeEmail]=useState(null);
-  useEffect(function(){ if(!cloud.enabled()){ return; } cloud.session().then(function(s){ setMeEmail((s&&s.user&&s.user.email)||null); }).catch(function(){}); },[uid]);
-  const isAdmin = meEmail==="juanjo.avila.chavero@gmail.com";
+  const [isAdmin,setIsAdmin]=useState(false);
+  useEffect(function(){
+    if(!cloud.enabled()){ return; }
+    cloud.session().then(function(s){ setMeEmail((s&&s.user&&s.user.email)||null); }).catch(function(){});
+    cloud.fetchProfile().then(function(p){ setIsAdmin(!!(p&&p.is_admin)); }).catch(function(){});
+  },[uid]);
   // «Buscar actualización» a mano (feedback 2026-07-10: «no me sale ningún botón para actualizar
   // manualmente»): consulta apk.json (APK) y version.json (web) al momento, sin esperar al arranque.
   const checkUpdates=function(){
@@ -7697,6 +7749,23 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
       row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
     ),
+    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",meEmail||null,
+      row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
+      row("delacc","🗑️",t("st_delete_acc"),null,function(){
+        askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
+          .then(function(ok){
+            if(!ok) return;
+            askText({ title:t("st_delete_acc_pwd"), sub:t("st_delete_acc_pwd_sub"), ph:"••••••••", ok:t("st_delete_acc_ok"), secret:true })
+              .then(function(pwd){
+                if(pwd==null) return;
+                cloud.deleteAccount(String(pwd)).then(function(){
+                  showToast(t("st_delete_acc_done"));
+                  onClose();
+                }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+              });
+          });
+      })
+    ),
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
@@ -7999,6 +8068,7 @@ function App(){
   const uid = session && session.user ? session.user.id : null;
   const stateRef=useRef(state); useEffect(function(){ stateRef.current=state; });
   const sessionRef=useRef(null);
+  const cloudUpdatedAtRef=useRef(null);   // sello del servidor para sync sin pisar otro dispositivo
   const bankSyncing=useRef(false);          // evita syncs de banco solapados
   const bankJustConnected=useRef(false);    // marca la vuelta de ?bank=ok para sincronizar en cuanto haya sesión
 
@@ -8036,7 +8106,9 @@ function App(){
     if(!s || !s.user) return;
     const u=s.user.id;
     const freshLogin=!!(opts&&opts.freshLogin);   // acaba de INICIAR SESIÓN (no un reconecta del mismo user)
-    cloud.pullState().then(function(cloudState){
+    cloud.pullState().then(function(cloudPack){
+      const cloudState=cloudPack ? cloudPack.data : null;
+      if(cloudPack && cloudPack.updated_at) cloudUpdatedAtRef.current=cloudPack.updated_at;
       if(cloudState && validCloudState(cloudState)){
         // LAST-WRITE-WINS: si lo LOCAL es más reciente (p.ej. cambios hechos sin conexión),
         // NO lo pisamos con la nube vieja; solo unimos los gastos (aditivo). Si la nube es más
@@ -8053,8 +8125,12 @@ function App(){
       } else if(cloudState){
         // llegó algo pero con forma inválida (corrupto/parcial) → NO machacar lo local; resube lo bueno
         showToast("⚠ Nube con formato inesperado: se conservan tus datos locales");
-        return cloud.pushState(u, slimForCloud(stateRef.current));
-      } else { return cloud.pushState(u, slimForCloud(stateRef.current)); }   // primera vez: sube lo que ya tienes
+        return cloud.pushState(u, slimForCloud(stateRef.current), cloudUpdatedAtRef.current).then(function(r){
+          if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
+        });
+      } else { return cloud.pushState(u, slimForCloud(stateRef.current), cloudUpdatedAtRef.current).then(function(r){
+          if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
+        }); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
       .catch(function(e){ if(navigator.onLine!==false) showToast("✕ Nube: "+((e&&e.message)||e)); });   // si estás sin conexión, ni avisamos (es normal)
   };
@@ -8192,7 +8268,12 @@ function App(){
   // Empuja el estado a la nube (debounced) cuando cambie y haya sesión. Sin los gastos (ya en su tabla).
   useEffect(function(){
     if(!uid) return;
-    const t=setTimeout(function(){ cloud.pushState(uid, slimForCloud(state)).catch(function(){}); }, 1200);
+    const t=setTimeout(function(){
+      cloud.pushState(uid, slimForCloud(state), cloudUpdatedAtRef.current).then(function(r){
+        if(r && r.conflict){ showToast(t("st_sync_conflict")); syncFromCloud(sessionRef.current); return; }
+        if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
+      }).catch(function(){});
+    }, 1200);
     return function(){ clearTimeout(t); };
   },[state,uid]);
 
@@ -8375,7 +8456,10 @@ function App(){
     return function(){ window.removeEventListener("online",on); window.removeEventListener("offline",off); };
   },[]);
   useEffect(function(){
-    if(online && !wasOnline.current && uid){ cloud.pushState(uid, slimForCloud(stateRef.current)).catch(function(){}); }   // reconectó → sube lo de offline
+    if(online && !wasOnline.current && uid){ cloud.pushState(uid, slimForCloud(stateRef.current), cloudUpdatedAtRef.current).then(function(r){
+      if(r && r.conflict){ showToast(t("st_sync_conflict")); syncFromCloud(sessionRef.current); return; }
+      if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
+    }).catch(function(){}); }   // reconectó → sube lo de offline
     wasOnline.current=online;
   },[online,uid]);
 

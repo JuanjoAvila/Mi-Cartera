@@ -13,6 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CORS, jsonResp, MI_BASE, miHeaders, miPositionsFrom } from "../_shared/myinvestor.ts";
+import { miTokensFromRow, miTokensToRow } from "../_shared/token_store.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -26,10 +27,12 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: link } = await admin.from("myinvestor_links").select("*").eq("user_id", user.id).maybeSingle();
-    if (!link || !link.access_token || !link.device_id) return jsonResp({ ok: false, error: "no conectado" });
+    const tokens = link ? await miTokensFromRow(link) : null;
+    if (!link || !tokens?.access || !tokens.deviceId) return jsonResp({ ok: false, error: "no conectado" });
 
-    const deviceId = link.device_id as string;
-    let token = link.access_token as string;
+    const deviceId = tokens.deviceId;
+    let token = tokens.access;
+    let refreshPlain = tokens.refresh;
 
     // Petición autenticada con reintento tras refrescar el token (401).
     const apiGet = async (path: string): Promise<{ status: number; json: unknown }> => {
@@ -39,10 +42,10 @@ Deno.serve(async (req) => {
       return { status: r.status, json: j };
     };
     const refresh = async (): Promise<boolean> => {
-      if (!link.refresh_token) return false;
+      if (!refreshPlain) return false;
       const r = await fetch(MI_BASE + "/login/api/v1/auth/token/refresh", {
         method: "POST", headers: miHeaders(deviceId),
-        body: JSON.stringify({ refreshToken: link.refresh_token }),
+        body: JSON.stringify({ refreshToken: refreshPlain }),
       });
       const t = await r.text();
       // deno-lint-ignore no-explicit-any
@@ -50,10 +53,12 @@ Deno.serve(async (req) => {
       const d = (j && j.payload && j.payload.data) || {};
       if ((r.status === 200 || r.status === 201) && d.accessToken) {
         token = d.accessToken;
+        refreshPlain = d.refreshToken || refreshPlain;
         const refreshSecs = Number(d.refreshExpiresIn || 0);
+        const enc = await miTokensToRow(d.accessToken, refreshPlain);
         await admin.from("myinvestor_links").update({
-          access_token: d.accessToken,
-          refresh_token: d.refreshToken || link.refresh_token,
+          access_token: enc.access_token,
+          refresh_token: enc.refresh_token,
           refresh_expires_at: refreshSecs > 0 ? new Date(Date.now() + refreshSecs * 1000).toISOString() : link.refresh_expires_at,
           status: "active", updated_at: new Date().toISOString(),
         }).eq("user_id", user.id);
