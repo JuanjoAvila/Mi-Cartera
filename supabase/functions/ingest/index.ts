@@ -16,9 +16,12 @@
 // server-side, para que el lector nativo pueda enseñar una notificación real
 // aunque la app esté cerrada.
 //
-// Sin sesión de usuario (verify_jwt = false): el lector no tiene login.
-// Se protege con un token propio (INGEST_TOKEN) y escribe SIEMPRE para el
-// usuario configurado (INGEST_USER_ID), usando la service role key (salta RLS).
+// Sin sesión de usuario (verify_jwt = false): el lector nativo no tiene login de Supabase.
+// MULTIUSUARIO vía token propio (migración 0008_ingest_tokens):
+//   · INGEST_TOKEN + INGEST_USER_ID → token legacy del creador (sigue igual).
+//   · Cualquier otro token → lookup en ingest_tokens → user_id del titular.
+// La app genera el token por usuario en Ajustes → notificaciones TR y el plugin Android
+// lo manda en ?token=… (setIngestUrl). Escritura con service role (RLS no aplica al insert).
 //
 // Secretos necesarios en el proyecto:
 //   INGEST_TOKEN     — token compartido que el lector envía (?token=… o cabecera x-ingest-token)

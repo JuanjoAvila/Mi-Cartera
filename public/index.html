@@ -2100,6 +2100,8 @@ Object.assign(LANG.es,{
   inv_sold:"💸 Líquido vendido (realizado)", inv_proj:"Proyección de tu ahorro", inv_proj_sub:"Interés compuesto",
   inv_hint_edit:"Escribe el valor actual de cada posición (al tocar se selecciona solo). El % de ganancia se calcula automáticamente.",
   inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones con ticker. Lo que no tiene precio automático (fondos, oro, algunos ETF) se edita con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
+  inv_manual_t:"Sin cotización automática", inv_manual_sub:"fondos MyInvestor, Meta TR…",
+  inv_manual_body:"Algunos activos no tienen feed gratuito fiable por ISIN. Actualízalos a mano con «Editar a mano»: pon el valor actual que ves en tu bróker y, si has comprado/vendido, marca «También ajustar lo invertido». Fondos indexados en MyInvestor (p. ej. Fidelity MSCI World) y posiciones sin ticker en Trade Republic entran aquí. Las acciones/ETF con ticker sí se actualizan con «Precios USD».",
   inv_sold_part:"Vendí parte →", inv_value:"Valor", inv_invested:"Invertido", inv_sell_prompt:"¿Qué % de «{name}» has vendido?",
   inv_sell_sub:"Pon el porcentaje (30 = un 30 %). Se ajustan valor, coste y participaciones, y el líquido se apunta como vendido.",
   inv_delete:"Borrar", inv_delete_confirm:"¿Borrar «{name}» de tu cartera?", inv_delete_sub:"Esto no toca tu bróker: solo la quita de la app.",
@@ -2164,6 +2166,8 @@ Object.assign(LANG.en,{
   inv_sold:"💸 Cash from sales (realised)", inv_proj:"Your savings projection", inv_proj_sub:"Compound interest",
   inv_hint_edit:"Type the current value of each position (tap to select). The gain % is calculated automatically.",
   inv_hint_view:"«USD prices» fetches quotes for tickered stocks automatically. Anything without an automatic price (funds, gold, some ETFs) is edited via «Edit manually». USD→EUR rate: {fx} · live ECB.",
+  inv_manual_t:"No automatic quote", inv_manual_sub:"MyInvestor funds, TR Meta…",
+  inv_manual_body:"Some holdings have no reliable free ISIN feed. Update them with «Edit manually»: enter the current value from your broker and, if you bought or sold, tick «Also adjust what's invested». Indexed funds on MyInvestor (e.g. Fidelity MSCI World) and untickered TR positions go here. Stocks/ETFs with a ticker update via «USD prices».",
   inv_sold_part:"Sold part →", inv_value:"Value", inv_invested:"Invested", inv_sell_prompt:"What % of “{name}” did you sell?",
   inv_sell_sub:"Enter the percentage (30 = 30 %). Value, cost and shares are adjusted, and the proceeds are logged as sold.",
   inv_delete:"Delete", inv_delete_confirm:"Delete “{name}” from your portfolio?", inv_delete_sub:"This doesn't touch your broker: it only removes it from the app.",
@@ -2228,6 +2232,8 @@ Object.assign(LANG.ca,{
   inv_sold:"💸 Líquid venut (realitzat)", inv_proj:"Projecció del teu estalvi", inv_proj_sub:"Interès compost",
   inv_hint_edit:"Escriu el valor actual de cada posició (en tocar se selecciona sol). El % de guany es calcula automàticament.",
   inv_hint_view:"«Preus USD» porta soles les cotitzacions de les accions amb ticker. El que no té preu automàtic (fons, or, alguns ETF) s'edita amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
+  inv_manual_t:"Sense cotització automàtica", inv_manual_sub:"fons MyInvestor, Meta TR…",
+  inv_manual_body:"Alguns actius no tenen feed gratuït fiable per ISIN. Actualitza'ls a mà amb «Edita a mà»: posa el valor actual que veus al teu bròker i, si has comprat/vendut, marca «Ajusta també l'invertit». Fons indexats a MyInvestor (p. ex. Fidelity MSCI World) i posicions sense ticker a Trade Republic entren aquí. Les accions/ETF amb ticker sí s'actualitzen amb «Preus USD».",
   inv_sold_part:"He venut part →", inv_value:"Valor", inv_invested:"Invertit", inv_sell_prompt:"Quin % de «{name}» has venut?",
   inv_sell_sub:"Posa el percentatge (30 = un 30 %). S'ajusten valor, cost i participacions, i el líquid s'apunta com a venut.",
   inv_delete:"Esborra", inv_delete_confirm:"Esborrar «{name}» de la teva cartera?", inv_delete_sub:"Això no toca el teu bròker: només la treu de l'app.",
@@ -5347,6 +5353,10 @@ function Investments({state, set, fetchPrices, pricing}){
       {id:"proj",label:t("inv_proj"),el:
     React.createElement(CollapsibleCard,{title:t("inv_proj"),sub:t("inv_proj_sub"),dot:"#5FD08A",defaultOpen:false,storageKey:"inv_proj",help:t("h_proj")},
       React.createElement(Projection,{invested:total, defMonthly: state.aportaciones.reduce(function(a,x){ return a+x.amount; },0)})
+    )},
+      {id:"manual",label:t("inv_manual_t"),el:
+    !editing && React.createElement(CollapsibleCard,{title:t("inv_manual_t"),sub:t("inv_manual_sub"),dot:"#C9A0E0",defaultOpen:false,storageKey:"inv_manual"},
+      React.createElement("div",{className:"hint",style:{lineHeight:1.55}},t("inv_manual_body"))
     )}
     ]}),
     React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
@@ -7351,6 +7361,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.106.0", d:"15 jul 2026", t:"Documentación y tests de lo que ya teníamos", items:[
+    "👥 Multi-usuario en ingest: cada persona con su token en Ajustes → notificaciones TR (no hace falta JWT en el lector Android).",
+    "🚗 Financiación coche: entrada + cuotas + pago final + asesor «¿Cuándo amortizar?» — ya estaba; ahora con tests automáticos.",
+    "📋 Nueva tarjeta «Sin cotización automática» en Inversiones: guía para fondos MyInvestor y posiciones sin ticker en TR."
+  ]},
   {v:"3.105.0", d:"15 jul 2026", t:"Dashboard de inversiones más completo", items:[
     "📈 El gráfico de evolución muestra valor y coste aportado (línea discontinua) y el cambio % del periodo.",
     "🔄 El histórico se actualiza al refrescar precios o editar posiciones, no solo al abrir la app.",

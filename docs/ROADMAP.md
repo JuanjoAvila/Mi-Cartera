@@ -4,7 +4,7 @@ Tablero de tareas en GitHub:
 - **Project (Kanban):** https://github.com/users/JuanjoAvila/projects/1
 - **Issues:** https://github.com/JuanjoAvila/Mi-Cartera/issues
 
-> Estado a 2026-07-15. Tras v3.105.0 (dashboard inversiones #6).
+> Estado a 2026-07-15. Tras v3.106.0 (cierre #5/#10/#11 + tests financiación).
 
 ## 🔴 Prioridad alta (calidad / escala)
 
@@ -23,11 +23,12 @@ Tablero de tareas en GitHub:
 
 | # | Tarea | Área | Estado |
 |---|-------|------|--------|
-| [#5](https://github.com/JuanjoAvila/Mi-Cartera/issues/5) | Multi-usuario en función ingest (verify_jwt + JWT) | infra |
-| [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | ~~Dashboard inversiones más rico~~ | inversiones | ✅ v3.105 |
+| [#5](https://github.com/JuanjoAvila/Mi-Cartera/issues/5) | ~~Multi-usuario ingest~~ (`ingest_tokens`) | infra | ✅ hecho |
+| [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | ~~Dashboard inversiones~~ | inversiones | ✅ v3.105 |
 | [#4](https://github.com/JuanjoAvila/Mi-Cartera/issues/4) | ~~Temas de color~~ | ui | ✅ hecho |
+| [#11](https://github.com/JuanjoAvila/Mi-Cartera/issues/11) | ~~Financiación coche (balloon + asesor)~~ | motor | ✅ v3.106 |
+| [#10](https://github.com/JuanjoAvila/Mi-Cartera/issues/10) | ~~Precios manuales MI/TR~~ | inversiones | ✅ v3.106 |
 | [#19](https://github.com/JuanjoAvila/Mi-Cartera/issues/19) | ~~Round-up TR en efectivo~~ | inversiones | ✅ hecho |
-| — | Tests reconcile / bank engine | calidad | ✅ v3.103 |
 | — | Modularización fuente (concat, sin partir artefacto) | arquitectura |
 
 ## 🟢 Prioridad baja
@@ -44,6 +45,7 @@ Tablero de tareas en GitHub:
 
 ## ✅ Ya hecho (reciente)
 
+- **v3.106.0:** ingest multi-usuario documentado (#5), tests financiación (#11), guía precios manuales (#10).
 - **v3.105.0:** dashboard inversiones (#6): evolución valor+coste, cambio % del periodo, snapshot al actualizar precios.
 - **v3.104.0:** onboarding 4 pasos (#3), tarjeta primeros pasos, sync nube salta wizard, tests onboarding.
 - **v3.103.0:** motor de deudas dinámico (#2), re-cifrado tokens legacy, tests reconcile/bank/motor-debt.
