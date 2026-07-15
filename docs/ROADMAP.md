@@ -4,7 +4,7 @@ Tablero de tareas en GitHub:
 - **Project (Kanban):** https://github.com/users/JuanjoAvila/projects/1
 - **Issues:** https://github.com/JuanjoAvila/Mi-Cartera/issues
 
-> Estado a 2026-07-15. Tras v3.104.0 (onboarding completo #3).
+> Estado a 2026-07-15. Tras v3.105.0 (dashboard inversiones #6).
 
 ## 🔴 Prioridad alta (calidad / escala)
 
@@ -23,9 +23,8 @@ Tablero de tareas en GitHub:
 
 | # | Tarea | Área |
 |---|-------|------|
-| [#4](https://github.com/JuanjoAvila/Mi-Cartera/issues/4) | Temas de color (verde / oscuro / claro) | ui |
-| [#5](https://github.com/JuanjoAvila/Mi-Cartera/issues/5) | Multi-usuario en función ingest (verify_jwt + JWT) | infra |
-| [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | Dashboard inversiones más rico | inversiones |
+| [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | ~~Dashboard inversiones más rico~~ | inversiones | ✅ v3.105 |
+| [#4](https://github.com/JuanjoAvila/Mi-Cartera/issues/4) | ~~Temas de color~~ | ui | ✅ hecho |
 | — | Tests reconcile / bank engine | calidad | ✅ v3.103 |
 | — | Modularización fuente (concat, sin partir artefacto) | arquitectura |
 
@@ -43,6 +42,7 @@ Tablero de tareas en GitHub:
 
 ## ✅ Ya hecho (reciente)
 
+- **v3.105.0:** dashboard inversiones (#6): evolución valor+coste, cambio % del periodo, snapshot al actualizar precios.
 - **v3.104.0:** onboarding 4 pasos (#3), tarjeta primeros pasos, sync nube salta wizard, tests onboarding.
 - **v3.103.0:** motor de deudas dinámico (#2), re-cifrado tokens legacy, tests reconcile/bank/motor-debt.
 - **v3.101.0:** tests automáticos (syntax, lógica pura, ingest Deno), guard privacidad CI, DATA sintética en repo, categorías ingest alineadas.

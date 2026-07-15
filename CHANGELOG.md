@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.105.0] — 2026-07-15
+### Dashboard inversiones (#6)
+- 📈 **Evolución enriquecida:** gráfico valor + coste aportado (línea discontinua), cambio % del periodo en el subtítulo.
+- 🔄 **Snapshot diario:** `recordInvSnapshot` actualiza al refrescar precios o editar posiciones (no solo al abrir).
+- ✅ **Tests:** `inv-dashboard.test.mjs` (`recordInvSnapshot`, `invPeriodChange`).
+
 ## [3.104.0] — 2026-07-15
 ### Onboarding completo (#3)
 - 👋 **Wizard 4 pasos:** bienvenida, presupuesto, cuentas y deuda/inversión opcionales; `buildEmpty()` sin datos demo.
