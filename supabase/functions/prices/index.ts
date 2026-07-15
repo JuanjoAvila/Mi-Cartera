@@ -12,8 +12,12 @@
 // compat: clientes viejos que llaman sin body reciben lo de siempre
 const DEFAULT_SYMS = ["NVDA", "GOOG", "TSM", "AVGO", "MU", "AMD", "VWCE", "GOLD"];
 // clave usada en la app -> símbolo en Yahoo Finance (GC=F ≈ oro spot USD/onza; Revolut
-// llama XAU al oro y la app histórica GOLD — las dos apuntan al mismo sitio)
-const YAHOO: Record<string, string> = { VWCE: "VWCE.DE", GOLD: "GC=F", XAU: "GC=F" };
+// llama XAU al oro y la app histórica GOLD — las dos apuntan al mismo sitio).
+// XAG/XPT/XPD entran con el import de materias primas de Revolut (2026-07-15): son los
+// futuros de plata/platino/paladio, también en USD/onza, que es como Revolut los mide.
+const YAHOO: Record<string, string> = {
+  VWCE: "VWCE.DE", GOLD: "GC=F", XAU: "GC=F", XAG: "SI=F", XPT: "PL=F", XPD: "PA=F",
+};
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
