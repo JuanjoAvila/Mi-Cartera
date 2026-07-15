@@ -32,7 +32,10 @@ const denoTests = [
   "supabase/functions/_shared/crypto.test.ts",
 ];
 for (const testFile of denoTests) {
-  const deno = spawnSync("deno", ["test", testFile], {
+  const denoArgs = testFile.includes("crypto.test")
+    ? ["test", "--allow-env", testFile]
+    : ["test", testFile];
+  const deno = spawnSync("deno", denoArgs, {
     cwd: root, stdio: "pipe", shell: process.platform === "win32",
   });
   const denoOut = (deno.stderr?.toString() || "") + (deno.stdout?.toString() || "");
