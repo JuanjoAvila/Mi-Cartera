@@ -123,7 +123,13 @@ public class TradeRepublicPlugin extends Plugin {
                 // Persistir cookies AHORA (tr_session/tr_refresh acaban de sentarse o rotar).
                 // Antes se hacía flush() síncrono en verify(), ANTES de que el fetch async
                 // terminara → la sesión podía no llegar a disco y el 2FA volvía tras reiniciar.
-                CookieManager.getInstance().flush();
+                // alpha18 (DIAGNÓSTICO REAL de la saga en frío, chrome://inspect 2026-07-13): el
+                // /session devolvía 401 —NO un challenge WAF— porque tr_refresh NO viajaba: había
+                // DESAPARECIDO del jar tras matar la app. flush() no basta: Android solo persiste a
+                // disco las cookies CON caducidad; las de sesión (sin Max-Age, como tr_refresh) se
+                // tiran al morir el proceso. snapshotCookies() las guarda en prefs a mano para
+                // re-inyectarlas en frío (restoreCookies en ensureWeb). El WAF nunca fue el problema.
+                snapshotCookies();
                 call.resolve(res);
             } catch (Exception e) {
                 resolveErr(call, "respuesta ilegible de TR");
@@ -141,10 +147,9 @@ public class TradeRepublicPlugin extends Plugin {
         if (act == null) return;
         act.runOnUiThread(() -> {
             if (web == null) {
-                // alpha17 (hipótesis (c) de la saga TR): expone TODAS las WebViews del proceso a
-                // chrome://inspect / CDP por adb para poder VER qué hace el challenge del WAF en frío.
-                // Solo depurable con USB debugging aprobado en el móvil; quitar cuando se cierre la saga.
-                try { WebView.setWebContentsDebuggingEnabled(true); } catch (Throwable ignore) {}
+                // (alpha17 encendía aquí setWebContentsDebuggingEnabled para depurar la saga en frío
+                // con chrome://inspect. RETIRADO en alpha19: la saga se cerró y dejarlo abriría la
+                // WebView —con la sesión de TR dentro— a cualquiera con un cable y adb.)
                 web = new WebView(act);
                 web.getSettings().setJavaScriptEnabled(true);
                 web.getSettings().setDomStorageEnabled(true);
@@ -182,9 +187,55 @@ public class TradeRepublicPlugin extends Plugin {
             if (loaded) { if (onReady != null) onReady.run(); }
             else {
                 if (onReady != null) readyQueue.add(onReady);
-                if (!loading) { loading = true; web.loadUrl(TR_APP); }
+                if (!loading) { loading = true; restoreCookies(); web.loadUrl(TR_APP); }
             }
         });
+    }
+
+    // ---- Persistencia de la sesión de TR a través de matar la app (alpha18) ----------
+    // getCookie(url) devuelve TODAS las cookies que viajarían a esa URL, incluidas las httpOnly
+    // (a diferencia de document.cookie en JS) y las path-scoped a /api/v1/auth. Guardamos solo
+    // las tr_* (sesión), NUNCA aws-waf-token (se refresca solo) ni analytics.
+    private static final String SESSION_URL = "https://api.traderepublic.com/api/v1/auth/web/session";
+
+    private void snapshotCookies() {
+        CookieManager cm = CookieManager.getInstance();
+        String raw = cm.getCookie(SESSION_URL);
+        if (raw == null) raw = cm.getCookie("https://api.traderepublic.com/");
+        java.util.LinkedHashMap<String, String> keep = new java.util.LinkedHashMap<>();
+        if (raw != null) {
+            for (String part : raw.split(";")) {
+                String p = part.trim(); int eq = p.indexOf('=');
+                if (eq <= 0) continue;
+                String name = p.substring(0, eq);
+                if (name.startsWith("tr_")) keep.put(name, p);   // tr_session / tr_refresh / tr_device
+            }
+        }
+        // Solo guardamos si hay sesión DE VERDAD: así un frío fallido no machaca un snapshot bueno.
+        if (keep.containsKey("tr_refresh") || keep.containsKey("tr_session")) {
+            StringBuilder sb = new StringBuilder();
+            for (String v : keep.values()) { if (sb.length() > 0) sb.append("; "); sb.append(v); }
+            prefs().edit()
+                .putString("cookieSnap", sb.toString())
+                .putString("cookieSnapNames", android.text.TextUtils.join(",", keep.keySet()))   // diagnóstico adb
+                .putLong("cookieSnapAt", System.currentTimeMillis())
+                .apply();
+        }
+        cm.flush();
+    }
+
+    private void restoreCookies() {
+        String snap = prefs().getString("cookieSnap", null);
+        if (snap == null || snap.isEmpty()) return;
+        CookieManager cm = CookieManager.getInstance();
+        cm.setAcceptCookie(true);
+        for (String part : snap.split(";")) {
+            String p = part.trim(); if (p.isEmpty()) continue;
+            // host-only en api.traderepublic.com, Path=/ (llega a /api/v1/auth/*), Secure + SameSite=None
+            // (la web va cross-site app→api). Se pierde el flag httpOnly: irrelevante para que viaje.
+            cm.setCookie("https://api.traderepublic.com", p + "; Path=/; Secure; SameSite=None");
+        }
+        cm.flush();
     }
 
     /** Recarga app.traderepublic.com y ejecuta `then` cuando termine (challenge WAF fresco). */
@@ -193,7 +244,8 @@ public class TradeRepublicPlugin extends Plugin {
         if (act == null || web == null) { if (then != null) then.run(); return; }
         act.runOnUiThread(() -> {
             loaded = false; loading = true;
-            clearWafToken();   // recarga = challenge WAF de cero: fuera el token viejo antes
+            clearWafToken();     // recarga = challenge WAF de cero: fuera el token viejo antes
+            restoreCookies();    // y re-inyecta la sesión guardada por si la recarga es en frío
             if (then != null) readyQueue.add(then);
             web.loadUrl(TR_APP);
         });
@@ -386,7 +438,8 @@ public class TradeRepublicPlugin extends Plugin {
 
     @PluginMethod
     public void logout(PluginCall call) {
-        prefs().edit().putBoolean("connected", false).apply();
+        prefs().edit().putBoolean("connected", false)
+            .remove("cookieSnap").remove("cookieSnapNames").remove("cookieSnapAt").apply();  // fuera la sesión guardada
         CookieManager cm = CookieManager.getInstance();
         cm.removeAllCookies(null);
         cm.flush();

@@ -6917,15 +6917,13 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       React.createElement("div",{style:{textAlign:"center",color:"var(--muted)",fontSize:13,padding:"10px 0 6px"}}, t("bp_empty")),
       React.createElement("div",{style:{fontSize:12,lineHeight:1.55,color:"var(--muted)",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:12,padding:"10px 12px",margin:"0 0 16px"}}, "💡 "+t("bp_empty_hint"))
     ),
-    // Explicación de los roles UNA vez, encima de la lista (petición 2026-07-11: clasificar cada
-    // banco hacia fijos/variables/todo estaba escondido en Patrimonio → Editar y nadie lo veía).
-    (links||[]).length>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.55,color:"var(--muted)",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:12,padding:"10px 12px",margin:"0 0 14px"}}, "🎯 "+t("bp_roles_hint")),
+    // (Aquí vivían la explicación de los roles y los chips para asignarlos. RETIRADO 2026-07-15:
+    // «se ha cargado muchísimo esa zona, déjame lo básico: actualizar saldo, reconectar y quitar».
+    // Los roles y la promoción de cuentas SIGUEN en Patrimonio → Editar, que es su sitio natural.)
     (links||[]).map(function(l){
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
-      // cuenta manual del banco en la app → su rol decide a dónde van los cargos de este banco
-      const roleAcc=ent?(state.accounts||[]).find(function(a){ return a.ent===ent; }):null;
       const noAcct = l.status==='error';   // autorizó pero volvió sin cuentas dadas de alta (modo restringido)
       const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
@@ -6940,44 +6938,8 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
             l.valid_until?React.createElement("div",{style:{fontSize:11,color:soon?"var(--coral)":"var(--muted-2)",marginTop:1}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
           sp),
         noAcct && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",background:"#E2A05F14",border:"1px solid #E2A05F44",borderRadius:12,padding:"9px 12px",margin:"-2px 0 12px"}}, "⚠ "+t("bp_noacct_help")),
-        // Rol del banco (fijos / gasto diario / todo) editable AQUÍ, sin pasar por Patrimonio→Editar.
-        roleAcc && React.createElement("div",{style:{margin:"-2px 0 12px"}},
-          React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginBottom:5}}, t("bp_role_q")),
-          React.createElement("div",{className:"rolechips",style:{margin:0}},
-            [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
-              const on=accRole(roleAcc)===rr[0];
-              return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){
-                if(on) return;
-                set(function(s){ return applyAccountRole(s, totals, roleAcc.id, rr[0]); });
-                showToast("✓ "+bankLabel(l.aspsp_name)+" → "+t(rr[1]));
-              }}, t(rr[1]));
-            }))),
-        // Cuentas del banco SIN rol todavía (viven en obAccounts): chips para «promocionarlas» a
-        // cuenta con rol aquí mismo (bug pareja 2026-07-11: sin esto, al crear un gasto fijo solo
-        // salía Trade Republic y este panel decía que el banco no tenía cuenta con rol, sin salida).
-        !noAcct && (function(){
-          const obs=(state.obAccounts||[]).filter(function(o){ return (o.aspsp && l.aspsp_name && String(o.aspsp).toLowerCase()===String(l.aspsp_name).toLowerCase()) || (ent && o.ent===ent); });
-          // Banco activo SIN cuenta con rol y SIN cuentas OB que promocionar = el sync no trajo
-          // nada utilizable (caso CaixaBank 2026-07-11: decía «solo aporta su saldo» y era mentira,
-          // no aportaba nada y no había salida). Aviso accionable + telemetría en runBankSync.
-          if(!obs.length) return roleAcc ? null : React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",background:"#E2A05F14",border:"1px solid #E2A05F44",borderRadius:12,padding:"9px 12px",margin:"-2px 0 12px"}}, "⚠ "+t("bp_role_nodata"));
-          return React.createElement("div",{style:{margin:"-2px 0 12px"}},
-            React.createElement("div",{style:{fontSize:12,color:"var(--muted)",marginBottom:6,lineHeight:1.45}}, t("rl_ob_q")),
-            obs.map(function(o){ const nm=((state.obLabels||{})[o.key])||niceObName(o);
-              return React.createElement("div",{key:o.key,style:{marginBottom:8}},
-                React.createElement("div",{style:{fontSize:12.5,fontWeight:700,marginBottom:4}}, nm+" · "+eur(o.cur==="USD"?(o.value||0)*(state.fx||1):(o.value||0))),
-                React.createElement("div",{className:"rolechips",style:{margin:0}},
-                  [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
-                    return React.createElement("button",{key:rr[0],className:"rchip",onClick:function(){
-                      if(!o.ent) return;
-                      set(function(s){ return promoteObAccount(s, totals, o.key, rr[0]); });
-                      showToast(tf("rl_ob_done",{n:nm,r:t(rr[1])}));
-                    }}, t(rr[1]));
-                  }))
-              );
-            })
-          );
-        })(),
+        // (Aquí iban los chips de rol del banco y los de «promocionar» sus cuentas de Open Banking.
+        // Ver la nota de arriba: ambos siguen vivos en Patrimonio → Editar.)
         (confirming===l.aspsp_name
           ? React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"-4px 0 14px"}},
               React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 auto",minWidth:120}}, tf("bp_remove_q",{bank:bankLabel(l.aspsp_name)})),
@@ -7057,6 +7019,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.99.0", d:"15 jul 2026", t:"Trade Republic ya aguanta en frío, brókers que se actualizan solos y menos avisos", items:[
+    "🏆 ¡Arreglado el fallo de Trade Republic al abrir la app en frío! Llevaba meses pidiendo el 2FA una y otra vez. No era el control anti-bot como creíamos: Android se cargaba la sesión al cerrar la app del todo. Ahora se guarda a mano y sobrevive. (Si pasas varios días sin entrar, sí tendrás que reconectar: eso lo decide Trade Republic.)",
+    "🔄 Trade Republic y MyInvestor se actualizan SOLOS al abrir la app, sin darle a «Sincronizar». Va en silencio y con cabeza: refresca lo que ya tienes mapeado y como mucho cada media hora. Lo nuevo lo sigues revisando tú en su tarjeta.",
+    "🔕 Fuera dos avisos pesados: el del saldo del banco (que saltaba en cada apertura) y el de errores. El saldo ya lo ves en Patrimonio, y ahora solo te avisa si lo pides tú.",
+    "🏦 «Gestionar mis bancos» a dieta: se queda con lo básico — actualizar saldo, reconectar y quitar. Clasificar un banco (recibos / gasto diario / todo) sigue estando en Patrimonio → Editar."
+  ]},
   {v:"3.98.0", d:"13 jul 2026", t:"Revolut cuadrado: fuera duplicados y precios en vivo de verdad", items:[
     "🧹 Los duplicados fantasma de Revolut (esos «NVDA 0,00 € · −100%» al lado de tu NVIDIA de verdad) se van solos al abrir la app: eran restos del importador antiguo.",
     "💹 Al aplicar un extracto de Revolut, el valor de cada posición también se recalcula (antes solo se tocaban participaciones y coste, y el % salía disparatado: un Broadcom a −39% que en Revolut estaba a −6%). Y nada más aplicar, los precios se actualizan en vivo solos.",
@@ -7923,13 +7891,76 @@ function App(){
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
       const failed=links.filter(function(l){ return l&&l.ok===false; });
       const expired=failed.filter(function(l){ return l&&l.expired; });
-      if(preview.synced.length && (preview.changed || opts.manual)) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
+      // Saldo del banco: SOLO cuando lo pides tú (opts.manual). Antes también saltaba en cada sync
+      // automático al abrir la app («el dinero de los bancos me sale, no me vale para nada»
+      // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
+      if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
       if(expired.length){ showToast("⚠ "+bankLabelOf(expired[0])+": "+t("bank_expired_re")); }
       else if(failed.length && (opts.manual || navigator.onLine!==false)){ showToast("⚠ "+bankLabelOf(failed[0])+": "+t("bank_syncfail")); }
       else if(!preview.synced.length && !links.length && opts.manual){ showToast(t("bank_none")); }
     }).catch(function(e){
       if(opts.manual || navigator.onLine!==false) showToast("⚠ "+t("bank_syncfail"));
     }).finally(function(){ bankSyncing.current=false; });
+  };
+
+  /* ── Auto-refresh de brókers al abrir (petición 2026-07-15: «que se actualicen solos») ──
+     SILENCIOSO a propósito y CONSERVADOR: solo re-ancla las posiciones que YA están mapeadas
+     (mismo ISIN/ticker). Nunca crea ni borra: lo nuevo se sigue revisando a mano en su tarjeta
+     con su previsualización, que es donde tú decides. Sin toasts ni de éxito ni de fallo — si la
+     sesión caducó o no hay red, se calla y te enteras al entrar en la tarjeta (que ya lo canta). */
+  const BROKER_SYNC_THROTTLE=30*60*1000;   // 30 min: abrir la app 5 veces seguidas no machaca a TR/MI
+  const brokerSyncing=useRef(false);
+
+  // Re-ancla contra el bróker las posiciones reconocidas y sella la marca de tiempo.
+  const applyBrokerPositions=function(positions, stampKey){
+    set(function(s){
+      const keyOf=function(p){ return p.isin||p.ticker||p.name; };
+      const m={};
+      (positions||[]).forEach(function(po){ const sug=brokerSuggest(po, s.investments); if(sug) m[keyOf(po)]=sug; });
+      const inv=(s.investments||[]).map(function(i){
+        const po=(positions||[]).find(function(p){ return m[keyOf(p)]===i.id; });
+        if(!po) return i;
+        const patch={};
+        if(po.shares!=null) patch.shares=po.shares;
+        // el bróker da € (TR/MI); si la posición se muestra en $, se convierte con el cambio del BCE
+        if(po.value!=null) patch.value = i.cur==="USD" ? (s.fx>0?po.value/s.fx:po.value) : po.value;
+        if(po.cost!=null)  patch.cost  = i.cur==="USD" ? (s.fx>0?po.cost/s.fx:po.cost)  : po.cost;
+        if(po.isin && !i.isin) patch.isin=po.isin;
+        return Object.assign({},i,patch);
+      });
+      const stamp={}; stamp[stampKey]=Date.now();
+      return Object.assign({},s,{investments:inv},stamp);
+    });
+  };
+
+  const runBrokerSync=function(){
+    if(brokerSyncing.current) return Promise.resolve();
+    brokerSyncing.current=true;
+    const jobs=[];
+    const st=stateRef.current||{};
+    // Trade Republic — puente NATIVO (solo en la app). La sesión vive en el dispositivo.
+    const b=trBridge();
+    if(b && b.status && b.sync && Date.now()-(st.lastTrSync||0) >= BROKER_SYNC_THROTTLE){
+      jobs.push(Promise.resolve(b.status()).then(function(r){
+        if(!(r && r.connected)) return;                       // no conectado → ni lo intentamos
+        return Promise.resolve(b.sync()).then(function(res){
+          // authExpired / wafBlocked / sin posiciones → callar: la tarjeta ya lo explica al entrar
+          if(!res || !res.ok || !Array.isArray(res.positions)) return;
+          applyBrokerPositions(res.positions, "lastTrSync");
+        });
+      }).catch(function(){}));
+    }
+    // MyInvestor — Edge Function (funciona en web y en app)
+    if(cloud.enabled() && sessionRef.current && Date.now()-(st.lastMiSync||0) >= BROKER_SYNC_THROTTLE){
+      jobs.push(cloud.myinvestorStatus().then(function(r){
+        if(!(r && r.status==="active")) return;               // caducada → se reconecta a mano
+        return cloud.myinvestorSync().then(function(res){
+          if(!res || !res.ok || !Array.isArray(res.positions)) return;
+          applyBrokerPositions(res.positions, "lastMiSync");
+        });
+      }).catch(function(){}));
+    }
+    return Promise.all(jobs).catch(function(){}).then(function(){ brokerSyncing.current=false; });
   };
 
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
@@ -8055,6 +8086,10 @@ function App(){
     if(Date.now()-(state.lastBankSync||0) < BANK_SYNC_THROTTLE) return;
     runBankSync({});
   },[uid, state.hasBankLink]);
+
+  // Y lo mismo para los brókers que SÍ sincronizan solos (TR nativo + MyInvestor): al abrir,
+  // en silencio y con throttle. Ver runBrokerSync: solo toca lo ya mapeado.
+  useEffect(function(){ runBrokerSync(); },[uid]);
 
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
@@ -8318,17 +8353,10 @@ function App(){
     }catch(e){}
     cloud.logEvent('ping','app abierta');
   },[uid]);
-  // Solo admin: al abrir la app, avisa si hay errores NUEVOS de otros usuarios desde la última
-  // vez que miró el panel (Ajustes → Actividad lo marca como visto).
-  useEffect(function(){
-    const em=session&&session.user&&session.user.email;
-    if(em!=="juanjo.avila.chavero@gmail.com") return;
-    cloud.adminEvents(40).then(function(rows){
-      let seen=0; try{ seen=parseInt(localStorage.getItem("_evSeen")||"0",10)||0; }catch(e){}
-      const errs=(rows||[]).filter(function(r){ return r.kind==="error" && new Date(r.created_at).getTime()>seen; });
-      if(errs.length) showToast("🐞 "+errs.length+" error(es) nuevos de usuarios · Ajustes → Actividad");
-    }).catch(function(){});
-  },[session]);
+  // (Antes aquí saltaba un toast «🐞 N errores nuevos» en CADA apertura. Era telemetría de admin
+  // interrumpiendo al usuario por algo que no puede accionar en ese momento — y como el admin usa
+  // la app a diario, saltaba constantemente. RETIRADO 2026-07-15: los errores se siguen guardando y
+  // se consultan cuando TÚ quieras en Ajustes → Actividad, que ya lleva su contador.)
   // Propaga al lector nativo si debe confirmar cada gasto con una noti (ajuste st_trnotif).
   // Se re-envía siempre que cambia Y al arrancar (una reinstalación pierde las prefs nativas).
   useEffect(function(){
