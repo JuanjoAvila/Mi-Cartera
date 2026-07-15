@@ -1,6 +1,6 @@
 {
-  "versionCode": 16,
-  "versionName": "4.0.0-alpha16",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha16/Mi-Cartera.apk",
-  "notes": "TR en frío, nuevo intento: la WebView oculta ahora se ata al render (1×1 px, invisible) para que el anti-bot de TR (AWS WAF) pueda resolver su challenge — antes el WebView desacoplado estrangulaba el requestAnimationFrame y el token nunca se generaba. Trae también el bundle web 3.95.0 (popup de Novedades + caja de sugerencias, gastos sin «−», y vuelve el botón de arriba «Nueva versión · toca para actualizar»)."
+  "versionCode": 20,
+  "versionName": "4.0.0-alpha20",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha20/Mi-Cartera.apk",
+  "notes": "Notificaciones de actualización con deep-link: al tocar la noti aplica el OTA o abre el instalador del APK. Incluye bundle web 3.107.0 (avisos automáticos de versión nueva, botón «Nueva versión» persistente, chequeo al volver a la app)."
 }
