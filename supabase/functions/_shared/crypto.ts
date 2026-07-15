@@ -25,7 +25,8 @@ async function loadKey(): Promise<CryptoKey | null> {
   if (!keyB64) return null;
   const raw = b64ToBytes(keyB64);
   if (raw.length !== 32) throw new Error("TOKEN_ENCRYPTION_KEY debe ser 32 bytes en base64");
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+  const keyBytes = new Uint8Array(raw);
+  return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 export async function encryptSecret(plaintext: string | null | undefined): Promise<string | null> {
