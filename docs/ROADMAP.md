@@ -4,15 +4,20 @@ Tablero de tareas en GitHub:
 - **Project (Kanban):** https://github.com/users/JuanjoAvila/projects/1
 - **Issues:** https://github.com/JuanjoAvila/Mi-Cartera/issues
 
-> Estado a 2026-06-20. Tras completar Fase 0 + Fase 1 (Supabase) y el bloque de Inversiones (v3.17.0).
+> Estado a 2026-07-15. Tras v3.102.0 (seguridad, RGPD, tests, sync multi-dispositivo).
 
-## 🔴 Prioridad alta
+## 🔴 Prioridad alta (calidad / escala)
 
-| # | Tarea | Área |
-|---|-------|------|
-| [#1](https://github.com/JuanjoAvila/Mi-Cartera/issues/1) | Motor dinámico: gastos fijos con periodicidad (auto-descuento del líquido Sabadell) | motor |
-| [#2](https://github.com/JuanjoAvila/Mi-Cartera/issues/2) | Motor dinámico: deuda que resta su cuota cada mes | motor |
-| [#3](https://github.com/JuanjoAvila/Mi-Cartera/issues/3) | Onboarding: arranque limpio para usuarios nuevos | onboarding |
+| # | Tarea | Área | Estado |
+|---|-------|------|--------|
+| — | Tests golden CSV + crypto + CI Deno | calidad | ✅ v3.102 |
+| — | Cifrado tokens MyInvestor/banco en BD | seguridad | ✅ v3.102 |
+| — | RGPD: privacidad + borrado cuenta | legal | ✅ v3.102 |
+| — | Sync app_state sin pisar otro dispositivo | infra | ✅ v3.102 |
+| — | Tabla `profiles` / admin sin email en cliente | infra | ✅ v3.102 |
+| [#1](https://github.com/JuanjoAvila/Mi-Cartera/issues/1) | Motor dinámico: gastos fijos con periodicidad | motor | ✅ hecho |
+| [#2](https://github.com/JuanjoAvila/Mi-Cartera/issues/2) | Motor dinámico: deuda que resta su cuota cada mes | motor | pendiente |
+| [#3](https://github.com/JuanjoAvila/Mi-Cartera/issues/3) | Onboarding: arranque limpio para usuarios nuevos | onboarding | parcial |
 
 ## 🟡 Prioridad media
 
@@ -20,35 +25,26 @@ Tablero de tareas en GitHub:
 |---|-------|------|
 | [#4](https://github.com/JuanjoAvila/Mi-Cartera/issues/4) | Temas de color (verde / oscuro / claro) | ui |
 | [#5](https://github.com/JuanjoAvila/Mi-Cartera/issues/5) | Multi-usuario en función ingest (verify_jwt + JWT) | infra |
-| [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | Dashboard inversiones más rico: rendimiento por posición + evolución | inversiones |
+| [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | Dashboard inversiones más rico | inversiones |
+| — | Tests reconcile / bank engine | calidad |
+| — | Modularización fuente (concat, sin partir artefacto) | arquitectura |
 
 ## 🟢 Prioridad baja
 
 | # | Tarea | Área |
 |---|-------|------|
-| [#7](https://github.com/JuanjoAvila/Mi-Cartera/issues/7) | Widgets reordenables del Resumen (drag/add/remove) | ui |
+| [#7](https://github.com/JuanjoAvila/Mi-Cartera/issues/7) | Widgets reordenables del Resumen | ui |
 | [#8](https://github.com/JuanjoAvila/Mi-Cartera/issues/8) | Android: empaquetado APK con Capacitor | android |
-| [#9](https://github.com/JuanjoAvila/Mi-Cartera/issues/9) | Regenerar INGEST_TOKEN | infra |
-| [#10](https://github.com/JuanjoAvila/Mi-Cartera/issues/10) | Precios manuales: fondo MyInvestor y Meta TR | inversiones |
 | [#14](https://github.com/JuanjoAvila/Mi-Cartera/issues/14) | Idiomas: inglés y catalán | ui |
 | [#15](https://github.com/JuanjoAvila/Mi-Cartera/issues/15) | Retos de ahorro con recompensa | ui |
-| [#16](https://github.com/JuanjoAvila/Mi-Cartera/issues/16) | Color de la deuda igual que su barra | ui |
-
-## 💬 Feedback de amigos (nuevas, media)
-
-| # | Tarea | Área |
-|---|-------|------|
-| [#11](https://github.com/JuanjoAvila/Mi-Cartera/issues/11) | Financiación con pagos grandes + amortización (coche) | motor |
-| [#12](https://github.com/JuanjoAvila/Mi-Cartera/issues/12) | Editar el presupuesto desde el Resumen (lápiz) | ui |
-| [#13](https://github.com/JuanjoAvila/Mi-Cartera/issues/13) | Gastos variables: editar, borrar y añadir ingresos | ui |
+| — | Play Store + monetización | producto |
 
 ---
 
-## ✅ Ya hecho
+## ✅ Ya hecho (reciente)
 
-- **Fase 0:** cajón de ajustes con gesto (estilo Twitter/Revolut), gasto manual a tabla `expenses`, filtro de categorías multiselección, paginación, cambio €/$ dinámico (frankfurter.app / BCE).
-- **Fase 1 — Supabase:** migración completa BD + Auth (email+password) + Edge Functions; Apps Script jubilado; login con huella (WebAuthn); sincronización multi-dispositivo (`app_state` + tabla `expenses`); ingesta MacroDroid → Supabase.
-- **Inversiones:** precios automáticos (acciones US vía Finnhub, ETF VWCE + oro vía Yahoo), proyección estilo TR con slider, venta parcial + líquido vendido, desglose por tipo de activo, conversor €/$, tarjeta "contribuciones vs ganancias".
-- **Motor dinámico de gastos fijos ([#1](https://github.com/JuanjoAvila/Mi-Cartera/issues/1), v3.18–3.19):** calendario de meses por gasto (multiselección), importe anual repartido entre los meses marcados, banco por gasto, tarjeta «Próximos cargos» con líquido del Sabadell tras los fijos del mes, alarma de saldo insuficiente y aviso de mes cargado.
+- **v3.102.0:** tokens cifrados (AES-GCM), política de privacidad, borrado de cuenta, sync optimista multi-dispositivo, perfiles/admin en BD, tests golden Revolut + crypto Deno.
+- **v3.101.0:** tests automáticos (syntax, lógica pura, ingest Deno), guard privacidad CI, DATA sintética en repo, categorías ingest alineadas.
+- **Fase 0–1 Supabase:** auth, sync, ingest MacroDroid, Open Banking, MyInvestor, inversiones TR/MI, motor gastos fijos.
 
 _Para detalle por versión ver [CHANGELOG.md](../CHANGELOG.md)._

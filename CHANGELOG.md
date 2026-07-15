@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.102.0] — 2026-07-15
+### Seguridad, RGPD y sync multi-dispositivo
+- 🔐 **Tokens cifrados:** `supabase/functions/_shared/crypto.ts` (AES-256-GCM) cifra access/refresh de MyInvestor y `session_id` de Open Banking; clave en secreto `TOKEN_ENCRYPTION_KEY` (retrocompat con plaintext).
+- 👤 **Perfiles:** migración `0012_profiles_and_privacy.sql`; admin vía `profiles.is_admin` (RLS `app_events` sin depender del email en el cliente).
+- 🗑️ **Borrado cuenta:** Edge Function `delete-account` + Ajustes → Tu cuenta; requiere contraseña.
+- 📄 **Privacidad:** `public/privacy.html` (RGPD mínimo).
+- 📱 **Sync optimista:** `pushState` con `updated_at` evita pisar cambios de otro dispositivo; aviso `st_sync_conflict`.
+- ✅ **Tests:** golden CSV Revolut (`tests/revo-golden.test.mjs`) + `crypto.test.ts` en CI Deno.
+
 ## [3.101.0] — 2026-07-15
 ### Calidad, privacidad y tests (segunda revisión del proyecto)
 - 🛡️ **`DATA` sintética:** eliminados del repo público patrimonio, hipoteca, nómina y cartera reales; `scripts/guard-privacy.mjs` bloquea regresiones en CI.

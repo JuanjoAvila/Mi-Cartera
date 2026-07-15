@@ -8,6 +8,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ebApi, ebConfig, makeJWT } from "../_shared/enablebanking.ts";
+import { encryptSessionId } from "../_shared/token_store.ts";
 
 const APP_URL = Deno.env.get("APP_URL") || "https://juanjoavila.github.io/Mi-Cartera/";
 
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
     const iban = accts.length ? accts[0].iban : null;
 
     await admin.from("bank_links").update({
-      session_id: sessionId,
+      session_id: await encryptSessionId(sessionId),
       account_uid: uid,
       iban,
       accounts: accts,

@@ -17,6 +17,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CORS, jsonResp, MI_BASE, miHeaders } from "../_shared/myinvestor.ts";
+import { miTokensToRow } from "../_shared/token_store.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -73,11 +74,12 @@ Deno.serve(async (req) => {
       if (!access) return jsonResp({ ok: false, error: "respuesta de login sin token" }, 502);
       const refreshExp = refreshSecs > 0 ? new Date(Date.now() + refreshSecs * 1000).toISOString() : null;
       const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const enc = await miTokensToRow(access, refresh || null);
       await admin.from("myinvestor_links").upsert({
         user_id: user.id,
         device_id: deviceId,
-        access_token: access,
-        refresh_token: refresh || null,
+        access_token: enc.access_token,
+        refresh_token: enc.refresh_token,
         refresh_expires_at: refreshExp,
         status: "active",
         updated_at: new Date().toISOString(),

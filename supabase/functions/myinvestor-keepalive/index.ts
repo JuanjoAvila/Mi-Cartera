@@ -12,6 +12,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { CORS, jsonResp, MI_BASE, miHeaders } from "../_shared/myinvestor.ts";
+import { miTokensFromRow, miTokensToRow } from "../_shared/token_store.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -24,12 +25,13 @@ Deno.serve(async (req) => {
     const { data: links } = await admin.from("myinvestor_links").select("*").eq("status", "active");
     let refreshed = 0, expired = 0, skipped = 0;
     for (const link of links || []) {
-      if (!link.refresh_token || !link.device_id) { skipped++; continue; }
+      const tokens = await miTokensFromRow(link);
+      if (!tokens.refresh || !tokens.deviceId) { skipped++; continue; }
       try {
         const r = await fetch(MI_BASE + "/login/api/v1/auth/token/refresh", {
           method: "POST",
-          headers: miHeaders(link.device_id as string),
-          body: JSON.stringify({ refreshToken: link.refresh_token }),
+          headers: miHeaders(tokens.deviceId),
+          body: JSON.stringify({ refreshToken: tokens.refresh }),
         });
         const t = await r.text();
         // deno-lint-ignore no-explicit-any
@@ -37,9 +39,10 @@ Deno.serve(async (req) => {
         const d = (j && j.payload && j.payload.data) || {};
         if ((r.status === 200 || r.status === 201) && d.accessToken) {
           const refreshSecs = Number(d.refreshExpiresIn || 0);
+          const enc = await miTokensToRow(d.accessToken, d.refreshToken || tokens.refresh);
           await admin.from("myinvestor_links").update({
-            access_token: d.accessToken,
-            refresh_token: d.refreshToken || link.refresh_token,
+            access_token: enc.access_token,
+            refresh_token: enc.refresh_token,
             refresh_expires_at: refreshSecs > 0 ? new Date(Date.now() + refreshSecs * 1000).toISOString() : link.refresh_expires_at,
             status: "active", updated_at: new Date().toISOString(),
           }).eq("user_id", link.user_id);
