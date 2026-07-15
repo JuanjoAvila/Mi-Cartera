@@ -2747,79 +2747,54 @@ function gamifOf(state, totals){
 }
 
 /* ============================================================
-   DATOS REALES (export JSON de Juanjo) — editables en la app
+   SEMILLA DE MIGRACIÓN (sintética, repo público) — NO son datos reales.
+   Usuarios nuevos arrancan con buildEmpty() + onboarding; esto solo alimenta
+   migrate()/seedFlows para ids legacy. Nada personal en el repositorio.
    ============================================================ */
 const DATA = {
   fx: 0.92,
-  budget: 700,
-  monthStartNet: 187843.8964,
-  history: [187843.9,188579.18,188451.07,188117.85,188452.96,188940.38,188679.37,188134.1,188352.34,189077.92,189244.53,188927.38,189136.18,189343.9,189380.92,189240.54,189392.96],
+  budget: 650,
+  monthStartNet: 42800,
+  history: [42000,42150,42300,42450,42600,42750,42800],
   accounts: [
-    { id:"qnx5klq", ent:"sabadell",       name:"Cuenta corriente",      value:422.10, note:"" },
-    { id:"kag0kql", ent:"revolut",        name:"Conjunta (con pareja)", value:336.67, note:"Sobrante tras el crucero" },
-    { id:"ebj0vbh", ent:"trade_republic", name:"Efectivo",              value:6183.03, note:"Fondo de emergencia · gasto con tarjeta", spendFrom:true },
-    { id:"r9whi32", ent:"myinvestor",     name:"Efectivo",              value:20.25, note:"" },
+    { id:"demo_sb01", ent:"sabadell",       name:"Cuenta corriente",      value:850,   note:"" },
+    { id:"demo_rev1", ent:"revolut",        name:"Cuenta conjunta",       value:320,   note:"" },
+    { id:"demo_tr01", ent:"trade_republic", name:"Efectivo",              value:1200,  note:"Fondo de emergencia · gasto con tarjeta", spendFrom:true },
+    { id:"demo_mi01", ent:"myinvestor",     name:"Efectivo",              value:50,    note:"" },
   ],
   investments: [
-    { id:"jep0yor", ent:"revolut",        name:"NVIDIA",               value:1006.13, cost:897.77, cur:"USD", ticker:"NVDA", shares:4.8563 },
-    { id:"tobd67m", ent:"revolut",        name:"Alphabet (C)",         value:858.43, cost:748.09, cur:"USD", ticker:"GOOG", shares:2.3657 },
-    { id:"9wyyzwg", ent:"revolut",        name:"Taiwan Semiconductor", value:500.85, cost:457.82, cur:"USD", ticker:"TSM", shares:1.1395 },
-    { id:"ugnhhnt", ent:"revolut",        name:"Broadcom",             value:425.53, cost:459.73, cur:"USD", ticker:"AVGO", shares:1.0751 },
-    { id:"aamv0u9", ent:"revolut",        name:"Micron",               value:438.89, cost:299.24, cur:"USD", ticker:"MU", shares:0.4135 },
-    { id:"t2h1dsy", ent:"revolut",        name:"AMD",                  value:277.45, cost:269.26, cur:"USD", ticker:"AMD", shares:0.5297 },
-    { id:"0mrszi5", ent:"revolut",        name:"Oro (XAU)",            value:1116.45, cost:1167.35, cur:"USD" },
-    { id:"7zjaw0y", ent:"trade_republic", name:"FTSE All-World",       value:1033.45, cost:967.65, cur:"EUR" },
-    { id:"kdc1ks6", ent:"trade_republic", name:"Meta Platforms",       value:26.95, cost:29.91, cur:"EUR" },
-    { id:"0itlr5k", ent:"myinvestor",     name:"Fidelity MSCI World",  value:510.07, cost:510.02, cur:"EUR" },
+    { id:"demo_nvda", ent:"revolut",        name:"NVIDIA",               value:520,  cost:480,  cur:"USD", ticker:"NVDA", shares:2.5 },
+    { id:"demo_goog", ent:"revolut",        name:"Alphabet (C)",         value:380,  cost:350,  cur:"USD", ticker:"GOOG", shares:1.2 },
+    { id:"demo_vwce", ent:"trade_republic", name:"FTSE All-World",       value:900,  cost:850,  cur:"EUR", ticker:"VWCE", shares:5.2 },
+    { id:"demo_fund", ent:"myinvestor",     name:"Fondo indexado global", value:500,  cost:500,  cur:"EUR" },
+    { id:"demo_gold", ent:"revolut",        name:"Oro (XAU)",            value:600,  cost:580,  cur:"USD", ticker:"GOLD" },
   ],
   assets: [
-    { id:"bgcxzfe", name:"Piso (vivienda)",         kind:"piso",  value:350000, note:"Ref.: piso vecino vendido a 350.000 €" },
-    { id:"52kyybz", name:"Ford Focus ST-Line 2021", kind:"coche", value:18000,  note:"Estimación mercado 2ª mano" },
+    { id:"demo_home", name:"Vivienda (estimación)", kind:"piso",  value:280000, note:"Valor orientativo de mercado" },
+    { id:"demo_car",  name:"Coche (estimación)",    kind:"coche", value:15000,  note:"Valor orientativo 2ª mano" },
   ],
   debts: [
-    { id:"dkuq3yk", ent:"sabadell", name:"Hipoteca",            value:179358.20, original:204000, monthly:660.85, note:"Fijo 1,05% · vence 03/2052" },
-    { id:"hn7h1t3", ent:"familia",  name:"Préstamo entrada piso", value:12000,   original:24584.66, monthly:250,    note:"Préstamo de mamá · 250 €/mes" },
+    { id:"demo_mort", ent:"sabadell", name:"Hipoteca (ejemplo)",     value:120000, original:150000, monthly:520, note:"Tipo fijo · plazo largo" },
+    { id:"demo_loan", ent:"familia",  name:"Préstamo familiar",    value:5000,   original:8000,   monthly:200, note:"Cuota mensual de ejemplo" },
   ],
   fixed: [
-    { id:"m5govff", name:"WiFi + móvil (pack familiar)", amount:102,    freq:"mes" },
-    { id:"2w14zpf", name:"Reembolso pareja (móvil)",     amount:-14.33, freq:"mes" },
-    { id:"4fet5bf", name:"Luz",                          amount:65,     freq:"mes" },
-    { id:"7sgyxqz", name:"Gas (Pepe Energy)",            amount:10,     freq:"mes" },
-    { id:"h1tuoaq", name:"Comunidad",                    amount:50,     freq:"mes" },
-    { id:"39dzmgn", name:"Parking (alquiler plaza)",     amount:70,     freq:"mes" },
-    { id:"lv5rev7", name:"YouTube Premium",              amount:4.33,   freq:"mes" },
-    { id:"d4f4kre", name:"Claude (suscripción)",         amount:22,     freq:"mes" },
-    { id:"dikz9mg", name:"Agua",                         amount:80,     freq:"bimestral" },
-    { id:"fl2gg2p", name:"IBI",                          amount:664,    freq:"año" },
-    { id:"ks2xl82", name:"Seguro de hogar",              amount:447.53, freq:"año" },
-    { id:"sgczo54", name:"Seguro del coche",             amount:344.10, freq:"año" },
-    { id:"u2z7g03", name:"IRPF (declaración)",           amount:200,    freq:"año" },
-    { id:"1jpyg2g", name:"Impuesto metropolitano (TMB)", amount:45,     freq:"año" },
-    { id:"hrrenwn", name:"Impuesto de circulación",      amount:25,     freq:"año" },
+    { id:"demo_wifi", name:"Internet + móvil", amount:45,  freq:"mes" },
+    { id:"demo_luz",  name:"Luz",              amount:55,  freq:"mes" },
+    { id:"demo_gym",  name:"Gimnasio",         amount:35,  freq:"mes" },
+    { id:"demo_ibi",  name:"IBI",              amount:400, freq:"año" },
   ],
   aportaciones: [
-    { id:"bwtunh3", ent:"myinvestor",     name:"MSCI World",            amount:500 },
-    { id:"jlzqayj", ent:"trade_republic", name:"Fondo de emergencia",   amount:500 },
-    { id:"xh9vnj7", ent:"trade_republic", name:"FTSE All-World (cashback)", amount:50 },
+    { id:"demo_ap1", ent:"myinvestor",     name:"Fondo indexado",      amount:200 },
+    { id:"demo_ap2", ent:"trade_republic", name:"Fondo de emergencia", amount:150 },
   ],
-  // Movimientos recurrentes de efectivo (motor de cash-flow): la nómina entra al Sabadell
-  // y de ahí salen las transferencias automáticas. 3333 − 1550 − 500 = 1283 para fijos.
   flows: [
-    { id:"flow_nom", kind:"income",   name:"Nómina",           amount:3333, to:"sabadell",                       when:"last"  },
-    { id:"flow_tr",  kind:"transfer", name:"A Trade Republic", amount:1550, from:"sabadell", to:"trade_republic", when:"first" },
-    { id:"flow_mi",  kind:"transfer", name:"A MyInvestor",     amount:500,  from:"sabadell", to:"myinvestor",      when:"first" },
+    { id:"demo_nom", kind:"income",   name:"Nómina",           amount:2500, to:"sabadell",                       when:"last"  },
+    { id:"demo_trf", kind:"transfer", name:"A Trade Republic", amount:800,  from:"sabadell", to:"trade_republic", when:"first" },
   ],
   variables: [
-    { id:"yfg081c", name:"Restaurantes y bares (acumulado)", cat:"bares",      amount:204,  date:"2026-06-15" },
-    { id:"sjtjuu4", name:"Ocio (acumulado)",                 cat:"ocio",       amount:101,  date:"2026-06-15" },
-    { id:"18ps732", name:"Transporte público",              cat:"transporte", amount:81,   date:"2026-06-15" },
-    { id:"8r27j8p", name:"Comilona pa casita",              cat:"super",      amount:35,   date:"2026-06-15" },
-    { id:"84hdiyq", name:"Una chuminada",                   cat:"compras",    amount:1.2,  date:"2026-06-15" },
-    { id:"fuakxag", name:"Bocadillo",                       cat:"bares",      amount:2.4,  date:"2026-06-15" },
-    { id:"mjt6gf5", name:"Compras diarias",                 cat:"super",      amount:9.19, date:"2026-06-16" },
-    { id:"rntor73", name:"Compras diarias",                 cat:"super",      amount:9.96, date:"2026-06-16" },
-    { id:"fobe3zx", name:"Compras diarias",                 cat:"super",      amount:6.59, date:"2026-06-16" },
-    { id:"nbn9wuq", name:"Compras diarias",                 cat:"super",      amount:3.19, date:"2026-06-16" },
+    { id:"demo_g1", name:"Supermercado", cat:"super",      amount:42,  date:"2026-06-10" },
+    { id:"demo_g2", name:"Restaurante",  cat:"bares",      amount:28,  date:"2026-06-11" },
+    { id:"demo_g3", name:"Metro",        cat:"transporte", amount:15,  date:"2026-06-12" },
   ],
 };
 
@@ -2980,9 +2955,11 @@ function seedFlows(s){
     if(e.category==="otros" && e.source!=="manual"){ const nc=autoCategory(e.merchant); if(nc!=="otros") return Object.assign({},e,{category:nc}); }
     return e;
   }); }
-  // SEMILLAS DE LA CARTERA DE EJEMPLO: solo para MI estado legacy (detectado por el id de la
-  // cuenta Sabadell demo). Así un usuario nuevo NO hereda mi nómina/transferencias.
-  const isDemo = s.accounts && s.accounts.some(function(a){ return a.id==="qnx5klq"; });
+  // SEMILLAS DE LA CARTERA DE EJEMPLO: solo para estados legacy (ids demo o del creador).
+  // Usuarios nuevos arrancan vacíos (buildEmpty) y no heredan nada del repo.
+  const isDemo = s.accounts && s.accounts.some(function(a){
+    return a.id==="qnx5klq" || a.id==="demo_sb01" || a.id==="ebj0vbh" || a.id==="demo_tr01";
+  });
   if(isDemo){
     if(!s.flows.length){ s.flows = DATA.flows.map(function(a){ return Object.assign({},a); }); }
     if(!s._flowsWhen){ s.flows = s.flows.map(function(f){ const seed=DATA.flows.find(function(x){return x.id===f.id;}); if(seed && seed.when && !f.when){ const o=Object.assign({},f,{when:seed.when}); delete o.day; return o; } return f; }); s._flowsWhen=true; }
@@ -2991,7 +2968,7 @@ function seedFlows(s){
     // semilla única: un grupo de gastos compartidos de ejemplo (crucero con la pareja)
     if(!s._sharedSeed){ if(!s.shared.length){ s.shared=[{id:uid(),name:"Crucero",emoji:"🛳️",people:["Yo","Pareja"],expenses:[{id:uid(),desc:"Excursión",amount:120,payer:"Yo",parts:["Yo","Pareja"],date:new Date().toISOString()},{id:uid(),desc:"Cena especial",amount:80,payer:"Pareja",parts:["Yo","Pareja"],date:new Date().toISOString()}]}]; } s._sharedSeed=true; }
     // semilla única: round-up ×2 + saveback en la cuenta TR demo → FTSE All-World (#19)
-    if(!s._trRewardSeed){ s.accounts=s.accounts.map(function(a){ return a.spendFrom?Object.assign({roundup:2,saveback:true,rewardInv:"7zjaw0y"},a,{roundup:a.roundup!=null?a.roundup:2,saveback:a.saveback!=null?a.saveback:true,rewardInv:a.rewardInv||"7zjaw0y"}):a; }); s._trRewardSeed=true; }
+    if(!s._trRewardSeed){ s.accounts=s.accounts.map(function(a){ return a.spendFrom?Object.assign({roundup:2,saveback:true,rewardInv:"demo_vwce"},a,{roundup:a.roundup!=null?a.roundup:2,saveback:a.saveback!=null?a.saveback:true,rewardInv:a.rewardInv||"demo_vwce"}):a; }); s._trRewardSeed=true; }
     // override personal del creador (antes vivía hardcodeado en MERCHANT_OVERRIDES para TODOS)
     if(!s.catOverrides["mapfre"]){ s.catOverrides["mapfre"]="bares"; USER_OVERRIDES["mapfre"]="bares"; }
     // semilla única: aporte periódico 50€/mes al FTSE desde el efectivo de TR (plan de ahorro real del usuario)
@@ -7232,6 +7209,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.101.0", d:"15 jul 2026", t:"Más fiabilidad por detrás: tests automáticos y datos más seguros", items:[
+    "🛡️ El repositorio ya no lleva datos financieros personales: la semilla del código es sintética y solo sirve para migraciones técnicas. Tus datos reales siguen en tu cuenta y en tu móvil, como siempre.",
+    "✅ Antes de cada despliegue se ejecutan tests automáticos: comprueban que el código no tiene errores de sintaxis y que los cálculos clave (round-up, importadores Revolut, clasificación de gastos TR) siguen cuadrando.",
+    "🏷️ Las categorías de los gastos que entran por notificación de Trade Republic ahora coinciden mejor con las de la app (panadería, parking, peluquería… ya no se van a parar a sitios raros)."
+  ]},
   {v:"3.100.0", d:"15 jul 2026", t:"Tu oro de Revolut ya entra, y se acabaron los cuadros grises de Android", items:[
     "🥇 ¡Revolut ya trae tu oro y tu plata! Nunca fue un fallo de lectura: Revolut los guarda en un extracto APARTE («Materias primas»), no en el de acciones, así que el importador ni los veía. Ahora puedes subir los dos extractos a la vez y se fusionan solos. Tu oro pasa a tener onzas de verdad y precio en vivo, en lugar de un número que mantenías a mano.",
     "🧭 Si te equivocas de fichero, ahora te digo cuál es: el «Extracto de Pérdidas y Ganancias» solo trae lo que YA vendiste, no lo que tienes (y ojo, que Revolut le pone un nombre engañoso a uno de ellos). Antes solo salía «no he podido leer el CSV» y a adivinar.",

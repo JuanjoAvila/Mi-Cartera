@@ -78,6 +78,7 @@ Para el look, reutiliza lo que ya existe: `.tabsheet`, `.btn btn-primary` / `.bt
 
 ## 7. Verificar de verdad (no «debería funcionar»)
 
+- **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre en CI (`.github/workflows/test.yml`).
 - Sintaxis del monolito: extrae los `<script>` y pásalos por `new vm.Script(...)`. Un `node --check`
   del HTML no vale.
 - Pruébalo **en el navegador** con datos reales antes de cantar victoria. En la v3.100.0, el parser
