@@ -396,6 +396,65 @@ const cloud = (function(){
       await sb.auth.signOut();
       return data;
     },
+    // ---- Hogar compartido (snapshots Fase 1) ----
+    async createHousehold(name, inviteCode){
+      if(!sb) throw new Error("nube no disponible");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      const code=String(inviteCode||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);
+      if(code.length<4) throw new Error("código inválido");
+      const {data:hh,error}=await sb.from("households").insert({
+        name:String(name||"Mi hogar").slice(0,80),
+        invite_code:code,
+        created_by:session.user.id,
+      }).select().single();
+      if(error) throw error;
+      const {error:e2}=await sb.from("household_members").insert({
+        household_id:hh.id, user_id:session.user.id, role:"owner",
+      });
+      if(e2) throw e2;
+      return hh;
+    },
+    async joinHousehold(code){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.rpc("join_household_by_code",{ p_code:String(code||"").trim() });
+      if(error) throw error;
+      return data;
+    },
+    async fetchHouseholdBundle(){
+      if(!sb) return { household:null, snapshots:[] };
+      const {data:mem,error:e1}=await sb.from("household_members").select("household_id,role").limit(1);
+      if(e1) throw e1;
+      if(!mem||!mem.length) return { household:null, snapshots:[] };
+      const hid=mem[0].household_id;
+      const {data:hh,error:e2}=await sb.from("households").select("*").eq("id",hid).maybeSingle();
+      if(e2) throw e2;
+      if(!hh) return { household:null, snapshots:[] };
+      const {data:snaps,error:e3}=await sb.from("household_snapshots")
+        .select("user_id,payload,published_at").eq("household_id",hid);
+      if(e3) throw e3;
+      return { household:hh, snapshots:snaps||[], myRole:mem[0].role };
+    },
+    async publishHouseholdSnapshot(householdId, payload){
+      if(!sb) throw new Error("nube no disponible");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      const {error}=await sb.from("household_snapshots").upsert({
+        household_id:householdId,
+        user_id:session.user.id,
+        payload:payload,
+        published_at:new Date().toISOString(),
+      }, { onConflict:"household_id,user_id" });
+      if(error) throw error;
+    },
+    async leaveHousehold(householdId){
+      if(!sb) throw new Error("nube no disponible");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      await sb.from("household_snapshots").delete().eq("household_id",householdId).eq("user_id",session.user.id);
+      const {error}=await sb.from("household_members").delete().eq("household_id",householdId).eq("user_id",session.user.id);
+      if(error) throw error;
+    },
   };
 })();
 

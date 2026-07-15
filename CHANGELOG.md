@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.109.0] — 2026-07-15
+### Hogar compartido + informe mensual + fluidez
+- 🏠 **Hogar Fase 1:** crear/unirse por código, publicar snapshot, patrimonio fusionado (Supabase `0013_households.sql`).
+- 📊 **Informe automático día 1** + imagen WhatsApp (Ajustes → Personalización).
+- ⚡ **Pestañas más fluidas:** pre-mount, `startTransition`, animación 280 ms.
+
 ## [3.108.0] — 2026-07-15
 ### Premium: modular + rendimiento + E2E + Sentry
 - 🧩 **Código modular:** `src/modules/` (13 ficheros) + `scripts/build-app.mjs` — el artefacto desplegable sigue siendo un solo `public/index.html`.

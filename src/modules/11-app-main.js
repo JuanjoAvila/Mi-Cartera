@@ -723,6 +723,20 @@ function App(){
       setWhatsNew(true);
     },900);
   },[state.onboarded,locked,showAuth,tourOpen]);
+  // Informe mensual automático el día 1 (prioridad pareja 2026-07-15).
+  const [monthReportOpen,setMonthReportOpen]=useState(false);
+  useEffect(function(){
+    if(state.onboarded===false||locked||showAuth||tourOpen||whatsNew) return;
+    const d=new Date();
+    if(d.getDate()!==1) return;
+    const key="_mr"+d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");
+    try{ if(localStorage.getItem(key)==="1") return; }catch(e){}
+    const tmr=setTimeout(function(){
+      try{ localStorage.setItem(key,"1"); }catch(e){}
+      setMonthReportOpen(true);
+    },3000);
+    return function(){ clearTimeout(tmr); };
+  },[state.onboarded,locked,showAuth,tourOpen,whatsNew]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){
@@ -797,6 +811,24 @@ function App(){
     }).catch(function(e){ setSyncStatus({type:"err",msg:"No se pudo conectar con Supabase: "+((e&&e.message)||e)}); showToast("✕ Error al sincronizar"); }).then(function(){ setSyncing(false); });
   };
 
+  const tabIds = tabOrderState || tabOrderOf(state);
+  const prepMountTab=function(i){
+    var id=tabIds[i]; if(!id) return;
+    setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
+  };
+  const prepMountId=function(id){
+    if(!id) return;
+    setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
+  };
+  // startTransition: la animación del track va primero; React monta la pestaña en segundo plano.
+  const goTab=function(i){
+    if(i<0||i>=tabIds.length||i===tab) return;
+    prepMountTab(i);
+    if(i>0) prepMountId(tabIds[i-1]);
+    if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
+    React.startTransition(function(){ setTab(i); });
+  };
+
   /* swipe — distingue eje vertical/horizontal, menos sensible */
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
   const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
@@ -857,8 +889,8 @@ function App(){
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
-        setTab(nt);
-        if(trackRef.current) trackRef.current.style.transform="translateX("+(-nt*100)+"%)";
+        if(nt!==tab) goTab(nt);
+        else if(trackRef.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)";
         hideDotsSoon();
       }
     }
@@ -940,12 +972,22 @@ function App(){
   },[locked, state.onboarded]);
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
 
-  const tabIds = tabOrderState || tabOrderOf(state);
   useEffect(function(){
     var id=tabIds[tab];
     if(!id) return;
     setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
   },[tab, tabIds.join("|")]);
+  // Pre-montar pestañas habituales en idle (1ª visita ya no pega al cambiar).
+  useEffect(function(){
+    if(state.onboarded===false||locked) return;
+    mcScheduleIdle(function(){
+      setMountedTabs(function(m){
+        var n=Object.assign({},m);
+        ["dash","gastos","fijos"].forEach(function(id){ if(tabIds.indexOf(id)>=0) n[id]=true; });
+        return n;
+      });
+    }, 2500);
+  },[state.onboarded, locked, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.
@@ -974,7 +1016,7 @@ function App(){
     if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
     if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
     if(id==="debt") return React.createElement(Debts,{state:state,set:set,showToast:showToast});
-    if(id==="compartido") return React.createElement(Shared,{state:state,set:set});
+    if(id==="compartido") return React.createElement(Shared,{state:state,set:set,uid:uid,totals:totals,showToast:showToast,meEmail:(session&&session.user&&session.user.email)||null});
     return null;
   };
 
@@ -1001,7 +1043,7 @@ function App(){
     ),
     React.createElement("div",{className:"tabbar-wrap"},
       React.createElement("div",{className:"tabbar",ref:tabbarRef},
-        tabIds.map(function(id,i){ const tb=TABBYID[id]; return React.createElement("button",{key:id,"data-ti":i,className:"tab"+(tab===i?" active":""),onClick:()=>setTab(i)},React.createElement(tb.icon,null),t("tab_"+id)); }),
+        tabIds.map(function(id,i){ const tb=TABBYID[id]; return React.createElement("button",{key:id,"data-ti":i,className:"tab"+(tab===i?" active":""),onTouchStart:function(){ prepMountTab(i); },onClick:function(){ goTab(i); }},React.createElement(tb.icon,null),t("tab_"+id)); }),
         hiddenTabIds.length>0 && React.createElement("button",{key:"__add",className:"tab tab-add",onClick:function(){ setAddTab(true); },"aria-label":t("tb_add")},"+")
       )
     ),
@@ -1036,10 +1078,11 @@ function App(){
         })
       )
     ),
-    React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:()=>setTab(i)}))),
+    React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:function(){ goTab(i); }}))),
     React.createElement(AskHost,null),   // host de askText/askConfirm: uno solo para toda la app
     tourOpen && React.createElement(Tour,{onDone:endTour}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
+    monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),
     (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){ if(otaReady && window.__mcApplyOta){ window.__mcApplyOta(); } else if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); } }}, t("upd_ready")),
     apkUpd && React.createElement("button",{className:"update-pill",onClick:doApkInstall}, tf("apk_ready",{v:apkUpd.versionName})),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),

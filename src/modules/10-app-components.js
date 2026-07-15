@@ -452,6 +452,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.109.0", d:"15 jul 2026", t:"Hogar compartido e informe del mes", items:[
+    "🏠 Hogar compartido (Fase 1): crea un hogar, invita con código de 6 letras y ve el patrimonio fusionado — cada uno publica SU vista, sin mezclar datos.",
+    "📊 El día 1 de cada mes te ofrece el informe automático (imagen para WhatsApp). También en Ajustes → Personalización.",
+    "⚡ Cambio de pestaña más fluido (pre-carga + animación optimizada)."
+  ]},
   {v:"3.108.0", d:"15 jul 2026", t:"Más rápida, más sólida, lista para crecer", items:[
     "⚡ Arranque más fluido: las pestañas que no ves aún no cargan su contenido hasta que las visitas (menos tirones en móviles modestos).",
     "🧩 Código modular en src/ (13 módulos): más fácil de mantener y escalar sin partir el despliegue.",
@@ -1159,7 +1164,7 @@ function sharedBalances(g){
   return {bal:bal, settle:settle, total:+(((g&&g.expenses)||[]).reduce(function(a,e){return a+(e.amount||0);},0)).toFixed(2)};
 }
 
-function Shared({state, set}){
+function Shared({state, set, uid, totals, showToast, meEmail}){
   const groups=state.shared||[];
   const [openId,setOpenId]=useState(null);
   const [addingG,setAddingG]=useState(false);
@@ -1251,6 +1256,8 @@ function Shared({state, set}){
 
   // Vista de lista de grupos
   return React.createElement("div",null,
+    React.createElement(HogarSection,{state:state,totals:totals,uid:uid,showToast:showToast,meEmail:meEmail}),
+    React.createElement("div",{className:"gm-sec-h",style:{margin:"8px 0 10px"}}, t("sh_groups_title")),
     groups.length===0 && !addingG && React.createElement("div",{className:"empty"},
       React.createElement("div",{className:"ttl"}, t("sh_empty_t")), t("sh_empty_d")),
     groups.map(function(g){ const bb=sharedBalances(g); return React.createElement("div",{key:g.id,className:"card sh-card",onClick:function(){ setOpenId(g.id); }},
