@@ -21,10 +21,12 @@ Tablero de tareas en GitHub:
 
 ## 🟡 Prioridad media
 
-| # | Tarea | Área |
-|---|-------|------|
+| # | Tarea | Área | Estado |
+|---|-------|------|--------|
+| [#5](https://github.com/JuanjoAvila/Mi-Cartera/issues/5) | Multi-usuario en función ingest (verify_jwt + JWT) | infra |
 | [#6](https://github.com/JuanjoAvila/Mi-Cartera/issues/6) | ~~Dashboard inversiones más rico~~ | inversiones | ✅ v3.105 |
 | [#4](https://github.com/JuanjoAvila/Mi-Cartera/issues/4) | ~~Temas de color~~ | ui | ✅ hecho |
+| [#19](https://github.com/JuanjoAvila/Mi-Cartera/issues/19) | ~~Round-up TR en efectivo~~ | inversiones | ✅ hecho |
 | — | Tests reconcile / bank engine | calidad | ✅ v3.103 |
 | — | Modularización fuente (concat, sin partir artefacto) | arquitectura |
 
