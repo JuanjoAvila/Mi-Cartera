@@ -1,9 +1,12 @@
 {
   "name": "mi-cartera",
-  "version": "3.9.0",
+  "version": "3.101.0",
   "private": true,
   "description": "Mi Cartera — PWA de finanzas personales (+ envoltorio Android con Capacitor)",
   "scripts": {
+  "test": "node scripts/run-tests.mjs",
+  "test:syntax": "node scripts/check-syntax.mjs",
+  "test:privacy": "node scripts/guard-privacy.mjs",
     "stamp": "node scripts/stamp-version.mjs",
     "android:add": "cap add android",
     "android:sync": "cap sync android",

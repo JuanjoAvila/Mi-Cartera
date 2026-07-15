@@ -29,13 +29,17 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CATEGORIAS: Record<string, string[]> = {
-  bares:      ["restaurante","bar","cafe","cafè","cafeteria","mcdonalds","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","pasteleria","panaderia","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","just eat","justeat","glovo","uber eats","ubereats","vending","expendedor"],
-  super:      ["mercadona","lidl","aldi","carrefour","dia ","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verdura","fruteria"],
-  transporte: ["renfe","fgc","tmb","metro","bus","taxi","cabify","uber","parking","gasolina","repsol","cepsa","bp ","shell","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto"],
-  ocio:       ["cinema","cines","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","game ","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","anthropic","claude","openai","chatgpt","google one","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo"],
-  compras:    ["zara","mango","hm ","h&m","primark","stradivarius","bershka","pull","cortefiel","el corte","amazon","aliexpress","pccomponentes","mediamarkt","leroy","ikea","worten","nike","adidas","foot locker","cofidis"],
+  // Mantener alineado con KW en public/index.html (mismas keywords → misma categoría en app e ingest).
+  pan:        ["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano"],
+  bares:      ["restaurante","bar","cafe","cafè","cafeteria","mcdonalds","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","just eat","justeat","glovo","uber eats","ubereats","vending","expendedor","telepizza","kfc","starbucks","wok","ramen","ginos","tagliatella","gastrobar"],
+  super:      ["mercadona","lidl","aldi","carrefour","dia ","bon preu","bonpreu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verdura","fruteria","verduleria"],
+  transporte: ["renfe","fgc","tmb","metro","bus","taxi","cabify","uber","gasolina","repsol","cepsa","bp ","shell","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","autobus","bicing","blablacar","flixbus"],
+  parking:    ["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","easypark","telpark","zona azul","zona verde","grua municipal"],
+  ocio:       ["cinema","cine","cines","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","game ","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","anthropic","claude","openai","chatgpt","google one","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","bolera"],
+  compras:    ["zara","mango","hm ","h&m","primark","stradivarius","bershka","pull","cortefiel","el corte","amazon","amzn","aliexpress","pccomponentes","mediamarkt","leroy","ikea","worten","nike","adidas","foot locker","cofidis","shein","temu","kiabi","lefties","oysho"],
   hogar:      ["ikea","leroy merlin","bricomart","bauhaus","ferreteria","muebles","sofa","lampara"],
-  salud:      ["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje","peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
+  pelu:       ["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
+  salud:      ["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje"],
   regalos:    ["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
 };
 
@@ -117,6 +121,9 @@ function extraerPersona(texto: string, prep: "de" | "a"): string {
   const m = (texto || "").match(re);
   return m ? m[1].trim() : "";
 }
+
+// Exportado para tests Deno (ingest.test.ts) — funciones puras, sin side effects.
+export { norm, categorizar, clasificar, extraerImporte, extraerComercio, extraerPersona };
 
 function parseFecha(t: string): string {
   const n = parseInt(t);

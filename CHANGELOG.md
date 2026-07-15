@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.101.0] — 2026-07-15
+### Calidad, privacidad y tests (segunda revisión del proyecto)
+- 🛡️ **`DATA` sintética:** eliminados del repo público patrimonio, hipoteca, nómina y cartera reales; `scripts/guard-privacy.mjs` bloquea regresiones en CI.
+- ✅ **Suite de tests:** `npm test` (sintaxis `vm.Script`, round-up/saveback, parsers Revolut, clasificación ingest, deudas) + workflow `.github/workflows/test.yml`; `deploy.yml` exige tests verdes antes de publicar.
+- 🏷️ **Categorías unificadas:** `ingest` alineado con `KW` del cliente (pan, parking, pelu, keywords ampliadas).
+- 📦 **Versiones sincronizadas:** `VERSION`, `package.json` → 3.101.0.
+
 ## [Unreleased]
 ### En progreso — Fase 4: app nativa Android (Capacitor)
 - 🏗️ **Reemplazo de MacroDroid:** base de Capacitor en el repo (`package.json`, `capacitor.config.json`) y guía [docs/SETUP-ANDROID.md](docs/SETUP-ANDROID.md) con un `NotificationListenerService` (Kotlin) que lee la notificación de Trade Republic y la manda a `ingest`. El APK carga la PWA en vivo desde GitHub Pages. Build/pruebas en local con Android Studio.
