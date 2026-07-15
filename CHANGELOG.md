@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.104.0] — 2026-07-15
+### Onboarding completo (#3)
+- 👋 **Wizard 4 pasos:** bienvenida, presupuesto, cuentas y deuda/inversión opcionales; `buildEmpty()` sin datos demo.
+- 📋 **Tarjeta «Primeros pasos»** en el Resumen (`setupHint`) con acceso a Ajustes hasta cerrarla.
+- ☁️ **Login en nube:** si ya hay cartera sincronizada, se salta onboarding y la tarjeta de primeros pasos.
+- ✅ **Tests:** `onboarding.test.mjs` (`buildEmpty`, flags `onboarded`/`setupHint`).
+
 ## [3.103.0] — 2026-07-15
 ### Motor de deudas (#2) + tests reconcile/bank
 - 📉 **`debtChargeDay` / `isDebtPaidThisMonth`:** cuotas entran en el motor de líquido aunque no tengan día (default día 1); nueva deuda con día 1 por defecto.

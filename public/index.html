@@ -1716,6 +1716,12 @@ Object.assign(LANG.es,{
   ob2_budget_h:"Lo cambias cuando quieras desde el Resumen o Ajustes.",
   ob2_acc_t:"Tus cuentas", ob2_acc_d:"Añade tus bancos con el saldo de hoy para ver tu dinero total. Si prefieres, sáltatelo: también se pueden conectar por Open Banking después.",
   ob2_acc_h:"Todo se puede editar luego en Patrimonio y Ajustes.",
+  ob3_t:"¿Deudas o inversiones?", ob3_d:"Opcional — puedes saltarlo y añadirlo luego en sus pestañas.",
+  ob3_debt:"Una deuda (opcional)", ob3_debt_name:"Nombre (ej. Hipoteca)", ob3_debt_val:"Saldo pendiente €", ob3_debt_monthly:"Cuota/mes €",
+  ob3_inv:"Una inversión (opcional)", ob3_inv_name:"Nombre (ej. MSCI World)", ob3_inv_val:"Valor actual €",
+  ob3_skip:"Saltar — empezar ya", ob3_finish:"Listo — entrar a Mi Cartera",
+  ob_hint_t:"Primeros pasos", ob_hint_d:"Conecta tu banco en Ajustes, activa el apunte de Trade Republic o importa gastos cuando quieras.",
+  ob_hint_go:"Abrir Ajustes", ob_hint_dismiss:"Entendido",
   tr_createnew:"➕ Crear como posición nueva", tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
   tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
   tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
@@ -1765,6 +1771,12 @@ Object.assign(LANG.en,{
   ob2_budget_h:"You can change it anytime from Overview or Settings.",
   ob2_acc_t:"Your accounts", ob2_acc_d:"Add your banks with today's balance to see your total money. Or skip it: you can also connect them via Open Banking later.",
   ob2_acc_h:"Everything can be edited later in Wealth and Settings.",
+  ob3_t:"Debts or investments?", ob3_d:"Optional — skip and add them later in their tabs.",
+  ob3_debt:"One debt (optional)", ob3_debt_name:"Name (e.g. Mortgage)", ob3_debt_val:"Outstanding balance €", ob3_debt_monthly:"Payment/mo €",
+  ob3_inv:"One investment (optional)", ob3_inv_name:"Name (e.g. MSCI World)", ob3_inv_val:"Current value €",
+  ob3_skip:"Skip — start now", ob3_finish:"Done — open Mi Cartera",
+  ob_hint_t:"First steps", ob_hint_d:"Connect your bank in Settings, turn on Trade Republic logging, or import expenses whenever you like.",
+  ob_hint_go:"Open Settings", ob_hint_dismiss:"Got it",
   tr_createnew:"➕ Create as a new position", tr_apply:"Apply to {n} positions", tr_apply_hint:"On apply: shares, value and cost are re-anchored to what Trade Republic says right now (live data, no need to refresh prices).",
   mi_title:"Connect MyInvestor", mi_sub:"pulls your index funds",
   mi_expired:"Your MyInvestor session expired and couldn't renew itself. Sign in again (username remembered): password and, if asked, the SMS code.",
@@ -1814,6 +1826,12 @@ Object.assign(LANG.ca,{
   ob2_budget_h:"El canvies quan vulguis des del Resum o Ajustos.",
   ob2_acc_t:"Els teus comptes", ob2_acc_d:"Afegeix els teus bancs amb el saldo d'avui per veure els teus diners totals. O salta-t'ho: també es poden connectar per Open Banking després.",
   ob2_acc_h:"Tot es pot editar després a Patrimoni i Ajustos.",
+  ob3_t:"Deutes o inversions?", ob3_d:"Opcional — salta-ho i afegeix-ho després a les seves pestanyes.",
+  ob3_debt:"Un deute (opcional)", ob3_debt_name:"Nom (p. ex. Hipoteca)", ob3_debt_val:"Saldo pendent €", ob3_debt_monthly:"Quota/mes €",
+  ob3_inv:"Una inversió (opcional)", ob3_inv_name:"Nom (p. ex. MSCI World)", ob3_inv_val:"Valor actual €",
+  ob3_skip:"Saltar — començar ja", ob3_finish:"Fet — entrar a Mi Cartera",
+  ob_hint_t:"Primers passos", ob_hint_d:"Connecta el teu banc a Ajustos, activa l'apunt de Trade Republic o importa despeses quan vulguis.",
+  ob_hint_go:"Obrir Ajustos", ob_hint_dismiss:"Entesos",
   tr_createnew:"➕ Crea com a posició nova", tr_apply:"Aplica a {n} posicions", tr_apply_hint:"En aplicar: participacions, valor i cost es re-ancoren amb el que diu Trade Republic ara mateix (és dada en viu, no cal actualitzar preus).",
   mi_title:"Connecta MyInvestor", mi_sub:"porta els teus fons indexats",
   mi_expired:"La teva sessió de MyInvestor ha caducat i no s'ha pogut renovar sola. Torna a entrar (usuari recordat): contrasenya i, si el demana, el codi SMS.",
@@ -2847,6 +2865,7 @@ function buildEmpty(){
     accounts: [], investments: [], assets: [], debts: [], fixed: [], flows: [], oneoffs: [], aportaciones: [],
     expenses: [], goals: [], shared: [], catOverrides: {}, obAccounts: [], obLabels: {}, verNotes: [], streak: 0,
     tourSeen: false,   // usuario nuevo → tour de bienvenida tras el onboarding
+    setupHint: true,   // tarjeta «primeros pasos» en el Resumen hasta que la cierren
     settings: { autoPrices:false },
     lastSync: null, lastPriceSync: null,
     onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
@@ -3463,6 +3482,7 @@ function dashOrderOf(s, allIds){
 function Dashboard({state, totals, set}){
   const tt=totals;
   const [editing,setEditing]=useState(false);
+  const dismissSetup=function(){ set(function(s){ return Object.assign({},s,{setupHint:false}); }); };
   // Ajustes › "Personalizar widgets del Resumen" (rediseño): App ya saltó al Resumen; aquí
   // encendemos el modo edición al recibir el evento.
   useEffect(function(){
@@ -3537,6 +3557,18 @@ function Dashboard({state, totals, set}){
 
   // ---- Widgets del Resumen (cada uno con su render) ----
   const W=[];
+  if(state.setupHint!==false && state.onboarded!==false){
+    W.push({id:"setup", label:t("ob_hint_t"), lock:true, el:
+      React.createElement("div",{className:"set-card",style:{borderColor:"var(--mint)",marginBottom:12}},
+        React.createElement("div",{style:{fontWeight:800,fontSize:14,marginBottom:6}},t("ob_hint_t")),
+        React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.5,marginBottom:12}},t("ob_hint_d")),
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          React.createElement("button",{className:"btn btn-primary",style:{flex:1,padding:"10px 12px",fontSize:13},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-settings")); }catch(e){} }},t("ob_hint_go")),
+          React.createElement("button",{className:"btn btn-ghost",style:{flex:1,padding:"10px 12px",fontSize:13},onClick:dismissSetup},t("ob_hint_dismiss"))
+        )
+      )
+    });
+  }
   // Rediseño · toque 4: tinte ambiental del hero (mint→ámbar→coral, muy sutil) según cómo va el mes.
   const tintT = state.budget>0 ? Math.max(0,Math.min(1,(ratio-0.6)/0.6)) : 0;
   const heroStyle={ background:"radial-gradient(140% 90% at 50% -20%, rgba("+mixHex("#5FD08A","#E2705F",tintT)+",.16), transparent 60%),linear-gradient(180deg,var(--surface),var(--bg-2))", transition:"background .6s ease" };
@@ -7256,6 +7288,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.104.0", d:"15 jul 2026", t:"Onboarding completo para usuarios nuevos", items:[
+    "👋 Si es tu primera vez, un asistente de 4 pasos te guía: presupuesto, cuentas y (opcional) una deuda o inversión. Empiezas con la cartera vacía, sin datos de ejemplo.",
+    "📋 En el Resumen verás «Primeros pasos» hasta que lo cierres: un acceso rápido a Ajustes para conectar bancos o activar el apunte de Trade Republic.",
+    "☁️ Si ya tenías cartera en la nube e inicias sesión en otro móvil, no te vuelve a pasar el asistente."
+  ]},
   {v:"3.103.0", d:"15 jul 2026", t:"Deudas que bajan solas y más tests de fiabilidad", items:[
     "📉 Las cuotas de tus deudas (hipoteca, coche, préstamos…) ahora restan del líquido del banco automáticamente, igual que los gastos fijos. Si no pones día de cargo, se asume el día 1.",
     "📊 El saldo pendiente de cada deuda sigue bajando mes a mes sin que tengas que tocarlo a mano.",
@@ -7785,9 +7822,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
 /* ============================================================
    ONBOARDING — bienvenida para usuarios nuevos (arranque vacío)
    ============================================================ */
-/* Onboarding renovado (2026-07-06): wizard de 3 pasos — (0) bienvenida con lo que hace la app
-   hoy + recuperar cuenta, (1) presupuesto con atajos, (2) cuentas. El arranque vacío sigue
-   siendo seguro y todo se puede cambiar luego. */
+/* Onboarding renovado (2026-07-06): wizard de 4 pasos — (0) bienvenida, (1) presupuesto,
+   (2) cuentas, (3) deuda/inversión opcionales. Arranque vacío; login en nube salta onboarding. */
 function Onboarding({set, onCloud, onSignup}){
   const [step,setStep]=useState(0);
   const [budget,setBudget]=useState("");
@@ -7795,24 +7831,49 @@ function Onboarding({set, onCloud, onSignup}){
   const [ent,setEnt]=useState("sabadell");
   const [name,setName]=useState("");
   const [val,setVal]=useState("");
+  const [debtForm,setDebtForm]=useState({name:"",value:"",monthly:""});
+  const [invForm,setInvForm]=useState({name:"",value:""});
   const wrap={position:"fixed",inset:0,zIndex:90,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 28px) 22px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
   const inner={maxWidth:480,margin:"0 auto"};
   const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
   const btn={width:"100%",padding:"14px",borderRadius:"14px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:"15px",cursor:"pointer"};
   const ghost=Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"});
   const backLk={background:"none",border:"none",color:"var(--blue)",fontSize:14,fontWeight:700,cursor:"pointer",padding:"6px 0",margin:"2px 0 0"};
-  const addAcc=function(){ const v=parseFloat(String(val).replace(',','.'))||0; setAccs(function(a){ return a.concat([{id:uid(),ent:ent,name:name||entOf(ent).label,value:v,note:""}]); }); setName(""); setVal(""); };
+  const addAcc=function(){
+    const v=parseFloat(String(val).replace(',','.'))||0;
+    const isTR=(ent==="trade_republic");
+    const hasSpend=accs.some(function(a){ return a.spendFrom; });
+    setAccs(function(a){
+      return a.concat([{id:uid(),ent:ent,name:name||entOf(ent).label,value:v,note:"",spendFrom:(isTR&&!hasSpend)?true:undefined}]);
+    });
+    setName(""); setVal("");
+  };
   const delAcc=function(id){ setAccs(function(a){ return a.filter(function(x){return x.id!==id;}); }); };
   const finish=function(){
     const b=parseFloat(String(budget).replace(',','.'))||0;
     const base=accs.reduce(function(t,x){ return t+(x.value||0); },0);
-    // Usuario recién onboarded: sella la versión para que NO le salte el popup de Novedades de
-    // la versión con la que estrena la app (solo lo verá a partir de la SIGUIENTE actualización).
+    const debts=[]; const dv=parseFloat(String(debtForm.value).replace(',','.'))||0;
+    const dm=parseFloat(String(debtForm.monthly).replace(',','.'))||0;
+    if((debtForm.name||"").trim() || dv>0 || dm>0){
+      const dn=(debtForm.name||"").trim()||t("db_newdebt");
+      debts.push({id:uid(),ent:"familia",name:dn,value:dv||0,original:dv||0,monthly:dm,asOf:ymNow(),day:1,account:"sabadell",note:t("ob_addedmanual")});
+    }
+    const investments=[]; const iv=parseFloat(String(invForm.value).replace(',','.'))||0;
+    if((invForm.name||"").trim() || iv>0){
+      const iname=(invForm.name||"").trim()||t("inv_new");
+      investments.push({id:uid(),ent:"myinvestor",name:iname,value:iv,cost:iv,cur:"EUR",note:""});
+    }
     try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
-    set(function(s){ return Object.assign({},s,{ accounts:accs.slice(), budget:b, monthStartNet:base, history:[base], onboarded:true }); });
+    set(function(s){
+      return Object.assign({},s,{
+        accounts:accs.slice(), budget:b, monthStartNet:base, history:[base],
+        debts:(s.debts||[]).concat(debts), investments:(s.investments||[]).concat(investments),
+        onboarded:true, setupHint:true, tourSeen:false,
+      });
+    });
   };
   const dots=React.createElement("div",{style:{display:"flex",gap:6,justifyContent:"center",margin:"18px 0 0"}},
-    [0,1,2].map(function(i){ return React.createElement("span",{key:i,style:{width:i===step?22:8,height:8,borderRadius:8,background:i===step?"var(--mint)":"var(--line)",transition:"all .25s"}}); }));
+    [0,1,2,3].map(function(i){ return React.createElement("span",{key:i,style:{width:i===step?22:8,height:8,borderRadius:8,background:i===step?"var(--mint)":"var(--line)",transition:"all .25s"}}); }));
   const feat=function(emoji,k){ return React.createElement("div",{style:{display:"flex",gap:11,alignItems:"flex-start",padding:"11px 12px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)"}},
     React.createElement("span",{style:{fontSize:20,lineHeight:1.2}},emoji),
     React.createElement("div",null,
@@ -7858,7 +7919,7 @@ function Onboarding({set, onCloud, onSignup}){
   ));
 
   // PASO 2 · cuentas (opcional: puedes empezar vacío y conectarlas luego)
-  return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
+  if(step===2) return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
     header,
     React.createElement("button",{style:backLk,onClick:function(){ setStep(1); }},"‹ "+t("bp_back")),
     React.createElement("div",{className:"serif",style:{fontSize:24,margin:"6px 0 6px"}},t("ob2_acc_t")),
@@ -7874,8 +7935,32 @@ function Onboarding({set, onCloud, onSignup}){
     ),
     React.createElement("input",{style:Object.assign({},inp,{marginTop:8}),placeholder:t("ob_name_ph"),value:name,onChange:function(e){ setName(e.target.value); }}),
     React.createElement("button",{style:Object.assign({},ghost,{marginTop:10}),onClick:addAcc},t("ob_addacc")),
-    React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:finish}, accs.length?t("ob_start"):t("ob_start_empty")),
+    React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:function(){ setStep(3); }}, accs.length?t("ob2_next")+" →":t("ob2_next")+" →"),
     React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:10,lineHeight:1.5,textAlign:"center"}},t("ob2_acc_h")),
+    dots
+  ));
+
+  // PASO 3 · deuda e inversión opcionales (issue #3: wizard completo sin heredar demo)
+  return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
+    header,
+    React.createElement("button",{style:backLk,onClick:function(){ setStep(2); }},"‹ "+t("bp_back")),
+    React.createElement("div",{className:"serif",style:{fontSize:24,margin:"6px 0 6px"}},t("ob3_t")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:14}},t("ob3_d")),
+    React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:10}},
+      React.createElement("div",{style:{fontWeight:800,fontSize:13,marginBottom:8}},t("ob3_debt")),
+      React.createElement("input",{style:Object.assign({},inp,{marginBottom:8}),placeholder:t("ob3_debt_name"),value:debtForm.name,onChange:function(e){ setDebtForm(function(f){ return Object.assign({},f,{name:e.target.value}); }); }}),
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob3_debt_val"),inputMode:"decimal",value:debtForm.value,onChange:function(e){ setDebtForm(function(f){ return Object.assign({},f,{value:e.target.value}); }); }}),
+        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob3_debt_monthly"),inputMode:"decimal",value:debtForm.monthly,onChange:function(e){ setDebtForm(function(f){ return Object.assign({},f,{monthly:e.target.value}); }); }})
+      )
+    ),
+    React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)"}},
+      React.createElement("div",{style:{fontWeight:800,fontSize:13,marginBottom:8}},t("ob3_inv")),
+      React.createElement("input",{style:Object.assign({},inp,{marginBottom:8}),placeholder:t("ob3_inv_name"),value:invForm.name,onChange:function(e){ setInvForm(function(f){ return Object.assign({},f,{name:e.target.value}); }); }}),
+      React.createElement("input",{style:inp,placeholder:t("ob3_inv_val"),inputMode:"decimal",value:invForm.value,onChange:function(e){ setInvForm(function(f){ return Object.assign({},f,{value:e.target.value}); }); }})
+    ),
+    React.createElement("button",{style:Object.assign({},btn,{marginTop:18}),onClick:finish},t("ob3_finish")),
+    React.createElement("button",{style:Object.assign({},ghost,{marginTop:10}),onClick:finish},t("ob3_skip")),
     dots
   ));
 }
@@ -8130,6 +8215,9 @@ function App(){
           const localNewer=!freshLogin && (prev._savedAt||0) > (cloudState._savedAt||0);
           const baseObj = localNewer ? Object.assign({},prev,{expenses:merged.list})
                                      : Object.assign({},prev,cloudState,{expenses:merged.list});
+          // Usuario que ya tenía cartera en la nube: no repetir onboarding en otro dispositivo.
+          if(freshLogin && (cloudState.accounts||[]).length) baseObj.onboarded=true;
+          if(freshLogin && ((cloudState.accounts||[]).length || (cloudState.monthStartNet||0)>0)) baseObj.setupHint=false;
           return seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR(baseObj)))));
         });
       } else if(cloudState){
@@ -8442,6 +8530,11 @@ function App(){
     const h=function(){ const i=tabOrderOf(stateRef.current).indexOf("dash"); if(i>=0) setTab(i); };
     window.addEventListener("mc-dash-edit",h);
     return function(){ window.removeEventListener("mc-dash-edit",h); };
+  },[]);
+  useEffect(function(){
+    const h=function(){ setDrawerOpen(true); };
+    window.addEventListener("mc-open-settings",h);
+    return function(){ window.removeEventListener("mc-open-settings",h); };
   },[]);
   // Aviso "hay APK nuevo" (solo app nativa; lo dispara el chequeo de apk.json del bloque OTA).
   // Al tocar: MiCartera.installApk descarga y abre el instalador — actualización SIN cable.
