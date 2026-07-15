@@ -1,0 +1,237 @@
+/* ============================================================
+   TAB: PATRIMONIO
+   ============================================================ */
+function Wealth({state, set, totals}){
+  const [delAcc,setDelAcc]=React.useState("");   // id de la cuenta manual pendiente de confirmar borrado
+  // Quitar a mano una cuenta manual del patrimonio (la del onboarding no se va sola al desloguear el banco:
+  // las manuales viven en state.accounts, no en obAccounts, y bankDisconnect solo purga obAccounts).
+  const removeAccount=(id)=>{ setDelAcc(""); set(function(s){ return Object.assign({},s,{accounts:(s.accounts||[]).filter(function(a){ return a.id!==id; })}); }); };
+  const pn=(i)=> (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0;   // movimientos ya ocurridos este mes
+  const ruM=totals.roundupThisMonth||0;                                     // round-up del mes (sale del efectivo de gasto)
+  const miM=totals.monthlyInvestThisMonth||0;                               // aporte periódico del mes (idem)
+  const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM - miM + (accRole(i)==="ambos"?pn(i):0);
+  // ROLES DE CUENTA: al cambiar el rol se RE-ANCLA `value` para que el saldo mostrado no cambie
+  // (despejamos value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario.
+  const setRole=(id,r)=>{ set(function(s){ return applyAccountRole(s, totals, id, r); }); };   // lógica compartida (applyAccountRole)
+  const accEd=useEditable(state.accounts,it=>set(s=>Object.assign({},s,{accounts:it})),{
+    // Editas el SALDO REAL de hoy; por dentro se guarda la base (inicio de mes) correcta.
+    display:  i => accDaily(i) ? spendBal(i) : (i.value + pn(i)),
+    // editar a mano re-ancla: typed = spendBal(nuevo value) → despeja value (incluye miM, que faltaba)
+    toStored: (i,typed) => accDaily(i) ? (typed - totals.injTR + totals.thisMonthSpent + ruM + miM - (accRole(i)==="ambos"?pn(i):0)) : (typed - pn(i))
+  });
+  const astEd=useEditable(state.assets,it=>set(s=>Object.assign({},s,{assets:it})));
+  const accSum=totals.liquid;
+  const astSum=state.assets.reduce((a,i)=>a+i.value,0);
+  const tt=totals;
+  return React.createElement("div",null,
+    React.createElement("div",{className:"hero",style:{marginBottom:14}},
+      React.createElement("div",{className:"hero-label"},t("d_networth")),
+      (function(){const p=eurParts(tt.netWorth);return React.createElement("div",{className:"hero-amount serif num"},p.ent,React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));})(),
+      React.createElement("div",{className:"hero-pills"},
+        React.createElement("div",{className:"pill ghost"},t("d_assets")+" "+eur0(tt.activos)),
+        React.createElement("div",{className:"pill neg"},t("d_debts")+" "+eur0(tt.debtTotal))
+      )
+    ),
+    React.createElement(OrderableSections,{tab:"patri",state:state,set:set,items:[
+      {id:"acc",label:t("pt_accounts"),el:
+    React.createElement(CollapsibleCard,{title:t("pt_accounts"),sub:t("pt_cash_avail"),dot:"#5FD08A",storageKey:"w_acc",help:t("h_roles"),
+      right:React.createElement("button",{className:"edit-link"+(accEd.editing?" save":""),onClick:e=>{e.stopPropagation();accEd.editing?accEd.save():accEd.start();}},accEd.editing?t("fj_save"):t("fj_edit"))},
+      state.accounts.map(a=>React.createElement(React.Fragment,{key:a.id},
+        React.createElement("div",{className:"row"},
+          React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:a.ent,size:38}),
+            React.createElement("div",{style:{minWidth:0}},React.createElement("div",{className:"rname"},entOf(a.ent).label),
+              // subtítulo = el NOMBRE de la cuenta (editable abajo en modo edición). Nada de
+              // desgloses aquí: el gasto del mes ya vive en Gastos (feedback 2026-07-06).
+              accEd.editing
+                ? React.createElement("input",{className:"af-in",style:{fontSize:13,padding:"5px 9px",maxWidth:170,marginTop:3},value:a.name||"",placeholder:t("pt_name_ph"),onChange:function(e){ const v=e.target.value; set(function(s){ return Object.assign({},s,{accounts:s.accounts.map(function(x){ return x.id===a.id?Object.assign({},x,{name:v}):x; })}); }); }})
+                : (a.name?React.createElement("div",{className:"rsub"},a.name):null))),
+          accEd.editing
+            ? React.createElement("input",{className:"editv num",value:accEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;accEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
+            : React.createElement("div",{className:"rval num"},eur(accDaily(a)? spendBal(a) : a.value + pn(a)))
+        ),
+        // rol de la cuenta (solo en modo edición): recibos / gasto diario / todo + quitar cuenta
+        accEd.editing && React.createElement("div",{className:"rolechips"},
+          [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+            const on=accRole(a)===rr[0];
+            return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){ setRole(a.id, rr[0]); }}, t(rr[1]));
+          }),
+          React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:t("pt_acc_del"),onClick:function(){ setDelAcc(a.id); }},"🗑")
+        ),
+        // confirmación de borrado de la cuenta manual (inline, para no borrar sin querer)
+        accEd.editing && delAcc===a.id && React.createElement("div",{className:"rolechips",style:{alignItems:"center",flexWrap:"wrap"}},
+          React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 100%",marginBottom:2}}, t("pt_acc_del_q")),
+          React.createElement("button",{className:"rchip",style:{color:"var(--coral)",borderColor:"var(--coral)"},onClick:function(){ removeAccount(a.id); }}, t("pt_acc_del_yes")),
+          React.createElement("button",{className:"rchip",onClick:function(){ setDelAcc(""); }}, t("pt_acc_del_no"))
+        )
+      )),
+      accEd.editing && state.accounts.length>0 && React.createElement("div",{className:"hint"}, t("pt_acc_del_hint")),
+      accEd.editing && React.createElement("div",{className:"hint"}, t("rl_hint")),
+      // Cuentas extra de Open Banking (compartidas, 2ª cuenta de un banco…): saldo real sincronizado.
+      // Nombre editable (obLabels) con un default "bonito" (niceObName); el saldo es solo lectura.
+      (state.obAccounts||[]).map(function(o){ const custom=(state.obLabels||{})[o.key]; const disp=(custom!=null&&custom!=="")?custom:niceObName(o);
+        return React.createElement(React.Fragment,{key:"ob_"+o.key},
+        React.createElement("div",{className:"row"},
+        React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:o.ent||"",size:38}),
+          React.createElement("div",{style:{minWidth:0}},
+            accEd.editing
+              ? React.createElement("input",{className:"af-in",style:{fontSize:13,padding:"5px 9px",maxWidth:170},value:custom!=null?custom:disp,placeholder:disp,onChange:function(e){ const v=e.target.value; set(function(s){ const ob=Object.assign({},s.obLabels); ob[o.key]=v; return Object.assign({},s,{obLabels:ob}); }); }})
+              : React.createElement("div",{className:"rname"}, disp, o.stale
+                  ? React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#E2A05F22",color:"#E2A05F"}}, t("pt_ob_badge")+" · "+t("bp_st_expired"))
+                  : React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
+            React.createElement("div",{className:"rsub"}, entOf(o.ent).label))),
+        React.createElement("div",{className:"rval num"}, eur(o.cur==="USD"? (o.value||0)*state.fx : (o.value||0)))
+        ),
+        // ROL también para las cuentas OB (bug pareja 2026-07-11: sin rol no podían recibir
+        // gastos fijos ni diarios — al elegir uno, la cuenta se «promociona» a cuenta con rol,
+        // sale de esta lista y aparece arriba con las manuales; el banco la sigue re-anclando).
+        accEd.editing && o.ent && React.createElement("div",{className:"rolechips"},
+          [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+            return React.createElement("button",{key:rr[0],className:"rchip",onClick:function(){
+              const nid=uid();
+              set(function(s){ return promoteObAccount(s, totals, o.key, rr[0], nid); });
+              // siembra el borrador del editor con el saldo real: sin esto la fila nueva salía vacía
+              accEd.setDraft(function(d){ const nd=Object.assign({},d); nd[nid]=+(o.cur==="USD"?(o.value||0)*(state.fx||1):(o.value||0)).toFixed(2); return nd; });
+            }}, t(rr[1]));
+          })
+        )
+      ); }),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_liquid")),React.createElement("span",{className:"num"},eur(accSum)))
+    )},
+      // (el desglose de efectivo de TR se quitó 2026-07-06: los movimientos ya viven en Gastos)
+      {id:"inv",label:t("pt_investments"),el:
+    React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv",help:t("h_ptinv")},
+      // Solo brókers con posiciones (los 3 fijos confundían a usuarios nuevos — feedback 2026-07-10)
+      ["revolut","trade_republic","myinvestor"].filter(g=>state.investments.some(i=>i.ent===g)).map(g=>{
+        const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+(i.cur==="USD"?i.value*state.fx:i.value),0);
+        return React.createElement("div",{className:"row",key:g},
+          React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g,size:38}),React.createElement("div",{className:"rname"},entOf(g).label)),
+          React.createElement("div",{className:"rval num"},eur(v)));
+      }),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_inv")),React.createElement("span",{className:"num"},eur(totals.invested)))
+    )},
+      {id:"goods",label:t("pt_goods"),el:
+    React.createElement(CollapsibleCard,{title:t("pt_goods"),sub:t("pt_nonliquid"),dot:"#E6C36A",storageKey:"w_ast",help:t("h_goods"),
+      right:React.createElement("button",{className:"edit-link"+(astEd.editing?" save":""),onClick:e=>{e.stopPropagation();astEd.editing?astEd.save():astEd.start();}},astEd.editing?t("fj_save"):t("fj_edit"))},
+      state.assets.map(a=>React.createElement("div",{className:"row",key:a.id},
+        React.createElement("div",{className:"rl"},React.createElement("div",{className:"ric"},a.kind==="piso"?"🏡":"🚙"),
+          React.createElement("div",null,React.createElement("div",{className:"rname"},a.name),a.note&&React.createElement("div",{className:"rsub"},a.note))),
+        astEd.editing
+          ? React.createElement("input",{className:"editv num",value:astEd.draft[a.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;astEd.setDraft(d=>Object.assign({},d,{[a.id]:v}));}})
+          : React.createElement("div",{className:"rval num"},eur0(a.value))
+      )),
+      React.createElement("div",{className:"subtotal"},React.createElement("span",{className:"muted"},t("pt_total_goods")),React.createElement("span",{className:"num"},eur0(astSum)))
+    )}
+    ]})
+  );
+}
+
+/* ============================================================
+   TAB: GASTOS FIJOS
+   ============================================================ */
+const FREQ_LABEL={mes:"mensual",bimestral:"bimestral",trimestral:"trimestral",semestral:"semestral","año":"anual"};
+const FREQ_OPTS=["mes","bimestral","trimestral","semestral","año"];
+const MONTHS_ES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+/* ============================================================
+   MOTOR DINÁMICO — calendario de gastos fijos
+   Cada gasto fijo sabe en qué meses (1-12) se cobra. Si no se ha
+   asignado a mano, se deriva de la frecuencia. Los anuales sin mes
+   quedan "sin programar" hasta que el usuario elige el mes.
+   ============================================================ */
+function chargeMonths(e){
+  if(e && e.schedule && e.schedule.length) return e.schedule.map(x=>x.m).slice().sort((a,b)=>a-b);
+  if(e && e.months && e.months.length) return e.months.slice().sort((a,b)=>a-b);
+  const f=e&&e.freq;
+  if(f==="mes"||f==="mensual") return [1,2,3,4,5,6,7,8,9,10,11,12];
+  if(f==="bimestral")  return [1,3,5,7,9,11];
+  if(f==="trimestral") return [1,4,7,10];
+  if(f==="semestral")  return [1,7];
+  return [];   // anual sin mes asignado → sin programar
+}
+// ¿se cobra este gasto en el mes m (1-12)?
+const occursIn=(e,m)=> chargeMonths(e).indexOf(m)>=0;
+// importe del cobro EN EL MES m. Si hay `schedule` (importes a medida, p.ej. seguro 172,05 + 166,94)
+// usa ese importe; si es anual sin schedule reparte el total entre los meses marcados; si no, amount.
+function occAmountIn(e,m){
+  if(e.schedule && e.schedule.length){ const s=e.schedule.find(x=>x.m===m); return s?(s.amt||0):0; }
+  if(e.freq==="año"||e.freq==="anual"){ const n=chargeMonths(e).length||1; return e.amount/n; }
+  return e.amount;
+}
+// compat: importe "representativo" de una ocurrencia (primer mes) — para etiquetas
+const occAmount=(e)=> occAmountIn(e, chargeMonths(e)[0]||(new Date().getMonth()+1));
+// banco del que se cobra (por defecto Sabadell)
+const accOf=(e)=> e.account||"sabadell";
+// día válido (1-31) o null — global para que lo usen Fijos y Deudas
+const cleanDay=(v)=>{ const n=parseInt(String(v),10); return (n>=1&&n<=31)?n:null; };
+// día del cobro en el mes m (schedule tiene su propio día por cobro)
+function dayIn(e,m){ if(e&&e.schedule&&e.schedule.length){ const s=e.schedule.find(x=>x.m===m); return s?(s.day||null):null; } return (e&&e.day)||null; }
+// día simple (objetos sin schedule: deudas)
+const dayOf=(e)=> (e&&e.day)||null;
+// Deudas sin día explícito: día 1 (entran en el motor de líquido como los fijos; antes quedaban
+// fuera hasta cerrar mes — bug #2 «deuda no dinámica»).
+function debtChargeDay(d){ const dd=dayOf(d); return (dd!=null && dd>0) ? dd : 1; }
+function isDebtPaidThisMonth(d,today){ return debtChargeDay(d)<=today; }
+// ¿ya se cobró en el mes m? (su día ya pasó o ES HOY). Solo tiene sentido para el mes actual.
+// `<=`: lo programado para HOY cuenta como hecho. Clave para no duplicar la nómina/cargos del día
+// con el saldo real del banco (que ya los refleja) → si no, fin de mes los sumaría por segunda vez.
+const isPaidIn=(e,m,today)=>{ const d=dayIn(e,m); return d!=null && d<=today; };
+const isPaidThisMonth=(e,today)=>{ const d=dayOf(e); return d!=null && d<=today; };
+// ¿el gasto necesita que el usuario le asigne un mes? (anual sin programar)
+const needsMonth=(e)=> (e.freq==="año"||e.freq==="anual") && !(e.months&&e.months.length) && !(e.schedule&&e.schedule.length);
+// ¿tiene importes/días a medida por cobro?
+const hasSchedule=(e)=> !!(e&&e.schedule&&e.schedule.length);
+
+/* --- Días laborables (lun-vie; sin festivos, aproximación) --- */
+// día del mes (número, mes 1-12) del primer/último día laborable
+function firstWorkDom(y,m){ for(let d=1;d<=7;d++){ const wd=new Date(y,m-1,d).getDay(); if(wd!==0 && wd!==6) return d; } return 1; }
+function lastWorkDom(y,m){ const last=new Date(y,m,0).getDate(); for(let d=last;d>=1;d--){ const wd=new Date(y,m-1,d).getDay(); if(wd!==0 && wd!==6) return d; } return last; }
+// día efectivo de un movimiento recurrente según su regla (`when`) o su día fijo
+function flowDay(f,y,m){ if(f.when==="last") return lastWorkDom(y,m); if(f.when==="first") return firstWorkDom(y,m); return f.day||null; }
+const flowPaid=(f,y,m,today)=>{ const d=flowDay(f,y,m); return d!=null && d<=today; };
+// Movimientos recurrentes (nómina/transferencias): por defecto cada mes salvo que tengan months
+const flowMonths=(f)=> (f&&f.months&&f.months.length)?f.months:[1,2,3,4,5,6,7,8,9,10,11,12];
+// Un flow puntual (f.once={y,m}) solo ocurre en ese mes/año concreto (como un cargo puntual);
+// el resto son recurrentes (mensuales por defecto). Si f.once existe, el año importa.
+const flowOccursIn=(f,m,y)=> f && f.once ? (f.once.y===y && f.once.m===m) : (flowMonths(f).indexOf(m)>=0);
+// ¿este flow puntual ya pasó (mes/año cerrado)? para ocultarlo de la lista una vez cumplido
+const flowOncePast=(f,y,m)=> f && f.once && (f.once.y<y || (f.once.y===y && f.once.m<m));
+// Cargos puntuales (un solo cobro en un mes/año concreto): imprevistos, amortizaciones…
+const oneoffOccurs=(o,y,m)=> o && o.year===y && o.month===m;
+const oneoffPast=(o,y,m)=> o && (o.year<y || (o.year===y && o.month<m));   // de un mes ya cerrado
+
+/* --- Deuda dinámica: saldo proyectado que baja solo cada mes ---
+   No mutamos el dato guardado (para no descuadrar la sync). `value` es el saldo
+   ANCLA y `asOf` el mes (entero absoluto año*12+mes) en que era cierto. El saldo
+   de hoy = value − amortización/mes × meses transcurridos, con suelo en 0.
+   `amort` es lo que reduce el principal (por defecto la cuota); puede diferir de la
+   cuota en efectivo (p.ej. préstamo familiar: paga 197 € pero amortiza 250 €/mes). */
+const ymAbs=(y,m0)=> y*12+m0;                         // m0 = mes 0-indexado
+const ymNow=()=>{ const n=new Date(); return ymAbs(n.getFullYear(), n.getMonth()); };
+const debtAmort=(d)=> d && d.amort!=null ? d.amort : ((d&&d.monthly)||0);
+// nº de pagos ya hechos. Una financiación (con `months`) cuenta TAMBIÉN el pago de ESTE mes si ya pasó
+// su día (ej. financias el 599/4 con día 26 y hoy es 28 → el 1er pago del 26 ya cuenta).
+function debtPaidCount(d){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); let n=Math.max(0, ymNow()-anchor); if(d.months!=null){ const dd=debtChargeDay(d); if(dd<=new Date().getDate()) n+=1; } return n; }
+// Financiación tipo coche: además de entrada (downPayment, ya pagada = informativa) y cuotas,
+// hay un PAGO FINAL (balloon) en el último mes del plazo. debtBalloonIn(d,y,m): balloon si (y,m 1-12)
+// es ese último mes; 0 si no. La amort lineal ya se fija a (value−balloon)/months al crear la deuda,
+// así el saldo baja con las cuotas y el balloon limpia el resto al final.
+function debtBalloonIn(d, y, m){ if(!d || !(d.balloon>0) || d.months==null) return 0; const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return (y*12+(m-1))===(anchor+d.months-1) ? d.balloon : 0; }
+function debtBalance(d){ if(!d || d.value==null) return 0; let b=d.value - debtAmort(d)*debtPaidCount(d); if(d.balloon>0 && d.months!=null && debtPaidCount(d)>=d.months) b-=d.balloon; return Math.max(0, b); }
+// ¿la cuota sigue cobrándose este mes? Una financiación (con `months` = plazo) deja de
+// cobrar al acabar el plazo o al llegar el saldo a 0. Sin plazo (hipoteca/préstamo): mientras quede saldo.
+function debtActive(d){ if(!d || !d.monthly) return false; const bal=debtBalance(d); if(d.months!=null){ const anchor=(typeof d.asOf==="number")?d.asOf:ymNow(); return (ymNow()-anchor) < d.months && bal>0.005; } return bal>0.005; }
+// cuotas que quedan de una financiación (null si no tiene plazo)
+function debtLeft(d){ if(!d || d.months==null) return null; return Math.max(0, d.months - debtPaidCount(d)); }
+// Movimientos netos de un banco en un mes (m 1-12): +ingresos −fijos −cuotas −puntuales −transfers.
+// todayLim null = mes cerrado (cuentan todos); número = solo los YA ocurridos (día <= todayLim, regla isPaidIn).
+function monthNetForAccount(s, ent, y, m, todayLim){
+  const closed=(todayLim==null);
+  const hit=function(d){ return closed ? true : (d!=null && d<=todayLim); };
+  let net=0;
+  (s.fixed||[]).forEach(function(e){ if((e.account||"sabadell")===ent && occursIn(e,m) && hit(dayIn(e,m))) net -= occAmountIn(e,m); });
+  (s.debts||[]).forEach(function(d){ if(debtActive(d) && (d.account||"sabadell")===ent && hit(debtChargeDay(d))) net -= (d.monthly||0) + debtBalloonIn(d,y,m); });
+  (s.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,y,m) && (o.account||"sabadell")===ent && (o.amount||0)!==0 && hit(o.day!=null?o.day:null)) net -= o.amount; });
+  (s.flows||[]).forEach(function(f){ if(flowOccursIn(f,m,y)){ const dd=flowDay(f,y,m); if(hit(dd)){ if(f.kind==="income" && (f.to||"sabadell")===ent) net += (f.amount||0); else if(f.kind==="transfer" && (f.from||"sabadell")===ent) net -= (f.amount||0); } } });
+  return net;
+}
+

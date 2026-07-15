@@ -22,34 +22,42 @@ PWA de finanzas personales: patrimonio neto, gastos variables, costes fijos, inv
 
 ```
 mi-cartera/
-├── public/                 # 👈 Artefacto desplegable (lo que sirve GitHub Pages)
-│   ├── index.html          #     App completa (React + CSS + lógica, todo inlineado)
-│   ├── manifest.json
-│   ├── sw.js               #     Service Worker (la versión se sella en CI)
-│   ├── icon-192.png · icon-512.png · apple-touch-icon.png
-│   └── .nojekyll           #     Evita que GH Pages procese con Jekyll
-├── supabase/                # Backend en la nube (Fase 1)
-│   ├── migrations/          #     Esquema SQL (expenses, app_state, RLS, grants)
-│   └── functions/           #     Edge Functions: ingest (MacroDroid) y prices (Finnhub)
+├── src/                    # 👈 Fuente editable (v3.108+)
+│   ├── shell.html          #     HTML shell (React, CSS, vendors)
+│   ├── build-order.json    #     Orden de ensamblado de módulos
+│   └── modules/            #     13 ficheros JS (core, i18n, motor, app, boot…)
+├── public/                 # Artefacto desplegable (generado + estáticos)
+│   ├── index.html          #     Generado por `npm run build` — no editar a mano
+│   ├── manifest.json · sw.js · vendor/ · fonts/
+│   └── privacy.html
+├── e2e/                    # Playwright (smoke, borrar cuenta)
+├── supabase/               # Postgres, Auth, Edge Functions
 ├── scripts/
-│   └── stamp-version.mjs   # Sella la versión del SW antes del deploy
-├── docs/
-│   └── ARQUITECTURA.md     # Decisiones técnicas y aprendizajes
-├── .github/workflows/
-│   └── deploy.yml          # Pipeline de despliegue a GitHub Pages
-├── VERSION                 # Única fuente de verdad de la versión
-├── CHANGELOG.md
-└── .gitignore
+│   ├── build-app.mjs       # Ensambla src/ → public/index.html
+│   ├── run-tests.mjs       # build + unit + Deno + E2E
+│   └── stamp-version.mjs
+├── docs/                   # ARQUITECTURA, TESTING, SENTRY, ROADMAP…
+├── playwright.config.mjs
+├── VERSION
+└── CHANGELOG.md
 ```
 
 ## 🚀 Desarrollo
 
-No hay paso de build obligatorio para tocar la app: editas `public/index.html` y abres el archivo en el navegador. El único script automatizado es el sellado de versión del Service Worker, que también corre en CI.
+1. Edita **`src/modules/*.js`** o **`src/shell.html`**
+2. Ensambla y prueba:
 
 ```bash
-# Tests (sintaxis, lógica pura, parsers Revolut, deudas, conciliación banco, ingest Deno)
-npm test
+npm ci
+npx playwright install chromium   # una vez
+npm run build                     # src → public/index.html
+npm test                          # build + unit + Deno + E2E
+npm run test:e2e                  # solo Playwright
+```
 
+Opcional: **Sentry** — ver [docs/SENTRY.md](docs/SENTRY.md). Sin DSN la app funciona igual.
+
+```bash
 # (opcional, local) sellar versión del SW manualmente
 node scripts/stamp-version.mjs
 ```
@@ -69,4 +77,4 @@ Push a `main` → GitHub Actions sella la versión del SW y publica `public/` en
 
 ## 🗺️ Roadmap
 
-Ver `CHANGELOG.md` (hecho) y `docs/ARQUITECTURA.md` (fases futuras).
+Ver `CHANGELOG.md`, [docs/ROADMAP.md](docs/ROADMAP.md) y [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).

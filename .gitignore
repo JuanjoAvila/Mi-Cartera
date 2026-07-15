@@ -24,3 +24,6 @@ Thumbs.db
 *.apk
 # Tooling local de Claude (preview launch.json, settings locales) — no es código de la app
 .claude/
+# Playwright
+playwright-report/
+test-results/

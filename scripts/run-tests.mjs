@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
+console.log("── build-app ──");
+const build = spawnSync("node", ["scripts/build-app.mjs"], { cwd: root, stdio: "inherit", shell: process.platform === "win32" });
+if (build.status !== 0) process.exit(1);
+
 const steps = [
   ["guard-privacy", ["node", "scripts/guard-privacy.mjs"]],
   ["check-syntax", ["node", "scripts/check-syntax.mjs"]],
@@ -37,6 +41,7 @@ console.log("\n── ingest-deno ──");
 const denoTests = [
   "supabase/functions/ingest/ingest.test.ts",
   "supabase/functions/_shared/crypto.test.ts",
+  "supabase/functions/delete-account/delete-account.test.ts",
 ];
 for (const testFile of denoTests) {
   const denoArgs = testFile.includes("crypto.test")
@@ -55,6 +60,17 @@ for (const testFile of denoTests) {
     if (denoOut) process.stderr.write(denoOut);
     failed = true;
     console.error(`FAILED: ${testFile}`);
+  }
+}
+
+if (!failed) {
+  console.log("\n── playwright-e2e ──");
+  const pw = spawnSync("npx", ["playwright", "test", "--config=playwright.config.mjs"], {
+    cwd: root, stdio: "inherit", shell: process.platform === "win32",
+  });
+  if (pw.status !== 0) {
+    failed = true;
+    console.error("\nFAILED: playwright-e2e");
   }
 }
 

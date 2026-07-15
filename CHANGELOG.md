@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.108.0] — 2026-07-15
+### Premium: modular + rendimiento + E2E + Sentry
+- 🧩 **Código modular:** `src/modules/` (13 ficheros) + `scripts/build-app.mjs` — el artefacto desplegable sigue siendo un solo `public/index.html`.
+- ⚡ **Rendimiento:** lazy mount de pestañas, `content-visibility`, sync/FX diferidos con `requestIdleCallback`, `TabCoach` memoizado.
+- 🛡️ **Sentry** opcional (`CONFIG.SENTRY_DSN`, vendor auto-hospedado).
+- ✅ **Playwright E2E** (smoke + confirmación borrar cuenta) + test Deno `delete-account`.
+- 📚 **Docs:** `TESTING.md`, `SENTRY.md`, `AGENTS.md` actualizado.
+
 ## [3.107.0] — 2026-07-15
 ### Actualizaciones con aviso automático + cierre del backlog
 - 🔔 **Notificación al móvil** cuando hay bundle OTA o APK nuevo listo (toca la noti → aplica la actualización).

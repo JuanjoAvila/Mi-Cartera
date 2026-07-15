@@ -15,8 +15,8 @@ qué falta.
 
 ## 2. La regla que más veces se ha roto: la fuente única
 
-- **Edita SIEMPRE `public/index.html`.** Es el artefacto único (~870 KB). Sí, es enorme; no lo
-  partas ni lo «refactorices» por tu cuenta.
+- **Edita la lógica en `src/modules/*.js`** y el shell en `src/shell.html`. Ensambla con `npm run build` → genera `public/index.html`.
+- **NO edites `public/index.html` a mano** salvo assets estáticos (`vendor/`, `sw.js`, iconos). El CI también ejecuta `build-app` antes del deploy.
 - **NO crees un `index.html` en la raíz.** Ya pasó: existía un duplicado que se editaba por error
   y dejaba `public/` atrasado — un fix no llegó al móvil hasta consolidar (v3.3.1).
 - `www/` y cualquier `bundle` son **generados**. No los toques a mano.

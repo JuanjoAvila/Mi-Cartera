@@ -20,12 +20,18 @@ jobs:
         with:
           node-version: 20
 
-      - name: Privacidad (no datos reales en index.html)
-        run: node scripts/guard-privacy.mjs
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Instalar Chromium (Playwright)
+        run: npx playwright install chromium --with-deps
 
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
 
-      - name: Ejecutar tests (sintaxis + lógica crítica + ingest Deno)
+      - name: Tests (build + unit + Deno + E2E)
         run: node scripts/run-tests.mjs
+
+      - name: Privacidad
+        run: node scripts/guard-privacy.mjs
