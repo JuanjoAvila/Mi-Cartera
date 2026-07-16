@@ -104,7 +104,8 @@ function App(){
 
   // CAPA 2 — Open Banking: lee el saldo del banco y re-ancla el motor (= editar el saldo a mano,
   // pero con el número real). opts.manual = avisa siempre (botón "Actualizar saldo").
-  const BANK_SYNC_THROTTLE=6*3600*1000;   // auto: como máx ~cada 6h (cap PSD2 desatendido = 4/día)
+  const BANK_SYNC_THROTTLE=90*60*1000;    // auto: ~cada 1,5h (cap PSD2 desatendido ≈ 4/día; antes 6h se quedaba frío)
+  const BANK_FG_MIN=30*60*1000;           // al volver a primer plano: sync si han pasado ≥30 min
   const runBankSync=function(opts){
     opts=opts||{};
     if(!cloud.enabled() || !sessionRef.current || bankSyncing.current) return Promise.resolve();
@@ -247,6 +248,7 @@ function App(){
   // Auto-sincroniza los gastos al volver a primer plano (abrir la app o cambiar de app y volver).
   // THROTTLE: si acabas de sincronizar (<30s) no repetimos el pull+merge de red → evita el "lagazo"
   // al alternar apps rápido (el sync dispara una descarga y un re-render de toda la app).
+  // Además: si hay bancos OB y ≥30 min desde lastBankSync → bankSync en idle (gastos de Caixa/etc.).
   const lastVisSync=useRef(0);
   useEffect(function(){
     if(!uid) return;
@@ -255,9 +257,50 @@ function App(){
       if(Date.now()-lastVisSync.current < 30000) return;   // ya sincronizado hace nada: no recargues
       lastVisSync.current=Date.now();
       syncCloudExpenses().catch(function(){});
+      const st=stateRef.current||{};
+      if(st.hasBankLink && Date.now()-(st.lastBankSync||0) >= BANK_FG_MIN){
+        mcScheduleIdle(function(){ runBankSync({}); });
+      }
+      // APK: ping pendiente del listener de notis de banco (si la app estaba en frío).
+      const nat=natPlugin();
+      if(nat&&nat.consumeBankSyncPing){
+        try{ nat.consumeBankSyncPing().then(function(r){
+          if(r&&r.ping) mcScheduleIdle(function(){ runBankSync({}); });
+        }).catch(function(){}); }catch(e){}
+      }
     };
     document.addEventListener("visibilitychange", onVis);
-    return function(){ document.removeEventListener("visibilitychange", onVis); };
+    // Capacitor: appStateChange (más fiable que visibility en algunos Android)
+    const A=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;
+    let sub=null;
+    if(A&&A.addListener){
+      try{ sub=A.addListener("appStateChange", function(st){ if(st&&st.isActive) onVis(); }); }catch(e){}
+    }
+    return function(){
+      document.removeEventListener("visibilitychange", onVis);
+      try{ if(sub&&sub.remove) sub.remove(); }catch(e){}
+    };
+  },[uid]);
+
+  // APK alpha22: noti de Caixa/Sabadell/… → evento nativo bankNotif → sync OB (sin parsear importe).
+  const lastBankNotifSync=useRef(0);
+  useEffect(function(){
+    if(!uid) return;
+    const nat=natPlugin();
+    if(!nat||!nat.addListener) return undefined;
+    let h=null;
+    const onPing=function(){
+      if(!(stateRef.current||{}).hasBankLink) return;
+      if(Date.now()-lastBankNotifSync.current < 120000) return;   // debounce web 2 min (nativo ya frena)
+      lastBankNotifSync.current=Date.now();
+      mcScheduleIdle(function(){ runBankSync({}); });
+    };
+    try{
+      const p=nat.addListener("bankNotif", onPing);
+      if(p&&p.then) p.then(function(handle){ h=handle; }).catch(function(){});
+      else h=p;
+    }catch(e){}
+    return function(){ try{ if(h&&h.remove) h.remove(); }catch(e){} };
   },[uid]);
 
   // PUNTO 5 · Noti → ficha del gasto. Al tocar la notificación de un gasto, la parte nativa deja un
@@ -660,13 +703,16 @@ function App(){
   // interrumpiendo al usuario por algo que no puede accionar en ese momento — y como el admin usa
   // la app a diario, saltaba constantemente. RETIRADO 2026-07-15: los errores se siguen guardando y
   // se consultan cuando TÚ quieras en Ajustes → Actividad, que ya lleva su contador.)
-  // Propaga al lector nativo si debe confirmar cada gasto con una noti (ajuste st_trnotif).
-  // Se re-envía siempre que cambia Y al arrancar (una reinstalación pierde las prefs nativas).
+  // Propaga al lector nativo si debe confirmar cada gasto con una noti (ajuste st_trnotif)
+  // y si una noti de banco debe disparar bankSync (alpha22). Se re-envía al arrancar.
   useEffect(function(){
     const nat=natPlugin();
     if(!nat || !nat.setNotifPrefs) return;
-    try{ nat.setNotifPrefs({expenseConfirm:!(state.settings&&state.settings.trNotifyConfirm===false)}).catch(function(){}); }catch(e){}
-  },[state.settings&&state.settings.trNotifyConfirm]);
+    try{ nat.setNotifPrefs({
+      expenseConfirm:!(state.settings&&state.settings.trNotifyConfirm===false),
+      bankSyncOnNotif:!(state.settings&&state.settings.bankSyncOnNotif===false)
+    }).catch(function(){}); }catch(e){}
+  },[state.settings&&state.settings.trNotifyConfirm, state.settings&&state.settings.bankSyncOnNotif]);
   // Re-propaga al lector nativo la URL de ingest con el token del usuario (apuntado multiusuario
   // de TR, 0008). Se re-envía al arrancar y al cambiar: una reinstalación pierde las prefs nativas.
   useEffect(function(){

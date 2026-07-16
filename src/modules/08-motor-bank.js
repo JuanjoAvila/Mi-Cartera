@@ -306,21 +306,21 @@ function flattenBankTx(links){
   return out.slice(0,150);   // últimos ~150 movimientos
 }
 
-/* GASTO VARIABLE VÍA OPEN BANKING (roles de cuenta): si tu cuenta de gasto diario (rol
-   "diario"/"ambos") es un banco conectado, sus COMPRAS CON TARJETA entran solas como gastos.
-   Idempotente por ext_id (+ dedup clásico fecha|importe|comercio). Solo tarjeta (card:true):
-   los recibos ya van por el motor de fijos y los bizums/transfers no son gasto del día a día.
-   Para el creador es INERTE (su cuenta diaria es TR, que no está en Open Banking). */
+/* GASTO VARIABLE VÍA OPEN BANKING: compras con tarjeta de los bancos en
+   settings.expenseBanks (o, por defecto, el ent de la cuenta diaria). El motor de
+   presupuesto/round-up sigue anclado a UNA sola cuenta spendFrom — esto solo decide
+   qué tarjetas OB se apuntan en Gastos. Idempotente por ext_id (+ dedup fecha|importe|comercio). */
 function importObExpenses(s, txs){
-  const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
-  if(!daily || !txs || !txs.length) return null;
+  const ents=expenseBankEnts(s);
+  if(!ents.length || !txs || !txs.length) return null;
+  const allow={}; ents.forEach(function(e){ allow[e]=1; });
   const som=startOfMonth();
   const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
   const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
   const add=[];
   txs.forEach(function(tx){
-    if(tx.ent!==daily.ent) return;
+    if(!allow[tx.ent]) return;
     if(!tx.card || !(tx.amount>0)) return;                        // solo compras con tarjeta (gasto)
     if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)

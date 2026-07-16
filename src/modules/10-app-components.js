@@ -178,8 +178,9 @@ function AuthPanel({session, onClose, showToast, recovery, startMode}){
    Idempotente: descarta lo ya importado (ext_id) y lo que ya existe (fecha|importe|comercio).
    Para Trade Republic no aplica: TR no está en Open Banking (no hay movimientos que traer). */
 function BankHistoryImport({state, set, showToast, onClose}){
-  const dailyAcc=(state.accounts||[]).find(function(a){ return accDaily(a); });
-  const dailyEnt=dailyAcc&&dailyAcc.ent;
+  const expEnts=expenseBankEnts(state);
+  const allow={}; expEnts.forEach(function(e){ allow[e]=1; });
+  const banksLbl=expEnts.map(function(e){ return entOf(e).label; }).join(", ");
   const [months,setMonths]=useState(3);
   const [loading,setLoading]=useState(false);
   const [cands,setCands]=useState(null);          // null = aún no se ha buscado
@@ -188,7 +189,7 @@ function BankHistoryImport({state, set, showToast, onClose}){
   useBackClose(true, onClose);
   const kOf=function(dt,am,mc){ return String(dt).slice(0,10)+"|"+am+"|"+(mc||""); };
   const search=function(){
-    if(!dailyEnt){ showToast(t("bp_hist_nodaily")); return; }
+    if(!expEnts.length){ showToast(t("bp_hist_nodaily")); return; }
     setLoading(true); setCands(null);
     const d=new Date(); d.setMonth(d.getMonth()-months); const dateFrom=d.toISOString().slice(0,10);
     cloud.bankSyncHistory(dateFrom).then(function(res){
@@ -197,7 +198,7 @@ function BankHistoryImport({state, set, showToast, onClose}){
       const keys={}; (state.expenses||[]).forEach(function(e){ keys[kOf(e.date,e.amount,e.merchant)]=1; });
       const out=[], uniq={};
       links.forEach(function(lk){
-        const ent=entFromAspsp(lk&&lk.aspsp); if(ent!==dailyEnt) return;
+        const ent=entFromAspsp(lk&&lk.aspsp); if(!allow[ent]) return;
         (lk.accounts||[]).forEach(function(ac){
           (ac.transactions||[]).forEach(function(tx){
             const dt=String(tx.date||"").slice(0,10), am=Number(tx.amount)||0;
@@ -205,7 +206,7 @@ function BankHistoryImport({state, set, showToast, onClose}){
             if(tx.ext_id && seen[tx.ext_id]) return;                // ya importado
             if(keys[kOf(dt,am,tx.merchant)]) return;                // ya existe a mano/otro origen
             const k=tx.ext_id||kOf(dt,am,tx.merchant); if(uniq[k]) return; uniq[k]=1;   // dedup entre páginas
-            out.push({ id:tx.ext_id||null, date:dt, amount:am, merchant:tx.merchant||"Compra", card:!!tx.card });
+            out.push({ id:tx.ext_id||null, date:dt, amount:am, merchant:tx.merchant||"Compra", card:!!tx.card, ent:ent });
           });
         });
       });
@@ -237,8 +238,8 @@ function BankHistoryImport({state, set, showToast, onClose}){
     React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("bp_close")),
     React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px"}}, t("bp_hist_title")),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}},
-      dailyEnt? tf("bp_hist_sub",{bank:entOf(dailyEnt).label}) : t("bp_hist_nodaily")),
-    dailyEnt && React.createElement(React.Fragment,null,
+      expEnts.length? tf("bp_hist_sub",{banks:banksLbl}) : t("bp_hist_nodaily")),
+    expEnts.length>0 && React.createElement(React.Fragment,null,
       React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}}, [1,2,3].map(chip)),
       React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:800,fontSize:14,cursor:"pointer"},disabled:loading,onClick:search}, loading?t("bp_hist_searching"):t("bp_hist_search")),
       cands!==null && cands.length===0 && !loading && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,textAlign:"center",padding:"20px 0"}}, t("bp_hist_none")),
@@ -385,7 +386,38 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       );
     }),
     React.createElement("button",{style:bigBtn,onClick:openPicker}, "+ "+t("bp_add")),
-    // Importar histórico de gastos (Open Banking, tope ~90 días) de la cuenta de gasto diario.
+    // Multi-banco gasto variable (v3.111): chips de qué bancos OB aportan compras con tarjeta a
+    // Gastos. Independiente del spendFrom único (presupuesto/round-up siguen en una cuenta).
+    (function(){
+      const active=(links||[]).filter(function(l){ return l.status==='active'||l.status==='pending'; });
+      if(!active.length) return null;
+      const ents=[]; active.forEach(function(l){ const e=entFromAspsp(l.aspsp_name); if(e&&ents.indexOf(e)<0) ents.push(e); });
+      if(!ents.length) return null;
+      const cur=expenseBankEnts(state);
+      const onEnt=function(ent){ return cur.indexOf(ent)>=0; };
+      const toggleEnt=function(ent){
+        set(function(s){
+          const base=expenseBankEnts(s).slice();
+          const i=base.indexOf(ent);
+          if(i>=0){ if(base.length===1) return s; base.splice(i,1); }   // no dejar la lista vacía a ciegas
+          else base.push(ent);
+          return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
+        });
+      };
+      return React.createElement("div",{style:{marginTop:16,padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)"}},
+        React.createElement("div",{style:{fontWeight:800,fontSize:13.5,marginBottom:4}}, t("bp_expbanks")),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,marginBottom:10}}, t("bp_expbanks_hint")),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+          ents.map(function(ent){
+            const on=onEnt(ent);
+            return React.createElement("button",{key:ent,type:"button",onClick:function(){ toggleEnt(ent); },
+              style:{padding:"8px 12px",borderRadius:20,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",fontWeight:800,fontSize:12.5,cursor:"pointer"}},
+              (on?"✓ ":"")+entOf(ent).label);
+          })
+        )
+      );
+    })(),
+    // Importar histórico de gastos (Open Banking, tope ~90 días) de los bancos marcados arriba.
     ((links||[]).some(function(l){ return l.status==='active'; })) && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:700,fontSize:13.5,cursor:"pointer",marginTop:10},onClick:function(){ setHistOpen(true); }}, "⏳ "+t("bp_hist_btn")),
     histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
     // Trade Republic también es un banco: su conexión (integración propia vía app Android) vive
@@ -452,6 +484,13 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.111.0", d:"16 jul 2026", t:"Varios bancos en Gastos y roles más claros", items:[
+    "🛒 ¿Gastos o Fijos? Los trucos de cada pestaña y los roles en Patrimonio explican en cristiano: recibos/cuotas van a Fijos; supermercado y bares a Gastos.",
+    "🏦 Varios bancos de gasto: en Ajustes → Bancos marcas «También apuntar gastos de tarjeta de…» (Caixa, Sabadell…). El presupuesto del día a día sigue en una sola cuenta.",
+    "🔄 El banco se actualiza más a menudo (al volver a la app y cada ~hora y media), no solo cada muchas horas.",
+    "✅ En Fijos, los cargos nuevos del banco se confirman con «Confirmar y apuntar» — menos tecleo.",
+    "📱 App Android (alpha22): si Caixa/Sabadell te avisan con una noti, se piden los movimientos al banco (sin leer el importe de la noti)."
+  ]},
   {v:"3.110.0", d:"16 jul 2026", t:"Fin de mes en paz, Hogar completo y tutorial arreglado", items:[
     "😌 Fin de mes en paz: en el Resumen ves cuánto puedes gastar al día y si vas demasiado rápido.",
     "📊 Presupuesto por categoría con barritas (Editar → super=200, ocio=80…).",
@@ -927,6 +966,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       const nat=natPlugin();
       if(!nat || !nat.setNotifPrefs) return null;
       const on=!(state.settings&&state.settings.trNotifyConfirm===false);
+      const bankSyncOn=!(state.settings&&state.settings.bankSyncOnNotif===false);
       // Apuntado MULTIUSUARIO de TR (0008): activar = generar token propio, guardarlo (ingest_tokens)
       // y pasar la URL de ingest al lector nativo. Así cada persona apunta sus gastos en SU cuenta.
       const ingOn=!!(state.settings&&state.settings.trIngest);
@@ -950,11 +990,13 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           setS({trIngest:false}); showToast(t("st_tring_off"));
         }
       };
-      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos",null,
+      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell",null,
         row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
         row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint"))
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint")),
+        row("banksync",bankSyncOn?"🏦":"🔕",t("st_banksync_notif"),null,function(){ setS({bankSyncOnNotif:!bankSyncOn}); }, sw(bankSyncOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint"))
       );
     })(),
     // ── Tarjeta admin · actividad de los usuarios (SOLO el dueño la ve; RLS re-valida en servidor).

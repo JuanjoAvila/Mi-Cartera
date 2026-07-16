@@ -43,6 +43,7 @@ const LANG = {
     wn_yours:"Tus apuntes", wn_close:"¡Entendido!",
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
     st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
+    st_banksync_notif:"Al detectar aviso del banco, sincronizar movimientos", st_banksync_notif_hint:"Si Caixa, Sabadell u otro banco te manda una notificación, la app pide los movimientos por Open Banking (no lee el importe de la noti). Como máximo una sync cada 2 minutos.",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
@@ -91,6 +92,7 @@ const LANG = {
     wn_yours:"Your notes", wn_close:"Got it!",
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
     st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
+    st_banksync_notif:"When a bank notification arrives, sync movements", st_banksync_notif_hint:"If Caixa, Sabadell or another bank notifies you, the app pulls movements via Open Banking (it does not parse the notification amount). At most one sync every 2 minutes.",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
@@ -139,6 +141,7 @@ const LANG = {
     wn_yours:"Els teus apunts", wn_close:"Entesos!",
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
     st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
+    st_banksync_notif:"En detectar avís del banc, sincronitzar moviments", st_banksync_notif_hint:"Si Caixa, Sabadell o un altre banc et envia una notificació, l'app demana els moviments per Open Banking (no llegeix l'import de la noti). Com a màxim una sync cada 2 minuts.",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
@@ -188,7 +191,7 @@ Object.assign(LANG.es,{
   h_bytype:"Tus inversiones agrupadas por tipo (acciones, ETF, fondo, oro…). Para ver de un vistazo si lo tienes todo en un mismo saco.",
   h_rend:"Cada posición ordenada por lo que te ha dado: verde = ganas, rojo = pierdes. Con el % sobre lo que pusiste.",
   h_evo:"El valor total de tus inversiones a lo largo del tiempo, con tus datos reales guardados. Sirve para ver la tendencia, no el día a día.",
-  h_roles:"Cada cuenta tiene un rol (toca Editar para verlo): de las de «Recibos» salen los fijos y cuotas; de la de «Gasto diario» sale lo que apuntas en Gastos; «Todo» = una sola cuenta para ambas cosas. Si usas un solo banco para todo, pon «Todo». El rol importa sobre todo al conectar el banco o compartir la app: dice a qué cuenta va cada cargo.",
+  h_roles:"Cada cuenta tiene un rol (toca Editar): «Recibos» = de ahí salen luz, agua, Netflix, hipoteca… (Fijos). «Gasto diario» = supermercado, bares, ropa… (pestaña Gastos; solo puede haber una). «Todo» = un solo banco para ambas cosas. Si pagas el día a día con OTRO banco conectado, márcalo en Ajustes → Bancos («También apuntar gastos de tarjeta»).",
   h_trbreak:"La cuenta de gasto diario no se edita a mano cada día: la app la calcula (base + nómina − gastos − round-up − aporte). Aquí ves esa cuenta, línea a línea, para encontrar cualquier descuadre.",
   h_ptinv:"El total invertido en cada bróker. El detalle por posición está en la pestaña Inversiones.",
   h_goods:"Cosas tuyas con valor que no son dinero en el banco (piso, coche…). Cuentan en tu patrimonio pero no puedes gastarlas sin venderlas.",
@@ -229,7 +232,7 @@ Object.assign(LANG.en,{
   h_bytype:"Your investments grouped by type (stocks, ETF, fund, gold…). A quick check that everything isn't in one basket.",
   h_rend:"Each position ranked by what it has made you: green = gaining, red = losing. With the % over what you put in.",
   h_evo:"The total value of your investments over time, from your real saved data. For the trend, not the day-to-day.",
-  h_roles:"Each account has a role (tap Edit to see it): “Bills” accounts pay fixed costs and instalments; the “Daily spending” one funds what you log in Spending; “Everything” = one account for both. If you use a single bank for everything, pick “Everything”. Roles matter most when connecting your bank or sharing the app: they say which account each charge hits.",
+  h_roles:"Each account has a role (tap Edit): “Bills” = power, water, Netflix, mortgage… (Fixed). “Daily spending” = groceries, bars, clothes… (Spending tab; only one). “Everything” = one bank for both. If day-to-day cards are on ANOTHER connected bank, tick it in Settings → Banks (“Also log card spending”).",
   h_trbreak:"The daily-spending account isn't edited by hand every day: the app computes it (base + payroll − spending − round-up − plan). Here you see that math line by line to hunt any mismatch.",
   h_ptinv:"Total invested per broker. Position detail lives in the Investments tab.",
   h_goods:"Things you own with value that aren't money in the bank (home, car…). They count in your net worth but you can't spend them without selling.",
@@ -270,7 +273,7 @@ Object.assign(LANG.ca,{
   h_bytype:"Les teves inversions agrupades per tipus (accions, ETF, fons, or…). Per veure d'un cop d'ull si ho tens tot al mateix sac.",
   h_rend:"Cada posició ordenada pel que t'ha donat: verd = guanyes, vermell = perds. Amb el % sobre el que hi vas posar.",
   h_evo:"El valor total de les teves inversions al llarg del temps, amb les teves dades reals desades. Serveix per veure la tendència, no el dia a dia.",
-  h_roles:"Cada compte té un rol (toca Edita per veure'l): dels de «Rebuts» surten els fixos i quotes; del de «Despesa diària» surt el que apuntes a Despeses; «Tot» = un sol compte per a les dues coses. Si fas servir un sol banc per a tot, posa «Tot». El rol importa sobretot en connectar el banc o compartir l'app: diu a quin compte va cada càrrec.",
+  h_roles:"Cada compte té un rol (toca Edita): «Rebuts» = llum, aigua, Netflix, hipoteca… (Fixes). «Despesa diària» = súper, bars, roba… (pestanya Despeses; només n'hi pot haver un). «Tot» = un sol banc per a les dues coses. Si el dia a dia el pagues amb UN ALTRE banc connectat, marca'l a Ajustos → Bancs («També apuntar despeses de targeta»).",
   h_trbreak:"El compte de despesa diària no s'edita a mà cada dia: l'app el calcula (base + nòmina − despeses − round-up − aportació). Aquí veus aquest compte, línia a línia, per trobar qualsevol desquadrament.",
   h_ptinv:"El total invertit a cada bròker. El detall per posició és a la pestanya Inversions.",
   h_goods:"Coses teves amb valor que no són diners al banc (pis, cotxe…). Compten al teu patrimoni però no les pots gastar sense vendre-les.",
@@ -294,7 +297,7 @@ Object.assign(LANG.es,{
   rl_fijos:"🏦 Recibos", rl_diario:"🛒 Gasto diario", rl_ambos:"🔁 Todo",
   rl_ob_q:"¿Para qué usas esta cuenta? Dale un rol y podrás asignarle gastos fijos y del día a día:",
   rl_ob_done:"✓ «{n}» activada como {r}. Ya puedes elegirla en tus gastos.",
-  rl_hint:"El rol dice qué papel juega cada cuenta: de las de «Recibos» salen los fijos y cuotas; de la de «Gasto diario» sale lo que apuntas en Gastos; «Todo» = una sola cuenta para ambas cosas. Solo puede haber una de gasto diario; al cambiar el rol, el saldo mostrado se conserva.",
+  rl_hint:"«Recibos» = pagos fijos (luz, cuotas…). «Gasto diario» = compras variables del día a día (solo una cuenta; mueve presupuesto y round-up). «Todo» = ambas en la misma. Si gastas con tarjeta de otro banco conectado, actívalo en Ajustes → Bancos sin cambiar este rol. Al cambiar el rol, el saldo mostrado se conserva.",
   ob_imported:"🏦 {n} compras con tarjeta añadidas a Gastos",
   rp_btn:"📸 Informe del mes (imagen)", rp_spent:"Gastado este mes", rp_of_budget:"de {b} de presupuesto ({p}%)",
   rp_top:"Top categorías", rp_networth:"Patrimonio", rp_delta:"{x} este mes", rp_footer:"hecho con Mi Cartera",
@@ -327,7 +330,7 @@ Object.assign(LANG.en,{
   rl_fijos:"🏦 Bills", rl_diario:"🛒 Daily spending", rl_ambos:"🔁 Everything",
   rl_ob_q:"What do you use this account for? Give it a role and you'll be able to assign it fixed and day-to-day expenses:",
   rl_ob_done:"✓ \"{n}\" activated as {r}. You can now pick it for your expenses.",
-  rl_hint:"The role sets what each account does: «Bills» accounts pay fixed costs and instalments; the «Daily spending» one funds what you log in Spending; «Everything» = one account for both. Only one daily-spending account; when you switch roles the shown balance is preserved.",
+  rl_hint:"“Bills” = fixed payments (utilities, instalments…). “Daily spending” = variable day-to-day purchases (only one; drives budget and round-up). “Everything” = both in the same account. Card spend from another connected bank: tick it in Settings → Banks without changing this role. Switching roles keeps the shown balance.",
   ob_imported:"🏦 {n} card purchases added to Spending",
   rp_btn:"📸 Month report (image)", rp_spent:"Spent this month", rp_of_budget:"of {b} budget ({p}%)",
   rp_top:"Top categories", rp_networth:"Net worth", rp_delta:"{x} this month", rp_footer:"made with Mi Cartera",
@@ -360,7 +363,7 @@ Object.assign(LANG.ca,{
   rl_fijos:"🏦 Rebuts", rl_diario:"🛒 Despesa diària", rl_ambos:"🔁 Tot",
   rl_ob_q:"Per a què fas servir aquest compte? Dona-li un rol i podràs assignar-li despeses fixes i del dia a dia:",
   rl_ob_done:"✓ «{n}» activat com a {r}. Ja pots triar-lo a les teves despeses.",
-  rl_hint:"El rol diu quin paper juga cada compte: dels de «Rebuts» surten els fixos i quotes; del de «Despesa diària» surt el que apuntes a Despeses; «Tot» = un sol compte per a les dues coses. Només n'hi pot haver un de despesa diària; en canviar el rol, el saldo mostrat es conserva.",
+  rl_hint:"«Rebuts» = pagaments fixos (llum, quotes…). «Despesa diària» = compres variables del dia a dia (només un; mou pressupost i round-up). «Tot» = les dues al mateix. Si gastes amb targeta d'un altre banc connectat, activa'l a Ajustos → Bancs sense canviar aquest rol. En canviar el rol, el saldo mostrat es conserva.",
   ob_imported:"🏦 {n} compres amb targeta afegides a Despeses",
   rp_btn:"📸 Informe del mes (imatge)", rp_spent:"Gastat aquest mes", rp_of_budget:"de {b} de pressupost ({p}%)",
   rp_top:"Top categories", rp_networth:"Patrimoni", rp_delta:"{x} aquest mes", rp_footer:"fet amb Mi Cartera",
@@ -453,10 +456,10 @@ Object.assign(LANG.es,{
   coach_dash:["Desliza a los lados para cambiar de pestaña (o toca los puntitos de abajo).","El ⚙️ de arriba abre Ajustes: tema, idioma, bancos, copias… ahora con buscador.","¿Más o menos tarjetas en el Resumen? Ajustes → Personalización → «Personalizar widgets»."],
   coach_metas:["Una meta es una hucha: ponle nombre, emoji e importe objetivo.","Apunta lo que ya llevas y ve actualizándolo: la barra enseña el progreso.","Puedes ponerle fecha límite y una aportación mensual para verla venir."],
   coach_logros:["Aquí no hay que rellenar nada: las insignias se desbloquean solas usando la app y ahorrando.","Tu nivel sube con la constancia — de Aprendiz a Maestro del ahorro."],
-  coach_gastos:["Toca cualquier gasto para abrir su ficha: ahí están el lápiz ✎ (corregir comercio, importe o pasarlo a ingreso) y el borrar.","¿Categoría equivocada? Cámbiala desde la ficha: la app se acuerda del comercio para la próxima.","Arriba puedes buscar por texto y filtrar por mes, «Mi ciclo» (de cobro a cobro) o un rango de fechas.","El «+» añade un gasto a mano; la categoría se detecta sola."],
-  coach_fijos:["Aquí viven los pagos que se repiten: recibos, suscripciones y las cuotas de tus deudas.","Las cuotas de deuda entran solas desde la pestaña Deudas; no las dupliques aquí.","Para un pago de una sola vez (imprevisto, amortización) usa «Cargos puntuales»."],
+  coach_gastos:["Aquí va el gasto VARIABLE del día a día: supermercado, bares, ropa, gasolina… lo que no es un recibo fijo.","Si pagas con Trade Republic, las notis se apuntan solas. Si usas Caixa/Sabadell/otro banco, conecta el banco y marca «También apuntar gastos de tarjeta» en Ajustes → Bancos.","Toca un gasto para editarlo (lápiz ✎) o borrar. La categoría se recuerda por comercio.","El «+» añade un gasto a mano; arriba puedes filtrar por mes o «Mi ciclo»."],
+  coach_fijos:["Aquí van los pagos FIJOS que se repiten: luz, agua, móvil, Netflix, hipoteca, cuotas… NO las compras del día a día (esas van en Gastos).","Si tienes el banco conectado, la tarjeta «Conciliación» te propone lo que el banco ya cobró: toca «Confirmar y apuntar» y no hace falta teclear todo.","Las cuotas de deuda entran solas desde Deudas; no las dupliques. Para un pago de una vez usa «Cargos puntuales»."],
   coach_inv:["Conecta Trade Republic o MyInvestor, o importa el CSV de Revolut, desde sus tarjetas (beta): re-anclan tus posiciones con la verdad del bróker.","Lo manual también vale: añade una posición y edítala tocándola.","La calculadora de proyección simula cuánto tendrás aportando X al mes."],
-  coach_patri:["Tu foto completa: cuentas, inversiones y bienes, todo sumado.","Lo conectado (banco/bróker) se refresca solo; lo manual se edita tocándolo."],
+  coach_patri:["Tu foto completa: cuentas, inversiones y bienes, todo sumado.","Al editar una cuenta, elige su rol: «Recibos» = fijos/cuotas; «Gasto diario» = compras del día a día (solo una); «Todo» = ambas cosas.","Lo conectado (banco/bróker) se refresca solo; lo manual se edita tocándolo."],
   coach_debt:["El pendiente baja solo cada mes con lo que amortizas; cuando te llegue el saldo real del banco, edítalo y se re-ancla.","💸 «Amortizar» adelanta pago: baja el pendiente y acorta el plazo (misma cuota, menos meses).","💡 En «¿Cuándo amortizar?» pones el interés de la deuda y te digo cuánto ahorras y si te compensa."],
   coach_compartido:["Grupos para gastos a medias (viaje, casa, cena): añade personas y apunta quién pagó qué.","La app calcula el reparto y quién debe a quién."],
 });
@@ -465,10 +468,10 @@ Object.assign(LANG.en,{
   coach_dash:["Swipe sideways to switch tabs (or tap the dots below).","The ⚙️ up top opens Settings: theme, language, banks, backups… now with a search box.","Want more or fewer cards on the Summary? Settings → Customisation → “Customise widgets”."],
   coach_metas:["A goal is a piggy bank: give it a name, an emoji and a target amount.","Log what you've saved so far and keep it updated: the bar shows progress.","Add a deadline and a monthly contribution to see it coming."],
   coach_logros:["Nothing to fill in here: badges unlock by themselves as you use the app and save.","Your level grows with consistency — from Apprentice to Savings Master."],
-  coach_gastos:["Tap any expense to open its card: there you'll find the pencil ✎ (fix merchant, amount or flip to income) and delete.","Wrong category? Change it from the card: the app remembers the merchant next time.","Up top you can search by text and filter by month, “My cycle” (payday to payday) or a date range.","The “+” adds an expense by hand; the category is detected automatically."],
-  coach_fijos:["Recurring payments live here: bills, subscriptions and your debt instalments.","Debt instalments flow in automatically from the Debts tab; don't duplicate them here.","For one-off charges (surprise bill, early repayment) use “One-off charges”."],
+  coach_gastos:["VARIABLE day-to-day spending lives here: groceries, bars, clothes, fuel… not fixed bills.","Trade Republic notifications log themselves. For Caixa/Sabadell/other banks, connect Open Banking and tick “Also log card spending from…” in Settings → Banks.","Tap an expense to edit (pencil ✎) or delete. Category is remembered per merchant.","“+” adds by hand; filter by month or “My cycle” up top."],
+  coach_fijos:["FIXED recurring payments live here: power, water, phone, Netflix, mortgage, instalments… NOT day-to-day purchases (those go in Spending).","With a bank connected, “Reconciliation” suggests what the bank already charged — tap “Confirm and log” so you don't type everything.","Debt instalments flow in from Debts; don't duplicate. For one-offs use “One-off charges”."],
   coach_inv:["Connect Trade Republic or MyInvestor, or import the Revolut CSV, from their cards (beta): they re-anchor your positions to the broker's truth.","Manual works too: add a position and tap it to edit.","The projection calculator simulates what you'd have contributing X per month."],
-  coach_patri:["Your full picture: accounts, investments and assets, all added up.","Connected stuff (bank/broker) refreshes itself; manual entries are edited by tapping."],
+  coach_patri:["Your full picture: accounts, investments and assets, all added up.","When editing an account, pick its role: “Bills” = fixed/instalments; “Daily spending” = day-to-day (only one); “Everything” = both.","Connected stuff (bank/broker) refreshes itself; manual entries are edited by tapping."],
   coach_debt:["The outstanding drops by itself each month by what you amortise; when the bank's real balance arrives, edit it and it re-anchors.","💸 “Pay down” makes an early payment: the balance drops and the term shortens (same instalment, fewer months).","💡 In “When to pay down?” set the debt's interest and I'll tell you what you save and whether it's worth it."],
   coach_compartido:["Groups for shared expenses (trip, house, dinner): add people and log who paid what.","The app works out the split and who owes whom."],
 });
@@ -477,10 +480,10 @@ Object.assign(LANG.ca,{
   coach_dash:["Llisca als costats per canviar de pestanya (o toca els puntets de sota).","L'⚙️ de dalt obre Ajustos: tema, idioma, bancs, còpies… ara amb cercador.","Més o menys targetes al Resum? Ajustos → Personalització → «Personalitza widgets»."],
   coach_metas:["Una meta és una guardiola: posa-li nom, emoji i import objectiu.","Apunta el que ja portes i ves actualitzant-ho: la barra ensenya el progrés.","Pots posar-li data límit i una aportació mensual per veure-la venir."],
   coach_logros:["Aquí no cal omplir res: les insígnies es desbloquegen soles fent servir l'app i estalviant.","El teu nivell puja amb la constància — d'Aprenent a Mestre de l'estalvi."],
-  coach_gastos:["Toca qualsevol despesa per obrir la seva fitxa: allà hi ha el llapis ✎ (corregir comerç, import o passar-la a ingrés) i l'esborrar.","Categoria equivocada? Canvia-la des de la fitxa: l'app recorda el comerç per a la propera.","A dalt pots cercar per text i filtrar per mes, «El meu cicle» (de cobrament a cobrament) o un rang de dates.","El «+» afegeix una despesa a mà; la categoria es detecta sola."],
-  coach_fijos:["Aquí viuen els pagaments que es repeteixen: rebuts, subscripcions i les quotes dels teus deutes.","Les quotes de deute entren soles des de la pestanya Deutes; no les dupliquis aquí.","Per a un pagament d'una sola vegada (imprevist, amortització) fes servir «Càrrecs puntuals»."],
+  coach_gastos:["Aquí va la despesa VARIABLE del dia a dia: súper, bars, roba, benzina… el que no és un rebut fix.","Si pagues amb Trade Republic, les notis s'apunten soles. Si uses Caixa/Sabadell/un altre banc, connecta'l i marca «També apuntar despeses de targeta» a Ajustos → Bancs.","Toca una despesa per editar-la (llapis ✎) o esborrar. La categoria es recorda per comerç.","El «+» afegeix a mà; a dalt pots filtrar per mes o «El meu cicle»."],
+  coach_fijos:["Aquí van els pagaments FIXOS que es repeteixen: llum, aigua, mòbil, Netflix, hipoteca, quotes… NO les compres del dia a dia (aquestes van a Despeses).","Si tens el banc connectat, la targeta «Conciliació» et proposa el que el banc ja ha cobrat: toca «Confirma i apunta» i no cal teclejar-ho tot.","Les quotes de deute entren soles des de Deutes; no les dupliquis. Per a un pagament d'una vegada fes servir «Càrrecs puntuals»."],
   coach_inv:["Connecta Trade Republic o MyInvestor, o importa el CSV de Revolut, des de les seves targetes (beta): re-ancoren les teves posicions amb la veritat del bròker.","Lo manual també val: afegeix una posició i edita-la tocant-la.","La calculadora de projecció simula quant tindràs aportant X al mes."],
-  coach_patri:["La teva foto completa: comptes, inversions i béns, tot sumat.","El que està connectat (banc/bròker) es refresca sol; el manual s'edita tocant-lo."],
+  coach_patri:["La teva foto completa: comptes, inversions i béns, tot sumat.","En editar un compte, tria el rol: «Rebuts» = fixos/quotes; «Despesa diària» = compres del dia a dia (només un); «Tot» = les dues coses.","El que està connectat (banc/bròker) es refresca sol; el manual s'edita tocant-lo."],
   coach_debt:["El pendent baixa sol cada mes amb el que amortitzes; quan t'arribi el saldo real del banc, edita'l i es re-ancora.","💸 «Amortitza» avança pagament: baixa el pendent i s'escurça el termini (mateixa quota, menys mesos).","💡 A «Quan amortitzar?» poses l'interès del deute i et dic quant estalvies i si et compensa."],
   coach_compartido:["Grups per a despeses a mitges (viatge, casa, sopar): afegeix persones i apunta qui va pagar què.","L'app calcula el repartiment i qui deu a qui."],
 });
@@ -1234,19 +1237,20 @@ Object.assign(LANG.es,{
   rec_mismatch_t:"⚠ No cuadra", rec_mismatch_l:"{name} — tú modelas {modeled}, el banco cobró {bank}",
   rec_missing_t:"⏳ Aún no aparece en el banco", rec_missing_l:"{name} · {amount} · día {day}",
   rec_new_t:"🆕 Cargos del banco sin modelar", rec_new_l:"{merchant} · día {day}",
-  rec_add:"+ Añadir a Fijos", rec_added:"Añadido a Fijos ✓",
+  rec_add:"✓ Confirmar y apuntar", rec_added:"Añadido a Fijos ✓",
   rec_confirmed:"✓ {n} cargos confirmados por el banco", rec_feed:"Movimientos del banco", rec_income:"ingreso", rec_card:"tarjeta",
   rec_adjust:"Ajustar a {x}", rec_mark_shared:"Pago solo mi parte", rec_ignore:"Ignorar",
   rec_shared_t:"ℹ Pagas solo tu parte (te reintegran el resto)", rec_shared_l:"{name} — pagas {net}, el banco cobra {gross}", rec_unshare:"deshacer",
   rec_pay_from:"lo pago desde:",
-  rec_hint:"Solo informa: no toca tus gastos ni tu saldo. Compara lo que modelas con lo que el banco ha cobrado este mes.",
+  rec_hint:"Compara lo que modelas con lo que el banco cobró. Los cargos nuevos se pueden «Confirmar y apuntar» a Fijos sin teclearlos — no toca tu saldo ni la pestaña Gastos.",
 });
 // --- Open Banking · sección "Mis bancos" (multibanco) ---
 Object.assign(LANG.es,{
   bp_title:"Mis bancos", bp_intro:"Conecta uno o varios bancos por Open Banking. Solo lectura, sin tarjeta. Cada permiso se renueva cada ~3 meses.",
   bp_manage:"Gestionar mis bancos", bp_close:"Ajustes", bp_back:"Mis bancos",
   bp_empty:"Aún no has conectado ningún banco.", bp_add:"Conectar un banco",
-  bp_hist_btn:"Importar histórico de gastos", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae los gastos de los últimos meses de tu cuenta de gasto diario ({bank}) y elige cuáles apuntar. Solo cargos; las compras con tarjeta vienen pre-marcadas.", bp_hist_nodaily:"Para importar histórico, primero pon una cuenta de banco conectada como «gasto diario» en Patrimonio (editar cuenta → rol). Trade Republic no vale: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay gastos nuevos que importar en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos encontrados · marca los que quieras apuntar", bp_hist_notcard:"no es tarjeta (¿recibo?)", bp_hist_import:"Importar {n} gastos", bp_hist_done:"✓ {n} gastos importados",
+  bp_expbanks:"También apuntar gastos de tarjeta de…", bp_expbanks_hint:"Marca los bancos cuyas compras con tarjeta quieres en Gastos (además de Trade Republic por notis). La cuenta de «gasto diario» del Patrimonio sigue siendo una sola (presupuesto y round-up).", bp_expbanks_none:"Conecta un banco Open Banking para poder importar sus compras con tarjeta a Gastos.",
+  bp_hist_btn:"Importar histórico de gastos", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae los gastos de los últimos meses de: {banks}. Elige cuáles apuntar. Solo cargos; las compras con tarjeta vienen pre-marcadas.", bp_hist_nodaily:"Marca al menos un banco en «También apuntar gastos de tarjeta» (arriba) o pon una cuenta conectada como gasto diario en Patrimonio. Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay gastos nuevos que importar en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos encontrados · marca los que quieras apuntar", bp_hist_notcard:"no es tarjeta (¿recibo?)", bp_hist_import:"Importar {n} gastos", bp_hist_done:"✓ {n} gastos importados",
   bp_summary_n:"{n} conectado(s)", bp_summary_exp:"⚠ {n} caducado(s) — reconéctalo", bp_summary_none:"Ningún banco conectado todavía",
   bp_pick_title:"Elige tu banco", bp_pick_sub:"Busca tu banco en la lista. Solo verás datos de las cuentas que autorices.",
   bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
@@ -1265,7 +1269,8 @@ Object.assign(LANG.en,{
   bp_title:"My banks", bp_intro:"Connect one or more banks via Open Banking. Read-only, no card. Each consent renews every ~3 months.",
   bp_manage:"Manage my banks", bp_close:"Settings", bp_back:"My banks",
   bp_empty:"You haven't connected any bank yet.", bp_add:"Connect a bank",
-  bp_hist_btn:"Import spending history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months of spending from your daily-spend account ({bank}) and pick which to log. Debits only; card purchases are pre-checked.", bp_hist_nodaily:"To import history, first set a connected bank account as «daily spend» in Net worth (edit account → role). Trade Republic won't work: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new expenses to import in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions found · check the ones to log", bp_hist_notcard:"not a card purchase (a bill?)", bp_hist_import:"Import {n} expenses", bp_hist_done:"✓ {n} expenses imported",
+  bp_expbanks:"Also log card spending from…", bp_expbanks_hint:"Tick the banks whose card purchases you want in Spending (besides Trade Republic via notifications). Net worth still has only one “daily spending” account (budget and round-up).", bp_expbanks_none:"Connect an Open Banking bank to import its card purchases into Spending.",
+  bp_hist_btn:"Import spending history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months of spending from: {banks}. Pick which to log. Debits only; card purchases are pre-checked.", bp_hist_nodaily:"Tick at least one bank under “Also log card spending” (above) or set a connected account as daily spend in Net worth. Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new expenses to import in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions found · check the ones to log", bp_hist_notcard:"not a card purchase (a bill?)", bp_hist_import:"Import {n} expenses", bp_hist_done:"✓ {n} expenses imported",
   bp_summary_n:"{n} connected", bp_summary_exp:"⚠ {n} expired — reconnect it", bp_summary_none:"No bank connected yet",
   bp_pick_title:"Choose your bank", bp_pick_sub:"Find your bank in the list. You'll only see data from the accounts you authorize.",
   bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
@@ -1284,7 +1289,8 @@ Object.assign(LANG.ca,{
   bp_title:"Els meus bancs", bp_intro:"Connecta un o més bancs per Open Banking. Només lectura, sense targeta. Cada permís es renova cada ~3 mesos.",
   bp_manage:"Gestiona els meus bancs", bp_close:"Ajustos", bp_back:"Els meus bancs",
   bp_empty:"Encara no has connectat cap banc.", bp_add:"Connecta un banc",
-  bp_hist_btn:"Importar històric de despeses", bp_hist_title:"Importar històric", bp_hist_sub:"Porta les despeses dels últims mesos del teu compte de despesa diària ({bank}) i tria quines apuntar. Només càrrecs; les compres amb targeta vénen pre-marcades.", bp_hist_nodaily:"Per importar històric, primer posa un compte de banc connectat com a «despesa diària» a Patrimoni (edita compte → rol). Trade Republic no val: no està a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha despeses noves per importar en aquest període (o ja estan totes apuntades). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments trobats · marca els que vulguis apuntar", bp_hist_notcard:"no és targeta (rebut?)", bp_hist_import:"Importar {n} despeses", bp_hist_done:"✓ {n} despeses importades",
+  bp_expbanks:"També apuntar despeses de targeta de…", bp_expbanks_hint:"Marca els bancs les compres amb targeta dels quals vols a Despeses (a més de Trade Republic per notis). El compte de «despesa diària» del Patrimoni continua sent un de sol (pressupost i round-up).", bp_expbanks_none:"Connecta un banc Open Banking per poder importar-ne les compres amb targeta a Despeses.",
+  bp_hist_btn:"Importar històric de despeses", bp_hist_title:"Importar històric", bp_hist_sub:"Porta les despeses dels últims mesos de: {banks}. Tria quines apuntar. Només càrrecs; les compres amb targeta vénen pre-marcades.", bp_hist_nodaily:"Marca almenys un banc a «També apuntar despeses de targeta» (amunt) o posa un compte connectat com a despesa diària a Patrimoni. Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha despeses noves per importar en aquest període (o ja estan totes apuntades). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments trobats · marca els que vulguis apuntar", bp_hist_notcard:"no és targeta (rebut?)", bp_hist_import:"Importar {n} despeses", bp_hist_done:"✓ {n} despeses importades",
   bp_summary_n:"{n} connectat(s)", bp_summary_exp:"⚠ {n} caducat(s) — reconnecta'l", bp_summary_none:"Cap banc connectat encara",
   bp_pick_title:"Tria el teu banc", bp_pick_sub:"Cerca el teu banc a la llista. Només veuràs dades dels comptes que autoritzis.",
   bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
@@ -1305,12 +1311,12 @@ Object.assign(LANG.en,{
   rec_mismatch_t:"⚠ Doesn't match", rec_mismatch_l:"{name} — you model {modeled}, the bank charged {bank}",
   rec_missing_t:"⏳ Not in the bank yet", rec_missing_l:"{name} · {amount} · day {day}",
   rec_new_t:"🆕 Bank charges you don't model", rec_new_l:"{merchant} · day {day}",
-  rec_add:"+ Add to Fixed", rec_added:"Added to Fixed ✓",
+  rec_add:"✓ Confirm and log", rec_added:"Added to Fixed ✓",
   rec_confirmed:"✓ {n} charges confirmed by the bank", rec_feed:"Bank movements", rec_income:"income", rec_card:"card",
   rec_adjust:"Set to {x}", rec_mark_shared:"I only pay my share", rec_ignore:"Ignore",
   rec_shared_t:"ℹ You only pay your share (you get the rest back)", rec_shared_l:"{name} — you pay {net}, the bank charges {gross}", rec_unshare:"undo",
   rec_pay_from:"I pay it from:",
-  rec_hint:"Info only: it doesn't touch your spending or balance. It compares what you model with what the bank actually charged this month.",
+  rec_hint:"Compares what you model with what the bank charged. New charges can be “Confirm and log” into Fixed without typing — it doesn't touch your balance or the Spending tab.",
 });
 Object.assign(LANG.ca,{
   rec_title:"Conciliació amb el banc",
@@ -1318,12 +1324,12 @@ Object.assign(LANG.ca,{
   rec_mismatch_t:"⚠ No quadra", rec_mismatch_l:"{name} — tu modeles {modeled}, el banc va cobrar {bank}",
   rec_missing_t:"⏳ Encara no apareix al banc", rec_missing_l:"{name} · {amount} · dia {day}",
   rec_new_t:"🆕 Càrrecs del banc sense modelar", rec_new_l:"{merchant} · dia {day}",
-  rec_add:"+ Afegeix a Fixes", rec_added:"Afegit a Fixes ✓",
+  rec_add:"✓ Confirma i apunta", rec_added:"Afegit a Fixes ✓",
   rec_confirmed:"✓ {n} càrrecs confirmats pel banc", rec_feed:"Moviments del banc", rec_income:"ingrés", rec_card:"targeta",
   rec_adjust:"Ajusta a {x}", rec_mark_shared:"Pago només la meva part", rec_ignore:"Ignora",
   rec_shared_t:"ℹ Pagues només la teva part (et retornen la resta)", rec_shared_l:"{name} — pagues {net}, el banc cobra {gross}", rec_unshare:"desfés",
   rec_pay_from:"ho pago des de:",
-  rec_hint:"Només informa: no toca les teves despeses ni el teu saldo. Compara el que modeles amb el que el banc ha cobrat aquest mes.",
+  rec_hint:"Compara el que modeles amb el que el banc ha cobrat. Els càrrecs nous es poden «Confirma i apunta» a Fixes sense teclejar-los — no toca el teu saldo ni la pestanya Despeses.",
 });
 
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1370,6 +1376,17 @@ function nominaYaEntro(now){                                        // ¿ya pas�
    UNA cuenta diario/ambos a la vez (la UI degrada las demás a fijos). */
 function accRole(a){ return (a&&a.role) || (a&&a.spendFrom ? "diario" : "fijos"); }
 function accDaily(a){ const r=accRole(a); return r==="diario"||r==="ambos"; }   // gasto variable sale de aquí
+/* Bancos cuyas compras con tarjeta Open Banking entran en Gastos. Independiente del
+   spendFrom único (presupuesto/round-up). Por defecto = ent de la cuenta diaria. */
+function expenseBankEnts(s){
+  const raw=s&&s.settings&&s.settings.expenseBanks;
+  if(Array.isArray(raw)&&raw.length){
+    const out=[]; raw.forEach(function(e){ if(e&&out.indexOf(e)<0) out.push(e); });
+    if(out.length) return out;
+  }
+  const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
+  return (daily&&daily.ent)? [daily.ent] : [];
+}
 // Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
 // despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si
 // otra lo era, pasa a «fijos» con el mismo re-anclaje. Transform PURO de estado — lo usan el
