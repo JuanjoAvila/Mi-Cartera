@@ -1915,8 +1915,11 @@ const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","
 function loadState(){
   const saved = store.get("micartera_v3");
   if(saved && saved.accounts){
+    // Capturar ANTES de seedFlows (muta in-place): evita stringify de toda la cartera en cada
+    // apertura fría — feedback 2026-07-16.
+    var writeBack=!(saved._dataVer>=6) || !saved._dynBalAnchored;
     const s = seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))))));
-    store.set("micartera_v3", s);
+    if(writeBack) store.set("micartera_v3", s);
     applyTheme(s.settings&&s.settings.theme);
     applyBigText(s.settings&&s.settings.bigText);
     return s;

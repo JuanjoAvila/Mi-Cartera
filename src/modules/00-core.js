@@ -23,6 +23,8 @@ function mcScheduleIdle(fn, timeoutMs){
   setTimeout(fn, 16);
 }
 
+var _mcSentryReady=false;
+var _mcSentryQueue=[];
 function mcInitSentry(){
   if(!CONFIG.SENTRY_DSN || typeof Sentry==="undefined") return;
   try{
@@ -40,11 +42,34 @@ function mcInitSentry(){
         return ev;
       }
     });
+    _mcSentryReady=true;
+    while(_mcSentryQueue.length){
+      var q=_mcSentryQueue.shift();
+      try{ Sentry.captureException(q.err, q.ctx?{extra:q.ctx}:undefined); }catch(e){}
+    }
   }catch(e){}
+}
+// Sentry (~340 KB) NO se parsea en el cold start: se inyecta tras el primer pintado (feedback 2026-07-16).
+function mcLoadSentryDeferred(){
+  if(!CONFIG.SENTRY_DSN) return;
+  if(typeof Sentry!=="undefined"){ mcInitSentry(); return; }
+  if(document.querySelector('script[data-mc-sentry]')) return;
+  var s=document.createElement("script");
+  s.src="vendor/sentry.bundle.min.js";
+  s.async=true;
+  s.setAttribute("data-mc-sentry","1");
+  s.onload=function(){ mcInitSentry(); };
+  s.onerror=function(){};
+  (document.head||document.documentElement).appendChild(s);
 }
 
 function mcCaptureError(err, ctx){
-  try{ if(typeof Sentry!=="undefined"&&CONFIG.SENTRY_DSN) Sentry.captureException(err, ctx?{extra:ctx}:undefined); }catch(e){}
+  try{
+    if(!CONFIG.SENTRY_DSN) return;
+    if(typeof Sentry!=="undefined"&&_mcSentryReady){ Sentry.captureException(err, ctx?{extra:ctx}:undefined); return; }
+    // Cola corta: un error justo al abrir no se pierde si Sentry aún está bajando.
+    if(_mcSentryQueue.length<8) _mcSentryQueue.push({err:err,ctx:ctx});
+  }catch(e){}
 }
 
 /* ---------- Categorías de gasto variable ---------- */
