@@ -1,7 +1,7 @@
 /* ============================================================
    MI CARTERA v3 — fuente JSX (se compila con runtime clásico)
    ============================================================ */
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } = React;
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
@@ -31,7 +31,14 @@ function mcInitSentry(){
       release: "mi-cartera@"+CONFIG.APP_VERSION,
       environment: (typeof _mcNative!=="undefined"&&_mcNative) ? "android" : "web",
       tracesSampleRate: 0.05,
-      beforeSend: function(ev){ return ev; }
+      // No mandar cuerpos/URL con posibles cifras de la cartera (privacidad).
+      beforeSend: function(ev){
+        try{
+          if(ev&&ev.request){ delete ev.request.data; delete ev.request.cookies; if(ev.request.headers){ delete ev.request.headers.Authorization; delete ev.request.headers.authorization; } }
+          if(ev&&ev.extra){ ["state","expenses","accounts","investments","budget"].forEach(function(k){ delete ev.extra[k]; }); }
+        }catch(e){}
+        return ev;
+      }
     });
   }catch(e){}
 }
@@ -122,6 +129,41 @@ const ENT = {
   familia:        { label:"Familia",        mono:"Fa", color:"#E2705F" },
 };
 const entOf = (id)=> ENT[id] || { label:id, mono:"··", color:"#8FA89A" };
+
+function fxTableOf(s){
+  const t=s&&s.fxRates;
+  if(t&&typeof t==="object") return t;
+  const usd=(s&&s.fx)>0?s.fx:0.92;
+  return { USD:usd };
+}
+/** Importe en `cur` → EUR. fxRates guarda XXX→EUR (1 USD = r EUR). */
+function toEurAmt(amount, cur, s){
+  const n=Number(amount)||0;
+  const c=String(cur||"EUR").toUpperCase();
+  if(!c||c==="EUR") return n;
+  const r=fxTableOf(s)[c];
+  if(r>0) return n*r;
+  if(c==="USD"&&s&&s.fx>0) return n*s.fx;
+  return n; // divisa desconocida: no inventar tipo
+}
+function fromEurAmt(amountEur, cur, s){
+  const n=Number(amountEur)||0;
+  const c=String(cur||"EUR").toUpperCase();
+  if(!c||c==="EUR") return n;
+  const r=fxTableOf(s)[c];
+  if(r>0) return n/r;
+  if(c==="USD"&&s&&s.fx>0) return n/s.fx;
+  return n;
+}
+/** Coste en € anclado (costEur) o conversión spot del cost nativo. */
+function invCostEur(i, s){
+  if(!i) return 0;
+  if(typeof i.costEur==="number"&&isFinite(i.costEur)) return i.costEur;
+  return toEurAmt(i.cost||0, i.cur||"EUR", s);
+}
+function invValueEur(i, s){
+  return toEurAmt(i&&i.value, i&&i.cur||"EUR", s);
+}
 
 /* ---------- Storage (localStorage con fallback) ---------- */
 const _mem = {};
@@ -220,6 +262,14 @@ const cloud = (function(){
       // manda los tickers reales de la cartera: la función ya no está clavada a 6 símbolos
       const opts=(symbols&&symbols.length)?{body:{symbols:symbols}}:undefined;
       const {data,error}=await sb.functions.invoke('prices',opts);
+      if(error) throw error;
+      return data;
+    },
+    // IA / KW: sugiere categoría de gasto (Edge Function `categorize`). Sin OPENAI_API_KEY
+    // en Supabase cae a keywords; si hay key, solo se usa cuando KW dice «otros».
+    async suggestCategory(merchant){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke("categorize",{ body:{ merchant:String(merchant||"").slice(0,120) } });
       if(error) throw error;
       return data;
     },

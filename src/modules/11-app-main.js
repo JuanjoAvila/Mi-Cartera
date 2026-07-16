@@ -2,7 +2,10 @@ function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
   // Lazy mount: solo monta pestañas visitadas + vecinas (swipe) → menos trabajo en arranque.
+  // mountNeighbors=false al cold start: NO montar Gastos/Fijos en el primer pintado (lag al
+  // vaciar apps en Android — vídeo feedback 2026-07-16). Tras idle corto, vecinas OK.
   const [mountedTabs,setMountedTabs]=useState(function(){ return {}; });
+  const [mountNeighbors,setMountNeighbors]=useState(false);
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
@@ -178,8 +181,8 @@ function App(){
         const patch={};
         if(po.shares!=null) patch.shares=po.shares;
         // el bróker da € (TR/MI); si la posición se muestra en $, se convierte con el cambio del BCE
-        if(po.value!=null) patch.value = i.cur==="USD" ? (s.fx>0?po.value/s.fx:po.value) : po.value;
-        if(po.cost!=null)  patch.cost  = i.cur==="USD" ? (s.fx>0?po.cost/s.fx:po.cost)  : po.cost;
+        if(po.value!=null) patch.value = i.cur==="EUR" ? po.value : fromEurAmt(po.value, i.cur, s);
+        if(po.cost!=null)  patch.cost  = i.cur==="EUR" ? po.cost  : fromEurAmt(po.cost,  i.cur, s);
         if(po.isin && !i.isin) patch.isin=po.isin;
         return Object.assign({},i,patch);
       });
@@ -558,7 +561,6 @@ function App(){
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
-    const fx=state.fx;
     const thisMonthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth());
     const thisMonthSpent=thisMonthExp.reduce((a,e)=>a+e.amount,0);
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
@@ -588,10 +590,10 @@ function App(){
       return v;
     };
     // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
-    const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + (o.cur==="USD"? (o.value||0)*fx : (o.value||0)), 0);
+    const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + toEurAmt(o.value||0, o.cur||"EUR", state), 0);
     const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0) + obLiquid;
-    const investedBase=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
-    const investedCost=state.investments.reduce((a,i)=>a+(i.cur==="USD"?(i.cost||0)*fx:(i.cost||0)),0);
+    const investedBase=state.investments.reduce((a,i)=>a+invValueEur(i, state),0);
+    const investedCost=state.investments.reduce((a,i)=>a+invCostEur(i, state),0);
     const invested=investedBase + roundupThisMonth + savebackThisMonth + monthlyInvestThisMonth;
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
@@ -665,9 +667,21 @@ function App(){
   const [pricing,setPricing]=useState(false);
   // Cambio USD→EUR dinámico (tipos de referencia del BCE vía frankfurter.app, gratis y sin key).
   const refreshFx=function(){
-    fetch("https://api.frankfurter.app/latest?from=USD&to=EUR").then(function(r){ return r.json(); }).then(function(d){
-      const r=d&&d.rates&&d.rates.EUR;
-      if(r>0) set(function(s){ return Math.abs((s.fx||0)-r)<0.0001 ? s : Object.assign({},s,{fx:+(+r).toFixed(4)}); });
+    fetch("https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF").then(function(r){ return r.json(); }).then(function(d){
+      const rates=d&&d.rates;
+      if(!rates) return;
+      const fxRates={};
+      for(const c in rates){ if(rates[c]>0) fxRates[c]=+(1/rates[c]).toFixed(6); }   // XXX→EUR
+      const usd=fxRates.USD;
+      set(function(s){
+        const prev=fxTableOf(s);
+        let changed=false;
+        for(const k in fxRates){ if(Math.abs((prev[k]||0)-fxRates[k])>=0.000001){ changed=true; break; } }
+        if(!changed && (usd==null || Math.abs((s.fx||0)-(usd||0))<0.0001)) return s;
+        const patch={fxRates:fxRates};
+        if(usd>0) patch.fx=+(usd.toFixed(4));
+        return Object.assign({},s,patch);
+      });
     }).catch(function(){});
   };
   useEffect(function(){ mcScheduleIdle(refreshFx, 4000); },[]);   // FX tras primer pintado
@@ -1045,16 +1059,18 @@ function App(){
     if(!id) return;
     setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
   },[tab, tabIds.join("|")]);
-  // Pre-montar pestañas habituales en idle (1ª visita ya no pega al cambiar).
+  // Tras el primer pintado del Resumen: abrir ventana de vecinas + pre-montar Gastos/Fijos
+  // en idle (así el swipe ya no monta en caliente, pero el cold start no paga ese coste).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
     mcScheduleIdle(function(){
+      setMountNeighbors(true);
       setMountedTabs(function(m){
         var n=Object.assign({},m);
         ["dash","gastos","fijos"].forEach(function(id){ if(tabIds.indexOf(id)>=0) n[id]=true; });
         return n;
       });
-    }, 2500);
+    }, 1600);
   },[state.onboarded, locked, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
@@ -1079,7 +1095,7 @@ function App(){
     if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set});
     if(id==="metas") return React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast});
     if(id==="logros") return React.createElement(Achievements,{state:state,totals:totals});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
     if(id==="fijos") return React.createElement(Fijos,{state:state,set:set,totals:totals});
     if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
     if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
@@ -1137,7 +1153,8 @@ function App(){
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
         tabIds.map(function(id,i){
-          var live=Math.abs(tab-i)<=1;
+          // Cold start: solo la pestaña activa es live/montada. Luego (idle) vecinas ±1.
+          var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
           var show=live||!!mountedTabs[id];
           return React.createElement("div",{className:"page"+(live?" page-live":""),key:id},
             show && React.createElement(TabCoach,{tabId:id}),

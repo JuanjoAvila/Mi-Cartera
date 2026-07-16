@@ -48,7 +48,7 @@ function promoteObAccount(s, totals, key, role, id){
   const o=(s.obAccounts||[]).find(function(x){ return x.key===key; });
   if(!o || !o.ent) return s;
   const now=new Date();
-  const bal=o.cur==="USD" ? (o.value||0)*(s.fx||1) : (o.value||0);
+  const bal=toEurAmt(o.value||0, o.cur||"EUR", s);
   const base=+((bal - monthNetForAccount(s, o.ent, now.getFullYear(), now.getMonth()+1, now.getDate())).toFixed(2));
   const name=((s.obLabels||{})[o.key]) || niceObName(o);
   const acc={ id:id||uid(), ent:o.ent, name:name, value:base, role:"fijos", spendFrom:false };

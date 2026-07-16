@@ -1,4 +1,4 @@
-# Hogar compartido — Fase 1
+# Hogar compartido (Fase 1 + 2)
 
 ## Qué hace
 

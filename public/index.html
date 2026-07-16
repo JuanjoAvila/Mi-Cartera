@@ -813,7 +813,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 /* ============================================================
    MI CARTERA v3 — fuente JSX (se compila con runtime clásico)
    ============================================================ */
-const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } = React;
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
@@ -843,7 +843,14 @@ function mcInitSentry(){
       release: "mi-cartera@"+CONFIG.APP_VERSION,
       environment: (typeof _mcNative!=="undefined"&&_mcNative) ? "android" : "web",
       tracesSampleRate: 0.05,
-      beforeSend: function(ev){ return ev; }
+      // No mandar cuerpos/URL con posibles cifras de la cartera (privacidad).
+      beforeSend: function(ev){
+        try{
+          if(ev&&ev.request){ delete ev.request.data; delete ev.request.cookies; if(ev.request.headers){ delete ev.request.headers.Authorization; delete ev.request.headers.authorization; } }
+          if(ev&&ev.extra){ ["state","expenses","accounts","investments","budget"].forEach(function(k){ delete ev.extra[k]; }); }
+        }catch(e){}
+        return ev;
+      }
     });
   }catch(e){}
 }
@@ -934,6 +941,41 @@ const ENT = {
   familia:        { label:"Familia",        mono:"Fa", color:"#E2705F" },
 };
 const entOf = (id)=> ENT[id] || { label:id, mono:"··", color:"#8FA89A" };
+
+function fxTableOf(s){
+  const t=s&&s.fxRates;
+  if(t&&typeof t==="object") return t;
+  const usd=(s&&s.fx)>0?s.fx:0.92;
+  return { USD:usd };
+}
+/** Importe en `cur` → EUR. fxRates guarda XXX→EUR (1 USD = r EUR). */
+function toEurAmt(amount, cur, s){
+  const n=Number(amount)||0;
+  const c=String(cur||"EUR").toUpperCase();
+  if(!c||c==="EUR") return n;
+  const r=fxTableOf(s)[c];
+  if(r>0) return n*r;
+  if(c==="USD"&&s&&s.fx>0) return n*s.fx;
+  return n; // divisa desconocida: no inventar tipo
+}
+function fromEurAmt(amountEur, cur, s){
+  const n=Number(amountEur)||0;
+  const c=String(cur||"EUR").toUpperCase();
+  if(!c||c==="EUR") return n;
+  const r=fxTableOf(s)[c];
+  if(r>0) return n/r;
+  if(c==="USD"&&s&&s.fx>0) return n/s.fx;
+  return n;
+}
+/** Coste en € anclado (costEur) o conversión spot del cost nativo. */
+function invCostEur(i, s){
+  if(!i) return 0;
+  if(typeof i.costEur==="number"&&isFinite(i.costEur)) return i.costEur;
+  return toEurAmt(i.cost||0, i.cur||"EUR", s);
+}
+function invValueEur(i, s){
+  return toEurAmt(i&&i.value, i&&i.cur||"EUR", s);
+}
 
 /* ---------- Storage (localStorage con fallback) ---------- */
 const _mem = {};
@@ -1032,6 +1074,14 @@ const cloud = (function(){
       // manda los tickers reales de la cartera: la función ya no está clavada a 6 símbolos
       const opts=(symbols&&symbols.length)?{body:{symbols:symbols}}:undefined;
       const {data,error}=await sb.functions.invoke('prices',opts);
+      if(error) throw error;
+      return data;
+    },
+    // IA / KW: sugiere categoría de gasto (Edge Function `categorize`). Sin OPENAI_API_KEY
+    // en Supabase cae a keywords; si hay key, solo se usa cuando KW dice «otros».
+    async suggestCategory(merchant){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke("categorize",{ body:{ merchant:String(merchant||"").slice(0,120) } });
       if(error) throw error;
       return data;
     },
@@ -1445,6 +1495,8 @@ const LANG = {
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
     st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
     st_banksync_notif:"Al detectar aviso del banco, sincronizar movimientos", st_banksync_notif_hint:"Si Caixa, Sabadell u otro banco te manda una notificación, la app pide los movimientos por Open Banking (no lee el importe de la noti). Como máximo una sync cada 2 minutos.",
+    st_aicat:"Sugerir categoría (IA) en «Otros»", st_aicat_hint:"En Gastos, si un comercio queda en Otros, puedes pedir sugerencia. Primero usa palabras clave; si hay OPENAI_API_KEY en Supabase, la IA solo actúa en esos casos. No se envía el importe.",
+    st_sentry:"Sentry (errores en prod)", st_sentry_test:"Enviar error de prueba", st_sentry_sent:"✓ Enviado a Sentry (mira Issues en unos segundos)", st_sentry_hint:"El DSN lo inyecta el deploy. Solo aparece este bloque si la versión publicada lleva Sentry activo.",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
@@ -1494,6 +1546,8 @@ const LANG = {
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
     st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
     st_banksync_notif:"When a bank notification arrives, sync movements", st_banksync_notif_hint:"If Caixa, Sabadell or another bank notifies you, the app pulls movements via Open Banking (it does not parse the notification amount). At most one sync every 2 minutes.",
+    st_aicat:"Suggest category (AI) for “Other”", st_aicat_hint:"In Spending, if a merchant lands in Other, you can ask for a suggestion. Keywords first; if OPENAI_API_KEY is set in Supabase, AI only runs then. Amount is never sent.",
+    st_sentry:"Sentry (prod errors)", st_sentry_test:"Send test error", st_sentry_sent:"✓ Sent to Sentry (check Issues in a few seconds)", st_sentry_hint:"The DSN is injected on deploy. This block only shows if the published build has Sentry on.",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
@@ -1543,6 +1597,8 @@ const LANG = {
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
     st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
     st_banksync_notif:"En detectar avís del banc, sincronitzar moviments", st_banksync_notif_hint:"Si Caixa, Sabadell o un altre banc et envia una notificació, l'app demana els moviments per Open Banking (no llegeix l'import de la noti). Com a màxim una sync cada 2 minuts.",
+    st_aicat:"Suggerir categoria (IA) a «Altres»", st_aicat_hint:"A Despeses, si un comerç queda a Altres, pots demanar suggeriment. Primer paraules clau; si hi ha OPENAI_API_KEY a Supabase, l'IA només actua aleshores. No s'envia l'import.",
+    st_sentry:"Sentry (errors en prod)", st_sentry_test:"Envia error de prova", st_sentry_sent:"✓ Enviat a Sentry (mira Issues en uns segons)", st_sentry_hint:"El DSN l'injecta el deploy. Aquest bloc només surt si la versió publicada porta Sentry actiu.",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
@@ -2090,6 +2146,7 @@ Object.assign(LANG.es,{
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano",
+  ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
   g_cycle_from:"Del {d} (cobro de {x}) a hoy", g_cycle_none:"No encuentro ningún cobro reciente: apunta tu nómina como 💰 ingreso y este filtro irá de cobro a cobro.",
   g_search:"Buscar comercio o categoría…",
   sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.",
@@ -2167,6 +2224,7 @@ Object.assign(LANG.en,{
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
   g_allbanks:"All banks", g_bank_manual:"Manual",
+  ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
   g_cycle_from:"From {d} (payday, {x}) to today", g_cycle_none:"No recent payday found: log your salary as a 💰 income and this filter will run payday to payday.",
   g_search:"Search merchant or category…",
   sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.",
@@ -2243,6 +2301,7 @@ Object.assign(LANG.ca,{
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà",
+  ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
   g_cycle_from:"Del {d} (cobrament de {x}) a avui", g_cycle_none:"No trobo cap cobrament recent: apunta la nòmina com a 💰 ingrés i aquest filtre anirà de cobrament a cobrament.",
   g_search:"Cerca comerç o categoria…",
   sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.",
@@ -2309,6 +2368,7 @@ Object.assign(LANG.es,{
   inv_sold:"💸 Líquido vendido (realizado)", inv_proj:"Proyección de tu ahorro", inv_proj_sub:"Interés compuesto",
   inv_hint_edit:"Escribe el valor actual de cada posición (al tocar se selecciona solo). El % de ganancia se calcula automáticamente.",
   inv_hint_view:"«Precios USD» trae solas las cotizaciones de las acciones con ticker. Lo que no tiene precio automático (fondos, oro, algunos ETF) se edita con «Editar a mano». Cambio dólar→euro: {fx} · BCE en vivo.",
+  fx_multi_hint:"Las posiciones en otras divisas se convierten a € con el tipo en vivo del BCE. Si editas el coste invertido, se ancla en € (costEur) al tipo de ese momento.",
   inv_manual_t:"Sin cotización automática", inv_manual_sub:"fondos MyInvestor, Meta TR…",
   inv_manual_body:"Algunos activos no tienen feed gratuito fiable por ISIN. Actualízalos a mano con «Editar a mano»: pon el valor actual que ves en tu bróker y, si has comprado/vendido, marca «También ajustar lo invertido». Fondos indexados en MyInvestor (p. ej. Fidelity MSCI World) y posiciones sin ticker en Trade Republic entran aquí. Las acciones/ETF con ticker sí se actualizan con «Precios USD».",
   inv_sold_part:"Vendí parte →", inv_value:"Valor", inv_invested:"Invertido", inv_sell_prompt:"¿Qué % de «{name}» has vendido?",
@@ -2375,6 +2435,7 @@ Object.assign(LANG.en,{
   inv_sold:"💸 Cash from sales (realised)", inv_proj:"Your savings projection", inv_proj_sub:"Compound interest",
   inv_hint_edit:"Type the current value of each position (tap to select). The gain % is calculated automatically.",
   inv_hint_view:"«USD prices» fetches quotes for tickered stocks automatically. Anything without an automatic price (funds, gold, some ETFs) is edited via «Edit manually». USD→EUR rate: {fx} · live ECB.",
+  fx_multi_hint:"Holdings in other currencies convert to € at live ECB rates. If you edit invested cost, it locks in € (costEur) at that moment's rate.",
   inv_manual_t:"No automatic quote", inv_manual_sub:"MyInvestor funds, TR Meta…",
   inv_manual_body:"Some holdings have no reliable free ISIN feed. Update them with «Edit manually»: enter the current value from your broker and, if you bought or sold, tick «Also adjust what's invested». Indexed funds on MyInvestor (e.g. Fidelity MSCI World) and untickered TR positions go here. Stocks/ETFs with a ticker update via «USD prices».",
   inv_sold_part:"Sold part →", inv_value:"Value", inv_invested:"Invested", inv_sell_prompt:"What % of “{name}” did you sell?",
@@ -2441,6 +2502,7 @@ Object.assign(LANG.ca,{
   inv_sold:"💸 Líquid venut (realitzat)", inv_proj:"Projecció del teu estalvi", inv_proj_sub:"Interès compost",
   inv_hint_edit:"Escriu el valor actual de cada posició (en tocar se selecciona sol). El % de guany es calcula automàticament.",
   inv_hint_view:"«Preus USD» porta soles les cotitzacions de les accions amb ticker. El que no té preu automàtic (fons, or, alguns ETF) s'edita amb «Edita a mà». Canvi dòlar→euro: {fx} · BCE en viu.",
+  fx_multi_hint:"Les posicions en altres divises es converteixen a € amb el tipus en viu del BCE. Si edites el cost invertit, s'ancora en € (costEur) al tipus d'aquell moment.",
   inv_manual_t:"Sense cotització automàtica", inv_manual_sub:"fons MyInvestor, Meta TR…",
   inv_manual_body:"Alguns actius no tenen feed gratuït fiable per ISIN. Actualitza'ls a mà amb «Edita a mà»: posa el valor actual que veus al teu bròker i, si has comprat/vendut, marca «Ajusta també l'invertit». Fons indexats a MyInvestor (p. ex. Fidelity MSCI World) i posicions sense ticker a Trade Republic entren aquí. Les accions/ETF amb ticker sí s'actualitzen amb «Preus USD».",
   inv_sold_part:"He venut part →", inv_value:"Valor", inv_invested:"Invertit", inv_sell_prompt:"Quin % de «{name}» has venut?",
@@ -4340,7 +4402,7 @@ function inPreset(d,preset,range,cycleStart){
   if(preset==="custom"){ let ok=true; if(range.from) ok=ok&&d>=new Date(range.from); if(range.to){ const tt=new Date(range.to); tt.setHours(23,59,59); ok=ok&&d<=tt; } return ok; }
   return true;
 }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, focusExp, clearFocus}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, focusExp, clearFocus, active}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -4350,6 +4412,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
   const [catEdit,setCatEdit]=useState(null);   // id del gasto al que estás cambiando la categoría
+  const [aiBusy,setAiBusy]=useState(false);
+  // Suscripciones y filtros pesados solo con la pestaña enfocada (cold start Android 2026-07-16).
+  const [heavyOk,setHeavyOk]=useState(false);
+  useEffect(function(){
+    if(!active){ setHeavyOk(false); return; }
+    var cancelled=false;
+    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 80);
+    return function(){ cancelled=true; };
+  },[active]);
+  const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
@@ -4425,23 +4497,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     setEditExp(null); showToast(t("g_edited"));
   };
 
-  const cycle=useMemo(()=>lastPaydayOf(state.expenses),[state.expenses]);
+  const cycle=useMemo(()=>lastPaydayOf(expensesDef),[expensesDef]);
   // Bancos presentes en el período (o configurados como gasto) → chips de filtro.
   // "_manual" = apuntados a mano / sin banco conocido (no mezclar con OB).
   const bankOpts=useMemo(function(){
+    if(!heavyOk) return [];
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
     expenseBankEnts(state).forEach(add);
     (state.accounts||[]).forEach(function(a){ if(a&&a.ent) add(a.ent); });
     let hasManual=false;
-    (state.expenses||[]).forEach(function(e){
+    (expensesDef||[]).forEach(function(e){
       if(!inPreset(parseDate(e.date),preset,range,cycle&&cycle.start)) return;
       const b=expenseBankOf(e); if(b) add(b); else hasManual=true;
     });
     if(hasManual) order.push("_manual");
     return order;
-  },[state.expenses,state.accounts,state.settings,preset,range,cycle]);
-  const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return state.expenses
+  },[heavyOk,expensesDef,state.accounts,state.settings,preset,range,cycle]);
+  const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return (expensesDef||[])
     .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
     .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
     .filter(function(e){
@@ -4451,13 +4524,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     })
     .filter(e=> !needle || (e.merchant||"").toLowerCase().indexOf(needle)!==-1 || catName(e.category).toLowerCase().indexOf(needle)!==-1)
     .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
-  },[state.expenses,preset,range,sel,bankSel,q,cycle]);
+  },[expensesDef,preset,range,sel,bankSel,q,cycle]);
 
   // Total con SIGNO CLARO (bug pareja 2026-07-11: con un ingreso en el filtro, el total mostraba
   // «gastos − ingresos» en positivo — ilegible). Desglose: gastos sin signo (2026-07-12: el «−»
   // les parecía feo), y si hay ingresos, línea «+ingresos · Balance» (ingresos − gastos; verde si ahorras).
   const sums=useMemo(()=>{ let g=0,i=0,ng=0,ni=0; filtered.forEach(e=>{ if(e.amount>0){ g+=e.amount; ng++; } else { i-=e.amount; ni++; } }); return {g:g,i:i,ng:ng,ni:ni,bal:i-g}; },[filtered]);
-  const subs=useMemo(()=>detectSubscriptions(state.expenses),[state.expenses]);
+  const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
+  const suggestAi=function(ex){
+    if(!cloud.enabled()||!ex||aiBusy) return;
+    if(!(state.settings&&state.settings.aiCat)){ showToast(t("ai_cat_off")); return; }
+    setAiBusy(true);
+    cloud.suggestCategory(ex.merchant||"").then(function(res){
+      const cat=res&&res.category;
+      if(!cat||cat==="otros"||!CAT[cat]){ showToast(t("ai_cat_none")); return; }
+      setCat(ex,cat);
+      showToast(tf("ai_cat_ok",{c:catName(cat)}));
+    }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
+  };
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
   useEffect(()=>{
     const el=sentinelRef.current; if(!el) return;
@@ -4657,6 +4741,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                     React.createElement("div",{className:"catpick"}, CATEGORIES.map(function(cc){
                       return React.createElement("button",{key:cc.id,type:"button",className:"catpick-b"+(cc.id===g.e.category?" on":""),onClick:function(){ setCat(g.e,cc.id); }}, cc.icon+" "+catName(cc.id).split(" ")[0]);
                     })),
+                    g.e.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(g.e); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn")),
                     React.createElement("button",{type:"button",className:"cardflag"+(g.e.noCard?" off":""),style:{marginTop:8},onClick:function(){ setCardFlag(g.e,!g.e.noCard); }}, g.e.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card")))
                   )
                 ); })()
@@ -5326,8 +5411,8 @@ function TRSync({state, set, totals}){
         if(!po) return i;
         const patch={shares:po.shares, isin:po.isin};
         // dato EN VIVO de TR (€). Si la posición se muestra en $, se convierte con el cambio del BCE.
-        if(po.value!=null) patch.value = i.cur==="USD" ? (state.fx>0?po.value/state.fx:po.value) : po.value;
-        if(po.cost!=null)  patch.cost  = i.cur==="USD" ? (state.fx>0?po.cost/state.fx:po.cost)  : po.cost;
+        if(po.value!=null) patch.value = i.cur==="EUR" ? po.value : fromEurAmt(po.value, i.cur, state);
+        if(po.cost!=null)  patch.cost  = i.cur==="EUR" ? po.cost  : fromEurAmt(po.cost,  i.cur, state);
         return Object.assign({},i,patch);
       })});
       // Posiciones mapeadas a "__new" → se CREAN en Inversiones (usuario sin cartera previa).
@@ -5418,8 +5503,8 @@ function TRSync({state, set, totals}){
   );
 }
 
-function InvRows({items, fx, fmt, editing, showCost, draft, setF, onSell, onDelete}){
-  const eurVal=(it)=> it.cur==="USD"? it.value*fx : it.value;
+function InvRows({items, st, fmt, editing, showCost, draft, setF, onSell, onDelete}){
+  const eurVal=(it)=> invValueEur(it, st);
   const show=fmt||eur;   // moneda local de la tab (fallback a €)
   return items.map(function(it){
     return React.createElement("div",{className:"row",key:it.id},
@@ -5515,7 +5600,7 @@ function Projection({invested, defMonthly}){
 }
 
 function Investments({state, set, fetchPrices, pricing}){
-  const fx=state.fx;
+  const fx=state.fx;   // USD→EUR (legacy + display toggle); GBP/CHF van en state.fxRates
   const [editing,setEditing]=useState(false);
   const [showCost,setShowCost]=useState(false);
   const [draft,setDraft]=useState({});
@@ -5537,7 +5622,13 @@ function Investments({state, set, fetchPrices, pricing}){
       const dd=draft[i.id]||{};
       const value=(dd.value!=null&&dd.value!=="")?(parseFloat(String(dd.value).replace(',','.'))||0):i.value;
       const cost=(showCost&&dd.cost!=null&&dd.cost!=="")?(parseFloat(String(dd.cost).replace(',','.'))||i.cost):i.cost;
-      return Object.assign({},i,{value:value,cost:cost});
+      const patch={value:value,cost:cost};
+      // Al editar el coste, anclamos el € contable al tipo de hoy (no se recalcula al cambiar FX).
+      if(showCost&&dd.cost!=null&&dd.cost!==""){
+        const newCost=parseFloat(String(dd.cost).replace(',','.'));
+        if(isFinite(newCost)&&newCost!==i.cost) patch.costEur=toEurAmt(newCost, i.cur||"EUR", s);
+      }
+      return Object.assign({},i,patch);
     })}));
     setEditing(false); setShowCost(false);
   };
@@ -5560,21 +5651,22 @@ function Investments({state, set, fetchPrices, pricing}){
   const sellPct=function(it,pct){
     if(!(pct>0 && pct<=100)){ return; }
     const f=pct/100;
-    const realizado=(it.cur==="USD"?it.value*fx:it.value)*f;   // líquido sacado, en €
+    const realizado=invValueEur(it, state)*f;   // líquido sacado, en €
     set(function(s){
       return Object.assign({},s,{
         investments:s.investments.map(function(i){
           if(i.id!==it.id) return i;
           const o=Object.assign({},i,{ value:+(i.value*(1-f)).toFixed(2), cost:(i.cost!=null?+(i.cost*(1-f)).toFixed(2):i.cost) });
           if(i.shares) o.shares=+(i.shares*(1-f)).toFixed(6);
+          if(typeof i.costEur==="number") o.costEur=+(i.costEur*(1-f)).toFixed(2);
           return o;
         }),
         soldCash:+(((s.soldCash||0)+realizado)).toFixed(2)
       });
     });
   };
-  const total=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
-  const costTotal=state.investments.reduce((a,i)=>a+(i.cur==="USD"?(i.cost||0)*fx:(i.cost||0)),0);
+  const total=state.investments.reduce((a,i)=>a+invValueEur(i, state),0);
+  const costTotal=state.investments.reduce((a,i)=>a+invCostEur(i, state),0);
   const plTotal=costTotal>0?(total-costTotal)/costTotal*100:0;
   // Moneda LOCAL de la pestaña Inversiones (no toca el resto de la app). Todo se calcula en €
   // internamente y se convierte a la moneda elegida para mostrar (€ ↔ $ con el cambio del BCE).
@@ -5585,9 +5677,9 @@ function Investments({state, set, fetchPrices, pricing}){
   const f0  = (eurVal)=> NF0.format(Math.round((eurVal||0)*dk))+" "+dsym;
   // valor y coste por bróker (en €) para el desglose de contribuciones
   const byBroker={};
-  state.investments.forEach(function(i){ const v=i.cur==="USD"?i.value*fx:i.value; const c=i.cur==="USD"?(i.cost||0)*fx:(i.cost||0); const o=byBroker[i.ent]||(byBroker[i.ent]={c:0,v:0}); o.c+=c; o.v+=v; });
+  state.investments.forEach(function(i){ const v=invValueEur(i, state); const c=invCostEur(i, state); const o=byBroker[i.ent]||(byBroker[i.ent]={c:0,v:0}); o.c+=c; o.v+=v; });
   // rendimiento por posición (en €), ordenado de mejor a peor
-  const posList=state.investments.map(function(i){ const v=i.cur==="USD"?i.value*fx:i.value; const c=i.cur==="USD"?(i.cost||0)*fx:(i.cost||0); return {id:i.id,name:i.name,ent:i.ent,v:v,c:c,gain:v-c,pl:c>0?(v-c)/c*100:0}; }).sort(function(a,b){ return b.gain-a.gain; });
+  const posList=state.investments.map(function(i){ const v=invValueEur(i, state); const c=invCostEur(i, state); return {id:i.id,name:i.name,ent:i.ent,v:v,c:c,gain:v-c,pl:c>0?(v-c)/c*100:0}; }).sort(function(a,b){ return b.gain-a.gain; });
   const maxAbsGain=Math.max.apply(null,posList.map(function(p){return Math.abs(p.gain);}).concat([1]));
   const best=posList[0], worst=posList[posList.length-1];
   const invHist=(state.invHistory||[]);
@@ -5596,7 +5688,7 @@ function Investments({state, set, fetchPrices, pricing}){
   const TYPE_BY_ID={ "0mrszi5":"materias", "7zjaw0y":"etf", "0itlr5k":"fondo" };
   const invType=function(it){ if(TYPE_BY_ID[it.id]) return TYPE_BY_ID[it.id]; if(/oro|xau|materia|plata/i.test(it.name)) return "materias"; if(/etf|all.?world|s&p|amundi/i.test(it.name)) return "etf"; if(/fondo|indexad|fidelity|msci world/i.test(it.name)) return "fondo"; return "acciones"; };
   const byType={acciones:0,etf:0,fondo:0,materias:0};
-  state.investments.forEach(function(i){ byType[invType(i)]+=(i.cur==="USD"?i.value*fx:i.value); });
+  state.investments.forEach(function(i){ byType[invType(i)]+=invValueEur(i, state); });
   const typeMeta=[["acciones","var(--mint)"],["etf","var(--blue)"],["fondo","#C9A0E0"],["materias","#E6C36A"]];
   const typeSegs=typeMeta.filter(function(ty){ return byType[ty[0]]>0; }).map(function(ty){ return {label:t("type_"+ty[0])+" · "+(total>0?Math.round(byType[ty[0]]/total*100):0)+"%", value:byType[ty[0]], color:ty[1]}; });
 
@@ -5609,7 +5701,8 @@ function Investments({state, set, fetchPrices, pricing}){
         React.createElement("div",{className:"curtoggle",style:{marginTop:8}},
           React.createElement("button",{type:"button",className:"curbtn"+(invCur==="EUR"?" on":""),onClick:()=>setInvCur("EUR")},"€"),
           React.createElement("button",{type:"button",className:"curbtn"+(invCur==="USD"?" on":""),onClick:()=>setInvCur("USD")},"$")
-        )
+        ),
+        React.createElement("div",{className:"hint",style:{marginTop:8,maxWidth:260}}, t("fx_multi_hint"))
       ),
       editing
         ? React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
@@ -5725,9 +5818,9 @@ function Investments({state, set, fetchPrices, pricing}){
     groups.map(function(g){
       const items=state.investments.filter(i=>i.ent===g[0]);
       if(items.length===0) return null;
-      const sub=items.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
+      const sub=items.reduce((a,i)=>a+invValueEur(i, state),0);
       return React.createElement(CollapsibleCard,{key:g[0],title:g[1],sub:f0(sub),dot:entOf(g[0]).color,storageKey:"inv_"+g[0]},
-        React.createElement(InvRows,{items:items,fx:fx,fmt:f2,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete})
+        React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete})
       );
     }),
     (state.soldCash>0) && React.createElement("div",{className:"costtoggle",style:{justifyContent:"space-between"}},
@@ -5831,7 +5924,7 @@ function Wealth({state, set, totals}){
                   ? React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#E2A05F22",color:"#E2A05F"}}, t("pt_ob_badge")+" · "+t("bp_st_expired"))
                   : React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
             React.createElement("div",{className:"rsub"}, entOf(o.ent).label))),
-        React.createElement("div",{className:"rval num"}, eur(o.cur==="USD"? (o.value||0)*state.fx : (o.value||0)))
+        React.createElement("div",{className:"rval num"}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
         ),
         // ROL también para las cuentas OB (bug pareja 2026-07-11: sin rol no podían recibir
         // gastos fijos ni diarios — al elegir uno, la cuenta se «promociona» a cuenta con rol,
@@ -5842,7 +5935,7 @@ function Wealth({state, set, totals}){
               const nid=uid();
               set(function(s){ return promoteObAccount(s, totals, o.key, rr[0], nid); });
               // siembra el borrador del editor con el saldo real: sin esto la fila nueva salía vacía
-              accEd.setDraft(function(d){ const nd=Object.assign({},d); nd[nid]=+(o.cur==="USD"?(o.value||0)*(state.fx||1):(o.value||0)).toFixed(2); return nd; });
+              accEd.setDraft(function(d){ const nd=Object.assign({},d); nd[nid]=+toEurAmt(o.value||0, o.cur||"EUR", state).toFixed(2); return nd; });
             }}, t(rr[1]));
           })
         )
@@ -5854,7 +5947,7 @@ function Wealth({state, set, totals}){
     React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv",help:t("h_ptinv")},
       // Solo brókers con posiciones (los 3 fijos confundían a usuarios nuevos — feedback 2026-07-10)
       ["revolut","trade_republic","myinvestor"].filter(g=>state.investments.some(i=>i.ent===g)).map(g=>{
-        const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+(i.cur==="USD"?i.value*state.fx:i.value),0);
+        const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+invValueEur(i, state),0);
         return React.createElement("div",{className:"row",key:g},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g,size:38}),React.createElement("div",{className:"rname"},entOf(g).label)),
           React.createElement("div",{className:"rval num"},eur(v)));
@@ -6037,7 +6130,7 @@ function promoteObAccount(s, totals, key, role, id){
   const o=(s.obAccounts||[]).find(function(x){ return x.key===key; });
   if(!o || !o.ent) return s;
   const now=new Date();
-  const bal=o.cur==="USD" ? (o.value||0)*(s.fx||1) : (o.value||0);
+  const bal=toEurAmt(o.value||0, o.cur||"EUR", s);
   const base=+((bal - monthNetForAccount(s, o.ent, now.getFullYear(), now.getMonth()+1, now.getDate())).toFixed(2));
   const name=((s.obLabels||{})[o.key]) || niceObName(o);
   const acc={ id:id||uid(), ent:o.ent, name:name, value:base, role:"fijos", spendFrom:false };
@@ -7782,6 +7875,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.113.0", d:"16 jul 2026", t:"Arranque más suave, divisas y categorías inteligentes", items:[
+    "⚡ Menos tirón al abrir la app y pasar a Gastos la primera vez (sobre todo tras vaciar las apps en Android).",
+    "💱 Inversiones y cuentas en USD/GBP/CHF se pasan a € con tipos del BCE; si editas el coste invertido, queda anclado en euros.",
+    "✨ En un gasto «Otros» puedes pedir sugerencia de categoría (palabras clave; IA opcional si está configurada en el servidor).",
+    "🛡️ Sentry activo en la versión publicada: en Ajustes puedes enviar un error de prueba."
+  ]},
   {v:"3.112.0", d:"16 jul 2026", t:"Tutorial claro y filtro por banco en Gastos", items:[
     "🎓 Tutorial y trucos de Gastos/Fijos/Patrimonio más claros: qué va en cada sitio, nómina/Bizum como Ingreso, y dónde marcar varios bancos.",
     "🏦 En Gastos puedes filtrar por banco (Caixa, Trade Republic, a mano…). Cada movimiento enseña de qué banco es.",
@@ -8293,13 +8392,16 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           setS({trIngest:false}); showToast(t("st_tring_off"));
         }
       };
-      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell",null,
+      const aiOn=!!(state.settings&&state.settings.aiCat);
+      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell ia ai categoria",null,
         row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
         row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint")),
         row("banksync",bankSyncOn?"🏦":"🔕",t("st_banksync_notif"),null,function(){ setS({bankSyncOnNotif:!bankSyncOn}); }, sw(bankSyncOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint"))
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint")),
+        row("aicat",aiOn?"✨":"⚪",t("st_aicat"),null,function(){ setS({aiCat:!aiOn}); }, sw(aiOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_aicat_hint"))
       );
     })(),
     // ── Tarjeta admin · actividad de los usuarios (SOLO el dueño la ve; RLS re-valida en servidor).
@@ -8314,6 +8416,14 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
+    // Sentry en prod: el DSN lo inyecta el CI. Botón de prueba para ver Issues sin petar la app.
+    CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
+      row("sentry","🧪",t("st_sentry_test"),null,function(){
+        try{ mcCaptureError(new Error("Sentry test Mi Cartera "+CONFIG.APP_VERSION),{kind:"manual_test"}); showToast(t("st_sentry_sent")); }
+        catch(e){ showToast("⚠ "+((e&&e.message)||e)); }
+      }),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_sentry_hint"))
+    ),
     // ── Grupo · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
     natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
       row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
@@ -8956,7 +9066,10 @@ function App(){
   const [state,setStateRaw]=useState(loadState);
   const [tab,setTab]=useState(0);
   // Lazy mount: solo monta pestañas visitadas + vecinas (swipe) → menos trabajo en arranque.
+  // mountNeighbors=false al cold start: NO montar Gastos/Fijos en el primer pintado (lag al
+  // vaciar apps en Android — vídeo feedback 2026-07-16). Tras idle corto, vecinas OK.
   const [mountedTabs,setMountedTabs]=useState(function(){ return {}; });
+  const [mountNeighbors,setMountNeighbors]=useState(false);
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
@@ -9132,8 +9245,8 @@ function App(){
         const patch={};
         if(po.shares!=null) patch.shares=po.shares;
         // el bróker da € (TR/MI); si la posición se muestra en $, se convierte con el cambio del BCE
-        if(po.value!=null) patch.value = i.cur==="USD" ? (s.fx>0?po.value/s.fx:po.value) : po.value;
-        if(po.cost!=null)  patch.cost  = i.cur==="USD" ? (s.fx>0?po.cost/s.fx:po.cost)  : po.cost;
+        if(po.value!=null) patch.value = i.cur==="EUR" ? po.value : fromEurAmt(po.value, i.cur, s);
+        if(po.cost!=null)  patch.cost  = i.cur==="EUR" ? po.cost  : fromEurAmt(po.cost,  i.cur, s);
         if(po.isin && !i.isin) patch.isin=po.isin;
         return Object.assign({},i,patch);
       });
@@ -9512,7 +9625,6 @@ function App(){
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
-    const fx=state.fx;
     const thisMonthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth());
     const thisMonthSpent=thisMonthExp.reduce((a,e)=>a+e.amount,0);
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
@@ -9542,10 +9654,10 @@ function App(){
       return v;
     };
     // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
-    const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + (o.cur==="USD"? (o.value||0)*fx : (o.value||0)), 0);
+    const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + toEurAmt(o.value||0, o.cur||"EUR", state), 0);
     const liquid=state.accounts.reduce((a,i)=> a + dynBal(i), 0) + obLiquid;
-    const investedBase=state.investments.reduce((a,i)=>a+(i.cur==="USD"?i.value*fx:i.value),0);
-    const investedCost=state.investments.reduce((a,i)=>a+(i.cur==="USD"?(i.cost||0)*fx:(i.cost||0)),0);
+    const investedBase=state.investments.reduce((a,i)=>a+invValueEur(i, state),0);
+    const investedCost=state.investments.reduce((a,i)=>a+invCostEur(i, state),0);
     const invested=investedBase + roundupThisMonth + savebackThisMonth + monthlyInvestThisMonth;
     const assetsTotal=state.assets.reduce((a,i)=>a+i.value,0);
     const debtTotal=state.debts.reduce((a,d)=>a+debtBalance(d),0);   // saldo proyectado (baja solo cada mes)
@@ -9619,9 +9731,21 @@ function App(){
   const [pricing,setPricing]=useState(false);
   // Cambio USD→EUR dinámico (tipos de referencia del BCE vía frankfurter.app, gratis y sin key).
   const refreshFx=function(){
-    fetch("https://api.frankfurter.app/latest?from=USD&to=EUR").then(function(r){ return r.json(); }).then(function(d){
-      const r=d&&d.rates&&d.rates.EUR;
-      if(r>0) set(function(s){ return Math.abs((s.fx||0)-r)<0.0001 ? s : Object.assign({},s,{fx:+(+r).toFixed(4)}); });
+    fetch("https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF").then(function(r){ return r.json(); }).then(function(d){
+      const rates=d&&d.rates;
+      if(!rates) return;
+      const fxRates={};
+      for(const c in rates){ if(rates[c]>0) fxRates[c]=+(1/rates[c]).toFixed(6); }   // XXX→EUR
+      const usd=fxRates.USD;
+      set(function(s){
+        const prev=fxTableOf(s);
+        let changed=false;
+        for(const k in fxRates){ if(Math.abs((prev[k]||0)-fxRates[k])>=0.000001){ changed=true; break; } }
+        if(!changed && (usd==null || Math.abs((s.fx||0)-(usd||0))<0.0001)) return s;
+        const patch={fxRates:fxRates};
+        if(usd>0) patch.fx=+(usd.toFixed(4));
+        return Object.assign({},s,patch);
+      });
     }).catch(function(){});
   };
   useEffect(function(){ mcScheduleIdle(refreshFx, 4000); },[]);   // FX tras primer pintado
@@ -9999,16 +10123,18 @@ function App(){
     if(!id) return;
     setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
   },[tab, tabIds.join("|")]);
-  // Pre-montar pestañas habituales en idle (1ª visita ya no pega al cambiar).
+  // Tras el primer pintado del Resumen: abrir ventana de vecinas + pre-montar Gastos/Fijos
+  // en idle (así el swipe ya no monta en caliente, pero el cold start no paga ese coste).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
     mcScheduleIdle(function(){
+      setMountNeighbors(true);
       setMountedTabs(function(m){
         var n=Object.assign({},m);
         ["dash","gastos","fijos"].forEach(function(id){ if(tabIds.indexOf(id)>=0) n[id]=true; });
         return n;
       });
-    }, 2500);
+    }, 1600);
   },[state.onboarded, locked, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
@@ -10033,7 +10159,7 @@ function App(){
     if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set});
     if(id==="metas") return React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast});
     if(id==="logros") return React.createElement(Achievements,{state:state,totals:totals});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
     if(id==="fijos") return React.createElement(Fijos,{state:state,set:set,totals:totals});
     if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
     if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
@@ -10091,7 +10217,8 @@ function App(){
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
         tabIds.map(function(id,i){
-          var live=Math.abs(tab-i)<=1;
+          // Cold start: solo la pestaña activa es live/montada. Luego (idle) vecinas ±1.
+          var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
           var show=live||!!mountedTabs[id];
           return React.createElement("div",{className:"page"+(live?" page-live":""),key:id},
             show && React.createElement(TabCoach,{tabId:id}),

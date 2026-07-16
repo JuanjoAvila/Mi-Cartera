@@ -13,6 +13,7 @@ const steps = [
   ["guard-privacy", ["node", "scripts/guard-privacy.mjs"]],
   ["check-syntax", ["node", "scripts/check-syntax.mjs"]],
   ["finance-core", ["node", "tests/finance-core.test.mjs"]],
+  ["fx-multi", ["node", "tests/fx-multi.test.mjs"]],
   ["revo-parse", ["node", "tests/revo-parse.test.mjs"]],
   ["revo-num", ["node", "tests/revo-num.test.mjs"]],
   ["debts", ["node", "tests/debts.test.mjs"]],
