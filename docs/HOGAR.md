@@ -26,6 +26,11 @@ O aplica migraciones con CLI si la usas.
 3. Ambas: **Actualizar mi vista**
 4. Deberíais ver patrimonio sumado
 
-## Fase 2 (pendiente)
+## Fase 2 (v3.110+)
 
-Gastos del día a día y fijos fusionados en el snapshot.
+Al pulsar **Actualizar mi vista**, el snapshot incluye también:
+
+- gastos del mes por categoría (sin comercios)
+- total de fijos + top 5 fijos por miembro
+
+La UI del hogar muestra gasto fusionado y barras por categoría. **No hace falta otra migración SQL.**

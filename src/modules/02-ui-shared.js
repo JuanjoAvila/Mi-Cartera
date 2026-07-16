@@ -134,44 +134,87 @@ function shareMonthReport(state, tt){
    Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
    ============================================================ */
 function Tour({onDone}){
+  // tour_8 (helpq): solo el «?» de la pestaña VISIBLE. Con lazy-mount, querySelector(".helpq")
+  // pillaba uno de una página vecina fuera de pantalla → foco absurdo y tip inaccesible (2026-07-16).
   const steps=[
-    {k:"tour_1", sel:function(){ return document.querySelector(".hero")||document.querySelector(".page"); }},
+    {k:"tour_1", sel:function(){ return document.querySelector(".page-live .hero")||document.querySelector(".hero")||document.querySelector(".page-live")||document.querySelector(".page"); }},
     {k:"tour_2", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_gastos"); })||null; }},
     {k:"tour_3", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_fijos"); })||null; }},
     {k:"tour_6", sel:function(){ return document.querySelector(".tabbar"); }},
     {k:"tour_7", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_patri"); })||null; }},
-    {k:"tour_8", sel:function(){ return document.querySelector(".helpq"); }},
+    {k:"tour_8", sel:function(){ return document.querySelector(".page-live .helpq")||document.querySelector(".page.page-live .helpq"); }},
     {k:"tour_4", sel:function(){ return document.querySelector(".topbar .icon-btn"); }},
     {k:"tour_5", sel:function(){ const b=document.querySelectorAll(".topbar .icon-btn"); return b[1]||b[0]||null; }},
   ];
   const [i,setI]=useState(0);
   const [rect,setRect]=useState(null);
+  const inViewport=function(r){
+    const H=window.innerHeight||700, W=window.innerWidth||400;
+    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left<W-8 && r.right>8;
+  };
+  const bringIntoView=function(el){
+    try{
+      const bar=el.closest&&el.closest(".tabbar");
+      if(bar){ const sb=bar.style.scrollBehavior; bar.style.scrollBehavior="auto"; bar.scrollLeft=Math.max(0, el.offsetLeft-(bar.clientWidth/2)+(el.clientWidth/2)); bar.style.scrollBehavior=sb; }
+    }catch(_){}
+    try{
+      const page=el.closest&&el.closest(".page");
+      if(page){
+        const pr=page.getBoundingClientRect(), er=el.getBoundingClientRect();
+        // scroll vertical de la página activa (el «?» suele estar más abajo)
+        if(er.top<pr.top+40 || er.bottom>pr.bottom-40){
+          page.scrollTop += (er.top - pr.top) - Math.min(120, pr.height*0.25);
+        }
+      } else if(typeof el.scrollIntoView==="function"){
+        el.scrollIntoView({block:"center", inline:"nearest", behavior:"instant"});
+      }
+    }catch(_){}
+  };
   const measure=function(idx){
     for(let j=idx;j<steps.length;j++){
       const el=steps[j].sel();
-      if(el){
-        // la pestaña puede estar fuera de la barra (scroll horizontal): céntrala antes de medir.
-        // Scroll INSTANTÁNEO (anulando el scroll-behavior:smooth del CSS): si animara, la
-        // medición del foco se haría con la pestaña aún en su posición vieja.
-        try{ const bar=el.closest&&el.closest(".tabbar"); if(bar){ const sb=bar.style.scrollBehavior; bar.style.scrollBehavior="auto"; bar.scrollLeft=Math.max(0, el.offsetLeft-(bar.clientWidth/2)+(el.clientWidth/2)); bar.style.scrollBehavior=sb; } }catch(_){}
-        const r=el.getBoundingClientRect(); if(r.width>0) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
-      }
+      if(!el) continue;
+      bringIntoView(el);
+      const r=el.getBoundingClientRect();
+      if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
+      // sin viewport usable → saltar este paso (no dejar al usuario atrapado)
     }
     return null;
   };
   useEffect(function(){
-    const m=measure(i);
-    if(!m){ onDone(); return; }
-    if(m.j!==i){ setI(m.j); return; }
-    setRect(m.r);
+    let cancelled=false;
+    // doble rAF: deja que el scroll del .page asiente antes de medir
+    const run=function(){
+      if(cancelled) return;
+      const m=measure(i);
+      if(!m){ onDone(); return; }
+      if(m.j!==i){ setI(m.j); return; }
+      setRect(m.r);
+    };
+    requestAnimationFrame(function(){ requestAnimationFrame(run); });
     const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(mm.r); };
     window.addEventListener("resize",onR);
-    return function(){ window.removeEventListener("resize",onR); };
+    return function(){ cancelled=true; window.removeEventListener("resize",onR); };
   },[i]);
-  if(!rect) return null;
+  // Escape / toque fuera del tip = salir (airbag si algo raro)
+  useEffect(function(){
+    const onKey=function(e){ if(e.key==="Escape") onDone(); };
+    window.addEventListener("keydown",onKey);
+    return function(){ window.removeEventListener("keydown",onKey); };
+  },[onDone]);
+  if(!rect) return React.createElement("div",{className:"tour-wrap"},
+    React.createElement("div",{className:"tour-tip",style:{bottom:80,left:16,right:16}},
+      React.createElement("div",{className:"tour-txt"}, t("tour_skip")),
+      React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
+    )
+  );
   const pad=8;
-  const below = rect.y + rect.h/2 < (window.innerHeight||700)*0.55;
-  const tipStyle = below ? {top:rect.y+rect.h+pad+12} : {bottom:((window.innerHeight||700)-rect.y)+pad+12};
+  const H=window.innerHeight||700;
+  const below = rect.y + rect.h/2 < H*0.55;
+  // tip siempre DENTRO del viewport (el bug surrealista: tip fuera → no se puede pulsar)
+  const tipStyle = below
+    ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
+    : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
   const last=i===steps.length-1;
   return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),

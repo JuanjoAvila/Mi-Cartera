@@ -179,6 +179,90 @@ function Dashboard({state, totals, set}){
         ? React.createElement(React.Fragment,null, React.createElement("span",{className:"big num"},eur0(rem)), React.createElement("span",null," "+t("d_guilt_ok")))
         : React.createElement(React.Fragment,null, React.createElement("span",null,t("d_guilt_over_a")), React.createElement("span",{className:"big num"},eur0(-rem)), React.createElement("span",null," 😬"))
     ); })() });
+  // Fin de mes en paz: ritmo diario vs presupuesto (prioridad §5).
+  (function(){
+    const b=state.budget||0; if(b<=0) return;
+    const dim=new Date(tt.curYear, tt.curMonth, 0).getDate();
+    const elapsed=Math.max(1, tt.today||1);
+    const left=Math.max(1, dim-elapsed);
+    const rem=b-tt.thisMonthSpent;
+    const dailyAllow=rem/left;
+    const pace=tt.thisMonthSpent/elapsed;
+    const projected=tt.thisMonthSpent+pace*left;
+    const overTrack=projected>b+0.5;
+    const okPace=dailyAllow>=0 && !overTrack;
+    W.push({id:"pace", label:t("wl_pace"), el:
+      React.createElement(CollapsibleCard,{title:t("fmp_title"),sub:t("fmp_sub"),dot:overTrack?"#E2705F":"#5FD08A",storageKey:"d_pace",help:t("h_pace")},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12}},
+          React.createElement("span",{style:{fontSize:28}}, overTrack?"⚠️":(okPace?"😌":"👀")),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontWeight:700,fontSize:15,color:overTrack?"var(--coral)":"var(--mint)"}},
+              overTrack?t("fmp_warn"):(dailyAllow>=0?tf("fmp_ok",{x:eur0(dailyAllow)}):t("fmp_over"))),
+            React.createElement("div",{className:"hint",style:{marginTop:4}},
+              tf("fmp_proj",{x:eur0(projected),d:left}))))
+      )});
+  })();
+  // Presupuesto por categoría (barritas).
+  (function(){
+    const limits=state.categoryBudgets||{};
+    const ids=Object.keys(limits).filter(function(k){ return Number(limits[k])>0; });
+    const spentIds=Object.keys(byCat||{});
+    const show=Array.from(new Set(ids.concat(spentIds))).slice(0,8);
+    if(!show.length && !ids.length){
+      W.push({id:"catbudget", label:t("wl_catbudget"), el:
+        React.createElement(CollapsibleCard,{title:t("cb_title"),sub:t("cb_empty_sub"),dot:"#7FB5E8",storageKey:"d_catbudget",help:t("h_catbudget"),
+          right:React.createElement("button",{className:"edit-link",onClick:function(e){
+            e.stopPropagation();
+            askText({ title:t("cb_edit"), sub:t("cb_edit_sub"), ph:"super=200, ocio=80", ok:t("fj_save") }).then(function(raw){
+              if(raw==null) return;
+              const next={};
+              String(raw).split(/[,;\n]+/).forEach(function(part){
+                const m=part.trim().match(/^([a-zA-Z_]+)\s*[=:]\s*([\d.,]+)/);
+                if(!m) return;
+                const v=parseFloat(String(m[2]).replace(",","."))||0;
+                if(v>0) next[m[1].toLowerCase()]=v;
+              });
+              set(function(s){ return Object.assign({},s,{categoryBudgets:next}); });
+            });
+          }}, t("fj_edit"))},
+          React.createElement("div",{className:"hint"}, t("cb_empty"))
+        )});
+      return;
+    }
+    W.push({id:"catbudget", label:t("wl_catbudget"), el:
+      React.createElement(CollapsibleCard,{title:t("cb_title"),sub:t("cb_sub"),dot:"#7FB5E8",storageKey:"d_catbudget",help:t("h_catbudget"),
+        right:React.createElement("button",{className:"edit-link",onClick:function(e){
+          e.stopPropagation();
+          const cur=Object.keys(limits).map(function(k){ return k+"="+limits[k]; }).join(", ");
+          askText({ title:t("cb_edit"), sub:t("cb_edit_sub"), ph:cur||"super=200, ocio=80", ok:t("fj_save") }).then(function(raw){
+            if(raw==null) return;
+            const next={};
+            String(raw).split(/[,;\n]+/).forEach(function(part){
+              const m=part.trim().match(/^([a-zA-Z_]+)\s*[=:]\s*([\d.,]+)/);
+              if(!m) return;
+              const v=parseFloat(String(m[2]).replace(",","."))||0;
+              if(v>0) next[m[1].toLowerCase()]=v;
+            });
+            set(function(s){ return Object.assign({},s,{categoryBudgets:next}); });
+          });
+        }}, t("fj_edit"))},
+        show.map(function(id){
+          const lim=Number(limits[id])||0;
+          const spent=Number(byCat[id])||0;
+          const pct=lim>0?Math.min(100, spent/lim*100):0;
+          const over=lim>0&&spent>lim;
+          const cat=catOf(id);
+          return React.createElement("div",{key:id,style:{marginTop:10}},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13}},
+              React.createElement("span",null,(cat.icon||"")+" "+catName(id)),
+              React.createElement("span",{className:"num",style:{fontWeight:700,color:over?"var(--coral)":"inherit"}},
+                eur0(spent)+(lim?(" / "+eur0(lim)):""))),
+            lim>0 && React.createElement("div",{className:"bar",style:{marginTop:4}},
+              React.createElement("i",{style:{width:Math.max(4,pct)+"%",background:over?"var(--coral)":(cat.color||"var(--mint)")}}))
+          );
+        })
+      )});
+  })();
   // Rediseño · toque 3: "Resumen del mes" en formato CARTA (Fraunces, tono personal), no otro dashboard.
   W.push({id:"letter", label:t("wl_letter"), el:
     (function(){

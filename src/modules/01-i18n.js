@@ -307,6 +307,18 @@ Object.assign(LANG.es,{
   hh_pub_busy:"Publicando…", hh_pub_hint:"Publica cuando cambie algo importante. Los demás solo ven tu snapshot, nunca editan tus datos.",
   hh_updated:"Actualizado", hh_leave:"Salir", hh_leave_q:"¿Salir del hogar?", hh_leave_sub:"Tu vista dejará de mostrarse. Tus datos locales no se borran.",
   hh_leave_ok:"Sí, salir", hh_left:"Has salido del hogar",
+  hh_spent_m:"Gastado este mes", hh_fixed_m:"Fijos /mes", hh_cats:"Gastos del hogar por categoría",
+  hh_fixed_top:"Sus fijos principales",
+  fmp_title:"Fin de mes en paz", fmp_sub:"ritmo diario vs tu presupuesto",
+  fmp_ok:"Puedes gastar {x}/día hasta fin de mes", fmp_warn:"Vas demasiado rápido para el presupuesto",
+  fmp_over:"Ya has pasado el presupuesto", fmp_proj:"A este ritmo acabarías en {x} · quedan {d} días",
+  h_pace:"Compara lo que llevas gastado con los días que quedan. Si el ritmo proyecta pasarte, te avisa a tiempo.",
+  wl_pace:"Fin de mes en paz", wl_catbudget:"Presupuesto por categoría",
+  cb_title:"Presupuesto por categoría", cb_sub:"límites del mes", cb_empty:"Aún no has puesto límites. Toca Editar (ej. super=200, ocio=80).",
+  cb_empty_sub:"opcional · barritas por categoría", cb_edit:"Límites por categoría",
+  cb_edit_sub:"Escribe categoría=importe separados por comas. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
+  h_catbudget:"Pon un tope en las categorías que más te preocupan. La barra se llena con lo gastado este mes.",
+  rc_title:"Recibo gordo cerca", rc_body:"{name}: {x} el día {d}",
 });
 Object.assign(LANG.en,{
   rl_fijos:"🏦 Bills", rl_diario:"🛒 Daily spending", rl_ambos:"🔁 Everything",
@@ -328,6 +340,18 @@ Object.assign(LANG.en,{
   hh_pub_busy:"Publishing…", hh_pub_hint:"Publish when something important changes. Others only see your snapshot.",
   hh_updated:"Updated", hh_leave:"Leave", hh_leave_q:"Leave household?", hh_leave_sub:"Your view will disappear. Local data stays yours.",
   hh_leave_ok:"Yes, leave", hh_left:"You left the household",
+  hh_spent_m:"Spent this month", hh_fixed_m:"Fixed /mo", hh_cats:"Household spending by category",
+  hh_fixed_top:"Their main fixed costs",
+  fmp_title:"Peaceful month-end", fmp_sub:"daily pace vs your budget",
+  fmp_ok:"You can spend {x}/day until month-end", fmp_warn:"You're spending too fast for the budget",
+  fmp_over:"You're already over budget", fmp_proj:"At this pace you'd hit {x} · {d} days left",
+  h_pace:"Compares what you've spent with days left. Warns early if the pace would overshoot.",
+  wl_pace:"Peaceful month-end", wl_catbudget:"Category budgets",
+  cb_title:"Category budgets", cb_sub:"monthly limits", cb_empty:"No limits yet. Tap Edit (e.g. super=200, ocio=80).",
+  cb_empty_sub:"optional · bars per category", cb_edit:"Category limits",
+  cb_edit_sub:"Write category=amount separated by commas. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
+  h_catbudget:"Cap the categories that worry you most. The bar fills with this month's spend.",
+  rc_title:"Big bill coming", rc_body:"{name}: {x} on day {d}",
 });
 Object.assign(LANG.ca,{
   rl_fijos:"🏦 Rebuts", rl_diario:"🛒 Despesa diària", rl_ambos:"🔁 Tot",
@@ -349,6 +373,18 @@ Object.assign(LANG.ca,{
   hh_pub_busy:"Publicant…", hh_pub_hint:"Publica quan canviï alguna cosa important. Els altres només veuen la teva instantània.",
   hh_updated:"Actualitzat", hh_leave:"Sortir", hh_leave_q:"Sortir de la llar?", hh_leave_sub:"La teva vista deixarà de mostrar-se. Les dades locals no s'esborren.",
   hh_leave_ok:"Sí, sortir", hh_left:"Has sortit de la llar",
+  hh_spent_m:"Gastat aquest mes", hh_fixed_m:"Fixes /mes", hh_cats:"Despeses de la llar per categoria",
+  hh_fixed_top:"Els seus fixes principals",
+  fmp_title:"Fi de mes en pau", fmp_sub:"ritme diari vs el teu pressupost",
+  fmp_ok:"Pots gastar {x}/dia fins a fi de mes", fmp_warn:"Vas massa ràpid per al pressupost",
+  fmp_over:"Ja has passat el pressupost", fmp_proj:"A aquest ritme acabaries en {x} · queden {d} dies",
+  h_pace:"Compara el que portes gastat amb els dies que queden. Si el ritme et fa passar, t'avisa a temps.",
+  wl_pace:"Fi de mes en pau", wl_catbudget:"Pressupost per categoria",
+  cb_title:"Pressupost per categoria", cb_sub:"límits del mes", cb_empty:"Encara no has posat límits. Toca Editar (ex. super=200, ocio=80).",
+  cb_empty_sub:"opcional · barres per categoria", cb_edit:"Límits per categoria",
+  cb_edit_sub:"Escriu categoria=import separats per comes. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
+  h_catbudget:"Posa un topall a les categories que més et preocupen. La barra es omple amb el gastat aquest mes.",
+  rc_title:"Rebut gros a prop", rc_body:"{name}: {x} el dia {d}",
 });
 /* Importador CSV del bróker (Inversiones) */
 Object.assign(LANG.es,{
@@ -1639,6 +1675,7 @@ function buildEmpty(){
     tourSeen: false,   // usuario nuevo → tour de bienvenida tras el onboarding
     setupHint: true,   // tarjeta «primeros pasos» en el Resumen hasta que la cierren
     settings: { autoPrices:false },
+    categoryBudgets: {},
     lastSync: null, lastPriceSync: null,
     onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
   };
@@ -1783,6 +1820,7 @@ function seedFlows(s){
     return a;
   }); }
   if(!s.catOverrides) s.catOverrides = {};
+  if(!s.categoryBudgets) s.categoryBudgets = {};   // límites €/mes por categoría (§5)
   USER_OVERRIDES = Object.assign({}, s.catOverrides);    // overrides personales (comercio→cat) activos
   // recategoriza lo que quedó en "Otros" (gastos auto, no manuales) con las keywords/overrides mejorados
   if(s.expenses){ s.expenses = s.expenses.map(function(e){
