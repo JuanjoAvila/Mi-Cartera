@@ -79,7 +79,7 @@ function Wealth({state, set, totals}){
                   ? React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#E2A05F22",color:"#E2A05F"}}, t("pt_ob_badge")+" · "+t("bp_st_expired"))
                   : React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
             React.createElement("div",{className:"rsub"}, entOf(o.ent).label))),
-        React.createElement("div",{className:"rval num"}, eur(o.cur==="USD"? (o.value||0)*state.fx : (o.value||0)))
+        React.createElement("div",{className:"rval num"}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
         ),
         // ROL también para las cuentas OB (bug pareja 2026-07-11: sin rol no podían recibir
         // gastos fijos ni diarios — al elegir uno, la cuenta se «promociona» a cuenta con rol,
@@ -90,7 +90,7 @@ function Wealth({state, set, totals}){
               const nid=uid();
               set(function(s){ return promoteObAccount(s, totals, o.key, rr[0], nid); });
               // siembra el borrador del editor con el saldo real: sin esto la fila nueva salía vacía
-              accEd.setDraft(function(d){ const nd=Object.assign({},d); nd[nid]=+(o.cur==="USD"?(o.value||0)*(state.fx||1):(o.value||0)).toFixed(2); return nd; });
+              accEd.setDraft(function(d){ const nd=Object.assign({},d); nd[nid]=+toEurAmt(o.value||0, o.cur||"EUR", state).toFixed(2); return nd; });
             }}, t(rr[1]));
           })
         )
@@ -102,7 +102,7 @@ function Wealth({state, set, totals}){
     React.createElement(CollapsibleCard,{title:t("pt_investments"),sub:t("pt_byBroker"),dot:"#7FB5E8",storageKey:"w_inv",help:t("h_ptinv")},
       // Solo brókers con posiciones (los 3 fijos confundían a usuarios nuevos — feedback 2026-07-10)
       ["revolut","trade_republic","myinvestor"].filter(g=>state.investments.some(i=>i.ent===g)).map(g=>{
-        const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+(i.cur==="USD"?i.value*state.fx:i.value),0);
+        const v=state.investments.filter(i=>i.ent===g).reduce((a,i)=>a+invValueEur(i, state),0);
         return React.createElement("div",{className:"row",key:g},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g,size:38}),React.createElement("div",{className:"rname"},entOf(g).label)),
           React.createElement("div",{className:"rval num"},eur(v)));

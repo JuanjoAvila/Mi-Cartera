@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.113.0] — 2026-07-16
+### Cold-start, FX multi, categorías IA, Sentry prod
+- ⚡ **Cold start:** solo monta la pestaña activa al abrir; vecinas + pre-mount Gastos/Fijos tras idle ~1,6 s. Gastos: `useDeferredValue` + suscripciones/chips banco diferidos hasta pestaña activa (lag Android tras vaciar apps).
+- 💱 **FX multi:** Frankfurter EUR→USD/GBP/CHF → `fxRates` + helpers `toEurAmt`/`invCostEur`/`invValueEur`; editar coste ancla `costEur`.
+- ✨ **Categorías:** Edge `categorize` (KW + OpenAI opcional); toggle Ajustes; botón en gastos «Otros». KW servidor alineado con cliente.
+- 🛡️ **Sentry:** `beforeSend` limpia request/extra sensible; UI «error de prueba» si hay DSN; docs actualizadas (secret GitHub ya existe).
+- 📚 ROADMAP/ARQUITECTURA/HOGAR/CATEGORIZE.md al día.
+
 ## [3.112.0] — 2026-07-16
 ### Tutorial roles + filtro por banco en Gastos
 - 🎓 Tour `tour_2`/`tour_3` y coach Gastos/Fijos/Patri (es/en/ca): variable vs fijo, nómina/Bizum como Ingreso, multi-banco.

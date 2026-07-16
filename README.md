@@ -55,7 +55,8 @@ npm test                          # build + unit + Deno + E2E
 npm run test:e2e                  # solo Playwright
 ```
 
-Opcional: **Sentry** — ver [docs/SENTRY.md](docs/SENTRY.md). Sin DSN la app funciona igual.
+**Sentry en prod:** secret `SENTRY_DSN` en GitHub Actions (inyectado al deploy) — [docs/SENTRY.md](docs/SENTRY.md).  
+**Categorías IA (opcional):** Edge `categorize` + `OPENAI_API_KEY` en Supabase — [docs/CATEGORIZE.md](docs/CATEGORIZE.md).
 
 ```bash
 # (opcional, local) sellar versión del SW manualmente

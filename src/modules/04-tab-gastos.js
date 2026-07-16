@@ -26,7 +26,7 @@ function inPreset(d,preset,range,cycleStart){
   if(preset==="custom"){ let ok=true; if(range.from) ok=ok&&d>=new Date(range.from); if(range.to){ const tt=new Date(range.to); tt.setHours(23,59,59); ok=ok&&d<=tt; } return ok; }
   return true;
 }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, focusExp, clearFocus}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, focusExp, clearFocus, active}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -36,6 +36,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
   const [catEdit,setCatEdit]=useState(null);   // id del gasto al que estás cambiando la categoría
+  const [aiBusy,setAiBusy]=useState(false);
+  // Suscripciones y filtros pesados solo con la pestaña enfocada (cold start Android 2026-07-16).
+  const [heavyOk,setHeavyOk]=useState(false);
+  useEffect(function(){
+    if(!active){ setHeavyOk(false); return; }
+    var cancelled=false;
+    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 80);
+    return function(){ cancelled=true; };
+  },[active]);
+  const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
@@ -111,23 +121,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     setEditExp(null); showToast(t("g_edited"));
   };
 
-  const cycle=useMemo(()=>lastPaydayOf(state.expenses),[state.expenses]);
+  const cycle=useMemo(()=>lastPaydayOf(expensesDef),[expensesDef]);
   // Bancos presentes en el período (o configurados como gasto) → chips de filtro.
   // "_manual" = apuntados a mano / sin banco conocido (no mezclar con OB).
   const bankOpts=useMemo(function(){
+    if(!heavyOk) return [];
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
     expenseBankEnts(state).forEach(add);
     (state.accounts||[]).forEach(function(a){ if(a&&a.ent) add(a.ent); });
     let hasManual=false;
-    (state.expenses||[]).forEach(function(e){
+    (expensesDef||[]).forEach(function(e){
       if(!inPreset(parseDate(e.date),preset,range,cycle&&cycle.start)) return;
       const b=expenseBankOf(e); if(b) add(b); else hasManual=true;
     });
     if(hasManual) order.push("_manual");
     return order;
-  },[state.expenses,state.accounts,state.settings,preset,range,cycle]);
-  const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return state.expenses
+  },[heavyOk,expensesDef,state.accounts,state.settings,preset,range,cycle]);
+  const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return (expensesDef||[])
     .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
     .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
     .filter(function(e){
@@ -137,13 +148,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     })
     .filter(e=> !needle || (e.merchant||"").toLowerCase().indexOf(needle)!==-1 || catName(e.category).toLowerCase().indexOf(needle)!==-1)
     .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
-  },[state.expenses,preset,range,sel,bankSel,q,cycle]);
+  },[expensesDef,preset,range,sel,bankSel,q,cycle]);
 
   // Total con SIGNO CLARO (bug pareja 2026-07-11: con un ingreso en el filtro, el total mostraba
   // «gastos − ingresos» en positivo — ilegible). Desglose: gastos sin signo (2026-07-12: el «−»
   // les parecía feo), y si hay ingresos, línea «+ingresos · Balance» (ingresos − gastos; verde si ahorras).
   const sums=useMemo(()=>{ let g=0,i=0,ng=0,ni=0; filtered.forEach(e=>{ if(e.amount>0){ g+=e.amount; ng++; } else { i-=e.amount; ni++; } }); return {g:g,i:i,ng:ng,ni:ni,bal:i-g}; },[filtered]);
-  const subs=useMemo(()=>detectSubscriptions(state.expenses),[state.expenses]);
+  const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
+  const suggestAi=function(ex){
+    if(!cloud.enabled()||!ex||aiBusy) return;
+    if(!(state.settings&&state.settings.aiCat)){ showToast(t("ai_cat_off")); return; }
+    setAiBusy(true);
+    cloud.suggestCategory(ex.merchant||"").then(function(res){
+      const cat=res&&res.category;
+      if(!cat||cat==="otros"||!CAT[cat]){ showToast(t("ai_cat_none")); return; }
+      setCat(ex,cat);
+      showToast(tf("ai_cat_ok",{c:catName(cat)}));
+    }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
+  };
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
   useEffect(()=>{
     const el=sentinelRef.current; if(!el) return;
@@ -343,6 +365,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                     React.createElement("div",{className:"catpick"}, CATEGORIES.map(function(cc){
                       return React.createElement("button",{key:cc.id,type:"button",className:"catpick-b"+(cc.id===g.e.category?" on":""),onClick:function(){ setCat(g.e,cc.id); }}, cc.icon+" "+catName(cc.id).split(" ")[0]);
                     })),
+                    g.e.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(g.e); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn")),
                     React.createElement("button",{type:"button",className:"cardflag"+(g.e.noCard?" off":""),style:{marginTop:8},onClick:function(){ setCardFlag(g.e,!g.e.noCard); }}, g.e.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card")))
                   )
                 ); })()

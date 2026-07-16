@@ -7,6 +7,9 @@ project_id = "mi-cartera"
 [functions.prices]
 verify_jwt = true
 
+[functions.categorize]
+verify_jwt = true
+
 # ingest: la llama MacroDroid (sin sesión) → sin JWT; se protege con INGEST_TOKEN propio.
 [functions.ingest]
 verify_jwt = false

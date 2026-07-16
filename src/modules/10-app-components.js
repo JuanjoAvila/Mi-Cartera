@@ -487,6 +487,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.113.0", d:"16 jul 2026", t:"Arranque más suave, divisas y categorías inteligentes", items:[
+    "⚡ Menos tirón al abrir la app y pasar a Gastos la primera vez (sobre todo tras vaciar las apps en Android).",
+    "💱 Inversiones y cuentas en USD/GBP/CHF se pasan a € con tipos del BCE; si editas el coste invertido, queda anclado en euros.",
+    "✨ En un gasto «Otros» puedes pedir sugerencia de categoría (palabras clave; IA opcional si está configurada en el servidor).",
+    "🛡️ Sentry activo en la versión publicada: en Ajustes puedes enviar un error de prueba."
+  ]},
   {v:"3.112.0", d:"16 jul 2026", t:"Tutorial claro y filtro por banco en Gastos", items:[
     "🎓 Tutorial y trucos de Gastos/Fijos/Patrimonio más claros: qué va en cada sitio, nómina/Bizum como Ingreso, y dónde marcar varios bancos.",
     "🏦 En Gastos puedes filtrar por banco (Caixa, Trade Republic, a mano…). Cada movimiento enseña de qué banco es.",
@@ -998,13 +1004,16 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           setS({trIngest:false}); showToast(t("st_tring_off"));
         }
       };
-      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell",null,
+      const aiOn=!!(state.settings&&state.settings.aiCat);
+      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell ia ai categoria",null,
         row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
         row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint")),
         row("banksync",bankSyncOn?"🏦":"🔕",t("st_banksync_notif"),null,function(){ setS({bankSyncOnNotif:!bankSyncOn}); }, sw(bankSyncOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint"))
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint")),
+        row("aicat",aiOn?"✨":"⚪",t("st_aicat"),null,function(){ setS({aiCat:!aiOn}); }, sw(aiOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_aicat_hint"))
       );
     })(),
     // ── Tarjeta admin · actividad de los usuarios (SOLO el dueño la ve; RLS re-valida en servidor).
@@ -1019,6 +1028,14 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
+    // Sentry en prod: el DSN lo inyecta el CI. Botón de prueba para ver Issues sin petar la app.
+    CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
+      row("sentry","🧪",t("st_sentry_test"),null,function(){
+        try{ mcCaptureError(new Error("Sentry test Mi Cartera "+CONFIG.APP_VERSION),{kind:"manual_test"}); showToast(t("st_sentry_sent")); }
+        catch(e){ showToast("⚠ "+((e&&e.message)||e)); }
+      }),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_sentry_hint"))
+    ),
     // ── Grupo · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
     natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
       row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),

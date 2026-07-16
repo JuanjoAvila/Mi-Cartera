@@ -44,8 +44,9 @@ La pantalla de Sentry te pide pegar algo así:
 1. Arriba a la derecha → botón **«Copy DSN»** (no el script).
 2. El DSN es una URL tipo:  
    `https://xxxx@oNNNN.ingest.de.sentry.io/NNNN`
-3. Si ya lo pusiste en GitHub Secrets como `SENTRY_DSN` → **listo**.
+3. Si ya lo pusiste en GitHub Secrets como `SENTRY_DSN` → **listo** (en este repo **ya está** desde 2026-07-16).
 4. Puedes pulsar **Skip** / cerrar el wizard. El «Waiting for error…» se puede ignorar: el primer crash real en producción aparecerá en **Issues**.
+5. En la app publicada (con DSN inyectado): **Ajustes → Sentry → Enviar error de prueba** para ver un Issue sin petar la app.
 
 ---
 
