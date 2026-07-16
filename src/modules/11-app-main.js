@@ -456,14 +456,21 @@ function App(){
     }catch(e){ return false; }
   });
   useEffect(function(){
-    const h=function(){ setOtaReady(!!(window._mcOtaReady&&window._mcOtaReady.id)); };
+    const h=function(){
+      // Pill si hay bundle listo O si ya hay pending (descargando / listo al próximo arranque).
+      if(window._mcOtaReady&&window._mcOtaReady.id){ setOtaReady(true); return; }
+      try{
+        var p=localStorage.getItem("_otaPending");
+        setOtaReady(!!(p&&window._mcNewerVer&&window._mcNewerVer(p, CONFIG.APP_VERSION)));
+      }catch(e){ setOtaReady(false); }
+    };
     window.addEventListener("mc-ota-ready", h);
     if(window._mcRestoreOtaPending) window._mcRestoreOtaPending();
     var tick=function(){
       if(window._mcCheckOtaUpdates) window._mcCheckOtaUpdates();
       if(window._mcCheckApkUpdate) window._mcCheckApkUpdate();
     };
-    setTimeout(tick, 600);
+    setTimeout(tick, 150);
     var onVis=function(){ if(document.visibilityState==="visible") tick(); };
     document.addEventListener("visibilitychange", onVis);
     var iv=setInterval(tick, 30*60*1000);
@@ -1059,19 +1066,12 @@ function App(){
     if(!id) return;
     setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
   },[tab, tabIds.join("|")]);
-  // Tras el primer pintado del Resumen: abrir ventana de vecinas + pre-montar Gastos/Fijos
-  // en idle (así el swipe ya no monta en caliente, pero el cold start no paga ese coste).
+  // Tras el primer pintado: habilitar vecinas ±1. NO pre-montar Gastos/Fijos aquí — eso
+  // recreaba el lagazo del cold start (feedback 2026-07-16). Se montan al toque (prepMountTab).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    mcScheduleIdle(function(){
-      setMountNeighbors(true);
-      setMountedTabs(function(m){
-        var n=Object.assign({},m);
-        ["dash","gastos","fijos"].forEach(function(id){ if(tabIds.indexOf(id)>=0) n[id]=true; });
-        return n;
-      });
-    }, 1600);
-  },[state.onboarded, locked, tabIds.join("|")]);
+    mcScheduleIdle(function(){ setMountNeighbors(true); }, 900);
+  },[state.onboarded, locked]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.
@@ -1153,10 +1153,11 @@ function App(){
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
         tabIds.map(function(id,i){
-          // Cold start: solo la pestaña activa es live/montada. Luego (idle) vecinas ±1.
+          // Cold start: solo activa. Luego idle → vecinas ±1. Página YA visitada se queda
+          // montada + page-live (si no, content-visibility:auto la «apaga» y al volver parpadea).
           var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
           var show=live||!!mountedTabs[id];
-          return React.createElement("div",{className:"page"+(live?" page-live":""),key:id},
+          return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
             show && React.createElement(TabCoach,{tabId:id}),
             show ? pageFor(id) : null
           );
@@ -1168,7 +1169,13 @@ function App(){
     tourOpen && React.createElement(Tour,{onDone:endTour}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
     monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),
-    (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){ if(otaReady && window.__mcApplyOta){ window.__mcApplyOta(); } else if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); } }}, t("upd_ready")),
+    (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){
+      if(otaReady){
+        if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
+        showToast(t("upd_downloading")); return;
+      }
+      if(window.__mcApplyUpdate) window.__mcApplyUpdate();
+    }}, (otaReady&&!(window._mcOtaReady&&window._mcOtaReady.id))?t("upd_downloading"):t("upd_ready")),
     apkUpd && React.createElement("button",{className:"update-pill",onClick:doApkInstall}, tf("apk_ready",{v:apkUpd.versionName})),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),

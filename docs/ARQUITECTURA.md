@@ -28,6 +28,8 @@ La app usa `React.createElement` directo. Meter JSX + Babel en el navegador prov
 ### 3. Service Worker stale-while-revalidate
 Caché al instante + revalidación en segundo plano. Cadena de versión sellada en CI.
 
+**Android OTA (v3.107+ / 3.113.2):** chequeo de `version.json` al abrir / volver a primer plano / cada ~30 min **con la app abierta**. La pill sale también mientras descarga; la noti local solo puede dispararse en ese momento. Sin WorkManager en background no hay aviso «mágico» con la app cerrada.
+
 ### 4. Migraciones de datos versionadas
 `_dataVer` en `localStorage` permite cambiar la forma de los datos sembrados sin borrar los del usuario.
 

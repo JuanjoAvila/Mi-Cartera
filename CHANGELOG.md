@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.113.2] — 2026-07-16
+### Fix flash Resumen↔Gastos + updates más rápidos
+- 🏦 Chips de banco ya no parpadean al salir/entrar de Gastos (`heavyOk` sticky + bankOpts siempre).
+- 📄 Pestañas visitadas se quedan `page-live` (evita que `content-visibility` las «apague» off-screen).
+- ⚡ Cold start: ya no pre-monta Gastos/Fijos en idle; solo al toque.
+- ⬇️ OTA: pill mientras descarga; chequeo a ~150 ms; al restaurar pending sí notifica si aún no se avisó de esa versión.
+- 🛡️ Bloque «Sentry / error de prueba» en Ajustes solo para admin (`is_admin`), como Actividad.
+
 ## [3.113.1] — 2026-07-16
 ### Categorías ampliadas sin inflar el filtro
 - 🏛️ **Nueva categoría:** `tasas` / **Impuestos y multas** para `Gencat`, `AEAT`, `DGT`, ayuntamientos, IBI, IVTM, sanciones y similares.

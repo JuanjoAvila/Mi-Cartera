@@ -42,6 +42,12 @@ window._mcNotifyUpdate=function(version, kind){
   }catch(e){}
 };
 
+window._mcSignalOtaPending=function(version){
+  if(!version) return;
+  try{ localStorage.setItem("_otaPending", version); }catch(e){}
+  try{ window.dispatchEvent(new CustomEvent("mc-ota-ready")); }catch(e){}
+};
+
 window._mcSignalOtaReady=function(id, version, opts){
   if(!id||!version) return;
   var silent=opts&&opts.silent;
@@ -65,7 +71,9 @@ window._mcRestoreOtaPending=function(){
     var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
     if(!up||!up.getNext) return;
     up.getNext().then(function(next){
-      if(next&&next.id) window._mcSignalOtaReady(next.id, next.version||pend, {silent:true});
+      // silent:false → si aún no se notificó esta versión, avisa al abrir (antes no avisaba
+      // al restaurar y parecía que «solo notifica cuando entro», feedback 2026-07-16).
+      if(next&&next.id) window._mcSignalOtaReady(next.id, next.version||pend, {silent:false});
     }).catch(function(){});
   }catch(e){}
 };
@@ -73,6 +81,8 @@ window._mcRestoreOtaPending=function(){
 window._mcDownloadOta=function(up, v, opts){
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
+  // Pill YA mientras descarga (antes solo al terminar → «tarda un montón», 2026-07-16).
+  if(!manual) window._mcSignalOtaPending(v.version);
   if(manual&&toast) toast(tf("st_up_applying",{v:v.version}));
   return up.download({url:(v.url||_mcOtaBASE+"bundle.zip"), version:v.version})
     .then(function(b){
@@ -169,7 +179,7 @@ window._mcCheckApkUpdate=function(opts){
     setTimeout(function(){
       window._mcCheckOtaUpdates();
       window._mcCheckApkUpdate();
-    }, 600);
+    }, 120);
   }catch(e){}
 })();
 

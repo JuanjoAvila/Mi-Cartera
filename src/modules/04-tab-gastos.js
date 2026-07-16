@@ -37,14 +37,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
   const [catEdit,setCatEdit]=useState(null);   // id del gasto al que estás cambiando la categoría
   const [aiBusy,setAiBusy]=useState(false);
-  // Suscripciones y filtros pesados solo con la pestaña enfocada (cold start Android 2026-07-16).
+  // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
+  // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
   useEffect(function(){
-    if(!active){ setHeavyOk(false); return; }
+    if(!active||heavyOk) return;
     var cancelled=false;
-    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 80);
+    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 40);
     return function(){ cancelled=true; };
-  },[active]);
+  },[active,heavyOk]);
   const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -124,8 +125,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const cycle=useMemo(()=>lastPaydayOf(expensesDef),[expensesDef]);
   // Bancos presentes en el período (o configurados como gasto) → chips de filtro.
   // "_manual" = apuntados a mano / sin banco conocido (no mezclar con OB).
+  // Chips de banco: baratos y SIEMPRE visibles (no dependen de heavyOk → sin flash).
   const bankOpts=useMemo(function(){
-    if(!heavyOk) return [];
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
     expenseBankEnts(state).forEach(add);
@@ -137,7 +138,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     });
     if(hasManual) order.push("_manual");
     return order;
-  },[heavyOk,expensesDef,state.accounts,state.settings,preset,range,cycle]);
+  },[expensesDef,state.accounts,state.settings,preset,range,cycle]);
   const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return (expensesDef||[])
     .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
     .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
