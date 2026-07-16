@@ -1,6 +1,7 @@
 /* ============================================================
-   HOGAR — vista fusionada por snapshots (Fase 1)
-   Cada miembro publica SU patrimonio; el hogar suma sin escribir en app_state ajeno.
+   HOGAR — vista fusionada por snapshots (Fase 1+2)
+   Cada miembro publica SU vista; el hogar suma sin escribir en app_state ajeno.
+   Fase 2: gastos por categoría + fijos (solo lectura, agregados).
    ============================================================ */
 
 function mcInviteCode(){
@@ -15,6 +16,22 @@ function buildHouseholdSnapshot(state, totals, email){
     const val=(totals.bankBal&&totals.bankBal[a.ent]!=null)?totals.bankBal[a.ent]:(a.value||0);
     return { name:a.name||ent.label, ent:a.ent, label:ent.label, value:+Number(val).toFixed(2) };
   });
+  // Gastos del mes por categoría (sin comercios: privacidad)
+  const byCat={};
+  (state.expenses||[]).forEach(function(e){
+    if(!(e.amount>0)) return;
+    if(parseDate(e.date)<startOfMonth()) return;
+    const k=e.category||"otros";
+    byCat[k]=(byCat[k]||0)+e.amount;
+  });
+  const expensesByCat=Object.keys(byCat).map(function(id){
+    return { id:id, spent:+Number(byCat[id]).toFixed(2) };
+  }).sort(function(a,b){ return b.spent-a.spent; }).slice(0,8);
+  // Fijos: total mensual + top 5 (nombre + importe, sin cuentas bancarias)
+  const fixedTop=(state.fixed||[]).map(function(f){
+    return { name:f.name||"?", amount:+Number((f.amount||0)*(FREQ_M[f.freq]||1)).toFixed(2) };
+  }).filter(function(f){ return f.amount>0; })
+    .sort(function(a,b){ return b.amount-a.amount; }).slice(0,5);
   return {
     displayName:(email&&email.split("@")[0])||"Usuario",
     netWorth:+Number(totals.netWorth||0).toFixed(2),
@@ -25,6 +42,10 @@ function buildHouseholdSnapshot(state, totals, email){
     thisMonthSpent:+Number(totals.thisMonthSpent||0).toFixed(2),
     budget:state.budget||0,
     accounts:accounts,
+    expensesByCat:expensesByCat,
+    fixedMonthly:+Number(totals.fijosMensual||0).toFixed(2),
+    fixedThisMonth:+Number(totals.fijosEsteMes||0).toFixed(2),
+    fixedTop:fixedTop,
     appVersion:CONFIG.APP_VERSION,
     publishedAt:new Date().toISOString(),
   };
@@ -32,7 +53,8 @@ function buildHouseholdSnapshot(state, totals, email){
 
 function mergeHouseholdSnapshots(snaps){
   const list=(snaps||[]).filter(function(s){ return s&&s.payload; });
-  let net=0, activos=0, debts=0, invested=0, spent=0;
+  let net=0, activos=0, debts=0, invested=0, spent=0, fixedM=0;
+  const catMap={};
   const byMember=[];
   list.forEach(function(row){
     const p=row.payload||{};
@@ -41,20 +63,33 @@ function mergeHouseholdSnapshots(snaps){
     debts+=Number(p.debtTotal)||0;
     invested+=Number(p.invested)||0;
     spent+=Number(p.thisMonthSpent)||0;
+    fixedM+=Number(p.fixedMonthly)||0;
+    (p.expensesByCat||[]).forEach(function(c){
+      catMap[c.id]=(catMap[c.id]||0)+(Number(c.spent)||0);
+    });
     byMember.push({
       userId:row.user_id,
       name:p.displayName||"?",
       netWorth:Number(p.netWorth)||0,
+      thisMonthSpent:Number(p.thisMonthSpent)||0,
+      fixedMonthly:Number(p.fixedMonthly)||0,
       accounts:p.accounts||[],
+      fixedTop:p.fixedTop||[],
+      expensesByCat:p.expensesByCat||[],
       publishedAt:row.published_at||p.publishedAt,
     });
   });
+  const expensesByCat=Object.keys(catMap).map(function(id){
+    return { id:id, spent:+Number(catMap[id]).toFixed(2) };
+  }).sort(function(a,b){ return b.spent-a.spent; });
   return {
     netWorth:+net.toFixed(2),
     activos:+activos.toFixed(2),
     debtTotal:+debts.toFixed(2),
     invested:+invested.toFixed(2),
     thisMonthSpent:+spent.toFixed(2),
+    fixedMonthly:+fixedM.toFixed(2),
+    expensesByCat:expensesByCat,
     members:byMember,
   };
 }
@@ -161,6 +196,8 @@ function HogarSection({state, totals, uid, showToast, meEmail}){
     );
   }
 
+  const maxCat=merged.expensesByCat.length?merged.expensesByCat[0].spent:1;
+
   return React.createElement("div",{className:"card",style:{padding:"14px 16px",marginBottom:14}},
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}},
       React.createElement("div",null,
@@ -175,16 +212,49 @@ function HogarSection({state, totals, uid, showToast, meEmail}){
         React.createElement("div",{className:"hint"}, tf("hh_members_n",{n:merged.members.length}))
       )
     ),
+    // Fase 2 · gasto del hogar este mes
+    React.createElement("div",{style:{marginTop:14,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+      React.createElement("div",{className:"metric",style:{padding:12}},
+        React.createElement("div",{className:"mlabel"}, t("hh_spent_m")),
+        React.createElement("div",{className:"num",style:{fontWeight:800,fontSize:18}}, eur0(merged.thisMonthSpent))),
+      React.createElement("div",{className:"metric",style:{padding:12}},
+        React.createElement("div",{className:"mlabel"}, t("hh_fixed_m")),
+        React.createElement("div",{className:"num",style:{fontWeight:800,fontSize:18}}, eur0(merged.fixedMonthly)))
+    ),
+    merged.expensesByCat.length>0 && React.createElement("div",{style:{marginTop:14}},
+      React.createElement("div",{className:"gm-sec-h"}, t("hh_cats")),
+      merged.expensesByCat.slice(0,6).map(function(c){
+        const cat=catOf(c.id);
+        const pct=Math.max(4, Math.round(100*c.spent/maxCat));
+        return React.createElement("div",{key:c.id,style:{marginTop:8}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13}},
+            React.createElement("span",null, (cat.icon||"")+" "+catName(c.id)),
+            React.createElement("span",{className:"num",style:{fontWeight:700}}, eur0(c.spent))),
+          React.createElement("div",{className:"bar",style:{marginTop:4}},
+            React.createElement("i",{style:{width:pct+"%",background:cat.color||"var(--mint)"}}))
+        );
+      })
+    ),
     merged.members.map(function(m,i){
       return React.createElement("div",{key:m.userId||i,style:{marginTop:12,paddingTop:12,borderTop:"1px solid var(--line-soft)"}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
           React.createElement("span",{style:{fontWeight:700}}, m.name),
           React.createElement("span",{className:"num",style:{fontWeight:700}}, eur(m.netWorth))),
+        React.createElement("div",{className:"hint",style:{marginTop:4}},
+          t("hh_spent_m")+": "+eur0(m.thisMonthSpent)+" · "+t("hh_fixed_m")+": "+eur0(m.fixedMonthly)),
         (m.accounts||[]).slice(0,6).map(function(a,j){
           return React.createElement("div",{key:j,className:"liqrow",style:{fontSize:12.5,marginTop:4}},
             React.createElement("span",{className:"muted"}, (a.label||a.name)),
             React.createElement("span",{className:"num"}, eur0(a.value)));
         }),
+        (m.fixedTop||[]).length>0 && React.createElement("div",{style:{marginTop:6}},
+          React.createElement("div",{className:"hint",style:{fontSize:11}}, t("hh_fixed_top")),
+          m.fixedTop.map(function(f,j){
+            return React.createElement("div",{key:j,className:"liqrow",style:{fontSize:12,marginTop:2}},
+              React.createElement("span",{className:"muted"}, f.name),
+              React.createElement("span",{className:"num"}, eur0(f.amount)));
+          })
+        ),
         m.publishedAt && React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:4}},
           t("hh_updated")+" "+new Date(m.publishedAt).toLocaleString())
       );

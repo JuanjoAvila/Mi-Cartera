@@ -33,9 +33,9 @@ Es la “caja negra” en producción. Playwright prueba antes de publicar; Sent
 ### Paso 1 — Crear proyecto
 
 1. Entra en [sentry.io](https://sentry.io) (cuenta creada ✓)
-2. En “Choose your SDK” elige **Browser JavaScript** (no Capacitor para la web/PWA)
-3. Marca solo **Error monitoring** (5000 errors/mo en free)
-4. **Continue** → te dan un **DSN** (URL larga)
+2. En “Choose your SDK” elige **Browser JavaScript** (no Capacitor)
+3. Si pregunta framework → **Nope, Vanilla** (el SDK ya va embebido; no React)
+4. Solo **Error monitoring** → **Continue** → copia el **DSN**
 
 ### Paso 2 — Secreto en GitHub
 

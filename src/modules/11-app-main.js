@@ -737,6 +737,28 @@ function App(){
     },3000);
     return function(){ clearTimeout(tmr); };
   },[state.onboarded,locked,showAuth,tourOpen,whatsNew]);
+  // Recordatorio de recibos gordos (2–3 días antes). Una noti/día máx. por cargo.
+  useEffect(function(){
+    if(state.onboarded===false||locked||showAuth) return;
+    const nat=natPlugin();
+    if(!nat||!nat.showNotification) return;
+    const today=totals.today||new Date().getDate();
+    const cm=totals.curMonth, cy=totals.curYear;
+    const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
+    const ym=cy+"-"+String(cm).padStart(2,"0");
+    (state.fixed||[]).forEach(function(e){
+      if(!occursIn(e,cm)) return;
+      const d=dayIn(e,cm); if(d==null) return;
+      if(isPaidIn(e,cm,today)) return;
+      const amt=occAmountIn(e,cm)||0;
+      if(amt<minAmt) return;
+      const daysLeft=d-today;
+      if(daysLeft<1||daysLeft>3) return;
+      const key="_rc_"+e.id+"_"+ym+"_"+d;
+      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
+      try{ nat.showNotification({title:t("rc_title"),body:tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)})}).catch(function(){}); }catch(err){}
+    });
+  },[state.onboarded,locked,showAuth,state.fixed,totals.today,totals.curMonth]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){

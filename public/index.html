@@ -1679,6 +1679,18 @@ Object.assign(LANG.es,{
   hh_pub_busy:"Publicando…", hh_pub_hint:"Publica cuando cambie algo importante. Los demás solo ven tu snapshot, nunca editan tus datos.",
   hh_updated:"Actualizado", hh_leave:"Salir", hh_leave_q:"¿Salir del hogar?", hh_leave_sub:"Tu vista dejará de mostrarse. Tus datos locales no se borran.",
   hh_leave_ok:"Sí, salir", hh_left:"Has salido del hogar",
+  hh_spent_m:"Gastado este mes", hh_fixed_m:"Fijos /mes", hh_cats:"Gastos del hogar por categoría",
+  hh_fixed_top:"Sus fijos principales",
+  fmp_title:"Fin de mes en paz", fmp_sub:"ritmo diario vs tu presupuesto",
+  fmp_ok:"Puedes gastar {x}/día hasta fin de mes", fmp_warn:"Vas demasiado rápido para el presupuesto",
+  fmp_over:"Ya has pasado el presupuesto", fmp_proj:"A este ritmo acabarías en {x} · quedan {d} días",
+  h_pace:"Compara lo que llevas gastado con los días que quedan. Si el ritmo proyecta pasarte, te avisa a tiempo.",
+  wl_pace:"Fin de mes en paz", wl_catbudget:"Presupuesto por categoría",
+  cb_title:"Presupuesto por categoría", cb_sub:"límites del mes", cb_empty:"Aún no has puesto límites. Toca Editar (ej. super=200, ocio=80).",
+  cb_empty_sub:"opcional · barritas por categoría", cb_edit:"Límites por categoría",
+  cb_edit_sub:"Escribe categoría=importe separados por comas. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
+  h_catbudget:"Pon un tope en las categorías que más te preocupan. La barra se llena con lo gastado este mes.",
+  rc_title:"Recibo gordo cerca", rc_body:"{name}: {x} el día {d}",
 });
 Object.assign(LANG.en,{
   rl_fijos:"🏦 Bills", rl_diario:"🛒 Daily spending", rl_ambos:"🔁 Everything",
@@ -1700,6 +1712,18 @@ Object.assign(LANG.en,{
   hh_pub_busy:"Publishing…", hh_pub_hint:"Publish when something important changes. Others only see your snapshot.",
   hh_updated:"Updated", hh_leave:"Leave", hh_leave_q:"Leave household?", hh_leave_sub:"Your view will disappear. Local data stays yours.",
   hh_leave_ok:"Yes, leave", hh_left:"You left the household",
+  hh_spent_m:"Spent this month", hh_fixed_m:"Fixed /mo", hh_cats:"Household spending by category",
+  hh_fixed_top:"Their main fixed costs",
+  fmp_title:"Peaceful month-end", fmp_sub:"daily pace vs your budget",
+  fmp_ok:"You can spend {x}/day until month-end", fmp_warn:"You're spending too fast for the budget",
+  fmp_over:"You're already over budget", fmp_proj:"At this pace you'd hit {x} · {d} days left",
+  h_pace:"Compares what you've spent with days left. Warns early if the pace would overshoot.",
+  wl_pace:"Peaceful month-end", wl_catbudget:"Category budgets",
+  cb_title:"Category budgets", cb_sub:"monthly limits", cb_empty:"No limits yet. Tap Edit (e.g. super=200, ocio=80).",
+  cb_empty_sub:"optional · bars per category", cb_edit:"Category limits",
+  cb_edit_sub:"Write category=amount separated by commas. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
+  h_catbudget:"Cap the categories that worry you most. The bar fills with this month's spend.",
+  rc_title:"Big bill coming", rc_body:"{name}: {x} on day {d}",
 });
 Object.assign(LANG.ca,{
   rl_fijos:"🏦 Rebuts", rl_diario:"🛒 Despesa diària", rl_ambos:"🔁 Tot",
@@ -1721,6 +1745,18 @@ Object.assign(LANG.ca,{
   hh_pub_busy:"Publicant…", hh_pub_hint:"Publica quan canviï alguna cosa important. Els altres només veuen la teva instantània.",
   hh_updated:"Actualitzat", hh_leave:"Sortir", hh_leave_q:"Sortir de la llar?", hh_leave_sub:"La teva vista deixarà de mostrar-se. Les dades locals no s'esborren.",
   hh_leave_ok:"Sí, sortir", hh_left:"Has sortit de la llar",
+  hh_spent_m:"Gastat aquest mes", hh_fixed_m:"Fixes /mes", hh_cats:"Despeses de la llar per categoria",
+  hh_fixed_top:"Els seus fixes principals",
+  fmp_title:"Fi de mes en pau", fmp_sub:"ritme diari vs el teu pressupost",
+  fmp_ok:"Pots gastar {x}/dia fins a fi de mes", fmp_warn:"Vas massa ràpid per al pressupost",
+  fmp_over:"Ja has passat el pressupost", fmp_proj:"A aquest ritme acabaries en {x} · queden {d} dies",
+  h_pace:"Compara el que portes gastat amb els dies que queden. Si el ritme et fa passar, t'avisa a temps.",
+  wl_pace:"Fi de mes en pau", wl_catbudget:"Pressupost per categoria",
+  cb_title:"Pressupost per categoria", cb_sub:"límits del mes", cb_empty:"Encara no has posat límits. Toca Editar (ex. super=200, ocio=80).",
+  cb_empty_sub:"opcional · barres per categoria", cb_edit:"Límits per categoria",
+  cb_edit_sub:"Escriu categoria=import separats per comes. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
+  h_catbudget:"Posa un topall a les categories que més et preocupen. La barra es omple amb el gastat aquest mes.",
+  rc_title:"Rebut gros a prop", rc_body:"{name}: {x} el dia {d}",
 });
 /* Importador CSV del bróker (Inversiones) */
 Object.assign(LANG.es,{
@@ -3011,6 +3047,7 @@ function buildEmpty(){
     tourSeen: false,   // usuario nuevo → tour de bienvenida tras el onboarding
     setupHint: true,   // tarjeta «primeros pasos» en el Resumen hasta que la cierren
     settings: { autoPrices:false },
+    categoryBudgets: {},
     lastSync: null, lastPriceSync: null,
     onboarded: false, _dataVer: 6, trAnchor: mkOf(new Date()),
   };
@@ -3155,6 +3192,7 @@ function seedFlows(s){
     return a;
   }); }
   if(!s.catOverrides) s.catOverrides = {};
+  if(!s.categoryBudgets) s.categoryBudgets = {};   // límites €/mes por categoría (§5)
   USER_OVERRIDES = Object.assign({}, s.catOverrides);    // overrides personales (comercio→cat) activos
   // recategoriza lo que quedó en "Otros" (gastos auto, no manuales) con las keywords/overrides mejorados
   if(s.expenses){ s.expenses = s.expenses.map(function(e){
@@ -3361,44 +3399,87 @@ function shareMonthReport(state, tt){
    Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
    ============================================================ */
 function Tour({onDone}){
+  // tour_8 (helpq): solo el «?» de la pestaña VISIBLE. Con lazy-mount, querySelector(".helpq")
+  // pillaba uno de una página vecina fuera de pantalla → foco absurdo y tip inaccesible (2026-07-16).
   const steps=[
-    {k:"tour_1", sel:function(){ return document.querySelector(".hero")||document.querySelector(".page"); }},
+    {k:"tour_1", sel:function(){ return document.querySelector(".page-live .hero")||document.querySelector(".hero")||document.querySelector(".page-live")||document.querySelector(".page"); }},
     {k:"tour_2", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_gastos"); })||null; }},
     {k:"tour_3", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_fijos"); })||null; }},
     {k:"tour_6", sel:function(){ return document.querySelector(".tabbar"); }},
     {k:"tour_7", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_patri"); })||null; }},
-    {k:"tour_8", sel:function(){ return document.querySelector(".helpq"); }},
+    {k:"tour_8", sel:function(){ return document.querySelector(".page-live .helpq")||document.querySelector(".page.page-live .helpq"); }},
     {k:"tour_4", sel:function(){ return document.querySelector(".topbar .icon-btn"); }},
     {k:"tour_5", sel:function(){ const b=document.querySelectorAll(".topbar .icon-btn"); return b[1]||b[0]||null; }},
   ];
   const [i,setI]=useState(0);
   const [rect,setRect]=useState(null);
+  const inViewport=function(r){
+    const H=window.innerHeight||700, W=window.innerWidth||400;
+    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left<W-8 && r.right>8;
+  };
+  const bringIntoView=function(el){
+    try{
+      const bar=el.closest&&el.closest(".tabbar");
+      if(bar){ const sb=bar.style.scrollBehavior; bar.style.scrollBehavior="auto"; bar.scrollLeft=Math.max(0, el.offsetLeft-(bar.clientWidth/2)+(el.clientWidth/2)); bar.style.scrollBehavior=sb; }
+    }catch(_){}
+    try{
+      const page=el.closest&&el.closest(".page");
+      if(page){
+        const pr=page.getBoundingClientRect(), er=el.getBoundingClientRect();
+        // scroll vertical de la página activa (el «?» suele estar más abajo)
+        if(er.top<pr.top+40 || er.bottom>pr.bottom-40){
+          page.scrollTop += (er.top - pr.top) - Math.min(120, pr.height*0.25);
+        }
+      } else if(typeof el.scrollIntoView==="function"){
+        el.scrollIntoView({block:"center", inline:"nearest", behavior:"instant"});
+      }
+    }catch(_){}
+  };
   const measure=function(idx){
     for(let j=idx;j<steps.length;j++){
       const el=steps[j].sel();
-      if(el){
-        // la pestaña puede estar fuera de la barra (scroll horizontal): céntrala antes de medir.
-        // Scroll INSTANTÁNEO (anulando el scroll-behavior:smooth del CSS): si animara, la
-        // medición del foco se haría con la pestaña aún en su posición vieja.
-        try{ const bar=el.closest&&el.closest(".tabbar"); if(bar){ const sb=bar.style.scrollBehavior; bar.style.scrollBehavior="auto"; bar.scrollLeft=Math.max(0, el.offsetLeft-(bar.clientWidth/2)+(el.clientWidth/2)); bar.style.scrollBehavior=sb; } }catch(_){}
-        const r=el.getBoundingClientRect(); if(r.width>0) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
-      }
+      if(!el) continue;
+      bringIntoView(el);
+      const r=el.getBoundingClientRect();
+      if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
+      // sin viewport usable → saltar este paso (no dejar al usuario atrapado)
     }
     return null;
   };
   useEffect(function(){
-    const m=measure(i);
-    if(!m){ onDone(); return; }
-    if(m.j!==i){ setI(m.j); return; }
-    setRect(m.r);
+    let cancelled=false;
+    // doble rAF: deja que el scroll del .page asiente antes de medir
+    const run=function(){
+      if(cancelled) return;
+      const m=measure(i);
+      if(!m){ onDone(); return; }
+      if(m.j!==i){ setI(m.j); return; }
+      setRect(m.r);
+    };
+    requestAnimationFrame(function(){ requestAnimationFrame(run); });
     const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(mm.r); };
     window.addEventListener("resize",onR);
-    return function(){ window.removeEventListener("resize",onR); };
+    return function(){ cancelled=true; window.removeEventListener("resize",onR); };
   },[i]);
-  if(!rect) return null;
+  // Escape / toque fuera del tip = salir (airbag si algo raro)
+  useEffect(function(){
+    const onKey=function(e){ if(e.key==="Escape") onDone(); };
+    window.addEventListener("keydown",onKey);
+    return function(){ window.removeEventListener("keydown",onKey); };
+  },[onDone]);
+  if(!rect) return React.createElement("div",{className:"tour-wrap"},
+    React.createElement("div",{className:"tour-tip",style:{bottom:80,left:16,right:16}},
+      React.createElement("div",{className:"tour-txt"}, t("tour_skip")),
+      React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
+    )
+  );
   const pad=8;
-  const below = rect.y + rect.h/2 < (window.innerHeight||700)*0.55;
-  const tipStyle = below ? {top:rect.y+rect.h+pad+12} : {bottom:((window.innerHeight||700)-rect.y)+pad+12};
+  const H=window.innerHeight||700;
+  const below = rect.y + rect.h/2 < H*0.55;
+  // tip siempre DENTRO del viewport (el bug surrealista: tip fuera → no se puede pulsar)
+  const tipStyle = below
+    ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
+    : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
   const last=i===steps.length-1;
   return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),
@@ -3854,6 +3935,90 @@ function Dashboard({state, totals, set}){
         ? React.createElement(React.Fragment,null, React.createElement("span",{className:"big num"},eur0(rem)), React.createElement("span",null," "+t("d_guilt_ok")))
         : React.createElement(React.Fragment,null, React.createElement("span",null,t("d_guilt_over_a")), React.createElement("span",{className:"big num"},eur0(-rem)), React.createElement("span",null," 😬"))
     ); })() });
+  // Fin de mes en paz: ritmo diario vs presupuesto (prioridad §5).
+  (function(){
+    const b=state.budget||0; if(b<=0) return;
+    const dim=new Date(tt.curYear, tt.curMonth, 0).getDate();
+    const elapsed=Math.max(1, tt.today||1);
+    const left=Math.max(1, dim-elapsed);
+    const rem=b-tt.thisMonthSpent;
+    const dailyAllow=rem/left;
+    const pace=tt.thisMonthSpent/elapsed;
+    const projected=tt.thisMonthSpent+pace*left;
+    const overTrack=projected>b+0.5;
+    const okPace=dailyAllow>=0 && !overTrack;
+    W.push({id:"pace", label:t("wl_pace"), el:
+      React.createElement(CollapsibleCard,{title:t("fmp_title"),sub:t("fmp_sub"),dot:overTrack?"#E2705F":"#5FD08A",storageKey:"d_pace",help:t("h_pace")},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:12}},
+          React.createElement("span",{style:{fontSize:28}}, overTrack?"⚠️":(okPace?"😌":"👀")),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{style:{fontWeight:700,fontSize:15,color:overTrack?"var(--coral)":"var(--mint)"}},
+              overTrack?t("fmp_warn"):(dailyAllow>=0?tf("fmp_ok",{x:eur0(dailyAllow)}):t("fmp_over"))),
+            React.createElement("div",{className:"hint",style:{marginTop:4}},
+              tf("fmp_proj",{x:eur0(projected),d:left}))))
+      )});
+  })();
+  // Presupuesto por categoría (barritas).
+  (function(){
+    const limits=state.categoryBudgets||{};
+    const ids=Object.keys(limits).filter(function(k){ return Number(limits[k])>0; });
+    const spentIds=Object.keys(byCat||{});
+    const show=Array.from(new Set(ids.concat(spentIds))).slice(0,8);
+    if(!show.length && !ids.length){
+      W.push({id:"catbudget", label:t("wl_catbudget"), el:
+        React.createElement(CollapsibleCard,{title:t("cb_title"),sub:t("cb_empty_sub"),dot:"#7FB5E8",storageKey:"d_catbudget",help:t("h_catbudget"),
+          right:React.createElement("button",{className:"edit-link",onClick:function(e){
+            e.stopPropagation();
+            askText({ title:t("cb_edit"), sub:t("cb_edit_sub"), ph:"super=200, ocio=80", ok:t("fj_save") }).then(function(raw){
+              if(raw==null) return;
+              const next={};
+              String(raw).split(/[,;\n]+/).forEach(function(part){
+                const m=part.trim().match(/^([a-zA-Z_]+)\s*[=:]\s*([\d.,]+)/);
+                if(!m) return;
+                const v=parseFloat(String(m[2]).replace(",","."))||0;
+                if(v>0) next[m[1].toLowerCase()]=v;
+              });
+              set(function(s){ return Object.assign({},s,{categoryBudgets:next}); });
+            });
+          }}, t("fj_edit"))},
+          React.createElement("div",{className:"hint"}, t("cb_empty"))
+        )});
+      return;
+    }
+    W.push({id:"catbudget", label:t("wl_catbudget"), el:
+      React.createElement(CollapsibleCard,{title:t("cb_title"),sub:t("cb_sub"),dot:"#7FB5E8",storageKey:"d_catbudget",help:t("h_catbudget"),
+        right:React.createElement("button",{className:"edit-link",onClick:function(e){
+          e.stopPropagation();
+          const cur=Object.keys(limits).map(function(k){ return k+"="+limits[k]; }).join(", ");
+          askText({ title:t("cb_edit"), sub:t("cb_edit_sub"), ph:cur||"super=200, ocio=80", ok:t("fj_save") }).then(function(raw){
+            if(raw==null) return;
+            const next={};
+            String(raw).split(/[,;\n]+/).forEach(function(part){
+              const m=part.trim().match(/^([a-zA-Z_]+)\s*[=:]\s*([\d.,]+)/);
+              if(!m) return;
+              const v=parseFloat(String(m[2]).replace(",","."))||0;
+              if(v>0) next[m[1].toLowerCase()]=v;
+            });
+            set(function(s){ return Object.assign({},s,{categoryBudgets:next}); });
+          });
+        }}, t("fj_edit"))},
+        show.map(function(id){
+          const lim=Number(limits[id])||0;
+          const spent=Number(byCat[id])||0;
+          const pct=lim>0?Math.min(100, spent/lim*100):0;
+          const over=lim>0&&spent>lim;
+          const cat=catOf(id);
+          return React.createElement("div",{key:id,style:{marginTop:10}},
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13}},
+              React.createElement("span",null,(cat.icon||"")+" "+catName(id)),
+              React.createElement("span",{className:"num",style:{fontWeight:700,color:over?"var(--coral)":"inherit"}},
+                eur0(spent)+(lim?(" / "+eur0(lim)):""))),
+            lim>0 && React.createElement("div",{className:"bar",style:{marginTop:4}},
+              React.createElement("i",{style:{width:Math.max(4,pct)+"%",background:over?"var(--coral)":(cat.color||"var(--mint)")}}))
+          );
+        })
+      )});
+  })();
   // Rediseño · toque 3: "Resumen del mes" en formato CARTA (Fraunces, tono personal), no otro dashboard.
   W.push({id:"letter", label:t("wl_letter"), el:
     (function(){
@@ -7076,7 +7241,7 @@ const TABS=[
 // Pestañas avanzadas: se ocultan en "modo simple" (settings.simpleMode) para gente que quiere lo básico.
 const ADVANCED_TABS=["metas","logros","inv","patri","debt","compartido"];
 // Widgets del Resumen que el modo simple esconde (deja hero + presupuesto + frase "puedes gastar").
-const SIMPLE_DASH_HIDDEN=["goal","dist","fixedsave","savings","culprit","trend"];
+const SIMPLE_DASH_HIDDEN=["goal","dist","fixedsave","savings","culprit","trend","pace","catbudget"];
 // Pestañas ocultas: settings.tabHidden (elegidas por el usuario con + / papelera). Si el usuario
 // aún no ha personalizado nada, se deriva del modo simple (ADVANCED_TABS) para no cambiar el
 // comportamiento de estados existentes. "dash" nunca se puede ocultar.
@@ -7496,6 +7661,13 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.110.0", d:"16 jul 2026", t:"Fin de mes en paz, Hogar completo y tutorial arreglado", items:[
+    "😌 Fin de mes en paz: en el Resumen ves cuánto puedes gastar al día y si vas demasiado rápido.",
+    "📊 Presupuesto por categoría con barritas (Editar → super=200, ocio=80…).",
+    "🏠 Hogar Fase 2: al publicar tu vista se suman gastos por categoría y fijos del hogar (solo lectura).",
+    "🔔 Aviso de recibos gordos 1–3 días antes (app Android).",
+    "🛟 Tutorial: ya no se queda pillado en los interrogantes «?»."
+  ]},
   {v:"3.109.0", d:"15 jul 2026", t:"Hogar compartido e informe del mes", items:[
     "🏠 Hogar compartido (Fase 1): crea un hogar, invita con código de 6 letras y ve el patrimonio fusionado — cada uno publica SU vista, sin mezclar datos.",
     "📊 El día 1 de cada mes te ofrece el informe automático (imagen para WhatsApp). También en Ajustes → Personalización.",
@@ -8354,8 +8526,9 @@ class ErrorBoundary extends React.Component{
 }
 
 /* ============================================================
-   HOGAR — vista fusionada por snapshots (Fase 1)
-   Cada miembro publica SU patrimonio; el hogar suma sin escribir en app_state ajeno.
+   HOGAR — vista fusionada por snapshots (Fase 1+2)
+   Cada miembro publica SU vista; el hogar suma sin escribir en app_state ajeno.
+   Fase 2: gastos por categoría + fijos (solo lectura, agregados).
    ============================================================ */
 
 function mcInviteCode(){
@@ -8370,6 +8543,22 @@ function buildHouseholdSnapshot(state, totals, email){
     const val=(totals.bankBal&&totals.bankBal[a.ent]!=null)?totals.bankBal[a.ent]:(a.value||0);
     return { name:a.name||ent.label, ent:a.ent, label:ent.label, value:+Number(val).toFixed(2) };
   });
+  // Gastos del mes por categoría (sin comercios: privacidad)
+  const byCat={};
+  (state.expenses||[]).forEach(function(e){
+    if(!(e.amount>0)) return;
+    if(parseDate(e.date)<startOfMonth()) return;
+    const k=e.category||"otros";
+    byCat[k]=(byCat[k]||0)+e.amount;
+  });
+  const expensesByCat=Object.keys(byCat).map(function(id){
+    return { id:id, spent:+Number(byCat[id]).toFixed(2) };
+  }).sort(function(a,b){ return b.spent-a.spent; }).slice(0,8);
+  // Fijos: total mensual + top 5 (nombre + importe, sin cuentas bancarias)
+  const fixedTop=(state.fixed||[]).map(function(f){
+    return { name:f.name||"?", amount:+Number((f.amount||0)*(FREQ_M[f.freq]||1)).toFixed(2) };
+  }).filter(function(f){ return f.amount>0; })
+    .sort(function(a,b){ return b.amount-a.amount; }).slice(0,5);
   return {
     displayName:(email&&email.split("@")[0])||"Usuario",
     netWorth:+Number(totals.netWorth||0).toFixed(2),
@@ -8380,6 +8569,10 @@ function buildHouseholdSnapshot(state, totals, email){
     thisMonthSpent:+Number(totals.thisMonthSpent||0).toFixed(2),
     budget:state.budget||0,
     accounts:accounts,
+    expensesByCat:expensesByCat,
+    fixedMonthly:+Number(totals.fijosMensual||0).toFixed(2),
+    fixedThisMonth:+Number(totals.fijosEsteMes||0).toFixed(2),
+    fixedTop:fixedTop,
     appVersion:CONFIG.APP_VERSION,
     publishedAt:new Date().toISOString(),
   };
@@ -8387,7 +8580,8 @@ function buildHouseholdSnapshot(state, totals, email){
 
 function mergeHouseholdSnapshots(snaps){
   const list=(snaps||[]).filter(function(s){ return s&&s.payload; });
-  let net=0, activos=0, debts=0, invested=0, spent=0;
+  let net=0, activos=0, debts=0, invested=0, spent=0, fixedM=0;
+  const catMap={};
   const byMember=[];
   list.forEach(function(row){
     const p=row.payload||{};
@@ -8396,20 +8590,33 @@ function mergeHouseholdSnapshots(snaps){
     debts+=Number(p.debtTotal)||0;
     invested+=Number(p.invested)||0;
     spent+=Number(p.thisMonthSpent)||0;
+    fixedM+=Number(p.fixedMonthly)||0;
+    (p.expensesByCat||[]).forEach(function(c){
+      catMap[c.id]=(catMap[c.id]||0)+(Number(c.spent)||0);
+    });
     byMember.push({
       userId:row.user_id,
       name:p.displayName||"?",
       netWorth:Number(p.netWorth)||0,
+      thisMonthSpent:Number(p.thisMonthSpent)||0,
+      fixedMonthly:Number(p.fixedMonthly)||0,
       accounts:p.accounts||[],
+      fixedTop:p.fixedTop||[],
+      expensesByCat:p.expensesByCat||[],
       publishedAt:row.published_at||p.publishedAt,
     });
   });
+  const expensesByCat=Object.keys(catMap).map(function(id){
+    return { id:id, spent:+Number(catMap[id]).toFixed(2) };
+  }).sort(function(a,b){ return b.spent-a.spent; });
   return {
     netWorth:+net.toFixed(2),
     activos:+activos.toFixed(2),
     debtTotal:+debts.toFixed(2),
     invested:+invested.toFixed(2),
     thisMonthSpent:+spent.toFixed(2),
+    fixedMonthly:+fixedM.toFixed(2),
+    expensesByCat:expensesByCat,
     members:byMember,
   };
 }
@@ -8516,6 +8723,8 @@ function HogarSection({state, totals, uid, showToast, meEmail}){
     );
   }
 
+  const maxCat=merged.expensesByCat.length?merged.expensesByCat[0].spent:1;
+
   return React.createElement("div",{className:"card",style:{padding:"14px 16px",marginBottom:14}},
     React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}},
       React.createElement("div",null,
@@ -8530,16 +8739,49 @@ function HogarSection({state, totals, uid, showToast, meEmail}){
         React.createElement("div",{className:"hint"}, tf("hh_members_n",{n:merged.members.length}))
       )
     ),
+    // Fase 2 · gasto del hogar este mes
+    React.createElement("div",{style:{marginTop:14,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+      React.createElement("div",{className:"metric",style:{padding:12}},
+        React.createElement("div",{className:"mlabel"}, t("hh_spent_m")),
+        React.createElement("div",{className:"num",style:{fontWeight:800,fontSize:18}}, eur0(merged.thisMonthSpent))),
+      React.createElement("div",{className:"metric",style:{padding:12}},
+        React.createElement("div",{className:"mlabel"}, t("hh_fixed_m")),
+        React.createElement("div",{className:"num",style:{fontWeight:800,fontSize:18}}, eur0(merged.fixedMonthly)))
+    ),
+    merged.expensesByCat.length>0 && React.createElement("div",{style:{marginTop:14}},
+      React.createElement("div",{className:"gm-sec-h"}, t("hh_cats")),
+      merged.expensesByCat.slice(0,6).map(function(c){
+        const cat=catOf(c.id);
+        const pct=Math.max(4, Math.round(100*c.spent/maxCat));
+        return React.createElement("div",{key:c.id,style:{marginTop:8}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:13}},
+            React.createElement("span",null, (cat.icon||"")+" "+catName(c.id)),
+            React.createElement("span",{className:"num",style:{fontWeight:700}}, eur0(c.spent))),
+          React.createElement("div",{className:"bar",style:{marginTop:4}},
+            React.createElement("i",{style:{width:pct+"%",background:cat.color||"var(--mint)"}}))
+        );
+      })
+    ),
     merged.members.map(function(m,i){
       return React.createElement("div",{key:m.userId||i,style:{marginTop:12,paddingTop:12,borderTop:"1px solid var(--line-soft)"}},
         React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center"}},
           React.createElement("span",{style:{fontWeight:700}}, m.name),
           React.createElement("span",{className:"num",style:{fontWeight:700}}, eur(m.netWorth))),
+        React.createElement("div",{className:"hint",style:{marginTop:4}},
+          t("hh_spent_m")+": "+eur0(m.thisMonthSpent)+" · "+t("hh_fixed_m")+": "+eur0(m.fixedMonthly)),
         (m.accounts||[]).slice(0,6).map(function(a,j){
           return React.createElement("div",{key:j,className:"liqrow",style:{fontSize:12.5,marginTop:4}},
             React.createElement("span",{className:"muted"}, (a.label||a.name)),
             React.createElement("span",{className:"num"}, eur0(a.value)));
         }),
+        (m.fixedTop||[]).length>0 && React.createElement("div",{style:{marginTop:6}},
+          React.createElement("div",{className:"hint",style:{fontSize:11}}, t("hh_fixed_top")),
+          m.fixedTop.map(function(f,j){
+            return React.createElement("div",{key:j,className:"liqrow",style:{fontSize:12,marginTop:2}},
+              React.createElement("span",{className:"muted"}, f.name),
+              React.createElement("span",{className:"num"}, eur0(f.amount)));
+          })
+        ),
         m.publishedAt && React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:4}},
           t("hh_updated")+" "+new Date(m.publishedAt).toLocaleString())
       );
@@ -9312,6 +9554,28 @@ function App(){
     },3000);
     return function(){ clearTimeout(tmr); };
   },[state.onboarded,locked,showAuth,tourOpen,whatsNew]);
+  // Recordatorio de recibos gordos (2–3 días antes). Una noti/día máx. por cargo.
+  useEffect(function(){
+    if(state.onboarded===false||locked||showAuth) return;
+    const nat=natPlugin();
+    if(!nat||!nat.showNotification) return;
+    const today=totals.today||new Date().getDate();
+    const cm=totals.curMonth, cy=totals.curYear;
+    const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
+    const ym=cy+"-"+String(cm).padStart(2,"0");
+    (state.fixed||[]).forEach(function(e){
+      if(!occursIn(e,cm)) return;
+      const d=dayIn(e,cm); if(d==null) return;
+      if(isPaidIn(e,cm,today)) return;
+      const amt=occAmountIn(e,cm)||0;
+      if(amt<minAmt) return;
+      const daysLeft=d-today;
+      if(daysLeft<1||daysLeft>3) return;
+      const key="_rc_"+e.id+"_"+ym+"_"+d;
+      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
+      try{ nat.showNotification({title:t("rc_title"),body:tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)})}).catch(function(){}); }catch(err){}
+    });
+  },[state.onboarded,locked,showAuth,state.fixed,totals.today,totals.curMonth]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){

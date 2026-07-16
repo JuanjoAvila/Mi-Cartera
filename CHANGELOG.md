@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.110.0] — 2026-07-16
+### Tutorial, fin de mes, Hogar Fase 2, presupuestos
+- 🛟 **Tour:** scroll al `?` de la pestaña visible + tip siempre en viewport (ya no se queda pillado).
+- 😌 **Fin de mes en paz** + **presupuesto por categoría** (widgets Resumen).
+- 🏠 **Hogar Fase 2:** snapshot con gastos por cat + fijos (sin migración SQL).
+- 🔔 Recordatorio recibos gordos (Android).
+- 📦 Solo OTA web — **sin APK nuevo** (alpha21 sigue válido; evita líos de instalación).
+
 ## [3.109.0] — 2026-07-15
 ### Hogar compartido + informe mensual + fluidez
 - 🏠 **Hogar Fase 1:** crear/unirse por código, publicar snapshot, patrimonio fusionado (Supabase `0013_households.sql`).

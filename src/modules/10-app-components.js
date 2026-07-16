@@ -32,7 +32,7 @@ const TABS=[
 // Pestañas avanzadas: se ocultan en "modo simple" (settings.simpleMode) para gente que quiere lo básico.
 const ADVANCED_TABS=["metas","logros","inv","patri","debt","compartido"];
 // Widgets del Resumen que el modo simple esconde (deja hero + presupuesto + frase "puedes gastar").
-const SIMPLE_DASH_HIDDEN=["goal","dist","fixedsave","savings","culprit","trend"];
+const SIMPLE_DASH_HIDDEN=["goal","dist","fixedsave","savings","culprit","trend","pace","catbudget"];
 // Pestañas ocultas: settings.tabHidden (elegidas por el usuario con + / papelera). Si el usuario
 // aún no ha personalizado nada, se deriva del modo simple (ADVANCED_TABS) para no cambiar el
 // comportamiento de estados existentes. "dash" nunca se puede ocultar.
@@ -452,6 +452,13 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.110.0", d:"16 jul 2026", t:"Fin de mes en paz, Hogar completo y tutorial arreglado", items:[
+    "😌 Fin de mes en paz: en el Resumen ves cuánto puedes gastar al día y si vas demasiado rápido.",
+    "📊 Presupuesto por categoría con barritas (Editar → super=200, ocio=80…).",
+    "🏠 Hogar Fase 2: al publicar tu vista se suman gastos por categoría y fijos del hogar (solo lectura).",
+    "🔔 Aviso de recibos gordos 1–3 días antes (app Android).",
+    "🛟 Tutorial: ya no se queda pillado en los interrogantes «?»."
+  ]},
   {v:"3.109.0", d:"15 jul 2026", t:"Hogar compartido e informe del mes", items:[
     "🏠 Hogar compartido (Fase 1): crea un hogar, invita con código de 6 letras y ve el patrimonio fusionado — cada uno publica SU vista, sin mezclar datos.",
     "📊 El día 1 de cada mes te ofrece el informe automático (imagen para WhatsApp). También en Ajustes → Personalización.",
