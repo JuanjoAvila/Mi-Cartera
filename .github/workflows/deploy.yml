@@ -40,6 +40,8 @@ jobs:
           node-version: 20
 
       - name: Ensamblar index.html desde src/
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: node scripts/build-app.mjs
 
       - name: Sellar versión del Service Worker

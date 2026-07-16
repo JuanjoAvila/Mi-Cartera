@@ -1,19 +1,30 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-15 · **v3.108.0** — producto en modo mantenimiento evolutivo.
+> Estado a 2026-07-16 · **v3.110.0** — producto en modo mantenimiento evolutivo.
 
 ## Listo para uso diario
 
-Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1**, informe mensual día 1.
+Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1+2**, informe mensual día 1 (imagen WhatsApp), fin de mes en paz, presupuesto por categoría, recibos gordos, **widget Android**, export JSON + informe imagen.
 
 ## Solo si lo pides
 
 | Tema | Notas |
 |------|--------|
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
-| **Hogar Fase 2** | Gastos y fijos fusionados en el snapshot |
-| **§5 restante** | Fin de mes en paz, presupuesto por categoría, widget Android, recibos gordos |
-| **Sentry en prod** | Añadir `SENTRY_DSN` en GitHub Secrets — ver [SENTRY.md](SENTRY.md) |
+| **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
+| **Sentry en prod** | Secret `SENTRY_DSN` + CI ya cableado — ver [SENTRY.md](SENTRY.md) |
+
+## Widget Android (ya existe)
+
+En el móvil: **mantener pulsado en el escritorio → Widgets → Mi Cartera**.  
+Muestra gasto del mes vs presupuesto + saldo de la cuenta diaria. Se actualiza al abrir la app y al apuntar gastos de TR.
+
+## Export / informe
+
+| Qué | Dónde | Estado |
+|-----|--------|--------|
+| Backup JSON | Ajustes → Copia de seguridad → Exportar | ✅ |
+| Informe del mes (imagen WhatsApp) | Ajustes → Personalización → Informe del mes · popup día 1 | ✅ |
 
 ## Mantenimiento habitual
 
@@ -21,4 +32,4 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 2. Features nuevas / feedback  
 3. Preparación Play Store (cuando quieras)
 
-Ver [CHANGELOG.md](../CHANGELOG.md) · [TESTING.md](TESTING.md) · [SENTRY.md](SENTRY.md)
+Ver [CHANGELOG.md](../CHANGELOG.md) · [TESTING.md](TESTING.md) · [SENTRY.md](SENTRY.md) · [HOGAR.md](HOGAR.md)
