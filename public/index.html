@@ -1471,6 +1471,7 @@ const LANG = {
     eb_title:"Algo se ha torcido", eb_msg:"La app ha tenido un error al dibujar. Tus datos están a salvo. Descarga una copia por si acaso y recarga.", eb_export:"⬇️ Descargar copia de seguridad", eb_reload:"🔄 Recargar la app",
     off_pill:"📴 Sin conexión · se guarda y sincroniza al volver",
     upd_ready:"✨ Nueva versión · toca para actualizar",
+    upd_downloading:"⬇️ Descargando versión nueva…",
     upd_notif:"Hay una actualización (v{v}) lista. Toca para instalarla.",
     upd_notif_web:"Hay una versión nueva de la app. Toca el botón de arriba para actualizar.",
     upd_notif_apk:"Hay una app nueva (v{v}). Toca el botón de arriba para instalarla.",
@@ -1498,7 +1499,7 @@ const LANG = {
     st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
     st_banksync_notif:"Al detectar aviso del banco, sincronizar movimientos", st_banksync_notif_hint:"Si Caixa, Sabadell u otro banco te manda una notificación, la app pide los movimientos por Open Banking (no lee el importe de la noti). Como máximo una sync cada 2 minutos.",
     st_aicat:"Sugerir categoría (IA) en «Otros»", st_aicat_hint:"En Gastos, si un comercio queda en Otros, puedes pedir sugerencia. Primero usa palabras clave; si hay OPENAI_API_KEY en Supabase, la IA solo actúa en esos casos. No se envía el importe.",
-    st_sentry:"Sentry (errores en prod)", st_sentry_test:"Enviar error de prueba", st_sentry_sent:"✓ Enviado a Sentry (mira Issues en unos segundos)", st_sentry_hint:"El DSN lo inyecta el deploy. Solo aparece este bloque si la versión publicada lleva Sentry activo.",
+    st_sentry:"Sentry (errores en prod)", st_sentry_test:"Enviar error de prueba", st_sentry_sent:"✓ Enviado a Sentry (mira Issues en unos segundos)", st_sentry_hint:"Solo tú ves este bloque (admin). Sirve para comprobar que los crashes llegan a Sentry; el resto de usuarios no lo ve.",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar",
     ob_welcome:"Bienvenido/a 👋",
@@ -1522,6 +1523,7 @@ const LANG = {
     eb_title:"Something went wrong", eb_msg:"The app hit a rendering error. Your data is safe. Download a backup just in case and reload.", eb_export:"⬇️ Download backup", eb_reload:"🔄 Reload the app",
     off_pill:"📴 Offline · saved and synced when you're back",
     upd_ready:"✨ New version · tap to update",
+    upd_downloading:"⬇️ Downloading new version…",
     upd_notif:"An update (v{v}) is ready. Tap to install it.",
     upd_notif_web:"A new app version is ready. Tap the button at the top to update.",
     upd_notif_apk:"A new app (v{v}) is ready. Tap the button at the top to install it.",
@@ -1549,7 +1551,7 @@ const LANG = {
     st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
     st_banksync_notif:"When a bank notification arrives, sync movements", st_banksync_notif_hint:"If Caixa, Sabadell or another bank notifies you, the app pulls movements via Open Banking (it does not parse the notification amount). At most one sync every 2 minutes.",
     st_aicat:"Suggest category (AI) for “Other”", st_aicat_hint:"In Spending, if a merchant lands in Other, you can ask for a suggestion. Keywords first; if OPENAI_API_KEY is set in Supabase, AI only runs then. Amount is never sent.",
-    st_sentry:"Sentry (prod errors)", st_sentry_test:"Send test error", st_sentry_sent:"✓ Sent to Sentry (check Issues in a few seconds)", st_sentry_hint:"The DSN is injected on deploy. This block only shows if the published build has Sentry on.",
+    st_sentry:"Sentry (prod errors)", st_sentry_test:"Send test error", st_sentry_sent:"✓ Sent to Sentry (check Issues in a few seconds)", st_sentry_hint:"Only you see this block (admin). Use it to verify crashes reach Sentry; other users never see it.",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar",
     ob_welcome:"Welcome 👋",
@@ -1573,6 +1575,7 @@ const LANG = {
     eb_title:"Alguna cosa ha fallat", eb_msg:"L'app ha tingut un error en dibuixar. Les teves dades estan segures. Descarrega una còpia per si de cas i recarrega.", eb_export:"⬇️ Descarrega còpia de seguretat", eb_reload:"🔄 Recarrega l'app",
     off_pill:"📴 Sense connexió · es desa i sincronitza en tornar",
     upd_ready:"✨ Nova versió · toca per actualitzar",
+    upd_downloading:"⬇️ Baixant versió nova…",
     upd_notif:"Hi ha una actualització (v{v}) a punt. Toca per instal·lar-la.",
     upd_notif_web:"Hi ha una versió nova de l'app. Toca el botó de dalt per actualitzar.",
     upd_notif_apk:"Hi ha una app nova (v{v}). Toca el botó de dalt per instal·lar-la.",
@@ -1600,7 +1603,7 @@ const LANG = {
     st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
     st_banksync_notif:"En detectar avís del banc, sincronitzar moviments", st_banksync_notif_hint:"Si Caixa, Sabadell o un altre banc et envia una notificació, l'app demana els moviments per Open Banking (no llegeix l'import de la noti). Com a màxim una sync cada 2 minuts.",
     st_aicat:"Suggerir categoria (IA) a «Altres»", st_aicat_hint:"A Despeses, si un comerç queda a Altres, pots demanar suggeriment. Primer paraules clau; si hi ha OPENAI_API_KEY a Supabase, l'IA només actua aleshores. No s'envia l'import.",
-    st_sentry:"Sentry (errors en prod)", st_sentry_test:"Envia error de prova", st_sentry_sent:"✓ Enviat a Sentry (mira Issues en uns segons)", st_sentry_hint:"El DSN l'injecta el deploy. Aquest bloc només surt si la versió publicada porta Sentry actiu.",
+    st_sentry:"Sentry (errors en prod)", st_sentry_test:"Envia error de prova", st_sentry_sent:"✓ Enviat a Sentry (mira Issues en uns segons)", st_sentry_hint:"Només tu veus aquest bloc (admin). Serveix per comprovar que els crashes arriben a Sentry; la resta d'usuaris no el veuen.",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar",
     ob_welcome:"Benvingut/da 👋",
@@ -4415,14 +4418,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
   const [catEdit,setCatEdit]=useState(null);   // id del gasto al que estás cambiando la categoría
   const [aiBusy,setAiBusy]=useState(false);
-  // Suscripciones y filtros pesados solo con la pestaña enfocada (cold start Android 2026-07-16).
+  // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
+  // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
   useEffect(function(){
-    if(!active){ setHeavyOk(false); return; }
+    if(!active||heavyOk) return;
     var cancelled=false;
-    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 80);
+    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 40);
     return function(){ cancelled=true; };
-  },[active]);
+  },[active,heavyOk]);
   const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -4502,8 +4506,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const cycle=useMemo(()=>lastPaydayOf(expensesDef),[expensesDef]);
   // Bancos presentes en el período (o configurados como gasto) → chips de filtro.
   // "_manual" = apuntados a mano / sin banco conocido (no mezclar con OB).
+  // Chips de banco: baratos y SIEMPRE visibles (no dependen de heavyOk → sin flash).
   const bankOpts=useMemo(function(){
-    if(!heavyOk) return [];
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
     expenseBankEnts(state).forEach(add);
@@ -4515,7 +4519,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     });
     if(hasManual) order.push("_manual");
     return order;
-  },[heavyOk,expensesDef,state.accounts,state.settings,preset,range,cycle]);
+  },[expensesDef,state.accounts,state.settings,preset,range,cycle]);
   const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return (expensesDef||[])
     .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
     .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
@@ -7877,6 +7881,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.113.2", d:"16 jul 2026", t:"Sin parpadeos al cambiar de pestaña y updates más ágiles", items:[
+    "🏦 Al ir de Resumen a Gastos (y al revés) ya no «parpadean» los bancos ni el contenido.",
+    "⚡ Arranque: Gastos no se monta en segundo plano a lo loco; solo cuando lo tocas.",
+    "⬇️ Si hay versión nueva, el aviso sale antes (mientras descarga) y, si ya estaba lista, te avisa al abrir si aún no te había avisado.",
+    "🛡️ El botón de «error de prueba» de Sentry en Ajustes solo lo ves tú (como Actividad); el resto de la casa no."
+  ]},
   {v:"3.113.1", d:"16 jul 2026", t:"Más comercios reconocidos en Gastos", items:[
     "🏛️ Nueva categoría «Impuestos y multas» para cosas como Gencat, AEAT, DGT, ayuntamientos o sanciones.",
     "🧠 El detector de categorías reconoce más comercios reales sin llenar de botones el filtro: mejor diccionario, misma pantalla simple.",
@@ -8423,8 +8433,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
-    // Sentry en prod: el DSN lo inyecta el CI. Botón de prueba para ver Issues sin petar la app.
-    CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
+    // Sentry: captura sigue activa para todos (DSN en CI). El bloque de prueba SOLO al admin
+    // (mismo gate que «Actividad») — feedback 2026-07-16: no asustar a la pareja.
+    isAdmin && CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
       row("sentry","🧪",t("st_sentry_test"),null,function(){
         try{ mcCaptureError(new Error("Sentry test Mi Cartera "+CONFIG.APP_VERSION),{kind:"manual_test"}); showToast(t("st_sentry_sent")); }
         catch(e){ showToast("⚠ "+((e&&e.message)||e)); }
@@ -9527,14 +9538,21 @@ function App(){
     }catch(e){ return false; }
   });
   useEffect(function(){
-    const h=function(){ setOtaReady(!!(window._mcOtaReady&&window._mcOtaReady.id)); };
+    const h=function(){
+      // Pill si hay bundle listo O si ya hay pending (descargando / listo al próximo arranque).
+      if(window._mcOtaReady&&window._mcOtaReady.id){ setOtaReady(true); return; }
+      try{
+        var p=localStorage.getItem("_otaPending");
+        setOtaReady(!!(p&&window._mcNewerVer&&window._mcNewerVer(p, CONFIG.APP_VERSION)));
+      }catch(e){ setOtaReady(false); }
+    };
     window.addEventListener("mc-ota-ready", h);
     if(window._mcRestoreOtaPending) window._mcRestoreOtaPending();
     var tick=function(){
       if(window._mcCheckOtaUpdates) window._mcCheckOtaUpdates();
       if(window._mcCheckApkUpdate) window._mcCheckApkUpdate();
     };
-    setTimeout(tick, 600);
+    setTimeout(tick, 150);
     var onVis=function(){ if(document.visibilityState==="visible") tick(); };
     document.addEventListener("visibilitychange", onVis);
     var iv=setInterval(tick, 30*60*1000);
@@ -10130,19 +10148,12 @@ function App(){
     if(!id) return;
     setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
   },[tab, tabIds.join("|")]);
-  // Tras el primer pintado del Resumen: abrir ventana de vecinas + pre-montar Gastos/Fijos
-  // en idle (así el swipe ya no monta en caliente, pero el cold start no paga ese coste).
+  // Tras el primer pintado: habilitar vecinas ±1. NO pre-montar Gastos/Fijos aquí — eso
+  // recreaba el lagazo del cold start (feedback 2026-07-16). Se montan al toque (prepMountTab).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    mcScheduleIdle(function(){
-      setMountNeighbors(true);
-      setMountedTabs(function(m){
-        var n=Object.assign({},m);
-        ["dash","gastos","fijos"].forEach(function(id){ if(tabIds.indexOf(id)>=0) n[id]=true; });
-        return n;
-      });
-    }, 1600);
-  },[state.onboarded, locked, tabIds.join("|")]);
+    mcScheduleIdle(function(){ setMountNeighbors(true); }, 900);
+  },[state.onboarded, locked]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.
@@ -10224,10 +10235,11 @@ function App(){
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
         tabIds.map(function(id,i){
-          // Cold start: solo la pestaña activa es live/montada. Luego (idle) vecinas ±1.
+          // Cold start: solo activa. Luego idle → vecinas ±1. Página YA visitada se queda
+          // montada + page-live (si no, content-visibility:auto la «apaga» y al volver parpadea).
           var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
           var show=live||!!mountedTabs[id];
-          return React.createElement("div",{className:"page"+(live?" page-live":""),key:id},
+          return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
             show && React.createElement(TabCoach,{tabId:id}),
             show ? pageFor(id) : null
           );
@@ -10239,7 +10251,13 @@ function App(){
     tourOpen && React.createElement(Tour,{onDone:endTour}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
     monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),
-    (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){ if(otaReady && window.__mcApplyOta){ window.__mcApplyOta(); } else if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); } }}, t("upd_ready")),
+    (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){
+      if(otaReady){
+        if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
+        showToast(t("upd_downloading")); return;
+      }
+      if(window.__mcApplyUpdate) window.__mcApplyUpdate();
+    }}, (otaReady&&!(window._mcOtaReady&&window._mcOtaReady.id))?t("upd_downloading"):t("upd_ready")),
     apkUpd && React.createElement("button",{className:"update-pill",onClick:doApkInstall}, tf("apk_ready",{v:apkUpd.versionName})),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
@@ -10295,6 +10313,12 @@ window._mcNotifyUpdate=function(version, kind){
   }catch(e){}
 };
 
+window._mcSignalOtaPending=function(version){
+  if(!version) return;
+  try{ localStorage.setItem("_otaPending", version); }catch(e){}
+  try{ window.dispatchEvent(new CustomEvent("mc-ota-ready")); }catch(e){}
+};
+
 window._mcSignalOtaReady=function(id, version, opts){
   if(!id||!version) return;
   var silent=opts&&opts.silent;
@@ -10318,7 +10342,9 @@ window._mcRestoreOtaPending=function(){
     var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
     if(!up||!up.getNext) return;
     up.getNext().then(function(next){
-      if(next&&next.id) window._mcSignalOtaReady(next.id, next.version||pend, {silent:true});
+      // silent:false → si aún no se notificó esta versión, avisa al abrir (antes no avisaba
+      // al restaurar y parecía que «solo notifica cuando entro», feedback 2026-07-16).
+      if(next&&next.id) window._mcSignalOtaReady(next.id, next.version||pend, {silent:false});
     }).catch(function(){});
   }catch(e){}
 };
@@ -10326,6 +10352,8 @@ window._mcRestoreOtaPending=function(){
 window._mcDownloadOta=function(up, v, opts){
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
+  // Pill YA mientras descarga (antes solo al terminar → «tarda un montón», 2026-07-16).
+  if(!manual) window._mcSignalOtaPending(v.version);
   if(manual&&toast) toast(tf("st_up_applying",{v:v.version}));
   return up.download({url:(v.url||_mcOtaBASE+"bundle.zip"), version:v.version})
     .then(function(b){
@@ -10422,7 +10450,7 @@ window._mcCheckApkUpdate=function(opts){
     setTimeout(function(){
       window._mcCheckOtaUpdates();
       window._mcCheckApkUpdate();
-    }, 600);
+    }, 120);
   }catch(e){}
 })();
 

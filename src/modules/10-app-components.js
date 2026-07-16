@@ -487,6 +487,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.113.2", d:"16 jul 2026", t:"Sin parpadeos al cambiar de pestaña y updates más ágiles", items:[
+    "🏦 Al ir de Resumen a Gastos (y al revés) ya no «parpadean» los bancos ni el contenido.",
+    "⚡ Arranque: Gastos no se monta en segundo plano a lo loco; solo cuando lo tocas.",
+    "⬇️ Si hay versión nueva, el aviso sale antes (mientras descarga) y, si ya estaba lista, te avisa al abrir si aún no te había avisado.",
+    "🛡️ El botón de «error de prueba» de Sentry en Ajustes solo lo ves tú (como Actividad); el resto de la casa no."
+  ]},
   {v:"3.113.1", d:"16 jul 2026", t:"Más comercios reconocidos en Gastos", items:[
     "🏛️ Nueva categoría «Impuestos y multas» para cosas como Gencat, AEAT, DGT, ayuntamientos o sanciones.",
     "🧠 El detector de categorías reconoce más comercios reales sin llenar de botones el filtro: mejor diccionario, misma pantalla simple.",
@@ -1033,8 +1039,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
-    // Sentry en prod: el DSN lo inyecta el CI. Botón de prueba para ver Issues sin petar la app.
-    CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
+    // Sentry: captura sigue activa para todos (DSN en CI). El bloque de prueba SOLO al admin
+    // (mismo gate que «Actividad») — feedback 2026-07-16: no asustar a la pareja.
+    isAdmin && CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
       row("sentry","🧪",t("st_sentry_test"),null,function(){
         try{ mcCaptureError(new Error("Sentry test Mi Cartera "+CONFIG.APP_VERSION),{kind:"manual_test"}); showToast(t("st_sentry_sent")); }
         catch(e){ showToast("⚠ "+((e&&e.message)||e)); }
