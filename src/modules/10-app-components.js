@@ -970,8 +970,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
     // ── Grupo · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
-    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar",null,
-      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates)
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
+      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
     // ── Grupo · copia de seguridad ──
     grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,

@@ -18,7 +18,7 @@ Después del trial **no te cobran solos** si no metes tarjeta. Pasas al plan gra
 Cuando la app **petardea en el móvil de alguien** (pantalla blanca, crash raro), Sentry te manda:
 
 - mensaje del error
-- versión de la app (3.109.0)
+- versión de la app
 - móvil / navegador
 - **sin** datos financieros del usuario
 
@@ -26,50 +26,53 @@ Es la “caja negra” en producción. Playwright prueba antes de publicar; Sent
 
 ---
 
-## Configuración recomendada (sin instalar Sentry en el repo)
+## ⚠️ NO uses el «Loader Script» de Sentry
 
-**No hace falta** la integración de GitHub de Sentry que te ofrece en “Get started”. Mi Cartera ya lleva el SDK embebido. Solo necesitas el **DSN**.
+La pantalla de Sentry te pide pegar algo así:
 
-### Paso 1 — Crear proyecto
+```html
+<script src="https://js-de.sentry-cdn.com/….min.js" …>
+```
 
-1. Entra en [sentry.io](https://sentry.io) (cuenta creada ✓)
-2. En “Choose your SDK” elige **Browser JavaScript** (no Capacitor)
-3. Si pregunta framework → **Nope, Vanilla** (el SDK ya va embebido; no React)
-4. Solo **Error monitoring** → **Continue** → copia el **DSN**
+**No lo pegues en Mi Cartera.** Motivos:
 
-### Paso 2 — Secreto en GitHub
+1. La app **ya lleva** Sentry auto-hospedado en `public/vendor/sentry.bundle.min.js` (offline + sin CDN de terceros).
+2. El CI inyecta tu DSN al construir (`SENTRY_DSN`).
 
-1. GitHub → repo **Mi-Cartera** → **Settings** → **Secrets and variables** → **Actions**
-2. **New repository secret**
-   - Name: `SENTRY_DSN`
-   - Value: pega el DSN completo
-3. Guardar
+### Qué hacer en esa pantalla
 
-### Paso 3 — Desplegar
-
-Push a `main` → el CI inyecta el DSN al build → la web ya reporta errores.
-
-### Paso 4 — Ver errores
-
-Sentry → **Issues**. Cada crash aparece ahí con stack trace.
+1. Arriba a la derecha → botón **«Copy DSN»** (no el script).
+2. El DSN es una URL tipo:  
+   `https://xxxx@oNNNN.ingest.de.sentry.io/NNNN`
+3. Si ya lo pusiste en GitHub Secrets como `SENTRY_DSN` → **listo**.
+4. Puedes pulsar **Skip** / cerrar el wizard. El «Waiting for error…» se puede ignorar: el primer crash real en producción aparecerá en **Issues**.
 
 ---
 
-## ¿Y la integración GitHub de Sentry?
+## Pasos (resumen)
 
-Opcional. Sirve para ver commits en cada error. **Puedes saltarla** (“Skip setup”) — la app funciona igual con solo el DSN.
+### 1. Proyecto Sentry
 
----
+- Browser JavaScript → **Nope, Vanilla** → solo Error monitoring → **Copy DSN**
 
-## Local (opcional)
+### 2. Secreto en GitHub
+
+1. Repo **Mi-Cartera** → **Settings** → **Secrets and variables** → **Actions**
+2. Secret: `SENTRY_DSN` = el DSN completo
+
+### 3. Deploy
+
+Push a `main` → el workflow `deploy.yml` pasa el secreto a `build-app.mjs` → la web publicada ya reporta.
+
+### Local (opcional)
 
 ```powershell
 cd "E:\Mi Cartera"
-$env:SENTRY_DSN="https://xxx@xxx.ingest.sentry.io/xxx"
+$env:SENTRY_DSN="https://…@….ingest.sentry.io/…"
 npm run build
 ```
 
-Sin DSN: `mcInitSentry()` no hace nada.
+Sin DSN: la app funciona igual; Sentry no hace nada.
 
 ---
 
@@ -79,4 +82,4 @@ Sin DSN: `mcInitSentry()` no hace nada.
 npm run build:sentry
 ```
 
-Ver también [TESTING.md](TESTING.md) para Playwright.
+Ver también [TESTING.md](TESTING.md) · [PLAYWRIGHT-WIN.md](PLAYWRIGHT-WIN.md).

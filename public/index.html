@@ -1401,6 +1401,7 @@ const LANG = {
     cc_hide:"Ocultar", cc_show:"Mostrar",
     st_updates:"Actualizaciones", st_update:"Buscar actualización",
     st_up_ok:"✓ Estás a la última", st_up_web:"Hay versión web nueva: se instala sola — cierra y abre la app para estrenarla", st_up_applying:"⬇️ Actualizando a la v{v}… la app se recarga sola en unos segundos", st_up_apk:"⬇️ App {v} disponible · descargando, se abrirá el instalador",
+    st_widget_hint:"📱 Widget: mantén pulsado el escritorio → Widgets → Mi Cartera. Verás el gasto del mes y lo que te queda.",
     st_news:"Novedades", st_news_row:"Novedades y sugerencias",
     st_account:"Tu cuenta", st_privacy:"Privacidad y datos", st_delete_acc:"Borrar mi cuenta",
     st_delete_acc_sub:"Se borrarán todos tus datos en la nube (gastos, cuentas, inversiones…). No se puede deshacer.",
@@ -1448,6 +1449,7 @@ const LANG = {
     cc_hide:"Hide", cc_show:"Show",
     st_updates:"Updates", st_update:"Check for updates",
     st_up_ok:"✓ You're up to date", st_up_web:"New web version available: it installs itself — close and reopen the app", st_up_applying:"⬇️ Updating to v{v}… the app will reload itself in a few seconds", st_up_apk:"⬇️ App {v} available · downloading, the installer will open",
+    st_widget_hint:"📱 Widget: long-press the home screen → Widgets → Mi Cartera. Shows this month's spend and what's left.",
     st_news:"What's new", st_news_row:"What's new & feedback",
     st_account:"Your account", st_privacy:"Privacy & data", st_delete_acc:"Delete my account",
     st_delete_acc_sub:"All your cloud data will be deleted (expenses, accounts, investments…). This can't be undone.",
@@ -1495,6 +1497,7 @@ const LANG = {
     cc_hide:"Amaga", cc_show:"Mostra",
     st_updates:"Actualitzacions", st_update:"Cerca actualització",
     st_up_ok:"✓ Estàs a l'última", st_up_web:"Hi ha versió web nova: s'instal·la sola — tanca i obre l'app per estrenar-la", st_up_applying:"⬇️ Actualitzant a la v{v}… l'app es recarrega sola en uns segons", st_up_apk:"⬇️ App {v} disponible · baixant, s'obrirà l'instal·lador",
+    st_widget_hint:"📱 Widget: mantén premut l'escriptori → Widgets → Mi Cartera. Veuràs la despesa del mes i el que et queda.",
     st_news:"Novetats", st_news_row:"Novetats i suggeriments",
     st_account:"El teu compte", st_privacy:"Privacitat i dades", st_delete_acc:"Esborrar el meu compte",
     st_delete_acc_sub:"S'esborraran totes les teves dades al núvol (despeses, comptes, inversions…). No es pot desfer.",
@@ -8179,8 +8182,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
     // ── Grupo · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
-    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar",null,
-      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates)
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
+      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
     // ── Grupo · copia de seguridad ──
     grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
