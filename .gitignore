@@ -17,6 +17,7 @@ Thumbs.db
 *.swp
 # Artefactos temporales de build local
 /tmp/
+/supabase/.temp/
 # Bundle local de la app Android (lo genera scripts/build-www.mjs desde public/)
 /www/
 # APKs generadas localmente para compartir (build/outputs ya está gitignored por Android;

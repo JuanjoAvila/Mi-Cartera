@@ -487,6 +487,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.113.1", d:"16 jul 2026", t:"Más comercios reconocidos en Gastos", items:[
+    "🏛️ Nueva categoría «Impuestos y multas» para cosas como Gencat, AEAT, DGT, ayuntamientos o sanciones.",
+    "🧠 El detector de categorías reconoce más comercios reales sin llenar de botones el filtro: mejor diccionario, misma pantalla simple.",
+    "✅ Se han añadido pruebas para que no se rompan casos raros como Zooplus, Booking o papelerías."
+  ]},
   {v:"3.113.0", d:"16 jul 2026", t:"Arranque más suave, divisas y categorías inteligentes", items:[
     "⚡ Menos tirón al abrir la app y pasar a Gastos la primera vez (sobre todo tras vaciar las apps en Android).",
     "💱 Inversiones y cuentas en USD/GBP/CHF se pasan a € con tipos del BCE; si editas el coste invertido, queda anclado en euros.",

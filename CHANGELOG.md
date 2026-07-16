@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.113.1] — 2026-07-16
+### Categorías ampliadas sin inflar el filtro
+- 🏛️ **Nueva categoría:** `tasas` / **Impuestos y multas** para `Gencat`, `AEAT`, `DGT`, ayuntamientos, IBI, IVTM, sanciones y similares.
+- 🧠 **Más keywords reales** en transporte, ocio, compras y hogar sin añadir más chips al filtro (la idea es mejorar el diccionario, no llenar la UI).
+- ✅ **Tests:** `categories.test.mjs` cubre casos reales (`Gencat`, `AEAT`, `Booking`, `Papelería`, `Zooplus`) y se añade a `npm test`.
+
 ## [3.113.0] — 2026-07-16
 ### Cold-start, FX multi, categorías IA, Sentry prod
 - ⚡ **Cold start:** solo monta la pestaña activa al abrir; vecinas + pre-mount Gastos/Fijos tras idle ~1,6 s. Gastos: `useDeferredValue` + suscripciones/chips banco diferidos hasta pestaña activa (lag Android tras vaciar apps).
