@@ -11,13 +11,12 @@ Como la cuenta conjunta de CaixaBank, pero **sin mezclar datos**:
 
 Des-compartir = salir del hogar (borra tu snapshot, no toca el `app_state` del otro).
 
-## Migración Supabase (obligatoria una vez)
+## Migraciones Supabase
 
-En el panel Supabase → **SQL Editor** → ejecuta el contenido de:
-
-`supabase/migrations/0013_households.sql`
-
-O aplica migraciones con CLI si la usas.
+1. `0013_households.sql` — tablas del hogar (una vez).
+2. `0014_household_rls_no_recursion.sql` — **si ves**  
+   `infinite recursion detected in policy for relation "household_members"`  
+   pégalo en **SQL Editor → Run** (arregla las políticas RLS).
 
 ## Probar con dos cuentas
 

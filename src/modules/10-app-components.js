@@ -6,10 +6,13 @@
    botoncito «💡 ¿Cómo va esto?» para releerlo. Estado por pestaña en localStorage. */
 const TabCoach=React.memo(function TabCoach({tabId}){
   const tips=t("coach_"+tabId);
-  const [seen,setSeen]=useState(function(){ try{ return localStorage.getItem("_coach_"+tabId)==="1"; }catch(e){ return true; } });
+  // v2 en roles Gastos/Fijos/Patri: tras aclarar variable vs fijo + filtro banco (2026-07-16)
+  // se vuelve a mostrar una vez aunque ya hubieran cerrado el coach antiguo.
+  const coachKey="_coach_"+tabId+((tabId==="gastos"||tabId==="fijos"||tabId==="patri")?"_v2":"");
+  const [seen,setSeen]=useState(function(){ try{ return localStorage.getItem(coachKey)==="1"; }catch(e){ return true; } });
   const [open,setOpen]=useState(!seen);
   if(!Array.isArray(tips)||!tips.length) return null;
-  const dismiss=function(){ try{ localStorage.setItem("_coach_"+tabId,"1"); }catch(e){} setSeen(true); setOpen(false); };
+  const dismiss=function(){ try{ localStorage.setItem(coachKey,"1"); }catch(e){} setSeen(true); setOpen(false); };
   if(!open) return React.createElement("button",{className:"coach-pill",onClick:function(){ setOpen(true); }},"💡 "+t("coach_btn"));
   return React.createElement("div",{className:"coach-card"},
     React.createElement("div",{style:{fontWeight:800,fontSize:13.5,color:"var(--text)",marginBottom:4}},"💡 "+tf("coach_title",{tab:t("tab_"+tabId)})),
@@ -221,7 +224,7 @@ function BankHistoryImport({state, set, showToast, onClose}){
     if(!cands || !selCount) return;
     setImporting(true);
     const adds=cands.filter(function(x,i){ return sel[i]; }).map(function(x){
-      const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:x.amount, category:autoCategory(x.merchant||""), source:"ob-hist" };
+      const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:x.amount, category:autoCategory(x.merchant||""), source:"ob-hist", ent:x.ent };
       if(x.id) e.extId=x.id; return e;
     });
     set(function(s){ return Object.assign({},s,{expenses:adds.concat(s.expenses||[])}); });
@@ -484,6 +487,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.112.0", d:"16 jul 2026", t:"Tutorial claro y filtro por banco en Gastos", items:[
+    "🎓 Tutorial y trucos de Gastos/Fijos/Patrimonio más claros: qué va en cada sitio, nómina/Bizum como Ingreso, y dónde marcar varios bancos.",
+    "🏦 En Gastos puedes filtrar por banco (Caixa, Trade Republic, a mano…). Cada movimiento enseña de qué banco es.",
+    "💡 Los trucos de esas pestañas vuelven a salir una vez para que no te los pierdas."
+  ]},
   {v:"3.111.0", d:"16 jul 2026", t:"Varios bancos en Gastos y roles más claros", items:[
     "🛒 ¿Gastos o Fijos? Los trucos de cada pestaña y los roles en Patrimonio explican en cristiano: recibos/cuotas van a Fijos; supermercado y bares a Gastos.",
     "🏦 Varios bancos de gasto: en Ajustes → Bancos marcas «También apuntar gastos de tarjeta de…» (Caixa, Sabadell…). El presupuesto del día a día sigue en una sola cuenta.",
