@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.113.3] — 2026-07-16
+### Cold start más honesto + swipe sin vacío
+- ⚡ Sentry (~340 KB) ya no bloquea el parse del arranque: se inyecta tras el primer pintado si hay DSN.
+- ⚙️ `SettingsPanel` solo se monta la 1ª vez que abres el cajón (antes iba en el cold start oculto).
+- 👆 Al deslizar pestañas se monta el destino durante el gesto (menos flash al soltar).
+- ⏱️ Vecinas + popup Novedades más tarde (~3,2 s / 2,2 s); swipe CSS 0,22 s.
+- 💾 `loadState` no reescribe toda la cartera en localStorage en cada apertura.
+- 🎬 Splash «Cargando…» hace fade corto tras el primer pintado (menos sensación de tirón).
+
 ## [3.113.2] — 2026-07-16
 ### Fix flash Resumen↔Gastos + updates más rápidos
 - 🏦 Chips de banco ya no parpadean al salir/entrar de Gastos (`heavyOk` sticky + bankOpts siempre).

@@ -30,6 +30,8 @@ Caché al instante + revalidación en segundo plano. Cadena de versión sellada 
 
 **Android OTA (v3.107+ / 3.113.2):** chequeo de `version.json` al abrir / volver a primer plano / cada ~30 min **con la app abierta**. La pill sale también mientras descarga; la noti local solo puede dispararse en ese momento. Sin WorkManager en background no hay aviso «mágico» con la app cerrada.
 
+**Cold start (3.113.3):** Sentry se inyecta tras el primer pintado (no bloquea ~340 KB); Ajustes se monta al abrir el cajón; el swipe pre-monta la pestaña destino durante el gesto. El coste duro restante es parse del monolito + `loadState` — sin code-split no desaparece del todo.
+
 ### 4. Migraciones de datos versionadas
 `_dataVer` en `localStorage` permite cambiar la forma de los datos sembrados sin borrar los del usuario.
 

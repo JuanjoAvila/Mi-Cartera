@@ -215,5 +215,6 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0 && !_mc
     }).catch(function(){});
   });
 }
-mcInitSentry();
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
+// Tras pintar Resumen: carga Sentry sin pelearse con el arranque (antes bloqueaba ~340 KB).
+mcScheduleIdle(function(){ mcLoadSentryDeferred(); }, 1800);

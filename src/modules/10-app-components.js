@@ -487,6 +487,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"3.113.3", d:"16 jul 2026", t:"Arranque más ligero y desliz entre pestañas más limpio", items:[
+    "⚡ Al abrir la app (sobre todo tras vaciar recientes) se carga menos «por detrás» antes de pintar Resumen.",
+    "👆 Al deslizar a Gastos el contenido se prepara mientras mueves el dedo, no al soltar.",
+    "⚙️ El menú de Ajustes ya no se construye entero hasta que lo abres la primera vez.",
+    "🎬 La pantalla de «Cargando…» se desvanece un pelín más suave al terminar de abrir."
+  ]},
   {v:"3.113.2", d:"16 jul 2026", t:"Sin parpadeos al cambiar de pestaña y updates más ágiles", items:[
     "🏦 Al ir de Resumen a Gastos (y al revés) ya no «parpadean» los bancos ni el contenido.",
     "⚡ Arranque: Gastos no se monta en segundo plano a lo loco; solo cuando lo tocas.",

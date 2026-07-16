@@ -411,6 +411,10 @@ function App(){
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
   const [drawerOpen,setDrawerOpen]=useState(false);
+  // Ajustes: no montar el panel entero en el cold start (es un árbol enorme). Primera apertura
+  // lo monta y se queda (feedback 2026-07-16: lagazo al abrir la app).
+  const [drawerMounted,setDrawerMounted]=useState(false);
+  useEffect(function(){ if(drawerOpen) setDrawerMounted(true); },[drawerOpen]);
   useBackClose(drawerOpen, function(){ setDrawerOpen(false); });   // gesto atrás: cierra Ajustes en vez de salir de la app
   useBackClose(addTab, function(){ setAddTab(false); });           // gesto atrás: cierra la hoja "añadir pestaña"
   // APK Android: el gesto/botón "atrás". En navegador lo maneja la History API (useBackClose); en la
@@ -788,7 +792,7 @@ function App(){
       newsDone.current=true;
       try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
       setWhatsNew(true);
-    },900);
+    },2200);
   },[state.onboarded,locked,showAuth,tourOpen]);
   // Informe mensual automático el día 1 (prioridad pareja 2026-07-15).
   const [monthReportOpen,setMonthReportOpen]=useState(false);
@@ -956,6 +960,9 @@ function App(){
     let off=-tab*100+(dx.current/w)*100;
     if((tab===0&&dx.current>0)||(tab===tabIds.length-1&&dx.current<0)) off=-tab*100+(dx.current/w)*100*0.28;  // resistencia en bordes (tabs VISIBLES, no todas)
     if(trackRef.current) trackRef.current.style.transform="translateX("+off+"%)";
+    // Monta la pestaña destino MIENTRAS arrastras: al soltar ya hay contenido (no flash vacío).
+    if(dx.current<-24 && tab<tabIds.length-1) prepMountTab(tab+1);
+    else if(dx.current>24 && tab>0) prepMountTab(tab-1);
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
@@ -1066,11 +1073,11 @@ function App(){
     if(!id) return;
     setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
   },[tab, tabIds.join("|")]);
-  // Tras el primer pintado: habilitar vecinas ±1. NO pre-montar Gastos/Fijos aquí — eso
-  // recreaba el lagazo del cold start (feedback 2026-07-16). Se montan al toque (prepMountTab).
+  // Tras el primer pintado: NO montar vecinas en auto. Montar ±1 al toque/swipe (prepMountTab)
+  // evitaba un segundo hitch a ~900 ms junto con WhatsNew (feedback 2026-07-16).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    mcScheduleIdle(function(){ setMountNeighbors(true); }, 900);
+    mcScheduleIdle(function(){ setMountNeighbors(true); }, 3200);
   },[state.onboarded, locked]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
@@ -1182,7 +1189,7 @@ function App(){
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
     React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
     React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
-      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     )
   );
 }
