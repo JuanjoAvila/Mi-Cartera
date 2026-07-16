@@ -22,6 +22,7 @@ const steps = [
   ["motor-debt", ["node", "tests/motor-debt.test.mjs"]],
   ["reconcile-bank", ["node", "tests/reconcile-bank.test.mjs"]],
   ["onboarding", ["node", "tests/onboarding.test.mjs"]],
+  ["expense-bank", ["node", "tests/expense-bank.test.mjs"]],
   ["inv-dashboard", ["node", "tests/inv-dashboard.test.mjs"]],
   ["financing", ["node", "tests/financing.test.mjs"]],
   ["updates", ["node", "tests/updates.test.mjs"]],

@@ -30,6 +30,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
+  const [bankSel,setBankSel]=useState([]); // ents o "_manual"; [] = todos los bancos
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
@@ -111,19 +112,39 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   };
 
   const cycle=useMemo(()=>lastPaydayOf(state.expenses),[state.expenses]);
+  // Bancos presentes en el período (o configurados como gasto) → chips de filtro.
+  // "_manual" = apuntados a mano / sin banco conocido (no mezclar con OB).
+  const bankOpts=useMemo(function(){
+    const seen={}; const order=[];
+    const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
+    expenseBankEnts(state).forEach(add);
+    (state.accounts||[]).forEach(function(a){ if(a&&a.ent) add(a.ent); });
+    let hasManual=false;
+    (state.expenses||[]).forEach(function(e){
+      if(!inPreset(parseDate(e.date),preset,range,cycle&&cycle.start)) return;
+      const b=expenseBankOf(e); if(b) add(b); else hasManual=true;
+    });
+    if(hasManual) order.push("_manual");
+    return order;
+  },[state.expenses,state.accounts,state.settings,preset,range,cycle]);
   const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return state.expenses
     .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
     .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
+    .filter(function(e){
+      if(bankSel.length===0) return true;
+      const b=expenseBankOf(e)||"_manual";
+      return bankSel.indexOf(b)!==-1;
+    })
     .filter(e=> !needle || (e.merchant||"").toLowerCase().indexOf(needle)!==-1 || catName(e.category).toLowerCase().indexOf(needle)!==-1)
     .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
-  },[state.expenses,preset,range,sel,q,cycle]);
+  },[state.expenses,preset,range,sel,bankSel,q,cycle]);
 
   // Total con SIGNO CLARO (bug pareja 2026-07-11: con un ingreso en el filtro, el total mostraba
   // «gastos − ingresos» en positivo — ilegible). Desglose: gastos sin signo (2026-07-12: el «−»
   // les parecía feo), y si hay ingresos, línea «+ingresos · Balance» (ingresos − gastos; verde si ahorras).
   const sums=useMemo(()=>{ let g=0,i=0,ng=0,ni=0; filtered.forEach(e=>{ if(e.amount>0){ g+=e.amount; ng++; } else { i-=e.amount; ni++; } }); return {g:g,i:i,ng:ng,ni:ni,bal:i-g}; },[filtered]);
   const subs=useMemo(()=>detectSubscriptions(state.expenses),[state.expenses]);
-  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,q]);
+  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
   useEffect(()=>{
     const el=sentinelRef.current; if(!el) return;
     const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting) setVisible(v=> v<filtered.length?v+CONFIG.PAGE_SIZE:v); },{rootMargin:"120px"});
@@ -144,6 +165,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     const ex={ id:uid(), date:(isNaN(when.getTime())?new Date():when).toISOString(), merchant:form.merchant||(form.income?"Ingreso":"Gasto"), amount:signed, category:form.income?"ingreso":form.category, source:"manual" };
     if(form.income) ex.noCard=true;                   // un ingreso nunca alimenta el round-up (igual que al editar)
     else if(form.noCard) ex.noCard=true;              // bizum/transfer: no cuenta round-up
+    // Gasto a mano: etiqueta el banco de gasto diario si hay uno (filtro por banco; 2026-07-16)
+    if(!form.income){ const daily=(state.accounts||[]).find(function(a){ return accDaily(a); }); if(daily&&daily.ent) ex.ent=daily.ent; }
     set(s=>Object.assign({},s,{expenses:[ex].concat(s.expenses)}));
     if(cloud.enabled()) cloud.addExpense(ex).catch(function(){});   // lo guarda también en la BD
     // Avisos al apuntar (notificaciones "de andar por casa", las push reales llegarán con el APK):
@@ -188,6 +211,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
         CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"chip"+(sel.indexOf(c.id)!==-1?" active":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+      ),
+      // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
+      bankOpts.length>1 && React.createElement("div",Object.assign({className:"cat-select"},stopSwipe),
+        React.createElement("button",{className:"chip"+(bankSel.length===0?" active":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
+        bankOpts.map(function(b){
+          const on=bankSel.indexOf(b)!==-1;
+          const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
+          return React.createElement("button",{key:b,className:"chip"+(on?" active":""),onClick:function(){ setBankSel(function(prev){ const has=prev.indexOf(b)!==-1; return has?prev.filter(function(x){return x!==b;}):prev.concat([b]); }); }},lbl);
+        })
       )
     ),
     React.createElement("div",{className:"total-bar"},
@@ -286,7 +318,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                       React.createElement("div",{className:"ex-merchant"},g.e.merchant||"—"),
                       React.createElement("div",{className:"ex-meta"},
                         React.createElement("span",{className:"ex-cat",style:{color:c.color}},catName(g.e.category)),
-                        React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}))
+                        React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
+                        (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement("span",{style:{color:"var(--muted-2)"}}," · "+entOf(bk).mono):null; })()
                       )
                     ),
                     React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},

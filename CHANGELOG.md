@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.112.0] — 2026-07-16
+### Tutorial roles + filtro por banco en Gastos
+- 🎓 Tour `tour_2`/`tour_3` y coach Gastos/Fijos/Patri (es/en/ca): variable vs fijo, nómina/Bizum como Ingreso, multi-banco.
+- 🏦 Filtro chips por banco en Gastos (`expenseBankOf`); OB/hist guardan `ent`; `source` en nube `ob:ent` / `macrodroid`→TR (sin columna SQL).
+- 💡 TabCoach `_v2` en gastos/fijos/patri para remostrar trucos una vez.
+- 📚 Migración `0014_household_rls_no_recursion.sql` documentada en HOGAR.md (RLS recursion).
+
 ## [3.111.0] — 2026-07-16
 ### Multi-banco gasto OB + sync vivo + APK noti→sync
 - 🛒 **UX roles:** coach Gastos/Fijos/Patrimonio + `rl_hint`/`h_roles` aclaran fijo vs variable (es/en/ca).

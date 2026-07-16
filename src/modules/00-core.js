@@ -190,8 +190,10 @@ const cloud = (function(){
       if(!sb) return;
       const {data:{session}}=await sb.auth.getSession();
       if(!session) return;
+      // source lleva el banco embebido (ob:caixa…) para filtrar en Gastos tras reinstalación
+      // sin columna nueva en Supabase (feedback 2026-07-16).
       const {error}=await sb.from('expenses').upsert(
-        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:e.source||'manual', no_card:!!e.noCard },
+        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard },
         { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
       );
       if(error) throw error;
@@ -458,8 +460,34 @@ const cloud = (function(){
   };
 })();
 
+/* Codifica el banco en `source` de la tabla (sin migración SQL): ob:caixa, ob-hist:sabadell,
+   macrodroid (= Trade Republic). Así el filtro por banco sobrevive a reinstalaciones. */
+function expenseSourceForCloud(e){
+  const ent=e&&e.ent; const s=(e&&e.source)||"manual";
+  if(ent&&(s==="ob"||String(s).indexOf("ob:")===0)) return "ob:"+ent;
+  if(ent&&(s==="ob-hist"||String(s).indexOf("ob-hist:")===0)) return "ob-hist:"+ent;
+  if(s==="macrodroid"||s==="tr") return "macrodroid";
+  if(s==="supabase") return "manual";
+  return s||"manual";
+}
+/* Banco de un gasto (ent) o null si es a mano / desconocido. */
+function expenseBankOf(e){
+  if(!e) return null;
+  if(e.ent) return e.ent;
+  const s=String(e.source||"");
+  if(s==="macrodroid"||s==="tr") return "trade_republic";
+  if(s.indexOf("ob:")===0) return s.slice(3)||null;
+  if(s.indexOf("ob-hist:")===0) return s.slice(8)||null;
+  return null;
+}
 /* Convierte una fila de la tabla `expenses` al formato interno de la app. */
 function expenseFromRow(r){
+  const raw=String(r.source||"manual");
+  let ent=null, source=raw;
+  if(raw==="macrodroid"||raw==="tr"){ ent="trade_republic"; source="macrodroid"; }
+  else if(raw.indexOf("ob:")===0){ ent=raw.slice(3)||null; source="ob"; }
+  else if(raw.indexOf("ob-hist:")===0){ ent=raw.slice(8)||null; source="ob-hist"; }
+  else if(raw==="supabase"){ source="manual"; }   // legado: antes el pull marcaba todo como supabase
   return {
     id: r.id,
     date: new Date(r.fecha).toISOString(),
@@ -467,7 +495,8 @@ function expenseFromRow(r){
     amount: Number(r.importe) || 0,
     // misma autodetección que el path del Sheet: si la cat es genérica, la deduce por comercio
     category: resolveCategory(r.cat, r.comercio || ""),
-    source: "supabase",
+    source: source,
+    ent: ent||undefined,
     noCard: r.no_card ? true : undefined,   // bizum/transfer: fuera del round-up (columna 0005)
   };
 }

@@ -324,7 +324,8 @@ function importObExpenses(s, txs){
     if(!tx.card || !(tx.amount>0)) return;                        // solo compras con tarjeta (gasto)
     if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
-    const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(), merchant:tx.merchant||"Compra", amount:tx.amount, category:autoCategory(tx.merchant||""), source:"ob" };
+    // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
+    const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(), merchant:tx.merchant||"Compra", amount:tx.amount, category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
     keys[kOf(e)]=1;
