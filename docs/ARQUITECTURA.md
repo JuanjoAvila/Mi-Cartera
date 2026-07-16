@@ -8,7 +8,7 @@ La app usa `React.createElement` directo. Meter JSX + Babel en el navegador prov
 ### 2. Un único artefacto desplegable
 `public/index.html` lleva React, ReactDOM, CSS y lógica **inlineados**. Es el artefacto que ha demostrado ser fiable.
 
-**Fuente editable (v3.108):** el código vive en **`src/modules/*.js`** + **`src/shell.html`**. `scripts/build-app.mjs` los ensambla en un solo `public/index.html`. El CI ejecuta `build-app` antes de sellar versión y minificar. **No edites `public/index.html` a mano** salvo emergencia.
+**Fuente editable (v3.108):** el código vive en **`src/modules/*.js`** + **`src/shell.html`**. `scripts/build-app.mjs` los ensambla en un solo `public/index.html`. El CI ejecuta `build-app` antes de sellar versión y minificar. **No edites `public/index.html` a mano** salvo emergencia (y `apk.json`).
 
 > ⚠️ **No crear un `index.html` en la raíz.** GitHub Actions solo despliega `public/`. Hubo un duplicado en la raíz que se editaba por error y dejaba `public/` atrasado (un fix de TR no llegó al móvil).
 
@@ -28,7 +28,7 @@ Sirve desde caché **al instante** (arranque inmediato incluso con red lenta o s
 ### 4. Migraciones de datos versionadas
 `_dataVer` en `localStorage` permite cambiar la forma de los datos sembrados sin borrar los del usuario.
 
-## Flujo de datos (Fase 1: Supabase)
+## Flujo de datos
 
 ```
 [Notificación TR en Android]
@@ -41,46 +41,65 @@ Sirve desde caché **al instante** (arranque inmediato incluso con red lenta o s
         │  la app la lee al Sincronizar (estando logueada)
         ▼
 [App: dedup + render]   → estado en `app_state` (JSONB) + caché localStorage
+
+[Notificación Caixa/Sabadell/…]  (alpha22)
+        │  mismo listener · NO parsea importe
+        ▼
+[evento bankNotif → runBankSync]  Open Banking trae el movimiento real
+        │
+        ▼
+[importObExpenses]  filtra por settings.expenseBanks (varios bancos; spendFrom sigue siendo uno)
 ```
 
-**Actualizaciones (v3.107):** la PWA usa SW stale-while-revalidate con botón manual; la app Android usa bundle local + OTA Capacitor (`version.json` / `bundle.zip`) con notificación y pill cuando hay versión nueva. APK nativo vía `apk.json` + `installApk`.
+**Actualizaciones (v3.107+):** la PWA usa SW stale-while-revalidate con botón manual; la app Android usa bundle local + OTA Capacitor (`version.json` / `bundle.zip`) con notificación y pill cuando hay versión nueva. APK nativo vía `apk.json` + `installApk` (el **nombre del asset** en el release debe coincidir con la URL de `apk.json` — lección alpha21).
 
-Cotizaciones: la app llama a la Edge Function `prices` → consulta Finnhub server-side (key oculta, evita CORS) → devuelve precios → la app calcula valor = acciones × precio.
+Cotizaciones: la app llama a la Edge Function `prices` → consulta Finnhub server-side (key oculta, evita CORS) → devuelve precios → la app calcula valor = acciones × precio. FX USD→EUR vía `refreshFx` (BCE aproximado).
 
-> **Apps Script: jubilado (2026-06-18).** El backend antiguo (Google Apps Script + Google Sheet) se reemplazó por Supabase. Se retiró su carpeta del repo y la implementación se archivó en Google.
+> **Apps Script / `GAS_URL`: archivado (2026-06-18).** El backend antiguo (Google Apps Script + Google Sheet) se reemplazó por Supabase. Ya no aplica endurecer `GAS_URL` ni CORS Finnhub vía Apps Script.
 
 ## Aprendizajes clave
 
-- **Republicar Apps Script:** hay que seleccionar explícitamente "Nueva versión" en Administrar implementaciones, o la URL sirve código cacheado.
-- **Fechas en Sheets:** se guardan como objetos Date, no string; `normalizarFecha()` lo resuelve antes de cualquier filtrado.
-- **CORS Finnhub:** no se puede llamar desde el navegador; va server-side vía Apps Script.
-- **GitHub Pages + cuenta Free:** solo funciona con repo **público**; un repo privado requiere plan de pago. Actions es ilimitado en repos públicos.
+- **Repo público (Pages gratis):** jamás secretos ni CSV reales en el cliente ni en el repo.
+- **Fuente única:** editar `src/modules/` + `src/shell.html`; `npm run build` → `public/index.html`.
+- **Diálogos nativos Android:** sustituidos por `askText` / `askConfirm` (v3.100) — el prompt del sistema pintaba en inglés y tipografía ajena.
+- **APK `apk.json`:** la URL debe apuntar al **nombre exacto** del asset subido al release de GitHub.
+- **GitHub Pages + cuenta Free:** solo funciona con repo **público**.
 
-## Backlog técnico (post-migración)
+---
 
-### Fase 0 — control (barato)
-- Versionado visible en Settings + mini changelog.
-- Pantalla de Settings: moneda, presupuesto, objetivo de ahorro, toggles, reset.
-- Export/Import JSON (backup manual).
-- Manejo de errores visible (Sheet / precios).
+## Estado de fases (histórico → hecho)
 
-### Fase 1 — base de datos real
-- Migrar de Sheets a Supabase (Postgres + auth + API, free tier) o Firebase. Sheets queda solo como buzón de entrada.
+| Fase | Contenido | Estado |
+|------|-----------|--------|
+| **0** Control | Versionado, Settings, export/import JSON, errores visibles | **HECHO** (~v3.x) |
+| **1** Base de datos | Sheets → Supabase (Postgres + auth + Edge Functions) | **HECHO** (2026-06) |
+| **2** Cuentas de usuario | Login, RLS, multi-usuario (ingest tokens, hogares) | **HECHO** |
+| **3** Legal / RGPD | Política de privacidad, borrado de cuenta, tokens cifrados | **HECHO** (v3.102) |
+| **4** Distribución | APK Capacitor, OTA, tests CI, lector TR nativo (sustituye MacroDroid) | **HECHO** |
+| **5** Nice-to-have (parcial) | Metas, gráficas evolución, comparativa mes, notis locales | **HECHO** en buena parte |
 
-### Fase 2 — cuentas de usuario (solo si se comparte con terceros)
-- Registro/login, aislamiento de datos.
+### Decisiones documentadas
 
-### Fase 3 — legal/RGPD (obligatorio si hay terceros)
-- Datos financieros = sensibles: política de privacidad, consentimiento, cifrado en reposo, derecho al olvido.
-- Las fases 1+2+3 se abordan juntas si la app pasa a multiusuario.
+- **`GAS_URL` / Apps Script:** archivado. No reabrir.
+- **USD→EUR:** objetivo **aproximado en tiempo real** (`refreshFx` + precio × fx). Exacto como Revolut = re-anclar a mano o reimportar CSV (Revolut aplica su propio cambio + spread; Finnhub puede ir con retardo). No se perseguirá paridad al céntimo automática.
 
-### Fase 4 — distribución/robustez
-- APK (Capacitor/PWABuilder), dominio propio, tests de cálculos críticos, monitorización de errores, reemplazo de MacroDroid, CI/CD avanzado.
+### Fase 5 — lo que queda (no urgente)
 
-### Fase 5 — nice to have
-- Notificaciones push, gráficas de evolución, objetivos de ahorro, multi-moneda real, comparación mes a mes, categorización con IA.
+- Categorización con IA (coste alto; el KW actual cubre el día a día).
+- Multi-moneda «contable» real (hoy es visualización + fx aproximado).
+- Push genérica remota (ya hay notificaciones locales Android + avisos de update).
 
-## Decisiones pendientes de discusión
+---
 
-- **Endurecer `GAS_URL`:** hoy es un endpoint abierto; el `doGet` expone los gastos del mes a quien tenga la URL. Un token compartido (en Script Properties + cabecera/param) mitigaría esto sin coste.
-- **Conversión USD→EUR:** hoy `fx` es un valor fijo. No casará nunca al céntimo con Revolut (Revolut aplica su propio cambio + spread, y el precio de Finnhub puede ir con retardo). Decidir si el objetivo es "exacto como Revolut" (→ input manual del valor en EUR) o "aproximado en tiempo real" (→ precio × acciones × fx dinámico).
+## Backlog actual (post v3.111)
+
+### Hecho en v3.111 / alpha22
+- Textos coach/roles claros (gasto variable vs fijos) para uso en pareja.
+- `settings.expenseBanks`: varios bancos OB aportan compras con tarjeta a Gastos; `spendFrom` único intacto.
+- Sync bancario más vivo: throttle ~1,5 h + sync al volver a primer plano (≥30 min).
+- APK: noti de banco → debounce `bankSync` (sin parsear importe) + toggle en Ajustes.
+
+### Pendiente (fuera de esta tanda)
+- Diseño visual (Claude Design) y Play Store.
+- Mejoras UX menores según feedback real de uso multi-banco.
+- IA de categorías / multi-moneda contable (ver Fase 5).

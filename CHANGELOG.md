@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [3.111.0] — 2026-07-16
+### Multi-banco gasto OB + sync vivo + APK noti→sync
+- 🛒 **UX roles:** coach Gastos/Fijos/Patrimonio + `rl_hint`/`h_roles` aclaran fijo vs variable (es/en/ca).
+- 🏦 **`settings.expenseBanks`:** `importObExpenses` + `BankHistoryImport` filtran por lista de ents; chips en BankPanel. `spendFrom` único intacto.
+- 🔄 **Sync:** `BANK_SYNC_THROTTLE` 90 min; al foreground (≥30 min) idle `runBankSync`; Capacitor `appStateChange`.
+- ✅ Conciliación: CTA «Confirmar y apuntar» + hint de fijos desde OB.
+- 📱 **APK alpha22** (`versionCode 22`): listener Caixa/Sabadell/… → debounce `bankNotif` → `bankSync` (sin parsear importe); toggle Ajustes; `apk.json` con asset `Mi-Cartera-alpha22.apk`.
+- 📚 `docs/ARQUITECTURA.md`: fases 0–4 HECHO, GAS_URL archivado, FX aproximado documentado, backlog multi-banco.
+
 ## [3.110.0] — 2026-07-16
 ### Tutorial, fin de mes, Hogar Fase 2, presupuestos
 - 🛟 **Tour:** scroll al `?` de la pestaña visible + tip siempre en viewport (ya no se queda pillado).

@@ -1,5 +1,6 @@
 package com.micartera.app;
 
+import android.content.Intent;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 
@@ -11,20 +12,17 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Lector de la notificación de gasto de Trade Republic → Edge Function `ingest`.
- * Reemplaza a MacroDroid: mismo POST, pero dentro de nuestra app.
- *
- * El SERVIDOR clasifica (gasto tarjeta / bizum recibido=ingreso / bizum enviado /
- * ruido de TR que se ignora) — así el filtro se mejora sin reinstalar el APK.
- * Con la respuesta, este servicio:
- *   1. enseña una notificación de confirmación ("✓ Gasto apuntado: 12,34 € en X"),
- *   2. lanza la alerta de presupuesto si el servidor la devuelve (superado/80%/tocho),
- *   3. refresca el widget de pantalla de inicio con el gasto del mes,
- * todo aunque la app esté cerrada.
+ * Lector de notificaciones:
+ *   1) Trade Republic → Edge Function `ingest` (apunta el gasto; parsea en servidor).
+ *   2) Otros bancos (Caixa, Sabadell…) → NO parsea importe; marca ping + broadcast para
+ *      que la WebView dispare `bankSync` por Open Banking (alpha22 / v3.111).
  *
  * La URL con el token NO va en el código (el repo es público): se lee de
  * BuildConfig.INGEST_URL, que app/build.gradle rellena desde local.properties
@@ -36,9 +34,68 @@ public class TrExpenseListener extends NotificationListenerService {
     private static final String TR_PACKAGE = "de.traderepublic.app";
     private static final Pattern HAS_AMOUNT = Pattern.compile("\\d+[.,]\\d+");
 
+    /** Broadcast que escucha MiCarteraPlugin para emitir el evento JS `bankNotif`. */
+    public static final String ACTION_BANK_NOTIF = "com.micartera.app.BANK_NOTIF";
+
+    // Paquetes de apps bancarias ES (IDs habituales; si falta alguno se añade sin parsear texto).
+    private static final Set<String> BANK_PACKAGES = new HashSet<>(Arrays.asList(
+            "es.lacaixa.mobile.android.newwapicon",   // CaixaBank
+            "com.caixabank.mobile.android",
+            "com.caixabank.app",
+            "com.bancsabadell.android",               // Sabadell
+            "com.bancsabadell.wallet",
+            "com.bbva.bbvacontigo",                    // BBVA
+            "es.bancosantander.android",              // Santander
+            "com.ing.mobile",                         // ING
+            "www.ingdirect.nativeframe",
+            "com.bankinter.android",
+            "com.imaginbank.app",
+            "com.openbank",
+            "es.unicaja.unicajamovil",
+            "com.kutxabank.android",
+            "es.evobanco.bancomovil",
+            "com.abanca.bm.android",
+            "es.ibercaja.ibercaja",
+            "com.db.pbc.mibanco"
+    ));
+
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
-        if (!TR_PACKAGE.equals(sbn.getPackageName())) return;
+        String pkg = sbn.getPackageName();
+        if (TR_PACKAGE.equals(pkg)) {
+            handleTradeRepublic(sbn);
+            return;
+        }
+        if (BANK_PACKAGES.contains(pkg)) {
+            handleBankWake(pkg);
+        }
+    }
+
+    /**
+     * Noti de banco tradicional: solo despierta sync OB. Sin leer importe/comercio
+     * (las notis suelen ser genéricas y se rompen; PSD2 trae el movimiento real).
+     */
+    private void handleBankWake(String pkg) {
+        android.content.SharedPreferences prefs =
+                getSharedPreferences("micartera_banksync", MODE_PRIVATE);
+        // Defecto ON; Ajustes → «Al detectar aviso del banco…» lo apaga vía setNotifPrefs.
+        if (!prefs.getBoolean("onNotif", true)) return;
+
+        long now = System.currentTimeMillis();
+        // Debounce nativo 2 min (límite PSD2 desatendido ~4/día + no martillar al abrir la app).
+        if (now - prefs.getLong("lastPing", 0) < 120000) return;
+        prefs.edit()
+                .putLong("lastPing", now)
+                .putBoolean("pending", true)
+                .putString("lastPkg", pkg != null ? pkg : "")
+                .apply();
+
+        Intent i = new Intent(ACTION_BANK_NOTIF);
+        i.setPackage(getPackageName());
+        sendBroadcast(i);
+    }
+
+    private void handleTradeRepublic(StatusBarNotification sbn) {
         // MULTIUSUARIO (migración 0008): la URL de `ingest` con el token del usuario la guarda la
         // web en estas prefs (Ajustes → "Apuntar aquí mis gastos de TR"). Si no la hay, caemos a
         // BuildConfig.INGEST_URL (solo la tiene el APK del creador). Sin ninguna de las dos, no hay

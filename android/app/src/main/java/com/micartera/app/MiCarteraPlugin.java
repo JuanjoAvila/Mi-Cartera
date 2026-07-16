@@ -1,8 +1,10 @@
 package com.micartera.app;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.net.Uri;
@@ -48,8 +50,9 @@ import com.getcapacitor.annotation.PermissionCallback;
  *                                (actualización SIN cable; instala encima, mantiene datos).
  *                                { ok:false, needsPermission:true } si falta el permiso
  *                                "instalar apps desconocidas" (se abre el ajuste; reintentar).
- *   - setNotifPrefs({expenseConfirm}) -> si el lector TR enseña la noti "✓ Gasto apuntado"
- *                                (los avisos de presupuesto salen siempre).
+ *   - setNotifPrefs({expenseConfirm, bankSyncOnNotif}) -> prefs del lector de notis
+ *   - consumeBankSyncPing()   -> { ping } si una noti de banco pidió sync (app en frío)
+ *   - evento JS `bankNotif`   -> cuando llega noti de Caixa/Sabadell/… (app en caliente)
  */
 @CapacitorPlugin(
         name = "MiCartera",
@@ -62,6 +65,36 @@ public class MiCarteraPlugin extends Plugin {
     // Huella (fuerte o débil) o, si no hay, el candado del propio móvil (PIN/patrón).
     private static final int AUTHS =
             BiometricManager.Authenticators.BIOMETRIC_WEAK | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
+
+    private BroadcastReceiver bankNotifReceiver;
+
+    @Override
+    public void load() {
+        // El NotificationListenerService vive fuera de la Activity: manda un broadcast y aquí
+        // lo convertimos en evento Capacitor para que la web llame a runBankSync.
+        bankNotifReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (intent == null || !TrExpenseListener.ACTION_BANK_NOTIF.equals(intent.getAction())) return;
+                notifyListeners("bankNotif", new JSObject());
+            }
+        };
+        IntentFilter f = new IntentFilter(TrExpenseListener.ACTION_BANK_NOTIF);
+        if (Build.VERSION.SDK_INT >= 33) {
+            getContext().registerReceiver(bankNotifReceiver, f, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            getContext().registerReceiver(bankNotifReceiver, f);
+        }
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        if (bankNotifReceiver != null) {
+            try { getContext().unregisterReceiver(bankNotifReceiver); } catch (Exception ignored) {}
+            bankNotifReceiver = null;
+        }
+        super.handleOnDestroy();
+    }
 
     @PluginMethod
     public void bioAvailable(PluginCall call) {
@@ -240,7 +273,24 @@ public class MiCarteraPlugin extends Plugin {
         Boolean confirm = call.getBoolean("expenseConfirm", true);
         getContext().getSharedPreferences("micartera_notifprefs", Context.MODE_PRIVATE)
                 .edit().putBoolean("expenseConfirm", confirm == null || confirm).apply();
+        // Toggle «Al detectar aviso del banco, sincronizar» (alpha22). Defecto ON.
+        if (call.getData() != null && call.getData().has("bankSyncOnNotif")) {
+            Boolean on = call.getBoolean("bankSyncOnNotif", true);
+            getContext().getSharedPreferences("micartera_banksync", Context.MODE_PRIVATE)
+                    .edit().putBoolean("onNotif", on == null || on).apply();
+        }
         call.resolve();
+    }
+
+    /** Si el listener de notis dejó un ping con la app en frío, la web lo consume al primer plano. */
+    @PluginMethod
+    public void consumeBankSyncPing(PluginCall call) {
+        SharedPreferences sp = getContext().getSharedPreferences("micartera_banksync", Context.MODE_PRIVATE);
+        boolean pending = sp.getBoolean("pending", false);
+        if (pending) sp.edit().putBoolean("pending", false).apply();
+        JSObject r = new JSObject();
+        r.put("ping", pending);
+        call.resolve(r);
     }
 
     // Multiusuario del lector de gastos TR (migración 0008): la web guarda aquí la URL de
