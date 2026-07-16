@@ -6,7 +6,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 
 // Simula la lógica de validación del handler (extracto seguro para CI)
 function validateDeleteBody(body: unknown): { ok: boolean; code: number; error?: string } {
-  const password = String((body as { password?: string })?.password || "");
+  const password = String((body as { password?: string })?.password || "").trim();
   if (!password) return { ok: false, code: 400, error: "confirma con tu contraseña" };
   return { ok: true, code: 200 };
 }

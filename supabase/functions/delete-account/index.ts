@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     if (!user || !user.email) return jsonResp({ ok: false, error: "sin sesión" }, 401);
 
     const body = await req.json().catch(() => ({}));
-    const password = String(body?.password || "");
+    const password = String(body?.password || "").trim();
     if (!password) return jsonResp({ ok: false, error: "confirma con tu contraseña" }, 400);
 
     // Re-autenticación: evita borrado accidental con sesión robada.
