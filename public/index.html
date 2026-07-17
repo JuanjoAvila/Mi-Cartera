@@ -643,18 +643,27 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .settings-push-h .back,.settings-slide-h .back{width:44px;height:44px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:20px;border:1px solid var(--line-soft);background:var(--sur);color:var(--text);}
   .settings-push-h h1,.settings-slide-h h1{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:560;margin:0;}
 
-  /* Perfil tipo Revolut: baja desde arriba; fondo de la app visible (dim aparte, sin scale). */
+  /* Perfil tipo Revolut (vídeo 2026-07-17, frame t_5_25): el panel ENTERO es una miniatura que
+     CRECE desde el avatar (origin = centro del avatar, vars --pp-* medidas en JS) hasta llenar la
+     pantalla, mientras el fondo se desenfoca con la capa de backdrop-filter de al lado. Lo que se
+     escala es el PERFIL, nunca el shell (scale/filter en el shell = huecos negros en WebView). */
   .profile-pull{position:fixed;inset:0;z-index:72;max-width:520px;margin:0 auto;overflow-y:auto;
     padding:calc(var(--safe-top) + 6px) 16px calc(28px + var(--safe-bottom));
     background:var(--bg);
-    transform:translate3d(0,-104%,0);
-    transition:transform .5s cubic-bezier(.22,1,.36,1);
-    will-change:transform;
-    border-radius:0 0 28px 28px;
-    box-shadow:0 24px 48px rgba(0,0,0,.4);}
-  .profile-pull.open{transform:translate3d(0,0,0);border-radius:0;}
-  .profile-pull.dragging{transition:none;}
-  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.4);opacity:0;pointer-events:none;
+    transform-origin:var(--pp-ox,44px) var(--pp-oy,64px);
+    transform:scale(var(--pp-s0,.12));
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius .48s cubic-bezier(.32,.72,0,1),visibility 0s linear .48s;
+    will-change:transform,opacity;
+    border-radius:24px;
+    box-shadow:0 24px 64px rgba(0,0,0,.45);}
+  .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
+  .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
+  /* El blur del fondo: backdrop-filter en la capa (NO filter en el shell). Si el WebView no lo
+     soporta, queda el velo verdoso y ya — mejor plano que negro. */
+  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.45);opacity:0;pointer-events:none;
+    -webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);
     transition:opacity .45s ease;max-width:520px;margin:0 auto;}
   .profile-dim-layer.on{opacity:1;pointer-events:none;}
   .profile-pull-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
@@ -2464,6 +2473,7 @@ Object.assign(LANG.es,{
   tr_createnew:"➕ Crear como posición nueva", tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
   tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
   tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
+  tr_expired_re:"Tu sesión de Trade Republic caducó de verdad. Vuelve a conectar: el teléfono ya está puesto — solo PIN y el código nuevo.",
   mi_title:"Conectar MyInvestor", mi_sub:"trae tus fondos indexados",
   mi_expired:"Tu sesión de MyInvestor caducó y no se pudo renovar sola. Vuelve a entrar (usuario recordado): contraseña y, si lo pide, el código SMS.",
   mi_hint:"Usa tu usuario y contraseña de MyInvestor. La contraseña se usa solo para el login y NO se guarda en ningún sitio: solo se guarda la sesión (como cuando entras en su web).",
@@ -2531,6 +2541,7 @@ Object.assign(LANG.en,{
   mi_err:"Couldn't connect to MyInvestor. Check username/password or the code, and try again.",
   tr_done:"✓ {n} positions updated from Trade Republic",
   tr_err:"Couldn't connect to Trade Republic. Check phone/PIN or the code, and try again.",
+  tr_expired_re:"Your Trade Republic session really expired. Reconnect: your phone is already filled in — just PIN and a fresh code.",
 });
 Object.assign(LANG.ca,{
   tr_title:"Connecta Trade Republic", tr_sub:"un botó · porta les teves posicions",
@@ -2586,6 +2597,7 @@ Object.assign(LANG.ca,{
   mi_err:"No s'ha pogut connectar amb MyInvestor. Revisa usuari/contrasenya o el codi, i torna-ho a provar.",
   tr_done:"✓ {n} posicions actualitzades des de Trade Republic",
   tr_err:"No s'ha pogut connectar amb Trade Republic. Revisa telèfon/PIN o el codi, i torna-ho a provar.",
+  tr_expired_re:"La teva sessió de Trade Republic ha caducat de debò. Torna a connectar: el telèfon ja està posat — només PIN i el codi nou.",
 });
 // meses traducidos (largos y cortos)
 const MON_I18N = {
@@ -5889,13 +5901,17 @@ function trBridge(){
   }catch(e){}
   return null;
 }
+// Teléfono del último login OK (solo el teléfono, NUNCA el PIN): tras un 401 real el formulario
+// sale ya rellenado y reconectar queda en PIN + código (feedback 2026-07-17).
+function trPhoneSaved(){ try{ return localStorage.getItem("mc_tr_phone")||""; }catch(e){ return ""; } }
 function TRSync({state, set, totals}){
   const bridge=trBridge();
   const [step,setStep]=useState("idle");      // idle | code | preview | done
-  const [phone,setPhone]=useState("");
+  const [phone,setPhone]=useState(trPhoneSaved());
   const [pin,setPin]=useState("");
   const [code,setCode]=useState("");
   const [busy,setBusy]=useState(false);
+  const [expired,setExpired]=useState(false);   // 401 REAL: enseña el formulario con aviso propio
   const [err,setErr]=useState(false);
   const [errMsg,setErrMsg]=useState("");   // mensaje REAL que devuelve TR (para no depurar a ciegas)
   const [processId,setProcessId]=useState(null);
@@ -5924,7 +5940,13 @@ function TRSync({state, set, totals}){
     setBusy(true); setErr(false); setErrMsg(""); setStep("idle"); setDoneN(null);
     return Promise.resolve(bridge.sync()).then(function(r){
       setBusy(false);
-      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){ fail(r); return; }   // no setConnected(false): el nativo ya no borra la sesión; reintentar suele bastar
+      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){
+        // 401 REAL (no anti-bot): al formulario directamente, con el teléfono ya puesto. Antes se
+        // pedía pulsar «Desconectar» — que además borra el snapshot bueno (feedback 2026-07-17).
+        setConnected(false); setExpired(true); setStep("idle");
+        try{ cloud.logEvent('error','TR sync: sesión caducada de verdad (401 real)'); }catch(x){}
+        return;
+      }
       if(r&&(r.softFail||r.wafBlocked)){ fail(r); return; }   // anti-bot: sesión sigue, no pedir 2FA
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
@@ -5944,6 +5966,7 @@ function TRSync({state, set, totals}){
     Promise.resolve(bridge.login({phone:normPhone(phone),pin:pin.trim()})).then(function(r){
       setBusy(false);
       if(!r||!r.ok){ fail(r); return; }
+      try{ localStorage.setItem("mc_tr_phone", normPhone(phone)); }catch(e){}
       setProcessId(r.processId||null); setStep("code");
     }).catch(fail);
   };
@@ -5952,7 +5975,7 @@ function TRSync({state, set, totals}){
     setBusy(true); setErr(false); setErrMsg("");
     Promise.resolve(bridge.verify({processId:processId,code:code.trim()})).then(function(r){
       if(!r||!r.ok){ fail(r); return; }
-      setConnected(true); setCode(""); doSync();
+      setConnected(true); setExpired(false); setCode(""); doSync();
     }).catch(fail);
   };
   const mappedN=positions?positions.filter(function(p){ return map[p.isin]; }).length:0;
@@ -6005,6 +6028,7 @@ function TRSync({state, set, totals}){
     : React.createElement(React.Fragment,null,
         React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
         !connected && step!=="code" && React.createElement(React.Fragment,null,
+          expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0,marginBottom:10}},t("tr_expired_re")),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"password",inputMode:"numeric",placeholder:t("tr_pin_ph"),value:pin,onChange:function(e){ setPin(e.target.value); }}),
           React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!phone.trim()||!pin.trim(),onClick:doLogin}, busy?t("tr_connecting"):t("tr_connect"))
@@ -8513,6 +8537,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.11", d:"17 jul 2026", t:"El perfil baja como en Revolut + TR sin dramas", items:[
+    "👤 El perfil ahora nace del avatar y crece hasta llenar la pantalla mientras el fondo se desenfoca — como en Revolut, también tirando hacia abajo desde Inicio con el dedo.",
+    "🏦 Trade Republic: si la sesión caduca de verdad, la app te lleva directa a reconectar con el teléfono ya puesto (PIN + código y listo). Ya no hay que pulsar «Desconectar».",
+    "📱 APK 4.0.11 (versionCode 28): la sesión de TR se guarda en más momentos (también al salir de la app) para que no «caduque» sola cada dos por tres."
+  ]},
   {v:"4.0.10", d:"17 jul 2026", t:"La app nueva llega sola a todos", items:[
     "📱 Si hay APK nueva, al abrir Mi Cartera se lanza el instalador (tú, tu padre y tu pareja). Solo confirma «Instalar» en Android.",
     "🔔 La notificación de «app nueva» ya abre el instalador de verdad (antes se confundía con el update web)."
@@ -10672,7 +10701,7 @@ function App(){
     }
     const dim=document.querySelector(".profile-dim-layer");
     if(dim){
-      dim.style.opacity=String(v*0.9);
+      dim.style.opacity=String(v);   // opacidad = progreso: el blur del backdrop entra en sincronía con el gesto
       if(v>0.02) dim.classList.add("on"); else dim.classList.remove("on");
     }
     try{
@@ -10680,13 +10709,37 @@ function App(){
       if(av){ if(v>0.02) av.classList.add("pulling"); else av.classList.remove("pulling"); }
     }catch(e){}
   };
+  // Ancla la animación del perfil al avatar REAL (vídeo Revolut 2026-07-17): transform-origin en
+  // su centro y escala inicial = diámetro del avatar / ancho del panel. Se mide en cada apertura
+  // (safe-area, fuente o rotación cambian el rect). offsetWidth/offsetLeft y NO getBoundingClientRect:
+  // el panel puede estar ya escalado y el rect vendría transformado.
+  const profSetOrigin=function(){
+    const el=profileRef.current; if(!el) return;
+    try{
+      const av=document.querySelector(".v4-avatar"); if(!av) return;
+      const a=av.getBoundingClientRect();
+      const w=el.offsetWidth||window.innerWidth||360;
+      const L=el.offsetLeft||0;   // panel fixed centrado (max-width 520): su borde izquierdo real
+      el.style.setProperty("--pp-ox",Math.round(a.left+a.width/2-L)+"px");
+      el.style.setProperty("--pp-oy",Math.round(a.top+a.height/2)+"px");
+      el.style.setProperty("--pp-s0",String(Math.max(0.06,a.width/Math.max(1,w))));
+    }catch(e){}
+  };
+  const profS0=function(){
+    const el=profileRef.current;
+    const v=el?parseFloat(el.style.getPropertyValue("--pp-s0")):NaN;
+    return isNaN(v)?0.12:v;
+  };
   useEffect(function(){
     document.documentElement.classList.toggle("profile-open", !!profileOpen);
     if(!dragging.current && gestureMode.current!=="profile"){
+      if(profileOpen) profSetOrigin();   // re-ancla al avatar ANTES de animar (apertura por tap)
       setProfileProgress(profileOpen?1:0);
       if(profileRef.current){
         profileRef.current.classList.toggle("open", !!profileOpen);
         profileRef.current.style.transform="";
+        profileRef.current.style.opacity="";
+        profileRef.current.style.borderRadius="";
       }
     }
     return function(){ document.documentElement.classList.remove("profile-open"); };
@@ -10729,6 +10782,7 @@ function App(){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
       pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
       if(pAx.current==="y"&&profileRef.current){
+        profSetOrigin();   // re-mide el avatar por si giró la pantalla desde la apertura
         profileRef.current.classList.add("dragging");
         if(appShellRef.current) appShellRef.current.classList.add("dragging");
       }
@@ -10736,11 +10790,17 @@ function App(){
     if(pAx.current!=="y") return;
     // Con scroll: primero el contenido; al top, tirar arriba cierra.
     if(profileRef.current && profileRef.current.scrollTop>0){ pDY.current=0; return; }
-    if(ddy>=0){ pDY.current=0; if(profileRef.current) profileRef.current.style.transform="translate3d(0,0,0)"; setProfileProgress(1); return; }
+    if(ddy>=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
     pDY.current=ddy;   // negativo = hacia arriba
     const h=window.innerHeight||700;
     const resist=Math.pow(Math.min(1,Math.max(0,(-ddy)/(h*0.48))),0.88);
-    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-resist*100)+"%,0)";
+    // ENCOGE hacia el avatar (misma curva que la entrada, en reversa) — nada de deslizar.
+    const s0c=profS0(), sc=1-(1-s0c)*resist;
+    if(profileRef.current){
+      profileRef.current.style.transform="scale("+sc+")";
+      profileRef.current.style.opacity=String(1-resist*0.8);
+      profileRef.current.style.borderRadius=Math.round(resist*24)+"px";
+    }
     setProfileProgress(1-resist);
     if(e.cancelable) e.preventDefault();
   };
@@ -10754,7 +10814,7 @@ function App(){
     const h=window.innerHeight||700;
     const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
     const flick=(dist/dt)>0.45 && dist>24;
-    if(profileRef.current) profileRef.current.style.transform="";
+    if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
     setProfileOpen(!(closeProg>0.22 || flick));
     pAx.current=null; pDY.current=0;
   };
@@ -11172,6 +11232,7 @@ function App(){
         if(atTop||fromAv){
           gestureMode.current="profile";
           setProfileMounted(true);
+          profSetOrigin();   // ancla la miniatura al avatar ANTES del primer frame del gesto
           if(profileRef.current) profileRef.current.classList.add("dragging");
           if(appShellRef.current) appShellRef.current.classList.add("dragging","profile-dim");
         }
@@ -11182,7 +11243,14 @@ function App(){
       // Resistencia (no 1:1): el panel “pesa” un poco, como Revolut.
       const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.55))),0.85);
       pDY.current=ddy;
-      if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-100+resist*100)+"%,0)";
+      // La miniatura del perfil CRECE desde el avatar siguiendo el dedo (vídeo 2026-07-17);
+      // aparece rápido (opacidad ×3) para que no se vea el panel fantasma a medio nacer.
+      const s0o=profS0(), so=s0o+(1-s0o)*resist;
+      if(profileRef.current){
+        profileRef.current.style.transform="scale("+so+")";
+        profileRef.current.style.opacity=String(Math.min(1,resist*3));
+        profileRef.current.style.borderRadius=Math.round((1-resist)*24)+"px";
+      }
       setProfileProgress(resist);
       if(e.cancelable) e.preventDefault();
       return;
@@ -11212,7 +11280,7 @@ function App(){
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
       const open=dist>h*0.16 || ((dist/dt)>0.5 && dist>36);
-      if(profileRef.current) profileRef.current.style.transform="";
+      if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;
@@ -11365,7 +11433,7 @@ function App(){
       onOpenProfile:function(){
         // Montar cerrado un frame y luego abrir: si montas ya con .open no hay animación de entrada.
         setProfileMounted(true);
-        requestAnimationFrame(function(){ requestAnimationFrame(function(){ setProfileOpen(true); }); });
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ profSetOrigin(); setProfileOpen(true); }); });
       },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
       onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
@@ -11446,7 +11514,7 @@ function App(){
       ),
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     ),
-    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"0.9"}:undefined,"aria-hidden":"true"}),
+    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{
       className:"profile-pull"+(profileOpen?" open":""),
       ref:profileRef,

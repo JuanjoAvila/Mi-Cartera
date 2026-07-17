@@ -643,18 +643,27 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .settings-push-h .back,.settings-slide-h .back{width:44px;height:44px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:20px;border:1px solid var(--line-soft);background:var(--sur);color:var(--text);}
   .settings-push-h h1,.settings-slide-h h1{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:560;margin:0;}
 
-  /* Perfil tipo Revolut: baja desde arriba; fondo de la app visible (dim aparte, sin scale). */
+  /* Perfil tipo Revolut (vídeo 2026-07-17, frame t_5_25): el panel ENTERO es una miniatura que
+     CRECE desde el avatar (origin = centro del avatar, vars --pp-* medidas en JS) hasta llenar la
+     pantalla, mientras el fondo se desenfoca con la capa de backdrop-filter de al lado. Lo que se
+     escala es el PERFIL, nunca el shell (scale/filter en el shell = huecos negros en WebView). */
   .profile-pull{position:fixed;inset:0;z-index:72;max-width:520px;margin:0 auto;overflow-y:auto;
     padding:calc(var(--safe-top) + 6px) 16px calc(28px + var(--safe-bottom));
     background:var(--bg);
-    transform:translate3d(0,-104%,0);
-    transition:transform .5s cubic-bezier(.22,1,.36,1);
-    will-change:transform;
-    border-radius:0 0 28px 28px;
-    box-shadow:0 24px 48px rgba(0,0,0,.4);}
-  .profile-pull.open{transform:translate3d(0,0,0);border-radius:0;}
-  .profile-pull.dragging{transition:none;}
-  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.4);opacity:0;pointer-events:none;
+    transform-origin:var(--pp-ox,44px) var(--pp-oy,64px);
+    transform:scale(var(--pp-s0,.12));
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius .48s cubic-bezier(.32,.72,0,1),visibility 0s linear .48s;
+    will-change:transform,opacity;
+    border-radius:24px;
+    box-shadow:0 24px 64px rgba(0,0,0,.45);}
+  .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
+  .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
+  /* El blur del fondo: backdrop-filter en la capa (NO filter en el shell). Si el WebView no lo
+     soporta, queda el velo verdoso y ya — mejor plano que negro. */
+  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.45);opacity:0;pointer-events:none;
+    -webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);
     transition:opacity .45s ease;max-width:520px;margin:0 auto;}
   .profile-dim-layer.on{opacity:1;pointer-events:none;}
   .profile-pull-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}

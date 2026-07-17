@@ -200,13 +200,17 @@ function trBridge(){
   }catch(e){}
   return null;
 }
+// Teléfono del último login OK (solo el teléfono, NUNCA el PIN): tras un 401 real el formulario
+// sale ya rellenado y reconectar queda en PIN + código (feedback 2026-07-17).
+function trPhoneSaved(){ try{ return localStorage.getItem("mc_tr_phone")||""; }catch(e){ return ""; } }
 function TRSync({state, set, totals}){
   const bridge=trBridge();
   const [step,setStep]=useState("idle");      // idle | code | preview | done
-  const [phone,setPhone]=useState("");
+  const [phone,setPhone]=useState(trPhoneSaved());
   const [pin,setPin]=useState("");
   const [code,setCode]=useState("");
   const [busy,setBusy]=useState(false);
+  const [expired,setExpired]=useState(false);   // 401 REAL: enseña el formulario con aviso propio
   const [err,setErr]=useState(false);
   const [errMsg,setErrMsg]=useState("");   // mensaje REAL que devuelve TR (para no depurar a ciegas)
   const [processId,setProcessId]=useState(null);
@@ -235,7 +239,13 @@ function TRSync({state, set, totals}){
     setBusy(true); setErr(false); setErrMsg(""); setStep("idle"); setDoneN(null);
     return Promise.resolve(bridge.sync()).then(function(r){
       setBusy(false);
-      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){ fail(r); return; }   // no setConnected(false): el nativo ya no borra la sesión; reintentar suele bastar
+      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){
+        // 401 REAL (no anti-bot): al formulario directamente, con el teléfono ya puesto. Antes se
+        // pedía pulsar «Desconectar» — que además borra el snapshot bueno (feedback 2026-07-17).
+        setConnected(false); setExpired(true); setStep("idle");
+        try{ cloud.logEvent('error','TR sync: sesión caducada de verdad (401 real)'); }catch(x){}
+        return;
+      }
       if(r&&(r.softFail||r.wafBlocked)){ fail(r); return; }   // anti-bot: sesión sigue, no pedir 2FA
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
@@ -255,6 +265,7 @@ function TRSync({state, set, totals}){
     Promise.resolve(bridge.login({phone:normPhone(phone),pin:pin.trim()})).then(function(r){
       setBusy(false);
       if(!r||!r.ok){ fail(r); return; }
+      try{ localStorage.setItem("mc_tr_phone", normPhone(phone)); }catch(e){}
       setProcessId(r.processId||null); setStep("code");
     }).catch(fail);
   };
@@ -263,7 +274,7 @@ function TRSync({state, set, totals}){
     setBusy(true); setErr(false); setErrMsg("");
     Promise.resolve(bridge.verify({processId:processId,code:code.trim()})).then(function(r){
       if(!r||!r.ok){ fail(r); return; }
-      setConnected(true); setCode(""); doSync();
+      setConnected(true); setExpired(false); setCode(""); doSync();
     }).catch(fail);
   };
   const mappedN=positions?positions.filter(function(p){ return map[p.isin]; }).length:0;
@@ -316,6 +327,7 @@ function TRSync({state, set, totals}){
     : React.createElement(React.Fragment,null,
         React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
         !connected && step!=="code" && React.createElement(React.Fragment,null,
+          expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0,marginBottom:10}},t("tr_expired_re")),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"password",inputMode:"numeric",placeholder:t("tr_pin_ph"),value:pin,onChange:function(e){ setPin(e.target.value); }}),
           React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!phone.trim()||!pin.trim(),onClick:doLogin}, busy?t("tr_connecting"):t("tr_connect"))
