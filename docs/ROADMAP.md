@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-17 · **v4.0.11** — perfil que escala desde el avatar (vídeo Revolut) + sesión TR estable (snapshot sin pisar rotaciones); APK 28 pendiente de build/publicación.
+> Estado a 2026-07-17 · **v4.0.12** — MyInvestor con login desde el móvil (sin reCAPTCHA, vía CapacitorHttp: funciona con el APK 27 actual) + perfil que escala desde el avatar + fix sesión TR (ese sí necesita APK 28, pendiente de build/publicación).
 
 ## Listo para uso diario
 
@@ -10,8 +10,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.0.11** |
-| APK (`versionName` / `versionCode`) | **4.0.11** / **28** — gradle bumpeado, falta assembleRelease + release GitHub + `apk.json` |
+| Web / OTA (`VERSION`) | **4.0.12** |
+| APK (`versionName` / `versionCode`) | **4.0.12** / **28** — gradle bumpeado, falta assembleRelease + release GitHub + `apk.json` |
 | `public/apk.json` | debe coincidir con el release publicado |
 
 ## Pendiente / limitaciones conocidas

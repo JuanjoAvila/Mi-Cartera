@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.12] — 2026-07-17
+### MyInvestor: login desde el móvil (adiós reCAPTCHA)
+- 🔌 El login de MI sale ahora del DISPOSITIVO vía `CapacitorHttp.request` (registrado incondicionalmente en el core de Capacitor, `Bridge.java:638` → funciona con el APK 27 actual, sin build nuevo): el reCAPTCHA condicional (SECURITY_001) lo dispara la IP de datacenter de Supabase, no la residencial del usuario. `miDeviceLogin()` replica las cabeceras de `_shared/myinvestor.ts`; el OTP va por la MISMA vía (mismo x-device-id e IP). Fallback automático a la vía Edge (web, o CapacitorHttp KO).
+- ☁️ `myinvestor-connect` acepta `storeTokens`: VALIDA el access token contra `self-basic` antes de guardar (nunca a ciegas — un token corrupto rompería sync/keepalive en silencio) y upsertea cifrado como siempre. La contraseña sigue sin guardarse; en nativo ya ni siquiera pasa por la nube.
+- 🧪 E2E táctil del perfil (CDP `Input.dispatchTouchEvent` + `hasTouch`): pull-down abre siguiendo el dedo (panel en `.dragging` a mitad de gesto), tirar arriba cierra.
+- 📱 gradle `versionName` 4.0.12 (versionCode 28 sigue SIN publicar; cuando se compile llevará también el fix TR nativo de 4.0.11).
+
 ## [4.0.11] — 2026-07-17
 ### Perfil Revolut de verdad + sesión TR estable
 - 👤 **Perfil escala desde el avatar** (vídeo de referencia en `docs/design/handoff/capturas/revolut-profile-pull/`, local y gitignoreado — es pantalla real del usuario): el panel entero nace como miniatura en el avatar (`transform-origin` medido en JS, vars `--pp-ox/oy/s0`) y crece hasta pantalla completa; el fondo se desenfoca con `backdrop-filter` en `.profile-dim-layer`. Nunca scale/filter en el shell (huecos negros en WebView). Pull-down en Inicio abre siguiendo el dedo; tirar arriba cierra encogiendo al avatar.

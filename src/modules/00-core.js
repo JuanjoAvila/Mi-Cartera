@@ -392,6 +392,14 @@ const cloud = (function(){
       if(error) throw error;
       return data;
     },
+    // Login hecho EN EL MÓVIL (IP residencial → sin reCAPTCHA, patrón TR): aquí solo se suben
+    // los tokens resultantes; la Edge los VALIDA contra la API antes de guardarlos.
+    async myinvestorStore(payload){
+      if(!sb) throw new Error("nube no disponible");
+      const {data,error}=await sb.functions.invoke('myinvestor-connect',{ body:Object.assign({storeTokens:true},payload||{}) });
+      if(error) throw error;
+      return data;
+    },
     async myinvestorSync(){
       if(!sb) throw new Error("nube no disponible");
       const {data,error}=await sb.functions.invoke('myinvestor-sync');
