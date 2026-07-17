@@ -26,7 +26,7 @@ function inPreset(d,preset,range,cycleStart){
   if(preset==="custom"){ let ok=true; if(range.from) ok=ok&&d>=new Date(range.from); if(range.to){ const tt=new Date(range.to); tt.setHours(23,59,59); ok=ok&&d<=tt; } return ok; }
   return true;
 }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, focusExp, clearFocus, active}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -41,12 +41,49 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
+  const catChipsRef=useRef(null), bankChipsRef=useRef(null);
+  const chipDrag=useRef({sx:0,sy:0,capturing:false});
+  // Chips: bloquea el swipe de tabs al scrollear categorías/bancos; al inicio + dedo a la
+  // izquierda deja pasar el cambio de pestaña (feedback 2026-07-17).
+  const chipSwipe=function(ref){
+    return {
+      onTouchStart:function(e){
+        if(!(e.touches&&e.touches[0])) return;
+        chipDrag.current={sx:e.touches[0].clientX,sy:e.touches[0].clientY,capturing:false};
+      },
+      onTouchMove:function(e){
+        const el=ref.current; if(!el||!(e.touches&&e.touches[0])) return;
+        const dx=e.touches[0].clientX-chipDrag.current.sx, dy=e.touches[0].clientY-chipDrag.current.sy;
+        if(Math.abs(dx)<10 && Math.abs(dy)<10) return;
+        if(Math.abs(dy)>=Math.abs(dx)*1.15) return;
+        const atStart=el.scrollLeft<=3;
+        const atEnd=el.scrollLeft+el.clientWidth>=el.scrollWidth-3;
+        // Al inicio (chips reseteados): deja el swipe de tabs. En cuanto hay scroll interno, bloquea.
+        // Al final + dedo a la derecha: tab anterior (no queda scroll de chips).
+        if(atStart){ chipDrag.current.capturing=false; return; }
+        if(atEnd && dx>0){ chipDrag.current.capturing=false; return; }
+        chipDrag.current.capturing=true;
+        if(cancelSwipe) cancelSwipe();
+        e.stopPropagation();
+      },
+      onTouchEnd:function(e){
+        if(chipDrag.current.capturing) e.stopPropagation();
+        chipDrag.current.capturing=false;
+      }
+    };
+  };
   useEffect(function(){
     if(!active||heavyOk) return;
     var cancelled=false;
     mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 40);
     return function(){ cancelled=true; };
   },[active,heavyOk]);
+  // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
+  // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
+  useEffect(function(){
+    if(catChipsRef.current) catChipsRef.current.scrollLeft=0;
+    if(bankChipsRef.current) bankChipsRef.current.scrollLeft=0;
+  },[active]);
   const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -302,14 +339,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
-      React.createElement("div",Object.assign({className:"v4-chips"},stopSwipe),
+      React.createElement("div",Object.assign({className:"v4-chips",ref:catChipsRef},chipSwipe(catChipsRef)),
         React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
         CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
-      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips"},stopSwipe),
+      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
         React.createElement("button",{className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
         bankOpts.map(function(b){
           const on=bankSel.indexOf(b)!==-1;
@@ -429,10 +466,10 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
       React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"88dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"v4-exp-head"},
-          React.createElement("div",{className:"tile",style:{width:54,height:54,fontSize:26,borderRadius:16,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
+          React.createElement("div",{className:"tile",style:{width:44,height:44,fontSize:22,borderRadius:14,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("input",{className:"v4-input",style:{marginBottom:6,fontWeight:700},value:editExp.merchant,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
-            React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:28,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
+            React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:22,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
           )
         ),
         React.createElement("div",{className:"v4-chips meta-chips wrap",

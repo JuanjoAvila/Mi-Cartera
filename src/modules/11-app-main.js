@@ -952,15 +952,16 @@ function App(){
   const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
   const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
   const drawerW=function(){ return window.innerWidth||360; };
-  const EDGE_OPEN=52; // un pelín fuera del gesto «atrás» de Android, pero alcanzable
+  const EDGE_OPEN=52;
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
-    if(drawerOpen) return; // con ajustes abiertos, el gesto lo lleva el panel
+    if(drawerOpen) return;
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
-    // Prepara Ajustes YA en el toque del borde: el shell siempre está en DOM; monta el panel lazy.
-    if(startX.current<EDGE_OPEN) setDrawerMounted(true);
+    // En Inicio, swipe a la derecha abre Ajustes desde toda la pantalla (no solo el borde).
+    // En el resto de tabs, el borde sigue valiendo (feedback 2026-07-17).
+    if(tab===0 || startX.current<EDGE_OPEN) setDrawerMounted(true);
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen) return;
@@ -971,8 +972,9 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        // Izquierda→derecha desde el borde = Ajustes (Revolut). El resto = cambio de tab.
-        if(startX.current<EDGE_OPEN && ddx>0){
+        // Inicio: cualquier swipe a la derecha = Ajustes. Otras tabs: solo borde izquierdo.
+        const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
+        if(openSettings){
           gestureMode.current="drawer";
           setDrawerMounted(true);
           if(drawerRef.current) drawerRef.current.classList.add("dragging");
@@ -1103,6 +1105,15 @@ function App(){
     // primer montaje y los listeners no se instalarían nunca; al desbloquear se re-ejecuta.
   },[locked, state.onboarded]);
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
+  // Cancela el gesto de tabs/ajustes a mitad (chips de Gastos: scroll interno sin cambiar de pestaña).
+  const cancelSwipe=function(){
+    if(!dragging.current) return;
+    dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
+    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; }
+    if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
+    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    setSettingsProgress(drawerOpen?1:0);
+  };
 
   useEffect(function(){
     var id=tabIds[tab];
@@ -1140,7 +1151,7 @@ function App(){
       onOpenSettings:function(){ setDrawerOpen(true); },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
       onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple});
     if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple});
     return null;

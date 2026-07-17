@@ -434,8 +434,8 @@ function useBackClose(open, onClose){
   },[open]);
 }
 
-/* Sheet bottom: swipe hacia abajo para cerrar + bloqueo de scroll del fondo
-   (feedback 2026-07-17: al scrollar categorías se movía Inicio detrás). */
+/* Sheet bottom: swipe hacia abajo para cerrar en TODA la ficha (no solo el asa).
+   Si el contenido está scrolleado, primero sube; al llegar arriba, tira cierra. */
 function useSheetSwipe(open, onClose){
   const sheetRef=useRef(null);
   const startY=useRef(0), startX=useRef(0), dy=useRef(0), dragging=useRef(false), armed=useRef(false), axis=useRef(null);
@@ -444,7 +444,6 @@ function useSheetSwipe(open, onClose){
     const prev=document.body.style.overflow;
     document.body.style.overflow="hidden";
     document.documentElement.classList.add("sheet-open");
-    // Bloquea el scroll del track/páginas detrás (touchmove en captura).
     const block=function(e){
       const sheet=sheetRef.current;
       if(sheet && sheet.contains(e.target)) return;
@@ -459,30 +458,32 @@ function useSheetSwipe(open, onClose){
   },[open]);
   const onTouchStart=function(e){
     if(!(e.touches&&e.touches[0])) return;
-    const el=sheetRef.current;
-    const handle=e.target&&e.target.closest&&e.target.closest(".v4-sheet-handle");
     const chips=e.target&&e.target.closest&&e.target.closest(".v4-chips");
-    // Chips horizontales: no armes el dismiss (si no, pelean con el scroll lateral).
-    if(chips && !handle){ dragging.current=false; armed.current=false; return; }
-    armed.current=!!handle || !el || el.scrollTop<=0;
+    // Solo bloquea el dismiss si el gesto va a ser scroll horizontal de chips.
+    armed.current=!chips;
     if(!armed.current){ dragging.current=false; return; }
     dragging.current=true; dy.current=0; axis.current=null;
     startY.current=e.touches[0].clientY; startX.current=e.touches[0].clientX;
   };
   const onTouchMove=function(e){
     if(!dragging.current||!armed.current) return;
+    const el=sheetRef.current;
     const t=e.touches[0], ddy=t.clientY-startY.current, ddx=t.clientX-startX.current;
     if(axis.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
-      // Gesto horizontal (categorías) → no cierres el sheet.
       if(Math.abs(ddx)>Math.abs(ddy)*1.1){ dragging.current=false; armed.current=false; return; }
       axis.current="y";
     }
-    if(ddy<=0){ dy.current=0; if(sheetRef.current) sheetRef.current.style.transform=""; return; }
+    // Contenido scrolleado hacia abajo: deja el scroll nativo hasta volver arriba.
+    if(el && el.scrollTop>0){
+      dy.current=0; el.classList.remove("dragging"); el.style.transform="";
+      return;
+    }
+    if(ddy<=0){ dy.current=0; if(el) el.style.transform=""; return; }
     dy.current=ddy;
-    if(sheetRef.current){
-      sheetRef.current.classList.add("dragging");
-      sheetRef.current.style.transform="translate3d(0,"+ddy+"px,0)";
+    if(el){
+      el.classList.add("dragging");
+      el.style.transform="translate3d(0,"+ddy+"px,0)";
     }
     if(e.cancelable) e.preventDefault();
   };
@@ -494,7 +495,7 @@ function useSheetSwipe(open, onClose){
       sheetRef.current.classList.remove("dragging");
       sheetRef.current.style.transform="";
     }
-    if(dist>100) onClose();
+    if(dist>90) onClose();
   };
   return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };
 }

@@ -26,6 +26,15 @@ window._mcNotifyUpdate=function(version, kind){
       var opts={title:title, body:body};
       if(_mcNative) opts.gotoTarget=kind==="apk"?"update|apk":"update|ota";
       nat.showNotification(opts).catch(function(){});
+      // Marca en nativo para que el worker no vuelva a avisar la misma versión.
+      try{
+        if(nat.syncOtaState){
+          var patch={version:CONFIG.APP_VERSION};
+          if(kind==="apk") patch.markNotifiedApk=version;
+          else if(version) patch.markNotifiedVer=version;
+          nat.syncOtaState(patch).catch(function(){});
+        }
+      }catch(e){}
       return;
     }
   }catch(e){}
@@ -39,6 +48,21 @@ window._mcNotifyUpdate=function(version, kind){
         });
       }
     }
+  }catch(e){}
+};
+
+/* Al arrancar: enseña al worker qué versión web hay (tras OTA ≠ versionName del APK) y
+   si el nativo YA avisó en background, no repetimos la noti al abrir. */
+window._mcSyncOtaNative=function(){
+  try{
+    var nat=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
+    if(!nat||!nat.syncOtaState) return;
+    nat.syncOtaState({version:CONFIG.APP_VERSION}).then(function(r){
+      try{
+        if(r&&r.bgNotifiedVer) localStorage.setItem("_otaNotifVer", r.bgNotifiedVer);
+        if(r&&r.bgNotifiedApk) localStorage.setItem("_apkNotifVer", r.bgNotifiedApk);
+      }catch(e){}
+    }).catch(function(){});
   }catch(e){}
 };
 
@@ -175,6 +199,7 @@ window._mcCheckApkUpdate=function(opts){
     var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
     if(!up) return;
     up.notifyAppReady().catch(function(){});
+    window._mcSyncOtaNative();
     window._mcRestoreOtaPending();
     setTimeout(function(){
       window._mcCheckOtaUpdates();

@@ -29,7 +29,6 @@ function PlanTab({state, set, totals, showToast, simple}){
    simulador, conciliación…) vive SOLO dentro de la hoja «Gestionar» — mezclarlo aquí abajo
    duplicaba próximos cargos y desglose de banco que ya se ven arriba (feedback 2026-07-17). */
 function PlanBills({state, set, totals, manageOpen, setManageOpen}){
-  const [paidExpanded,setPaidExpanded]=useState(false);
   const month=totals.curMonth, year=totals.curYear, today=totals.today;
   const charges=[];
   (state.fixed||[]).forEach(function(e){
@@ -46,21 +45,25 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
     const balloon=debtBalloonIn(d,year,month);
     if(balloon>0) charges.push({id:"balloon_"+d.id,name:d.name+" "+t("db_balloon_tag"),amount:balloon,day:day,bank:bank,paid:paid,sub:t("fj_debt_tag")});
   });
-  charges.sort(function(a,b){ return ((a.day||99)-(b.day||99)) || (b.amount-a.amount); });
+  // Nómina y transferencias del mes (como en Gestionar): lo que ya entró/salió cuenta en «Ya pagado».
+  (state.flows||[]).forEach(function(f){
+    if(!flowOccursIn(f,month,year)) return;
+    const day=flowDay(f,year,month);
+    const paid=day!=null && day<=today;
+    const amt=+(f.amount||0);
+    if(!(amt>0)) return;
+    if(f.kind==="income"){
+      charges.push({id:"flow_"+f.id,name:f.name||t("fj_income"),amount:-amt,day:day,bank:f.to||"sabadell",paid:paid,sub:t("fj_income_tag"),income:true});
+    } else if(f.kind==="transfer"){
+      charges.push({id:"flow_"+f.id,name:f.name||t("fj_transfer"),amount:amt,day:day,bank:f.from||"sabadell",paid:paid,sub:t("fj_transfer_tag")});
+    }
+  });
+  charges.sort(function(a,b){ return ((a.day||99)-(b.day||99)) || (Math.abs(b.amount)-Math.abs(a.amount)); });
   const pending=charges.filter(function(x){ return !x.paid; });
-  const paidAll=charges.filter(function(x){ return x.paid; });
-  // Agrupa recibos pequeños ya pagados en una sola fila (SPEC §5) para no llenar la lista.
-  const paidBig=[], paidSmall=[];
-  paidAll.forEach(function(x){ if((x.amount||0)<35 && paidAll.length>=3) paidSmall.push(x); else paidBig.push(x); });
-  if(paidSmall.length<2){ paidBig.push.apply(paidBig,paidSmall); paidSmall.length=0; }
-  const paid=paidBig.slice();
-  if(paidSmall.length){
-    const sum=paidSmall.reduce(function(a,x){ return a+x.amount; },0);
-    const names=paidSmall.slice(0,3).map(function(x){ return x.name; }).join(", ");
-    paid.push({id:"_grp_paid",name:tf("v4_paid_group",{names:names,n:paidSmall.length}),amount:sum,day:null,bank:"",paid:true,sub:"",grouped:true});
-  }
-  const pendingTotal=pending.reduce(function(sum,x){ return sum+x.amount; },0);
-  const paidTotal=paidAll.reduce(function(sum,x){ return sum+x.amount; },0);
+  // Lista completa (sin agrupar ni «Ver más»): en Gestionar salía todo y aquí faltaban ingresos/traspasos.
+  const paid=charges.filter(function(x){ return x.paid; });
+  const pendingTotal=pending.reduce(function(sum,x){ return sum+(x.income?0:Math.abs(x.amount)); },0);
+  const paidTotal=paid.reduce(function(sum,x){ return sum+(x.income?0:Math.abs(x.amount)); },0);
   const fixedAccount=(state.accounts||[]).find(function(a){ return accFixed(a); });
   const projected=fixedAccount && totals.projectedByBank && totals.projectedByBank[fixedAccount.ent];
   const liquidity=typeof projected==="number" ? tf("v4_plan_liq",{amount:eur0(projected),bank:entOf(fixedAccount.ent).label}) : "—";
@@ -97,10 +100,7 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
     ),
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},t("v4_ya_pagado")+" · "+eur(paidTotal)),
-      (paidExpanded?paid:paid.slice(0,3)).map(row),
-      // más de 3 pagados: se pliegan para no llenar la pantalla de recibos ya resueltos (feedback 2026-07-17)
-      paid.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPaidExpanded(function(v){ return !v; }); }},
-        paidExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:paid.length-3}))
+      paid.map(row)
     ),
     React.createElement(BillsManageSheet,{open:manageOpen,onClose:function(){ setManageOpen(false); },state:state,set:set,totals:totals})
   );
@@ -190,7 +190,7 @@ function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
           React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
         ),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_inv_tools_h")),
-        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false})
+        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false,toolsMode:true})
       )
     ), document.body);
 }
