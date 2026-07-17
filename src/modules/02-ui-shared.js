@@ -480,6 +480,9 @@ function useSheetSwipe(open, onClose){
     };
   },[open]);
   const onTouchStart=function(e){
+    // Portal a body pero el árbol React sigue bajo la tab: sin esto el swipe de tabs
+    // del viewport se come el scroll horizontal de chips (editar gasto ≠ Apuntar — 2026-07-17).
+    if(e&&e.stopPropagation) e.stopPropagation();
     if(closing.current) return;
     if(!(e.touches&&e.touches[0])) return;
     armed.current=true;
@@ -487,6 +490,7 @@ function useSheetSwipe(open, onClose){
     startY.current=e.touches[0].clientY; startX.current=e.touches[0].clientX;
   };
   const onTouchMove=function(e){
+    if(e&&e.stopPropagation) e.stopPropagation();
     if(!dragging.current||!armed.current||closing.current) return;
     const el=sheetRef.current;
     const t=e.touches[0], ddy=t.clientY-startY.current, ddx=t.clientX-startX.current;
@@ -511,7 +515,8 @@ function useSheetSwipe(open, onClose){
     }
     if(e.cancelable) e.preventDefault();
   };
-  const onTouchEnd=function(){
+  const onTouchEnd=function(e){
+    if(e&&e.stopPropagation) e.stopPropagation();
     if(closing.current) return;
     if(!dragging.current && dy.current<=0){ armed.current=false; axis.current=null; return; }
     dragging.current=false; armed.current=false; axis.current=null;
@@ -530,7 +535,7 @@ function useSheetSwipe(open, onClose){
     } else {
       el.style.transition="transform .22s cubic-bezier(.32,.72,0,1)";
       el.style.transform="translate3d(0,0,0)";
-      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} }, 220);
+      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(err){} }, 220);
     }
   };
   return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };

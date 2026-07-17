@@ -4421,6 +4421,9 @@ function useSheetSwipe(open, onClose){
     };
   },[open]);
   const onTouchStart=function(e){
+    // Portal a body pero el árbol React sigue bajo la tab: sin esto el swipe de tabs
+    // del viewport se come el scroll horizontal de chips (editar gasto ≠ Apuntar — 2026-07-17).
+    if(e&&e.stopPropagation) e.stopPropagation();
     if(closing.current) return;
     if(!(e.touches&&e.touches[0])) return;
     armed.current=true;
@@ -4428,6 +4431,7 @@ function useSheetSwipe(open, onClose){
     startY.current=e.touches[0].clientY; startX.current=e.touches[0].clientX;
   };
   const onTouchMove=function(e){
+    if(e&&e.stopPropagation) e.stopPropagation();
     if(!dragging.current||!armed.current||closing.current) return;
     const el=sheetRef.current;
     const t=e.touches[0], ddy=t.clientY-startY.current, ddx=t.clientX-startX.current;
@@ -4452,7 +4456,8 @@ function useSheetSwipe(open, onClose){
     }
     if(e.cancelable) e.preventDefault();
   };
-  const onTouchEnd=function(){
+  const onTouchEnd=function(e){
+    if(e&&e.stopPropagation) e.stopPropagation();
     if(closing.current) return;
     if(!dragging.current && dy.current<=0){ armed.current=false; axis.current=null; return; }
     dragging.current=false; armed.current=false; axis.current=null;
@@ -4471,7 +4476,7 @@ function useSheetSwipe(open, onClose){
     } else {
       el.style.transition="transform .22s cubic-bezier(.32,.72,0,1)";
       el.style.transform="translate3d(0,0,0)";
-      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} }, 220);
+      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(err){} }, 220);
     }
   };
   return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };
@@ -8616,6 +8621,9 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.14", d:"17 jul 2026", t:"Editar gasto: categorías sin cambiar de pestaña", items:[
+    "🧾 Al modificar un gasto, al deslizar las categorías ya no se mueve la app de detrás (igual que en el + y en los filtros de Gastos).",
+  ]},
   {v:"4.0.13", d:"17 jul 2026", t:"Perfil se cierra tirando abajo + fondo al apuntar", items:[
     "👤 En el perfil, desliza de arriba hacia abajo y se encoge otra vez al avatar (la misma animación, hacia atrás).",
     "🧾 Al pulsar + o editar un gasto desde cualquier pestaña, se ve la pantalla de detrás (como ya pasaba en Resumen).",
@@ -11289,6 +11297,9 @@ function App(){
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
     if(drawerOpen||profileOpen) return;
+    // Sheets portaleados desde una tab (editar gasto): el DOM está en body pero el árbol
+    // React burbujea hasta aquí — sin esto, scroll de chips mueve las tabs (2026-07-17).
+    if(document.documentElement.classList.contains("sheet-open")) return;
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
@@ -11300,6 +11311,7 @@ function App(){
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen||profileOpen) return;
+    if(document.documentElement.classList.contains("sheet-open")) return;
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;

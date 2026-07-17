@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.14] — 2026-07-17
+### Editar gasto: scroll de categorías no cambia de tab
+- El sheet de detalle vive en portal a `body` pero cuelga del árbol React de Gastos: los touch burbujeaban al `viewport` y el swipe de tabs se comía el scroll horizontal de chips (el `+` no, porque Apuntar cuelga de App).
+- `useSheetSwipe`: `stopPropagation` en touch; `onStart`/`onMove` ignoran si `html.sheet-open`.
+- OTA only.
+
 ## [4.0.13] — 2026-07-17
 ### Perfil: cerrar tirando abajo + sheets con fondo en todas las tabs
 - 👤 Cerrar perfil: swipe **arriba→abajo** encoge al avatar (reversa de la entrada Fable). Antes cerraba tirando arriba.

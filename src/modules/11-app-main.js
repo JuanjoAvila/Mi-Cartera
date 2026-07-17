@@ -1072,6 +1072,9 @@ function App(){
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
     if(drawerOpen||profileOpen) return;
+    // Sheets portaleados desde una tab (editar gasto): el DOM está en body pero el árbol
+    // React burbujea hasta aquí — sin esto, scroll de chips mueve las tabs (2026-07-17).
+    if(document.documentElement.classList.contains("sheet-open")) return;
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
@@ -1083,6 +1086,7 @@ function App(){
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen||profileOpen) return;
+    if(document.documentElement.classList.contains("sheet-open")) return;
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
