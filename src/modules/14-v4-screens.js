@@ -29,6 +29,8 @@ function PlanTab({state, set, totals, showToast, simple}){
    simulador, conciliación…) vive SOLO dentro de la hoja «Gestionar» — mezclarlo aquí abajo
    duplicaba próximos cargos y desglose de banco que ya se ven arriba (feedback 2026-07-17). */
 function PlanBills({state, set, totals, manageOpen, setManageOpen}){
+  const [paidExpanded,setPaidExpanded]=useState(false);
+  const [pendExpanded,setPendExpanded]=useState(false);
   const month=totals.curMonth, year=totals.curYear, today=totals.today;
   const charges=[];
   (state.fixed||[]).forEach(function(e){
@@ -96,11 +98,15 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
         React.createElement("span",null,t("v4_pendiente")),
         React.createElement("button",{className:"link",onClick:function(){ setManageOpen(true); }},t("v4_gestionar"))
       ),
-      pending.map(row)
+      (pendExpanded?pending:pending.slice(0,3)).map(row),
+      pending.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPendExpanded(function(v){ return !v; }); }},
+        pendExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:pending.length-3}))
     ),
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},t("v4_ya_pagado")+" · "+eur(paidTotal)),
-      paid.map(row)
+      (paidExpanded?paid:paid.slice(0,3)).map(row),
+      paid.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPaidExpanded(function(v){ return !v; }); }},
+        paidExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:paid.length-3}))
     ),
     React.createElement(BillsManageSheet,{open:manageOpen,onClose:function(){ setManageOpen(false); },state:state,set:set,totals:totals})
   );
@@ -133,7 +139,6 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
   const sum=Math.max(0.01, liq+inv+goods);
   const wLiq=(liq/sum)*100, wInv=(inv/sum)*100, wGoods=(goods/sum)*100;
   const p=eurParts(totals.netWorth);
-  const ru=+(totals.roundupThisMonth||0)+(totals.savebackThisMonth||0);
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_cartera_title")),
     React.createElement("div",{className:"v4-card v4-card-hero rise",style:{animationDelay:".05s"}},
@@ -157,19 +162,8 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
     ),
     React.createElement("div",{className:"v4-sec-h"}, t("v4_cuentas")),
     React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true}),
-    ru>0.005 && React.createElement("div",{className:"v4-roundup"},
-      (function(){
-        const parts=t("v4_roundup_card").split("{x}");
-        if(parts.length<2) return tf("v4_roundup_card",{x:eur(ru)});
-        return React.createElement(React.Fragment,null, parts[0], React.createElement("strong",null,eur(ru)), parts[1]);
-      })()
-    ),
     !simple && React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"v4-sec-h",style:{display:"flex",justifyContent:"space-between",alignItems:"baseline"}},
-        React.createElement("span",null, t("v4_inversiones")),
-        React.createElement("span",{className:"num",style:{color:"var(--mint)",fontWeight:800,fontSize:13.5}},
-          (totals.investedCost>0?(totals.invested-totals.investedCost>=0?"+":"")+eur0(totals.invested-totals.investedCost):"—"))
-      ),
+      React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),
       React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
       React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›"),
       React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})

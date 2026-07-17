@@ -43,8 +43,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [heavyOk,setHeavyOk]=useState(false);
   const catChipsRef=useRef(null), bankChipsRef=useRef(null);
   const chipDrag=useRef({sx:0,sy:0,capturing:false});
-  // Chips: bloquea el swipe de tabs al scrollear categorías/bancos; al inicio + dedo a la
-  // izquierda deja pasar el cambio de pestaña (feedback 2026-07-17).
+  // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
+  // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
   const chipSwipe=function(ref){
     return {
       onTouchStart:function(e){
@@ -52,16 +52,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         chipDrag.current={sx:e.touches[0].clientX,sy:e.touches[0].clientY,capturing:false};
       },
       onTouchMove:function(e){
-        const el=ref.current; if(!el||!(e.touches&&e.touches[0])) return;
+        if(!ref.current||!(e.touches&&e.touches[0])) return;
         const dx=e.touches[0].clientX-chipDrag.current.sx, dy=e.touches[0].clientY-chipDrag.current.sy;
-        if(Math.abs(dx)<10 && Math.abs(dy)<10) return;
+        if(Math.abs(dx)<6 && Math.abs(dy)<6) return;
         if(Math.abs(dy)>=Math.abs(dx)*1.15) return;
-        const atStart=el.scrollLeft<=3;
-        const atEnd=el.scrollLeft+el.clientWidth>=el.scrollWidth-3;
-        // Al inicio (chips reseteados): deja el swipe de tabs. En cuanto hay scroll interno, bloquea.
-        // Al final + dedo a la derecha: tab anterior (no queda scroll de chips).
-        if(atStart){ chipDrag.current.capturing=false; return; }
-        if(atEnd && dx>0){ chipDrag.current.capturing=false; return; }
         chipDrag.current.capturing=true;
         if(cancelSwipe) cancelSwipe();
         e.stopPropagation();
@@ -443,13 +437,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   );
 }
 
-/* Sheet detalle/edición de un movimiento (SPEC §14). Cambios al momento; borrar pide confirmación. */
+/* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */
 function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
   useBackClose(!!exp, onClose);
   const swipe=useSheetSwipe(!!exp, onClose);
   if(!exp || !editExp) return null;
   const c=catOf(exp.category);
-  const isIncome=exp.amount<0;
+  const isIncome=exp.amount<0 || !!editExp.income;
   const bk=expenseBankOf(exp);
   const auto=exp.source && exp.source!=="manual";
   const d=parseDate(exp.date);
@@ -461,36 +455,34 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
     askConfirm({ title:tf("v4_exp_del_q",{name:(exp.merchant||"—")+" · "+eur(Math.abs(exp.amount))}), sub:t("v4_exp_del_sub"), ok:t("v4_exp_del"), danger:true })
       .then(function(yes){ if(!yes) return; delExpense(exp); onClose(); });
   };
+  const metaBits=[dateLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"88dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+      React.createElement("div",Object.assign({className:"v4-sheet v4-exp-sheet",style:{maxHeight:"90dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
-        React.createElement("div",{className:"v4-exp-head"},
-          React.createElement("div",{className:"tile",style:{width:44,height:44,fontSize:22,borderRadius:14,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
-          React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("input",{className:"v4-input",style:{marginBottom:6,fontWeight:700},value:editExp.merchant,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
-            React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:22,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
-          )
-        ),
-        React.createElement("div",{className:"v4-chips meta-chips wrap",
-          onTouchStart:function(e){ e.stopPropagation(); }, onTouchMove:function(e){ e.stopPropagation(); }},
-          React.createElement("span",{className:"v4-chip"}, dateLbl),
-          bk && React.createElement("span",{className:"v4-chip"}, entOf(bk).label),
-          React.createElement("span",{className:"v4-chip"}, auto?t("v4_exp_auto"):t("v4_exp_manual"))
+        React.createElement("div",{className:"v4-exp-hero"},
+          React.createElement("div",{className:"v4-exp-ico",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}}, c.icon),
+          React.createElement("input",{className:"v4-exp-amt num serif",inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave,"aria-label":t("v4_exp_amount")}),
+          React.createElement("input",{className:"v4-exp-name",value:editExp.merchant,placeholder:t("v4_exp_merchant_ph"),onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
+          React.createElement("div",{className:"v4-exp-meta"}, metaBits.join(" · "))
         ),
         !isIncome && React.createElement(React.Fragment,null,
-          React.createElement("div",{className:"v4-micro",style:{marginBottom:8}}, t("g_changecat")),
-          React.createElement("div",{className:"v4-chips",
-            onTouchStart:function(e){ e.stopPropagation(); }, onTouchMove:function(e){ e.stopPropagation(); }},
+          React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
+          React.createElement("div",{className:"v4-chips"},
             CATEGORIES.map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })
           ),
-          React.createElement("button",{type:"button",className:"cardflag"+(exp.noCard?" off":""),style:{marginTop:12},onClick:function(){ setCardFlag(exp,!exp.noCard); }}, exp.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
+          React.createElement("button",{type:"button",className:"v4-sheet-row"+(exp.noCard?"":" on"),style:{marginTop:12},onClick:function(){ setCardFlag(exp,!exp.noCard); }},
+            exp.noCard?("💸 "+t("v4_exp_not_card")):("💳 "+t("v4_exp_with_card"))),
           exp.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
         ),
-        React.createElement("button",{type:"button",className:"cardflag"+(editExp.income?"":" off"),style:{marginTop:12},onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:!p.income}); }); setTimeout(function(){ /* se guarda al blur/cerrar */ },0); }}, editExp.income?("💰 "+t("g_ingreso")):("💸 "+t("g_gasto"))),
-        React.createElement("button",{type:"button",className:"btn btn-primary btn-block",style:{marginTop:14},onClick:closeSave}, t("fj_save")),
+        React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_type")),
+        React.createElement("div",{className:"v4-toggle"},
+          React.createElement("button",{type:"button",className:!editExp.income?"on":"",onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:false}); }); }},"💸 "+t("v4_gasto")),
+          React.createElement("button",{type:"button",className:editExp.income?"on":"",onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:true}); }); }},"💰 "+t("v4_ingreso"))
+        ),
+        React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:16},onClick:closeSave}, t("fj_save")),
         React.createElement("button",{type:"button",className:"v4-danger",onClick:doDel}, "🗑 "+t("v4_exp_del"))
       )
     ), document.body);

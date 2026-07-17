@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.4] — 2026-07-17
+### Feedback post-4.0.3
+- 🎓 Tour v4: pasos Inicio → Gastos → FAB + → Plan → Cartera → avatar Ajustes → swipe tabs; `goTab` + `data-tour`.
+- 👆 Chips Gastos: siempre `cancelSwipe` en horizontal (sin amago de tabs).
+- 🧾 `useSheetSwipe`: dismiss vertical también desde chips; cierre/retorno con ease 0,42 s; ExpenseDetailSheet rediseñada.
+- 📅 Plan Pendiente/Ya pagado: slice(0,3) + Ver más/menos.
+- 💼 Cartera: quitados P&L verde junto a inversiones y card `v4-roundup`.
+
 ## [4.0.3] — 2026-07-17
 ### Feedback post-4.0.2
 - 🔔 Android: `OtaCheckWorker` (WorkManager, ~15 min) consulta `version.json`/`apk.json` con la app cerrada y dispara noti local; `syncOtaState` evita doble aviso al abrir. **Requiere APK nuevo** (versionCode 24).
