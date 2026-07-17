@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.15] — 2026-07-17
+### Open Banking estable, oro con % (coste manual), nav auto-oculta y Ajustes/privacidad in-app
+
+**Open Banking — se caía «cada dos por tres» (falso positivo de caducidad).**
+- `bank-sync/index.ts`: la clasificación de error marcaba `expired` con CUALQUIER `40[134]`. Un 403 de PSD2 es casi siempre rate-limit/anti-abuso momentáneo y un 404 un hipo del banco — NO que el consentimiento muriera. Ahora solo cuenta como caducado un **401** o un mensaje EXPLÍCITO (`expired|revoked|consent|unauthor|invalid_(token|session|grant)|session_not_found`). Mismo criterio que el 403 anti-bot de MI y el 401 momentáneo de TR. Validado con banco de casos (401/403/404/429/5xx/mensajes).
+- Cliente (`11-app-main.js`): un fallo NO caducado ya no lanza «reconéctate». Nuevo `bank_syncsoft` (es/en/ca) — aviso suave y SOLO en sync manual; en auto-sync se calla y reintenta solo.
+
+**Revolut materias primas — «no veo si sube o baja».**
+- El precio ya se actualizaba en vivo (XAU→GC=F); faltaba el COSTE, que Revolut no trae en el extracto de metales. `BrokerImport`: campo OPCIONAL «Coste en €» por metal en la previsualización (`costOf()` parsea con `revoAmt`, exige `>0`). Con coste, la fila pinta el % sube/baja; sin él, sigue como antes (sin % falso). `bi_metal_hint` reescrito + `bi_metal_cost_ph` (es/en/ca).
+
+**Nav inferior que se esconde (estilo Revolut).**
+- `.page onScroll` → `onPageScroll`: bajando esconde `.botnav` (`translateY(130%)`+fade, curva de la casa), subiendo o al cambiar de tab la muestra. `navHiddenRef`/`scrollTab` evitan re-render por píxel y el falso salto al cambiar de pestaña con distinto scrollTop. Respeta `prefers-reduced-motion` (snap sin animación).
+
+**Ajustes / privacidad.**
+- Privacidad DENTRO de la app (`PrivacyPanel`, portal + `useBackClose` + safe-area): antes `window.open("privacy.html","_blank")` dejaba el título bajo el notch («muy arriba») y costaba volver. Contenido en i18n `pv_*` (es/en/ca). `privacy.html` también con `env(safe-area-inset-*)`.
+- Limpieza: fuera `lbl`/`btnGhost`/`link` (estilos muertos en `SettingsPanel`) y comentario de acordeón obsoleto.
+- OTA only (web + Edge Function `bank-sync`; sin cambio nativo — APK 28 ya instalado sirve).
+
 ## [4.0.14] — 2026-07-17
 ### Editar gasto: scroll de categorías no cambia de tab
 - El sheet de detalle vive en portal a `body` pero cuelga del árbol React de Gastos: los touch burbujeaban al `viewport` y el swipe de tabs se comía el scroll horizontal de chips (el `+` no, porque Apuntar cuelga de App).

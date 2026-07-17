@@ -117,7 +117,15 @@ Deno.serve(async (req) => {
           anyAcctOk = true;
         } catch (err) {
           const msg = String((err as Error)?.message || err);
-          if (/\b40[134]\b|expired|invalid|unauthor/i.test(msg)) anyExpired = true;
+          // CADUCIDAD REAL vs FALLO TRANSITORIO (feedback 2026-07-17: «se me caen cada dos por
+          // tres»). Antes CUALQUIER 403/404 marcaba el enlace 'expired' → reconectar a mano una y
+          // otra vez. Pero un 403 de PSD2 casi siempre es rate-limit/anti-abuso momentáneo y un 404
+          // un hipo del banco, NO que el consentimiento haya muerto. Igual que el 403 anti-bot de
+          // MyInvestor y el 401 momentáneo de TR: NO desconectar por un fallo pasajero.
+          // Solo cuenta como caducado un 401 o un mensaje EXPLÍCITO de consentimiento/sesión muerta.
+          if (/\b401\b/.test(msg) || /expired|revoked|consent|unauthor|invalid[_ ]?(?:token|session|grant)|session[_ ]?not[_ ]?found/i.test(msg)) {
+            anyExpired = true;
+          }
           lastErr = msg;
           acctOut.push({ uid, iban: ac.iban || null, name: ac.name || null, currency: ac.currency || null, ok: false, error: msg, balances: [], count: 0, transactions: [] });
         }

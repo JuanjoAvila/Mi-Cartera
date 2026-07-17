@@ -294,9 +294,16 @@ function BrokerImport({state, set, fetchPrices}){
   const [text,setText]=useState("");
   const [parsed,setParsed]=useState(null);
   const [map,setMap]=useState({});
+  const [mcost,setMcost]=useState({});      // coste € que TÚ tecleas para un metal (Revolut no lo trae)
   const [err,setErr]=useState(null);        // null | "bad" | "pnl"
   const [doneN,setDoneN]=useState(null);
   const [steps,setSteps]=useState(false);
+  // Coste efectivo de una posición: el del CSV si viniera, y para los metales el que teclees tú
+  // (así el «sube/baja» sale — sin coste no hay % contra el que comparar, feedback 2026-07-17).
+  const costOf=function(po){
+    if(po.metal){ const raw=mcost[po.ticker]; if(raw!=null && String(raw).trim()!==""){ const n=revoAmt(String(raw)); if(n!=null && n>0) return n; } }
+    return po.cost;
+  };
   // Cada fichero es O acciones O materias primas (formatos que no se parecen en nada, ver
   // revoParseCommodities). Se admiten VARIOS a la vez y se fusionan: la cartera de Revolut
   // vive repartida en dos extractos y pedir dos pasadas era pedir que se le olvide una.
@@ -352,8 +359,9 @@ function BrokerImport({state, set, fetchPrices}){
       let inv=(s.investments||[]).map(function(i){
         const po=pos.find(function(p){ return map[p.ticker]===i.id; });
         if(!po) return i;
+        const pcost=costOf(po);
         const patch={ shares:po.shares };
-        if(po.cost!=null) patch.cost=po.cost;    // metales: Revolut no da el coste → se respeta el que hubiera
+        if(pcost!=null) patch.cost=pcost;        // metales: si tecleaste el coste, entra; si no, se respeta el que hubiera
         if(!i.isin) patch.ticker=po.ticker;      // nunca pisar un ISIN real con un ticker
         // el valor se re-escala al nuevo nº de participaciones con el último precio conocido
         // (value/shares viejos). Antes el valor se quedaba tal cual y el % contra el coste
@@ -363,14 +371,16 @@ function BrokerImport({state, set, fetchPrices}){
         // sin precio por participación (p.ej. el oro, que se llevaba a mano y sin «shares»)
         // el valor de partida es el coste; si tampoco hay coste, se deja el que ya tenía.
         // En los dos casos dura un suspiro: fetchPrices() al final lo pone en vivo.
-        patch.value=+((pps!=null?pps*po.shares:(po.cost!=null?po.cost:(i.value||0)))).toFixed(2);
+        patch.value=+((pps!=null?pps*po.shares:(pcost!=null?pcost:(i.value||0)))).toFixed(2);
         return Object.assign({},i,patch);
       });
       const created=pos.filter(function(p){ return map[p.ticker]==="__new"; }).map(function(po){
         // sin precio en vivo (Revolut no da ISIN para el feed) → value arranca = coste; el usuario lo afina a mano.
-        // Metal sin coste: cost null (así no se pinta un % falso, ver la fila de %) y value lo pone el precio en vivo.
+        // Metal: si tecleaste el coste entra (así el % sube/baja sale); si no, cost null (sin % falso)
+        // y value lo pone el precio en vivo (XAU→oro spot).
+        const pcost=costOf(po);
         return { id:uid(), ent:"revolut", name:po.name, ticker:po.ticker, shares:po.shares,
-                 value:po.cost!=null?po.cost:0, cost:po.cost!=null?po.cost:null, cur:po.cur||"EUR" };
+                 value:pcost!=null?pcost:0, cost:pcost!=null?pcost:null, cur:po.cur||"EUR" };
       });
       if(created.length) inv=inv.concat(created);
       return Object.assign({},s,{investments:inv});
@@ -412,13 +422,19 @@ function BrokerImport({state, set, fetchPrices}){
             React.createElement("div",{style:{minWidth:0}},
               React.createElement("div",{className:"rname"},(po.metal?po.name:po.ticker)+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):"")),
               React.createElement("div",{className:"rsub"}, po.shares+" "+t(po.metal?"bi_oz":"bi_shares")+(ops?(" · "+ops):""))),
-            // el coste de un metal no viene en el extracto: «—» antes que inventarse un número
-            React.createElement("div",{className:"rval num"}, po.cost!=null?eur(po.cost):"—")),
+            // el coste de un metal no viene en el extracto: si lo tecleaste abajo lo mostramos, si no «—»
+            React.createElement("div",{className:"rval num"}, (function(){ const c=costOf(po); return c!=null?eur(c):"—"; })())),
           React.createElement("select",{className:"af-in",value:map[po.ticker]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.ticker]=v; return n; }); }},
             React.createElement("option",{value:""},t("bi_notouch")),
             React.createElement("option",{value:"__new"},t("tr_createnew")),
             (state.investments||[]).map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
-          )
+          ),
+          // Metal: campo OPCIONAL para teclear lo que te costó en €. Revolut no lo trae en el CSV,
+          // así que sin esto el oro/plata nunca puede pintar «sube/baja». Lo dejamos a mano y claro
+          // (feedback 2026-07-17). Solo se pide si vas a tocar la posición (mapeada o nueva).
+          po.metal && map[po.ticker] && React.createElement("input",{className:"af-in num",inputMode:"decimal",
+            placeholder:t("bi_metal_cost_ph"), value:mcost[po.ticker]||"",
+            onChange:function(e){ const v=e.target.value; setMcost(function(m){ const n=Object.assign({},m); n[po.ticker]=v; return n; }); }})
         );
       }),
       parsed.positions.some(function(p){ return p.metal; }) && React.createElement("div",{className:"hint",style:{marginTop:4}}, t("bi_metal_hint")),
