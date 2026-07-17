@@ -583,9 +583,16 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:flex;align-items:flex-end;justify-content:center;animation:v4fade .25s ease;}
   .v4-sheet{width:100%;max-width:520px;max-height:88dvh;overflow:auto;background:var(--bg-2);border:1px solid var(--line);border-bottom:none;
     border-radius:26px 26px 0 0;padding:12px 18px calc(18px + var(--safe-bottom));animation:sheetup .34s var(--spring);
-    transition:transform .28s cubic-bezier(.32,.72,0,1);will-change:transform;touch-action:pan-y;}
+    transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;touch-action:pan-y;}
   .v4-sheet-handle{width:40px;height:5px;border-radius:4px;background:var(--line);margin:6px auto 14px;position:relative;flex:0 0 auto;cursor:grab;}
   .v4-sheet-handle::before{content:"";position:absolute;inset:-16px -48px;} /* zona táctil amplia para tirar abajo */
+  .v4-exp-sheet .v4-exp-hero{text-align:center;padding:4px 0 14px;}
+  .v4-exp-ico{width:48px;height:48px;border-radius:16px;border:1px solid;display:grid;place-items:center;font-size:22px;margin:0 auto 10px;}
+  .v4-exp-amt{width:100%;border:none;background:transparent;color:var(--text);font-size:36px;font-weight:550;letter-spacing:-1px;text-align:center;padding:4px 0;outline:none;font-variant-numeric:tabular-nums;}
+  .v4-exp-name{width:100%;border:none;background:transparent;color:var(--text);font-size:16px;font-weight:700;text-align:center;padding:2px 8px 6px;outline:none;}
+  .v4-exp-name::placeholder{color:var(--muted-2);font-weight:600;}
+  .v4-exp-meta{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .v4-exp-sec{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted-2);margin:4px 2px 8px;}
   html.sheet-open,html.sheet-open body{overflow:hidden;overscroll-behavior:none;}
   html.sheet-open .page{overflow:hidden !important;overscroll-behavior:none;}
   .v4-toggle{display:flex;gap:8px;margin-bottom:12px;}

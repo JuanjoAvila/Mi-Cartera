@@ -471,6 +471,14 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.4", d:"17 jul 2026", t:"Tutorial nuevo, fichas más suaves y Plan compacto", items:[
+    "🎓 Tutorial actualizado al rediseño: Inicio, Gastos, +, Plan, Cartera y Ajustes.",
+    "👆 En Gastos, scrollear categorías/bancos ya no hace el amago de cambiar de pestaña.",
+    "🧾 Tirar hacia abajo para cerrar (+ y editar gasto) es más suave, al estilo del swipe entre tabs; en editar gasto vale en toda la ficha.",
+    "✨ Ficha de editar gasto más clara: importe grande, comercio, categoría y tipo gasto/ingreso.",
+    "📅 En Plan, Pendiente y Ya pagado vuelven a mostrar 3 y «Ver más».",
+    "💼 En Cartera, fuera el número verde al lado de inversiones y la tarjeta de redondeo."
+  ]},
   {v:"4.0.3", d:"17 jul 2026", t:"Ajustes ordenados y aviso de update con la app cerrada", items:[
     "🔔 Si hay actualización, el móvil te avisa aunque no tengas la app abierta (hace falta instalar el APK nuevo una vez).",
     "👈 En Inicio, Ajustes se abre deslizando desde casi toda la pantalla (no solo el borde).",

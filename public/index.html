@@ -583,9 +583,16 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:flex;align-items:flex-end;justify-content:center;animation:v4fade .25s ease;}
   .v4-sheet{width:100%;max-width:520px;max-height:88dvh;overflow:auto;background:var(--bg-2);border:1px solid var(--line);border-bottom:none;
     border-radius:26px 26px 0 0;padding:12px 18px calc(18px + var(--safe-bottom));animation:sheetup .34s var(--spring);
-    transition:transform .28s cubic-bezier(.32,.72,0,1);will-change:transform;touch-action:pan-y;}
+    transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;touch-action:pan-y;}
   .v4-sheet-handle{width:40px;height:5px;border-radius:4px;background:var(--line);margin:6px auto 14px;position:relative;flex:0 0 auto;cursor:grab;}
   .v4-sheet-handle::before{content:"";position:absolute;inset:-16px -48px;} /* zona táctil amplia para tirar abajo */
+  .v4-exp-sheet .v4-exp-hero{text-align:center;padding:4px 0 14px;}
+  .v4-exp-ico{width:48px;height:48px;border-radius:16px;border:1px solid;display:grid;place-items:center;font-size:22px;margin:0 auto 10px;}
+  .v4-exp-amt{width:100%;border:none;background:transparent;color:var(--text);font-size:36px;font-weight:550;letter-spacing:-1px;text-align:center;padding:4px 0;outline:none;font-variant-numeric:tabular-nums;}
+  .v4-exp-name{width:100%;border:none;background:transparent;color:var(--text);font-size:16px;font-weight:700;text-align:center;padding:2px 8px 6px;outline:none;}
+  .v4-exp-name::placeholder{color:var(--muted-2);font-weight:600;}
+  .v4-exp-meta{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .v4-exp-sec{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted-2);margin:4px 2px 8px;}
   html.sheet-open,html.sheet-open body{overflow:hidden;overscroll-behavior:none;}
   html.sheet-open .page{overflow:hidden !important;overscroll-behavior:none;}
   .v4-toggle{display:flex;gap:8px;margin-bottom:12px;}
@@ -1758,6 +1765,9 @@ const LANG = {
     v4_set_tour:"Ver el tutorial", v4_set_adv:"Avanzado",
     v4_moved_cat:"Movido a {cat}", v4_exp_auto:"entró solo", v4_exp_manual:"a mano",
     v4_exp_del:"Borrar", v4_exp_del_q:"¿Borrar «{name}»?", v4_exp_del_sub:"Esto no se puede deshacer.",
+    v4_exp_amount:"Importe", v4_exp_merchant_ph:"Comercio o concepto",
+    v4_exp_cat:"Categoría", v4_exp_type:"Tipo",
+    v4_exp_with_card:"Pagado con tarjeta", v4_exp_not_card:"Bizum o transferencia",
     v4_budget_sheet:"Tu presupuesto del mes", v4_budget_sheet_h:"Solo el día a día: súper, bares, caprichos. Los recibos van aparte.",
     st_mode_hint:"Sencillo deja Inicio, Gastos, Plan (solo recibos) y Cartera. Ideal para empezar.",
     brand_sub:"tus finanzas, claras",
@@ -1846,6 +1856,9 @@ const LANG = {
     v4_set_tour:"See the tour", v4_set_adv:"Advanced",
     v4_moved_cat:"Moved to {cat}", v4_exp_auto:"auto", v4_exp_manual:"manual",
     v4_exp_del:"Delete", v4_exp_del_q:"Delete “{name}”?", v4_exp_del_sub:"This can't be undone.",
+    v4_exp_amount:"Amount", v4_exp_merchant_ph:"Merchant or note",
+    v4_exp_cat:"Category", v4_exp_type:"Type",
+    v4_exp_with_card:"Paid by card", v4_exp_not_card:"Bizum or transfer",
     v4_budget_sheet:"Your monthly budget", v4_budget_sheet_h:"Day-to-day only: groceries, eating out, treats. Bills are separate.",
     tb_add:"Add tab", tb_add_hint:"Tap the one you want on the bar. To remove one, long-press it and drag it to the bin.",
     tb_trash:"Drop it here to remove", tb_removed:"Tab removed · bring it back with +", tb_nodel:"Home can't be removed",
@@ -1936,6 +1949,9 @@ const LANG = {
     v4_set_tour:"Veure el tutorial", v4_set_adv:"Avançat",
     v4_moved_cat:"Mogut a {cat}", v4_exp_auto:"ha entrat sol", v4_exp_manual:"a mà",
     v4_exp_del:"Esborra", v4_exp_del_q:"Vols esborrar «{name}»?", v4_exp_del_sub:"Això no es pot desfer.",
+    v4_exp_amount:"Import", v4_exp_merchant_ph:"Comerç o concepte",
+    v4_exp_cat:"Categoria", v4_exp_type:"Tipus",
+    v4_exp_with_card:"Pagat amb targeta", v4_exp_not_card:"Bizum o transferència",
     v4_budget_sheet:"El teu pressupost del mes", v4_budget_sheet_h:"Només el dia a dia: súper, bars, capricis. Els rebuts van a part.",
     tb_add:"Afegeix pestanya", tb_add_hint:"Toca la que vulguis veure a la barra. Per treure'n una, mantén-la premuda i arrossega-la a la paperera.",
     tb_trash:"Deixa-la aquí per treure-la", tb_removed:"Pestanya treta · recupera-la amb el botó +", tb_nodel:"L'Inici no es pot treure",
@@ -2005,14 +2021,13 @@ function tf(k,vals){ let s=t(k); if(vals) for(const v in vals) s=s.split("{"+v+"
 /* Tour guiado + ayuda contextual + accesibilidad (UX para no-técnicos) */
 Object.assign(LANG.es,{
   st_bigtext:"🔍 Letra grande", st_tour:"🎓 Ver el tutorial",
-  tour_1:"💰 Este es tu dinero. Aquí ves cuánto tienes en total y cómo va el mes.",
-  tour_2:"🧾 «{gastos}» = solo el día a día (súper, bares, ropa…). Arriba filtras por mes, categoría o banco. Nómina o Bizum recibido: botón «+» → Ingreso (o chip 💰 Ingreso). Los recibos NO van aquí.",
-  tour_3:"📅 «{fijos}» = lo que se repite cada mes: luz, agua, Netflix, hipoteca, cuotas… Si el banco está conectado, Conciliación te propone lo cobrado. Lo del súper va en Gastos, no aquí.",
-  tour_4:"⚙️ Aquí están los Ajustes: idioma, colores, letra grande y el modo sencillo.",
-  tour_5:"☁️ Con tu cuenta, todo se guarda solo y no se pierde aunque cambies de móvil. ¡Ya está!",
-  tour_6:"👆 Las pestañas son tuyas: reordénalas, ocúltalas o vuelve a añadirlas desde Ajustes › «✎ Editar pestañas». Con el «+» de la barra añades las que quieras.",
-  tour_7:"🏛 En «{patri}» está TODO lo tuyo junto: cuentas, inversiones, bienes y deudas. Toca «Editar» para corregir cualquier saldo: la app se re-cuadra sola.",
-  tour_8:"❓ Si ves un «?» en una tarjeta, tócalo: te explica esa tarjeta en cristiano, sin jerga. Hay uno en casi todas.",
+  tour_1:"💰 Aquí ves tu dinero de un vistazo: cuánto tienes en total y cómo va el mes.",
+  tour_2:"🧾 «{gastos}» es solo el día a día (súper, bares, ropa…). Filtra por mes, categoría o banco. Los recibos NO van aquí.",
+  tour_3:"➕ El botón verde del centro apunta un gasto o un ingreso al momento, sin ir a ninguna pestaña.",
+  tour_4:"📅 «{plan}» junta recibos, deudas y metas. En Recibos ves lo pendiente y lo ya pagado; Gestionar abre el detalle.",
+  tour_5:"💼 «{cartera}» es tu patrimonio: cuentas, inversiones y bienes. Las herramientas de inversión están un toque más abajo.",
+  tour_6:"⚙️ El círculo de arriba abre Ajustes: idioma, colores, bancos y el modo sencillo.",
+  tour_7:"👆 Desliza entre pestañas con el dedo. ¡Ya estás listo!",
   tour_next:"Siguiente", tour_skip:"Saltar", tour_done:"¡Listo!",
   h_ok:"Entendido",
   h_dist:"Cómo se reparte tu dinero: lo líquido (cuentas), lo invertido y los bienes (coche, piso…). La barra crece hacia donde más tienes.",
@@ -2046,14 +2061,13 @@ Object.assign(LANG.es,{
 });
 Object.assign(LANG.en,{
   st_bigtext:"🔍 Large text", st_tour:"🎓 View the tutorial",
-  tour_1:"💰 This is your money. Here you see how much you have in total and how the month is going.",
-  tour_2:"🧾 “{gastos}” = day-to-day only (groceries, bars, clothes…). Filter by month, category or bank up top. Salary or Bizum in: “+” → Income (or the 💰 Income chip). Bills do NOT go here.",
-  tour_3:"📅 “{fijos}” = what repeats each month: power, water, Netflix, mortgage, instalments… With a bank linked, Reconciliation suggests what was charged. Groceries go in Spending, not here.",
-  tour_4:"⚙️ Here are the Settings: language, colours, large text and simple mode.",
-  tour_5:"☁️ With your account everything saves itself and survives changing phones. That's it!",
-  tour_6:"👆 The tabs are yours: reorder, hide or add them back from Settings › «✎ Edit tabs». Add more with the «+» in the bar.",
-  tour_7:"🏛 «{patri}» holds EVERYTHING you own: accounts, investments, assets and debts. Tap “Edit” to fix any balance — the app re-balances itself.",
-  tour_8:"❓ See a «?» on a card? Tap it: it explains that card in plain words, no jargon. Almost every card has one.",
+  tour_1:"💰 Here's your money at a glance: how much you have in total and how the month is going.",
+  tour_2:"🧾 “{gastos}” is day-to-day only (groceries, bars, clothes…). Filter by month, category or bank. Bills do NOT go here.",
+  tour_3:"➕ The green button in the centre logs an expense or income right away — no need to open a tab.",
+  tour_4:"📅 “{plan}” brings together bills, debts and goals. In Bills you see what's due and what's paid; Manage opens the detail.",
+  tour_5:"💼 “{cartera}” is your net worth: accounts, investments and assets. Investment tools are one tap below.",
+  tour_6:"⚙️ The circle up top opens Settings: language, colours, banks and simple mode.",
+  tour_7:"👆 Swipe between tabs with your finger. You're all set!",
   tour_next:"Next", tour_skip:"Skip", tour_done:"Done!",
   h_ok:"Got it",
   h_dist:"How your money is spread: liquid (accounts), invested, and goods (car, home…). The bar grows towards where you hold the most.",
@@ -2087,14 +2101,13 @@ Object.assign(LANG.en,{
 });
 Object.assign(LANG.ca,{
   st_bigtext:"🔍 Lletra gran", st_tour:"🎓 Veure el tutorial",
-  tour_1:"💰 Aquests són els teus diners. Aquí veus quant tens en total i com va el mes.",
-  tour_2:"🧾 «{gastos}» = només el dia a dia (súper, bars, roba…). A dalt filtres per mes, categoria o banc. Nòmina o Bizum rebut: botó «+» → Ingrés (o xip 💰 Ingrés). Els rebuts NO van aquí.",
-  tour_3:"📅 «{fijos}» = el que es repeteix cada mes: llum, aigua, Netflix, hipoteca, quotes… Si el banc està connectat, Conciliació et proposa el cobrat. El súper va a Despeses, no aquí.",
-  tour_4:"⚙️ Aquí hi ha la Configuració: idioma, colors, lletra gran i el mode senzill.",
-  tour_5:"☁️ Amb el teu compte tot es desa sol i no es perd encara que canviïs de mòbil. Ja està!",
-  tour_6:"👆 Les pestanyes són teves: reordena-les, amaga-les o torna-les a afegir des d'Ajustos › «✎ Edita pestanyes». Amb el «+» de la barra n'afegeixes més.",
-  tour_7:"🏛 A «{patri}» hi ha TOT el que és teu: comptes, inversions, béns i deutes. Toca «Edita» per corregir qualsevol saldo: l'app es re-quadra sola.",
-  tour_8:"❓ Si veus un «?» en una targeta, toca'l: t'explica aquella targeta en cristià, sense argot. N'hi ha un a gairebé totes.",
+  tour_1:"💰 Aquí veus els teus diners d'un cop d'ull: quant tens en total i com va el mes.",
+  tour_2:"🧾 «{gastos}» és només el dia a dia (súper, bars, roba…). Filtra per mes, categoria o banc. Els rebuts NO van aquí.",
+  tour_3:"➕ El botó verd del centre apunta una despesa o un ingrés al moment, sense anar a cap pestanya.",
+  tour_4:"📅 «{plan}» junta rebuts, deutes i metes. A Rebuts veus el pendent i el ja pagat; Gestionar obre el detall.",
+  tour_5:"💼 «{cartera}» és el teu patrimoni: comptes, inversions i béns. Les eines d'inversió són un toc més avall.",
+  tour_6:"⚙️ El cercle de dalt obre Ajustos: idioma, colors, bancs i el mode senzill.",
+  tour_7:"👆 Llisca entre pestanyes amb el dit. Ja estàs a punt!",
   tour_next:"Següent", tour_skip:"Omet", tour_done:"Fet!",
   h_ok:"Entesos",
   h_dist:"Com es reparteixen els teus diners: el líquid (comptes), l'invertit i els béns (cotxe, pis…). La barra creix cap on més tens.",
@@ -3901,18 +3914,17 @@ function shareMonthReport(state, tt){
    Ilumina elementos REALES de la pantalla con un foco y una frase llana.
    Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
    ============================================================ */
-function Tour({onDone}){
-  // tour_8 (helpq): solo el «?» de la pestaña VISIBLE. Con lazy-mount, querySelector(".helpq")
-  // pillaba uno de una página vecina fuera de pantalla → foco absurdo y tip inaccesible (2026-07-16).
+function Tour({onDone, goTab, tabIds}){
+  // Tour v4: barra inferior (Inicio / Gastos / + / Plan / Cartera) + avatar de Ajustes.
+  // goTab prepara la pestaña antes de medir el foco (lazy-mount).
   const steps=[
-    {k:"tour_1", sel:function(){ return document.querySelector(".page-live .hero")||document.querySelector(".hero")||document.querySelector(".page-live")||document.querySelector(".page"); }},
-    {k:"tour_2", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_gastos"); })||null; }},
-    {k:"tour_3", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_fijos"); })||null; }},
-    {k:"tour_6", sel:function(){ return document.querySelector(".tabbar"); }},
-    {k:"tour_7", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_patri"); })||null; }},
-    {k:"tour_8", sel:function(){ return document.querySelector(".page-live .helpq")||document.querySelector(".page.page-live .helpq"); }},
-    {k:"tour_4", sel:function(){ return document.querySelector(".topbar .icon-btn"); }},
-    {k:"tour_5", sel:function(){ const b=document.querySelectorAll(".topbar .icon-btn"); return b[1]||b[0]||null; }},
+    {k:"tour_1", tab:"dash", sel:function(){ return document.querySelector(".page-live .v4-hero")||document.querySelector("[data-tour='hero']")||document.querySelector(".v4-hero"); }},
+    {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
+    {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
+    {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
+    {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
+    {k:"tour_6", tab:"dash", sel:function(){ return document.querySelector(".v4-avatar")||document.querySelector("[data-tour='avatar']"); }},
+    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
   ];
   const [i,setI]=useState(0);
   const [rect,setRect]=useState(null);
@@ -3922,14 +3934,9 @@ function Tour({onDone}){
   };
   const bringIntoView=function(el){
     try{
-      const bar=el.closest&&el.closest(".tabbar");
-      if(bar){ const sb=bar.style.scrollBehavior; bar.style.scrollBehavior="auto"; bar.scrollLeft=Math.max(0, el.offsetLeft-(bar.clientWidth/2)+(el.clientWidth/2)); bar.style.scrollBehavior=sb; }
-    }catch(_){}
-    try{
       const page=el.closest&&el.closest(".page");
       if(page){
         const pr=page.getBoundingClientRect(), er=el.getBoundingClientRect();
-        // scroll vertical de la página activa (el «?» suele estar más abajo)
         if(er.top<pr.top+40 || er.bottom>pr.bottom-40){
           page.scrollTop += (er.top - pr.top) - Math.min(120, pr.height*0.25);
         }
@@ -3938,20 +3945,26 @@ function Tour({onDone}){
       }
     }catch(_){}
   };
+  const ensureTab=function(tabId){
+    if(!tabId||!goTab||!tabIds) return;
+    const idx=tabIds.indexOf(tabId);
+    if(idx>=0) try{ goTab(idx); }catch(e){}
+  };
   const measure=function(idx){
     for(let j=idx;j<steps.length;j++){
+      ensureTab(steps[j].tab);
       const el=steps[j].sel();
       if(!el) continue;
       bringIntoView(el);
       const r=el.getBoundingClientRect();
       if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
-      // sin viewport usable → saltar este paso (no dejar al usuario atrapado)
     }
     return null;
   };
   useEffect(function(){
     let cancelled=false;
-    // doble rAF: deja que el scroll del .page asiente antes de medir
+    // Espera al goTab + layout (lazy mount) antes de medir el foco.
+    ensureTab(steps[i]&&steps[i].tab);
     const run=function(){
       if(cancelled) return;
       const m=measure(i);
@@ -3959,12 +3972,13 @@ function Tour({onDone}){
       if(m.j!==i){ setI(m.j); return; }
       setRect(m.r);
     };
-    requestAnimationFrame(function(){ requestAnimationFrame(run); });
+    const tm=setTimeout(function(){
+      requestAnimationFrame(function(){ requestAnimationFrame(run); });
+    }, 180);
     const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(mm.r); };
     window.addEventListener("resize",onR);
-    return function(){ cancelled=true; window.removeEventListener("resize",onR); };
+    return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
   },[i]);
-  // Escape / toque fuera del tip = salir (airbag si algo raro)
   useEffect(function(){
     const onKey=function(e){ if(e.key==="Escape") onDone(); };
     window.addEventListener("keydown",onKey);
@@ -3979,7 +3993,6 @@ function Tour({onDone}){
   const pad=8;
   const H=window.innerHeight||700;
   const below = rect.y + rect.h/2 < H*0.55;
-  // tip siempre DENTRO del viewport (el bug surrealista: tip fuera → no se puede pulsar)
   const tipStyle = below
     ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
     : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
@@ -3987,7 +4000,9 @@ function Tour({onDone}){
   return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
-      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{gastos:t("tab_gastos"),fijos:t("tab_fijos"),patri:t("tab_patri")})),
+      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{
+        gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")
+      })),
       React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===i?" on":"")}); })),
       React.createElement("div",{className:"tour-btns"},
         React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
@@ -4223,10 +4238,10 @@ function useSheetSwipe(open, onClose){
   },[open]);
   const onTouchStart=function(e){
     if(!(e.touches&&e.touches[0])) return;
-    const chips=e.target&&e.target.closest&&e.target.closest(".v4-chips");
-    // Solo bloquea el dismiss si el gesto va a ser scroll horizontal de chips.
-    armed.current=!chips;
-    if(!armed.current){ dragging.current=false; return; }
+    // Antes se desarmaba entero en .v4-chips → en la ficha de gasto (casi todo son chips)
+    // solo podías tirar abajo desde el botón de tarjeta. Ahora el vertical cierra igual;
+    // el horizontal de chips no pisa el dismiss (feedback 2026-07-17).
+    armed.current=true;
     dragging.current=true; dy.current=0; axis.current=null;
     startY.current=e.touches[0].clientY; startX.current=e.touches[0].clientX;
   };
@@ -4236,10 +4251,12 @@ function useSheetSwipe(open, onClose){
     const t=e.touches[0], ddy=t.clientY-startY.current, ddx=t.clientX-startX.current;
     if(axis.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
-      if(Math.abs(ddx)>Math.abs(ddy)*1.1){ dragging.current=false; armed.current=false; return; }
+      if(Math.abs(ddx)>Math.abs(ddy)*1.1){
+        // Scroll horizontal (chips): no cierres; deja el gesto a los chips.
+        dragging.current=false; armed.current=false; return;
+      }
       axis.current="y";
     }
-    // Contenido scrolleado hacia abajo: deja el scroll nativo hasta volver arriba.
     if(el && el.scrollTop>0){
       dy.current=0; el.classList.remove("dragging"); el.style.transform="";
       return;
@@ -4253,14 +4270,22 @@ function useSheetSwipe(open, onClose){
     if(e.cancelable) e.preventDefault();
   };
   const onTouchEnd=function(){
-    if(!dragging.current) return;
+    if(!dragging.current && dy.current<=0){ armed.current=false; axis.current=null; return; }
     dragging.current=false; armed.current=false; axis.current=null;
     const dist=dy.current; dy.current=0;
-    if(sheetRef.current){
-      sheetRef.current.classList.remove("dragging");
-      sheetRef.current.style.transform="";
+    const el=sheetRef.current;
+    if(!el){ if(dist>90) onClose(); return; }
+    el.classList.remove("dragging");
+    if(dist>90){
+      // Cierre suave (mismo ease que el swipe entre tabs).
+      el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
+      el.style.transform="translate3d(0,110%,0)";
+      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} onClose(); }, 420);
+    } else {
+      el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
+      el.style.transform="translate3d(0,0,0)";
+      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} }, 420);
     }
-    if(dist>90) onClose();
   };
   return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };
 }
@@ -4427,10 +4452,10 @@ function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
         React.createElement("div",{className:"v4-inicio-date"}, new Date().toLocaleDateString(loc(),{weekday:"long",day:"numeric",month:"long"})),
         React.createElement("div",{className:"v4-inicio-hi"}, greetName?tf("v4_hola",{n:greetName}):t("v4_hola_anon"))
       ),
-      React.createElement("button",{className:"v4-avatar","aria-label":t("settings"),onClick:function(){ if(onOpenSettings) onOpenSettings(); }}, initials)
+      React.createElement("button",{className:"v4-avatar","data-tour":"avatar","aria-label":t("settings"),onClick:function(){ if(onOpenSettings) onOpenSettings(); }}, initials)
     ),
 
-    React.createElement("div",{className:"v4-hero rise",style:{animationDelay:".05s"}},
+    React.createElement("div",{className:"v4-hero rise","data-tour":"hero",style:{animationDelay:".05s"}},
       React.createElement("div",{className:"v4-micro"}, t(simple?"v4_money_total":"d_networth")),
       React.createElement("div",{className:"v4-hero-amt num"},
         p.sign+p.ent, React.createElement("span",{style:{fontSize:28,color:"var(--muted)"}},","+(p.dec||"00")+" "+p.sym)),
@@ -4594,8 +4619,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [heavyOk,setHeavyOk]=useState(false);
   const catChipsRef=useRef(null), bankChipsRef=useRef(null);
   const chipDrag=useRef({sx:0,sy:0,capturing:false});
-  // Chips: bloquea el swipe de tabs al scrollear categorías/bancos; al inicio + dedo a la
-  // izquierda deja pasar el cambio de pestaña (feedback 2026-07-17).
+  // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
+  // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
   const chipSwipe=function(ref){
     return {
       onTouchStart:function(e){
@@ -4603,16 +4628,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         chipDrag.current={sx:e.touches[0].clientX,sy:e.touches[0].clientY,capturing:false};
       },
       onTouchMove:function(e){
-        const el=ref.current; if(!el||!(e.touches&&e.touches[0])) return;
+        if(!ref.current||!(e.touches&&e.touches[0])) return;
         const dx=e.touches[0].clientX-chipDrag.current.sx, dy=e.touches[0].clientY-chipDrag.current.sy;
-        if(Math.abs(dx)<10 && Math.abs(dy)<10) return;
+        if(Math.abs(dx)<6 && Math.abs(dy)<6) return;
         if(Math.abs(dy)>=Math.abs(dx)*1.15) return;
-        const atStart=el.scrollLeft<=3;
-        const atEnd=el.scrollLeft+el.clientWidth>=el.scrollWidth-3;
-        // Al inicio (chips reseteados): deja el swipe de tabs. En cuanto hay scroll interno, bloquea.
-        // Al final + dedo a la derecha: tab anterior (no queda scroll de chips).
-        if(atStart){ chipDrag.current.capturing=false; return; }
-        if(atEnd && dx>0){ chipDrag.current.capturing=false; return; }
         chipDrag.current.capturing=true;
         if(cancelSwipe) cancelSwipe();
         e.stopPropagation();
@@ -4994,13 +5013,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   );
 }
 
-/* Sheet detalle/edición de un movimiento (SPEC §14). Cambios al momento; borrar pide confirmación. */
+/* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */
 function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
   useBackClose(!!exp, onClose);
   const swipe=useSheetSwipe(!!exp, onClose);
   if(!exp || !editExp) return null;
   const c=catOf(exp.category);
-  const isIncome=exp.amount<0;
+  const isIncome=exp.amount<0 || !!editExp.income;
   const bk=expenseBankOf(exp);
   const auto=exp.source && exp.source!=="manual";
   const d=parseDate(exp.date);
@@ -5012,36 +5031,34 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
     askConfirm({ title:tf("v4_exp_del_q",{name:(exp.merchant||"—")+" · "+eur(Math.abs(exp.amount))}), sub:t("v4_exp_del_sub"), ok:t("v4_exp_del"), danger:true })
       .then(function(yes){ if(!yes) return; delExpense(exp); onClose(); });
   };
+  const metaBits=[dateLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"88dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+      React.createElement("div",Object.assign({className:"v4-sheet v4-exp-sheet",style:{maxHeight:"90dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
-        React.createElement("div",{className:"v4-exp-head"},
-          React.createElement("div",{className:"tile",style:{width:44,height:44,fontSize:22,borderRadius:14,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
-          React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("input",{className:"v4-input",style:{marginBottom:6,fontWeight:700},value:editExp.merchant,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
-            React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:22,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
-          )
-        ),
-        React.createElement("div",{className:"v4-chips meta-chips wrap",
-          onTouchStart:function(e){ e.stopPropagation(); }, onTouchMove:function(e){ e.stopPropagation(); }},
-          React.createElement("span",{className:"v4-chip"}, dateLbl),
-          bk && React.createElement("span",{className:"v4-chip"}, entOf(bk).label),
-          React.createElement("span",{className:"v4-chip"}, auto?t("v4_exp_auto"):t("v4_exp_manual"))
+        React.createElement("div",{className:"v4-exp-hero"},
+          React.createElement("div",{className:"v4-exp-ico",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}}, c.icon),
+          React.createElement("input",{className:"v4-exp-amt num serif",inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave,"aria-label":t("v4_exp_amount")}),
+          React.createElement("input",{className:"v4-exp-name",value:editExp.merchant,placeholder:t("v4_exp_merchant_ph"),onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
+          React.createElement("div",{className:"v4-exp-meta"}, metaBits.join(" · "))
         ),
         !isIncome && React.createElement(React.Fragment,null,
-          React.createElement("div",{className:"v4-micro",style:{marginBottom:8}}, t("g_changecat")),
-          React.createElement("div",{className:"v4-chips",
-            onTouchStart:function(e){ e.stopPropagation(); }, onTouchMove:function(e){ e.stopPropagation(); }},
+          React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
+          React.createElement("div",{className:"v4-chips"},
             CATEGORIES.map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })
           ),
-          React.createElement("button",{type:"button",className:"cardflag"+(exp.noCard?" off":""),style:{marginTop:12},onClick:function(){ setCardFlag(exp,!exp.noCard); }}, exp.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
+          React.createElement("button",{type:"button",className:"v4-sheet-row"+(exp.noCard?"":" on"),style:{marginTop:12},onClick:function(){ setCardFlag(exp,!exp.noCard); }},
+            exp.noCard?("💸 "+t("v4_exp_not_card")):("💳 "+t("v4_exp_with_card"))),
           exp.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
         ),
-        React.createElement("button",{type:"button",className:"cardflag"+(editExp.income?"":" off"),style:{marginTop:12},onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:!p.income}); }); setTimeout(function(){ /* se guarda al blur/cerrar */ },0); }}, editExp.income?("💰 "+t("g_ingreso")):("💸 "+t("g_gasto"))),
-        React.createElement("button",{type:"button",className:"btn btn-primary btn-block",style:{marginTop:14},onClick:closeSave}, t("fj_save")),
+        React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_type")),
+        React.createElement("div",{className:"v4-toggle"},
+          React.createElement("button",{type:"button",className:!editExp.income?"on":"",onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:false}); }); }},"💸 "+t("v4_gasto")),
+          React.createElement("button",{type:"button",className:editExp.income?"on":"",onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:true}); }); }},"💰 "+t("v4_ingreso"))
+        ),
+        React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:16},onClick:closeSave}, t("fj_save")),
         React.createElement("button",{type:"button",className:"v4-danger",onClick:doDel}, "🗑 "+t("v4_exp_del"))
       )
     ), document.body);
@@ -8287,6 +8304,14 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.4", d:"17 jul 2026", t:"Tutorial nuevo, fichas más suaves y Plan compacto", items:[
+    "🎓 Tutorial actualizado al rediseño: Inicio, Gastos, +, Plan, Cartera y Ajustes.",
+    "👆 En Gastos, scrollear categorías/bancos ya no hace el amago de cambiar de pestaña.",
+    "🧾 Tirar hacia abajo para cerrar (+ y editar gasto) es más suave, al estilo del swipe entre tabs; en editar gasto vale en toda la ficha.",
+    "✨ Ficha de editar gasto más clara: importe grande, comercio, categoría y tipo gasto/ingreso.",
+    "📅 En Plan, Pendiente y Ya pagado vuelven a mostrar 3 y «Ver más».",
+    "💼 En Cartera, fuera el número verde al lado de inversiones y la tarjeta de redondeo."
+  ]},
   {v:"4.0.3", d:"17 jul 2026", t:"Ajustes ordenados y aviso de update con la app cerrada", items:[
     "🔔 Si hay actualización, el móvil te avisa aunque no tengas la app abierta (hace falta instalar el APK nuevo una vez).",
     "👈 En Inicio, Ajustes se abre deslizando desde casi toda la pantalla (no solo el borde).",
@@ -9484,6 +9509,8 @@ function PlanTab({state, set, totals, showToast, simple}){
    simulador, conciliación…) vive SOLO dentro de la hoja «Gestionar» — mezclarlo aquí abajo
    duplicaba próximos cargos y desglose de banco que ya se ven arriba (feedback 2026-07-17). */
 function PlanBills({state, set, totals, manageOpen, setManageOpen}){
+  const [paidExpanded,setPaidExpanded]=useState(false);
+  const [pendExpanded,setPendExpanded]=useState(false);
   const month=totals.curMonth, year=totals.curYear, today=totals.today;
   const charges=[];
   (state.fixed||[]).forEach(function(e){
@@ -9551,11 +9578,15 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
         React.createElement("span",null,t("v4_pendiente")),
         React.createElement("button",{className:"link",onClick:function(){ setManageOpen(true); }},t("v4_gestionar"))
       ),
-      pending.map(row)
+      (pendExpanded?pending:pending.slice(0,3)).map(row),
+      pending.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPendExpanded(function(v){ return !v; }); }},
+        pendExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:pending.length-3}))
     ),
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},t("v4_ya_pagado")+" · "+eur(paidTotal)),
-      paid.map(row)
+      (paidExpanded?paid:paid.slice(0,3)).map(row),
+      paid.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPaidExpanded(function(v){ return !v; }); }},
+        paidExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:paid.length-3}))
     ),
     React.createElement(BillsManageSheet,{open:manageOpen,onClose:function(){ setManageOpen(false); },state:state,set:set,totals:totals})
   );
@@ -9588,7 +9619,6 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
   const sum=Math.max(0.01, liq+inv+goods);
   const wLiq=(liq/sum)*100, wInv=(inv/sum)*100, wGoods=(goods/sum)*100;
   const p=eurParts(totals.netWorth);
-  const ru=+(totals.roundupThisMonth||0)+(totals.savebackThisMonth||0);
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_cartera_title")),
     React.createElement("div",{className:"v4-card v4-card-hero rise",style:{animationDelay:".05s"}},
@@ -9612,19 +9642,8 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
     ),
     React.createElement("div",{className:"v4-sec-h"}, t("v4_cuentas")),
     React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true}),
-    ru>0.005 && React.createElement("div",{className:"v4-roundup"},
-      (function(){
-        const parts=t("v4_roundup_card").split("{x}");
-        if(parts.length<2) return tf("v4_roundup_card",{x:eur(ru)});
-        return React.createElement(React.Fragment,null, parts[0], React.createElement("strong",null,eur(ru)), parts[1]);
-      })()
-    ),
     !simple && React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"v4-sec-h",style:{display:"flex",justifyContent:"space-between",alignItems:"baseline"}},
-        React.createElement("span",null, t("v4_inversiones")),
-        React.createElement("span",{className:"num",style:{color:"var(--mint)",fontWeight:800,fontSize:13.5}},
-          (totals.investedCost>0?(totals.invested-totals.investedCost>=0?"+":"")+eur0(totals.invested-totals.investedCost):"—"))
-      ),
+      React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),
       React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
       React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›"),
       React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})
@@ -10901,17 +10920,17 @@ function App(){
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
             React.createElement("span",null)
           ),
-          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),"data-tour":"inicio",onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
             React.createElement(I.home,null), t("tab_dash")),
-          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),"data-tour":"gastos",onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
             React.createElement(I.expense,null), t("tab_gastos")),
           React.createElement("div",{className:"botnav-fab-slot"},
-            React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),onClick:function(){ setApuntarOpen(true); }},
+            React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),"data-tour":"apuntar",onClick:function(){ setApuntarOpen(true); }},
               React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
           ),
-          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),"data-tour":"plan",onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
             React.createElement(I.calendar,null), t("tab_plan")),
-          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),"data-tour":"cartera",onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
             React.createElement(I.invest,null), t("tab_cartera"))
         )
       )
@@ -10919,7 +10938,7 @@ function App(){
     React.createElement(AskHost,null),
     React.createElement(ApuntarSheet,{open:apuntarOpen,onClose:function(){ setApuntarOpen(false); },state:state,set:set,showToast:showToast,
       goGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); }}),
-    tourOpen && React.createElement(Tour,{onDone:endTour}),
+    tourOpen && React.createElement(Tour,{onDone:endTour, goTab:goTab, tabIds:tabIds}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
     monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),
     (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){

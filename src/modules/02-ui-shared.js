@@ -136,18 +136,17 @@ function shareMonthReport(state, tt){
    Ilumina elementos REALES de la pantalla con un foco y una frase llana.
    Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
    ============================================================ */
-function Tour({onDone}){
-  // tour_8 (helpq): solo el «?» de la pestaña VISIBLE. Con lazy-mount, querySelector(".helpq")
-  // pillaba uno de una página vecina fuera de pantalla → foco absurdo y tip inaccesible (2026-07-16).
+function Tour({onDone, goTab, tabIds}){
+  // Tour v4: barra inferior (Inicio / Gastos / + / Plan / Cartera) + avatar de Ajustes.
+  // goTab prepara la pestaña antes de medir el foco (lazy-mount).
   const steps=[
-    {k:"tour_1", sel:function(){ return document.querySelector(".page-live .hero")||document.querySelector(".hero")||document.querySelector(".page-live")||document.querySelector(".page"); }},
-    {k:"tour_2", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_gastos"); })||null; }},
-    {k:"tour_3", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_fijos"); })||null; }},
-    {k:"tour_6", sel:function(){ return document.querySelector(".tabbar"); }},
-    {k:"tour_7", sel:function(){ const tb=Array.prototype.slice.call(document.querySelectorAll(".tab[data-ti]")); return tb.find(function(b){ return b.textContent.trim()===t("tab_patri"); })||null; }},
-    {k:"tour_8", sel:function(){ return document.querySelector(".page-live .helpq")||document.querySelector(".page.page-live .helpq"); }},
-    {k:"tour_4", sel:function(){ return document.querySelector(".topbar .icon-btn"); }},
-    {k:"tour_5", sel:function(){ const b=document.querySelectorAll(".topbar .icon-btn"); return b[1]||b[0]||null; }},
+    {k:"tour_1", tab:"dash", sel:function(){ return document.querySelector(".page-live .v4-hero")||document.querySelector("[data-tour='hero']")||document.querySelector(".v4-hero"); }},
+    {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
+    {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
+    {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
+    {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
+    {k:"tour_6", tab:"dash", sel:function(){ return document.querySelector(".v4-avatar")||document.querySelector("[data-tour='avatar']"); }},
+    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
   ];
   const [i,setI]=useState(0);
   const [rect,setRect]=useState(null);
@@ -157,14 +156,9 @@ function Tour({onDone}){
   };
   const bringIntoView=function(el){
     try{
-      const bar=el.closest&&el.closest(".tabbar");
-      if(bar){ const sb=bar.style.scrollBehavior; bar.style.scrollBehavior="auto"; bar.scrollLeft=Math.max(0, el.offsetLeft-(bar.clientWidth/2)+(el.clientWidth/2)); bar.style.scrollBehavior=sb; }
-    }catch(_){}
-    try{
       const page=el.closest&&el.closest(".page");
       if(page){
         const pr=page.getBoundingClientRect(), er=el.getBoundingClientRect();
-        // scroll vertical de la página activa (el «?» suele estar más abajo)
         if(er.top<pr.top+40 || er.bottom>pr.bottom-40){
           page.scrollTop += (er.top - pr.top) - Math.min(120, pr.height*0.25);
         }
@@ -173,20 +167,26 @@ function Tour({onDone}){
       }
     }catch(_){}
   };
+  const ensureTab=function(tabId){
+    if(!tabId||!goTab||!tabIds) return;
+    const idx=tabIds.indexOf(tabId);
+    if(idx>=0) try{ goTab(idx); }catch(e){}
+  };
   const measure=function(idx){
     for(let j=idx;j<steps.length;j++){
+      ensureTab(steps[j].tab);
       const el=steps[j].sel();
       if(!el) continue;
       bringIntoView(el);
       const r=el.getBoundingClientRect();
       if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
-      // sin viewport usable → saltar este paso (no dejar al usuario atrapado)
     }
     return null;
   };
   useEffect(function(){
     let cancelled=false;
-    // doble rAF: deja que el scroll del .page asiente antes de medir
+    // Espera al goTab + layout (lazy mount) antes de medir el foco.
+    ensureTab(steps[i]&&steps[i].tab);
     const run=function(){
       if(cancelled) return;
       const m=measure(i);
@@ -194,12 +194,13 @@ function Tour({onDone}){
       if(m.j!==i){ setI(m.j); return; }
       setRect(m.r);
     };
-    requestAnimationFrame(function(){ requestAnimationFrame(run); });
+    const tm=setTimeout(function(){
+      requestAnimationFrame(function(){ requestAnimationFrame(run); });
+    }, 180);
     const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(mm.r); };
     window.addEventListener("resize",onR);
-    return function(){ cancelled=true; window.removeEventListener("resize",onR); };
+    return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
   },[i]);
-  // Escape / toque fuera del tip = salir (airbag si algo raro)
   useEffect(function(){
     const onKey=function(e){ if(e.key==="Escape") onDone(); };
     window.addEventListener("keydown",onKey);
@@ -214,7 +215,6 @@ function Tour({onDone}){
   const pad=8;
   const H=window.innerHeight||700;
   const below = rect.y + rect.h/2 < H*0.55;
-  // tip siempre DENTRO del viewport (el bug surrealista: tip fuera → no se puede pulsar)
   const tipStyle = below
     ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
     : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
@@ -222,7 +222,9 @@ function Tour({onDone}){
   return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
-      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{gastos:t("tab_gastos"),fijos:t("tab_fijos"),patri:t("tab_patri")})),
+      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{
+        gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")
+      })),
       React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===i?" on":"")}); })),
       React.createElement("div",{className:"tour-btns"},
         React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
@@ -458,10 +460,10 @@ function useSheetSwipe(open, onClose){
   },[open]);
   const onTouchStart=function(e){
     if(!(e.touches&&e.touches[0])) return;
-    const chips=e.target&&e.target.closest&&e.target.closest(".v4-chips");
-    // Solo bloquea el dismiss si el gesto va a ser scroll horizontal de chips.
-    armed.current=!chips;
-    if(!armed.current){ dragging.current=false; return; }
+    // Antes se desarmaba entero en .v4-chips → en la ficha de gasto (casi todo son chips)
+    // solo podías tirar abajo desde el botón de tarjeta. Ahora el vertical cierra igual;
+    // el horizontal de chips no pisa el dismiss (feedback 2026-07-17).
+    armed.current=true;
     dragging.current=true; dy.current=0; axis.current=null;
     startY.current=e.touches[0].clientY; startX.current=e.touches[0].clientX;
   };
@@ -471,10 +473,12 @@ function useSheetSwipe(open, onClose){
     const t=e.touches[0], ddy=t.clientY-startY.current, ddx=t.clientX-startX.current;
     if(axis.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
-      if(Math.abs(ddx)>Math.abs(ddy)*1.1){ dragging.current=false; armed.current=false; return; }
+      if(Math.abs(ddx)>Math.abs(ddy)*1.1){
+        // Scroll horizontal (chips): no cierres; deja el gesto a los chips.
+        dragging.current=false; armed.current=false; return;
+      }
       axis.current="y";
     }
-    // Contenido scrolleado hacia abajo: deja el scroll nativo hasta volver arriba.
     if(el && el.scrollTop>0){
       dy.current=0; el.classList.remove("dragging"); el.style.transform="";
       return;
@@ -488,14 +492,22 @@ function useSheetSwipe(open, onClose){
     if(e.cancelable) e.preventDefault();
   };
   const onTouchEnd=function(){
-    if(!dragging.current) return;
+    if(!dragging.current && dy.current<=0){ armed.current=false; axis.current=null; return; }
     dragging.current=false; armed.current=false; axis.current=null;
     const dist=dy.current; dy.current=0;
-    if(sheetRef.current){
-      sheetRef.current.classList.remove("dragging");
-      sheetRef.current.style.transform="";
+    const el=sheetRef.current;
+    if(!el){ if(dist>90) onClose(); return; }
+    el.classList.remove("dragging");
+    if(dist>90){
+      // Cierre suave (mismo ease que el swipe entre tabs).
+      el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
+      el.style.transform="translate3d(0,110%,0)";
+      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} onClose(); }, 420);
+    } else {
+      el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
+      el.style.transform="translate3d(0,0,0)";
+      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} }, 420);
     }
-    if(dist>90) onClose();
   };
   return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };
 }

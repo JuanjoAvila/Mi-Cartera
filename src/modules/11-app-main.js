@@ -1183,17 +1183,17 @@ function App(){
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
             React.createElement("span",null)
           ),
-          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),"data-tour":"inicio",onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
             React.createElement(I.home,null), t("tab_dash")),
-          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),"data-tour":"gastos",onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
             React.createElement(I.expense,null), t("tab_gastos")),
           React.createElement("div",{className:"botnav-fab-slot"},
-            React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),onClick:function(){ setApuntarOpen(true); }},
+            React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),"data-tour":"apuntar",onClick:function(){ setApuntarOpen(true); }},
               React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
           ),
-          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),"data-tour":"plan",onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
             React.createElement(I.calendar,null), t("tab_plan")),
-          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),"data-tour":"cartera",onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
             React.createElement(I.invest,null), t("tab_cartera"))
         )
       )
@@ -1201,7 +1201,7 @@ function App(){
     React.createElement(AskHost,null),
     React.createElement(ApuntarSheet,{open:apuntarOpen,onClose:function(){ setApuntarOpen(false); },state:state,set:set,showToast:showToast,
       goGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); }}),
-    tourOpen && React.createElement(Tour,{onDone:endTour}),
+    tourOpen && React.createElement(Tour,{onDone:endTour, goTab:goTab, tabIds:tabIds}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
     monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),
     (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){

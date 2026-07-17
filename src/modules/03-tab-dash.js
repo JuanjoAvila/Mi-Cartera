@@ -102,10 +102,10 @@ function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
         React.createElement("div",{className:"v4-inicio-date"}, new Date().toLocaleDateString(loc(),{weekday:"long",day:"numeric",month:"long"})),
         React.createElement("div",{className:"v4-inicio-hi"}, greetName?tf("v4_hola",{n:greetName}):t("v4_hola_anon"))
       ),
-      React.createElement("button",{className:"v4-avatar","aria-label":t("settings"),onClick:function(){ if(onOpenSettings) onOpenSettings(); }}, initials)
+      React.createElement("button",{className:"v4-avatar","data-tour":"avatar","aria-label":t("settings"),onClick:function(){ if(onOpenSettings) onOpenSettings(); }}, initials)
     ),
 
-    React.createElement("div",{className:"v4-hero rise",style:{animationDelay:".05s"}},
+    React.createElement("div",{className:"v4-hero rise","data-tour":"hero",style:{animationDelay:".05s"}},
       React.createElement("div",{className:"v4-micro"}, t(simple?"v4_money_total":"d_networth")),
       React.createElement("div",{className:"v4-hero-amt num"},
         p.sign+p.ent, React.createElement("span",{style:{fontSize:28,color:"var(--muted)"}},","+(p.dec||"00")+" "+p.sym)),
