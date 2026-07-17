@@ -2,8 +2,8 @@ import { test, expect } from "@playwright/test";
 import { seedLoggedInDashboard } from "./fixtures.mjs";
 
 // Móvil + táctil: el gesto del perfil es touch-only (onTouchStart/Move/End).
-// Alto 1800: el contenido del perfil (~1680px) debe CABER sin scroll — si hay scroll, tirar
-// arriba scrollea (scrollTop>0 cede el gesto al scroll, comportamiento correcto) y no cierra.
+// Alto 1800: el contenido del perfil (~1680px) debe CABER sin scroll — si hay scroll, al top
+// tirar abajo cierra; con scrollTop>0 el gesto cede al scroll (comportamiento correcto).
 test.use({ viewport: { width: 375, height: 1800 }, hasTouch: true });
 
 // Perfil tipo Revolut (v4.0.11): el panel ENTERO escala desde el avatar (vídeo 2026-07-17).
@@ -45,8 +45,8 @@ test("Perfil: escala desde el avatar y vuelve a él al cerrar", async ({ page })
 });
 
 // El gesto REAL con el dedo (CDP touch): pull-down en Inicio abre siguiendo el dedo
-// (progress-driven, no un toggle) y tirar arriba dentro del perfil lo encoge y cierra.
-test("Perfil: pull-down con el dedo abre; tirar arriba cierra", async ({ page }) => {
+// (progress-driven, no un toggle) y tirar ABAJO dentro del perfil lo encoge y cierra (reversa).
+test("Perfil: pull-down con el dedo abre; tirar abajo cierra", async ({ page }) => {
   await seedLoggedInDashboard(page);
   await page.goto("/");
   await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
@@ -66,9 +66,10 @@ test("Perfil: pull-down con el dedo abre; tirar arriba cierra", async ({ page })
   await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
   await expect(panel).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 0)", { timeout: 3_000 });
 
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 187, y: 600 }] });
+  // Cerrar: arriba → abajo (reversa al avatar), misma curva que la entrada.
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 187, y: 120 }] });
   for (let i = 1; i <= 8; i++) {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 187, y: 600 - i * 48 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 187, y: 120 + i * 48 }] });
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(panel).not.toHaveClass(/open/, { timeout: 3_000 });

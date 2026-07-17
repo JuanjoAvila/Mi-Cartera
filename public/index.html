@@ -617,7 +617,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-exp-meta{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;}
   .v4-exp-sec{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted-2);margin:4px 2px 8px;}
   html.sheet-open,html.sheet-open body{overflow:hidden;overscroll-behavior:none;}
-  html.sheet-open .page{overflow:hidden !important;overscroll-behavior:none;}
+  /* Solo .page (no .track/.viewport): overflow en el track + translateX de tabs ≠ Inicio
+     clippea la página visible y deja el body oscuro detrás del + / editar gasto (2026-07-17). */
+  html.sheet-open .page{overflow:hidden !important;overscroll-behavior:none;touch-action:none;}
   .v4-toggle{display:flex;gap:8px;margin-bottom:12px;}
   .v4-toggle button{flex:1;min-height:48px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);font-weight:700;font-size:15px;}
   .v4-toggle button.on{background:var(--mint);color:var(--on-mint);border-color:var(--mint);}
@@ -980,8 +982,6 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-chips.meta-chips .v4-chip{min-height:36px;font-size:12.5px;font-weight:650;padding:0 12px;}
   .v4-mov .meta{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;}
   .v4-mov .meta .sep{color:var(--muted-2);margin:0 1px;}
-  html.sheet-open .app-shell,html.sheet-open .viewport,html.sheet-open .track,html.sheet-open .page{overflow:hidden !important;overscroll-behavior:none;touch-action:none;}
-  html.sheet-open .app-shell{pointer-events:none !important;}
   html.sheet-open .v4-sheet,html.sheet-open .v4-chips{touch-action:pan-y pan-x;pointer-events:auto;}
   html.sheet-open .v4-sheet-back{pointer-events:auto;}
   .v4-link-mini{display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:6px 10px;border-radius:999px;border:none;background:rgba(95,208,138,.16);color:var(--mint);font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer;}
@@ -8616,6 +8616,10 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.13", d:"17 jul 2026", t:"Perfil se cierra tirando abajo + fondo al apuntar", items:[
+    "👤 En el perfil, desliza de arriba hacia abajo y se encoge otra vez al avatar (la misma animación, hacia atrás).",
+    "🧾 Al pulsar + o editar un gasto desde cualquier pestaña, se ve la pantalla de detrás (como ya pasaba en Resumen).",
+  ]},
   {v:"4.0.12", d:"17 jul 2026", t:"MyInvestor sin captcha", items:[
     "🔌 Conectar MyInvestor ahora hace el login desde TU móvil (como la app oficial): el dichoso reCAPTCHA saltaba porque el login salía de un servidor de Amazon. Desde tu IP de casa casi nunca aparece.",
     "☁️ Todo lo demás sigue igual: la sesión se guarda cifrada en la nube y las posiciones se refrescan solas. Funciona ya con el APK que tienes (te llega por OTA).",
@@ -10855,8 +10859,8 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
   };
-  // Cerrar perfil tirando HACIA ARRIBA (vuelve por donde entró). Tirar abajo no cierra:
-  // antes cerraba empujando hacia abajo y se sentía raro vs Revolut (feedback 2026-07-17).
+  // Cerrar perfil tirando ABAJO (arriba→abajo): misma escala al avatar en reversa.
+  // Abrir ya es pull-down desde Inicio; cerrar «tira hacia atrás» el mismo gesto (feedback 2026-07-17).
   const pSX=useRef(0), pSY=useRef(0), pAx=useRef(null), pDrag=useRef(false);
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
@@ -10872,7 +10876,7 @@ function App(){
       }
     }
     if(pAx.current!=="y") return;
-    // Con scroll: primero el contenido; al top, tirar arriba cierra.
+    // Con scroll: primero el contenido; al top, tirar abajo cierra (reversa al avatar).
     if(profileRef.current && profileRef.current.scrollTop>0){
       pDY.current=0;
       // El primer tirón puede haber encogido un pelín el panel antes de que el scroll tomara
@@ -10881,10 +10885,10 @@ function App(){
       setProfileProgress(1);
       return;
     }
-    if(ddy>=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
-    pDY.current=ddy;   // negativo = hacia arriba
+    if(ddy<=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
+    pDY.current=ddy;   // positivo = hacia abajo
     const h=window.innerHeight||700;
-    const resist=Math.pow(Math.min(1,Math.max(0,(-ddy)/(h*0.48))),0.88);
+    const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.48))),0.88);
     // ENCOGE hacia el avatar (misma curva que la entrada, en reversa) — nada de deslizar.
     const s0c=profS0(), sc=1-(1-s0c)*resist;
     if(profileRef.current){
@@ -10900,7 +10904,7 @@ function App(){
     if(profileRef.current) profileRef.current.classList.remove("dragging");
     if(appShellRef.current) appShellRef.current.classList.remove("dragging");
     if(pAx.current!=="y"){ pAx.current=null; return; }
-    const dist=-pDY.current;   // distancia hacia arriba
+    const dist=pDY.current;   // distancia hacia abajo
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
     const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));

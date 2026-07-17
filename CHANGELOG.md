@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.13] — 2026-07-17
+### Perfil: cerrar tirando abajo + sheets con fondo en todas las tabs
+- 👤 Cerrar perfil: swipe **arriba→abajo** encoge al avatar (reversa de la entrada Fable). Antes cerraba tirando arriba.
+- 🧾 `html.sheet-open` ya no pone `overflow:hidden` en `.track`/`.viewport`: con tabs ≠ Inicio el `translateX` + clip dejaba solo el `body` oscuro detrás del + / editar gasto (Resumen se veía bien porque translateX=0).
+- 🧪 E2E perfil: gesto de cierre hacia abajo.
+- OTA only (sin cambio nativo).
+
 ## [4.0.12] — 2026-07-17
 ### MyInvestor: login desde el móvil (adiós reCAPTCHA)
 - 🔌 El login de MI sale ahora del DISPOSITIVO vía `CapacitorHttp.request` (registrado incondicionalmente en el core de Capacitor, `Bridge.java:638` → funciona con el APK 27 actual, sin build nuevo): el reCAPTCHA condicional (SECURITY_001) lo dispara la IP de datacenter de Supabase, no la residencial del usuario. `miDeviceLogin()` replica las cabeceras de `_shared/myinvestor.ts`; el OTP va por la MISMA vía (mismo x-device-id e IP). Fallback automático a la vía Edge (web, o CapacitorHttp KO).

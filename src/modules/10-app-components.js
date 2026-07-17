@@ -455,6 +455,10 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.13", d:"17 jul 2026", t:"Perfil se cierra tirando abajo + fondo al apuntar", items:[
+    "👤 En el perfil, desliza de arriba hacia abajo y se encoge otra vez al avatar (la misma animación, hacia atrás).",
+    "🧾 Al pulsar + o editar un gasto desde cualquier pestaña, se ve la pantalla de detrás (como ya pasaba en Resumen).",
+  ]},
   {v:"4.0.12", d:"17 jul 2026", t:"MyInvestor sin captcha", items:[
     "🔌 Conectar MyInvestor ahora hace el login desde TU móvil (como la app oficial): el dichoso reCAPTCHA saltaba porque el login salía de un servidor de Amazon. Desde tu IP de casa casi nunca aparece.",
     "☁️ Todo lo demás sigue igual: la sesión se guarda cifrada en la nube y las posiciones se refrescan solas. Funciona ya con el APK que tienes (te llega por OTA).",
