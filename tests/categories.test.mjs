@@ -36,4 +36,17 @@ t("Zooplus cae en hogar", () => {
   assert.equal(ctx.autoCategory("Zooplus"), "hogar");
 });
 
+t("Kinepolis cae en cine", () => {
+  assert.equal(ctx.autoCategory("Kinepolis Barcelona"), "cine");
+});
+
+t("Consulta médica cae en salud", () => {
+  assert.equal(ctx.autoCategory("Consulta medico Dr Lopez"), "salud");
+});
+
+t("Claude / Google Play cae en ocio", () => {
+  assert.equal(ctx.autoCategory("Claude Anthropic"), "ocio");
+  assert.equal(ctx.autoCategory("Google Play"), "ocio");
+});
+
 console.log("\ncategories: OK");

@@ -530,7 +530,8 @@ function App(){
   },[online,uid]);
 
   // Cajón de Ajustes tipo Revolut: panel full-bleed desde la izquierda; el app se emborrona debajo.
-  // Se abre con swipe desde el borde (o el avatar) y se cierra deslizando a la izquierda (feedback 2026-07-17).
+  // El SHELL del panel vive siempre montado (si no, el swipe de borde no tiene ref que mover —
+  // feedback 2026-07-17). SettingsPanel (pesado) sí se monta lazy la 1ª vez.
   const drawerRef=useRef(null), appShellRef=useRef(null), gestureMode=useRef(null);
   const dW=function(){ return window.innerWidth||360; };
   const setSettingsProgress=function(p){
@@ -559,6 +560,8 @@ function App(){
     const t=e.touches[0], ddx=t.clientX-dSX.current, ddy=t.clientY-dSY.current;
     if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current){ drawerRef.current.classList.add("dragging"); if(appShellRef.current) appShellRef.current.classList.add("dragging"); } }
     if(dAx.current!=="x") return;
+    // Solo cierra tirando a la izquierda (derecha→izquierda). Si tiras a la derecha, no pelea.
+    if(ddx>0){ dDX.current=0; if(drawerRef.current) drawerRef.current.style.transform="translate3d(0,0,0)"; setSettingsProgress(1); return; }
     dDX.current=ddx;
     const closeProg=Math.min(1,Math.max(0,(-ddx)/dW()));
     if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-closeProg*100)+"%,0,0)";
@@ -949,12 +952,15 @@ function App(){
   const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
   const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
   const drawerW=function(){ return window.innerWidth||360; };
+  const EDGE_OPEN=52; // un pelín fuera del gesto «atrás» de Android, pero alcanzable
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
     if(drawerOpen) return; // con ajustes abiertos, el gesto lo lleva el panel
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
+    // Prepara Ajustes YA en el toque del borde: el shell siempre está en DOM; monta el panel lazy.
+    if(startX.current<EDGE_OPEN) setDrawerMounted(true);
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen) return;
@@ -965,8 +971,8 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        // Desde el borde izquierdo → Ajustes (Revolut). En el resto, cambio de tab.
-        if(startX.current<28 && ddx>0){
+        // Izquierda→derecha desde el borde = Ajustes (Revolut). El resto = cambio de tab.
+        if(startX.current<EDGE_OPEN && ddx>0){
           gestureMode.current="drawer";
           setDrawerMounted(true);
           if(drawerRef.current) drawerRef.current.classList.add("dragging");
@@ -983,6 +989,7 @@ function App(){
       const prog=Math.min(1,Math.max(0,ddx/drawerW()));
       if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-100+prog*100)+"%,0,0)";
       setSettingsProgress(prog);
+      if(e.cancelable) e.preventDefault();
       return;
     }
     const w=trackRef.current?trackRef.current.offsetWidth:360;
@@ -1197,16 +1204,18 @@ function App(){
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
-    drawerMounted && React.createElement("div",{
+    React.createElement("div",{
       className:"settings-push"+(drawerOpen?" open":""),
       ref:drawerRef,
-      onTouchStart:drawerStart, onTouchMove:drawerMove, onTouchEnd:drawerEnd
+      onTouchStart:drawerOpen?drawerStart:undefined,
+      onTouchMove:drawerOpen?drawerMove:undefined,
+      onTouchEnd:drawerOpen?drawerEnd:undefined
     },
       React.createElement("div",{className:"settings-push-h"},
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     )
   );
 }

@@ -471,6 +471,15 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.2", d:"17 jul 2026", t:"Ajustes con swipe, balance claro y más categorías", items:[
+    "👈 Ajustes se abre de verdad deslizando de izquierda a derecha (el panel ya estaba listo para el gesto).",
+    "💶 El balance de Gastos va en blanco, sin el menos, y con el € al lado.",
+    "🧾 Al editar un gasto, las etiquetas de fecha/banco quedan centradas y el fondo ya no se mueve al pasar categorías.",
+    "🍿 Nueva categoría Cine (Kinepolis…) y más palabras clave para salud, Claude, Google Play…",
+    "💼 Inversiones con el mismo diseño que tus cuentas; el resto (precios, redondeo…) en «Herramientas de inversión».",
+    "👆 Cambio entre pestañas más suave, al estilo Trade Republic.",
+    "📱 Status bar y barra de abajo al color de la app (APK nuevo)."
+  ]},
   {v:"4.0.1", d:"17 jul 2026", t:"Pulido del rediseño: gestos, fichas y números que cuadran", items:[
     "👈 Ajustes se abre deslizando desde el borde (como Revolut) y se cierra tirando a la izquierda; el avatar sigue valiendo.",
     "🏠 En Inicio, «Próximos cargos» ya no enseña recibos que ya pagaste este mes.",
