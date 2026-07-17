@@ -160,11 +160,12 @@ function MyInvestorSync({state, set}){
         doneN!=null && step==="connected" && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}},tf("mi_done",{n:doneN})),
         err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
       );
-  return React.createElement("div",{className:"bk-card"},
-    React.createElement("div",{className:"bk-h"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"ttl"}, t("mi_title")),
-        React.createElement("div",{className:"sub"}, t("mi_sub"))
+  return React.createElement("div",{className:"bk-card bk-mi"},
+    React.createElement("div",{className:"bk-brand"},
+      React.createElement("div",{className:"bk-logo",style:{background:"#C9A0E022",color:"#C9A0E0"}}, "MI"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("mi_title")),
+        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("mi_sub"))
       ),
       step==="connected" ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
     ),
@@ -357,11 +358,12 @@ function TRSync({state, set, totals}){
         doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
         err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
       );
-  return React.createElement("div",{className:"bk-card"},
-    React.createElement("div",{className:"bk-h"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"ttl"}, t("tr_title")),
-        React.createElement("div",{className:"sub"}, t("tr_sub"))
+  return React.createElement("div",{className:"bk-card bk-tr"},
+    React.createElement("div",{className:"bk-brand"},
+      React.createElement("div",{className:"bk-logo",style:{background:"#111",color:"#fff"}}, "TR"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("tr_title")),
+        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("tr_sub"))
       ),
       connected ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
     ),

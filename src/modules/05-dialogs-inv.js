@@ -379,11 +379,12 @@ function BrokerImport({state, set, fetchPrices}){
     // y nada más re-anclar, precios en vivo en silencio: el valor pasa de «último conocido» a real
     if(fetchPrices) setTimeout(function(){ fetchPrices(true); },50);
   };
-  return React.createElement("div",{className:"bk-card"},
-    React.createElement("div",{className:"bk-h"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"ttl"}, t("bi_rev_title")),
-        React.createElement("div",{className:"sub"}, t("bi_sub"))
+  return React.createElement("div",{className:"bk-card bk-csv"},
+    React.createElement("div",{className:"bk-brand"},
+      React.createElement("div",{className:"bk-logo",style:{background:"#9BD0E022",color:"#9BD0E0"}}, "CSV"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("bi_rev_title")),
+        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("bi_sub"))
       )
     ),
     React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("bi_hint")),

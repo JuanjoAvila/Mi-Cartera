@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.8] — 2026-07-17
+### Feedback post-4.0.7 (tutorial / negro / bancos / TR)
+- 🎓 Tour: espera 520 ms tras `goTab` (track 420 ms); `pickVisible` solo en viewport; spot circular en avatar.
+- 🧾 Sheets: backdrop transparente y **sin** scale/filter en `.app-shell` (el scale dejaba el `body` negro a los lados).
+- 👤 Perfil: `.profile-dim-layer` aparte; sin scale del shell; cierre ✕; spring 0.5s.
+- 🏦 TR/MI/CSV con borde de marca + `bk-ver` con `APP_VERSION`; hint APK.
+- 🔌 `runBrokerSync` ya no llama a TR al boot (evita logout con APK viejo).
+
 ## [4.0.7] — 2026-07-17
 ### Feedback post-4.0.6
 - ✨ WhatsNew: delay 420 ms + `wn-in` (sin doble animación ni zarpazo).

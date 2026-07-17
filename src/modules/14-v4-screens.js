@@ -308,7 +308,7 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
   const jobDisplay=jobLines.length ? jobLines.join(" · ") : null;
   return React.createElement(React.Fragment,null,
     React.createElement("div",{className:"profile-pull-h"},
-      React.createElement("button",{type:"button",className:"back","aria-label":t("v4_back"),onClick:onClose},"‹"),
+      React.createElement("button",{type:"button",className:"back","aria-label":t("v4_back"),onClick:onClose},"✕"),
       React.createElement("div",{className:"ph-main"},
         React.createElement("h1",null, t("pf_title")),
         React.createElement("button",{type:"button",className:"profile-handle",onClick:function(){ edit("handle", t("pf_handle"), "@usuario"); }},
