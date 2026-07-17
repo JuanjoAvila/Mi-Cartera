@@ -47,12 +47,13 @@ Deno.serve(async (req) => {
             status: "active", updated_at: new Date().toISOString(),
           }).eq("user_id", link.user_id);
           refreshed++;
-        } else if (r.status === 400 || r.status === 401 || r.status === 403) {
-          // el refresh ya no vale → el enlace está muerto de verdad; que la app pida reconectar
+        } else if (r.status === 400 || r.status === 401) {
+          // Solo 400/401 = refresh muerto de verdad. Un 403 (bot/rate-limit) NO caduca el enlace:
+          // antes pedía captcha/OTP al abrir la app (feedback 2026-07-17).
           await admin.from("myinvestor_links").update({ status: "expired", updated_at: new Date().toISOString() }).eq("user_id", link.user_id);
           expired++;
         } else {
-          skipped++;   // 5xx/raro: no tocamos nada y se reintenta al próximo tick
+          skipped++;   // 403/5xx/raro: no tocamos nada y se reintenta al próximo tick
         }
       } catch { skipped++; /* red caída: reintenta al próximo tick */ }
     }

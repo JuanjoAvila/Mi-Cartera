@@ -137,7 +137,7 @@ function shareMonthReport(state, tt){
    Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
    ============================================================ */
 function Tour({onDone, goTab, tabIds}){
-  // Tour v4: barra inferior (Inicio / Gastos / + / Plan / Cartera) + avatar de Ajustes.
+  // Tour v4: barra inferior (Inicio / Gastos / + / Plan / Cartera) + avatar de perfil.
   // goTab prepara la pestaña antes de medir el foco (lazy-mount).
   const steps=[
     {k:"tour_1", tab:"dash", sel:function(){ return document.querySelector(".page-live .v4-hero")||document.querySelector("[data-tour='hero']")||document.querySelector(".v4-hero"); }},
@@ -500,9 +500,11 @@ function useSheetSwipe(open, onClose){
     el.classList.remove("dragging");
     if(dist>90){
       // Cierre suave (mismo ease que el swipe entre tabs).
+      // NO resetear transform a "" antes del unmount: un frame la ficha volvía al centro
+      // y se veía el «hitch» al tirar abajo (feedback 2026-07-17).
       el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
       el.style.transform="translate3d(0,110%,0)";
-      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} onClose(); }, 420);
+      setTimeout(function(){ onClose(); }, 420);
     } else {
       el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
       el.style.transform="translate3d(0,0,0)";

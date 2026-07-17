@@ -5,7 +5,7 @@ function dashOrderOf(s, allIds){
   const saved=((s.settings&&s.settings.dashOrder)||[]).filter(function(id){ return allIds.indexOf(id)>=0; });
   return saved.concat(allIds.filter(function(id){ return saved.indexOf(id)<0; }));
 }
-function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
+function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGastos, onGoPlan}){
   const tt=totals;
   const simple=!!(state.settings&&state.settings.simpleMode);
   const [shownNet,setShownNet]=useState(0);
@@ -102,7 +102,8 @@ function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
         React.createElement("div",{className:"v4-inicio-date"}, new Date().toLocaleDateString(loc(),{weekday:"long",day:"numeric",month:"long"})),
         React.createElement("div",{className:"v4-inicio-hi"}, greetName?tf("v4_hola",{n:greetName}):t("v4_hola_anon"))
       ),
-      React.createElement("button",{className:"v4-avatar","data-tour":"avatar","aria-label":t("settings"),onClick:function(){ if(onOpenSettings) onOpenSettings(); }}, initials)
+      React.createElement("button",{className:"v4-avatar","data-tour":"avatar","aria-label":t("pf_title"),
+        onClick:function(){ if(onOpenProfile) onOpenProfile(); else if(onOpenSettings) onOpenSettings(); }}, initials)
     ),
 
     React.createElement("div",{className:"v4-hero rise","data-tour":"hero",style:{animationDelay:".05s"}},

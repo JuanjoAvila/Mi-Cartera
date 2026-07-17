@@ -285,14 +285,13 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   const ql=q.trim().toLowerCase();
   const shown=(aspsps||[]).filter(function(a){ return !ql || (a.name||"").toLowerCase().indexOf(ql)>=0; });
 
-  const wrap={position:"fixed",inset:0,zIndex:95,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const wrap={position:"fixed",inset:0,zIndex:95,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 14px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
   const inner={maxWidth:480,margin:"0 auto"};
-  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
-  const card={display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:10};
-  const pill=function(txt,col){ return React.createElement("span",{style:{fontSize:11,fontWeight:800,color:col,background:col+"1f",border:"1px solid "+col+"44",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}, txt); };
-  const mb={background:"var(--surface-2)",border:"1px solid var(--line)",color:"var(--text)",borderRadius:10,padding:"7px 11px",fontSize:12.5,fontWeight:700,cursor:"pointer"};
-  const bigBtn={width:"100%",padding:"14px",borderRadius:14,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer",marginTop:6};
-  const inp={width:"100%",padding:"12px 14px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:16,boxSizing:"border-box"};
+  const back={background:"none",border:"none",color:"var(--mint)",fontSize:14,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:4};
+  const pill=function(txt,col){ return React.createElement("span",{style:{fontSize:11,fontWeight:800,color:col,background:col+"1f",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}, txt); };
+  const mb={flex:"1 1 auto",minWidth:0,background:"var(--sur)",border:"1px solid var(--line-soft)",color:"var(--text)",borderRadius:12,padding:"10px 12px",fontSize:13,fontWeight:700,cursor:"pointer"};
+  const bigBtn={width:"100%",padding:"14px",borderRadius:14,border:"none",background:"linear-gradient(160deg,var(--mint-hi),var(--mint))",color:"var(--on-mint)",fontWeight:800,fontSize:15,cursor:"pointer",marginTop:8};
+  const inp={width:"100%",padding:"12px 14px",borderRadius:12,border:"1px solid var(--line-soft)",background:"var(--sur)",color:"var(--text)",fontSize:16,boxSizing:"border-box"};
 
   const logoBox=function(a){
     const ent=entFromAspsp(a.name);
@@ -304,7 +303,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   if(picking){
     return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
       React.createElement("button",{style:back,onClick:function(){ setPicking(false); setQ(""); }}, "‹ "+t("bp_back")),
-      React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px"}}, t("bp_pick_title")),
+      React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px",fontWeight:560}}, t("bp_pick_title")),
       React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}}, t("bp_pick_sub")),
       React.createElement("input",{style:inp,placeholder:t("bp_search"),value:q,onChange:function(e){ setQ(e.target.value); },autoFocus:true}),
       loadingA && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,padding:"18px 2px"}}, t("bp_loading")),
@@ -313,11 +312,12 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         shown.slice(0,80).map(function(a){
           const isC=!!connected[(a.name||"").toLowerCase()];
           return React.createElement("button",{key:a.name+a.country,disabled:!!busy,onClick:function(){ connect(a.name,a.country); },
-            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:8,cursor:busy?"default":"pointer",opacity:busy&&busy!==a.name?0.5:1,textAlign:"left"}},
+            className:"v4-mov",
+            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)",marginBottom:8,cursor:busy?"default":"pointer",opacity:busy&&busy!==a.name?0.5:1,textAlign:"left"}},
             logoBox(a),
             React.createElement("div",{style:{flex:1,minWidth:0}},
-              React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, a.name),
-              isC? React.createElement("div",{style:{fontSize:11,color:"var(--mint)",fontWeight:700}}, "✓ "+t("bp_already")) : (a.beta? React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)"}}, "beta") : null)),
+              React.createElement("div",{className:"nm"}, a.name),
+              isC? React.createElement("div",{className:"meta",style:{color:"var(--mint)"}}, "✓ "+t("bp_already")) : (a.beta? React.createElement("div",{className:"meta"}, "beta") : null)),
             React.createElement("span",{style:{color:"var(--muted-2)",fontWeight:800,fontSize:18}}, busy===a.name?"…":"›")
           );
         })
@@ -326,55 +326,44 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   }
 
   // ---- vista PRINCIPAL (mis bancos conectados) ----
-  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+  return React.createElement("div",{className:"v4-banks",style:wrap}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("bp_close")),
-    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10,margin:"2px 0 2px"}},
-      React.createElement("div",{className:"serif",style:{fontSize:25}}, t("bp_title"))),
-    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:16}}, t("bp_intro")),
+    React.createElement("div",{className:"serif",style:{fontSize:26,fontWeight:560,margin:"2px 0 4px"}}, t("bp_title")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}}, t("bp_intro")),
     links===null && React.createElement("div",{style:{color:"var(--muted)",fontSize:13}}, "…"),
-    // Vacío ≠ roto: las cuentas del onboarding son manuales y viven en Patrimonio; esto es la
-    // sincronización real (feedback pareja 2026-07-10, punto 4 — la lista vacía descolocaba).
     links!==null && links.length===0 && React.createElement(React.Fragment,null,
-      React.createElement("div",{style:{textAlign:"center",color:"var(--muted)",fontSize:13,padding:"10px 0 6px"}}, t("bp_empty")),
-      React.createElement("div",{style:{fontSize:12,lineHeight:1.55,color:"var(--muted)",background:"var(--surface-2)",border:"1px solid var(--line)",borderRadius:12,padding:"10px 12px",margin:"0 0 16px"}}, "💡 "+t("bp_empty_hint"))
+      React.createElement("div",{style:{textAlign:"center",color:"var(--muted)",fontSize:13.5,padding:"18px 8px"}}, t("bp_empty"))
     ),
-    // (Aquí vivían la explicación de los roles y los chips para asignarlos. RETIRADO 2026-07-15:
-    // «se ha cargado muchísimo esa zona, déjame lo básico: actualizar saldo, reconectar y quitar».
-    // Los roles y la promoción de cuentas SIGUEN en Patrimonio → Editar, que es su sitio natural.)
     (links||[]).map(function(l){
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
-      const noAcct = l.status==='error';   // autorizó pero volvió sin cuentas dadas de alta (modo restringido)
+      const noAcct = l.status==='error';
       const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
                : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
                : pill(t("bp_st_expired"),"var(--coral)");
-      return React.createElement("div",{key:l.aspsp_name},
-        React.createElement("div",{style:card},
+      return React.createElement("div",{key:l.aspsp_name,style:{marginBottom:6}},
+        React.createElement("div",{className:"v4-mov",style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)"}},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
-            React.createElement("div",{style:{fontWeight:800}}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--blue)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:2}}, l.last_sync?tf("bank_updated",{x:fmtDT(l.last_sync)}):t("bank_neversync")),
-            l.valid_until?React.createElement("div",{style:{fontSize:11,color:soon?"var(--coral)":"var(--muted-2)",marginTop:1}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
+            React.createElement("div",{className:"nm"}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--mint)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
+            React.createElement("div",{className:"meta"}, l.last_sync?tf("bank_updated",{x:fmtDT(l.last_sync)}):t("bank_neversync")),
+            l.valid_until?React.createElement("div",{className:"meta",style:{color:soon?"var(--coral)":undefined}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
           sp),
-        noAcct && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",background:"#E2A05F14",border:"1px solid #E2A05F44",borderRadius:12,padding:"9px 12px",margin:"-2px 0 12px"}}, "⚠ "+t("bp_noacct_help")),
-        // (Aquí iban los chips de rol del banco y los de «promocionar» sus cuentas de Open Banking.
-        // Ver la nota de arriba: ambos siguen vivos en Patrimonio → Editar.)
+        noAcct && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",margin:"8px 2px 4px"}}, "⚠ "+t("bp_noacct_help")),
         (confirming===l.aspsp_name
-          ? React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",margin:"-4px 0 14px"}},
-              React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 auto",minWidth:120}}, tf("bp_remove_q",{bank:bankLabel(l.aspsp_name)})),
+          ? React.createElement("div",{className:"bk-actions",style:{marginTop:8}},
+              React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 100%"}}, tf("bp_remove_q",{bank:bankLabel(l.aspsp_name)})),
               React.createElement("button",{style:Object.assign({},mb,{color:"var(--coral)",borderColor:"var(--coral)",opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ remove(l.aspsp_name); }}, busy===l.aspsp_name?t("bp_removing"):t("bp_remove_yes")),
               React.createElement("button",{style:mb,disabled:!!busy,onClick:function(){ setConfirming(""); }}, t("bp_remove_no")))
-          : React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",margin:"-4px 0 14px"}},
+          : React.createElement("div",{className:"bk-actions",style:{marginTop:8}},
               React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:refresh}, busy==="__sync"?t("bp_syncing"):t("bank_refresh")),
               React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1}),disabled:!!busy,onClick:function(){ connect(l.aspsp_name, l.aspsp_country||"ES"); }}, noAcct?t("bp_retry_link"):t("bank_reconnect")),
-              React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1,marginLeft:"auto",color:"var(--muted)"}),disabled:!!busy,onClick:function(){ setConfirming(l.aspsp_name); }}, t("bp_remove"))))
+              React.createElement("button",{style:Object.assign({},mb,{opacity:busy?0.6:1,color:"var(--muted)",flex:"0 0 auto"}),disabled:!!busy,onClick:function(){ setConfirming(l.aspsp_name); }}, t("bp_remove"))))
       );
     }),
     React.createElement("button",{style:bigBtn,onClick:openPicker}, "+ "+t("bp_add")),
-    // Multi-banco gasto variable (v3.111): chips de qué bancos OB aportan compras con tarjeta a
-    // Gastos. Independiente del spendFrom único (presupuesto/round-up siguen en una cuenta).
     (function(){
       const active=(links||[]).filter(function(l){ return l.status==='active'||l.status==='pending'; });
       if(!active.length) return null;
@@ -386,35 +375,29 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         set(function(s){
           const base=expenseBankEnts(s).slice();
           const i=base.indexOf(ent);
-          if(i>=0){ if(base.length===1) return s; base.splice(i,1); }   // no dejar la lista vacía a ciegas
+          if(i>=0){ if(base.length===1) return s; base.splice(i,1); }
           else base.push(ent);
           return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
         });
       };
-      return React.createElement("div",{style:{marginTop:16,padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)"}},
-        React.createElement("div",{style:{fontWeight:800,fontSize:13.5,marginBottom:4}}, t("bp_expbanks")),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,marginBottom:10}}, t("bp_expbanks_hint")),
+      return React.createElement("div",{style:{marginTop:18}},
+        React.createElement("div",{className:"v4-section-h"}, React.createElement("span",null, t("bp_expbanks"))),
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.45,marginBottom:10}}, t("bp_expbanks_hint")),
         React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
           ents.map(function(ent){
             const on=onEnt(ent);
-            return React.createElement("button",{key:ent,type:"button",onClick:function(){ toggleEnt(ent); },
-              style:{padding:"8px 12px",borderRadius:20,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",fontWeight:800,fontSize:12.5,cursor:"pointer"}},
+            return React.createElement("button",{key:ent,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleEnt(ent); }},
               (on?"✓ ":"")+entOf(ent).label);
           })
         )
       );
     })(),
-    // Importar histórico de gastos (Open Banking, tope ~90 días) de los bancos marcados arriba.
-    ((links||[]).some(function(l){ return l.status==='active'; })) && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:700,fontSize:13.5,cursor:"pointer",marginTop:10},onClick:function(){ setHistOpen(true); }}, "⏳ "+t("bp_hist_btn")),
+    ((links||[]).some(function(l){ return l.status==='active'; })) && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:14,border:"1px solid var(--line-soft)",background:"var(--sur)",color:"var(--text)",fontWeight:700,fontSize:13.5,cursor:"pointer",marginTop:12},onClick:function(){ setHistOpen(true); }}, t("bp_hist_btn")),
     histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
-    // Trade Republic también es un banco: su conexión (integración propia vía app Android) vive
-    // aquí con el resto de bancos, no perdida en Inversiones/Ajustes (feedback 2026-07-06).
-    React.createElement("div",{style:{height:1,background:"var(--line)",margin:"20px 0 14px"}}),
+    React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"22px 0 14px"}}),
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
-    // MyInvestor: fondos indexados vía su API (Edge Function). Funciona en web y app.
     React.createElement("div",{style:{height:8}}),
     React.createElement(MyInvestorSync,{state:state,set:set}),
-    // Revolut es un bróker más: como no tiene sync automático viable (antibot), va por CSV.
     React.createElement("div",{style:{height:8}}),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
@@ -471,6 +454,13 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.5", d:"17 jul 2026", t:"Perfil al tirar abajo, fichas sin velo y bancos que no se desconectan solos", items:[
+    "👤 En Inicio, tira hacia abajo (o el avatar) y baja tu perfil al estilo Revolut: datos personales, patrimonio y perfil inversor, editables.",
+    "🧾 Las fichas de gasto y Apuntar ya no ponen el fondo negro; al cerrarlas no hay el parpadeo de antes.",
+    "🏦 Mis bancos más limpio, al estilo del resto de la app.",
+    "🔌 Trade Republic y MyInvestor ya no se desconectan solos al abrir la app (ni MyInvestor te pide captcha por un 403 de anti-bot).",
+    "📱 Para el arreglo nativo de Trade Republic hace falta el APK 4.0.5."
+  ]},
   {v:"4.0.4", d:"17 jul 2026", t:"Tutorial nuevo, fichas más suaves y Plan compacto", items:[
     "🎓 Tutorial actualizado al rediseño: Inicio, Gastos, +, Plan, Cartera y Ajustes.",
     "👆 En Gastos, scrollear categorías/bancos ya no hace el amago de cambiar de pestaña.",

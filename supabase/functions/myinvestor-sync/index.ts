@@ -70,12 +70,16 @@ Deno.serve(async (req) => {
 
     // 1) lista de cuentas de valores (con auto-refresh si 401)
     let acc = await apiGet("/cperf-server/api/v2/securities-accounts/self-basic");
-    if (acc.status === 401 || acc.status === 403) {
+    if (acc.status === 401) {
       if (await refresh()) acc = await apiGet("/cperf-server/api/v2/securities-accounts/self-basic");
     }
-    if (acc.status === 401 || acc.status === 403) {
+    // 403 = a menudo anti-bot/rate-limit, NO sesión muerta → no marcamos expired (captcha loop).
+    if (acc.status === 401) {
       await admin.from("myinvestor_links").update({ status: "expired", updated_at: new Date().toISOString() }).eq("user_id", user.id);
       return jsonResp({ ok: false, authExpired: true, error: "Tu sesión de MyInvestor caducó. Vuelve a conectar." });
+    }
+    if (acc.status === 403) {
+      return jsonResp({ ok: false, softFail: true, error: "MyInvestor no deja pasar ahora (anti-bot). Prueba más tarde — tu sesión sigue guardada." });
     }
     if (acc.status !== 200) return jsonResp({ ok: false, error: "MyInvestor HTTP " + acc.status });
 

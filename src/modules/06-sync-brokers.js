@@ -22,7 +22,15 @@ function MyInvestorSync({state, set}){
   const [doneN,setDoneN]=useState(null);
   const [noSession,setNoSession]=useState(false);
   const devRef=useRef(null);
-  const deviceId=function(){ if(!devRef.current){ try{ devRef.current=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("mi-"+Date.now()+"-"+Math.random().toString(36).slice(2)); }catch(e){ devRef.current="mi-"+Date.now(); } } return devRef.current; };
+  const deviceId=function(){
+    // Mismo deviceId siempre (antes UUID nuevo → MyInvestor veía «otro móvil» y pedía captcha).
+    if(devRef.current) return devRef.current;
+    try{
+      let d=localStorage.getItem("_miDeviceId");
+      if(!d){ d=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():("mi-"+Date.now()+"-"+Math.random().toString(36).slice(2)); localStorage.setItem("_miDeviceId",d); }
+      devRef.current=d; return d;
+    }catch(e){ devRef.current="mi-"+Date.now(); return devRef.current; }
+  };
   useEffect(function(){
     if(!cloud.enabled()){ setNoSession(true); return; }
     cloud.session().then(function(se){ if(!se){ setNoSession(true); return; } cloud.myinvestorStatus().then(function(r){ if(r&&r.status==="active") setStep("connected"); else if(r&&r.status==="expired") setExpired(true); }).catch(function(){}); }).catch(function(){ setNoSession(true); });
@@ -51,6 +59,8 @@ function MyInvestorSync({state, set}){
     setBusy(true); setErr(""); setDoneN(null);
     cloud.myinvestorSync().then(function(r){
       setBusy(false);
+      // softFail = anti-bot/403: sesión sigue; no pedir OTP/captcha (feedback 2026-07-17).
+      if(r&&r.softFail){ fail(r); return; }
       if(r&&r.authExpired){ setStep("idle"); setExpired(true); fail(r); return; }
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
