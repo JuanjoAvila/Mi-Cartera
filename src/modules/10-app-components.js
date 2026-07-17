@@ -455,6 +455,9 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.9", d:"17 jul 2026", t:"Verde más vivo, como antes", items:[
+    "🌿 El tema verde vuelve a verse más cálido (menos seco/oscuro). Las fichas llevan un velo verdoso suave, no negro."
+  ]},
   {v:"4.0.8", d:"17 jul 2026", t:"Tutorial al avatar, fichas sin negro y bancos claros", items:[
     "🎓 El tutorial ahora encierra el círculo del avatar (antes medía a medias del swipe y el foco salía vacío).",
     "🧾 Al editar un gasto o pulsar +, se ve la app detrás de verdad: sin fondo negro ni scale raro.",

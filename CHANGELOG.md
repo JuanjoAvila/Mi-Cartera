@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.9] — 2026-07-17
+### Tono verde
+- Tema verde: fondos un pelín más claros/vivos + glow mint más fuerte en `body`.
+- Sheets: velo `rgba(8,28,20,.28)` (verdoso, no negro ni transparente seco).
+- Perfil: `background:var(--bg)` de nuevo; dim layer verdoso.
+
 ## [4.0.8] — 2026-07-17
 ### Feedback post-4.0.7 (tutorial / negro / bancos / TR)
 - 🎓 Tour: espera 520 ms tras `goTab` (track 420 ms); `pickVisible` solo en viewport; spot circular en avatar.
