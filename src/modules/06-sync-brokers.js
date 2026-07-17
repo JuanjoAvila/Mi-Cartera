@@ -1,12 +1,45 @@
 /* ============================================================
-   SINCRONIZACIÓN MYINVESTOR (beta) — API no oficial vía Edge Function.
+   SINCRONIZACIÓN MYINVESTOR (beta) — API no oficial.
    ============================================================
-   A diferencia de Trade Republic (puente NATIVO por el WAF de AWS), MyInvestor va por
-   Edge Function (funciona en web Y app). El usuario mete usuario+contraseña de MyInvestor:
-   la contraseña viaja SOLO al hacer login (HTTPS, edge con verify_jwt) y NUNCA se guarda —
-   solo se persisten los tokens de sesión. Puede pedir un código por SMS (OTP) y, de vez en
-   cuando, un reCAPTCHA (verificación condicional que aquí no resolvemos: se avisa y se
-   reintenta más tarde). Trae fondos indexados / fondos / acciones. Ver [[mi-cartera-escalado]]. */
+   v4.0.12: el LOGIN se hace DESDE EL MÓVIL cuando se puede (CapacitorHttp, petición nativa
+   sin CORS) — el reCAPTCHA condicional (SECURITY_001) salta casi siempre desde la IP de
+   datacenter de Supabase y casi nunca desde la IP residencial del usuario, que es la misma
+   vía que la app oficial. Los tokens resultantes se suben a la Edge (que los VALIDA contra
+   la API antes de guardar) y sync/keepalive siguen en la nube como siempre. En web (sin
+   nativo) o con APK viejo sin CapacitorHttp se cae a la vía Edge de antes. La contraseña
+   NUNCA se guarda en ningún caso. Trae fondos indexados / fondos / acciones. */
+function miNativeHttp(){
+  try{
+    const cap=window.Capacitor;
+    if(!(cap&&cap.isNativePlatform&&cap.isNativePlatform())) return null;
+    const p=cap.Plugins&&cap.Plugins.CapacitorHttp;
+    return (p&&typeof p.request==="function")?p:null;
+  }catch(e){ return null; }
+}
+function miDeviceLogin(http, loginBody, devId){
+  // Mismas cabeceras que _shared/myinvestor.ts (la API valida x-device-id y x-myinvestor-app).
+  // Origin/Referer aquí SÍ se pueden fijar: la petición sale en nativo, no la limita el navegador.
+  return Promise.resolve(http.request({
+    url:"https://api.myinvestor.es/login/api/v2/auth/token",
+    method:"POST",
+    headers:{ "Content-Type":"application/json", "Accept":"application/json",
+      "Referer":"https://api.myinvestor.es", "Origin":"https://api.myinvestor.es",
+      "x-device-id":devId, "x-myinvestor-app":"version=3.125.0,platform=web" },
+    data:loginBody
+  })).then(function(res){
+    const st=res?res.status:0; let j=res?res.data:null;
+    if(typeof j==="string"){ try{ j=JSON.parse(j); }catch(e){ j={}; } }
+    j=j||{};
+    const d=(j.payload&&j.payload.data)||{};
+    if(st===202) return { ok:true, otp:true, otpId:d.otpId||null, signatureRequestId:d.signatureRequestId||null };
+    if(st===403&&j.status&&j.status.code==="SECURITY_001") return { ok:false, recaptcha:true, error:(j.status.message||"") };
+    if(st===200||st===201){
+      if(!d.accessToken) return { ok:false, error:"login sin token" };
+      return { ok:true, tokens:{ accessToken:d.accessToken, refreshToken:d.refreshToken||null, refreshExpiresIn:Number(d.refreshExpiresIn||0) } };
+    }
+    return { ok:false, status:st, error:(j.status&&j.status.message)||d.message||("login HTTP "+st) };
+  });
+}
 function MyInvestorSync({state, set}){
   const [step,setStep]=useState("idle");     // idle | otp | connected | preview
   // usuario recordado (NUNCA la contraseña): reconectar tras una caducidad = solo contraseña+OTP
@@ -56,8 +89,15 @@ function MyInvestorSync({state, set}){
     }).catch(function(){ setNoSession(true); });
   },[]);
   const fail=function(r){ setBusy(false); const m=(r&&(r.error||r.message))||t("mi_err"); setErr(m); try{ cloud.logEvent('error','MI: '+m); }catch(e){} };
-  const doConnect=function(){
-    if(!cid.trim()||!pass) return; setBusy(true); setErr("");
+  // Éxito del login en el móvil → subir tokens (la Edge los valida contra la API antes de guardar).
+  const storeTokens=function(tk){
+    return cloud.myinvestorStore({ deviceId:deviceId(), accessToken:tk.accessToken, refreshToken:tk.refreshToken, refreshExpiresIn:tk.refreshExpiresIn }).then(function(r){
+      setBusy(false);
+      if(r&&r.connected){ try{ localStorage.setItem("_miCid",cid.trim()); }catch(e){} setExpired(false); setPass(""); setCode(""); setStep("connected"); doSync(); return; }
+      fail(r);
+    }).catch(fail);
+  };
+  const connectViaEdge=function(){
     cloud.myinvestorConnect({ customerId:cid.trim(), password:pass, deviceId:deviceId() }).then(function(r){
       setBusy(false);
       if(!r){ fail(r); return; }
@@ -71,13 +111,44 @@ function MyInvestorSync({state, set}){
       fail(r);
     }).catch(fail);
   };
-  const doOtp=function(){
-    if(code.trim().length<4||!otpInfo) return; setBusy(true); setErr("");
+  const doConnect=function(){
+    if(!cid.trim()||!pass) return; setBusy(true); setErr("");
+    const http=miNativeHttp();
+    if(http){
+      miDeviceLogin(http,{ customerId:cid.trim(), password:pass },deviceId()).then(function(r){
+        if(r&&r.tokens){ storeTokens(r.tokens); return; }
+        setBusy(false);
+        if(r&&r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
+        if(r&&r.recaptcha){
+          // reCAPTCHA TAMBIÉN desde IP residencial: rarísimo — se apunta para saberlo de verdad.
+          setErr(r.error||t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha desde el móvil'); }catch(e){}
+          return;
+        }
+        fail(r);
+      }).catch(function(){ connectViaEdge(); });   // CapacitorHttp no disponible/peta → vía Edge de siempre
+      return;
+    }
+    connectViaEdge();
+  };
+  const otpViaEdge=function(){
     cloud.myinvestorConnect({ customerId:cid.trim(), password:pass, deviceId:deviceId(), otpId:otpInfo.otpId, signatureRequestId:otpInfo.signatureRequestId, code:code.trim() }).then(function(r){
       setBusy(false);
       if(r&&r.connected){ try{ localStorage.setItem("_miCid",cid.trim()); }catch(e){} setExpired(false); setPass(""); setCode(""); setStep("connected"); doSync(); return; }
       fail(r);
     }).catch(fail);
+  };
+  const doOtp=function(){
+    if(code.trim().length<4||!otpInfo) return; setBusy(true); setErr("");
+    const http=miNativeHttp();
+    if(http){
+      // El OTP debe validarse por la MISMA vía que pidió el login (mismo x-device-id e IP).
+      miDeviceLogin(http,{ customerId:cid.trim(), password:pass, otpId:otpInfo.otpId, signatureRequestId:otpInfo.signatureRequestId, code:code.trim() },deviceId()).then(function(r){
+        if(r&&r.tokens){ storeTokens(r.tokens); return; }
+        setBusy(false); fail(r);
+      }).catch(function(){ otpViaEdge(); });
+      return;
+    }
+    otpViaEdge();
   };
   const doSync=function(){
     setBusy(true); setErr(""); setDoneN(null);

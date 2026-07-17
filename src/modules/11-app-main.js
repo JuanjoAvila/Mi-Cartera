@@ -660,7 +660,14 @@ function App(){
     }
     if(pAx.current!=="y") return;
     // Con scroll: primero el contenido; al top, tirar arriba cierra.
-    if(profileRef.current && profileRef.current.scrollTop>0){ pDY.current=0; return; }
+    if(profileRef.current && profileRef.current.scrollTop>0){
+      pDY.current=0;
+      // El primer tirón puede haber encogido un pelín el panel antes de que el scroll tomara
+      // el gesto: deshazlo o se queda congelado a ~0.93 mientras scrolleas (visto en E2E táctil).
+      profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius="";
+      setProfileProgress(1);
+      return;
+    }
     if(ddy>=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
     pDY.current=ddy;   // negativo = hacia arriba
     const h=window.innerHeight||700;

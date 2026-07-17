@@ -455,6 +455,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.12", d:"17 jul 2026", t:"MyInvestor sin captcha", items:[
+    "🔌 Conectar MyInvestor ahora hace el login desde TU móvil (como la app oficial): el dichoso reCAPTCHA saltaba porque el login salía de un servidor de Amazon. Desde tu IP de casa casi nunca aparece.",
+    "☁️ Todo lo demás sigue igual: la sesión se guarda cifrada en la nube y las posiciones se refrescan solas. Funciona ya con el APK que tienes (te llega por OTA).",
+    "🧪 El gesto del perfil (abrir arrastrando hacia abajo, cerrar hacia arriba) queda cubierto por test automático."
+  ]},
   {v:"4.0.11", d:"17 jul 2026", t:"El perfil baja como en Revolut + TR sin dramas", items:[
     "👤 El perfil ahora nace del avatar y crece hasta llenar la pantalla mientras el fondo se desenfoca — como en Revolut, también tirando hacia abajo desde Inicio con el dedo.",
     "🏦 Trade Republic: si la sesión caduca de verdad, la app te lleva directa a reconectar con el teléfono ya puesto (PIN + código y listo). Ya no hay que pulsar «Desconectar».",

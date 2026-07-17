@@ -30,6 +30,37 @@ Deno.serve(async (req) => {
     if (!user) return jsonResp({ ok: false, error: "sin sesión" }, 401);
 
     const body = await req.json().catch(() => ({}));
+
+    // Modo «guardar tokens» (v4.0.12): el login se hizo EN EL MÓVIL (CapacitorHttp, IP
+    // residencial — el reCAPTCHA condicional salta casi siempre desde la IP de datacenter de
+    // Supabase y casi nunca desde la del usuario, que es la vía de la app oficial). Aquí NO
+    // llega ninguna contraseña: solo los tokens, y se VALIDAN contra la API antes de guardar
+    // (nunca a ciegas: un token corrupto rompería sync y keepalive en silencio).
+    if (body?.storeTokens) {
+      const devId = String(body?.deviceId || "").trim();
+      const access = String(body?.accessToken || "");
+      const refresh = body?.refreshToken ? String(body.refreshToken) : null;
+      const refreshSecs = Number(body?.refreshExpiresIn || 0);
+      if (!devId || !access) return jsonResp({ ok: false, error: "faltan datos" }, 400);
+      const chk = await fetch(MI_BASE + "/cperf-server/api/v2/securities-accounts/self-basic", {
+        headers: miHeaders(devId, access),
+      });
+      if (chk.status !== 200) return jsonResp({ ok: false, error: "el token del móvil no valida (HTTP " + chk.status + ") — reintenta el login" }, 400);
+      const refreshExp = refreshSecs > 0 ? new Date(Date.now() + refreshSecs * 1000).toISOString() : null;
+      const admin = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const enc = await miTokensToRow(access, refresh);
+      await admin.from("myinvestor_links").upsert({
+        user_id: user.id,
+        device_id: devId,
+        access_token: enc.access_token,
+        refresh_token: enc.refresh_token,
+        refresh_expires_at: refreshExp,
+        status: "active",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+      return jsonResp({ ok: true, connected: true });
+    }
+
     const customerId = String(body?.customerId || "").trim();
     const password = String(body?.password || "");
     const deviceId = String(body?.deviceId || "").trim();
