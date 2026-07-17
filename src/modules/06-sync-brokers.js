@@ -31,9 +31,29 @@ function MyInvestorSync({state, set}){
       devRef.current=d; return d;
     }catch(e){ devRef.current="mi-"+Date.now(); return devRef.current; }
   };
+  const adoptDeviceId=function(id){
+    if(!id) return;
+    try{ localStorage.setItem("_miDeviceId", String(id)); }catch(e){}
+    devRef.current=String(id);
+  };
   useEffect(function(){
     if(!cloud.enabled()){ setNoSession(true); return; }
-    cloud.session().then(function(se){ if(!se){ setNoSession(true); return; } cloud.myinvestorStatus().then(function(r){ if(r&&r.status==="active") setStep("connected"); else if(r&&r.status==="expired") setExpired(true); }).catch(function(){}); }).catch(function(){ setNoSession(true); });
+    cloud.session().then(function(se){
+      if(!se){ setNoSession(true); return; }
+      cloud.myinvestorStatus().then(function(r){
+        if(r&&r.device_id) adoptDeviceId(r.device_id);
+        if(r&&r.status==="active"){ setStep("connected"); return; }
+        // «expired» a veces era un falso positivo (403 anti-bot). Probamos sync suave:
+        // si el token sigue vivo, reactivamos sin login ni captcha (feedback 2026-07-17).
+        if(r&&r.status==="expired"){
+          setExpired(true);
+          cloud.myinvestorSync().then(function(res){
+            if(res&&res.ok){ setExpired(false); setStep("connected"); }
+          }).catch(function(){});
+          return;
+        }
+      }).catch(function(){});
+    }).catch(function(){ setNoSession(true); });
   },[]);
   const fail=function(r){ setBusy(false); const m=(r&&(r.error||r.message))||t("mi_err"); setErr(m); try{ cloud.logEvent('error','MI: '+m); }catch(e){} };
   const doConnect=function(){
@@ -41,7 +61,11 @@ function MyInvestorSync({state, set}){
     cloud.myinvestorConnect({ customerId:cid.trim(), password:pass, deviceId:deviceId() }).then(function(r){
       setBusy(false);
       if(!r){ fail(r); return; }
-      if(r.recaptcha){ setErr(r.error||t("mi_recaptcha")); return; }
+      if(r.recaptcha){
+        // No hay WebView para resolver captcha: pedir paciencia y NO spamear reintentos.
+        setErr(r.error||t("mi_recaptcha"));
+        return;
+      }
       if(r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
       if(r.connected){ try{ localStorage.setItem("_miCid",cid.trim()); }catch(e){} setExpired(false); setStep("connected"); doSync(); return; }
       fail(r);
@@ -92,51 +116,60 @@ function MyInvestorSync({state, set}){
   };
   const disconnect=function(){ cloud.myinvestorDisconnect(); try{ localStorage.removeItem("_miCid"); }catch(e){} setExpired(false); setStep("idle"); setPositions(null); setCid(""); setPass(""); setOtpInfo(null); };
   const inpStyle={marginTop:8};
-  return React.createElement(CollapsibleCard,{title:t("mi_title"),sub:t("tr_beta")+" · "+t("mi_sub"),dot:"#E85D9A",defaultOpen:false,storageKey:"inv_misync"},
-    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("mi_hint")),
-    noSession
-      ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_need_login"))
-      : React.createElement(React.Fragment,null,
-          step==="idle" && React.createElement(React.Fragment,null,
-            expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
-            React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
-            React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
-            React.createElement("div",{className:"hint",style:{marginTop:8}},t("mi_nostore"))
-          ),
-          step==="otp" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
-            React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:8,placeholder:t("mi_otp_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doOtp}, busy?t("mi_verifying"):t("mi_verify"))
-          ),
-          step==="connected" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("mi_connected")),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("mi_syncing"):t("mi_sync")),
-            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("mi_disconnect"))
-          ),
-          step==="preview" && positions && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("mi_preview",{n:positions.length})),
-            positions.map(function(po){
-              return React.createElement("div",{key:keyOf(po),className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
-                React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
-                  React.createElement("div",{style:{minWidth:0}},
-                    React.createElement("div",{className:"rname"},po.name),
-                    React.createElement("div",{className:"rsub"},(po.isin||"")+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):""))),
-                  React.createElement("div",{className:"rval num"}, (po.shares!=null?po.shares:"")+" "+t("bi_shares"),
-                    React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0)))),
-                React.createElement("select",{className:"af-in",value:map[keyOf(po)]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[keyOf(po)]=v; return n; }); }},
-                  React.createElement("option",{value:""},t("bi_notouch")),
-                  React.createElement("option",{value:"__new"},t("tr_createnew")),
-                  (state.investments||[]).map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
-                )
-              );
-            }),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("mi_apply",{n:mappedN})),
-            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:function(){ setStep("connected"); setPositions(null); }},t("fj_cancel"))
-          ),
-          doneN!=null && step==="connected" && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}},tf("mi_done",{n:doneN})),
-          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
-        )
+  // UI plana v4 (sin CollapsibleCard pesada) — feedback 2026-07-17 redesing bancos.
+  const body=noSession
+    ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_need_login"))
+    : React.createElement(React.Fragment,null,
+        step==="idle" && React.createElement(React.Fragment,null,
+          expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
+          React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
+          React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
+          React.createElement("div",{className:"hint",style:{marginTop:8}},t("mi_nostore"))
+        ),
+        step==="otp" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
+          React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:8,placeholder:t("mi_otp_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doOtp}, busy?t("mi_verifying"):t("mi_verify"))
+        ),
+        step==="connected" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("mi_connected")),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("mi_syncing"):t("mi_sync")),
+          React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("mi_disconnect"))
+        ),
+        step==="preview" && positions && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("mi_preview",{n:positions.length})),
+          positions.map(function(po){
+            return React.createElement("div",{key:keyOf(po),className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
+              React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
+                React.createElement("div",{style:{minWidth:0}},
+                  React.createElement("div",{className:"rname"},po.name),
+                  React.createElement("div",{className:"rsub"},(po.isin||"")+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):""))),
+                React.createElement("div",{className:"rval num"}, (po.shares!=null?po.shares:"")+" "+t("bi_shares"),
+                  React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0)))),
+              React.createElement("select",{className:"af-in",value:map[keyOf(po)]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[keyOf(po)]=v; return n; }); }},
+                React.createElement("option",{value:""},t("bi_notouch")),
+                React.createElement("option",{value:"__new"},t("tr_createnew")),
+                (state.investments||[]).map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+              )
+            );
+          }),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("mi_apply",{n:mappedN})),
+          React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:function(){ setStep("connected"); setPositions(null); }},t("fj_cancel"))
+        ),
+        doneN!=null && step==="connected" && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}},tf("mi_done",{n:doneN})),
+        err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
+      );
+  return React.createElement("div",{className:"bk-card"},
+    React.createElement("div",{className:"bk-h"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"ttl"}, t("mi_title")),
+        React.createElement("div",{className:"sub"}, t("mi_sub"))
+      ),
+      step==="connected" ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
+    ),
+    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("mi_hint")),
+    body
   );
 }
 
@@ -201,7 +234,8 @@ function TRSync({state, set, totals}){
     setBusy(true); setErr(false); setErrMsg(""); setStep("idle"); setDoneN(null);
     return Promise.resolve(bridge.sync()).then(function(r){
       setBusy(false);
-      if(r&&r.authExpired){ setConnected(false); setStep("idle"); fail(r); return; }   // sesión caducó → volver al login
+      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){ setConnected(false); setStep("idle"); fail(r); return; }
+      if(r&&(r.softFail||r.wafBlocked)){ fail(r); return; }   // anti-bot: sesión sigue, no pedir 2FA
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
       r.positions.forEach(function(po){
@@ -276,59 +310,63 @@ function TRSync({state, set, totals}){
     setConnected(false); setStep("idle"); setPositions(null); setPhone(""); setPin("");
   };
   const inpStyle={marginTop:8};
-  return React.createElement(CollapsibleCard,{title:t("tr_title"),sub:t("tr_beta")+" · "+t("tr_sub"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_trsync"},
-    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_hint")),
-    !bridge
-      ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("tr_web_only"))
-      : React.createElement(React.Fragment,null,
-          React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
-          // PASO 1 · login (teléfono + PIN) — solo si no hay sesión activa
-          !connected && step!=="code" && React.createElement(React.Fragment,null,
-            React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
-            React.createElement("input",{className:"af-in",style:inpStyle,type:"password",inputMode:"numeric",placeholder:t("tr_pin_ph"),value:pin,onChange:function(e){ setPin(e.target.value); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!phone.trim()||!pin.trim(),onClick:doLogin}, busy?t("tr_connecting"):t("tr_connect"))
-          ),
-          // PASO 2 · código 2FA
-          step==="code" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0}},t("tr_code_intro")),
-            React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:6,placeholder:t("tr_code_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doVerify}, busy?t("tr_verifying"):t("tr_verify"))
-          ),
-          // conectado y sin previsualización pendiente → botón sincronizar
-          connected && step!=="preview" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("tr_connected")),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("tr_syncing"):t("tr_sync")),
-            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("tr_disconnect"))
-          ),
-          // PASO 3 · previsualización + mapeo por ISIN (reutiliza el patrón del importador)
-          step==="preview" && positions && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("tr_preview",{n:positions.length})),
-            cash!=null && React.createElement("div",{className:"hint"}, tf("tr_cash",{x:eur(cash)})),
-            positions.map(function(po){
-              return React.createElement("div",{key:po.isin,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
-                React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
-                  React.createElement("div",{style:{minWidth:0}},
-                    React.createElement("div",{className:"rname"},po.name),
-                    React.createElement("div",{className:"rsub"},po.isin)
-                  ),
-                  React.createElement("div",{className:"rval num"},
-                    po.shares+" "+t("bi_shares"),
-                    React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0))
-                  )
+  const body=!bridge
+    ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("tr_web_only"))
+    : React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
+        !connected && step!=="code" && React.createElement(React.Fragment,null,
+          React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
+          React.createElement("input",{className:"af-in",style:inpStyle,type:"password",inputMode:"numeric",placeholder:t("tr_pin_ph"),value:pin,onChange:function(e){ setPin(e.target.value); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!phone.trim()||!pin.trim(),onClick:doLogin}, busy?t("tr_connecting"):t("tr_connect"))
+        ),
+        step==="code" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0}},t("tr_code_intro")),
+          React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:6,placeholder:t("tr_code_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doVerify}, busy?t("tr_verifying"):t("tr_verify"))
+        ),
+        connected && step!=="preview" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("tr_connected")),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("tr_syncing"):t("tr_sync")),
+          React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("tr_disconnect"))
+        ),
+        step==="preview" && positions && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("tr_preview",{n:positions.length})),
+          cash!=null && React.createElement("div",{className:"hint"}, tf("tr_cash",{x:eur(cash)})),
+          positions.map(function(po){
+            return React.createElement("div",{key:po.isin,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
+              React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
+                React.createElement("div",{style:{minWidth:0}},
+                  React.createElement("div",{className:"rname"},po.name),
+                  React.createElement("div",{className:"rsub"},po.isin)
                 ),
-                React.createElement("select",{className:"af-in",value:map[po.isin]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.isin]=v; return n; }); }},
-                  React.createElement("option",{value:""},t("bi_notouch")),
-                  React.createElement("option",{value:"__new"},t("tr_createnew")),
-                  state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+                React.createElement("div",{className:"rval num"},
+                  po.shares+" "+t("bi_shares"),
+                  React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0))
                 )
-              );
-            }),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("tr_apply",{n:mappedN})),
-            React.createElement("div",{className:"hint"},t("tr_apply_hint"))
-          ),
-          doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
-          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
-        )
+              ),
+              React.createElement("select",{className:"af-in",value:map[po.isin]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.isin]=v; return n; }); }},
+                React.createElement("option",{value:""},t("bi_notouch")),
+                React.createElement("option",{value:"__new"},t("tr_createnew")),
+                state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+              )
+            );
+          }),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("tr_apply",{n:mappedN})),
+          React.createElement("div",{className:"hint"},t("tr_apply_hint"))
+        ),
+        doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
+        err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
+      );
+  return React.createElement("div",{className:"bk-card"},
+    React.createElement("div",{className:"bk-h"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"ttl"}, t("tr_title")),
+        React.createElement("div",{className:"sub"}, t("tr_sub"))
+      ),
+      connected ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
+    ),
+    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("tr_hint")),
+    body
   );
 }
 

@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.6] — 2026-07-17
+### Feedback post-4.0.5
+- 👤 Perfil: header compacto; askText `compact`; animación spring + stagger; dismiss tirando abajo (scrollTop=0).
+- 🧾 Gastos `v4-mov`: 3 líneas (nombre / categoría / fecha · banco).
+- 🏦 TR/MI en `bk-card` plano; sección «Brókers»; reactivado `runBrokerSync` suave al boot.
+- 🔌 MI: lee `device_id` (migración 0012); revive sync si status expired falso; TR no desconecta en softFail/waf.
+
 ## [4.0.5] — 2026-07-17
 ### Feedback post-4.0.4
 - 🧾 Sheets: backdrop transparente (sin velo negro); `useSheetSwipe` ya no resetea `transform` antes del unmount (quita el hitch al dismiss).

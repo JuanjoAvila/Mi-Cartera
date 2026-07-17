@@ -31,11 +31,11 @@ function AskHost(){
   const ok=function(){ done(cur.input?String(val):true); };
   const cancel=function(){ done(cur.input?null:false); };
   return ReactDOM.createPortal(
-    React.createElement("div",{className:"askback",onClick:cancel},
+    React.createElement("div",{className:"askback"+(cur.compact?" ask-compact":""),onClick:cancel},
       React.createElement("div",{className:"tabsheet",onClick:function(e){ e.stopPropagation(); }},
         React.createElement("div",{className:"ts-title"},cur.title),
         cur.sub && React.createElement("div",{className:"ts-hint"},cur.sub),
-        cur.input && React.createElement("input",{className:"af-in num ask-in",autoFocus:true,
+        cur.input && React.createElement("input",{className:"af-in num ask-in"+(cur.compact?" ask-in-compact":""),autoFocus:true,
           type:cur.secret?"password":"text",
           inputMode:cur.secret?"text":(cur.mode||"decimal"), placeholder:cur.ph||"", value:val,
           onChange:function(e){ setVal(e.target.value); },

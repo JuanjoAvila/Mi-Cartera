@@ -1406,6 +1406,7 @@ Object.assign(LANG.es,{
   bp_remove:"Quitar", bp_remove_q:"¿Quitar {bank}?", bp_remove_yes:"Sí, quitar", bp_remove_no:"Cancelar",
   bp_removing:"Quitando…", bp_removed:"{bank} quitado · puedes reconectarlo cuando quieras",
   bp_foot:"Trade Republic no está en Open Banking (es un bróker): su gasto con tarjeta sigue siendo manual.",
+  bp_brokers:"Brókers",
 });
 Object.assign(LANG.en,{
   bp_title:"My banks", bp_intro:"Connect one or more banks via Open Banking. Read-only, no card. Each consent renews every ~3 months.",
@@ -1426,6 +1427,7 @@ Object.assign(LANG.en,{
   bp_remove:"Remove", bp_remove_q:"Remove {bank}?", bp_remove_yes:"Yes, remove", bp_remove_no:"Cancel",
   bp_removing:"Removing…", bp_removed:"{bank} removed · you can reconnect it whenever you want",
   bp_foot:"Trade Republic isn't in Open Banking (it's a broker): its card spending stays manual.",
+  bp_brokers:"Brokers",
 });
 Object.assign(LANG.ca,{
   bp_title:"Els meus bancs", bp_intro:"Connecta un o més bancs per Open Banking. Només lectura, sense targeta. Cada permís es renova cada ~3 mesos.",
@@ -1446,6 +1448,7 @@ Object.assign(LANG.ca,{
   bp_remove:"Treu", bp_remove_q:"Treure {bank}?", bp_remove_yes:"Sí, treu", bp_remove_no:"Cancel·la",
   bp_removing:"Traient…", bp_removed:"{bank} tret · pots reconnectar-lo quan vulguis",
   bp_foot:"Trade Republic no és a Open Banking (és un bróker): la seva despesa amb targeta segueix sent manual.",
+  bp_brokers:"Brókers",
 });
 Object.assign(LANG.en,{
   rec_title:"Bank reconciliation",
