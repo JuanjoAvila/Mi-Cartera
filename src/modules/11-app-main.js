@@ -642,8 +642,8 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
   };
-  // Cerrar perfil tirando HACIA ARRIBA (vuelve por donde entró). Tirar abajo no cierra:
-  // antes cerraba empujando hacia abajo y se sentía raro vs Revolut (feedback 2026-07-17).
+  // Cerrar perfil tirando ABAJO (arriba→abajo): misma escala al avatar en reversa.
+  // Abrir ya es pull-down desde Inicio; cerrar «tira hacia atrás» el mismo gesto (feedback 2026-07-17).
   const pSX=useRef(0), pSY=useRef(0), pAx=useRef(null), pDrag=useRef(false);
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
@@ -659,7 +659,7 @@ function App(){
       }
     }
     if(pAx.current!=="y") return;
-    // Con scroll: primero el contenido; al top, tirar arriba cierra.
+    // Con scroll: primero el contenido; al top, tirar abajo cierra (reversa al avatar).
     if(profileRef.current && profileRef.current.scrollTop>0){
       pDY.current=0;
       // El primer tirón puede haber encogido un pelín el panel antes de que el scroll tomara
@@ -668,10 +668,10 @@ function App(){
       setProfileProgress(1);
       return;
     }
-    if(ddy>=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
-    pDY.current=ddy;   // negativo = hacia arriba
+    if(ddy<=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
+    pDY.current=ddy;   // positivo = hacia abajo
     const h=window.innerHeight||700;
-    const resist=Math.pow(Math.min(1,Math.max(0,(-ddy)/(h*0.48))),0.88);
+    const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.48))),0.88);
     // ENCOGE hacia el avatar (misma curva que la entrada, en reversa) — nada de deslizar.
     const s0c=profS0(), sc=1-(1-s0c)*resist;
     if(profileRef.current){
@@ -687,7 +687,7 @@ function App(){
     if(profileRef.current) profileRef.current.classList.remove("dragging");
     if(appShellRef.current) appShellRef.current.classList.remove("dragging");
     if(pAx.current!=="y"){ pAx.current=null; return; }
-    const dist=-pDY.current;   // distancia hacia arriba
+    const dist=pDY.current;   // distancia hacia abajo
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
     const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
