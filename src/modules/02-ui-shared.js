@@ -434,6 +434,54 @@ function useBackClose(open, onClose){
   },[open]);
 }
 
+/* Sheet bottom: swipe hacia abajo para cerrar + bloqueo de scroll del fondo
+   (feedback 2026-07-17: al scrollar categorías se movía Inicio detrás). */
+function useSheetSwipe(open, onClose){
+  const sheetRef=useRef(null);
+  const startY=useRef(0), dy=useRef(0), dragging=useRef(false), armed=useRef(false);
+  useEffect(function(){
+    if(!open) return undefined;
+    const prev=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    document.documentElement.classList.add("sheet-open");
+    return function(){
+      document.body.style.overflow=prev;
+      document.documentElement.classList.remove("sheet-open");
+    };
+  },[open]);
+  const onTouchStart=function(e){
+    if(!(e.touches&&e.touches[0])) return;
+    const el=sheetRef.current;
+    const handle=e.target&&e.target.closest&&e.target.closest(".v4-sheet-handle");
+    // Solo arma el cierre si estás arriba del todo o tiras del asa (si no, es scroll interno).
+    armed.current=!!handle || !el || el.scrollTop<=0;
+    if(!armed.current){ dragging.current=false; return; }
+    dragging.current=true; dy.current=0; startY.current=e.touches[0].clientY;
+  };
+  const onTouchMove=function(e){
+    if(!dragging.current||!armed.current) return;
+    const ddy=(e.touches[0].clientY)-startY.current;
+    if(ddy<=0){ dy.current=0; if(sheetRef.current) sheetRef.current.style.transform=""; return; }
+    dy.current=ddy;
+    if(sheetRef.current){
+      sheetRef.current.classList.add("dragging");
+      sheetRef.current.style.transform="translate3d(0,"+ddy+"px,0)";
+    }
+    if(e.cancelable) e.preventDefault();
+  };
+  const onTouchEnd=function(){
+    if(!dragging.current) return;
+    dragging.current=false; armed.current=false;
+    const dist=dy.current; dy.current=0;
+    if(sheetRef.current){
+      sheetRef.current.classList.remove("dragging");
+      sheetRef.current.style.transform="";
+    }
+    if(dist>100) onClose();
+  };
+  return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };
+}
+
 /* lista editable genérica; valFmt recibe el item entero */
 function useEditable(items, onChange, opts){
   opts = opts || {};

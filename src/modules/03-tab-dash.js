@@ -35,10 +35,14 @@ function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
     }catch(e){}
     return "";
   })();
-  const greetName=nameGuess ? (nameGuess.charAt(0).toUpperCase()+nameGuess.slice(1)) : "";
+  const greetName=(function(){
+    if(!nameGuess) return "";
+    const first=nameGuess.trim().split(/\s+/)[0]||"";
+    return first.charAt(0).toUpperCase()+first.slice(1);
+  })();
   const initials=(function(){
-    if(!greetName) return "MC";
-    const parts=greetName.trim().split(/\s+/);
+    if(!nameGuess) return "MC";
+    const parts=nameGuess.trim().split(/\s+/);
     return ((parts[0]||"M").charAt(0)+(parts[1]||parts[0]||"C").charAt(0)).toUpperCase();
   })();
 
@@ -56,24 +60,30 @@ function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
   else if(ratio>0.8 || !overTrack&&ratio>0.8){ stCls="st warn"; stHead=t("st_tight_h"); }
   if(ratio<=0.8 && !overTrack){ stCls="st"; stHead=t("st_good_h"); }
 
-  // Próximos cargos: fijos del mes aún no pagados (máx 3) + nómina si aplica.
+  // Próximos cargos: misma regla que Plan›Recibos (día del mes + isPaidIn). Antes usaba
+  // f.day crudo y mostraba recibos ya cobrados (luz/seguros) — feedback 2026-07-17.
   const upcoming=(function(){
     const today=tt.today||new Date().getDate();
-    const cy=tt.curYear, cm=tt.curMonth;
+    const cm=tt.curMonth;
     const rows=[];
     (state.fixed||[]).forEach(function(f){
-      if(!(f.amount>0)) return;
-      const day=Math.min(Math.max(1, f.day||1), dim);
-      if(day<today) return;
-      rows.push({day:day, name:f.name||t("fj_fixed"), sub:(entOf(f.ent).label||"")+(f.freq&&f.freq!=="m"?" · "+freqLabel(f.freq):""), amount:f.amount, pos:false});
+      const amount=occAmountIn(f,cm);
+      if(!(amount>0) || !occursIn(f,cm)) return;
+      if(isPaidIn(f,cm,today)) return;
+      const day=dayIn(f,cm)||1;
+      rows.push({day:day, name:f.name||t("fj_fixed"), sub:(entOf(accOf(f)).label||""), amount:amount, pos:false});
+    });
+    (state.debts||[]).forEach(function(d){
+      if(!debtActive(d) || !(d.monthly>0)) return;
+      if(isDebtPaidThisMonth(d,today)) return;
+      rows.push({day:debtChargeDay(d), name:d.name, sub:t("fj_debt_tag"), amount:d.monthly, pos:false});
     });
     (state.flows||[]).forEach(function(f){
       if(!(f.amount>0) || f.kind==="transfer") return;
-      // Nómina / ingresos modelados
-      let day=f.day||1;
-      if(f.when==="ultimo_laborable") day=dim; // aproximación visual
-      if(day<today) return;
-      rows.push({day:day, name:f.name||t("cat_ingreso"), sub:entOf(f.ent).label||"", amount:f.amount, pos:true});
+      if(!flowOccursIn(f,cm,tt.curYear)) return;
+      if(flowPaid(f,tt.curYear,cm,today)) return;
+      const day=flowDay(f,tt.curYear,cm)||1;
+      rows.push({day:day, name:f.name||t("cat_ingreso"), sub:entOf(f.ent||f.account||"").label||"", amount:f.amount, pos:true});
     });
     rows.sort(function(a,b){ return a.day-b.day; });
     return rows.slice(0,3);

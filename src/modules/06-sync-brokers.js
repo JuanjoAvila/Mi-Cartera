@@ -423,6 +423,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
   const [editing,setEditing]=useState(false);
   const [showCost,setShowCost]=useState(false);
   const [draft,setDraft]=useState({});
+  const [brokerOpen,setBrokerOpen]=useState({});   // qué bróker tiene las posiciones desplegadas (solo v4Embed)
   const didAuto=useRef(false);
   const hasTickers=state.investments.some(function(i){ return i.ticker; });
   const autoOn=state.settings && state.settings.autoPrices;
@@ -533,11 +534,9 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
             React.createElement("button",{className:"btn btn-ghost",style:{padding:"8px 12px"},onClick:start},t("inv_editmanual"))
           )
     ),
-    v4Embed && React.createElement("div",{className:"action-row",style:{marginTop:4}},
-      hasTickers && React.createElement("button",{className:"btn btn-ghost",onClick:function(){ fetchPrices(false); },disabled:pricing}, pricing?t("inv_pricing"):t("inv_prices")),
-      React.createElement("button",{className:"btn btn-ghost",onClick:start},t("inv_editmanual"))
-    ),
-    !editing && hasTickers && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
+    v4Embed && React.createElement("div",{className:"hint",style:{margin:"4px 2px 10px",lineHeight:1.45}}, t("v4_inv_embed_h")),
+    // en Cartera no botones de precios/editar ni auto-precios (feedback 2026-07-17)
+    !editing && hasTickers && !v4Embed && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
       React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"✓":""),
       React.createElement("span",null,t("inv_autoprices")+(state.lastPriceSync?tf("inv_lastprice",{d:new Date(state.lastPriceSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):""))
     ),
@@ -545,7 +544,29 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,t("inv_alsoinvested"))
     ),
-    React.createElement(OrderableSections,{tab:"inv",state:state,set:set,items:[
+    // En Cartera (v4Embed) el bróker/tipo/rendimiento/proyección son ruido: solo hace falta ver
+    // qué hay en cada bróker y poder desplegar sus posiciones — el resto se queda en la pestaña
+    // Inversiones completa (feedback 2026-07-17: «demasiadas tarjetas para un resumen»).
+    v4Embed && groups.map(function(g){
+      const items=state.investments.filter(function(i){ return i.ent===g[0]; });
+      if(items.length===0) return null;
+      const sub=items.reduce(function(a,i){ return a+invValueEur(i,state); },0);
+      const open=!!brokerOpen[g[0]];
+      return React.createElement("div",{key:g[0],style:{marginBottom:2}},
+        React.createElement("div",{className:"row",style:{cursor:"pointer"},onClick:function(){ setBrokerOpen(function(o){ return Object.assign({},o,{[g[0]]:!o[g[0]]}); }); }},
+          React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g[0],size:34}),
+            React.createElement("div",null,React.createElement("div",{className:"rname"},g[1]),
+              React.createElement("div",{className:"rsub"},tf("v4_inv_positions",{n:items.length})))),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("div",{className:"rval num"}, f0(sub)),
+            React.createElement(I.chev,{className:"chev"+(open?" open":"")})
+          )
+        ),
+        open && React.createElement("div",{style:{padding:"0 2px 6px"}},
+          React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete}))
+      );
+    }),
+    !v4Embed && React.createElement(OrderableSections,{tab:"inv",state:state,set:set,items:[
       {id:"ru",label:SIMPLEMODE?t("ru_title_simple"):t("ru_title"),el:
     (function(){
       const trAcc=state.accounts.find(function(a){ return a.spendFrom; });

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
-<meta name="theme-color" content="#0B1410" />
+<meta name="theme-color" content="#0A1310" />
 <meta name="color-scheme" content="light dark" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -580,8 +580,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 
   .v4-sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:flex;align-items:flex-end;justify-content:center;animation:v4fade .25s ease;}
   .v4-sheet{width:100%;max-width:520px;max-height:88dvh;overflow:auto;background:var(--bg-2);border:1px solid var(--line);border-bottom:none;
-    border-radius:26px 26px 0 0;padding:12px 18px calc(18px + var(--safe-bottom));animation:sheetup .34s var(--spring);}
-  .v4-sheet-handle{width:40px;height:4px;border-radius:4px;background:var(--line);margin:4px auto 14px;}
+    border-radius:26px 26px 0 0;padding:12px 18px calc(18px + var(--safe-bottom));animation:sheetup .34s var(--spring);
+    transition:transform .28s cubic-bezier(.32,.72,0,1);will-change:transform;touch-action:pan-y;}
+  .v4-sheet-handle{width:40px;height:5px;border-radius:4px;background:var(--line);margin:6px auto 14px;position:relative;flex:0 0 auto;cursor:grab;}
+  .v4-sheet-handle::before{content:"";position:absolute;inset:-16px -48px;} /* zona táctil amplia para tirar abajo */
+  html.sheet-open,html.sheet-open body{overflow:hidden;overscroll-behavior:none;}
+  html.sheet-open .page{overflow:hidden !important;overscroll-behavior:none;}
   .v4-toggle{display:flex;gap:8px;margin-bottom:12px;}
   .v4-toggle button{flex:1;min-height:48px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);font-weight:700;font-size:15px;}
   .v4-toggle button.on{background:var(--mint);color:var(--on-mint);border-color:var(--mint);}
@@ -597,11 +601,15 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-cta{width:100%;height:58px;border-radius:16px;border:none;font-size:16px;font-weight:800;cursor:pointer;
     background:linear-gradient(160deg,var(--mint-hi),var(--mint));color:var(--on-mint);
     box-shadow:0 14px 28px -8px rgba(95,208,138,.45);}
-  .settings-push{position:fixed;inset:0;z-index:70;background:var(--bg);max-width:520px;margin:0 auto;overflow-y:auto;
-    padding:calc(var(--safe-top) + 12px) 18px calc(24px + var(--safe-bottom));animation:rise .32s var(--ease);}
-  .settings-push-h{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-  .settings-push-h .back{width:44px;height:44px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:20px;}
-  .settings-push-h h1{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:560;margin:0;}
+  .settings-push,.settings-slide{position:fixed;inset:0;z-index:70;background:var(--bg);max-width:520px;margin:0 auto;overflow-y:auto;
+    padding:calc(var(--safe-top) + 12px) 18px calc(24px + var(--safe-bottom));
+    transform:translate3d(-100%,0,0);transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;
+    box-shadow:8px 0 32px rgba(0,0,0,.35);}
+  .settings-push.open,.settings-slide.open{transform:translate3d(0,0,0);}
+  .settings-push.dragging,.settings-slide.dragging{transition:none;}
+  .settings-push-h,.settings-slide-h{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+  .settings-push-h .back,.settings-slide-h .back{width:44px;height:44px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:20px;border:1px solid var(--line-soft);background:var(--sur);color:var(--text);}
+  .settings-push-h h1,.settings-slide-h h1{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:560;margin:0;}
 
   @keyframes sheetup{from{transform:translateY(48px);opacity:0;}to{transform:translateY(0);opacity:1;}}
   @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
@@ -609,7 +617,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim{animation:none !important;transition:none !important;}
   }
 
   .card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line-soft);border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;}
@@ -851,8 +859,31 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   button.v4-mov{width:100%;border:1px solid var(--line-soft);background:var(--sur);color:inherit;font:inherit;text-align:left;cursor:pointer;}
   .set-card>.set-row:first-child{border-top:none;}
   .set-row .sr-ic{font-size:17px;flex:0 0 22px;text-align:center;line-height:1;}
-  .set-row .sr-lb{flex:1;font-weight:700;min-width:0;}
-  .set-row .sr-val{color:var(--muted);font-size:13.5px;font-weight:600;flex:0 1 auto;text-align:right;}
+  .set-row .sr-lb{flex:1;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+  .set-row .sr-val{color:var(--muted);font-size:12.5px;font-weight:600;flex:0 1 42%;max-width:42%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+  .set-row .sr-sub{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .v4-chips.wrap{flex-wrap:wrap;}
+  .v4-sheet.dragging{transition:none !important;}
+  .v4-sheet-back.lock{overscroll-behavior:none;touch-action:none;}
+  html.settings-open,html.settings-open body{overflow:hidden;overscroll-behavior:none;}
+  .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;}
+  .app-shell .viewport{flex:1;min-height:0;}
+  .app-shell.settings-dim{transform:scale(calc(1 - 0.04 * var(--set-p,0)));filter:blur(calc(var(--set-p,0) * 14px)) brightness(calc(1 - 0.28 * var(--set-p,0)));border-radius:calc(var(--set-p,0) * 18px);overflow:hidden;transition:transform .42s cubic-bezier(.32,.72,0,1),filter .42s cubic-bezier(.32,.72,0,1),border-radius .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
+  .app-shell.settings-dim.dragging{transition:none;}
+  .v4-cycle-box{margin:10px 2px 0;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}
+  .v4-cycle-box strong{display:block;color:var(--text);font-weight:800;font-size:14px;margin-bottom:6px;}
+  .v4-gastos-summary-sub{font-size:12.5px;color:var(--muted);margin-top:4px;font-weight:600;}
+  .v4-gastos-summary-amount.pos{color:var(--mint);}
+  .v4-gastos-summary-amount.neg{color:var(--coral);}
+  .v4-chips.meta-chips{flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+  .v4-chips.meta-chips .v4-chip{min-height:36px;font-size:12.5px;font-weight:650;}
+  .v4-mov .meta{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;}
+  .v4-mov .meta .sep{color:var(--muted-2);margin:0 1px;}
+  .v4-link-mini{display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:6px 10px;border-radius:999px;border:none;background:rgba(95,208,138,.16);color:var(--mint);font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer;}
+  .v4-tools{margin-top:18px;padding-top:4px;}
+  .v4-tools summary{list-style:none;cursor:pointer;font-weight:800;font-size:14px;color:var(--muted);padding:12px 4px;display:flex;justify-content:space-between;align-items:center;}
+  .v4-tools summary::-webkit-details-marker{display:none;}
+  .v4-tools[open] summary{color:var(--text);}
   .set-row .sr-chev{color:var(--muted-2);font-size:17px;line-height:1;transition:transform .2s;flex:0 0 auto;}
   .set-row .sr-chev.open{transform:rotate(90deg);}
   .set-exp{padding:4px 14px 14px;border-top:1px dashed var(--line);}
@@ -1679,8 +1710,11 @@ const LANG = {
     v4_all:"Todos ›", v4_plan_title:"Tu plan del mes", v4_plan_recibos:"Recibos", v4_plan_deudas:"Deudas", v4_plan_metas:"Metas",
     v4_plan_left:"Queda por pagar en {month}", v4_plan_liq:"A fin de mes te quedarán {amount} en {bank}",
     v4_pendiente:"Pendiente", v4_ya_pagado:"Ya pagado", v4_gestionar:"Gestionar",
-    v4_gastos_title:"Tus gastos", v4_gastos_spent_in:"Gastado en {month}", v4_gastos_of:"de {x}", v4_gastos_left:"quedan {x}", v4_gastos_today_mark:"hoy · día {d}", v4_period_more:"Más…",
-    v4_cartera_title:"Tu cartera", v4_cuentas:"Tus cuentas", v4_inversiones:"Tus inversiones",
+    v4_ver_mas:"Ver más · {n}", v4_ver_menos:"Ver menos",
+    v4_gastos_title:"Tus gastos", v4_gastos_spent_in:"Gastado en {month}", v4_gastos_net_in:"Balance en {month}", v4_gastos_of:"de {x}", v4_gastos_left:"quedan {x}", v4_gastos_today_mark:"hoy · día {d}", v4_period_more:"Más…",
+    v4_gastos_inc_line:"Ingresos {x} · balance {bal}", v4_gastos_split_line:"Gastos {spent} · ingresos {income}",
+    v4_cartera_title:"Tu cartera", v4_cuentas:"Tus cuentas", v4_inversiones:"Tus inversiones", v4_inv_positions:"{n} posiciones", v4_inv_embed_h:"Toca un bróker para ver sus posiciones.",
+    v4_gestionar_h:"Edita fijos, cuotas, flujos y conciliación del banco — sin llenar la vista diaria.",
     v4_debts_foot_a:"Deudas", v4_debts_foot_b:"ya descontadas",
     v4_apuntar:"Apuntar", v4_gasto:"Gasto", v4_ingreso:"Ingreso", v4_apuntar_ph:"¿En qué? (ej. Cena)",
     v4_apuntar_need:"Pon un importe 🙂", v4_apuntar_ok:"✓ Gasto apuntado", v4_apuntar_ok_in:"✓ Ingreso apuntado",
@@ -1762,8 +1796,11 @@ const LANG = {
     v4_all:"All ›", v4_plan_title:"Your month plan", v4_plan_recibos:"Bills", v4_plan_deudas:"Debts", v4_plan_metas:"Goals",
     v4_plan_left:"Still to pay in {month}", v4_plan_liq:"By month end you will have {amount} in {bank}",
     v4_pendiente:"Pending", v4_ya_pagado:"Already paid", v4_gestionar:"Manage",
-    v4_gastos_title:"Your spending", v4_gastos_spent_in:"Spent in {month}", v4_gastos_of:"of {x}", v4_gastos_left:"{x} left", v4_gastos_today_mark:"today · day {d}", v4_period_more:"More…",
-    v4_cartera_title:"Your portfolio", v4_cuentas:"Your accounts", v4_inversiones:"Your investments",
+    v4_ver_mas:"See more · {n}", v4_ver_menos:"See less",
+    v4_gastos_title:"Your spending", v4_gastos_spent_in:"Spent in {month}", v4_gastos_net_in:"Balance in {month}", v4_gastos_of:"of {x}", v4_gastos_left:"{x} left", v4_gastos_today_mark:"today · day {d}", v4_period_more:"More…",
+    v4_gastos_inc_line:"Income {x} · balance {bal}", v4_gastos_split_line:"Spent {spent} · income {income}",
+    v4_cartera_title:"Your portfolio", v4_cuentas:"Your accounts", v4_inversiones:"Your investments", v4_inv_positions:"{n} positions", v4_inv_embed_h:"Tap a broker to see its positions.",
+    v4_gestionar_h:"Edit fixed bills, installments, cash flows and bank reconciliation — without cluttering the daily view.",
     v4_debts_foot_a:"Debts", v4_debts_foot_b:"already subtracted",
     v4_apuntar:"Add", v4_gasto:"Expense", v4_ingreso:"Income", v4_apuntar_ph:"What for? (e.g. Dinner)",
     v4_apuntar_need:"Enter an amount 🙂", v4_apuntar_ok:"✓ Expense added", v4_apuntar_ok_in:"✓ Income added",
@@ -1847,8 +1884,11 @@ const LANG = {
     v4_all:"Tots ›", v4_plan_title:"El teu pla del mes", v4_plan_recibos:"Rebuts", v4_plan_deudas:"Deutes", v4_plan_metas:"Metes",
     v4_plan_left:"Queda per pagar al {month}", v4_plan_liq:"A final de mes et quedaran {amount} a {bank}",
     v4_pendiente:"Pendent", v4_ya_pagado:"Ja pagat", v4_gestionar:"Gestionar",
-    v4_gastos_title:"Les teves despeses", v4_gastos_spent_in:"Gastat al {month}", v4_gastos_of:"de {x}", v4_gastos_left:"queden {x}", v4_gastos_today_mark:"avui · dia {d}", v4_period_more:"Més…",
-    v4_cartera_title:"La teva cartera", v4_cuentas:"Els teus comptes", v4_inversiones:"Les teves inversions",
+    v4_ver_mas:"Veure més · {n}", v4_ver_menos:"Veure menys",
+    v4_gastos_title:"Les teves despeses", v4_gastos_spent_in:"Gastat al {month}", v4_gastos_net_in:"Balanç al {month}", v4_gastos_of:"de {x}", v4_gastos_left:"queden {x}", v4_gastos_today_mark:"avui · dia {d}", v4_period_more:"Més…",
+    v4_gastos_inc_line:"Ingressos {x} · balanç {bal}", v4_gastos_split_line:"Despeses {spent} · ingressos {income}",
+    v4_cartera_title:"La teva cartera", v4_cuentas:"Els teus comptes", v4_inversiones:"Les teves inversions", v4_inv_positions:"{n} posicions", v4_inv_embed_h:"Toca un bróker per veure’n les posicions.",
+    v4_gestionar_h:"Edita fixes, quotes, fluxos i conciliació del banc — sense omplir la vista diària.",
     v4_debts_foot_a:"Deutes", v4_debts_foot_b:"ja descomptats",
     v4_apuntar:"Apuntar", v4_gasto:"Despesa", v4_ingreso:"Ingrés", v4_apuntar_ph:"En què? (ex. Sopar)",
     v4_apuntar_need:"Posa un import 🙂", v4_apuntar_ok:"✓ Despesa apuntada", v4_apuntar_ok_in:"✓ Ingrés apuntat",
@@ -2457,7 +2497,9 @@ Object.assign(LANG.es,{
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano",
   ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
-  g_cycle_from:"Del {d} (cobro de {x}) a hoy", g_cycle_none:"No encuentro ningún cobro reciente: apunta tu nómina como 💰 ingreso y este filtro irá de cobro a cobro.",
+  g_cycle_from:"Del {d} (cobro de {x}) a hoy",
+  g_cycle_none_t:"Sin nómina detectada",
+  g_cycle_none:"Para ajustar «Mi ciclo» hace falta tu nómina. Apúntala como 💰 ingreso (con +) y el filtro irá de cobro a cobro.",
   g_search:"Buscar comercio o categoría…",
   sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.",
   sub_hint:"Cargos al mismo comercio en ≥3 meses con importe parecido. Revisa si alguna ya no la usas.",
@@ -2535,7 +2577,9 @@ Object.assign(LANG.en,{
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
   g_allbanks:"All banks", g_bank_manual:"Manual",
   ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
-  g_cycle_from:"From {d} (payday, {x}) to today", g_cycle_none:"No recent payday found: log your salary as a 💰 income and this filter will run payday to payday.",
+  g_cycle_from:"From {d} (payday, {x}) to today",
+  g_cycle_none_t:"No payday detected",
+  g_cycle_none:"“My cycle” needs your salary. Log it as a 💰 income (with +) and the filter will run payday to payday.",
   g_search:"Search merchant or category…",
   sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.",
   sub_hint:"Charges to the same merchant in ≥3 months with similar amounts. Check if you still use them.",
@@ -2612,7 +2656,9 @@ Object.assign(LANG.ca,{
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà",
   ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
-  g_cycle_from:"Del {d} (cobrament de {x}) a avui", g_cycle_none:"No trobo cap cobrament recent: apunta la nòmina com a 💰 ingrés i aquest filtre anirà de cobrament a cobrament.",
+  g_cycle_from:"Del {d} (cobrament de {x}) a avui",
+  g_cycle_none_t:"Sense nòmina detectada",
+  g_cycle_none:"Per ajustar «El meu cicle» cal la nòmina. Apunta-la com a 💰 ingrés (amb +) i el filtre anirà de cobrament a cobrament.",
   g_search:"Cerca comerç o categoria…",
   sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.",
   sub_hint:"Càrrecs al mateix comerç en ≥3 mesos amb import semblant. Revisa si ja no n'uses alguna.",
@@ -4126,6 +4172,54 @@ function useBackClose(open, onClose){
   },[open]);
 }
 
+/* Sheet bottom: swipe hacia abajo para cerrar + bloqueo de scroll del fondo
+   (feedback 2026-07-17: al scrollar categorías se movía Inicio detrás). */
+function useSheetSwipe(open, onClose){
+  const sheetRef=useRef(null);
+  const startY=useRef(0), dy=useRef(0), dragging=useRef(false), armed=useRef(false);
+  useEffect(function(){
+    if(!open) return undefined;
+    const prev=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    document.documentElement.classList.add("sheet-open");
+    return function(){
+      document.body.style.overflow=prev;
+      document.documentElement.classList.remove("sheet-open");
+    };
+  },[open]);
+  const onTouchStart=function(e){
+    if(!(e.touches&&e.touches[0])) return;
+    const el=sheetRef.current;
+    const handle=e.target&&e.target.closest&&e.target.closest(".v4-sheet-handle");
+    // Solo arma el cierre si estás arriba del todo o tiras del asa (si no, es scroll interno).
+    armed.current=!!handle || !el || el.scrollTop<=0;
+    if(!armed.current){ dragging.current=false; return; }
+    dragging.current=true; dy.current=0; startY.current=e.touches[0].clientY;
+  };
+  const onTouchMove=function(e){
+    if(!dragging.current||!armed.current) return;
+    const ddy=(e.touches[0].clientY)-startY.current;
+    if(ddy<=0){ dy.current=0; if(sheetRef.current) sheetRef.current.style.transform=""; return; }
+    dy.current=ddy;
+    if(sheetRef.current){
+      sheetRef.current.classList.add("dragging");
+      sheetRef.current.style.transform="translate3d(0,"+ddy+"px,0)";
+    }
+    if(e.cancelable) e.preventDefault();
+  };
+  const onTouchEnd=function(){
+    if(!dragging.current) return;
+    dragging.current=false; armed.current=false;
+    const dist=dy.current; dy.current=0;
+    if(sheetRef.current){
+      sheetRef.current.classList.remove("dragging");
+      sheetRef.current.style.transform="";
+    }
+    if(dist>100) onClose();
+  };
+  return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };
+}
+
 /* lista editable genérica; valFmt recibe el item entero */
 function useEditable(items, onChange, opts){
   opts = opts || {};
@@ -4221,10 +4315,14 @@ function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
     }catch(e){}
     return "";
   })();
-  const greetName=nameGuess ? (nameGuess.charAt(0).toUpperCase()+nameGuess.slice(1)) : "";
+  const greetName=(function(){
+    if(!nameGuess) return "";
+    const first=nameGuess.trim().split(/\s+/)[0]||"";
+    return first.charAt(0).toUpperCase()+first.slice(1);
+  })();
   const initials=(function(){
-    if(!greetName) return "MC";
-    const parts=greetName.trim().split(/\s+/);
+    if(!nameGuess) return "MC";
+    const parts=nameGuess.trim().split(/\s+/);
     return ((parts[0]||"M").charAt(0)+(parts[1]||parts[0]||"C").charAt(0)).toUpperCase();
   })();
 
@@ -4242,24 +4340,30 @@ function Dashboard({state, totals, set, onOpenSettings, onGoGastos, onGoPlan}){
   else if(ratio>0.8 || !overTrack&&ratio>0.8){ stCls="st warn"; stHead=t("st_tight_h"); }
   if(ratio<=0.8 && !overTrack){ stCls="st"; stHead=t("st_good_h"); }
 
-  // Próximos cargos: fijos del mes aún no pagados (máx 3) + nómina si aplica.
+  // Próximos cargos: misma regla que Plan›Recibos (día del mes + isPaidIn). Antes usaba
+  // f.day crudo y mostraba recibos ya cobrados (luz/seguros) — feedback 2026-07-17.
   const upcoming=(function(){
     const today=tt.today||new Date().getDate();
-    const cy=tt.curYear, cm=tt.curMonth;
+    const cm=tt.curMonth;
     const rows=[];
     (state.fixed||[]).forEach(function(f){
-      if(!(f.amount>0)) return;
-      const day=Math.min(Math.max(1, f.day||1), dim);
-      if(day<today) return;
-      rows.push({day:day, name:f.name||t("fj_fixed"), sub:(entOf(f.ent).label||"")+(f.freq&&f.freq!=="m"?" · "+freqLabel(f.freq):""), amount:f.amount, pos:false});
+      const amount=occAmountIn(f,cm);
+      if(!(amount>0) || !occursIn(f,cm)) return;
+      if(isPaidIn(f,cm,today)) return;
+      const day=dayIn(f,cm)||1;
+      rows.push({day:day, name:f.name||t("fj_fixed"), sub:(entOf(accOf(f)).label||""), amount:amount, pos:false});
+    });
+    (state.debts||[]).forEach(function(d){
+      if(!debtActive(d) || !(d.monthly>0)) return;
+      if(isDebtPaidThisMonth(d,today)) return;
+      rows.push({day:debtChargeDay(d), name:d.name, sub:t("fj_debt_tag"), amount:d.monthly, pos:false});
     });
     (state.flows||[]).forEach(function(f){
       if(!(f.amount>0) || f.kind==="transfer") return;
-      // Nómina / ingresos modelados
-      let day=f.day||1;
-      if(f.when==="ultimo_laborable") day=dim; // aproximación visual
-      if(day<today) return;
-      rows.push({day:day, name:f.name||t("cat_ingreso"), sub:entOf(f.ent).label||"", amount:f.amount, pos:true});
+      if(!flowOccursIn(f,cm,tt.curYear)) return;
+      if(flowPaid(f,tt.curYear,cm,today)) return;
+      const day=flowDay(f,tt.curYear,cm)||1;
+      rows.push({day:day, name:f.name||t("cat_ingreso"), sub:entOf(f.ent||f.account||"").label||"", amount:f.amount, pos:true});
     });
     rows.sort(function(a,b){ return a.day-b.day; });
     return rows.slice(0,3);
@@ -4561,13 +4665,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
   const monthSummary=useMemo(function(){
     const now=new Date(), start=startOfMonth(now);
-    const spent=(state.expenses||[]).reduce(function(total,e){
-      const d=parseDate(e.date);
-      return d>=start && e.amount>0 ? total+e.amount : total;
-    },0);
+    let spent=0, income=0;
+    (state.expenses||[]).forEach(function(e){
+      const d=parseDate(e.date); if(!(d>=start)) return;
+      if(e.amount>0) spent+=e.amount;
+      else if(e.amount<0) income+=Math.abs(e.amount);
+    });
     const budget=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
-    return {spent:spent,budget:budget,remaining:budget==null?null:budget-spent,day:now.getDate(),last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),month:monthLong(now.getMonth())};
-  },[state.expenses,state.budget]);
+    const mode=(state.settings&&state.settings.gTotalMode)||"split";
+    const balance=income-spent; // positivo = te queda / negativo = gastaste de más
+    return {
+      spent:spent, income:income, balance:balance, mode:mode,
+      budget:budget,
+      remaining:budget==null?null:(mode==="net"?budget-spent+income:budget-spent),
+      day:now.getDate(),
+      last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),
+      month:monthLong(now.getMonth())
+    };
+  },[state.expenses,state.budget,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
     if(!cloud.enabled()||!ex||aiBusy) return;
@@ -4635,8 +4750,19 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement("section",{className:"v4-gastos-summary"},
       React.createElement("div",{className:"v4-gastos-summary-top"},
         React.createElement("div",null,
-          React.createElement("div",{className:"v4-gastos-summary-label"},tf("v4_gastos_spent_in",{month:monthSummary.month})),
-          React.createElement("div",{className:"v4-gastos-summary-amount num"},eur(monthSummary.spent))
+          React.createElement("div",{className:"v4-gastos-summary-label"},
+            monthSummary.mode==="net"
+              ? tf("v4_gastos_net_in",{month:monthSummary.month})
+              : tf("v4_gastos_spent_in",{month:monthSummary.month})),
+          React.createElement("div",{className:"v4-gastos-summary-amount num"+(monthSummary.mode==="net"?(monthSummary.balance>=0?" pos":" neg"):"")},
+            monthSummary.mode==="net"
+              ? ((monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance)))
+              : eur(monthSummary.spent)),
+          monthSummary.mode==="net"
+            ? React.createElement("div",{className:"v4-gastos-summary-sub"},
+                tf("v4_gastos_split_line",{spent:eur(monthSummary.spent),income:eur(monthSummary.income)}))
+            : (monthSummary.income>0 && React.createElement("div",{className:"v4-gastos-summary-sub"},
+                tf("v4_gastos_inc_line",{x:eur(monthSummary.income),bal:(monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance))})))
         ),
         React.createElement("div",{className:"v4-gastos-summary-budget"},
           React.createElement("div",null,tf("v4_gastos_of",{x:monthSummary.budget==null?"—":eur(monthSummary.budget)})),
@@ -4664,10 +4790,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       ),
       // «Mi ciclo»: enseña QUÉ cobro ancla el ciclo (si el detectado no es el bueno, se corrige
       // apuntando la nómina real como ingreso, o usando Rango…).
-      preset==="cycle" && React.createElement("div",{className:"hint",style:{margin:"2px 2px 0"}},
+      preset==="cycle" && React.createElement("div",{className:"v4-cycle-box"},
         cycle
-          ? "📅 "+tf("g_cycle_from",{d:cycle.start.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}), x:"+"+eur0(Math.abs(cycle.inc.amount))+((cycle.inc.merchant&&cycle.inc.merchant!=="Ingreso")?" · "+cycle.inc.merchant:"")})
-          : "💡 "+t("g_cycle_none")
+          ? React.createElement(React.Fragment,null,
+              React.createElement("strong",null,"📅 "+t("g_cycle")),
+              tf("g_cycle_from",{d:cycle.start.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}), x:"+"+eur0(Math.abs(cycle.inc.amount))+((cycle.inc.merchant&&cycle.inc.merchant!=="Ingreso")?" · "+cycle.inc.merchant:"")}))
+          : React.createElement(React.Fragment,null,
+              React.createElement("strong",null,t("g_cycle_none_t")),
+              t("g_cycle_none"))
       ),
       preset==="custom" && React.createElement("div",Object.assign({className:"range"},stopSwipe),
         React.createElement("input",{type:"date",value:range.from,onChange:e=>setRange(Object.assign({},range,{from:e.target.value}))}),
@@ -4744,8 +4874,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                       React.createElement("div",null,g.e.merchant||"—"),
                       React.createElement("div",{className:"meta"},
                         React.createElement("span",{style:{color:c.color}},catName(g.e.category)),
+                        React.createElement("span",{className:"sep"},"·"),
                         React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
-                        (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement("span",{style:{color:"var(--muted-2)"}}," · "+entOf(bk).mono):null; })()
+                        (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement(React.Fragment,null,
+                          React.createElement("span",{className:"sep"},"·"),
+                          React.createElement("span",{style:{color:"var(--muted-2)"}},entOf(bk).mono)
+                        ):null; })()
                       )
                     ),
                     React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(g.e.amount)))
@@ -4777,11 +4911,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 /* Sheet detalle/edición de un movimiento (SPEC §14). Cambios al momento; borrar pide confirmación. */
 function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
   useBackClose(!!exp, onClose);
+  const swipe=useSheetSwipe(!!exp, onClose);
   if(!exp || !editExp) return null;
   const c=catOf(exp.category);
   const isIncome=exp.amount<0;
   const bk=expenseBankOf(exp);
   const auto=exp.source && exp.source!=="manual";
+  const d=parseDate(exp.date);
+  const dateLbl=d&&!isNaN(d.getTime())
+    ? d.toLocaleDateString(loc(),{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})
+    : "—";
   const closeSave=function(){ saveEdit(exp); onClose(); };
   const doDel=function(){
     askConfirm({ title:tf("v4_exp_del_q",{name:(exp.merchant||"—")+" · "+eur(Math.abs(exp.amount))}), sub:t("v4_exp_del_sub"), ok:t("v4_exp_del"), danger:true })
@@ -4789,7 +4928,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
   };
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",{className:"v4-sheet",style:{maxHeight:"88dvh",overflowY:"auto"},onClick:function(e){ e.stopPropagation(); }},
+      React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"88dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"v4-exp-head"},
           React.createElement("div",{className:"tile",style:{width:54,height:54,fontSize:26,borderRadius:16,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
@@ -4798,8 +4937,8 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
             React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:28,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
           )
         ),
-        React.createElement("div",{className:"v4-chips",style:{marginBottom:12}},
-          React.createElement("span",{className:"v4-chip"}, exp.date),
+        React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          React.createElement("span",{className:"v4-chip"}, dateLbl),
           bk && React.createElement("span",{className:"v4-chip"}, entOf(bk).label),
           React.createElement("span",{className:"v4-chip"}, auto?t("v4_exp_auto"):t("v4_exp_manual"))
         ),
@@ -4824,10 +4963,11 @@ function BudgetSheet({open, budget, onClose, onSave}){
   const [b,setB]=useState(budget||700);
   useEffect(function(){ if(open) setB(Math.max(100, Math.round(budget||700))); },[open,budget]);
   useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
   if(!open) return null;
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:8}}, t("v4_budget_sheet")),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.45,margin:"0 0 18px"}}, t("v4_budget_sheet_h")),
@@ -5692,6 +5832,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
   const [editing,setEditing]=useState(false);
   const [showCost,setShowCost]=useState(false);
   const [draft,setDraft]=useState({});
+  const [brokerOpen,setBrokerOpen]=useState({});   // qué bróker tiene las posiciones desplegadas (solo v4Embed)
   const didAuto=useRef(false);
   const hasTickers=state.investments.some(function(i){ return i.ticker; });
   const autoOn=state.settings && state.settings.autoPrices;
@@ -5802,11 +5943,9 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
             React.createElement("button",{className:"btn btn-ghost",style:{padding:"8px 12px"},onClick:start},t("inv_editmanual"))
           )
     ),
-    v4Embed && React.createElement("div",{className:"action-row",style:{marginTop:4}},
-      hasTickers && React.createElement("button",{className:"btn btn-ghost",onClick:function(){ fetchPrices(false); },disabled:pricing}, pricing?t("inv_pricing"):t("inv_prices")),
-      React.createElement("button",{className:"btn btn-ghost",onClick:start},t("inv_editmanual"))
-    ),
-    !editing && hasTickers && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
+    v4Embed && React.createElement("div",{className:"hint",style:{margin:"4px 2px 10px",lineHeight:1.45}}, t("v4_inv_embed_h")),
+    // en Cartera no botones de precios/editar ni auto-precios (feedback 2026-07-17)
+    !editing && hasTickers && !v4Embed && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
       React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"✓":""),
       React.createElement("span",null,t("inv_autoprices")+(state.lastPriceSync?tf("inv_lastprice",{d:new Date(state.lastPriceSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):""))
     ),
@@ -5814,7 +5953,29 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,t("inv_alsoinvested"))
     ),
-    React.createElement(OrderableSections,{tab:"inv",state:state,set:set,items:[
+    // En Cartera (v4Embed) el bróker/tipo/rendimiento/proyección son ruido: solo hace falta ver
+    // qué hay en cada bróker y poder desplegar sus posiciones — el resto se queda en la pestaña
+    // Inversiones completa (feedback 2026-07-17: «demasiadas tarjetas para un resumen»).
+    v4Embed && groups.map(function(g){
+      const items=state.investments.filter(function(i){ return i.ent===g[0]; });
+      if(items.length===0) return null;
+      const sub=items.reduce(function(a,i){ return a+invValueEur(i,state); },0);
+      const open=!!brokerOpen[g[0]];
+      return React.createElement("div",{key:g[0],style:{marginBottom:2}},
+        React.createElement("div",{className:"row",style:{cursor:"pointer"},onClick:function(){ setBrokerOpen(function(o){ return Object.assign({},o,{[g[0]]:!o[g[0]]}); }); }},
+          React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g[0],size:34}),
+            React.createElement("div",null,React.createElement("div",{className:"rname"},g[1]),
+              React.createElement("div",{className:"rsub"},tf("v4_inv_positions",{n:items.length})))),
+          React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
+            React.createElement("div",{className:"rval num"}, f0(sub)),
+            React.createElement(I.chev,{className:"chev"+(open?" open":"")})
+          )
+        ),
+        open && React.createElement("div",{style:{padding:"0 2px 6px"}},
+          React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:editing,showCost:showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete}))
+      );
+    }),
+    !v4Embed && React.createElement(OrderableSections,{tab:"inv",state:state,set:set,items:[
       {id:"ru",label:SIMPLEMODE?t("ru_title_simple"):t("ru_title"),el:
     (function(){
       const trAcc=state.accounts.find(function(a){ return a.spendFrom; });
@@ -8028,6 +8189,15 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.1", d:"17 jul 2026", t:"Pulido del rediseño: gestos, fichas y números que cuadran", items:[
+    "👈 Ajustes se abre deslizando desde el borde (como Revolut) y se cierra tirando a la izquierda; el avatar sigue valiendo.",
+    "🏠 En Inicio, «Próximos cargos» ya no enseña recibos que ya pagaste este mes.",
+    "💶 En Gastos, el resumen cuenta también los ingresos (y el ajuste de Ajustes vuelve a cambiar la vista).",
+    "🧾 Fichas de gasto: fecha y banco con margen, fecha legible al editar, y tira hacia abajo para cerrar (también el +).",
+    "📅 En Plan › Recibos, «Gestionar» abre fijos y herramientas; «Ya pagado» enseña 3 y el resto con Ver más.",
+    "💼 Cartera más limpia: brókers desplegables sin botones ni auto-precios de más.",
+    "📱 Status bar del móvil al color de la app (hace falta actualizar el APK nativo)."
+  ]},
   {v:"4.0.0", d:"17 jul 2026", t:"Rediseño completo: más claro, más rápido, más tuyo", items:[
     "🏠 Nueva navegación: Inicio, Gastos, botón + para apuntar, Plan y Cartera.",
     "✨ Inicio responde «¿cómo voy?» con patrimonio, presupuesto en humano y próximos cargos.",
@@ -8623,7 +8793,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
       row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
     ),
-    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",meEmail||null,
+    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
+      meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
       row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
       row("delacc","🗑️",t("st_delete_acc"),null,function(){
         askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
@@ -9201,9 +9372,11 @@ function PlanTab({state, set, totals, showToast, simple}){
   );
 }
 
-/* Recibos prioriza lo que todavía saldrá de la cuenta este mes. Fijos se conserva debajo
-   como gestión completa para no mezclar edición y previsión en la vista diaria. */
+/* Recibos prioriza lo que todavía saldrá de la cuenta este mes. Fijos (edición completa,
+   simulador, conciliación…) vive SOLO dentro de la hoja «Gestionar» — mezclarlo aquí abajo
+   duplicaba próximos cargos y desglose de banco que ya se ven arriba (feedback 2026-07-17). */
 function PlanBills({state, set, totals, manageOpen, setManageOpen}){
+  const [paidExpanded,setPaidExpanded]=useState(false);
   const month=totals.curMonth, year=totals.curYear, today=totals.today;
   const charges=[];
   (state.fixed||[]).forEach(function(e){
@@ -9265,16 +9438,40 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},
         React.createElement("span",null,t("v4_pendiente")),
-        React.createElement("button",{className:"link",onClick:function(){ setManageOpen(function(open){ return !open; }); }},t("v4_gestionar"))
+        React.createElement("button",{className:"link",onClick:function(){ setManageOpen(true); }},t("v4_gestionar"))
       ),
       pending.map(row)
     ),
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},t("v4_ya_pagado")+" · "+eur(paidTotal)),
-      paid.map(row)
+      (paidExpanded?paid:paid.slice(0,3)).map(row),
+      // más de 3 pagados: se pliegan para no llenar la pantalla de recibos ya resueltos (feedback 2026-07-17)
+      paid.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPaidExpanded(function(v){ return !v; }); }},
+        paidExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:paid.length-3}))
     ),
-    manageOpen && React.createElement("div",{className:"v4-section"},React.createElement(Fijos,{state:state,set:set,totals:totals}))
+    React.createElement(BillsManageSheet,{open:manageOpen,onClose:function(){ setManageOpen(false); },state:state,set:set,totals:totals})
   );
+}
+
+/* Hoja «Gestionar»: aquí vive Fijos entero (servicios, cuotas, flujos, puntuales, simulador,
+   conciliación…). Antes se «dumpeaba» tal cual debajo de Recibos y mezclaba edición con la
+   vista diaria — ahora solo aparece si el usuario pide gestionar (feedback 2026-07-17). */
+function BillsManageSheet({open, onClose, state, set, totals}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  if(!open) return null;
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"90dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"v4-section-h"},
+          React.createElement("span",{className:"serif",style:{fontSize:19,fontWeight:600}}, t("v4_gestionar")),
+          React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
+        ),
+        React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_gestionar_h")),
+        React.createElement(Fijos,{state:state,set:set,totals:totals})
+      )
+    ), document.body);
 }
 
 function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
@@ -9334,6 +9531,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
     if(open){ setKind("gasto"); setRaw(""); setNote(""); setCat("super"); }
   },[open]);
   useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
   if(!open) return null;
   const tap=function(ch){
     if(ch==="⌫"){ setRaw(function(r){ return r.slice(0,-1); }); return; }
@@ -9364,7 +9562,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   const cats=CATEGORIES.filter(function(c){ return c.id!=="otros"; }).concat(CATEGORIES.filter(function(c){ return c.id==="otros"; }));
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"v4-toggle"},
           React.createElement("button",{className:kind==="gasto"?"on":"",onClick:function(){ setKind("gasto"); }},"💸 "+t("v4_gasto")),
@@ -9920,33 +10118,52 @@ function App(){
     wasOnline.current=online;
   },[online,uid]);
 
-  // Cajón de Ajustes: se abre arrastrando de izquierda a derecha en la 1ª pestaña (integrado en el swipe)
-  const drawerRef=useRef(null), backRef=useRef(null), gestureMode=useRef(null);
-  const dW=()=>Math.min(360,(window.innerWidth||360)*0.86);
-  // Cerrar el cajón arrastrando de derecha a izquierda sobre él
+  // Cajón de Ajustes tipo Revolut: panel full-bleed desde la izquierda; el app se emborrona debajo.
+  // Se abre con swipe desde el borde (o el avatar) y se cierra deslizando a la izquierda (feedback 2026-07-17).
+  const drawerRef=useRef(null), appShellRef=useRef(null), gestureMode=useRef(null);
+  const dW=function(){ return window.innerWidth||360; };
+  const setSettingsProgress=function(p){
+    const v=Math.min(1,Math.max(0,p));
+    if(appShellRef.current){
+      appShellRef.current.style.setProperty("--set-p", String(v));
+      if(v>0.02) appShellRef.current.classList.add("settings-dim");
+      else appShellRef.current.classList.remove("settings-dim");
+    }
+  };
+  useEffect(function(){
+    document.documentElement.classList.toggle("settings-open", !!drawerOpen);
+    if(!dragging.current && gestureMode.current!=="drawer"){
+      setSettingsProgress(drawerOpen?1:0);
+      if(drawerRef.current){
+        drawerRef.current.classList.toggle("open", !!drawerOpen);
+        drawerRef.current.style.transform="";
+      }
+    }
+    return function(){ document.documentElement.classList.remove("settings-open"); };
+  },[drawerOpen]);
   const dSX=useRef(0), dSY=useRef(0), dAx=useRef(null), dDrag=useRef(false), dDX=useRef(0), dT=useRef(0);
   const drawerStart=function(e){ const t=e.touches[0]; dSX.current=t.clientX; dSY.current=t.clientY; dAx.current=null; dDrag.current=true; dDX.current=0; dT.current=Date.now(); };
   const drawerMove=function(e){
     if(!dDrag.current) return;
     const t=e.touches[0], ddx=t.clientX-dSX.current, ddy=t.clientY-dSY.current;
-    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current) drawerRef.current.classList.add("dragging"); }
+    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current){ drawerRef.current.classList.add("dragging"); if(appShellRef.current) appShellRef.current.classList.add("dragging"); } }
     if(dAx.current!=="x") return;
     dDX.current=ddx;
-    const closeProg=Math.min(1,Math.max(0,(-ddx)/dW()));   // a la izquierda = cerrar
-    if(drawerRef.current) drawerRef.current.style.transform="translateX("+(-closeProg*100)+"%)";
-    if(backRef.current) backRef.current.style.opacity=String(1-closeProg);
+    const closeProg=Math.min(1,Math.max(0,(-ddx)/dW()));
+    if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-closeProg*100)+"%,0,0)";
+    setSettingsProgress(1-closeProg);
   };
   const drawerEnd=function(){
     if(!dDrag.current) return; dDrag.current=false;
     if(drawerRef.current) drawerRef.current.classList.remove("dragging");
-    const dist=dDX.current;                                  // negativo = hacia la izquierda
+    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    const dist=dDX.current;
     const dt=Math.max(1,Date.now()-dT.current);
-    const vel=dist/dt;                                       // px/ms
+    const vel=dist/dt;
     const closeProg=Math.min(1,Math.max(0,(-dist)/dW()));
-    const flick=vel<-0.35 && dist<-24;                       // gesto rápido a la izquierda
+    const flick=vel<-0.35 && dist<-24;
     if(drawerRef.current) drawerRef.current.style.transform="";
-    if(backRef.current) backRef.current.style.opacity="";
-    setDrawerOpen(!(closeProg>0.2 || flick));                // ~20% o flick → cierra
+    setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
   };
 
@@ -10320,40 +10537,47 @@ function App(){
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
   const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
   const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
-  const drawerW=()=>Math.min(360,(window.innerWidth||360)*0.86);
+  const drawerW=function(){ return window.innerWidth||360; };
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
+    if(drawerOpen) return; // con ajustes abiertos, el gesto lo lleva el panel
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
   };
   const onMove=(e)=>{
-    if(!dragging.current) return;
+    if(!dragging.current||drawerOpen) return;
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
     if(axis.current===null){
-      if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;      // espera a tener intención clara
-      axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";  // x debe dominar claramente
+      if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
+      axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        // v4: Ajustes ya no es drawer lateral — el swipe a la derecha en Inicio no abre nada.
-        gestureMode.current = "tab";
-        if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
+        // Desde el borde izquierdo → Ajustes (Revolut). En el resto, cambio de tab.
+        if(startX.current<28 && ddx>0){
+          gestureMode.current="drawer";
+          setDrawerMounted(true);
+          if(drawerRef.current) drawerRef.current.classList.add("dragging");
+          if(appShellRef.current) appShellRef.current.classList.add("dragging");
+        } else {
+          gestureMode.current="tab";
+          if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
+        }
       }
     }
-    if(axis.current!=="x") return;                          // gesto vertical → deja hacer scroll, no muevas pestañas
+    if(axis.current!=="x") return;
     dx.current=ddx;
     if(gestureMode.current==="drawer"){
-      const prog=Math.min(1,Math.max(0,ddx/drawerW()));     // 0 cerrado → 1 abierto
-      if(drawerRef.current) drawerRef.current.style.transform="translateX("+(-100+prog*100)+"%)";
-      if(backRef.current){ backRef.current.style.opacity=String(prog); backRef.current.style.pointerEvents=prog>0?"auto":"none"; }
+      const prog=Math.min(1,Math.max(0,ddx/drawerW()));
+      if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-100+prog*100)+"%,0,0)";
+      setSettingsProgress(prog);
       return;
     }
     const w=trackRef.current?trackRef.current.offsetWidth:360;
     let off=-tab*100+(dx.current/w)*100;
-    if((tab===0&&dx.current>0)||(tab===tabIds.length-1&&dx.current<0)) off=-tab*100+(dx.current/w)*100*0.28;  // resistencia en bordes (tabs VISIBLES, no todas)
+    if((tab===0&&dx.current>0)||(tab===tabIds.length-1&&dx.current<0)) off=-tab*100+(dx.current/w)*100*0.28;
     if(trackRef.current) trackRef.current.style.transform="translateX("+off+"%)";
-    // Monta la pestaña destino MIENTRAS arrastras: al soltar ya hay contenido (no flash vacío).
     if(dx.current<-24 && tab<tabIds.length-1) prepMountTab(tab+1);
     else if(dx.current>24 && tab>0) prepMountTab(tab-1);
   };
@@ -10362,19 +10586,20 @@ function App(){
     if(axis.current==="x"){
       if(gestureMode.current==="drawer"){
         if(drawerRef.current) drawerRef.current.classList.remove("dragging");
+        if(appShellRef.current) appShellRef.current.classList.remove("dragging");
         const dw=drawerW(), dist=dx.current, dt=Math.max(1,Date.now()-startT.current);
-        const open = dist > dw*0.4 || ((dist/dt)>0.4 && dist>28);   // pasado ~40% o flick → abre
+        const open = dist > dw*0.35 || ((dist/dt)>0.4 && dist>28);
         if(drawerRef.current) drawerRef.current.style.transform="";
-        if(backRef.current){ backRef.current.style.opacity=""; backRef.current.style.pointerEvents=""; }
         setDrawerOpen(open);
+        setSettingsProgress(open?1:0);
       } else {
         if(trackRef.current) trackRef.current.classList.remove("dragging");
         const w=trackRef.current?trackRef.current.offsetWidth:360;
         const dist=dx.current;
         const dt=Math.max(1,Date.now()-startT.current);
-        const vel=dist/dt;                                   // px/ms
-        const distTh=Math.max(50, w*0.20);                   // un poco más fácil que antes
-        const flick=Math.abs(vel)>0.45 && Math.abs(dist)>32; // gesto rápido = cambia aunque sea corto
+        const vel=dist/dt;
+        const distTh=Math.max(50, w*0.20);
+        const flick=Math.abs(vel)>0.45 && Math.abs(dist)>32;
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
@@ -10511,35 +10736,37 @@ function App(){
   );
 
   return React.createElement("div",{className:"app v4"},
-    React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
-      React.createElement("div",{className:"track",ref:trackRef},
-        tabIds.map(function(id,i){
-          var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
-          var show=live||!!mountedTabs[id];
-          return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
-            show ? pageFor(id) : null
-          );
-        })
-      )
-    ),
-    React.createElement("nav",{className:"botnav","aria-label":"Navegación"},
-      React.createElement("div",{className:"botnav-row"},
-        React.createElement("div",{className:"botnav-ind"+(drawerOpen?" hide":""),
-          style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
-          React.createElement("span",null)
-        ),
-        React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
-          React.createElement(I.home,null), t("tab_dash")),
-        React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
-          React.createElement(I.expense,null), t("tab_gastos")),
-        React.createElement("div",{className:"botnav-fab-slot"},
-          React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),onClick:function(){ setApuntarOpen(true); }},
-            React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
-        ),
-        React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
-          React.createElement(I.calendar,null), t("tab_plan")),
-        React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
-          React.createElement(I.invest,null), t("tab_cartera"))
+    React.createElement("div",{className:"app-shell",ref:appShellRef},
+      React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
+        React.createElement("div",{className:"track",ref:trackRef},
+          tabIds.map(function(id,i){
+            var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
+            var show=live||!!mountedTabs[id];
+            return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
+              show ? pageFor(id) : null
+            );
+          })
+        )
+      ),
+      React.createElement("nav",{className:"botnav","aria-label":"Navegación"},
+        React.createElement("div",{className:"botnav-row"},
+          React.createElement("div",{className:"botnav-ind"+(drawerOpen?" hide":""),
+            style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
+            React.createElement("span",null)
+          ),
+          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
+            React.createElement(I.home,null), t("tab_dash")),
+          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
+            React.createElement(I.expense,null), t("tab_gastos")),
+          React.createElement("div",{className:"botnav-fab-slot"},
+            React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),onClick:function(){ setApuntarOpen(true); }},
+              React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
+          ),
+          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
+            React.createElement(I.calendar,null), t("tab_plan")),
+          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
+            React.createElement(I.invest,null), t("tab_cartera"))
+        )
       )
     ),
     React.createElement(AskHost,null),
@@ -10559,12 +10786,16 @@ function App(){
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
-    drawerOpen && React.createElement("div",{className:"settings-push"},
+    drawerMounted && React.createElement("div",{
+      className:"settings-push"+(drawerOpen?" open":""),
+      ref:drawerRef,
+      onTouchStart:drawerStart, onTouchMove:drawerMove, onTouchEnd:drawerEnd
+    },
       React.createElement("div",{className:"settings-push-h"},
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
+      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     )
   );
 }

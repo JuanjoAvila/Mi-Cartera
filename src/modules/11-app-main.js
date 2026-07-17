@@ -529,33 +529,52 @@ function App(){
     wasOnline.current=online;
   },[online,uid]);
 
-  // Cajón de Ajustes: se abre arrastrando de izquierda a derecha en la 1ª pestaña (integrado en el swipe)
-  const drawerRef=useRef(null), backRef=useRef(null), gestureMode=useRef(null);
-  const dW=()=>Math.min(360,(window.innerWidth||360)*0.86);
-  // Cerrar el cajón arrastrando de derecha a izquierda sobre él
+  // Cajón de Ajustes tipo Revolut: panel full-bleed desde la izquierda; el app se emborrona debajo.
+  // Se abre con swipe desde el borde (o el avatar) y se cierra deslizando a la izquierda (feedback 2026-07-17).
+  const drawerRef=useRef(null), appShellRef=useRef(null), gestureMode=useRef(null);
+  const dW=function(){ return window.innerWidth||360; };
+  const setSettingsProgress=function(p){
+    const v=Math.min(1,Math.max(0,p));
+    if(appShellRef.current){
+      appShellRef.current.style.setProperty("--set-p", String(v));
+      if(v>0.02) appShellRef.current.classList.add("settings-dim");
+      else appShellRef.current.classList.remove("settings-dim");
+    }
+  };
+  useEffect(function(){
+    document.documentElement.classList.toggle("settings-open", !!drawerOpen);
+    if(!dragging.current && gestureMode.current!=="drawer"){
+      setSettingsProgress(drawerOpen?1:0);
+      if(drawerRef.current){
+        drawerRef.current.classList.toggle("open", !!drawerOpen);
+        drawerRef.current.style.transform="";
+      }
+    }
+    return function(){ document.documentElement.classList.remove("settings-open"); };
+  },[drawerOpen]);
   const dSX=useRef(0), dSY=useRef(0), dAx=useRef(null), dDrag=useRef(false), dDX=useRef(0), dT=useRef(0);
   const drawerStart=function(e){ const t=e.touches[0]; dSX.current=t.clientX; dSY.current=t.clientY; dAx.current=null; dDrag.current=true; dDX.current=0; dT.current=Date.now(); };
   const drawerMove=function(e){
     if(!dDrag.current) return;
     const t=e.touches[0], ddx=t.clientX-dSX.current, ddy=t.clientY-dSY.current;
-    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current) drawerRef.current.classList.add("dragging"); }
+    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current){ drawerRef.current.classList.add("dragging"); if(appShellRef.current) appShellRef.current.classList.add("dragging"); } }
     if(dAx.current!=="x") return;
     dDX.current=ddx;
-    const closeProg=Math.min(1,Math.max(0,(-ddx)/dW()));   // a la izquierda = cerrar
-    if(drawerRef.current) drawerRef.current.style.transform="translateX("+(-closeProg*100)+"%)";
-    if(backRef.current) backRef.current.style.opacity=String(1-closeProg);
+    const closeProg=Math.min(1,Math.max(0,(-ddx)/dW()));
+    if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-closeProg*100)+"%,0,0)";
+    setSettingsProgress(1-closeProg);
   };
   const drawerEnd=function(){
     if(!dDrag.current) return; dDrag.current=false;
     if(drawerRef.current) drawerRef.current.classList.remove("dragging");
-    const dist=dDX.current;                                  // negativo = hacia la izquierda
+    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    const dist=dDX.current;
     const dt=Math.max(1,Date.now()-dT.current);
-    const vel=dist/dt;                                       // px/ms
+    const vel=dist/dt;
     const closeProg=Math.min(1,Math.max(0,(-dist)/dW()));
-    const flick=vel<-0.35 && dist<-24;                       // gesto rápido a la izquierda
+    const flick=vel<-0.35 && dist<-24;
     if(drawerRef.current) drawerRef.current.style.transform="";
-    if(backRef.current) backRef.current.style.opacity="";
-    setDrawerOpen(!(closeProg>0.2 || flick));                // ~20% o flick → cierra
+    setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
   };
 
@@ -929,40 +948,47 @@ function App(){
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
   const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
   const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
-  const drawerW=()=>Math.min(360,(window.innerWidth||360)*0.86);
+  const drawerW=function(){ return window.innerWidth||360; };
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
+    if(drawerOpen) return; // con ajustes abiertos, el gesto lo lleva el panel
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
   };
   const onMove=(e)=>{
-    if(!dragging.current) return;
+    if(!dragging.current||drawerOpen) return;
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
     if(axis.current===null){
-      if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;      // espera a tener intención clara
-      axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";  // x debe dominar claramente
+      if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
+      axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        // v4: Ajustes ya no es drawer lateral — el swipe a la derecha en Inicio no abre nada.
-        gestureMode.current = "tab";
-        if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
+        // Desde el borde izquierdo → Ajustes (Revolut). En el resto, cambio de tab.
+        if(startX.current<28 && ddx>0){
+          gestureMode.current="drawer";
+          setDrawerMounted(true);
+          if(drawerRef.current) drawerRef.current.classList.add("dragging");
+          if(appShellRef.current) appShellRef.current.classList.add("dragging");
+        } else {
+          gestureMode.current="tab";
+          if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
+        }
       }
     }
-    if(axis.current!=="x") return;                          // gesto vertical → deja hacer scroll, no muevas pestañas
+    if(axis.current!=="x") return;
     dx.current=ddx;
     if(gestureMode.current==="drawer"){
-      const prog=Math.min(1,Math.max(0,ddx/drawerW()));     // 0 cerrado → 1 abierto
-      if(drawerRef.current) drawerRef.current.style.transform="translateX("+(-100+prog*100)+"%)";
-      if(backRef.current){ backRef.current.style.opacity=String(prog); backRef.current.style.pointerEvents=prog>0?"auto":"none"; }
+      const prog=Math.min(1,Math.max(0,ddx/drawerW()));
+      if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-100+prog*100)+"%,0,0)";
+      setSettingsProgress(prog);
       return;
     }
     const w=trackRef.current?trackRef.current.offsetWidth:360;
     let off=-tab*100+(dx.current/w)*100;
-    if((tab===0&&dx.current>0)||(tab===tabIds.length-1&&dx.current<0)) off=-tab*100+(dx.current/w)*100*0.28;  // resistencia en bordes (tabs VISIBLES, no todas)
+    if((tab===0&&dx.current>0)||(tab===tabIds.length-1&&dx.current<0)) off=-tab*100+(dx.current/w)*100*0.28;
     if(trackRef.current) trackRef.current.style.transform="translateX("+off+"%)";
-    // Monta la pestaña destino MIENTRAS arrastras: al soltar ya hay contenido (no flash vacío).
     if(dx.current<-24 && tab<tabIds.length-1) prepMountTab(tab+1);
     else if(dx.current>24 && tab>0) prepMountTab(tab-1);
   };
@@ -971,19 +997,20 @@ function App(){
     if(axis.current==="x"){
       if(gestureMode.current==="drawer"){
         if(drawerRef.current) drawerRef.current.classList.remove("dragging");
+        if(appShellRef.current) appShellRef.current.classList.remove("dragging");
         const dw=drawerW(), dist=dx.current, dt=Math.max(1,Date.now()-startT.current);
-        const open = dist > dw*0.4 || ((dist/dt)>0.4 && dist>28);   // pasado ~40% o flick → abre
+        const open = dist > dw*0.35 || ((dist/dt)>0.4 && dist>28);
         if(drawerRef.current) drawerRef.current.style.transform="";
-        if(backRef.current){ backRef.current.style.opacity=""; backRef.current.style.pointerEvents=""; }
         setDrawerOpen(open);
+        setSettingsProgress(open?1:0);
       } else {
         if(trackRef.current) trackRef.current.classList.remove("dragging");
         const w=trackRef.current?trackRef.current.offsetWidth:360;
         const dist=dx.current;
         const dt=Math.max(1,Date.now()-startT.current);
-        const vel=dist/dt;                                   // px/ms
-        const distTh=Math.max(50, w*0.20);                   // un poco más fácil que antes
-        const flick=Math.abs(vel)>0.45 && Math.abs(dist)>32; // gesto rápido = cambia aunque sea corto
+        const vel=dist/dt;
+        const distTh=Math.max(50, w*0.20);
+        const flick=Math.abs(vel)>0.45 && Math.abs(dist)>32;
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
@@ -1120,35 +1147,37 @@ function App(){
   );
 
   return React.createElement("div",{className:"app v4"},
-    React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
-      React.createElement("div",{className:"track",ref:trackRef},
-        tabIds.map(function(id,i){
-          var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
-          var show=live||!!mountedTabs[id];
-          return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
-            show ? pageFor(id) : null
-          );
-        })
-      )
-    ),
-    React.createElement("nav",{className:"botnav","aria-label":"Navegación"},
-      React.createElement("div",{className:"botnav-row"},
-        React.createElement("div",{className:"botnav-ind"+(drawerOpen?" hide":""),
-          style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
-          React.createElement("span",null)
-        ),
-        React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
-          React.createElement(I.home,null), t("tab_dash")),
-        React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
-          React.createElement(I.expense,null), t("tab_gastos")),
-        React.createElement("div",{className:"botnav-fab-slot"},
-          React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),onClick:function(){ setApuntarOpen(true); }},
-            React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
-        ),
-        React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
-          React.createElement(I.calendar,null), t("tab_plan")),
-        React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
-          React.createElement(I.invest,null), t("tab_cartera"))
+    React.createElement("div",{className:"app-shell",ref:appShellRef},
+      React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
+        React.createElement("div",{className:"track",ref:trackRef},
+          tabIds.map(function(id,i){
+            var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
+            var show=live||!!mountedTabs[id];
+            return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
+              show ? pageFor(id) : null
+            );
+          })
+        )
+      ),
+      React.createElement("nav",{className:"botnav","aria-label":"Navegación"},
+        React.createElement("div",{className:"botnav-row"},
+          React.createElement("div",{className:"botnav-ind"+(drawerOpen?" hide":""),
+            style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
+            React.createElement("span",null)
+          ),
+          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
+            React.createElement(I.home,null), t("tab_dash")),
+          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
+            React.createElement(I.expense,null), t("tab_gastos")),
+          React.createElement("div",{className:"botnav-fab-slot"},
+            React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),onClick:function(){ setApuntarOpen(true); }},
+              React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
+          ),
+          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
+            React.createElement(I.calendar,null), t("tab_plan")),
+          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
+            React.createElement(I.invest,null), t("tab_cartera"))
+        )
       )
     ),
     React.createElement(AskHost,null),
@@ -1168,12 +1197,16 @@ function App(){
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
-    drawerOpen && React.createElement("div",{className:"settings-push"},
+    drawerMounted && React.createElement("div",{
+      className:"settings-push"+(drawerOpen?" open":""),
+      ref:drawerRef,
+      onTouchStart:drawerStart, onTouchMove:drawerMove, onTouchEnd:drawerEnd
+    },
       React.createElement("div",{className:"settings-push-h"},
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
+      React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     )
   );
 }
