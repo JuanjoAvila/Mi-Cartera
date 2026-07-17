@@ -32,6 +32,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
   const [bankSel,setBankSel]=useState([]); // ents o "_manual"; [] = todos los bancos
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
+  const [morePeriods,setMorePeriods]=useState(false);
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
@@ -69,6 +70,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return Object.assign({},s,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
+    const cc=CATEGORIES.concat([INGRESO_CAT]).find(function(x){ return x.id===newCat; });
+    if(showToast) showToast(tf("v4_moved_cat",{cat:(cc?cc.icon+" ":"")+catName(newCat)}));
   };
   // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
   const setCardFlag=function(ex,noCard){
@@ -79,7 +82,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // mal (financiación Cofidis que notifica el TOTAL pero TR solo cobra la cuota, bizums antiguos
   // que entraron como gasto…). En la nube la clave es fecha|importe|comercio → se hace tombstone
   // de la fila vieja (deleted + deleteExpense) y se inserta la corregida, o el pull la resucitaría.
-  const [editExp,setEditExp]=useState(null);   // {id, merchant, amount, income}
+  const [editExp,setEditExp]=useState(null);   // {id, merchant, amount, income} — usado por el sheet de detalle
+  const [detailId,setDetailId]=useState(null);     // id del gasto abierto en sheet (SPEC §14)
   // PUNTO 5: al tocar la noti de un gasto, App pasa focusExp ({amount,merchant}) → abrimos la ficha
   // del gasto que casa (mismo importe y comercio parecido, el más reciente; si no, el último gasto).
   useEffect(function(){
@@ -90,7 +94,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return true;
     }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
     if(cands[0]){
-      setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0});
+      setDetailId(cands[0].id); setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0});
       if(clearFocus) clearFocus();
       return;
     }
@@ -100,7 +104,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // pareja 2026-07-10, punto 8). Si en 12s no aparece, abrimos el más reciente como antes.
     const tm=setTimeout(function(){
       const e=(state.expenses||[]).slice().sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
-      if(e) setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0});
+      if(e){ setDetailId(e.id); setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0}); }
       if(clearFocus) clearFocus();
     }, 12000);
     return function(){ clearTimeout(tm); };
@@ -151,10 +155,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
   },[expensesDef,preset,range,sel,bankSel,q,cycle]);
 
-  // Total con SIGNO CLARO (bug pareja 2026-07-11: con un ingreso en el filtro, el total mostraba
-  // «gastos − ingresos» en positivo — ilegible). Desglose: gastos sin signo (2026-07-12: el «−»
-  // les parecía feo), y si hay ingresos, línea «+ingresos · Balance» (ingresos − gastos; verde si ahorras).
-  const sums=useMemo(()=>{ let g=0,i=0,ng=0,ni=0; filtered.forEach(e=>{ if(e.amount>0){ g+=e.amount; ng++; } else { i-=e.amount; ni++; } }); return {g:g,i:i,ng:ng,ni:ni,bal:i-g}; },[filtered]);
+  // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
+  // que el presupuesto parezca cambiar al mirar otro período o una categoría.
+  const monthSummary=useMemo(function(){
+    const now=new Date(), start=startOfMonth(now);
+    const spent=(state.expenses||[]).reduce(function(total,e){
+      const d=parseDate(e.date);
+      return d>=start && e.amount>0 ? total+e.amount : total;
+    },0);
+    const budget=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+    return {spent:spent,budget:budget,remaining:budget==null?null:budget-spent,day:now.getDate(),last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),month:monthLong(now.getMonth())};
+  },[state.expenses,state.budget]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
     if(!cloud.enabled()||!ex||aiBusy) return;
@@ -176,7 +187,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 
   const shown=filtered.slice(0,visible);
   const groups=[]; let last=null;
-  shown.forEach(e=>{ const d=parseDate(e.date); const k=relDay(d); if(k!==last){ groups.push({sep:k}); last=k; } groups.push({e:e,d:d}); });
+  shown.forEach(function(e){
+    const d=parseDate(e.date), k=dayKey(d);
+    if(k!==last){
+      const today=dayKey(new Date()), yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
+      const label=k===today?t("g_today"):k===dayKey(yesterday)?t("g_yesterday"):d.toLocaleDateString(loc(),{weekday:"long",day:"numeric",month:"short"});
+      groups.push({sep:label}); last=k;
+    }
+    groups.push({e:e,d:d});
+  });
 
   const addExpense=()=>{
     const amt=parseFloat(String(form.amount).replace(',','.'))||0;
@@ -209,14 +228,38 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     setForm({merchant:"",amount:"",category:form.category,income:false,noCard:false,date:""}); setAdding(false); showToast(msg);
   };
 
-  return React.createElement("div",null,
+  return React.createElement("div",{className:"v4-screen"},
+    React.createElement("h1",{className:"v4-title serif"}, t("v4_gastos_title")),
+    React.createElement("section",{className:"v4-gastos-summary"},
+      React.createElement("div",{className:"v4-gastos-summary-top"},
+        React.createElement("div",null,
+          React.createElement("div",{className:"v4-gastos-summary-label"},tf("v4_gastos_spent_in",{month:monthSummary.month})),
+          React.createElement("div",{className:"v4-gastos-summary-amount num"},eur(monthSummary.spent))
+        ),
+        React.createElement("div",{className:"v4-gastos-summary-budget"},
+          React.createElement("div",null,tf("v4_gastos_of",{x:monthSummary.budget==null?"—":eur(monthSummary.budget)})),
+          React.createElement("div",{className:"v4-gastos-summary-left"},tf("v4_gastos_left",{x:monthSummary.remaining==null?"—":eur(monthSummary.remaining)}))
+        )
+      ),
+      React.createElement("div",{className:"v4-gastos-progress",role:"progressbar","aria-valuemin":0,"aria-valuemax":monthSummary.budget||0,"aria-valuenow":monthSummary.spent},
+        React.createElement("i",{style:{width:monthSummary.budget==null?"0%":Math.min(100,monthSummary.spent/monthSummary.budget*100)+"%"}})
+      ),
+      React.createElement("div",{className:"v4-gastos-progress-marks"},
+        React.createElement("span","1 "+monthSummary.month),
+        React.createElement("span",tf("v4_gastos_today_mark",{d:monthSummary.day})),
+        React.createElement("span",monthSummary.last+" "+monthSummary.month)
+      )
+    ),
     React.createElement("div",{className:"filters"},
+      React.createElement("div",{className:"v4-periods"},
+        DATE_PRESETS.slice(0,2).map(function(p){ return React.createElement("button",{key:p.id,className:"v4-period-btn"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); setMorePeriods(false); }},t("g_"+p.id)); }),
+        React.createElement("button",{className:"v4-period-btn"+(morePeriods||DATE_PRESETS.slice(2).some(function(p){ return p.id===preset; })?" on":""),onClick:function(){ setMorePeriods(!morePeriods); }},t("v4_period_more"))
+      ),
       React.createElement("div",Object.assign({className:"searchbar"},stopSwipe),
         React.createElement("span",{className:"searchbar-ic"},"🔍"),
         React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
         q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
       ),
-      React.createElement("div",Object.assign({className:"chips"},stopSwipe), DATE_PRESETS.map(p=>React.createElement("button",{key:p.id,className:"chip"+(preset===p.id?" active":""),onClick:()=>setPreset(p.id)},t("g_"+p.id)))),
       // «Mi ciclo»: enseña QUÉ cobro ancla el ciclo (si el detectado no es el bueno, se corrige
       // apuntando la nómina real como ingreso, o usando Rango…).
       preset==="cycle" && React.createElement("div",{className:"hint",style:{margin:"2px 2px 0"}},
@@ -229,151 +272,169 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
-      React.createElement("div",Object.assign({className:"cat-select"},stopSwipe),
-        React.createElement("button",{className:"chip"+(sel.length===0?" active":""),onClick:()=>setSel([])},t("g_allcats")),
+      React.createElement("div",Object.assign({className:"v4-chips"},stopSwipe),
+        React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"chip"+(sel.indexOf(c.id)!==-1?" active":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+        CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
-      bankOpts.length>1 && React.createElement("div",Object.assign({className:"cat-select"},stopSwipe),
-        React.createElement("button",{className:"chip"+(bankSel.length===0?" active":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
+      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips"},stopSwipe),
+        React.createElement("button",{className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
         bankOpts.map(function(b){
           const on=bankSel.indexOf(b)!==-1;
           const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
-          return React.createElement("button",{key:b,className:"chip"+(on?" active":""),onClick:function(){ setBankSel(function(prev){ const has=prev.indexOf(b)!==-1; return has?prev.filter(function(x){return x!==b;}):prev.concat([b]); }); }},lbl);
+          return React.createElement("button",{key:b,className:"v4-chip"+(on?" on":""),onClick:function(){ setBankSel(function(prev){ const has=prev.indexOf(b)!==-1; return has?prev.filter(function(x){return x!==b;}):prev.concat([b]); }); }},lbl);
         })
       )
     ),
-    React.createElement("div",{className:"total-bar"},
-      // Dos vistas del total (petición 2026-07-11, Ajustes › «Total de Gastos»): «desglosado»
-      // (gastos arriba, ingresos+balance debajo — el modelo de 3.91) o «lo que te queda» (el
-      // modelo antiguo que gustaba: un solo número = ingresos − gastos del filtro).
-      // Dos vistas del total de Gastos (Ajustes › «Total de Gastos»). MISMO diseño en ambas
-      // (petición 2026-07-12): título + número protagonista + una línea de desglose con los otros
-      // dos importes, con idéntico estilo (💸 gastos en gris · 💰 ingresos en verde · Balance en
-      // color). Solo cambia QUÉ número manda arriba: «Balance» destaca ingresos−gastos; «Gastos e
-      // ingresos» destaca el gasto. Sin «−» en ningún sitio: el color rojo/verde ya lo dice.
-      ((state.settings&&state.settings.gTotalMode)==="net")
-        ? React.createElement("div",null,
-            React.createElement("div",{className:"tl"},t("g_totalnet")),
-            React.createElement("div",{className:"tn num",style:{color:sums.bal>=0?"var(--mint)":"var(--coral)"}},(sums.bal>=0?"+":"")+eur(Math.abs(sums.bal))),
-            React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
-              React.createElement("span",{style:{color:"var(--muted)"}},"💸 "+t("g_lbl_spent")+" "+eur(sums.g)),
-              sums.ni>0 && React.createElement("span",{style:{color:"var(--mint)"}}," · 💰 "+t("g_lbl_income")+" +"+eur(sums.i))
-            )
-          )
-        : React.createElement("div",null,
-            React.createElement("div",{className:"tl"},t("g_totalfilt")),
-            React.createElement("div",{className:"tn num"},eur(sums.g)),
-            sums.ni>0 && React.createElement("div",{className:"num",style:{fontSize:12.5,marginTop:3}},
-              React.createElement("span",{style:{color:"var(--mint)"}},"💰 "+t("g_lbl_income")+" +"+eur(sums.i)),
-              React.createElement("span",{style:{color:"var(--muted)"}}," · "+t("g_balance")+" "),
-              React.createElement("span",{style:{color:sums.bal>=0?"var(--mint)":"var(--coral)",fontWeight:700}},(sums.bal>=0?"+":"")+eur(Math.abs(sums.bal)))
-            )
-          ),
-      React.createElement("div",{className:"cnt"},
-        sums.ng+" "+(sums.ng===1?t("g_n_one"):t("g_n_many")),
-        sums.ni>0 && React.createElement("div",null, sums.ni+" "+(sums.ni===1?t("g_inc_one"):t("g_inc_many")))
-      )
-    ),
     React.createElement("div",{className:"action-row"},
-      React.createElement("button",{className:"btn btn-primary",style:{flex:1},onClick:onSync,disabled:syncing}, syncing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),t("g_syncing")):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:16,height:16}),t("g_sync"))),
-      React.createElement("button",{className:"btn btn-ghost",onClick:()=>setAdding(!adding)},React.createElement(I.plus,{width:16,height:16}),t("g_add"))
+      React.createElement("button",{className:"btn btn-ghost",onClick:onSync,disabled:syncing}, syncing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),t("g_syncing")):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:16,height:16}),t("g_sync")))
     ),
     React.createElement("div",{className:"sync-note"},
       React.createElement("span",{className:"sync-dot "+(syncStatus.type||"idle")}),
       syncStatus.msg || (state.lastSync?tf("g_lastsync",{d:new Date(state.lastSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):t("g_nosync"))
     ),
-    adding && React.createElement("div",{className:"add-form"},
-      React.createElement("div",{className:"af-row"},
-        React.createElement("button",{className:"btn "+(!form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:false}))},t("g_gasto")),
-        React.createElement("button",{className:"btn "+(form.income?"btn-primary":"btn-ghost"),style:{flex:1},onClick:()=>setForm(Object.assign({},form,{income:true}))},t("g_ingreso"))
-      ),
-      React.createElement("input",{className:"af-in",placeholder:form.income?t("g_concept_i"):t("g_concept_g"),value:form.merchant,onChange:e=>setForm(Object.assign({},form,{merchant:e.target.value}))}),
-      React.createElement("div",{className:"af-row"},
-        React.createElement("input",{className:"af-in num",placeholder:"0,00 €",inputMode:"decimal",value:form.amount,onChange:e=>setForm(Object.assign({},form,{amount:e.target.value}))}),
-        !form.income && React.createElement("select",{className:"af-in",value:form.category,onChange:e=>setForm(Object.assign({},form,{category:e.target.value}))}, CATEGORIES.map(c=>React.createElement("option",{key:c.id,value:c.id},c.icon+" "+catName(c.id))))
-      ),
-      // Fecha del movimiento (opcional): sin tocar = hoy. Para apuntar a posteriori un gasto o
-      // una transferencia de hace días con su día real (petición 2026-07-11).
-      React.createElement("div",{className:"af-row",style:{alignItems:"center"}},
-        React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",whiteSpace:"nowrap"}},"📅 "+t("g_date")),
-        React.createElement("input",{className:"af-in",type:"date",max:new Date().toISOString().slice(0,10),value:form.date,onChange:e=>setForm(Object.assign({},form,{date:e.target.value}))})
-      ),
-      !form.income && React.createElement("button",{type:"button",className:"cardflag"+(form.noCard?" off":""),onClick:()=>setForm(Object.assign({},form,{noCard:!form.noCard}))}, form.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
-      React.createElement("button",{className:"btn btn-primary btn-block",onClick:addExpense}, form.income?t("g_addingreso"):t("g_addgasto"))
-    ),
-    subs.length>0 && React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title"),sub:tf("sub_sub",{n:subs.length,y:eur0(subs.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:false,storageKey:"g_subs",help:t("h_subs")},
-      subs.map(function(sp){ const c=catOf(sp.cat);
-        // Sugerencia (petición 2026-07-11): una suscripción recurrente pinta más en Gastos FIJOS
-        // (presupuesto previsible) que goteando en variables. Un toque la crea allí, con el banco
-        // de recibos y el día real del último cargo. Si ya existe un fijo con ese nombre: ✓.
-        const inFixed=(state.fixed||[]).some(function(f){ return catKey(f.name)===sp.key; });
-        const toFixed=function(){
-          const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
-          const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
-          const it={ id:uid(), name:sp.name, amount:sp.amount, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
-          const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
-          set(function(s){ return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
-          showToast(tf("sub_tofixed_done",{n:sp.name,b:entOf((acc&&acc.ent)||"sabadell").label}));
-        };
-        return React.createElement("div",{key:sp.key,className:"sub-row"+(sp.active?"":" off")},
-        React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
-        React.createElement("div",{className:"sub-mid"},
-          React.createElement("div",{className:"sub-name"}, sp.name, !sp.active && React.createElement("span",{className:"sub-tag"}," "+t("sub_inactive"))),
-          React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)})),
-          sp.active && React.createElement("button",{className:"chip",style:{marginTop:5,fontSize:11.5,padding:"3px 10px",opacity:inFixed?0.7:1},disabled:inFixed,onClick:inFixed?null:toFixed}, inFixed? "✓ "+t("sub_infixed") : "→ "+t("sub_tofixed"))),
-        React.createElement("div",{className:"sub-amt num"}, eur(sp.amount)+t("sub_permonth"))
-      ); }),
-      React.createElement("div",{className:"hint",style:{marginTop:8}}, t("sub_hint"))
-    )),
-    React.createElement("div",{className:"card",style:{marginTop:14}},
-      React.createElement("div",{className:"card-body",style:{paddingTop:6}},
+/* Alta de gasto/ingreso: FAB Apuntar (SPEC §7). */
+    (function(){
+      // SPEC §4: suscripciones solo si hay novedad (activas aún no pasadas a Fijos).
+      const novel=(subs||[]).filter(function(sp){
+        if(!sp.active) return false;
+        return !(state.fixed||[]).some(function(f){ return catKey(f.name)===sp.key; });
+      });
+      if(!novel.length) return null;
+      return React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title")+" · "+novel.length,sub:tf("sub_sub",{n:novel.length,y:eur0(novel.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:true,storageKey:"g_subs_novel",help:t("h_subs")},
+        novel.map(function(sp){ const c=catOf(sp.cat);
+          const toFixed=function(){
+            const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+            const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
+            const it={ id:uid(), name:sp.name, amount:sp.amount, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
+            const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
+            set(function(s){ return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
+            showToast(tf("sub_tofixed_done",{n:sp.name,b:entOf((acc&&acc.ent)||"sabadell").label}));
+          };
+          return React.createElement("div",{key:sp.key,className:"sub-row"},
+          React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
+          React.createElement("div",{className:"sub-mid"},
+            React.createElement("div",{className:"sub-name"}, sp.name),
+            React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)})),
+            React.createElement("button",{className:"chip",style:{marginTop:5,fontSize:11.5,padding:"3px 10px"},onClick:toFixed}, "→ "+t("sub_tofixed"))),
+          React.createElement("div",{className:"sub-amt num"}, eur(sp.amount)+t("sub_permonth"))
+        ); }),
+        React.createElement("div",{className:"hint",style:{marginTop:8}}, t("sub_hint"))
+      ));
+    })(),
+    React.createElement("div",{className:"v4-gastos-list",style:{marginTop:14}},
+      React.createElement("div",{className:"v4-gastos-list-body"},
         shown.length===0
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
-          : groups.map((g,i)=> g.sep
+          : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : (function(){ const c=catOf(g.e.category); const isIncome=g.e.amount<0; const open=catEdit===g.e.id; const ed=editExp&&editExp.id===g.e.id; return React.createElement(React.Fragment,{key:g.e.id||i},
-                  React.createElement("div",{className:"ex-row"},
-                    React.createElement("button",{className:"ex-ic",style:{borderColor:c.color+"55",color:c.color,cursor:isIncome?"default":"pointer",background:"none"},title:t("g_changecat"),onClick:function(ev){ ev.stopPropagation(); if(!isIncome) setCatEdit(open?null:g.e.id); }},c.icon),
-                    React.createElement("div",{className:"ex-mid"},
-                      React.createElement("div",{className:"ex-merchant"},g.e.merchant||"—"),
-                      React.createElement("div",{className:"ex-meta"},
-                        React.createElement("span",{className:"ex-cat",style:{color:c.color}},catName(g.e.category)),
+              : (function(){ const c=catOf(g.e.category); const isIncome=g.e.amount<0;
+                  return React.createElement("button",{type:"button",key:g.e.id||i,className:"v4-mov",
+                    onClick:function(){
+                      setDetailId(g.e.id);
+                      setEditExp({id:g.e.id, merchant:g.e.merchant||"", amount:String(Math.abs(g.e.amount)).replace('.',','), income:g.e.amount<0});
+                      setCatEdit(null);
+                    }},
+                    React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
+                    React.createElement("div",{className:"nm"},
+                      React.createElement("div",null,g.e.merchant||"—"),
+                      React.createElement("div",{className:"meta"},
+                        React.createElement("span",{style:{color:c.color}},catName(g.e.category)),
                         React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
                         (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement("span",{style:{color:"var(--muted-2)"}}," · "+entOf(bk).mono):null; })()
                       )
                     ),
-                    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},
-                      // Sin «−» en gastos (petición 2026-07-12: quedaba feo); el «+» de ingresos se queda.
-                      React.createElement("div",{className:"ex-amt num",style: isIncome?{color:"var(--mint)"}:null}, (isIncome?"+":"")+eur(Math.abs(g.e.amount))),
-                      React.createElement("button",{className:"ex-del",title:t("g_edit"),onClick:function(ev){ ev.stopPropagation(); setEditExp(ed?null:{id:g.e.id, merchant:g.e.merchant||"", amount:String(Math.abs(g.e.amount)).replace('.',','), income:g.e.amount<0}); setCatEdit(null); }},"✎"),
-                      React.createElement("button",{className:"ex-del",title:t("w_hide"),onClick:function(ev){ ev.stopPropagation(); delExpense(g.e); }},"✕")
-                    )
-                  ),
-                  // editor inline: comercio + importe + gasto↔ingreso (corrige parses malos de la ingesta)
-                  ed && React.createElement("div",{className:"catpick",style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center"}},
-                    React.createElement("input",{className:"af-in",style:{flex:"1 1 130px",minWidth:0},value:editExp.merchant,placeholder:t("g_concept_g"),onChange:function(e2){ const v=e2.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); }}),
-                    React.createElement("input",{className:"af-in num",style:{flex:"0 0 92px",textAlign:"right"},inputMode:"decimal",value:editExp.amount,onFocus:function(e2){ e2.target.select(); },onChange:function(e2){ const v=e2.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); }}),
-                    React.createElement("button",{type:"button",className:"cardflag"+(editExp.income?"":" off"),onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:!p.income}); }); }}, editExp.income?("💰 "+t("g_ingreso")):("💸 "+t("g_gasto"))),
-                    React.createElement("div",{style:{display:"flex",gap:8,flex:"1 1 100%"}},
-                      React.createElement("button",{className:"btn btn-primary",style:{flex:1,padding:"9px"},onClick:function(){ saveEdit(g.e); }},t("fj_save")),
-                      React.createElement("button",{className:"btn btn-ghost",style:{flex:1,padding:"9px"},onClick:function(){ setEditExp(null); }},t("fj_cancel"))
-                    )
-                  ),
-                  open && React.createElement(React.Fragment,null,
-                    React.createElement("div",{className:"catpick"}, CATEGORIES.map(function(cc){
-                      return React.createElement("button",{key:cc.id,type:"button",className:"catpick-b"+(cc.id===g.e.category?" on":""),onClick:function(){ setCat(g.e,cc.id); }}, cc.icon+" "+catName(cc.id).split(" ")[0]);
-                    })),
-                    g.e.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(g.e); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn")),
-                    React.createElement("button",{type:"button",className:"cardflag"+(g.e.noCard?" off":""),style:{marginTop:8},onClick:function(){ setCardFlag(g.e,!g.e.noCard); }}, g.e.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card")))
-                  )
-                ); })()
-          ),
+                    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(g.e.amount)))
+                  );
+                })(); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
       )
-    )
+    ),
+    morePeriods && ReactDOM.createPortal(
+      React.createElement("div",{className:"v4-sheet-back",onClick:function(){ setMorePeriods(false); }},
+        React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
+          React.createElement("div",{className:"v4-sheet-handle"}),
+          React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:14}}, t("v4_period_more")),
+          DATE_PRESETS.slice(2).map(function(p){
+            return React.createElement("button",{key:p.id,type:"button",className:"v4-sheet-row"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); setMorePeriods(false); }}, t("g_"+p.id));
+          })
+        )
+      ), document.body),
+    detailId && React.createElement(ExpenseDetailSheet,{
+      exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
+      editExp:editExp, setEditExp:setEditExp,
+      onClose:function(){ setDetailId(null); setEditExp(null); },
+      setCat:setCat, setCardFlag:setCardFlag, delExpense:delExpense, saveEdit:saveEdit,
+      showToast:showToast, aiBusy:aiBusy, suggestAi:suggestAi, state:state
+    })
   );
 }
 
+/* Sheet detalle/edición de un movimiento (SPEC §14). Cambios al momento; borrar pide confirmación. */
+function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
+  useBackClose(!!exp, onClose);
+  if(!exp || !editExp) return null;
+  const c=catOf(exp.category);
+  const isIncome=exp.amount<0;
+  const bk=expenseBankOf(exp);
+  const auto=exp.source && exp.source!=="manual";
+  const closeSave=function(){ saveEdit(exp); onClose(); };
+  const doDel=function(){
+    askConfirm({ title:tf("v4_exp_del_q",{name:(exp.merchant||"—")+" · "+eur(Math.abs(exp.amount))}), sub:t("v4_exp_del_sub"), ok:t("v4_exp_del"), danger:true })
+      .then(function(yes){ if(!yes) return; delExpense(exp); onClose(); });
+  };
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",{className:"v4-sheet",style:{maxHeight:"88dvh",overflowY:"auto"},onClick:function(e){ e.stopPropagation(); }},
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"v4-exp-head"},
+          React.createElement("div",{className:"tile",style:{width:54,height:54,fontSize:26,borderRadius:16,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("input",{className:"v4-input",style:{marginBottom:6,fontWeight:700},value:editExp.merchant,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
+            React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:28,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
+          )
+        ),
+        React.createElement("div",{className:"v4-chips",style:{marginBottom:12}},
+          React.createElement("span",{className:"v4-chip"}, exp.date),
+          bk && React.createElement("span",{className:"v4-chip"}, entOf(bk).label),
+          React.createElement("span",{className:"v4-chip"}, auto?t("v4_exp_auto"):t("v4_exp_manual"))
+        ),
+        !isIncome && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"v4-micro",style:{marginBottom:8}}, t("g_changecat")),
+          React.createElement("div",{className:"v4-chips"},
+            CATEGORIES.map(function(cc){
+              return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
+            })
+          ),
+          React.createElement("button",{type:"button",className:"cardflag"+(exp.noCard?" off":""),style:{marginTop:12},onClick:function(){ setCardFlag(exp,!exp.noCard); }}, exp.noCard?("🔄 "+t("g_nocard")):("💳 "+t("g_card"))),
+          exp.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
+        ),
+        React.createElement("button",{type:"button",className:"cardflag"+(editExp.income?"":" off"),style:{marginTop:12},onClick:function(){ setEditExp(function(p){ return Object.assign({},p,{income:!p.income}); }); setTimeout(function(){ /* se guarda al blur/cerrar */ },0); }}, editExp.income?("💰 "+t("g_ingreso")):("💸 "+t("g_gasto"))),
+        React.createElement("button",{type:"button",className:"btn btn-primary btn-block",style:{marginTop:14},onClick:closeSave}, t("fj_save")),
+        React.createElement("button",{type:"button",className:"v4-danger",onClick:doDel}, "🗑 "+t("v4_exp_del"))
+      )
+    ), document.body);
+}
+
+function BudgetSheet({open, budget, onClose, onSave}){
+  const [b,setB]=useState(budget||700);
+  useEffect(function(){ if(open) setB(Math.max(100, Math.round(budget||700))); },[open,budget]);
+  useBackClose(!!open, onClose);
+  if(!open) return null;
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:8}}, t("v4_budget_sheet")),
+        React.createElement("p",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.45,margin:"0 0 18px"}}, t("v4_budget_sheet_h")),
+        React.createElement("div",{className:"v4-ob-stepper"},
+          React.createElement("button",{type:"button","aria-label":"−",onClick:function(){ setB(function(x){ return Math.max(100,x-50); }); }},"−"),
+          React.createElement("div",{className:"serif num"}, eur0(b)),
+          React.createElement("button",{type:"button","aria-label":"+",onClick:function(){ setB(function(x){ return x+50; }); }},"+")
+        ),
+        React.createElement("button",{className:"v4-cta",style:{marginTop:18},onClick:function(){ onSave(b); onClose(); }}, t("save"))
+      )
+    ), document.body);
+}

@@ -411,11 +411,14 @@ function App(){
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
   const [drawerOpen,setDrawerOpen]=useState(false);
-  // Ajustes: no montar el panel entero en el cold start (es un árbol enorme). Primera apertura
-  // lo monta y se queda (feedback 2026-07-16: lagazo al abrir la app).
+  // v4: Ajustes es push a pantalla completa (SPEC §9). drawerMounted = primera apertura.
   const [drawerMounted,setDrawerMounted]=useState(false);
+  const [apuntarOpen,setApuntarOpen]=useState(false);
   useEffect(function(){ if(drawerOpen) setDrawerMounted(true); },[drawerOpen]);
-  useBackClose(drawerOpen, function(){ setDrawerOpen(false); });   // gesto atrás: cierra Ajustes en vez de salir de la app
+  useBackClose(drawerOpen, function(){ setDrawerOpen(false); });
+  useEffect(function(){
+    try{ window.__mcEmail=(session&&session.user&&session.user.email)||""; }catch(e){}
+  },[session]);
   useBackClose(addTab, function(){ setAddTab(false); });           // gesto atrás: cierra la hoja "añadir pestaña"
   // APK Android: el gesto/botón "atrás". En navegador lo maneja la History API (useBackClose); en la
   // app nativa Capacitor NO enruta el gesto por el historial de la WebView (cierra la Activity y SALE),
@@ -942,10 +945,9 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;      // espera a tener intención clara
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";  // x debe dominar claramente
       if(axis.current==="x"){
-        // en la 1ª pestaña, arrastrar a la DERECHA abre el cajón de Ajustes (no cambia de pestaña)
-        gestureMode.current = (tab===0 && ddx>0) ? "drawer" : "tab";
-        if(gestureMode.current==="drawer"){ if(drawerRef.current) drawerRef.current.classList.add("dragging"); }
-        else { if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots(); }
+        // v4: Ajustes ya no es drawer lateral — el swipe a la derecha en Inicio no abre nada.
+        gestureMode.current = "tab";
+        if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
       }
     }
     if(axis.current!=="x") return;                          // gesto vertical → deja hacer scroll, no muevas pestañas
@@ -1099,15 +1101,14 @@ function App(){
   const TABBYID={}; TABS.forEach(function(tt){ TABBYID[tt.id]=tt; });
   const hiddenTabIds = TABS.map(function(tt){return tt.id;}).filter(function(id){ return tabIds.indexOf(id)<0; });
   const pageFor=function(id){
-    if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set});
-    if(id==="metas") return React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast});
-    if(id==="logros") return React.createElement(Achievements,{state:state,totals:totals});
+    const simple=!!(state.settings&&state.settings.simpleMode);
+    if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set,
+      onOpenSettings:function(){ setDrawerOpen(true); },
+      onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
+      onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
     if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
-    if(id==="fijos") return React.createElement(Fijos,{state:state,set:set,totals:totals});
-    if(id==="inv") return React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing});
-    if(id==="patri") return React.createElement(Wealth,{state:state,set:set,totals:totals});
-    if(id==="debt") return React.createElement(Debts,{state:state,set:set,showToast:showToast});
-    if(id==="compartido") return React.createElement(Shared,{state:state,set:set,uid:uid,totals:totals,showToast:showToast,meEmail:(session&&session.user&&session.user.email)||null});
+    if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple});
+    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple});
     return null;
   };
 
@@ -1118,61 +1119,41 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  return React.createElement("div",{className:"app"},
-    React.createElement("div",{className:"topbar"},
-      React.createElement("div",{className:"brand"},
-        React.createElement("div",{className:"brand-mark"},React.createElement(I.logo,{width:20,height:20})),
-        React.createElement("div",null,
-          React.createElement("div",{className:"brand-name"},"Mi cartera"),
-          React.createElement("div",{className:"brand-sub"},new Date().toLocaleDateString(loc(),{month:'long',year:'numeric'}))
-        )
-      ),
-      React.createElement("div",{style:{display:"flex",gap:"8px"}},
-        React.createElement("button",{className:"icon-btn",onClick:()=>setDrawerOpen(true),title:"Ajustes"},React.createElement(I.gear,{width:18,height:18})),
-        React.createElement("button",{className:"icon-btn",onClick:onCloudClick,title:uid?"Cuenta / sincronización":"Iniciar sesión",style:uid?{color:"var(--accent, #5FD08A)"}:null},React.createElement(uid?I.cloud:I.cloudOff,{width:18,height:18}))
-      )
-    ),
-    React.createElement("div",{className:"tabbar-wrap"},
-      React.createElement("div",{className:"tabbar",ref:tabbarRef},
-        tabIds.map(function(id,i){ const tb=TABBYID[id]; return React.createElement("button",{key:id,"data-ti":i,className:"tab"+(tab===i?" active":""),onTouchStart:function(){ prepMountTab(i); },onClick:function(){ goTab(i); }},React.createElement(tb.icon,null),t("tab_"+id)); }),
-        hiddenTabIds.length>0 && React.createElement("button",{key:"__add",className:"tab tab-add",onClick:function(){ setAddTab(true); },"aria-label":t("tb_add")},"+")
-      )
-    ),
-    // Papelera: aparece mientras arrastras una pestaña; suéltala encima para quitarla
-    tabOrderState && React.createElement("div",{ref:trashRef,className:"tab-trash"+(trashHot?" hot":"")},
-      React.createElement("span",{className:"tt-ic"},"🗑"), " ", t("tb_trash")),
-    // Hoja "añadir pestaña": lista de tabs ocultas; tocar una la añade al final de la barra
-    addTab && React.createElement("div",{className:"tabsheet-back",onClick:function(){ setAddTab(false); }},
-      React.createElement("div",{className:"tabsheet",onClick:function(e){ e.stopPropagation(); }},
-        React.createElement("div",{className:"ts-title"},t("tb_add")),
-        React.createElement("div",{className:"ts-hint"},t("tb_add_hint")),
-        hiddenTabIds.map(function(id){ const tb=TABBYID[id]; return React.createElement("button",{key:id,className:"ts-item",onClick:function(){
-          set(function(s){
-            const hid=tabHiddenOf(s).filter(function(x){ return x!==id; });
-            const ord=tabOrderOf(s).concat([id]);
-            return Object.assign({},s,{settings:Object.assign({},s.settings,{tabHidden:hid, tabOrder:ord})});
-          });
-          setAddTab(false);
-          setTab(tabIds.length);   // la nueva pestaña entra al final → salta a ella
-        }},React.createElement(tb.icon,null), t("tab_"+id)); })
-      )
-    ),
+  return React.createElement("div",{className:"app v4"},
     React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
       React.createElement("div",{className:"track",ref:trackRef},
         tabIds.map(function(id,i){
-          // Cold start: solo activa. Luego idle → vecinas ±1. Página YA visitada se queda
-          // montada + page-live (si no, content-visibility:auto la «apaga» y al volver parpadea).
           var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
           var show=live||!!mountedTabs[id];
           return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
-            show && React.createElement(TabCoach,{tabId:id}),
             show ? pageFor(id) : null
           );
         })
       )
     ),
-    React.createElement("div",{className:"dots"+(showDots?" show":"")}, tabIds.map((id,i)=>React.createElement("div",{key:id,className:"d"+(tab===i?" on":""),onClick:function(){ goTab(i); }}))),
-    React.createElement(AskHost,null),   // host de askText/askConfirm: uno solo para toda la app
+    React.createElement("nav",{className:"botnav","aria-label":"Navegación"},
+      React.createElement("div",{className:"botnav-row"},
+        React.createElement("div",{className:"botnav-ind"+(drawerOpen?" hide":""),
+          style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
+          React.createElement("span",null)
+        ),
+        React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
+          React.createElement(I.home,null), t("tab_dash")),
+        React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
+          React.createElement(I.expense,null), t("tab_gastos")),
+        React.createElement("div",{className:"botnav-fab-slot"},
+          React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),onClick:function(){ setApuntarOpen(true); }},
+            React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
+        ),
+        React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
+          React.createElement(I.calendar,null), t("tab_plan")),
+        React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
+          React.createElement(I.invest,null), t("tab_cartera"))
+      )
+    ),
+    React.createElement(AskHost,null),
+    React.createElement(ApuntarSheet,{open:apuntarOpen,onClose:function(){ setApuntarOpen(false); },state:state,set:set,showToast:showToast,
+      goGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); }}),
     tourOpen && React.createElement(Tour,{onDone:endTour}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
     monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),
@@ -1187,8 +1168,11 @@ function App(){
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),
-    React.createElement("div",{ref:backRef,className:"drawer-backdrop"+(drawerOpen?" open":""),onClick:function(){ setDrawerOpen(false); }}),
-    React.createElement("div",{ref:drawerRef,className:"drawer-panel"+(drawerOpen?" open":""),onTouchStart:drawerStart,onTouchMove:drawerMove,onTouchEnd:drawerEnd},
+    drawerOpen && React.createElement("div",{className:"settings-push"},
+      React.createElement("div",{className:"settings-push-h"},
+        React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
+        React.createElement("h1",null, t("settings"))
+      ),
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     )
   );

@@ -22,35 +22,19 @@ const TabCoach=React.memo(function TabCoach({tabId}){
   );
 });
 const TABS=[
-  {id:"dash",label:"Resumen",icon:I.dash},
-  {id:"metas",label:"Metas",icon:I.goal},
-  {id:"logros",label:"Logros",icon:I.medal},
+  {id:"dash",label:"Inicio",icon:I.home},
   {id:"gastos",label:"Gastos",icon:I.expense},
-  {id:"fijos",label:"Fijos",icon:I.fixed},
-  {id:"inv",label:"Inversiones",icon:I.invest},
-  {id:"patri",label:"Patrimonio",icon:I.wealth},
-  {id:"debt",label:"Deudas",icon:I.debt},
-  {id:"compartido",label:"Compartido",icon:I.share},
+  {id:"plan",label:"Plan",icon:I.calendar},
+  {id:"cartera",label:"Cartera",icon:I.invest},
 ];
-// Pestañas avanzadas: se ocultan en "modo simple" (settings.simpleMode) para gente que quiere lo básico.
-const ADVANCED_TABS=["metas","logros","inv","patri","debt","compartido"];
-// Widgets del Resumen que el modo simple esconde (deja hero + presupuesto + frase "puedes gastar").
-const SIMPLE_DASH_HIDDEN=["goal","dist","fixedsave","savings","culprit","trend","pace","catbudget"];
-// Pestañas ocultas: settings.tabHidden (elegidas por el usuario con + / papelera). Si el usuario
-// aún no ha personalizado nada, se deriva del modo simple (ADVANCED_TABS) para no cambiar el
-// comportamiento de estados existentes. "dash" nunca se puede ocultar.
+// v4: nav fija 5 slots (4 tabs + FAB). Los destinos viejos viven dentro de Plan/Cartera/Ajustes.
+const ADVANCED_TABS=[];
+const SIMPLE_DASH_HIDDEN=[];
 function tabHiddenOf(s){
-  const st=(s&&s.settings)||{};
-  const hid=Array.isArray(st.tabHidden) ? st.tabHidden
-          : (st.simpleMode ? ADVANCED_TABS : []);
-  return hid.filter(function(id){ return id!=="dash"; });
+  return [];
 }
-// Orden de pestañas personalizado (settings.tabOrder); ids nuevos se añaden al final.
 function tabOrderOf(s){
-  const hidden=tabHiddenOf(s);
-  const allIds=TABS.map(function(t){return t.id;}).filter(function(id){ return hidden.indexOf(id)<0; });
-  const saved=((s&&s.settings&&s.settings.tabOrder)||[]).filter(function(id){return allIds.indexOf(id)>=0;});
-  return saved.concat(allIds.filter(function(id){return saved.indexOf(id)<0;}));
+  return ["dash","gastos","plan","cartera"];
 }
 
 /* Pantalla de bloqueo: pide huella al abrir la app cuando el candado está activado. */
@@ -487,6 +471,17 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.0", d:"17 jul 2026", t:"Rediseño completo: más claro, más rápido, más tuyo", items:[
+    "🏠 Nueva navegación: Inicio, Gastos, botón + para apuntar, Plan y Cartera.",
+    "✨ Inicio responde «¿cómo voy?» con patrimonio, presupuesto en humano y próximos cargos.",
+    "➕ El botón verde del centro abre el teclado para apuntar un gasto o ingreso al momento.",
+    "📅 Plan junta recibos, deudas y metas con cards claras (lo pendiente, lo que debes, lo ahorrado).",
+    "💼 Cartera muestra patrimonio, cuentas, redondeo e inversiones sin pantallas de más.",
+    "🧾 En Gastos, toca un movimiento para editarlo en una ficha (categoría, tarjeta, borrar).",
+    "💶 Toca el presupuesto en Inicio para cambiarlo con −/+ (pasos de 50 €).",
+    "👋 Onboarding en 3 pasos: claim, demo de gastos y presupuesto con −/+.",
+    "⚙️ Ajustes desde el avatar: perfil, temas en círculos, modo sencillo y conexiones."
+  ]},
   {v:"3.113.3", d:"16 jul 2026", t:"Arranque más ligero y desliz entre pestañas más limpio", items:[
     "⚡ Al abrir la app (sobre todo tras vaciar recientes) se carga menos «por detrás» antes de pintar Resumen.",
     "👆 Al deslizar a Gastos el contenido se prepara mientras mueves el dedo, no al soltar.",
@@ -867,36 +862,43 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     );
   };
   return React.createElement(React.Fragment,null,
-    React.createElement("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
-      React.createElement("div",{style:{fontWeight:700,fontSize:"18px",color:"var(--text)"}},t("settings")),
-      React.createElement("button",{style:{background:"none",border:"none",color:"var(--muted)",fontSize:"22px",cursor:"pointer",lineHeight:1},onClick:onClose},"×")
+    React.createElement("div",{className:"v4-set-profile"},
+      React.createElement("div",{className:"v4-set-av"}, (meEmail||"MC").slice(0,2).toUpperCase()),
+      React.createElement("div",{style:{minWidth:0,flex:1}},
+        React.createElement("div",{style:{fontWeight:800,fontSize:16}}, meEmail?meEmail.split("@")[0]:"Mi Cartera"),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:2}}, meEmail||t("v4_set_profile_local")),
+        React.createElement("div",{style:{fontSize:12,color:"var(--mint)",marginTop:4,fontWeight:700}}, uid?t("v4_set_profile_sync"):t("v4_set_profile_local"))
+      )
     ),
     React.createElement("input",{style:Object.assign({},inp,{marginTop:12}),placeholder:t("st_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
     // ── Grupo · general: idioma / tema / letra grande / modo sencillo ──
-    grp("general","⚙️",t("st_g_general"),"idioma language tema theme color letra grande big text modo sencillo simple mode",null,
+    grp("general","🎨",t("v4_set_appear"),"idioma language tema theme color letra grande big text apariencia look",null,
+      React.createElement("div",{className:"v4-theme-row","aria-label":t("theme")},
+        THEMES.map(function(th){
+          return React.createElement("button",{key:th[0],type:"button",title:t("th_"+th[0]),
+            className:"v4-theme-sw"+(curTheme===th[0]?" on":""),
+            style:{background:th[2]},
+            onClick:function(){ applyTheme(th[0]); setS({theme:th[0]}); }});
+        })
+      ),
       row("lang","🌐",t("language"),(LANGS.find(function(L){return L[0]===curLang;})||LANGS[0])[1],function(){ toggleExp("lang"); }),
       expand==="lang" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
           LANGS.map(function(L){
             return React.createElement("button",{key:L[0],onClick:function(){ CURLANG=L[0]; setS({lang:L[0]}); },style:segBtn(curLang===L[0])}, L[1]);
           }))),
-      row("theme","🎨",t("theme"),t("th_"+curTheme),function(){ toggleExp("theme"); }),
-      expand==="theme" && React.createElement("div",{className:"set-exp"},
-        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
-          THEMES.map(function(th){
-            return React.createElement("button",{key:th[0],onClick:function(){ applyTheme(th[0]); setS({theme:th[0]}); },
-              style:Object.assign({},segBtn(curTheme===th[0]),{flex:"1 1 40%",display:"flex",alignItems:"center",justifyContent:"center",gap:8})},
-              React.createElement("span",{style:{width:14,height:14,borderRadius:"50%",background:th[2],border:"1px solid rgba(128,128,128,.35)",flex:"0 0 auto"}}), t("th_"+th[0]));
-          }))),
-      row("big","🔠",t("st_bigtext").replace(/^[^ ]+ /,""),null,function(){ applyBigText(!bigOn); setS({bigText:!bigOn}); }, sw(bigOn)),
+      row("big","🔠",t("st_bigtext").replace(/^[^ ]+ /,""),null,function(){ applyBigText(!bigOn); setS({bigText:!bigOn}); }, sw(bigOn))
+    ),
+    grp("easy","🍃",t("v4_set_easy"),"modo sencillo simple mode tutorial tour empezar fácil easy start",null,
       row("simple","🍃",t("st_simple_lbl"),null,function(){
         const sim=!simOn;
         setS({simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[], dashHidden: sim?SIMPLE_DASH_HIDDEN.slice():[]});
       }, sw(simOn)),
-      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",padding:"0 14px 10px"}}, t("st_mode_hint"))
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",padding:"0 14px 10px"}}, t("st_mode_hint")),
+      onTour && row("tour","🎓",t("v4_set_tour"),null,onTour)
     ),
-    // ── Grupo · personalización ──
-    grp("custom","🎛️",t("st_custom"),"personalizar widgets resumen pestañas tabs vista gastos bloques blocks tutorial tour informe report customise",null,
+    // ── Grupo · avanzado (widgets, tabs legacy, etc.) ──
+    grp("custom","🎛️",t("v4_set_adv"),"avanzado advanced personalizar widgets resumen pestañas tabs vista gastos bloques blocks informe report customise",null,
       row("widgets","✎",t("st_widgets"),null,function(){
         // cierra el cajón, salta al Resumen y enciende su modo "Personalizar" (evento → App + Dashboard)
         onClose();
@@ -955,9 +957,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         return row("blocks","🧩",t("st_blocks"),null,function(){ setS({blocksEdit:!on}); }, sw(on));
       })(),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("st_blocks_hint")),
-      onTour && row("tour","🎓",t("st_tour").replace(/^[^ ]+ /,""),null,onTour),
       totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals); })
     ),
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
     // ── Grupo · presupuesto y moneda ──
     grp("budget","💶",t("budget_month"),"presupuesto budget moneda divisa currency euro dolar",eur0(state.budget||0),
       React.createElement("div",{style:{padding:"8px 14px 14px"}},
@@ -1090,145 +1092,68 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
 /* ============================================================
    ONBOARDING — bienvenida para usuarios nuevos (arranque vacío)
    ============================================================ */
-/* Onboarding renovado (2026-07-06): wizard de 4 pasos — (0) bienvenida, (1) presupuesto,
-   (2) cuentas, (3) deuda/inversión opcionales. Arranque vacío; login en nube salta onboarding. */
+/* Onboarding v4 (SPEC §8): 3 pasos claros — claim, demo gastos, presupuesto con stepper.
+   Saltar marca onboarded con presupuesto por defecto; cuentas/deudas se añaden luego en Cartera/Plan. */
 function Onboarding({set, onCloud, onSignup}){
   const [step,setStep]=useState(0);
-  const [budget,setBudget]=useState("");
-  const [accs,setAccs]=useState([]);
-  const [ent,setEnt]=useState("sabadell");
-  const [name,setName]=useState("");
-  const [val,setVal]=useState("");
-  const [debtForm,setDebtForm]=useState({name:"",value:"",monthly:""});
-  const [invForm,setInvForm]=useState({name:"",value:""});
-  const wrap={position:"fixed",inset:0,zIndex:90,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 28px) 22px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
-  const inner={maxWidth:480,margin:"0 auto"};
-  const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
-  const btn={width:"100%",padding:"14px",borderRadius:"14px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:"15px",cursor:"pointer"};
-  const ghost=Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"});
-  const backLk={background:"none",border:"none",color:"var(--blue)",fontSize:14,fontWeight:700,cursor:"pointer",padding:"6px 0",margin:"2px 0 0"};
-  const addAcc=function(){
-    const v=parseFloat(String(val).replace(',','.'))||0;
-    const isTR=(ent==="trade_republic");
-    const hasSpend=accs.some(function(a){ return a.spendFrom; });
-    setAccs(function(a){
-      return a.concat([{id:uid(),ent:ent,name:name||entOf(ent).label,value:v,note:"",spendFrom:(isTR&&!hasSpend)?true:undefined}]);
-    });
-    setName(""); setVal("");
-  };
-  const delAcc=function(id){ setAccs(function(a){ return a.filter(function(x){return x.id!==id;}); }); };
-  const finish=function(){
-    const b=parseFloat(String(budget).replace(',','.'))||0;
-    const base=accs.reduce(function(t,x){ return t+(x.value||0); },0);
-    const debts=[]; const dv=parseFloat(String(debtForm.value).replace(',','.'))||0;
-    const dm=parseFloat(String(debtForm.monthly).replace(',','.'))||0;
-    if((debtForm.name||"").trim() || dv>0 || dm>0){
-      const dn=(debtForm.name||"").trim()||t("db_newdebt");
-      debts.push({id:uid(),ent:"familia",name:dn,value:dv||0,original:dv||0,monthly:dm,asOf:ymNow(),day:1,account:"sabadell",note:t("ob_addedmanual")});
-    }
-    const investments=[]; const iv=parseFloat(String(invForm.value).replace(',','.'))||0;
-    if((invForm.name||"").trim() || iv>0){
-      const iname=(invForm.name||"").trim()||t("inv_new");
-      investments.push({id:uid(),ent:"myinvestor",name:iname,value:iv,cost:iv,cur:"EUR",note:""});
-    }
+  const [budget,setBudget]=useState(700);
+  const wrap={position:"fixed",inset:0,zIndex:90,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 20px) 22px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto",position:"relative"};
+  const finish=function(b){
+    const bud=Math.max(100, Math.round(b||budget)||700);
     try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
     set(function(s){
       return Object.assign({},s,{
-        accounts:accs.slice(), budget:b, monthStartNet:base, history:[base],
-        debts:(s.debts||[]).concat(debts), investments:(s.investments||[]).concat(investments),
+        budget:bud, monthStartNet:0, history:[0],
         onboarded:true, setupHint:true, tourSeen:false,
       });
     });
   };
-  const dots=React.createElement("div",{style:{display:"flex",gap:6,justifyContent:"center",margin:"18px 0 0"}},
-    [0,1,2,3].map(function(i){ return React.createElement("span",{key:i,style:{width:i===step?22:8,height:8,borderRadius:8,background:i===step?"var(--mint)":"var(--line)",transition:"all .25s"}}); }));
-  const feat=function(emoji,k){ return React.createElement("div",{style:{display:"flex",gap:11,alignItems:"flex-start",padding:"11px 12px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)"}},
-    React.createElement("span",{style:{fontSize:20,lineHeight:1.2}},emoji),
-    React.createElement("div",null,
-      React.createElement("div",{style:{fontWeight:800,fontSize:13.5}},t(k+"_t")),
-      React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.45,marginTop:2}},t(k+"_d")))); };
-  const header=React.createElement("div",{style:{display:"flex",alignItems:"center",gap:11,marginBottom:6}},
-    React.createElement("div",{className:"brand-mark"},React.createElement(I.logo,{width:22,height:22})),
-    React.createElement("div",{style:{fontWeight:800,fontSize:20}},"Mi Cartera"));
+  const skip=function(){ finish(budget); };
+  const dots=React.createElement("div",{className:"v4-ob-dots"},
+    [0,1,2].map(function(i){ return React.createElement("span",{key:i,className:i===step?"on":""}); }));
+  const skipBtn=React.createElement("button",{type:"button",className:"v4-ob-skip",onClick:skip},t("v4_ob_skip"));
+  const cta={width:"100%",padding:"16px",borderRadius:"16px",border:"none",background:"linear-gradient(160deg,var(--mint-hi),var(--mint))",color:"var(--on-mint)",fontWeight:800,fontSize:"15.5px",cursor:"pointer",marginTop:22,boxShadow:"0 14px 28px -10px rgba(95,208,138,.45)"};
 
-  // PASO 0 · bienvenida: qué hace la app + recuperar cuenta (reinstalación/cambio de móvil)
   if(step===0) return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
-    header,
-    React.createElement("div",{className:"serif",style:{fontSize:27,margin:"16px 0 6px"}},t("ob_welcome")),
-    React.createElement("div",{style:{color:"var(--muted)",fontSize:14,lineHeight:1.55}},t("ob2_claim")),
-    onCloud && React.createElement("div",{style:{marginTop:16,padding:"14px",borderRadius:14,border:"1px solid var(--mint)",background:"rgba(95,208,138,.08)"}},
-      React.createElement("div",{style:{color:"var(--text)",fontSize:13.5,lineHeight:1.5,marginBottom:10}},t("ob_returning")),
-      React.createElement("button",{style:{width:"100%",padding:"13px",borderRadius:12,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"},onClick:onCloud},t("ob_haveacc")),
-      // Registro a la vista desde el minuto 0 (punto 5): antes solo había "Ya tengo cuenta" y
-      // crear una obligaba a pasar por la pantalla de login y buscar el enlace pequeño.
-      onSignup && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontWeight:800,fontSize:14,cursor:"pointer",marginTop:8},onClick:onSignup},t("ob_signup"))),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr",gap:8,marginTop:18}},
-      feat("✍️","ob2_f1"),
-      feat("📅","ob2_f2"),
-      feat("📈","ob2_f3"),
-      feat("🎯","ob2_f4")),
-    React.createElement("button",{style:Object.assign({},btn,{marginTop:20}),onClick:function(){ setStep(1); }},t("ob2_go")+" →"),
-    dots,
-    React.createElement("div",{style:{textAlign:"center",color:"var(--muted-2)",fontSize:12,marginTop:12}},t("ob_foot"))
+    skipBtn,
+    React.createElement("div",{className:"v4-ob-logo"},React.createElement(I.logo,{width:36,height:36})),
+    React.createElement("h1",{className:"serif v4-ob-title"},t("v4_ob_title1")),
+    React.createElement("p",{className:"v4-ob-sub"},t("v4_ob_sub1")),
+    onCloud && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:18},onClick:onCloud},t("ob_haveacc")),
+    onSignup && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:onSignup},t("ob_signup")),
+    React.createElement("button",{style:cta,onClick:function(){ setStep(1); }},t("ob2_go")+" →"),
+    dots
   ));
 
-  // PASO 1 · presupuesto mensual (con atajos rápidos)
   if(step===1) return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
-    header,
-    React.createElement("button",{style:backLk,onClick:function(){ setStep(0); }},"‹ "+t("bp_back")),
-    React.createElement("div",{className:"serif",style:{fontSize:24,margin:"6px 0 6px"}},t("ob2_budget_t")),
-    React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55}},t("ob2_budget_d")),
-    React.createElement("input",{style:Object.assign({},inp,{marginTop:16,fontSize:22,textAlign:"center",fontWeight:800}),type:"number",inputMode:"decimal",placeholder:"700",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
-    React.createElement("div",{style:{display:"flex",gap:8,marginTop:10}},
-      [300,500,700,1000].map(function(v){ const on=String(v)===String(budget); return React.createElement("button",{key:v,style:Object.assign({},ghost,{marginTop:0,padding:"10px 0",flex:1,fontSize:14,borderColor:on?"var(--mint)":"var(--line)",color:on?"var(--mint)":"var(--text)"}),onClick:function(){ setBudget(String(v)); }}, v+" €"); })),
-    React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:10,lineHeight:1.5}},t("ob2_budget_h")),
-    React.createElement("button",{style:Object.assign({},btn,{marginTop:18}),onClick:function(){ setStep(2); }},t("ob2_next")+" →"),
-    dots
-  ));
-
-  // PASO 2 · cuentas (opcional: puedes empezar vacío y conectarlas luego)
-  if(step===2) return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
-    header,
-    React.createElement("button",{style:backLk,onClick:function(){ setStep(1); }},"‹ "+t("bp_back")),
-    React.createElement("div",{className:"serif",style:{fontSize:24,margin:"6px 0 6px"}},t("ob2_acc_t")),
-    React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55}},t("ob2_acc_d")),
-    React.createElement("div",{style:{marginTop:14}},
-      accs.map(function(a){ return React.createElement("div",{key:a.id,style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:8}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},React.createElement(Mono,{ent:a.ent,size:34}),React.createElement("div",null,React.createElement("div",{style:{fontWeight:700,fontSize:14}},a.name),React.createElement("div",{style:{fontSize:12,color:"var(--muted)"}},entOf(a.ent).label))),
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8}},React.createElement("span",{className:"num",style:{fontWeight:700}},eur(a.value)),React.createElement("button",{onClick:function(){ delAcc(a.id); },style:{background:"none",border:"none",color:"var(--coral)",fontSize:16,cursor:"pointer"}},"×"))
-      ); })),
-    React.createElement("div",{style:{display:"flex",gap:8,marginTop:4}},
-      React.createElement("select",{style:Object.assign({},inp,{flex:"0 0 38%"}),value:ent,onChange:function(e){ setEnt(e.target.value); }}, Object.keys(ENT).filter(function(k){return k!=="familia";}).map(function(k){ return React.createElement("option",{key:k,value:k},ENT[k].label); })),
-      React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob_balance_ph"),inputMode:"decimal",value:val,onChange:function(e){ setVal(e.target.value); }})
+    skipBtn,
+    React.createElement("h1",{className:"serif v4-ob-title"},t("v4_ob_title2")),
+    React.createElement("p",{className:"v4-ob-sub"},t("v4_ob_sub2")),
+    React.createElement("div",{className:"v4-mov rise",style:{animationDelay:".12s",marginTop:22}},
+      React.createElement("div",{className:"tile",style:{background:"rgba(95,208,138,.12)"}},"🛒"),
+      React.createElement("div",{className:"nm"},React.createElement("div",null,t("v4_ob_demo1")),React.createElement("div",{className:"meta"},"Hoy")),
+      React.createElement("div",{className:"am num"},"42,18 €")
     ),
-    React.createElement("input",{style:Object.assign({},inp,{marginTop:8}),placeholder:t("ob_name_ph"),value:name,onChange:function(e){ setName(e.target.value); }}),
-    React.createElement("button",{style:Object.assign({},ghost,{marginTop:10}),onClick:addAcc},t("ob_addacc")),
-    React.createElement("button",{style:Object.assign({},btn,{marginTop:22}),onClick:function(){ setStep(3); }}, accs.length?t("ob2_next")+" →":t("ob2_next")+" →"),
-    React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:10,lineHeight:1.5,textAlign:"center"}},t("ob2_acc_h")),
+    React.createElement("div",{className:"v4-mov rise",style:{animationDelay:".22s"}},
+      React.createElement("div",{className:"tile",style:{background:"rgba(226,192,95,.12)"}},"☕"),
+      React.createElement("div",{className:"nm"},React.createElement("div",null,t("v4_ob_demo2")),React.createElement("div",{className:"meta"},"Ayer")),
+      React.createElement("div",{className:"am num"},"2,40 €")
+    ),
+    React.createElement("button",{style:cta,onClick:function(){ setStep(2); }},t("ob2_next")+" →"),
     dots
   ));
 
-  // PASO 3 · deuda e inversión opcionales (issue #3: wizard completo sin heredar demo)
   return React.createElement("div",{style:wrap},React.createElement("div",{style:inner},
-    header,
-    React.createElement("button",{style:backLk,onClick:function(){ setStep(2); }},"‹ "+t("bp_back")),
-    React.createElement("div",{className:"serif",style:{fontSize:24,margin:"6px 0 6px"}},t("ob3_t")),
-    React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:14}},t("ob3_d")),
-    React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)",marginBottom:10}},
-      React.createElement("div",{style:{fontWeight:800,fontSize:13,marginBottom:8}},t("ob3_debt")),
-      React.createElement("input",{style:Object.assign({},inp,{marginBottom:8}),placeholder:t("ob3_debt_name"),value:debtForm.name,onChange:function(e){ setDebtForm(function(f){ return Object.assign({},f,{name:e.target.value}); }); }}),
-      React.createElement("div",{style:{display:"flex",gap:8}},
-        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob3_debt_val"),inputMode:"decimal",value:debtForm.value,onChange:function(e){ setDebtForm(function(f){ return Object.assign({},f,{value:e.target.value}); }); }}),
-        React.createElement("input",{style:Object.assign({},inp,{flex:1}),placeholder:t("ob3_debt_monthly"),inputMode:"decimal",value:debtForm.monthly,onChange:function(e){ setDebtForm(function(f){ return Object.assign({},f,{monthly:e.target.value}); }); }})
-      )
+    skipBtn,
+    React.createElement("h1",{className:"serif v4-ob-title",style:{fontSize:28}},t("ob2_budget_t")),
+    React.createElement("p",{className:"v4-ob-sub"},t("ob2_budget_d")),
+    React.createElement("div",{className:"v4-ob-stepper"},
+      React.createElement("button",{type:"button","aria-label":"−",onClick:function(){ setBudget(function(b){ return Math.max(100,b-50); }); }},"−"),
+      React.createElement("div",{className:"serif num"}, eur0(budget)),
+      React.createElement("button",{type:"button","aria-label":"+",onClick:function(){ setBudget(function(b){ return b+50; }); }},"+")
     ),
-    React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)"}},
-      React.createElement("div",{style:{fontWeight:800,fontSize:13,marginBottom:8}},t("ob3_inv")),
-      React.createElement("input",{style:Object.assign({},inp,{marginBottom:8}),placeholder:t("ob3_inv_name"),value:invForm.name,onChange:function(e){ setInvForm(function(f){ return Object.assign({},f,{name:e.target.value}); }); }}),
-      React.createElement("input",{style:inp,placeholder:t("ob3_inv_val"),inputMode:"decimal",value:invForm.value,onChange:function(e){ setInvForm(function(f){ return Object.assign({},f,{value:e.target.value}); }); }})
-    ),
-    React.createElement("button",{style:Object.assign({},btn,{marginTop:18}),onClick:finish},t("ob3_finish")),
-    React.createElement("button",{style:Object.assign({},ghost,{marginTop:10}),onClick:finish},t("ob3_skip")),
+    React.createElement("button",{style:cta,onClick:function(){ finish(budget); }},tf("v4_ob_start",{x:budget})),
     dots
   ));
 }

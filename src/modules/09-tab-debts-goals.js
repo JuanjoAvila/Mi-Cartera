@@ -136,65 +136,83 @@ function Debts({state, set, showToast}){
       doAmort(d, parseFloat(String(raw).replace(',','.'))||0);
     });
   };
+  const debtEmoji=function(d){
+    const n=String(d.name||"").toLowerCase();
+    if(/coche|auto|car|seat|bmw/.test(n)) return "🚗";
+    if(/casa|hipo|piso|mort/.test(n)) return "🏠";
+    if(/móvil|movil|phone|móvil|iphone/.test(n)) return "📱";
+    if(/estudio|máster|master|uni/.test(n)) return "🎓";
+    return "💳";
+  };
+  const endsLabel=function(d){
+    const left=debtLeft(d); if(left==null) return null;
+    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+left);
+    return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
+  };
   return React.createElement("div",null,
-    React.createElement("div",{className:"total-bar"},
-      React.createElement("div",null,React.createElement("div",{className:"tl"},t("db_total")),React.createElement("div",{className:"tn num",style:{color:"#E2705F"}},eur(total))),
-      React.createElement("div",{className:"cnt"},tf("db_quota",{x:eur0(monthly)}))
+    React.createElement("div",{className:"v4-card v4-card-hero rise"},
+      React.createElement("div",{className:"v4-micro"},t("v4_debts_hero")),
+      React.createElement("div",{className:"serif num",style:{fontSize:40,fontWeight:550,letterSpacing:"-1px",lineHeight:1.05,marginTop:6,color:"var(--coral)"}},eur(total)),
+      React.createElement("div",{style:{marginTop:12,fontSize:13.5,color:"var(--muted)",lineHeight:1.45}},tf("v4_debts_sub",{x:eur0(monthly)}))
     ),
-    React.createElement(OrderableSections,{tab:"debt",state:state,set:set,
-      onMove:function(id,dir){ set(function(s){ const arr=(s.debts||[]).slice(); const i=arr.findIndex(function(x){ return x.id===id; }); const j=i+dir; if(i<0||j<0||j>=arr.length) return s; const tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; return Object.assign({},s,{debts:arr}); }); },
-      items: state.debts.map(d=>{
+    state.debts.map(function(d){
       const bal=debtBalance(d);
       const paid=Math.max(0,(d.original||bal)-bal);
-      const pct=Math.min(100,(paid/(d.original||bal))*100);
-      const amortNote=(d.amort!=null && d.amort!==d.monthly) ? tf("db_amort_q",{x:eur0(d.amort),y:eur0(d.monthly)}) : tf("db_amort",{x:eur0(debtAmort(d))});
-      const dc=entOf(d.ent).color;   // mismo color para la bolita y la barra
-      return {id:d.id,label:d.name,el:React.createElement(CollapsibleCard,{key:d.id,title:d.name,sub:d.note,dot:dc,storageKey:"debt_"+d.id,
-        right:React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:14}},eur0(bal))},
-        React.createElement("div",{className:"bar"},React.createElement("i",{style:{width:pct+"%",background:"linear-gradient(90deg,"+dc+"88,"+dc+")"}})),
-        React.createElement("div",{className:"debt-meta"},
-          React.createElement("span",null,tf("db_paidoff",{x:eur0(paid),p:Math.round(pct)})),
-          React.createElement("span",null,amortNote)),
-        d.months!=null && React.createElement("div",{className:"debt-meta",style:{color:debtLeft(d)>0?"var(--mint)":"var(--muted-2)"}},
-          React.createElement("span",null, debtLeft(d)>0 ? tf("db_left",{n:debtLeft(d),tot:d.months,x:eur0(d.monthly)}) : t("db_paidoff_done")),
-          d.day && React.createElement("span",null, tf("fj_day_n",{d:d.day}))),
-        (d.balloon>0||d.downPayment>0) && React.createElement("div",{className:"debt-meta",style:{color:"#E2A05F"}},
-          React.createElement("span",null, d.balloon>0?tf("db_balloon_line",{x:eur0(d.balloon)}):""),
-          React.createElement("span",null, d.downPayment>0?tf("db_down_line",{x:eur0(d.downPayment)}):"")),
-        React.createElement("div",{className:"row",style:{marginTop:8}},
-          React.createElement("div",{className:"rl"},React.createElement("div",null,React.createElement("div",{className:"rname"},t("db_pending")),React.createElement("div",{className:"rsub"},t("db_pending_sub")))),
+      const pct=Math.min(100,(paid/(d.original||1))*100);
+      const left=debtLeft(d);
+      const day=debtChargeDay(d);
+      return React.createElement("div",{className:"v4-debt-card rise",key:d.id},
+        React.createElement("div",{className:"v4-debt-top"},
+          React.createElement("span",{className:"v4-debt-emoji"},debtEmoji(d)),
+          React.createElement("div",{style:{flex:1,minWidth:0}},
+            React.createElement("div",{className:"v4-debt-name"},d.name),
+            React.createElement("div",{className:"v4-debt-sub"},
+              [d.monthly?tf("db_quota",{x:eur0(d.monthly)}):null, day?tf("fj_day_n",{d:day}):null, left!=null?tf("db_left",{n:left,tot:d.months||left,x:eur0(d.monthly||0)}):null].filter(Boolean).join(" · ")
+            )
+          ),
           ed.editing
-            ? React.createElement("input",{className:"editv num",value:ed.draft[d.id],inputMode:"decimal",onChange:e=>{const v=e.target.value;ed.setDraft(dr=>Object.assign({},dr,{[d.id]:v}));}})
-            : React.createElement("div",{className:"rval num",style:{color:"#E2705F"}},eur(bal))),
-        !ed.editing && bal>0.005 && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:()=>amortize(d)},"💸 "+t("db_amortize")),
-        ed.editing && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"#E2705F"},onClick:()=>delDebt(d.id)},t("db_delete"))
-      )};
-    })}),
-    React.createElement("button",{className:"btn btn-block "+(ed.editing?"btn-primary":"btn-ghost"),onClick:()=>ed.editing?ed.save():ed.start()}, ed.editing?t("db_savechanges"):t("db_editbalances")),
-    React.createElement(AmortAdvisor,{state:state,set:set,onAmort:doAmort}),
+            ? React.createElement("input",{className:"editv num",value:ed.draft[d.id],inputMode:"decimal",onChange:function(e){const v=e.target.value;ed.setDraft(function(dr){return Object.assign({},dr,{[d.id]:v});});}})
+            : React.createElement("div",{className:"v4-debt-bal serif num"},eur(bal))
+        ),
+        React.createElement("div",{className:"v4-debt-bar"},React.createElement("i",{style:{width:pct+"%"}})),
+        React.createElement("div",{className:"v4-debt-foot"},
+          React.createElement("span",null,tf("db_paidoff",{x:eur0(paid),p:Math.round(pct)})),
+          endsLabel(d) && React.createElement("span",null," · "+endsLabel(d))
+        ),
+        (d.balloon>0||d.downPayment>0) && React.createElement("div",{className:"v4-debt-sub",style:{marginTop:6,color:"var(--tan)"}},
+          d.balloon>0?tf("db_balloon_line",{x:eur0(d.balloon)}):"",
+          d.downPayment>0?(d.balloon>0?" · ":"")+tf("db_down_line",{x:eur0(d.downPayment)}):""),
+        !ed.editing && bal>0.005 && React.createElement("button",{className:"v4-debt-amort",onClick:function(){ amortize(d); }},t("v4_amort_now")),
+        ed.editing && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"var(--coral)"},onClick:function(){ delDebt(d.id); }},t("db_delete"))
+      );
+    }),
+    React.createElement("button",{className:"btn btn-block "+(ed.editing?"btn-primary":"btn-ghost"),style:{marginTop:8},onClick:function(){ ed.editing?ed.save():ed.start(); }}, ed.editing?t("db_savechanges"):t("db_editbalances")),
+    React.createElement("div",{className:"v4-tip"},
+      React.createElement(AmortAdvisor,{state:state,set:set,onAmort:doAmort})
+    ),
     adding
       ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
-          React.createElement("input",{className:"af-in",placeholder:t("db_concept"),value:form.name,onChange:e=>setForm(Object.assign({},form,{name:e.target.value}))}),
+          React.createElement("input",{className:"af-in",placeholder:t("db_concept"),value:form.name,onChange:function(e){ setForm(Object.assign({},form,{name:e.target.value})); }}),
           React.createElement("div",{className:"af-row"},
-            React.createElement("input",{className:"af-in num",placeholder:t("db_amount"),inputMode:"decimal",value:form.value,onChange:e=>setForm(Object.assign({},form,{value:e.target.value}))}),
-            React.createElement("input",{className:"af-in num",placeholder:t("db_quota_ph"),inputMode:"decimal",value:form.monthly,onChange:e=>setForm(Object.assign({},form,{monthly:e.target.value}))})
+            React.createElement("input",{className:"af-in num",placeholder:t("db_amount"),inputMode:"decimal",value:form.value,onChange:function(e){ setForm(Object.assign({},form,{value:e.target.value})); }}),
+            React.createElement("input",{className:"af-in num",placeholder:t("db_quota_ph"),inputMode:"decimal",value:form.monthly,onChange:function(e){ setForm(Object.assign({},form,{monthly:e.target.value})); }})
           ),
           React.createElement("div",{className:"af-row"},
-            React.createElement("input",{className:"af-in num",placeholder:t("db_months_ph"),inputMode:"numeric",value:form.months,onChange:e=>setForm(Object.assign({},form,{months:e.target.value}))}),
-            React.createElement("input",{className:"af-in num",placeholder:t("db_day_ph"),inputMode:"numeric",style:{maxWidth:80},value:form.day,onChange:e=>setForm(Object.assign({},form,{day:e.target.value}))}),
-            React.createElement("select",{className:"af-in",value:form.account,onChange:e=>setForm(Object.assign({},form,{account:e.target.value}))}, banks.map(b=>React.createElement("option",{key:b,value:b},entOf(b).label)))
+            React.createElement("input",{className:"af-in num",placeholder:t("db_months_ph"),inputMode:"numeric",value:form.months,onChange:function(e){ setForm(Object.assign({},form,{months:e.target.value})); }}),
+            React.createElement("input",{className:"af-in num",placeholder:t("db_day_ph"),inputMode:"numeric",style:{maxWidth:80},value:form.day,onChange:function(e){ setForm(Object.assign({},form,{day:e.target.value})); }}),
+            React.createElement("select",{className:"af-in",value:form.account,onChange:function(e){ setForm(Object.assign({},form,{account:e.target.value})); }}, banks.map(function(b){ return React.createElement("option",{key:b,value:b},entOf(b).label); }))
           ),
           React.createElement("div",{className:"af-row"},
-            React.createElement("input",{className:"af-in num",placeholder:t("db_down_ph"),inputMode:"decimal",value:form.down,onChange:e=>setForm(Object.assign({},form,{down:e.target.value}))}),
-            React.createElement("input",{className:"af-in num",placeholder:t("db_balloon_ph"),inputMode:"decimal",value:form.balloon,onChange:e=>setForm(Object.assign({},form,{balloon:e.target.value}))})
+            React.createElement("input",{className:"af-in num",placeholder:t("db_down_ph"),inputMode:"decimal",value:form.down,onChange:function(e){ setForm(Object.assign({},form,{down:e.target.value})); }}),
+            React.createElement("input",{className:"af-in num",placeholder:t("db_balloon_ph"),inputMode:"decimal",value:form.balloon,onChange:function(e){ setForm(Object.assign({},form,{balloon:e.target.value})); }})
           ),
-          React.createElement("input",{className:"af-in num",placeholder:t("db_paid_ph"),inputMode:"numeric",value:form.paid,onChange:e=>setForm(Object.assign({},form,{paid:e.target.value}))}),
+          React.createElement("input",{className:"af-in num",placeholder:t("db_paid_ph"),inputMode:"numeric",value:form.paid,onChange:function(e){ setForm(Object.assign({},form,{paid:e.target.value})); }}),
           React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_paid_hint")),
           React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_financing_hint")),
           React.createElement("div",{className:"hint",style:{fontSize:11,marginTop:2}},t("db_balloon_hint")),
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addDebt},t("db_add"))
         )
-      : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:()=>setAdding(true)},React.createElement(I.plus,{width:16,height:16}),t("db_add")),
+      : React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:function(){ setAdding(true); }},React.createElement(I.plus,{width:16,height:16}),t("db_add")),
     React.createElement("div",{className:"hint",style:{padding:"10px 4px 0"}},t("db_hint"))
   );
 }
@@ -263,31 +281,28 @@ function Goals({state, set, totals, showToast}){
   };
 
   return React.createElement("div",null,
-    goals.length>0 && React.createElement("div",{className:"total-bar"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"tl"},t("gl_total")),
-        React.createElement("div",{className:"tn num",style:{color:"#5FD08A"}},eur(totalSaved))),
-      React.createElement("div",{className:"cnt"},tf("gl_total_sub",{x:eur0(totalTarget)}))
+    React.createElement("div",{className:"v4-card v4-card-hero rise"},
+      React.createElement("div",{className:"v4-micro"},t("v4_goals_hero")),
+      React.createElement("div",{className:"serif num",style:{fontSize:40,fontWeight:550,letterSpacing:"-1px",lineHeight:1.05,marginTop:6,color:"var(--mint)"}},eur(totalSaved)),
+      totalTarget>0 && React.createElement("div",{style:{marginTop:10,fontSize:13.5,color:"var(--muted)"}},tf("gl_total_sub",{x:eur0(totalTarget)}))
     ),
     goals.length===0 && !adding && React.createElement("div",{className:"empty"},
       React.createElement("div",{className:"ttl"},t("gl_empty_t")), t("gl_empty_d")),
 
-    React.createElement(OrderableSections,{tab:"metas",state:state,set:set,
-      onMove:function(id,dir){ set(function(s){ const arr=(s.goals||[]).slice(); const i=arr.findIndex(function(x){ return x.id===id; }); const j=i+dir; if(i<0||j<0||j>=arr.length) return s; const tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; return Object.assign({},s,{goals:arr}); }); },
-      items: goals.map(function(g){
+    goals.map(function(g){
       const pct=goalPct(g); const eta=goalEta(g, tt.ahorroMensual||0); const ed=editing&&drafts[g.id];
-      return {id:g.id,label:(g.emoji||"🎯")+" "+g.name,el:React.createElement("div",{className:"card",key:g.id,style:{padding:"15px 16px"}},
-        React.createElement("div",{className:"goal-top"},
-          React.createElement("span",{className:"goal-emoji"}, ed?ed.emoji:(g.emoji||"🎯")),
+      return React.createElement("div",{className:"v4-goal-card rise",key:g.id},
+        React.createElement("div",{className:"v4-debt-top"},
+          React.createElement("span",{className:"v4-debt-emoji"}, ed?ed.emoji:(g.emoji||"🎯")),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             ed
               ? React.createElement("input",{className:"af-in",value:ed.name,onChange:function(e){ setD(g.id,"name",e.target.value); }})
-              : React.createElement("div",{className:"goal-name"}, g.name, g.done && React.createElement("span",{className:"goal-medal"}," "+t("gl_done_badge"))),
-            !ed && React.createElement("div",{className:"goal-amt num"}, eur0(g.saved||0)+" "+t("gl_of")+" "+eur0(g.target||0))
+              : React.createElement("div",{className:"v4-debt-name"}, g.name, g.done && React.createElement("span",{className:"goal-medal"}," "+t("gl_done_badge"))),
+            !ed && React.createElement("div",{className:"v4-debt-sub"}, eur0(g.saved||0)+" "+t("gl_of")+" "+eur0(g.target||0))
           ),
-          !ed && React.createElement("div",{className:"goal-pct num"}, Math.round(pct)+"%")
+          !ed && React.createElement("div",{className:"serif num",style:{fontSize:22,fontWeight:550,color:"var(--mint)"}}, Math.round(pct)+"%")
         ),
-        React.createElement("div",{className:"bar"},React.createElement("i",{style:{width:pct+"%",background:g.done?"linear-gradient(90deg,#F2C14E,#F2C14E)":"linear-gradient(90deg,var(--mint),var(--mint-bright))"}})),
+        React.createElement("div",{className:"v4-goal-bar"},React.createElement("i",{style:{width:pct+"%",background:g.done?"linear-gradient(90deg,#F2C14E,#F2C14E)":"linear-gradient(90deg,var(--mint),var(--mint-hi))"}})),
         ed
           ? React.createElement(React.Fragment,null,
               React.createElement("div",{className:"af-row",style:{marginTop:10}},
@@ -297,14 +312,14 @@ function Goals({state, set, totals, showToast}){
               React.createElement("input",{className:"af-in",type:"month",style:{marginTop:8},value:ed.deadline,onChange:function(e){ setD(g.id,"deadline",e.target.value); }}),
               React.createElement("input",{className:"af-in num",style:{marginTop:8},placeholder:t("gl_monthly_ph"),inputMode:"decimal",value:ed.monthly,onChange:function(e){ setD(g.id,"monthly",e.target.value); }}),
               React.createElement("div",{style:{marginTop:8}}, emojiPicker(ed.emoji,function(e){ setD(g.id,"emoji",e); })),
-              React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"#E2705F"},onClick:function(){ delGoal(g.id); }},t("gl_delete"))
+              React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10,color:"var(--coral)"},onClick:function(){ delGoal(g.id); }},t("gl_delete"))
             )
           : React.createElement(React.Fragment,null,
-              React.createElement("div",{className:"goal-eta "+eta.cls}, eta.text),
-              !g.done && React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:11},onClick:function(){ contribute(g); }}, t("gl_contribute"))
+              React.createElement("div",{className:"goal-eta "+eta.cls,style:{marginTop:8}}, eta.text),
+              !g.done && React.createElement("button",{className:"v4-goal-cta",onClick:function(){ contribute(g); }}, t("gl_contribute"))
             )
-      )};
-    })}),
+      );
+    }),
 
     goals.length>0 && React.createElement("button",{className:"btn btn-block "+(editing?"btn-primary":"btn-ghost"),style:{marginTop:4},onClick:function(){ editing?saveEdit():startEdit(); }}, editing?t("gl_save"):t("gl_edit")),
 
@@ -322,7 +337,7 @@ function Goals({state, set, totals, showToast}){
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addGoal},t("gl_create")),
           React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAdding(false); setForm(blank); }},t("gl_cancel"))
         )
-      : (!editing || goals.length===0) && React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:function(){ setAdding(true); }},React.createElement(I.plus,{width:16,height:16}),t("gl_new"))
+      : (!editing || goals.length===0) && React.createElement("button",{className:"v4-ghost-add",onClick:function(){ setAdding(true); }},t("v4_goal_new"))
   );
 }
 

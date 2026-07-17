@@ -1,7 +1,7 @@
 /* ============================================================
    TAB: PATRIMONIO
    ============================================================ */
-function Wealth({state, set, totals}){
+function Wealth({state, set, totals, v4Embed}){
   const [delAcc,setDelAcc]=React.useState("");   // id de la cuenta manual pendiente de confirmar borrado
   // Quitar a mano una cuenta manual del patrimonio (la del onboarding no se va sola al desloguear el banco:
   // las manuales viven en state.accounts, no en obAccounts, y bankDisconnect solo purga obAccounts).
@@ -23,8 +23,70 @@ function Wealth({state, set, totals}){
   const accSum=totals.liquid;
   const astSum=state.assets.reduce((a,i)=>a+i.value,0);
   const tt=totals;
+  // En Cartera (v4Embed) pintamos cuentas y bienes planos; inversiones van aparte (Investments).
+  if(v4Embed){
+    const roleLab=function(a){
+      const r=accRole(a);
+      if(r==="fijos") return t("rl_fijos");
+      if(r==="diario") return t("rl_diario");
+      if(r==="ambos") return t("rl_ambos");
+      return a.name||"";
+    };
+    const accRow=function(a){
+      return React.createElement("div",{className:"v4-mov",key:a.id},
+        React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:a.ent,size:44})),
+        React.createElement("div",{className:"nm"},
+          React.createElement("div",null,entOf(a.ent).label),
+          React.createElement("div",{className:"meta"}, roleLab(a)||a.name||"—")
+        ),
+        React.createElement("div",{className:"am num"},eur(accDaily(a)?spendBal(a):(a.value+pn(a))))
+      );
+    };
+    const obRow=function(o){
+      const custom=(state.obLabels||{})[o.key]; const disp=(custom!=null&&custom!=="")?custom:niceObName(o);
+      return React.createElement("div",{className:"v4-mov",key:"ob_"+o.key},
+        React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:o.ent||"",size:44})),
+        React.createElement("div",{className:"nm"},
+          React.createElement("div",null, disp,
+            React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
+          React.createElement("div",{className:"meta"}, entOf(o.ent).label)
+        ),
+        React.createElement("div",{className:"am num"}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
+      );
+    };
+    return React.createElement("div",null,
+      React.createElement("div",{className:"v4-card-list"},
+        state.accounts.map(accRow),
+        (state.obAccounts||[]).map(obRow),
+        React.createElement("button",{className:"edit-link",style:{margin:"8px 4px"},onClick:function(){ accEd.editing?accEd.save():accEd.start(); }},accEd.editing?t("fj_save"):t("fj_edit"))
+      ),
+      // Editor de saldos (mismo motor) cuando se pulsa Editar
+      accEd.editing && React.createElement("div",{className:"add-form",style:{marginTop:8}},
+        state.accounts.map(function(a){
+          return React.createElement("div",{className:"af-row",key:a.id,style:{alignItems:"center"}},
+            React.createElement("span",{style:{flex:1,fontWeight:700}},entOf(a.ent).label),
+            React.createElement("input",{className:"af-in num",style:{width:110},value:accEd.draft[a.id],inputMode:"decimal",onChange:function(e){const v=e.target.value;accEd.setDraft(function(d){return Object.assign({},d,{[a.id]:v});});}})
+          );
+        }),
+        React.createElement("div",{className:"hint"}, t("rl_hint"))
+      ),
+      (state.assets||[]).length>0 && React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"v4-sec-h"}, t("pt_goods")),
+        state.assets.map(function(a){
+          return React.createElement("div",{className:"v4-mov",key:a.id},
+            React.createElement("div",{className:"tile"},a.kind==="piso"?"🏡":"🚙"),
+            React.createElement("div",{className:"nm"},
+              React.createElement("div",null,a.name),
+              a.note && React.createElement("div",{className:"meta"},a.note)
+            ),
+            React.createElement("div",{className:"am num"},eur0(a.value))
+          );
+        })
+      )
+    );
+  }
   return React.createElement("div",null,
-    React.createElement("div",{className:"hero",style:{marginBottom:14}},
+    !v4Embed && React.createElement("div",{className:"hero",style:{marginBottom:14}},
       React.createElement("div",{className:"hero-label"},t("d_networth")),
       (function(){const p=eurParts(tt.netWorth);return React.createElement("div",{className:"hero-amount serif num"},p.ent,React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));})(),
       React.createElement("div",{className:"hero-pills"},
