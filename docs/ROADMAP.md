@@ -1,16 +1,16 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-17 · **v4.0.9** — rediseño UI (SPEC-v4) + pulido gestos/bancos/categorías; Play Store a demanda.
+> Estado a 2026-07-17 · **v4.0.10** — rediseño UI + APK auto-install; Play Store a demanda.
 
 ## Listo para uso diario
 
-Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1+2** (+ fix RLS `0014`), informe mensual, fin de mes en paz, presupuesto por categoría, recibos gordos, widget Android, export JSON + informe imagen, **multi-banco en Gastos** + filtro por banco, tutorial/roles claros, **FX multi-divisa (USD/GBP/CHF + costEur)**, **sugerencia de categoría (KW + IA opcional)**, **diccionario ampliado de comercios** (impuestos/multas, **Pádel**), **Sentry en prod**, perfil pull-down, sheets sin velo negro, brókers en tarjetas planas.
+Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1+2** (+ fix RLS `0014`), informe mensual, fin de mes en paz, presupuesto por categoría, recibos gordos, widget Android, export JSON + informe imagen, **multi-banco en Gastos** + filtro por banco, tutorial/roles claros, **FX multi-divisa (USD/GBP/CHF + costEur)**, **sugerencia de categoría (KW + IA opcional)**, **diccionario ampliado de comercios** (impuestos/multas, **Pádel**), **Sentry en prod**, perfil pull-down, sheets sin velo negro, brókers en tarjetas planas, **APK nueva se ofrece sola** (noti + instalador al abrir).
 
 ## Versión actual (alineación)
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.0.9** |
+| Web / OTA (`VERSION`) | **4.0.10** |
 | APK (`versionName` / `versionCode`) | **4.0.9** / **27** |
 | `public/apk.json` | debe coincidir con el release publicado |
 

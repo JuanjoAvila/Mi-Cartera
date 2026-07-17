@@ -455,6 +455,10 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.10", d:"17 jul 2026", t:"La app nueva llega sola a todos", items:[
+    "📱 Si hay APK nueva, al abrir Mi Cartera se lanza el instalador (tú, tu padre y tu pareja). Solo confirma «Instalar» en Android.",
+    "🔔 La notificación de «app nueva» ya abre el instalador de verdad (antes se confundía con el update web)."
+  ]},
   {v:"4.0.9", d:"17 jul 2026", t:"Verde más vivo + APK 4.0.9 alineado", items:[
     "🌿 El tema verde vuelve a verse más cálido (menos seco/oscuro). Las fichas llevan un velo verdoso suave, no negro.",
     "📱 APK 4.0.9 (versionCode 27): Trade Republic ya no se desconecta solo por un sync fallido al abrir. Instálalo una vez; el resto sigue por OTA."

@@ -315,18 +315,30 @@ function App(){
       }
       return;
     }
+    // APK ANTES que el genérico update|: "update|apk".indexOf("update|")===0 y nunca
+    // llegaba al instalador (feedback 2026-07-17 — padre/pareja tocaban la noti y no pasaba).
+    if(g==="update|apk"){
+      const nat=natPlugin();
+      const run=function(url){
+        if(!nat||!nat.installApk||!url) return;
+        showToast(t("apk_downloading"));
+        nat.installApk({url:url}).then(function(r){
+          if(r&&r.needsPermission) showToast(t("apk_perm"));
+        }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
+      };
+      if(window._mcApkUpdate&&window._mcApkUpdate.url){
+        run(window._mcApkUpdate.url);
+        return;
+      }
+      // Frío: la noti abre la app antes de que el chequeo de apk.json acabe.
+      if(window._mcCheckApkUpdate){
+        window._mcCheckApkUpdate({manual:true, showToast:showToast}).catch(function(){});
+      }
+      return;
+    }
     if(g==="update|ota"||g.indexOf("update|")===0){
       if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
-      return;
-    }
-    if(g==="update|apk"){
-      if(window._mcApkUpdate){
-        const nat=natPlugin();
-        if(nat&&nat.installApk){
-          nat.installApk({url:window._mcApkUpdate.url}).catch(function(){});
-        }
-      }
       return;
     }
     if(g==="gastos" || g.indexOf("exp|")===0){
