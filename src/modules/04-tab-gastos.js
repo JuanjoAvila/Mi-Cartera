@@ -248,10 +248,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
             monthSummary.mode==="net"
               ? tf("v4_gastos_net_in",{month:monthSummary.month})
               : tf("v4_gastos_spent_in",{month:monthSummary.month})),
-          React.createElement("div",{className:"v4-gastos-summary-amount num"+(monthSummary.mode==="net"?(monthSummary.balance>=0?" pos":" neg"):"")},
-            monthSummary.mode==="net"
-              ? ((monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance)))
-              : eur(monthSummary.spent)),
+          // Importe en blanco, sin signo, € al lado (como el patrimonio). El rojo/menos
+          // confundía el «balance» con una alarma (feedback 2026-07-17).
+          (function(){
+            const amt=monthSummary.mode==="net"?Math.abs(monthSummary.balance):monthSummary.spent;
+            const p=eurParts(amt);
+            return React.createElement("div",{className:"v4-gastos-summary-amount num"},
+              p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));
+          })(),
           monthSummary.mode==="net"
             ? React.createElement("div",{className:"v4-gastos-summary-sub"},
                 tf("v4_gastos_split_line",{spent:eur(monthSummary.spent),income:eur(monthSummary.income)}))
@@ -431,14 +435,16 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
             React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:28,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
           )
         ),
-        React.createElement("div",{className:"v4-chips meta-chips wrap"},
+        React.createElement("div",{className:"v4-chips meta-chips wrap",
+          onTouchStart:function(e){ e.stopPropagation(); }, onTouchMove:function(e){ e.stopPropagation(); }},
           React.createElement("span",{className:"v4-chip"}, dateLbl),
           bk && React.createElement("span",{className:"v4-chip"}, entOf(bk).label),
           React.createElement("span",{className:"v4-chip"}, auto?t("v4_exp_auto"):t("v4_exp_manual"))
         ),
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-micro",style:{marginBottom:8}}, t("g_changecat")),
-          React.createElement("div",{className:"v4-chips"},
+          React.createElement("div",{className:"v4-chips",
+            onTouchStart:function(e){ e.stopPropagation(); }, onTouchMove:function(e){ e.stopPropagation(); }},
             CATEGORIES.map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })

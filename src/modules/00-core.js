@@ -77,6 +77,7 @@ const CATEGORIES = [
   { id:"super",      name:"Supermercado",        color:"#5FD08A", icon:"🛒" },
   { id:"pan",        name:"Panadería",           color:"#E0B080", icon:"🥖" },
   { id:"bares",      name:"Bares y restaurantes", color:"#E6C36A", icon:"🍽️" },
+  { id:"cine",       name:"Cine",                color:"#E8A0C8", icon:"🍿" },
   { id:"ocio",       name:"Ocio",                color:"#9BD0E0", icon:"🎬" },
   { id:"transporte", name:"Transporte",          color:"#7FB5E8", icon:"🚇" },
   { id:"parking",    name:"Parking",             color:"#8AA0B8", icon:"🅿️" },
@@ -104,20 +105,20 @@ const MERCHANT_OVERRIDES = {};
 let USER_OVERRIDES = {};
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
 const KW = {
-  // "pan" va ANTES que "bares" (el for..in respeta el orden): si no, "panaderia"/"pasteleria"
-  // caerían en bares al comprobarse primero.
+  // "pan" y "cine" ANTES que "bares": panadería/pastelería y Kinepolis no deben caer en bares.
   pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano"],
+  cine:["cinema","cine","cinesa","yelmo","kinepolis","odeon","mk2","renoir","multicines","entradas.com","atrapalo","ticketmaster","imax"],
   bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin","vending","expendedor"],
   super:["mercadona","lidl","aldi","carrefour","dia","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria"],
   transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing","blablacar","flixbus","moove","bolt","ouigo","iryo","avlo","rodalies","emt ","alsa","avanza","ok mobility","sixt","hertz","europcar"],
   parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal"],
   tasas:["gencat","generalitat","atc ","agencia tributaria","aeat","ajuntament","ayuntamiento","diputacio","diputación","dgt","multa","multa transit","sancion","sanción","tribut","impost","impuesto","tax agency","taxes","ibi","ivtm","basura","residus","residuos","canon agua","canon de l'aigua","tasa","taxa","registro mercantil","registro civil","notaria","notaría","gestoria","gestoría","procurador","abogado","lexnet","catastro","seguretat social","seguridad social","tgss","recaudacion","recaudación","zona bajas emisiones","zbe"],
-  ocio:["cinema","cine","cinesa","yelmo","spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","ticketmaster","decathlon","padel","playtomic","gym","gimnasio","sport","bolera","anthropic","claude","openai","chatgpt","google one","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","hotel","hostal","booking","airbnb","apartament turistic","apartamento turistico","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio"],
+  ocio:["spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","decathlon","padel","playtomic","gym","gimnasio","sport","bolera","anthropic","claude","claude.ai","openai","chatgpt","gpt-","google one","google play","googleplay","play store","playstore","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","cursor","midjourney","perplexity","hotel","hostal","booking","airbnb","apartament turistic","apartamento turistico","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio"],
   compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","amzn","openbank","open bank","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","saona","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis","papeleria","papelería","copisteria","copistería","liberia","libreria","druni","primor","sephora","perfumeria"],
   hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","lampara","tintoreria","tintorería","lavanderia","lavandería","mrw","seur","correos","amazon locker","zooplus","kivet","tiendanimal","miscota"],
   // "pelu" ANTES que salud: peluquería/estética dejan de caer en Salud (categoría propia, backlog 2026-07)
   pelu:["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
-  salud:["farmacia","clinica","medico","dentista","hospital","optica","fisio","masaje"],
+  salud:["farmacia","clinica","clínica","medico","médico","doctor","dra.","dr.","consulta","ambulatorio","urgencias","hospital","optica","óptica","fisio","fisioterapia","masaje","podologo","podólogo","psicologo","psicólogo","psiquiatra","sanitas","adeslas","asisa","dkv","mutua","quiron","quirón","cima","cap ","centro medico","centro médico","laboratorio","analisis","análisis","radiologia","radiología","dentista","dental","ortodoncia","oculista","oftalmo"],
   regalos:["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
 };
 function autoCategory(merchant){
@@ -125,7 +126,20 @@ function autoCategory(merchant){
   const key=c.trim();
   if(USER_OVERRIDES[key]) return USER_OVERRIDES[key];                                        // lo que T\u00da has aprendido a mano
   for(const k in MERCHANT_OVERRIDES){ if(c.indexOf(k)!==-1) return MERCHANT_OVERRIDES[k]; }  // overrides de ejemplo
-  for(const cat in KW){ if(KW[cat].some(k=>c.indexOf(k)!==-1)) return cat; }
+  // Keywords cortas (bar, bus…) con límite de palabra: si no, "Barcelona" caía en bares
+  // por el substring «bar» (bug Kinepolis 2026-07-17).
+  const hit=function(hay, needle){
+    if(needle.length>=4) return hay.indexOf(needle)!==-1;
+    let i=0;
+    while((i=hay.indexOf(needle,i))!==-1){
+      const before=i===0 || /[^a-z0-9]/.test(hay.charAt(i-1));
+      const after=i+needle.length>=hay.length || /[^a-z0-9]/.test(hay.charAt(i+needle.length));
+      if(before && after) return true;
+      i++;
+    }
+    return false;
+  };
+  for(const cat in KW){ if(KW[cat].some(function(k){ return hit(c,k); })) return cat; }
   return "otros";
 }
 function resolveCategory(sheetCat, merchant){

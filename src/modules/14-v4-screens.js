@@ -128,6 +128,7 @@ function BillsManageSheet({open, onClose, state, set, totals}){
 }
 
 function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
+  const [invTools,setInvTools]=useState(false);
   const liq=totals.liquid||0, inv=totals.invested||0, goods=totals.assetsTotal||0;
   const sum=Math.max(0.01, liq+inv+goods);
   const wLiq=(liq/sum)*100, wInv=(inv/sum)*100, wGoods=(goods/sum)*100;
@@ -169,9 +170,29 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
         React.createElement("span",{className:"num",style:{color:"var(--mint)",fontWeight:800,fontSize:13.5}},
           (totals.investedCost>0?(totals.invested-totals.investedCost>=0?"+":"")+eur0(totals.invested-totals.investedCost):"—"))
       ),
-      React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true})
+      React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
+      React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›"),
+      React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})
     )
   );
+}
+
+function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  if(!open) return null;
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"92dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"v4-section-h"},
+          React.createElement("span",{className:"serif",style:{fontSize:19,fontWeight:600}}, t("v4_inv_tools")),
+          React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
+        ),
+        React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_inv_tools_h")),
+        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false})
+      )
+    ), document.body);
 }
 
 /* Sheet FAB «Apuntar» — teclado propio, gasto/ingreso (SPEC §7). */

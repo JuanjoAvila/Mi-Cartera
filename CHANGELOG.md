@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.2] — 2026-07-17
+### Feedback post-4.0.1
+- 👈 Ajustes: shell siempre montado para que el swipe de borde mueva el panel; zona de borde 52 px.
+- 💶 Gastos balance: `eurParts` en blanco sin signo.
+- 🧾 Sheet: bloqueo touch del fondo + chips meta centrados; gestos horizontales no cierran el sheet.
+- 🍿 Categoría `cine` + keywords salud/Claude/Play/Kinepolis (recategoriza «Otros» al cargar).
+- 💼 Inversiones en `v4-mov` como cuentas + hoja «Herramientas de inversión».
+- 👆 Track entre tabs: 0,42 s `cubic-bezier(.32,.72,0,1)`.
+- 📱 Edge-to-edge status + nav transparentes (APK).
+
 ## [4.0.1] — 2026-07-17
 ### Pulido post-4.0.0 (feedback real)
 - 👈 Ajustes tipo Revolut: swipe desde borde izquierdo para abrir, swipe a la izquierda para cerrar; blur/scale del shell (panel hermano, no hijo).
