@@ -8513,6 +8513,10 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.10", d:"17 jul 2026", t:"La app nueva llega sola a todos", items:[
+    "📱 Si hay APK nueva, al abrir Mi Cartera se lanza el instalador (tú, tu padre y tu pareja). Solo confirma «Instalar» en Android.",
+    "🔔 La notificación de «app nueva» ya abre el instalador de verdad (antes se confundía con el update web)."
+  ]},
   {v:"4.0.9", d:"17 jul 2026", t:"Verde más vivo + APK 4.0.9 alineado", items:[
     "🌿 El tema verde vuelve a verse más cálido (menos seco/oscuro). Las fichas llevan un velo verdoso suave, no negro.",
     "📱 APK 4.0.9 (versionCode 27): Trade Republic ya no se desconecta solo por un sync fallido al abrir. Instálalo una vez; el resto sigue por OTA."
@@ -10411,18 +10415,30 @@ function App(){
       }
       return;
     }
+    // APK ANTES que el genérico update|: "update|apk".indexOf("update|")===0 y nunca
+    // llegaba al instalador (feedback 2026-07-17 — padre/pareja tocaban la noti y no pasaba).
+    if(g==="update|apk"){
+      const nat=natPlugin();
+      const run=function(url){
+        if(!nat||!nat.installApk||!url) return;
+        showToast(t("apk_downloading"));
+        nat.installApk({url:url}).then(function(r){
+          if(r&&r.needsPermission) showToast(t("apk_perm"));
+        }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
+      };
+      if(window._mcApkUpdate&&window._mcApkUpdate.url){
+        run(window._mcApkUpdate.url);
+        return;
+      }
+      // Frío: la noti abre la app antes de que el chequeo de apk.json acabe.
+      if(window._mcCheckApkUpdate){
+        window._mcCheckApkUpdate({manual:true, showToast:showToast}).catch(function(){});
+      }
+      return;
+    }
     if(g==="update|ota"||g.indexOf("update|")===0){
       if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
-      return;
-    }
-    if(g==="update|apk"){
-      if(window._mcApkUpdate){
-        const nat=natPlugin();
-        if(nat&&nat.installApk){
-          nat.installApk({url:window._mcApkUpdate.url}).catch(function(){});
-        }
-      }
       return;
     }
     if(g==="gastos" || g.indexOf("exp|")===0){
@@ -11621,6 +11637,7 @@ window._mcCheckApkUpdate=function(opts){
   if(!mc||!mc.appInfo) return Promise.resolve(false);
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
+  var autoInstall=opts&&opts.autoInstall!==false;   // al detectar APK nueva, abre el instalador sola
   return fetch(_mcOtaBASE+"apk.json?ts="+Date.now(),{cache:"no-store"})
     .then(function(r){ return r.json(); })
     .then(function(a){
@@ -11628,14 +11645,24 @@ window._mcCheckApkUpdate=function(opts){
       return mc.appInfo().then(function(info){
         if(!info||!info.versionCode||Number(a.versionCode)<=Number(info.versionCode)) return false;
         var payload={url:a.url, versionName:a.versionName||("v"+a.versionCode)};
-        if(manual){
+        window._mcSignalApkUpdate(payload, !!manual);
+        var startInstall=function(){
           if(toast) toast(tf("st_up_apk",{v:payload.versionName}));
           return mc.installApk({url:payload.url}).then(function(r){
             if(r&&r.needsPermission&&toast) toast(t("apk_perm"));
             return true;
           });
+        };
+        // Manual (Ajustes / deep-link noti) o auto al abrir: mismo camino — Android exige
+        // un «Instalar» del sistema, pero ya no hace falta encontrar el pill (familia 2026-07-17).
+        if(manual || autoInstall){
+          if(manual) return startInstall();
+          return new Promise(function(resolve){
+            setTimeout(function(){
+              startInstall().then(resolve).catch(function(){ resolve(true); });
+            }, 900);
+          });
         }
-        window._mcSignalApkUpdate(payload, false);
         return true;
       });
     }).catch(function(){ return false; });

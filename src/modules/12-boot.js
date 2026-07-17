@@ -174,6 +174,7 @@ window._mcCheckApkUpdate=function(opts){
   if(!mc||!mc.appInfo) return Promise.resolve(false);
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
+  var autoInstall=opts&&opts.autoInstall!==false;   // al detectar APK nueva, abre el instalador sola
   return fetch(_mcOtaBASE+"apk.json?ts="+Date.now(),{cache:"no-store"})
     .then(function(r){ return r.json(); })
     .then(function(a){
@@ -181,14 +182,24 @@ window._mcCheckApkUpdate=function(opts){
       return mc.appInfo().then(function(info){
         if(!info||!info.versionCode||Number(a.versionCode)<=Number(info.versionCode)) return false;
         var payload={url:a.url, versionName:a.versionName||("v"+a.versionCode)};
-        if(manual){
+        window._mcSignalApkUpdate(payload, !!manual);
+        var startInstall=function(){
           if(toast) toast(tf("st_up_apk",{v:payload.versionName}));
           return mc.installApk({url:payload.url}).then(function(r){
             if(r&&r.needsPermission&&toast) toast(t("apk_perm"));
             return true;
           });
+        };
+        // Manual (Ajustes / deep-link noti) o auto al abrir: mismo camino — Android exige
+        // un «Instalar» del sistema, pero ya no hace falta encontrar el pill (familia 2026-07-17).
+        if(manual || autoInstall){
+          if(manual) return startInstall();
+          return new Promise(function(resolve){
+            setTimeout(function(){
+              startInstall().then(resolve).catch(function(){ resolve(true); });
+            }, 900);
+          });
         }
-        window._mcSignalApkUpdate(payload, false);
         return true;
       });
     }).catch(function(){ return false; });

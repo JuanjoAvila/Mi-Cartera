@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.10] — 2026-07-17
+### APK update automático (familia)
+- `_mcCheckApkUpdate`: al detectar `apk.json` más nuevo, abre `installApk` sola (~900 ms) + toast.
+- Deep-link `update|apk`: se comprueba **antes** que el genérico `update|` (bug: la noti de APK aplicaba OTA).
+- `apk.json` sigue en versionCode **27** / 4.0.9 (nativo sin cambios); la web 4.0.10 llega por OTA.
+
 ## [4.0.9] — 2026-07-17
 ### Tono verde + alineación APK/docs
 - Tema verde: fondos un pelín más claros/vivos + glow mint más fuerte en `body`.
