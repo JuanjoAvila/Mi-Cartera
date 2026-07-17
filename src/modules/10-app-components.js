@@ -455,6 +455,11 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.11", d:"17 jul 2026", t:"El perfil baja como en Revolut + TR sin dramas", items:[
+    "👤 El perfil ahora nace del avatar y crece hasta llenar la pantalla mientras el fondo se desenfoca — como en Revolut, también tirando hacia abajo desde Inicio con el dedo.",
+    "🏦 Trade Republic: si la sesión caduca de verdad, la app te lleva directa a reconectar con el teléfono ya puesto (PIN + código y listo). Ya no hay que pulsar «Desconectar».",
+    "📱 APK 4.0.11 (versionCode 28): la sesión de TR se guarda en más momentos (también al salir de la app) para que no «caduque» sola cada dos por tres."
+  ]},
   {v:"4.0.10", d:"17 jul 2026", t:"La app nueva llega sola a todos", items:[
     "📱 Si hay APK nueva, al abrir Mi Cartera se lanza el instalador (tú, tu padre y tu pareja). Solo confirma «Instalar» en Android.",
     "🔔 La notificación de «app nueva» ya abre el instalador de verdad (antes se confundía con el update web)."

@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.11] — 2026-07-17
+### Perfil Revolut de verdad + sesión TR estable
+- 👤 **Perfil escala desde el avatar** (vídeo de referencia en `docs/design/handoff/capturas/revolut-profile-pull/`, local y gitignoreado — es pantalla real del usuario): el panel entero nace como miniatura en el avatar (`transform-origin` medido en JS, vars `--pp-ox/oy/s0`) y crece hasta pantalla completa; el fondo se desenfoca con `backdrop-filter` en `.profile-dim-layer`. Nunca scale/filter en el shell (huecos negros en WebView). Pull-down en Inicio abre siguiendo el dedo; tirar arriba cierra encogiendo al avatar.
+- 🏦 **TR nativo (APK 28):** `restoreCookies` ya no pisa un jar caliente — TR rota `tr_refresh` en cada `/session` y re-inyectar el snapshot viejo «resucitaba» un refresh consumido → 401 real y 2FA. Snapshots extra: `AndroidTR.snap()` tras cada refresh OK, `onPageFinished`+3 s (la SPA de TR rota cookies al arrancar) y `handleOnPause` (última rotación antes de que Android mate el proceso).
+- 🏦 **TR JS:** 401 real → formulario directo con el teléfono recordado (`mc_tr_phone`, solo el teléfono, nunca el PIN) + aviso `tr_expired_re` (es/en/ca). Fuera el «pulsa Desconectar»: ese botón además borra el snapshot bueno.
+
 ## [4.0.10] — 2026-07-17
 ### APK update automático (familia)
 - `_mcCheckApkUpdate`: al detectar `apk.json` más nuevo, abre `installApk` sola (~900 ms) + toast.

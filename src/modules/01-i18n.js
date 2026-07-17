@@ -657,6 +657,7 @@ Object.assign(LANG.es,{
   tr_createnew:"➕ Crear como posición nueva", tr_apply:"Aplicar a {n} posiciones", tr_apply_hint:"Al aplicar: participaciones, valor y coste se re-anclan con lo que dice Trade Republic ahora mismo (es dato en vivo, no hace falta actualizar precios).",
   tr_done:"✓ {n} posiciones actualizadas desde Trade Republic",
   tr_err:"No se pudo conectar con Trade Republic. Revisa teléfono/PIN o el código, e inténtalo otra vez.",
+  tr_expired_re:"Tu sesión de Trade Republic caducó de verdad. Vuelve a conectar: el teléfono ya está puesto — solo PIN y el código nuevo.",
   mi_title:"Conectar MyInvestor", mi_sub:"trae tus fondos indexados",
   mi_expired:"Tu sesión de MyInvestor caducó y no se pudo renovar sola. Vuelve a entrar (usuario recordado): contraseña y, si lo pide, el código SMS.",
   mi_hint:"Usa tu usuario y contraseña de MyInvestor. La contraseña se usa solo para el login y NO se guarda en ningún sitio: solo se guarda la sesión (como cuando entras en su web).",
@@ -724,6 +725,7 @@ Object.assign(LANG.en,{
   mi_err:"Couldn't connect to MyInvestor. Check username/password or the code, and try again.",
   tr_done:"✓ {n} positions updated from Trade Republic",
   tr_err:"Couldn't connect to Trade Republic. Check phone/PIN or the code, and try again.",
+  tr_expired_re:"Your Trade Republic session really expired. Reconnect: your phone is already filled in — just PIN and a fresh code.",
 });
 Object.assign(LANG.ca,{
   tr_title:"Connecta Trade Republic", tr_sub:"un botó · porta les teves posicions",
@@ -779,6 +781,7 @@ Object.assign(LANG.ca,{
   mi_err:"No s'ha pogut connectar amb MyInvestor. Revisa usuari/contrasenya o el codi, i torna-ho a provar.",
   tr_done:"✓ {n} posicions actualitzades des de Trade Republic",
   tr_err:"No s'ha pogut connectar amb Trade Republic. Revisa telèfon/PIN o el codi, i torna-ho a provar.",
+  tr_expired_re:"La teva sessió de Trade Republic ha caducat de debò. Torna a connectar: el telèfon ja està posat — només PIN i el codi nou.",
 });
 // meses traducidos (largos y cortos)
 const MON_I18N = {

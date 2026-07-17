@@ -572,7 +572,7 @@ function App(){
     }
     const dim=document.querySelector(".profile-dim-layer");
     if(dim){
-      dim.style.opacity=String(v*0.9);
+      dim.style.opacity=String(v);   // opacidad = progreso: el blur del backdrop entra en sincronía con el gesto
       if(v>0.02) dim.classList.add("on"); else dim.classList.remove("on");
     }
     try{
@@ -580,13 +580,37 @@ function App(){
       if(av){ if(v>0.02) av.classList.add("pulling"); else av.classList.remove("pulling"); }
     }catch(e){}
   };
+  // Ancla la animación del perfil al avatar REAL (vídeo Revolut 2026-07-17): transform-origin en
+  // su centro y escala inicial = diámetro del avatar / ancho del panel. Se mide en cada apertura
+  // (safe-area, fuente o rotación cambian el rect). offsetWidth/offsetLeft y NO getBoundingClientRect:
+  // el panel puede estar ya escalado y el rect vendría transformado.
+  const profSetOrigin=function(){
+    const el=profileRef.current; if(!el) return;
+    try{
+      const av=document.querySelector(".v4-avatar"); if(!av) return;
+      const a=av.getBoundingClientRect();
+      const w=el.offsetWidth||window.innerWidth||360;
+      const L=el.offsetLeft||0;   // panel fixed centrado (max-width 520): su borde izquierdo real
+      el.style.setProperty("--pp-ox",Math.round(a.left+a.width/2-L)+"px");
+      el.style.setProperty("--pp-oy",Math.round(a.top+a.height/2)+"px");
+      el.style.setProperty("--pp-s0",String(Math.max(0.06,a.width/Math.max(1,w))));
+    }catch(e){}
+  };
+  const profS0=function(){
+    const el=profileRef.current;
+    const v=el?parseFloat(el.style.getPropertyValue("--pp-s0")):NaN;
+    return isNaN(v)?0.12:v;
+  };
   useEffect(function(){
     document.documentElement.classList.toggle("profile-open", !!profileOpen);
     if(!dragging.current && gestureMode.current!=="profile"){
+      if(profileOpen) profSetOrigin();   // re-ancla al avatar ANTES de animar (apertura por tap)
       setProfileProgress(profileOpen?1:0);
       if(profileRef.current){
         profileRef.current.classList.toggle("open", !!profileOpen);
         profileRef.current.style.transform="";
+        profileRef.current.style.opacity="";
+        profileRef.current.style.borderRadius="";
       }
     }
     return function(){ document.documentElement.classList.remove("profile-open"); };
@@ -629,6 +653,7 @@ function App(){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
       pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
       if(pAx.current==="y"&&profileRef.current){
+        profSetOrigin();   // re-mide el avatar por si giró la pantalla desde la apertura
         profileRef.current.classList.add("dragging");
         if(appShellRef.current) appShellRef.current.classList.add("dragging");
       }
@@ -636,11 +661,17 @@ function App(){
     if(pAx.current!=="y") return;
     // Con scroll: primero el contenido; al top, tirar arriba cierra.
     if(profileRef.current && profileRef.current.scrollTop>0){ pDY.current=0; return; }
-    if(ddy>=0){ pDY.current=0; if(profileRef.current) profileRef.current.style.transform="translate3d(0,0,0)"; setProfileProgress(1); return; }
+    if(ddy>=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
     pDY.current=ddy;   // negativo = hacia arriba
     const h=window.innerHeight||700;
     const resist=Math.pow(Math.min(1,Math.max(0,(-ddy)/(h*0.48))),0.88);
-    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-resist*100)+"%,0)";
+    // ENCOGE hacia el avatar (misma curva que la entrada, en reversa) — nada de deslizar.
+    const s0c=profS0(), sc=1-(1-s0c)*resist;
+    if(profileRef.current){
+      profileRef.current.style.transform="scale("+sc+")";
+      profileRef.current.style.opacity=String(1-resist*0.8);
+      profileRef.current.style.borderRadius=Math.round(resist*24)+"px";
+    }
     setProfileProgress(1-resist);
     if(e.cancelable) e.preventDefault();
   };
@@ -654,7 +685,7 @@ function App(){
     const h=window.innerHeight||700;
     const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
     const flick=(dist/dt)>0.45 && dist>24;
-    if(profileRef.current) profileRef.current.style.transform="";
+    if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
     setProfileOpen(!(closeProg>0.22 || flick));
     pAx.current=null; pDY.current=0;
   };
@@ -1072,6 +1103,7 @@ function App(){
         if(atTop||fromAv){
           gestureMode.current="profile";
           setProfileMounted(true);
+          profSetOrigin();   // ancla la miniatura al avatar ANTES del primer frame del gesto
           if(profileRef.current) profileRef.current.classList.add("dragging");
           if(appShellRef.current) appShellRef.current.classList.add("dragging","profile-dim");
         }
@@ -1082,7 +1114,14 @@ function App(){
       // Resistencia (no 1:1): el panel “pesa” un poco, como Revolut.
       const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.55))),0.85);
       pDY.current=ddy;
-      if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-100+resist*100)+"%,0)";
+      // La miniatura del perfil CRECE desde el avatar siguiendo el dedo (vídeo 2026-07-17);
+      // aparece rápido (opacidad ×3) para que no se vea el panel fantasma a medio nacer.
+      const s0o=profS0(), so=s0o+(1-s0o)*resist;
+      if(profileRef.current){
+        profileRef.current.style.transform="scale("+so+")";
+        profileRef.current.style.opacity=String(Math.min(1,resist*3));
+        profileRef.current.style.borderRadius=Math.round((1-resist)*24)+"px";
+      }
       setProfileProgress(resist);
       if(e.cancelable) e.preventDefault();
       return;
@@ -1112,7 +1151,7 @@ function App(){
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
       const open=dist>h*0.16 || ((dist/dt)>0.5 && dist>36);
-      if(profileRef.current) profileRef.current.style.transform="";
+      if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;
@@ -1265,7 +1304,7 @@ function App(){
       onOpenProfile:function(){
         // Montar cerrado un frame y luego abrir: si montas ya con .open no hay animación de entrada.
         setProfileMounted(true);
-        requestAnimationFrame(function(){ requestAnimationFrame(function(){ setProfileOpen(true); }); });
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ profSetOrigin(); setProfileOpen(true); }); });
       },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
       onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
@@ -1346,7 +1385,7 @@ function App(){
       ),
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     ),
-    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"0.9"}:undefined,"aria-hidden":"true"}),
+    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{
       className:"profile-pull"+(profileOpen?" open":""),
       ref:profileRef,

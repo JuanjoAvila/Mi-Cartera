@@ -136,6 +136,13 @@ public class TradeRepublicPlugin extends Plugin {
                 resolveErr(call, "respuesta ilegible de TR");
             }
         }
+
+        // El sync llama esto JUSTO tras renovar sesión (antes de la fase WebSocket): TR rota
+        // tr_refresh en cada /session y el snapshot del final de la llamada llega tarde si
+        // Android mata la app a mitad de sync — el snapshot viejo «resucitaba» un refresh ya
+        // consumido → 401 real y 2FA otra vez (feedback 2026-07-17: «caduca cada dos por tres»).
+        @JavascriptInterface
+        public void snap() { main.post(() -> snapshotCookies()); }
     }
 
     // ---- WebView oculta (perezosa, en el hilo de UI) --------------------------------
@@ -179,6 +186,11 @@ public class TradeRepublicPlugin extends Plugin {
                     @Override public void onPageFinished(WebView v, String url) {
                         loaded = true; loading = false;
                         drainReady();
+                        // La SPA de TR puede rotar tr_session/tr_refresh nada más arrancar (llama a
+                        // /session por su cuenta). Si la app muere antes del snapshot del final de la
+                        // siguiente llamada, esa rotación se perdía → 401 en el próximo frío. Guardamos
+                        // a los 3 s (deja terminar sus fetches de arranque).
+                        main.postDelayed(() -> snapshotCookies(), 3000);
                     }
                     @Override public void onReceivedError(WebView v, WebResourceRequest req, WebResourceError err) {
                         if (req != null && req.isForMainFrame()) { loaded = true; loading = false; drainReady(); }
@@ -229,6 +241,12 @@ public class TradeRepublicPlugin extends Plugin {
         String snap = prefs().getString("cookieSnap", null);
         if (snap == null || snap.isEmpty()) return;
         CookieManager cm = CookieManager.getInstance();
+        // Jar CALIENTE (ya hay tr_refresh vivo) → NO pisar: TR ROTA tr_refresh en cada /session y
+        // el snapshot puede ir por detrás de la rotación; re-inyectarlo «resucita» un refresh ya
+        // consumido → 401 real y 2FA sin motivo (feedback 2026-07-17: «caduca cada dos por tres»).
+        // El restore es SOLO para el arranque en frío, cuando Android tiró las cookies de sesión.
+        String cur = cm.getCookie(SESSION_URL);
+        if (cur != null && cur.contains("tr_refresh=")) return;
         cm.setAcceptCookie(true);
         for (String part : snap.split(";")) {
             String p = part.trim(); if (p.isEmpty()) continue;
@@ -267,6 +285,15 @@ public class TradeRepublicPlugin extends Plugin {
         synchronized (readyQueue) { jobs = new java.util.ArrayList<>(readyQueue); readyQueue.clear(); }
         // pequeño respiro tras cargar: deja al SDK del WAF de la página inicializarse
         for (Runnable r : jobs) main.postDelayed(r, 600);
+    }
+
+    // Al irse la app al fondo (el último aviso antes de que Android pueda matar el proceso)
+    // guardamos la ÚLTIMA rotación de tr_refresh: los snapshots por-llamada no cubren una
+    // muerte a mitad de sync, y un snapshot por detrás de la rotación = 401 en el próximo frío.
+    @Override
+    protected void handleOnPause() {
+        try { if (web != null) snapshotCookies(); } catch (Exception ignored) {}
+        super.handleOnPause();
     }
 
     /** Inyecta un cuerpo JS async cuyo `return` (string JSON) vuelve por AndroidTR.result(id,...). */
@@ -378,7 +405,7 @@ public class TradeRepublicPlugin extends Plugin {
             "const refreshOnce=async()=>{const r=await wfetch('https://api.traderepublic.com/api/v1/auth/web/session',{method:'GET',credentials:'include',headers:{}});return r.status;};" +
             "const refresh=async()=>{const delays=[0,1500,3000,5000];let last='';" +
             "for(let i=0;i<delays.length;i++){if(delays[i])await sleep(delays[i]);if(i>0)await wafToken(true);" +
-            "try{const s=await refreshOnce();if(s===200||s===201)return '';if(s===401){return 'HTTP 401';}last='HTTP '+s;}" +
+            "try{const s=await refreshOnce();if(s===200||s===201){try{AndroidTR.snap()}catch(e){}return '';}if(s===401){return 'HTTP 401';}last='HTTP '+s;}" +
             "catch(e){last=String(e&&e.message||e)+' ['+wafInfo()+']';}}" +
             "return last;};" +
             // Protocolo real de TR (mapeado en vivo 2026-07): connect 31 → "connected";
@@ -425,14 +452,14 @@ public class TradeRepublicPlugin extends Plugin {
             //   wafBlocked (la sesión sigue viva, NO desconectar) — antes esto ponía connected=false
             //   y pedía re-hacer el 2FA sin necesidad (feedback 2026-07-11). El texto conserva el
             //   motivo (p.ej. "Failed to fetch") para que Bridge.result dispare la recarga+reintento.
-            "const refreshForced=async()=>{await wafToken(true);try{const s=await refreshOnce();return (s===200||s===201)?'':('HTTP '+s);}catch(e){return String(e&&e.message||e);}};" +
+            "const refreshForced=async()=>{await wafToken(true);try{const s=await refreshOnce();if(s===200||s===201){try{AndroidTR.snap()}catch(e){}return '';}return 'HTTP '+s;}catch(e){return String(e&&e.message||e);}};" +
             "const rerr=await refresh();" +
-            "if(rerr==='HTTP 401')return JSON.stringify({ok:false,authExpired:true,error:'Tu sesión de TR caducó. Pulsa «Desconectar» y vuelve a conectar.'});" +
+            "if(rerr==='HTTP 401')return JSON.stringify({ok:false,authExpired:true,error:'Tu sesión de TR caducó. Vuelve a conectar: PIN y código nuevo (el teléfono queda puesto).'});" +
             "let r=await trySync();" +
             "if(!r.ok&&r.authExpired&&rerr){if(!(await refreshForced()))r=await trySync();}" +
             "if(!r.ok&&r.authExpired){" +
             "if(rerr){delete r.authExpired;r.wafBlocked=true;r.error='TR aún no deja pasar (control anti-bot · '+rerr+'). Espera unos segundos y vuelve a sincronizar.';}" +
-            "else{r.error='Tu sesión de TR caducó (refresh: ok). Pulsa «Desconectar» y vuelve a conectar.';}}" +
+            "else{r.error='Tu sesión de TR caducó (refresh: ok). Vuelve a conectar: PIN y código nuevo.';}}" +
             "return r;"
         ));
     }
