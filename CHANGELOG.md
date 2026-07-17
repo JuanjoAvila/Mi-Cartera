@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.3] — 2026-07-17
+### Feedback post-4.0.2
+- 🔔 Android: `OtaCheckWorker` (WorkManager, ~15 min) consulta `version.json`/`apk.json` con la app cerrada y dispara noti local; `syncOtaState` evita doble aviso al abrir. **Requiere APK nuevo** (versionCode 24).
+- 👈 Inicio: swipe derecha abre Ajustes en toda la pantalla (no solo ~72 % / borde).
+- ⚙️ SettingsPanel: secciones Apariencia → Dinero → Conexiones → Fácil → App → Avanzado; Actividad admin al final; quitado bloque Sentry de prueba.
+- 💶 Gastos: `.cents` mismo tamaño/color que el entero del balance.
+- 🧾 Sheets: tipografía/teclado/CTA más compactos; `useSheetSwipe` ya cierra desde toda la ficha (scrollTop>0 respeta scroll).
+- 📅 Plan «Ya pagado»: lista completa + flows (nómina/transferencias) pagados; sin agrupar ni Ver más.
+- 💼 InvToolsSheet `toolsMode`: sin total-bar USD, auto-precios, edit manual, brokers duplicados ni soldCash.
+- 👆 Chips Gastos: gate inteligente (al inicio deja tab) + `cancelSwipe`; reset `scrollLeft` al entrar/salir.
+
 ## [4.0.2] — 2026-07-17
 ### Feedback post-4.0.1
 - 👈 Ajustes: shell siempre montado para que el swipe de borde mueva el panel; zona de borde 52 px.

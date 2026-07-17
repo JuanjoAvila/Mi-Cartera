@@ -418,7 +418,7 @@ function Projection({invested, defMonthly}){
   );
 }
 
-function Investments({state, set, fetchPrices, pricing, v4Embed}){
+function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   const fx=state.fx;   // USD→EUR (legacy + display toggle); GBP/CHF van en state.fxRates
   const [editing,setEditing]=useState(false);
   const [showCost,setShowCost]=useState(false);
@@ -427,8 +427,11 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
   const didAuto=useRef(false);
   const hasTickers=state.investments.some(function(i){ return i.ticker; });
   const autoOn=state.settings && state.settings.autoPrices;
+  // Herramientas: sin lista de brókers duplicada, sin editar a mano / USD / auto-precios / líquido vendido
+  // (feedback 2026-07-17). Las acciones solo entran por integración.
+  const toolsOnly=!!toolsMode;
   useEffect(function(){
-    if(autoOn && hasTickers && !didAuto.current){ didAuto.current=true; fetchPrices(true); }
+    if(autoOn && hasTickers && !didAuto.current && !toolsOnly && !v4Embed){ didAuto.current=true; fetchPrices(true); }
   },[]);
   const toggleAuto=()=> set(s=>Object.assign({},s,{settings:Object.assign({},s.settings,{autoPrices:!(s.settings&&s.settings.autoPrices)})}));
   // Solo los brókers donde el usuario TIENE posiciones (antes salían los 3 fijos — a un usuario
@@ -513,7 +516,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
   const typeSegs=typeMeta.filter(function(ty){ return byType[ty[0]]>0; }).map(function(ty){ return {label:t("type_"+ty[0])+" · "+(total>0?Math.round(byType[ty[0]]/total*100):0)+"%", value:byType[ty[0]], color:ty[1]}; });
 
   return React.createElement("div",null,
-    !v4Embed && React.createElement("div",{className:"total-bar"},
+    !v4Embed && !toolsOnly && React.createElement("div",{className:"total-bar"},
       React.createElement("div",null,
         React.createElement("div",{className:"tl"},t("inv_total")),
         React.createElement("div",{className:"tn num"},f2(total)),
@@ -535,11 +538,11 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
           )
     ),
     v4Embed && React.createElement("div",{className:"hint",style:{margin:"4px 2px 10px",lineHeight:1.45}}, t("v4_inv_embed_h")),
-    !editing && hasTickers && !v4Embed && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
+    !editing && hasTickers && !v4Embed && !toolsOnly && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
       React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"✓":""),
       React.createElement("span",null,t("inv_autoprices")+(state.lastPriceSync?tf("inv_lastprice",{d:new Date(state.lastPriceSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):""))
     ),
-    editing && React.createElement("div",{className:"costtoggle",onClick:()=>setShowCost(!showCost)},
+    editing && !toolsOnly && React.createElement("div",{className:"costtoggle",onClick:()=>setShowCost(!showCost)},
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,t("inv_alsoinvested"))
     ),
@@ -683,8 +686,12 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
     !editing && React.createElement(CollapsibleCard,{title:t("inv_manual_t"),sub:t("inv_manual_sub"),dot:"#C9A0E0",defaultOpen:false,storageKey:"inv_manual"},
       React.createElement("div",{className:"hint",style:{lineHeight:1.55}},t("inv_manual_body"))
     )}
-    ]}),
-    React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
+    ].filter(function(it){
+      // Herramientas: sin brókers duplicados ni «editar a mano» (feedback 2026-07-17).
+      if(!toolsOnly) return true;
+      return it.id!=="brokers" && it.id!=="manual";
+    })}),
+    !toolsOnly && React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
       ? t("inv_hint_edit")
       : tf("inv_hint_view",{fx:fx}))
   );

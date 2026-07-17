@@ -50,6 +50,8 @@ import com.getcapacitor.annotation.PermissionCallback;
  *                                (actualización SIN cable; instala encima, mantiene datos).
  *                                { ok:false, needsPermission:true } si falta el permiso
  *                                "instalar apps desconocidas" (se abre el ajuste; reintentar).
+ *   - syncOtaState({version, markNotifiedVer?}) -> alinea versión web con el worker de fondo
+ *                                y evita doble noti (nativo ya avisó ↔ JS al abrir).
  *   - setNotifPrefs({expenseConfirm, bankSyncOnNotif}) -> prefs del lector de notis
  *   - consumeBankSyncPing()   -> { ping } si una noti de banco pidió sync (app en frío)
  *   - evento JS `bankNotif`   -> cuando llega noti de Caixa/Sabadell/… (app en caliente)
@@ -266,6 +268,26 @@ public class MiCarteraPlugin extends Plugin {
                 call.reject("descarga falló: " + e.getMessage());
             }
         }).start();
+    }
+
+    @PluginMethod
+    public void syncOtaState(PluginCall call) {
+        // Alinea la versión web (tras OTA) con el worker en background y evita doble aviso.
+        SharedPreferences sp = getContext().getSharedPreferences(OtaCheckWorker.PREFS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor ed = sp.edit();
+        String ver = call.getString("version");
+        if (ver != null && !ver.isEmpty()) ed.putString(OtaCheckWorker.KEY_CURRENT, ver);
+        String mark = call.getString("markNotifiedVer");
+        if (mark != null && !mark.isEmpty()) ed.putString(OtaCheckWorker.KEY_BG_NOTIFIED, mark);
+        String markApk = call.getString("markNotifiedApk");
+        if (markApk != null && !markApk.isEmpty()) ed.putString(OtaCheckWorker.KEY_BG_APK, markApk);
+        ed.apply();
+        JSObject r = new JSObject();
+        String bg = sp.getString(OtaCheckWorker.KEY_BG_NOTIFIED, null);
+        String bgApk = sp.getString(OtaCheckWorker.KEY_BG_APK, null);
+        if (bg != null) r.put("bgNotifiedVer", bg);
+        if (bgApk != null) r.put("bgNotifiedApk", bgApk);
+        call.resolve(r);
     }
 
     @PluginMethod

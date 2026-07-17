@@ -47,6 +47,8 @@ public class MainActivity extends BridgeActivity {
             }
         } catch (Exception ignored) {}
         stashGoto(getIntent());                      // punto 5: la app se ABRIÓ tocando una noti de gasto
+        // Chequeo OTA/APK en background (app cerrada) — sin esto la noti solo salta al abrir.
+        OtaCheckScheduler.ensure(this);
     }
 
     @Override

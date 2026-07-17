@@ -471,6 +471,16 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.3", d:"17 jul 2026", t:"Ajustes ordenados y aviso de update con la app cerrada", items:[
+    "🔔 Si hay actualización, el móvil te avisa aunque no tengas la app abierta (hace falta instalar el APK nuevo una vez).",
+    "👈 En Inicio, Ajustes se abre deslizando desde casi toda la pantalla (no solo el borde).",
+    "⚙️ Ajustes agrupado por secciones (apariencia, dinero, conexiones…); Actividad (admin) al final y fuera el botón de Sentry.",
+    "💶 En Gastos, céntimos y € del balance van en el mismo blanco que el entero.",
+    "🧾 Ficha de gasto y Apuntar más compactos; tira hacia abajo desde cualquier sitio de la hoja.",
+    "📅 En Plan, «Ya pagado» lista todo lo del mes (incluidos ingresos y transferencias ya hechos).",
+    "💼 Herramientas de inversión sin brókers duplicados, sin editar a mano ni precios USD.",
+    "👆 En Gastos, si las categorías están al inicio, deslizar cambia de pestaña; al volver, los chips vuelven al principio."
+  ]},
   {v:"4.0.2", d:"17 jul 2026", t:"Ajustes con swipe, balance claro y más categorías", items:[
     "👈 Ajustes se abre de verdad deslizando de izquierda a derecha (el panel ya estaba listo para el gesto).",
     "💶 El balance de Gastos va en blanco, sin el menos, y con el € al lado.",
@@ -889,7 +899,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       )
     ),
     React.createElement("input",{style:Object.assign({},inp,{marginTop:12}),placeholder:t("st_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
-    // ── Grupo · general: idioma / tema / letra grande / modo sencillo ──
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_appear")),
     grp("general","🎨",t("v4_set_appear"),"idioma language tema theme color letra grande big text apariencia look",null,
       React.createElement("div",{className:"v4-theme-row","aria-label":t("theme")},
         THEMES.map(function(th){
@@ -907,6 +918,92 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           }))),
       row("big","🔠",t("st_bigtext").replace(/^[^ ]+ /,""),null,function(){ applyBigText(!bigOn); setS({bigText:!bigOn}); }, sw(bigOn))
     ),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_money")),
+    grp("budget","💶",t("budget_month"),"presupuesto budget moneda divisa currency euro dolar",eur0(state.budget||0),
+      React.createElement("div",{style:{padding:"8px 14px 14px"}},
+        React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
+        React.createElement("button",{style:btn,onClick:saveNums},t("save"))
+      ),
+      row("cur","💱",t("currency"),curCur==="EUR"?t("cur_eur"):t("cur_usd"),function(){
+        const c=curCur==="EUR"?"USD":"EUR";
+        setS({currency:c}); showToast(c==="USD"?"Mostrando en $":"Mostrando en €");
+      }),
+      (function(){
+        const gm=(state.settings&&state.settings.gTotalMode)||"split";
+        return React.createElement(React.Fragment,null,
+          row("gview","🧮",t("st_gview"),t(gm==="net"?"st_gview_net":"st_gview_split"),function(){ toggleExp("gview"); }),
+          expand==="gview" && React.createElement("div",{className:"set-exp"},
+            [["split","st_gview_split","st_gview_split_d"],["net","st_gview_net","st_gview_net_d"]].map(function(op){
+              return React.createElement("div",{key:op[0],style:{marginTop:8}},
+                React.createElement("button",{onClick:function(){ setS({gTotalMode:op[0]}); },style:segBtn(gm===op[0])}, (gm===op[0]?"✓ ":"")+t(op[1])),
+                React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"5px 2px 0"}}, t(op[2]))
+              );
+            })
+          )
+        );
+      })()
+    ),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
+    cloud.enabled() && (function(){
+      const links=bankLinks;
+      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
+      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
+      const summary = links===null ? "…"
+        : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
+        : nDead>0 ? tf("bp_summary_exp",{n:nDead})
+        : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
+      return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
+        row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
+      );
+    })(),
+    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
+    !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
+      t("na_body"),
+      React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix")),
+      React.createElement("div",{style:{fontSize:11.5,lineHeight:1.5,marginTop:10,opacity:.85}}, "🔓 "+t("na_restricted"))
+    ),
+    (function(){
+      const nat=natPlugin();
+      if(!nat || !nat.setNotifPrefs) return null;
+      const on=!(state.settings&&state.settings.trNotifyConfirm===false);
+      const bankSyncOn=!(state.settings&&state.settings.bankSyncOnNotif===false);
+      const ingOn=!!(state.settings&&state.settings.trIngest);
+      const toggleIng=function(){
+        if(!ingOn){
+          try{ if(nat.ensureNotifPerm) nat.ensureNotifPerm().catch(function(){}); }catch(e){}
+          let tok=(state.settings&&state.settings.ingestToken);
+          if(!tok){
+            const rnd=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random();
+            tok=String(rnd).replace(/-/g,"")+Math.random().toString(36).slice(2,10);
+          }
+          cloud.setIngestToken(tok).then(function(){
+            const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
+            try{ if(nat.setIngestUrl) return nat.setIngestUrl({url:url}); }catch(e){}
+          }).then(function(){
+            setS({trIngest:true, ingestToken:tok}); showToast(t("st_tring_on"));
+          }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+        } else {
+          try{ if(nat.setIngestUrl) nat.setIngestUrl({url:""}).catch(function(){}); }catch(e){}
+          cloud.clearIngestToken();
+          setS({trIngest:false}); showToast(t("st_tring_off"));
+        }
+      };
+      const aiOn=!!(state.settings&&state.settings.aiCat);
+      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell ia ai categoria",null,
+        row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
+        row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint")),
+        row("banksync",bankSyncOn?"🏦":"🔕",t("st_banksync_notif"),null,function(){ setS({bankSyncOnNotif:!bankSyncOn}); }, sw(bankSyncOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint")),
+        row("aicat",aiOn?"✨":"⚪",t("st_aicat"),null,function(){ setS({aiCat:!aiOn}); }, sw(aiOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_aicat_hint"))
+      );
+    })(),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_easy")),
     grp("easy","🍃",t("v4_set_easy"),"modo sencillo simple mode tutorial tour empezar fácil easy start",null,
       row("simple","🍃",t("st_simple_lbl"),null,function(){
         const sim=!simOn;
@@ -915,10 +1012,42 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",padding:"0 14px 10px"}}, t("st_mode_hint")),
       onTour && row("tour","🎓",t("v4_set_tour"),null,onTour)
     ),
-    // ── Grupo · avanzado (widgets, tabs legacy, etc.) ──
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_app")),
+    grp("news","✨",t("st_news"),"novedades news version sugerencias historial whatsnew","v"+CONFIG.APP_VERSION,
+      row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
+    ),
+    newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
+      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
+    ),
+    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
+      row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
+      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
+    ),
+    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
+      meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
+      row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
+      row("delacc","🗑️",t("st_delete_acc"),null,function(){
+        askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
+          .then(function(ok){
+            if(!ok) return;
+            askText({ title:t("st_delete_acc_pwd"), sub:t("st_delete_acc_pwd_sub"), ph:"••••••••", ok:t("st_delete_acc_ok"), secret:true })
+              .then(function(pwd){
+                if(pwd==null) return;
+                cloud.deleteAccount(String(pwd)).then(function(){
+                  showToast(t("st_delete_acc_done"));
+                  onClose();
+                }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+              });
+          });
+      })
+    ),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_adv")),
     grp("custom","🎛️",t("v4_set_adv"),"avanzado advanced personalizar widgets resumen pestañas tabs vista gastos bloques blocks informe report customise",null,
       row("widgets","✎",t("st_widgets"),null,function(){
-        // cierra el cajón, salta al Resumen y enciende su modo "Personalizar" (evento → App + Dashboard)
         onClose();
         try{ window.dispatchEvent(new CustomEvent("mc-dash-edit")); }catch(e){}
       }),
@@ -955,21 +1084,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           })
         );
       })()),
-      // Vista del total de la pestaña Gastos: desglosado (3.91) o «lo que te queda» (petición 2026-07-11)
-      (function(){
-        const gm=(state.settings&&state.settings.gTotalMode)||"split";
-        return React.createElement(React.Fragment,null,
-          row("gview","🧮",t("st_gview"),t(gm==="net"?"st_gview_net":"st_gview_split"),function(){ toggleExp("gview"); }),
-          expand==="gview" && React.createElement("div",{className:"set-exp"},
-            [["split","st_gview_split","st_gview_split_d"],["net","st_gview_net","st_gview_net_d"]].map(function(op){
-              return React.createElement("div",{key:op[0],style:{marginTop:8}},
-                React.createElement("button",{onClick:function(){ setS({gTotalMode:op[0]}); },style:segBtn(gm===op[0])}, (gm===op[0]?"✓ ":"")+t(op[1])),
-                React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"5px 2px 0"}}, t(op[2]))
-              );
-            })
-          )
-        );
-      })(),
       (function(){
         const on=!!(state.settings&&state.settings.blocksEdit);
         return row("blocks","🧩",t("st_blocks"),null,function(){ setS({blocksEdit:!on}); }, sw(on));
@@ -977,135 +1091,22 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("st_blocks_hint")),
       totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals); })
     ),
-    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
-    // ── Grupo · presupuesto y moneda ──
-    grp("budget","💶",t("budget_month"),"presupuesto budget moneda divisa currency euro dolar",eur0(state.budget||0),
-      React.createElement("div",{style:{padding:"8px 14px 14px"}},
-        React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
-        React.createElement("button",{style:btn,onClick:saveNums},t("save"))
-      ),
-      row("cur","💱",t("currency"),curCur==="EUR"?t("cur_eur"):t("cur_usd"),function(){
-        const c=curCur==="EUR"?"USD":"EUR";
-        setS({currency:c}); showToast(c==="USD"?"Mostrando en $":"Mostrando en €");
-      })
-    ),
-    // ── Tarjeta 4 · bancos (Open Banking) ──
-    cloud.enabled() && (function(){
-      const links=bankLinks;
-      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
-      // Los caducados/rotos se CANTAN aquí (bug CaixaBank 2026-07-11: parecía conectado pero
-      // llevaba semanas caducado y fuera del patrimonio, sin ninguna pista en Ajustes).
-      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
-      const summary = links===null ? "…"
-        : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
-        : nDead>0 ? tf("bp_summary_exp",{n:nDead})
-        : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
-      return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
-        row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
-      );
-    })(),
-    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
-    // ── Tarjeta 5 · notificaciones (solo app nativa) ──
-    !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
-      t("na_body"),
-      React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix")),
-      // Bloqueante 2 del feedback (captura 2026-07-10): Android 13+ BLOQUEA este permiso a las
-      // apps instaladas fuera de la Play Store («ajustes restringidos») — pasos para permitirlo.
-      React.createElement("div",{style:{fontSize:11.5,lineHeight:1.5,marginTop:10,opacity:.85}}, "🔓 "+t("na_restricted"))
-    ),
-    (function(){
-      const nat=natPlugin();
-      if(!nat || !nat.setNotifPrefs) return null;
-      const on=!(state.settings&&state.settings.trNotifyConfirm===false);
-      const bankSyncOn=!(state.settings&&state.settings.bankSyncOnNotif===false);
-      // Apuntado MULTIUSUARIO de TR (0008): activar = generar token propio, guardarlo (ingest_tokens)
-      // y pasar la URL de ingest al lector nativo. Así cada persona apunta sus gastos en SU cuenta.
-      const ingOn=!!(state.settings&&state.settings.trIngest);
-      const toggleIng=function(){
-        if(!ingOn){
-          try{ if(nat.ensureNotifPerm) nat.ensureNotifPerm().catch(function(){}); }catch(e){}
-          let tok=(state.settings&&state.settings.ingestToken);
-          if(!tok){
-            const rnd=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random();
-            tok=String(rnd).replace(/-/g,"")+Math.random().toString(36).slice(2,10);
-          }
-          cloud.setIngestToken(tok).then(function(){
-            const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
-            try{ if(nat.setIngestUrl) return nat.setIngestUrl({url:url}); }catch(e){}
-          }).then(function(){
-            setS({trIngest:true, ingestToken:tok}); showToast(t("st_tring_on"));
-          }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
-        } else {
-          try{ if(nat.setIngestUrl) nat.setIngestUrl({url:""}).catch(function(){}); }catch(e){}
-          cloud.clearIngestToken();
-          setS({trIngest:false}); showToast(t("st_tring_off"));
-        }
-      };
-      const aiOn=!!(state.settings&&state.settings.aiCat);
-      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell ia ai categoria",null,
-        row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
-        row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint")),
-        row("banksync",bankSyncOn?"🏦":"🔕",t("st_banksync_notif"),null,function(){ setS({bankSyncOnNotif:!bankSyncOn}); }, sw(bankSyncOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint")),
-        row("aicat",aiOn?"✨":"⚪",t("st_aicat"),null,function(){ setS({aiCat:!aiOn}); }, sw(aiOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_aicat_hint"))
-      );
-    })(),
-    // ── Tarjeta admin · actividad de los usuarios (SOLO el dueño la ve; RLS re-valida en servidor).
-    // Sin traducir a propósito: es la consola privada del admin.
-    isAdmin && React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
-      React.createElement("div",{className:"sc-title"},"👁 Actividad (solo tú)"),
-      row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
+
+    // Admin al FINAL (fuera del flujo diario). Sentry de prueba quitado: no aporta en móvil.
+    isAdmin && React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"v4-set-sec"}, "Dev"),
+      React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
+        React.createElement("div",{className:"sc-title"},"👁 Actividad"),
+        row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
+      )
     ),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
-    // ── Grupo · Novedades (histórico + sugerencias). La ven todos, también en web. ──
-    grp("news","✨",t("st_news"),"novedades news version sugerencias historial whatsnew","v"+CONFIG.APP_VERSION,
-      row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
-    ),
-    newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
-    // Sentry: captura sigue activa para todos (DSN en CI). El bloque de prueba SOLO al admin
-    // (mismo gate que «Actividad») — feedback 2026-07-16: no asustar a la pareja.
-    isAdmin && CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
-      row("sentry","🧪",t("st_sentry_test"),null,function(){
-        try{ mcCaptureError(new Error("Sentry test Mi Cartera "+CONFIG.APP_VERSION),{kind:"manual_test"}); showToast(t("st_sentry_sent")); }
-        catch(e){ showToast("⚠ "+((e&&e.message)||e)); }
-      }),
-      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_sentry_hint"))
-    ),
-    // ── Grupo · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
-    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
-      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
-      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
-    ),
-    // ── Grupo · copia de seguridad ──
-    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
-      row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
-      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
-    ),
-    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
-      meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
-      row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
-      row("delacc","🗑️",t("st_delete_acc"),null,function(){
-        askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
-          .then(function(ok){
-            if(!ok) return;
-            askText({ title:t("st_delete_acc_pwd"), sub:t("st_delete_acc_pwd_sub"), ph:"••••••••", ok:t("st_delete_acc_ok"), secret:true })
-              .then(function(pwd){
-                if(pwd==null) return;
-                cloud.deleteAccount(String(pwd)).then(function(){
-                  showToast(t("st_delete_acc_done"));
-                  onClose();
-                }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
-              });
-          });
-      })
-    ),
+
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
   );
+
 }
 
 /* ============================================================

@@ -514,7 +514,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-gastos-summary-top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;}
   .v4-gastos-summary-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted-2);}
   .v4-gastos-summary-amount{font-family:'Fraunces',Georgia,serif;font-size:40px;font-weight:550;letter-spacing:-1px;line-height:1.08;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--text);white-space:nowrap;}
-  .v4-gastos-summary-amount .cents{font-size:22px;color:var(--muted);font-weight:550;}
+  /* Mismo blanco y peso que el entero (feedback 2026-07-17: céntimos/€ en gris desentonaban). */
+  .v4-gastos-summary-amount .cents{font-size:40px;color:inherit;font-weight:550;}
   .v4-gastos-summary-budget{text-align:right;color:var(--muted);font-size:13px;font-weight:650;line-height:1.45;padding-bottom:3px;white-space:nowrap;}
   .v4-gastos-summary-left{color:var(--mint);font-weight:800;}
   .v4-gastos-progress{height:10px;border-radius:6px;background:var(--sur2);overflow:hidden;margin-top:16px;}
@@ -590,16 +591,16 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-toggle{display:flex;gap:8px;margin-bottom:12px;}
   .v4-toggle button{flex:1;min-height:48px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);font-weight:700;font-size:15px;}
   .v4-toggle button.on{background:var(--mint);color:var(--on-mint);border-color:var(--mint);}
-  .v4-apuntar-amt{text-align:center;font-size:46px;font-weight:550;letter-spacing:-1px;padding:8px 0 12px;font-variant-numeric:tabular-nums;}
-  .v4-input{width:100%;background:var(--sur);border:1px solid var(--line-soft);border-radius:14px;padding:13px 15px;font-size:16px;color:var(--text);margin-bottom:12px;}
+  .v4-apuntar-amt{text-align:center;font-size:34px;font-weight:550;letter-spacing:-1px;padding:4px 0 10px;font-variant-numeric:tabular-nums;}
+  .v4-input{width:100%;background:var(--sur);border:1px solid var(--line-soft);border-radius:12px;padding:11px 13px;font-size:15px;color:var(--text);margin-bottom:10px;}
   .v4-input:focus{border-color:var(--mint);outline:none;}
   .v4-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:8px;}
   .v4-chip{flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:22px;background:var(--sur);border:1px solid var(--line-soft);font-size:13.5px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;box-sizing:border-box;}
   .v4-chip.on{background:rgba(95,208,138,.16);border-color:var(--mint-deep);color:var(--mint);}
-  .v4-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 14px;}
-  .v4-keys button{height:56px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);font-size:22px;font-weight:600;}
+  .v4-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:6px 0 12px;}
+  .v4-keys button{height:46px;border-radius:12px;background:var(--sur);border:1px solid var(--line-soft);font-size:18px;font-weight:600;}
   .v4-keys button:active{transform:scale(.96);background:var(--sur2);}
-  .v4-cta{width:100%;height:58px;border-radius:16px;border:none;font-size:16px;font-weight:800;cursor:pointer;
+  .v4-cta{width:100%;height:50px;border-radius:14px;border:none;font-size:15px;font-weight:800;cursor:pointer;
     background:linear-gradient(160deg,var(--mint-hi),var(--mint));color:var(--on-mint);
     box-shadow:0 14px 28px -8px rgba(95,208,138,.45);}
   .settings-push,.settings-slide{position:fixed;inset:0;z-index:70;background:var(--bg);max-width:520px;margin:0 auto;overflow-y:auto;
@@ -855,8 +856,11 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-theme-sw.on{border-color:var(--mint-hi);box-shadow:0 0 0 3px rgba(95,208,138,.25);}
   .v4-sheet-row{display:block;width:100%;text-align:left;padding:14px 16px;margin-top:8px;border-radius:14px;border:1px solid var(--line-soft);background:var(--sur);color:var(--text);font-weight:700;font-size:15px;font-family:inherit;cursor:pointer;}
   .v4-sheet-row.on{border-color:var(--mint);background:rgba(95,208,138,.12);color:var(--mint);}
-  .v4-danger{width:100%;margin-top:10px;min-height:48px;border:none;border-radius:14px;background:rgba(226,112,95,.14);color:var(--coral);font-weight:800;font-size:15px;font-family:inherit;cursor:pointer;}
-  .v4-exp-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;}
+  .v4-danger{width:100%;margin-top:10px;min-height:44px;border:none;border-radius:12px;background:rgba(226,112,95,.14);color:var(--coral);font-weight:800;font-size:14px;font-family:inherit;cursor:pointer;}
+  .v4-exp-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;}
+  .v4-exp-head .v4-input{padding:9px 11px;font-size:14.5px;margin-bottom:6px;}
+  .v4-sheet .btn.btn-primary{min-height:46px;font-size:14.5px;border-radius:12px;}
+  .v4-sheet .cardflag{padding:8px 10px;font-size:12px;border-radius:10px;}
   button.v4-mov{width:100%;border:1px solid var(--line-soft);background:var(--sur);color:inherit;font:inherit;text-align:left;cursor:pointer;}
   .set-card>.set-row:first-child{border-top:none;}
   .set-row .sr-ic{font-size:17px;flex:0 0 22px;text-align:center;line-height:1;}
@@ -1750,6 +1754,7 @@ const LANG = {
     v4_ob_start:"Empezar con {x} €/mes",
     v4_set_profile_sync:"sincronizado ✓", v4_set_profile_local:"en este móvil",
     v4_set_appear:"Apariencia", v4_set_easy:"Para empezar fácil", v4_set_conn:"Conexiones",
+    v4_set_money:"Dinero", v4_set_app:"App",
     v4_set_tour:"Ver el tutorial", v4_set_adv:"Avanzado",
     v4_moved_cat:"Movido a {cat}", v4_exp_auto:"entró solo", v4_exp_manual:"a mano",
     v4_exp_del:"Borrar", v4_exp_del_q:"¿Borrar «{name}»?", v4_exp_del_sub:"Esto no se puede deshacer.",
@@ -1837,6 +1842,7 @@ const LANG = {
     v4_ob_start:"Start with {x} €/month",
     v4_set_profile_sync:"synced ✓", v4_set_profile_local:"on this phone",
     v4_set_appear:"Look & feel", v4_set_easy:"Easy start", v4_set_conn:"Connections",
+    v4_set_money:"Money", v4_set_app:"App",
     v4_set_tour:"See the tour", v4_set_adv:"Advanced",
     v4_moved_cat:"Moved to {cat}", v4_exp_auto:"auto", v4_exp_manual:"manual",
     v4_exp_del:"Delete", v4_exp_del_q:"Delete “{name}”?", v4_exp_del_sub:"This can't be undone.",
@@ -1926,6 +1932,7 @@ const LANG = {
     v4_ob_start:"Comença amb {x} €/mes",
     v4_set_profile_sync:"sincronitzat ✓", v4_set_profile_local:"en aquest mòbil",
     v4_set_appear:"Aparença", v4_set_easy:"Per començar fàcil", v4_set_conn:"Connexions",
+    v4_set_money:"Diners", v4_set_app:"App",
     v4_set_tour:"Veure el tutorial", v4_set_adv:"Avançat",
     v4_moved_cat:"Mogut a {cat}", v4_exp_auto:"ha entrat sol", v4_exp_manual:"a mà",
     v4_exp_del:"Esborra", v4_exp_del_q:"Vols esborrar «{name}»?", v4_exp_del_sub:"Això no es pot desfer.",
@@ -4192,8 +4199,8 @@ function useBackClose(open, onClose){
   },[open]);
 }
 
-/* Sheet bottom: swipe hacia abajo para cerrar + bloqueo de scroll del fondo
-   (feedback 2026-07-17: al scrollar categorías se movía Inicio detrás). */
+/* Sheet bottom: swipe hacia abajo para cerrar en TODA la ficha (no solo el asa).
+   Si el contenido está scrolleado, primero sube; al llegar arriba, tira cierra. */
 function useSheetSwipe(open, onClose){
   const sheetRef=useRef(null);
   const startY=useRef(0), startX=useRef(0), dy=useRef(0), dragging=useRef(false), armed=useRef(false), axis=useRef(null);
@@ -4202,7 +4209,6 @@ function useSheetSwipe(open, onClose){
     const prev=document.body.style.overflow;
     document.body.style.overflow="hidden";
     document.documentElement.classList.add("sheet-open");
-    // Bloquea el scroll del track/páginas detrás (touchmove en captura).
     const block=function(e){
       const sheet=sheetRef.current;
       if(sheet && sheet.contains(e.target)) return;
@@ -4217,30 +4223,32 @@ function useSheetSwipe(open, onClose){
   },[open]);
   const onTouchStart=function(e){
     if(!(e.touches&&e.touches[0])) return;
-    const el=sheetRef.current;
-    const handle=e.target&&e.target.closest&&e.target.closest(".v4-sheet-handle");
     const chips=e.target&&e.target.closest&&e.target.closest(".v4-chips");
-    // Chips horizontales: no armes el dismiss (si no, pelean con el scroll lateral).
-    if(chips && !handle){ dragging.current=false; armed.current=false; return; }
-    armed.current=!!handle || !el || el.scrollTop<=0;
+    // Solo bloquea el dismiss si el gesto va a ser scroll horizontal de chips.
+    armed.current=!chips;
     if(!armed.current){ dragging.current=false; return; }
     dragging.current=true; dy.current=0; axis.current=null;
     startY.current=e.touches[0].clientY; startX.current=e.touches[0].clientX;
   };
   const onTouchMove=function(e){
     if(!dragging.current||!armed.current) return;
+    const el=sheetRef.current;
     const t=e.touches[0], ddy=t.clientY-startY.current, ddx=t.clientX-startX.current;
     if(axis.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
-      // Gesto horizontal (categorías) → no cierres el sheet.
       if(Math.abs(ddx)>Math.abs(ddy)*1.1){ dragging.current=false; armed.current=false; return; }
       axis.current="y";
     }
-    if(ddy<=0){ dy.current=0; if(sheetRef.current) sheetRef.current.style.transform=""; return; }
+    // Contenido scrolleado hacia abajo: deja el scroll nativo hasta volver arriba.
+    if(el && el.scrollTop>0){
+      dy.current=0; el.classList.remove("dragging"); el.style.transform="";
+      return;
+    }
+    if(ddy<=0){ dy.current=0; if(el) el.style.transform=""; return; }
     dy.current=ddy;
-    if(sheetRef.current){
-      sheetRef.current.classList.add("dragging");
-      sheetRef.current.style.transform="translate3d(0,"+ddy+"px,0)";
+    if(el){
+      el.classList.add("dragging");
+      el.style.transform="translate3d(0,"+ddy+"px,0)";
     }
     if(e.cancelable) e.preventDefault();
   };
@@ -4252,7 +4260,7 @@ function useSheetSwipe(open, onClose){
       sheetRef.current.classList.remove("dragging");
       sheetRef.current.style.transform="";
     }
-    if(dist>100) onClose();
+    if(dist>90) onClose();
   };
   return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };
 }
@@ -4569,7 +4577,7 @@ function inPreset(d,preset,range,cycleStart){
   if(preset==="custom"){ let ok=true; if(range.from) ok=ok&&d>=new Date(range.from); if(range.to){ const tt=new Date(range.to); tt.setHours(23,59,59); ok=ok&&d<=tt; } return ok; }
   return true;
 }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, focusExp, clearFocus, active}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -4584,12 +4592,49 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
+  const catChipsRef=useRef(null), bankChipsRef=useRef(null);
+  const chipDrag=useRef({sx:0,sy:0,capturing:false});
+  // Chips: bloquea el swipe de tabs al scrollear categorías/bancos; al inicio + dedo a la
+  // izquierda deja pasar el cambio de pestaña (feedback 2026-07-17).
+  const chipSwipe=function(ref){
+    return {
+      onTouchStart:function(e){
+        if(!(e.touches&&e.touches[0])) return;
+        chipDrag.current={sx:e.touches[0].clientX,sy:e.touches[0].clientY,capturing:false};
+      },
+      onTouchMove:function(e){
+        const el=ref.current; if(!el||!(e.touches&&e.touches[0])) return;
+        const dx=e.touches[0].clientX-chipDrag.current.sx, dy=e.touches[0].clientY-chipDrag.current.sy;
+        if(Math.abs(dx)<10 && Math.abs(dy)<10) return;
+        if(Math.abs(dy)>=Math.abs(dx)*1.15) return;
+        const atStart=el.scrollLeft<=3;
+        const atEnd=el.scrollLeft+el.clientWidth>=el.scrollWidth-3;
+        // Al inicio (chips reseteados): deja el swipe de tabs. En cuanto hay scroll interno, bloquea.
+        // Al final + dedo a la derecha: tab anterior (no queda scroll de chips).
+        if(atStart){ chipDrag.current.capturing=false; return; }
+        if(atEnd && dx>0){ chipDrag.current.capturing=false; return; }
+        chipDrag.current.capturing=true;
+        if(cancelSwipe) cancelSwipe();
+        e.stopPropagation();
+      },
+      onTouchEnd:function(e){
+        if(chipDrag.current.capturing) e.stopPropagation();
+        chipDrag.current.capturing=false;
+      }
+    };
+  };
   useEffect(function(){
     if(!active||heavyOk) return;
     var cancelled=false;
     mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 40);
     return function(){ cancelled=true; };
   },[active,heavyOk]);
+  // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
+  // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
+  useEffect(function(){
+    if(catChipsRef.current) catChipsRef.current.scrollLeft=0;
+    if(bankChipsRef.current) bankChipsRef.current.scrollLeft=0;
+  },[active]);
   const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -4845,14 +4890,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
-      React.createElement("div",Object.assign({className:"v4-chips"},stopSwipe),
+      React.createElement("div",Object.assign({className:"v4-chips",ref:catChipsRef},chipSwipe(catChipsRef)),
         React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
         CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
-      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips"},stopSwipe),
+      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
         React.createElement("button",{className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
         bankOpts.map(function(b){
           const on=bankSel.indexOf(b)!==-1;
@@ -4972,10 +5017,10 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
       React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"88dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"v4-exp-head"},
-          React.createElement("div",{className:"tile",style:{width:54,height:54,fontSize:26,borderRadius:16,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
+          React.createElement("div",{className:"tile",style:{width:44,height:44,fontSize:22,borderRadius:14,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("input",{className:"v4-input",style:{marginBottom:6,fontWeight:700},value:editExp.merchant,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
-            React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:28,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
+            React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:22,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
           )
         ),
         React.createElement("div",{className:"v4-chips meta-chips wrap",
@@ -5870,7 +5915,7 @@ function Projection({invested, defMonthly}){
   );
 }
 
-function Investments({state, set, fetchPrices, pricing, v4Embed}){
+function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   const fx=state.fx;   // USD→EUR (legacy + display toggle); GBP/CHF van en state.fxRates
   const [editing,setEditing]=useState(false);
   const [showCost,setShowCost]=useState(false);
@@ -5879,8 +5924,11 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
   const didAuto=useRef(false);
   const hasTickers=state.investments.some(function(i){ return i.ticker; });
   const autoOn=state.settings && state.settings.autoPrices;
+  // Herramientas: sin lista de brókers duplicada, sin editar a mano / USD / auto-precios / líquido vendido
+  // (feedback 2026-07-17). Las acciones solo entran por integración.
+  const toolsOnly=!!toolsMode;
   useEffect(function(){
-    if(autoOn && hasTickers && !didAuto.current){ didAuto.current=true; fetchPrices(true); }
+    if(autoOn && hasTickers && !didAuto.current && !toolsOnly && !v4Embed){ didAuto.current=true; fetchPrices(true); }
   },[]);
   const toggleAuto=()=> set(s=>Object.assign({},s,{settings:Object.assign({},s.settings,{autoPrices:!(s.settings&&s.settings.autoPrices)})}));
   // Solo los brókers donde el usuario TIENE posiciones (antes salían los 3 fijos — a un usuario
@@ -5965,7 +6013,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
   const typeSegs=typeMeta.filter(function(ty){ return byType[ty[0]]>0; }).map(function(ty){ return {label:t("type_"+ty[0])+" · "+(total>0?Math.round(byType[ty[0]]/total*100):0)+"%", value:byType[ty[0]], color:ty[1]}; });
 
   return React.createElement("div",null,
-    !v4Embed && React.createElement("div",{className:"total-bar"},
+    !v4Embed && !toolsOnly && React.createElement("div",{className:"total-bar"},
       React.createElement("div",null,
         React.createElement("div",{className:"tl"},t("inv_total")),
         React.createElement("div",{className:"tn num"},f2(total)),
@@ -5987,11 +6035,11 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
           )
     ),
     v4Embed && React.createElement("div",{className:"hint",style:{margin:"4px 2px 10px",lineHeight:1.45}}, t("v4_inv_embed_h")),
-    !editing && hasTickers && !v4Embed && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
+    !editing && hasTickers && !v4Embed && !toolsOnly && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
       React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"✓":""),
       React.createElement("span",null,t("inv_autoprices")+(state.lastPriceSync?tf("inv_lastprice",{d:new Date(state.lastPriceSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):""))
     ),
-    editing && React.createElement("div",{className:"costtoggle",onClick:()=>setShowCost(!showCost)},
+    editing && !toolsOnly && React.createElement("div",{className:"costtoggle",onClick:()=>setShowCost(!showCost)},
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,t("inv_alsoinvested"))
     ),
@@ -6135,8 +6183,12 @@ function Investments({state, set, fetchPrices, pricing, v4Embed}){
     !editing && React.createElement(CollapsibleCard,{title:t("inv_manual_t"),sub:t("inv_manual_sub"),dot:"#C9A0E0",defaultOpen:false,storageKey:"inv_manual"},
       React.createElement("div",{className:"hint",style:{lineHeight:1.55}},t("inv_manual_body"))
     )}
-    ]}),
-    React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
+    ].filter(function(it){
+      // Herramientas: sin brókers duplicados ni «editar a mano» (feedback 2026-07-17).
+      if(!toolsOnly) return true;
+      return it.id!=="brokers" && it.id!=="manual";
+    })}),
+    !toolsOnly && React.createElement("div",{className:"hint",style:{padding:"0 4px"}}, editing
       ? t("inv_hint_edit")
       : tf("inv_hint_view",{fx:fx}))
   );
@@ -8235,6 +8287,16 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.3", d:"17 jul 2026", t:"Ajustes ordenados y aviso de update con la app cerrada", items:[
+    "🔔 Si hay actualización, el móvil te avisa aunque no tengas la app abierta (hace falta instalar el APK nuevo una vez).",
+    "👈 En Inicio, Ajustes se abre deslizando desde casi toda la pantalla (no solo el borde).",
+    "⚙️ Ajustes agrupado por secciones (apariencia, dinero, conexiones…); Actividad (admin) al final y fuera el botón de Sentry.",
+    "💶 En Gastos, céntimos y € del balance van en el mismo blanco que el entero.",
+    "🧾 Ficha de gasto y Apuntar más compactos; tira hacia abajo desde cualquier sitio de la hoja.",
+    "📅 En Plan, «Ya pagado» lista todo lo del mes (incluidos ingresos y transferencias ya hechos).",
+    "💼 Herramientas de inversión sin brókers duplicados, sin editar a mano ni precios USD.",
+    "👆 En Gastos, si las categorías están al inicio, deslizar cambia de pestaña; al volver, los chips vuelven al principio."
+  ]},
   {v:"4.0.2", d:"17 jul 2026", t:"Ajustes con swipe, balance claro y más categorías", items:[
     "👈 Ajustes se abre de verdad deslizando de izquierda a derecha (el panel ya estaba listo para el gesto).",
     "💶 El balance de Gastos va en blanco, sin el menos, y con el € al lado.",
@@ -8653,7 +8715,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       )
     ),
     React.createElement("input",{style:Object.assign({},inp,{marginTop:12}),placeholder:t("st_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
-    // ── Grupo · general: idioma / tema / letra grande / modo sencillo ──
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_appear")),
     grp("general","🎨",t("v4_set_appear"),"idioma language tema theme color letra grande big text apariencia look",null,
       React.createElement("div",{className:"v4-theme-row","aria-label":t("theme")},
         THEMES.map(function(th){
@@ -8671,6 +8734,92 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           }))),
       row("big","🔠",t("st_bigtext").replace(/^[^ ]+ /,""),null,function(){ applyBigText(!bigOn); setS({bigText:!bigOn}); }, sw(bigOn))
     ),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_money")),
+    grp("budget","💶",t("budget_month"),"presupuesto budget moneda divisa currency euro dolar",eur0(state.budget||0),
+      React.createElement("div",{style:{padding:"8px 14px 14px"}},
+        React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
+        React.createElement("button",{style:btn,onClick:saveNums},t("save"))
+      ),
+      row("cur","💱",t("currency"),curCur==="EUR"?t("cur_eur"):t("cur_usd"),function(){
+        const c=curCur==="EUR"?"USD":"EUR";
+        setS({currency:c}); showToast(c==="USD"?"Mostrando en $":"Mostrando en €");
+      }),
+      (function(){
+        const gm=(state.settings&&state.settings.gTotalMode)||"split";
+        return React.createElement(React.Fragment,null,
+          row("gview","🧮",t("st_gview"),t(gm==="net"?"st_gview_net":"st_gview_split"),function(){ toggleExp("gview"); }),
+          expand==="gview" && React.createElement("div",{className:"set-exp"},
+            [["split","st_gview_split","st_gview_split_d"],["net","st_gview_net","st_gview_net_d"]].map(function(op){
+              return React.createElement("div",{key:op[0],style:{marginTop:8}},
+                React.createElement("button",{onClick:function(){ setS({gTotalMode:op[0]}); },style:segBtn(gm===op[0])}, (gm===op[0]?"✓ ":"")+t(op[1])),
+                React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"5px 2px 0"}}, t(op[2]))
+              );
+            })
+          )
+        );
+      })()
+    ),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
+    cloud.enabled() && (function(){
+      const links=bankLinks;
+      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
+      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
+      const summary = links===null ? "…"
+        : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
+        : nDead>0 ? tf("bp_summary_exp",{n:nDead})
+        : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
+      return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
+        row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
+      );
+    })(),
+    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
+    !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
+      t("na_body"),
+      React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix")),
+      React.createElement("div",{style:{fontSize:11.5,lineHeight:1.5,marginTop:10,opacity:.85}}, "🔓 "+t("na_restricted"))
+    ),
+    (function(){
+      const nat=natPlugin();
+      if(!nat || !nat.setNotifPrefs) return null;
+      const on=!(state.settings&&state.settings.trNotifyConfirm===false);
+      const bankSyncOn=!(state.settings&&state.settings.bankSyncOnNotif===false);
+      const ingOn=!!(state.settings&&state.settings.trIngest);
+      const toggleIng=function(){
+        if(!ingOn){
+          try{ if(nat.ensureNotifPerm) nat.ensureNotifPerm().catch(function(){}); }catch(e){}
+          let tok=(state.settings&&state.settings.ingestToken);
+          if(!tok){
+            const rnd=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random();
+            tok=String(rnd).replace(/-/g,"")+Math.random().toString(36).slice(2,10);
+          }
+          cloud.setIngestToken(tok).then(function(){
+            const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
+            try{ if(nat.setIngestUrl) return nat.setIngestUrl({url:url}); }catch(e){}
+          }).then(function(){
+            setS({trIngest:true, ingestToken:tok}); showToast(t("st_tring_on"));
+          }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+        } else {
+          try{ if(nat.setIngestUrl) nat.setIngestUrl({url:""}).catch(function(){}); }catch(e){}
+          cloud.clearIngestToken();
+          setS({trIngest:false}); showToast(t("st_tring_off"));
+        }
+      };
+      const aiOn=!!(state.settings&&state.settings.aiCat);
+      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell ia ai categoria",null,
+        row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
+        row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint")),
+        row("banksync",bankSyncOn?"🏦":"🔕",t("st_banksync_notif"),null,function(){ setS({bankSyncOnNotif:!bankSyncOn}); }, sw(bankSyncOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint")),
+        row("aicat",aiOn?"✨":"⚪",t("st_aicat"),null,function(){ setS({aiCat:!aiOn}); }, sw(aiOn)),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_aicat_hint"))
+      );
+    })(),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_easy")),
     grp("easy","🍃",t("v4_set_easy"),"modo sencillo simple mode tutorial tour empezar fácil easy start",null,
       row("simple","🍃",t("st_simple_lbl"),null,function(){
         const sim=!simOn;
@@ -8679,10 +8828,42 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",padding:"0 14px 10px"}}, t("st_mode_hint")),
       onTour && row("tour","🎓",t("v4_set_tour"),null,onTour)
     ),
-    // ── Grupo · avanzado (widgets, tabs legacy, etc.) ──
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_app")),
+    grp("news","✨",t("st_news"),"novedades news version sugerencias historial whatsnew","v"+CONFIG.APP_VERSION,
+      row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
+    ),
+    newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
+      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
+    ),
+    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
+      row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
+      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
+    ),
+    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
+      meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
+      row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
+      row("delacc","🗑️",t("st_delete_acc"),null,function(){
+        askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
+          .then(function(ok){
+            if(!ok) return;
+            askText({ title:t("st_delete_acc_pwd"), sub:t("st_delete_acc_pwd_sub"), ph:"••••••••", ok:t("st_delete_acc_ok"), secret:true })
+              .then(function(pwd){
+                if(pwd==null) return;
+                cloud.deleteAccount(String(pwd)).then(function(){
+                  showToast(t("st_delete_acc_done"));
+                  onClose();
+                }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+              });
+          });
+      })
+    ),
+
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_adv")),
     grp("custom","🎛️",t("v4_set_adv"),"avanzado advanced personalizar widgets resumen pestañas tabs vista gastos bloques blocks informe report customise",null,
       row("widgets","✎",t("st_widgets"),null,function(){
-        // cierra el cajón, salta al Resumen y enciende su modo "Personalizar" (evento → App + Dashboard)
         onClose();
         try{ window.dispatchEvent(new CustomEvent("mc-dash-edit")); }catch(e){}
       }),
@@ -8719,21 +8900,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           })
         );
       })()),
-      // Vista del total de la pestaña Gastos: desglosado (3.91) o «lo que te queda» (petición 2026-07-11)
-      (function(){
-        const gm=(state.settings&&state.settings.gTotalMode)||"split";
-        return React.createElement(React.Fragment,null,
-          row("gview","🧮",t("st_gview"),t(gm==="net"?"st_gview_net":"st_gview_split"),function(){ toggleExp("gview"); }),
-          expand==="gview" && React.createElement("div",{className:"set-exp"},
-            [["split","st_gview_split","st_gview_split_d"],["net","st_gview_net","st_gview_net_d"]].map(function(op){
-              return React.createElement("div",{key:op[0],style:{marginTop:8}},
-                React.createElement("button",{onClick:function(){ setS({gTotalMode:op[0]}); },style:segBtn(gm===op[0])}, (gm===op[0]?"✓ ":"")+t(op[1])),
-                React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"5px 2px 0"}}, t(op[2]))
-              );
-            })
-          )
-        );
-      })(),
       (function(){
         const on=!!(state.settings&&state.settings.blocksEdit);
         return row("blocks","🧩",t("st_blocks"),null,function(){ setS({blocksEdit:!on}); }, sw(on));
@@ -8741,135 +8907,22 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("st_blocks_hint")),
       totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals); })
     ),
-    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
-    // ── Grupo · presupuesto y moneda ──
-    grp("budget","💶",t("budget_month"),"presupuesto budget moneda divisa currency euro dolar",eur0(state.budget||0),
-      React.createElement("div",{style:{padding:"8px 14px 14px"}},
-        React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
-        React.createElement("button",{style:btn,onClick:saveNums},t("save"))
-      ),
-      row("cur","💱",t("currency"),curCur==="EUR"?t("cur_eur"):t("cur_usd"),function(){
-        const c=curCur==="EUR"?"USD":"EUR";
-        setS({currency:c}); showToast(c==="USD"?"Mostrando en $":"Mostrando en €");
-      })
-    ),
-    // ── Tarjeta 4 · bancos (Open Banking) ──
-    cloud.enabled() && (function(){
-      const links=bankLinks;
-      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
-      // Los caducados/rotos se CANTAN aquí (bug CaixaBank 2026-07-11: parecía conectado pero
-      // llevaba semanas caducado y fuera del patrimonio, sin ninguna pista en Ajustes).
-      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
-      const summary = links===null ? "…"
-        : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
-        : nDead>0 ? tf("bp_summary_exp",{n:nDead})
-        : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
-      return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
-        row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
-      );
-    })(),
-    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
-    // ── Tarjeta 5 · notificaciones (solo app nativa) ──
-    !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
-      t("na_body"),
-      React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix")),
-      // Bloqueante 2 del feedback (captura 2026-07-10): Android 13+ BLOQUEA este permiso a las
-      // apps instaladas fuera de la Play Store («ajustes restringidos») — pasos para permitirlo.
-      React.createElement("div",{style:{fontSize:11.5,lineHeight:1.5,marginTop:10,opacity:.85}}, "🔓 "+t("na_restricted"))
-    ),
-    (function(){
-      const nat=natPlugin();
-      if(!nat || !nat.setNotifPrefs) return null;
-      const on=!(state.settings&&state.settings.trNotifyConfirm===false);
-      const bankSyncOn=!(state.settings&&state.settings.bankSyncOnNotif===false);
-      // Apuntado MULTIUSUARIO de TR (0008): activar = generar token propio, guardarlo (ingest_tokens)
-      // y pasar la URL de ingest al lector nativo. Así cada persona apunta sus gastos en SU cuenta.
-      const ingOn=!!(state.settings&&state.settings.trIngest);
-      const toggleIng=function(){
-        if(!ingOn){
-          try{ if(nat.ensureNotifPerm) nat.ensureNotifPerm().catch(function(){}); }catch(e){}
-          let tok=(state.settings&&state.settings.ingestToken);
-          if(!tok){
-            const rnd=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random();
-            tok=String(rnd).replace(/-/g,"")+Math.random().toString(36).slice(2,10);
-          }
-          cloud.setIngestToken(tok).then(function(){
-            const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
-            try{ if(nat.setIngestUrl) return nat.setIngestUrl({url:url}); }catch(e){}
-          }).then(function(){
-            setS({trIngest:true, ingestToken:tok}); showToast(t("st_tring_on"));
-          }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
-        } else {
-          try{ if(nat.setIngestUrl) nat.setIngestUrl({url:""}).catch(function(){}); }catch(e){}
-          cloud.clearIngestToken();
-          setS({trIngest:false}); showToast(t("st_tring_off"));
-        }
-      };
-      const aiOn=!!(state.settings&&state.settings.aiCat);
-      return grp("notifs","🔔",t("st_notifs"),"notificaciones notifications apunte automatico gastos trade republic avisos banco sync caixabank sabadell ia ai categoria",null,
-        row("tring",ingOn?"🟢":"⚪",t("st_tring"),null,toggleIng, sw(ingOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_tring_hint")),
-        row("trnotif",on?"🔔":"🔕",t("st_trnotif"),null,function(){ setS({trNotifyConfirm:!on}); }, sw(on)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_trnotif_hint")),
-        row("banksync",bankSyncOn?"🏦":"🔕",t("st_banksync_notif"),null,function(){ setS({bankSyncOnNotif:!bankSyncOn}); }, sw(bankSyncOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_banksync_notif_hint")),
-        row("aicat",aiOn?"✨":"⚪",t("st_aicat"),null,function(){ setS({aiCat:!aiOn}); }, sw(aiOn)),
-        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_aicat_hint"))
-      );
-    })(),
-    // ── Tarjeta admin · actividad de los usuarios (SOLO el dueño la ve; RLS re-valida en servidor).
-    // Sin traducir a propósito: es la consola privada del admin.
-    isAdmin && React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
-      React.createElement("div",{className:"sc-title"},"👁 Actividad (solo tú)"),
-      row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
+
+    // Admin al FINAL (fuera del flujo diario). Sentry de prueba quitado: no aporta en móvil.
+    isAdmin && React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"v4-set-sec"}, "Dev"),
+      React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
+        React.createElement("div",{className:"sc-title"},"👁 Actividad"),
+        row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
+      )
     ),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
-    // ── Grupo · Novedades (histórico + sugerencias). La ven todos, también en web. ──
-    grp("news","✨",t("st_news"),"novedades news version sugerencias historial whatsnew","v"+CONFIG.APP_VERSION,
-      row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
-    ),
-    newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
-    // Sentry: captura sigue activa para todos (DSN en CI). El bloque de prueba SOLO al admin
-    // (mismo gate que «Actividad») — feedback 2026-07-16: no asustar a la pareja.
-    isAdmin && CONFIG.SENTRY_DSN && grp("sentry","🛡️",t("st_sentry"),"sentry crash error monitoreo",null,
-      row("sentry","🧪",t("st_sentry_test"),null,function(){
-        try{ mcCaptureError(new Error("Sentry test Mi Cartera "+CONFIG.APP_VERSION),{kind:"manual_test"}); showToast(t("st_sentry_sent")); }
-        catch(e){ showToast("⚠ "+((e&&e.message)||e)); }
-      }),
-      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_sentry_hint"))
-    ),
-    // ── Grupo · actualizaciones (solo app nativa: en web el SW se encarga solo) ──
-    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
-      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
-      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
-    ),
-    // ── Grupo · copia de seguridad ──
-    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
-      row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
-      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
-    ),
-    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
-      meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
-      row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
-      row("delacc","🗑️",t("st_delete_acc"),null,function(){
-        askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
-          .then(function(ok){
-            if(!ok) return;
-            askText({ title:t("st_delete_acc_pwd"), sub:t("st_delete_acc_pwd_sub"), ph:"••••••••", ok:t("st_delete_acc_ok"), secret:true })
-              .then(function(pwd){
-                if(pwd==null) return;
-                cloud.deleteAccount(String(pwd)).then(function(){
-                  showToast(t("st_delete_acc_done"));
-                  onClose();
-                }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
-              });
-          });
-      })
-    ),
+
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
   );
+
 }
 
 /* ============================================================
@@ -9431,7 +9484,6 @@ function PlanTab({state, set, totals, showToast, simple}){
    simulador, conciliación…) vive SOLO dentro de la hoja «Gestionar» — mezclarlo aquí abajo
    duplicaba próximos cargos y desglose de banco que ya se ven arriba (feedback 2026-07-17). */
 function PlanBills({state, set, totals, manageOpen, setManageOpen}){
-  const [paidExpanded,setPaidExpanded]=useState(false);
   const month=totals.curMonth, year=totals.curYear, today=totals.today;
   const charges=[];
   (state.fixed||[]).forEach(function(e){
@@ -9448,21 +9500,25 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
     const balloon=debtBalloonIn(d,year,month);
     if(balloon>0) charges.push({id:"balloon_"+d.id,name:d.name+" "+t("db_balloon_tag"),amount:balloon,day:day,bank:bank,paid:paid,sub:t("fj_debt_tag")});
   });
-  charges.sort(function(a,b){ return ((a.day||99)-(b.day||99)) || (b.amount-a.amount); });
+  // Nómina y transferencias del mes (como en Gestionar): lo que ya entró/salió cuenta en «Ya pagado».
+  (state.flows||[]).forEach(function(f){
+    if(!flowOccursIn(f,month,year)) return;
+    const day=flowDay(f,year,month);
+    const paid=day!=null && day<=today;
+    const amt=+(f.amount||0);
+    if(!(amt>0)) return;
+    if(f.kind==="income"){
+      charges.push({id:"flow_"+f.id,name:f.name||t("fj_income"),amount:-amt,day:day,bank:f.to||"sabadell",paid:paid,sub:t("fj_income_tag"),income:true});
+    } else if(f.kind==="transfer"){
+      charges.push({id:"flow_"+f.id,name:f.name||t("fj_transfer"),amount:amt,day:day,bank:f.from||"sabadell",paid:paid,sub:t("fj_transfer_tag")});
+    }
+  });
+  charges.sort(function(a,b){ return ((a.day||99)-(b.day||99)) || (Math.abs(b.amount)-Math.abs(a.amount)); });
   const pending=charges.filter(function(x){ return !x.paid; });
-  const paidAll=charges.filter(function(x){ return x.paid; });
-  // Agrupa recibos pequeños ya pagados en una sola fila (SPEC §5) para no llenar la lista.
-  const paidBig=[], paidSmall=[];
-  paidAll.forEach(function(x){ if((x.amount||0)<35 && paidAll.length>=3) paidSmall.push(x); else paidBig.push(x); });
-  if(paidSmall.length<2){ paidBig.push.apply(paidBig,paidSmall); paidSmall.length=0; }
-  const paid=paidBig.slice();
-  if(paidSmall.length){
-    const sum=paidSmall.reduce(function(a,x){ return a+x.amount; },0);
-    const names=paidSmall.slice(0,3).map(function(x){ return x.name; }).join(", ");
-    paid.push({id:"_grp_paid",name:tf("v4_paid_group",{names:names,n:paidSmall.length}),amount:sum,day:null,bank:"",paid:true,sub:"",grouped:true});
-  }
-  const pendingTotal=pending.reduce(function(sum,x){ return sum+x.amount; },0);
-  const paidTotal=paidAll.reduce(function(sum,x){ return sum+x.amount; },0);
+  // Lista completa (sin agrupar ni «Ver más»): en Gestionar salía todo y aquí faltaban ingresos/traspasos.
+  const paid=charges.filter(function(x){ return x.paid; });
+  const pendingTotal=pending.reduce(function(sum,x){ return sum+(x.income?0:Math.abs(x.amount)); },0);
+  const paidTotal=paid.reduce(function(sum,x){ return sum+(x.income?0:Math.abs(x.amount)); },0);
   const fixedAccount=(state.accounts||[]).find(function(a){ return accFixed(a); });
   const projected=fixedAccount && totals.projectedByBank && totals.projectedByBank[fixedAccount.ent];
   const liquidity=typeof projected==="number" ? tf("v4_plan_liq",{amount:eur0(projected),bank:entOf(fixedAccount.ent).label}) : "—";
@@ -9499,10 +9555,7 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
     ),
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},t("v4_ya_pagado")+" · "+eur(paidTotal)),
-      (paidExpanded?paid:paid.slice(0,3)).map(row),
-      // más de 3 pagados: se pliegan para no llenar la pantalla de recibos ya resueltos (feedback 2026-07-17)
-      paid.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPaidExpanded(function(v){ return !v; }); }},
-        paidExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:paid.length-3}))
+      paid.map(row)
     ),
     React.createElement(BillsManageSheet,{open:manageOpen,onClose:function(){ setManageOpen(false); },state:state,set:set,totals:totals})
   );
@@ -9592,7 +9645,7 @@ function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
           React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
         ),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_inv_tools_h")),
-        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false})
+        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false,toolsMode:true})
       )
     ), document.body);
 }
@@ -10617,15 +10670,16 @@ function App(){
   const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
   const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
   const drawerW=function(){ return window.innerWidth||360; };
-  const EDGE_OPEN=52; // un pelín fuera del gesto «atrás» de Android, pero alcanzable
+  const EDGE_OPEN=52;
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
-    if(drawerOpen) return; // con ajustes abiertos, el gesto lo lleva el panel
+    if(drawerOpen) return;
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
-    // Prepara Ajustes YA en el toque del borde: el shell siempre está en DOM; monta el panel lazy.
-    if(startX.current<EDGE_OPEN) setDrawerMounted(true);
+    // En Inicio, swipe a la derecha abre Ajustes desde toda la pantalla (no solo el borde).
+    // En el resto de tabs, el borde sigue valiendo (feedback 2026-07-17).
+    if(tab===0 || startX.current<EDGE_OPEN) setDrawerMounted(true);
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen) return;
@@ -10636,8 +10690,9 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        // Izquierda→derecha desde el borde = Ajustes (Revolut). El resto = cambio de tab.
-        if(startX.current<EDGE_OPEN && ddx>0){
+        // Inicio: cualquier swipe a la derecha = Ajustes. Otras tabs: solo borde izquierdo.
+        const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
+        if(openSettings){
           gestureMode.current="drawer";
           setDrawerMounted(true);
           if(drawerRef.current) drawerRef.current.classList.add("dragging");
@@ -10768,6 +10823,15 @@ function App(){
     // primer montaje y los listeners no se instalarían nunca; al desbloquear se re-ejecuta.
   },[locked, state.onboarded]);
   const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
+  // Cancela el gesto de tabs/ajustes a mitad (chips de Gastos: scroll interno sin cambiar de pestaña).
+  const cancelSwipe=function(){
+    if(!dragging.current) return;
+    dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
+    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; }
+    if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
+    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    setSettingsProgress(drawerOpen?1:0);
+  };
 
   useEffect(function(){
     var id=tabIds[tab];
@@ -10805,7 +10869,7 @@ function App(){
       onOpenSettings:function(){ setDrawerOpen(true); },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
       onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple});
     if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple});
     return null;
@@ -10913,6 +10977,15 @@ window._mcNotifyUpdate=function(version, kind){
       var opts={title:title, body:body};
       if(_mcNative) opts.gotoTarget=kind==="apk"?"update|apk":"update|ota";
       nat.showNotification(opts).catch(function(){});
+      // Marca en nativo para que el worker no vuelva a avisar la misma versión.
+      try{
+        if(nat.syncOtaState){
+          var patch={version:CONFIG.APP_VERSION};
+          if(kind==="apk") patch.markNotifiedApk=version;
+          else if(version) patch.markNotifiedVer=version;
+          nat.syncOtaState(patch).catch(function(){});
+        }
+      }catch(e){}
       return;
     }
   }catch(e){}
@@ -10926,6 +10999,21 @@ window._mcNotifyUpdate=function(version, kind){
         });
       }
     }
+  }catch(e){}
+};
+
+/* Al arrancar: enseña al worker qué versión web hay (tras OTA ≠ versionName del APK) y
+   si el nativo YA avisó en background, no repetimos la noti al abrir. */
+window._mcSyncOtaNative=function(){
+  try{
+    var nat=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
+    if(!nat||!nat.syncOtaState) return;
+    nat.syncOtaState({version:CONFIG.APP_VERSION}).then(function(r){
+      try{
+        if(r&&r.bgNotifiedVer) localStorage.setItem("_otaNotifVer", r.bgNotifiedVer);
+        if(r&&r.bgNotifiedApk) localStorage.setItem("_apkNotifVer", r.bgNotifiedApk);
+      }catch(e){}
+    }).catch(function(){});
   }catch(e){}
 };
 
@@ -11062,6 +11150,7 @@ window._mcCheckApkUpdate=function(opts){
     var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
     if(!up) return;
     up.notifyAppReady().catch(function(){});
+    window._mcSyncOtaNative();
     window._mcRestoreOtaPending();
     setTimeout(function(){
       window._mcCheckOtaUpdates();
