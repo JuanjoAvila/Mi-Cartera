@@ -66,15 +66,19 @@ Para el look, reutiliza lo que ya existe: `.tabsheet`, `.btn btn-primary` / `.bt
 
 ## 6. Publicar una versión
 
-1. Bump en `VERSION` (X.Y.0). El CI lo sella solo en `sw.js` y en `CONFIG.APP_VERSION`.
-2. **Entrada en `RELEASE_NOTES`** (al principio del array, dentro de `public/index.html`). Es
-   obligatoria hasta para un parche .1 — el usuario lo pidió expresamente. En cristiano, sin
-   jerga, contando qué gana la persona; nada de «refactor del parser».
-3. Entrada en `CHANGELOG.md` (ahí sí, técnica y con el porqué).
-4. Push a `main` → despliega solo. Si tocas `supabase/**` se dispara **otro** workflow aparte:
-   **verifica ese run también** (el de la 3.98.0 cayó por rate-limit y estuvo 2 días sin desplegar).
+Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
 
-**Solo se pushea trabajo TERMINADO y verificado.** Nunca a medias.
+1. **Bump `VERSION`** (X.Y.Z) y **`package.json`** / **`package-lock.json`** (mismo número).
+2. **`RELEASE_NOTES`** al principio del array en `src/modules/10-app-components.js` (solo castellano, en cristiano).
+3. **`CHANGELOG.md`** técnico, con el porqué.
+4. **`docs/ROADMAP.md`**: línea de estado + versión actual.
+5. Si tocas nativo Android **o** quieres APK alineado con la web:
+   - `android/app/build.gradle` → `versionName` = `VERSION`, `versionCode` += 1
+   - `npm run build` → `npx cap sync android` → `assembleRelease`
+   - Subir asset a un **GitHub Release** y actualizar **`public/apk.json`** (versionCode, versionName, url, notes) al APK **realmente** publicado (nunca apuntar a un release inexistente).
+6. `npm run build` + `npm test` → push a `main` → verificar workflow Pages (y Supabase si tocaste `supabase/**`).
+
+**Solo se pushea trabajo TERMINADO y verificado.** Nunca a medias. OTA web ≠ APK: si el fix es Java/Kotlin, sin APK nuevo el móvil no lo tiene.
 
 ## 7. Verificar de verdad (no «debería funcionar»)
 

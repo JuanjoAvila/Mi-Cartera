@@ -9,7 +9,9 @@ descarga `version.json` + `bundle.zip` desde GitHub Pages y avisa con notificaci
 «Nueva versión · toca para actualizar». Cambios nativos (lector TR, permisos…) requieren APK
 nuevo vía `apk.json` → `installApk`.
 
-> ⚠️ El build del APK se hace en **tu PC** (Android Studio). Ver secciones siguientes.
+> ⚠️ El build del APK se hace en **tu PC** (Android Studio / Gradle). Ver secciones siguientes.
+> **Alineación:** `versionName` en `android/app/build.gradle` = `VERSION` del repo; `versionCode` sube +1;
+> tras publicar el release, actualiza `public/apk.json` al asset real (nunca a un tag vacío).
 
 ---
 

@@ -1,6 +1,6 @@
 {
-  "versionCode": 22,
-  "versionName": "4.0.0-alpha22",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.0-alpha22/Mi-Cartera-alpha22.apk",
-  "notes": "Bundle web 3.111.0: multi-banco gasto OB, sync al primer plano, noti banco → bankSync (sin parsear importe)."
+  "versionCode": 27,
+  "versionName": "4.0.9",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.0.9/Mi-Cartera-4.0.9.apk",
+  "notes": "APK 4.0.9: Trade Republic no borra la sesión en sync fallido; OTA web alineada. Instala una vez."
 }

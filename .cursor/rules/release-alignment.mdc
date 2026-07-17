@@ -1,0 +1,26 @@
+---
+description: Cada bug/feature que se publique debe dejar VERSION, docs, APK y notas alineados.
+alwaysApply: true
+---
+
+# Release alignment (Mi Cartera)
+
+Al cerrar un bug o feature que vaya a `main`, **no dejes descuadres**. Tarda lo que haga falta y hazlo a la primera.
+
+## Checklist mínima
+
+1. `VERSION` = `package.json` = entrada en `CHANGELOG.md` = primera entrada de `RELEASE_NOTES` (castellano, en cristiano).
+2. `npm run build` (editas `src/`, no `public/index.html` a mano) + `npm test`.
+3. Actualiza `docs/ROADMAP.md` (versión y estado) si el cambio es visible o de producto.
+4. Si el cambio es **nativo** (Java/Kotlin/Android) **o** el usuario pide APK alineado:
+   - `android/app/build.gradle`: `versionName` = `VERSION`, `versionCode` += 1
+   - build release firmado, GitHub Release con el APK, `public/apk.json` apuntando a ese asset real
+5. Menciona en la respuesta al usuario cómo verificar (p. ej. Mis bancos → `vX.Y.Z`; APK nuevo si aplica).
+
+## No confundir OTA y APK
+
+- Push a `main` → Pages/OTA actualiza el **web bundle**.
+- Fixes en `android/**` **no** llegan por OTA: hace falta APK nuevo + `apk.json`.
+- Nunca subas `apk.json` a un `versionCode`/URL que aún no exista en Releases.
+
+Ver también `AGENTS.md` §6.
