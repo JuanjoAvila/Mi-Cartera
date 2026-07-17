@@ -611,7 +611,8 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
   };
-  // Cerrar perfil tirando HACIA ABAJO (como Revolut / sheet). Arriba→abajo = sale.
+  // Cerrar perfil tirando HACIA ARRIBA (vuelve por donde entró). Tirar abajo no cierra:
+  // antes cerraba empujando hacia abajo y se sentía raro vs Revolut (feedback 2026-07-17).
   const pSX=useRef(0), pSY=useRef(0), pAx=useRef(null), pDrag=useRef(false);
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
@@ -626,14 +627,14 @@ function App(){
       }
     }
     if(pAx.current!=="y") return;
-    // Si hay scroll, primero sube el contenido; solo al llegar arriba tiras abajo cierra.
+    // Con scroll: primero el contenido; al top, tirar arriba cierra.
     if(profileRef.current && profileRef.current.scrollTop>0){ pDY.current=0; return; }
-    if(ddy<=0){ pDY.current=0; if(profileRef.current) profileRef.current.style.transform="translate3d(0,0,0)"; setProfileProgress(1); return; }
-    pDY.current=ddy;
+    if(ddy>=0){ pDY.current=0; if(profileRef.current) profileRef.current.style.transform="translate3d(0,0,0)"; setProfileProgress(1); return; }
+    pDY.current=ddy;   // negativo = hacia arriba
     const h=window.innerHeight||700;
-    const closeProg=Math.min(1,Math.max(0,ddy/(h*0.38)));
-    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(closeProg*100)+"%,0)";
-    setProfileProgress(1-closeProg);
+    const resist=Math.pow(Math.min(1,Math.max(0,(-ddy)/(h*0.48))),0.88);
+    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-resist*100)+"%,0)";
+    setProfileProgress(1-resist);
     if(e.cancelable) e.preventDefault();
   };
   const profileEnd=function(){
@@ -641,13 +642,13 @@ function App(){
     if(profileRef.current) profileRef.current.classList.remove("dragging");
     if(appShellRef.current) appShellRef.current.classList.remove("dragging");
     if(pAx.current!=="y"){ pAx.current=null; return; }
-    const dist=pDY.current;
+    const dist=-pDY.current;   // distancia hacia arriba
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
-    const closeProg=Math.min(1,Math.max(0,dist/(h*0.38)));
-    const flick=(dist/dt)>0.45 && dist>28;
+    const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
+    const flick=(dist/dt)>0.45 && dist>24;
     if(profileRef.current) profileRef.current.style.transform="";
-    setProfileOpen(!(closeProg>0.28 || flick));
+    setProfileOpen(!(closeProg>0.22 || flick));
     pAx.current=null; pDY.current=0;
   };
 
@@ -887,7 +888,7 @@ function App(){
       newsDone.current=true;
       try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
       setWhatsNew(true);
-    },2200);
+    },420);
   },[state.onboarded,locked,showAuth,tourOpen]);
   // Informe mensual automático el día 1 (prioridad pareja 2026-07-15).
   const [monthReportOpen,setMonthReportOpen]=useState(false);
@@ -1071,10 +1072,11 @@ function App(){
     }
     if(axis.current==="y" && gestureMode.current==="profile"){
       const h=window.innerHeight||700;
-      const prog=Math.min(1,Math.max(0,ddy/(h*0.42)));
+      // Resistencia (no 1:1): el panel “pesa” un poco, como Revolut.
+      const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.55))),0.85);
       pDY.current=ddy;
-      if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-100+prog*100)+"%,0)";
-      setProfileProgress(prog);
+      if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-100+resist*100)+"%,0)";
+      setProfileProgress(resist);
       if(e.cancelable) e.preventDefault();
       return;
     }
@@ -1253,7 +1255,11 @@ function App(){
     const simple=!!(state.settings&&state.settings.simpleMode);
     if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set,
       onOpenSettings:function(){ setDrawerOpen(true); },
-      onOpenProfile:function(){ setProfileMounted(true); setProfileOpen(true); },
+      onOpenProfile:function(){
+        // Montar cerrado un frame y luego abrir: si montas ya con .open no hay animación de entrada.
+        setProfileMounted(true);
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ setProfileOpen(true); }); });
+      },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
       onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
     if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});

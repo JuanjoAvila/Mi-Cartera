@@ -234,7 +234,7 @@ function TRSync({state, set, totals}){
     setBusy(true); setErr(false); setErrMsg(""); setStep("idle"); setDoneN(null);
     return Promise.resolve(bridge.sync()).then(function(r){
       setBusy(false);
-      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){ setConnected(false); setStep("idle"); fail(r); return; }
+      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){ fail(r); return; }   // no setConnected(false): el nativo ya no borra la sesión; reintentar suele bastar
       if(r&&(r.softFail||r.wafBlocked)){ fail(r); return; }   // anti-bot: sesión sigue, no pedir 2FA
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};

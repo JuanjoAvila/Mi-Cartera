@@ -49,4 +49,13 @@ t("Claude / Google Play cae en ocio", () => {
   assert.equal(ctx.autoCategory("Google Play"), "ocio");
 });
 
+t("Playtomic / pádel caen en padel (no ocio)", () => {
+  assert.equal(ctx.autoCategory("Playtomic"), "padel");
+  assert.equal(ctx.autoCategory("Club de padel Norte"), "padel");
+});
+
+t("Restaurante de pádel sigue en bares", () => {
+  assert.equal(ctx.autoCategory("Restaurante de padel"), "bares");
+});
+
 console.log("\ncategories: OK");
