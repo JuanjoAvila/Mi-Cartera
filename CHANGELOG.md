@@ -3,10 +3,12 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [4.0.9] — 2026-07-17
-### Tono verde
+### Tono verde + alineación APK/docs
 - Tema verde: fondos un pelín más claros/vivos + glow mint más fuerte en `body`.
 - Sheets: velo `rgba(8,28,20,.28)` (verdoso, no negro ni transparente seco).
 - Perfil: `background:var(--bg)` de nuevo; dim layer verdoso.
+- **APK versionCode 27 / 4.0.9** + `apk.json` + release GitHub (TR nativo: no borra `connected` en sync fallido).
+- Docs: `ROADMAP.md`, `AGENTS.md` §6 checklist, regla Cursor `release-alignment`, `package-lock` version.
 
 ## [4.0.8] — 2026-07-17
 ### Feedback post-4.0.7 (tutorial / negro / bancos / TR)
