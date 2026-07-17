@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-17 · **v4.0.13** — perfil se cierra tirando abajo (reversa al avatar) + sheets con fondo visible en todas las tabs (bug overflow en `.track`).
+> Estado a 2026-07-17 · **v4.0.14** — editar gasto: scroll de categorías sin cambiar de tab (+ perfil cierre abajo + fondo sheets en todas las tabs).
 
 ## Listo para uso diario
 
@@ -10,7 +10,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.0.13** |
+| Web / OTA (`VERSION`) | **4.0.14** |
 | APK (`versionName` / `versionCode`) | **4.0.12** / **28** — gradle bumpeado, falta assembleRelease + release GitHub + `apk.json` (web 4.0.13 llega por OTA) |
 | `public/apk.json` | debe coincidir con el release publicado |
 
