@@ -336,9 +336,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @font-face{font-family:'Manrope';font-style:normal;font-weight:200 800;font-display:swap;src:url(fonts/manrope-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
   @font-face{font-family:'Fraunces';font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/fraunces-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
   @font-face{font-family:'Fraunces';font-style:normal;font-weight:100 900;font-display:swap;src:url(fonts/fraunces-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;}
-  :root{
-    --bg:#0A1310; --bg-2:#0E1A15; --bg2:#0E1A15; --surface:#12211A; --surface-2:#17291F; --sur:#12211A; --sur2:#17291F;
-    --line:#1E362A; --line-soft:#16291F;
+  :root, html[data-theme="green"]{
+    /* Verde bosque un poco más vivo (feedback 2026-07-17: el tono quedó «seco/oscuro»). */
+    --bg:#0C1712; --bg-2:#10201A; --bg2:#10201A; --surface:#14261E; --surface-2:#1A2F25; --sur:#14261E; --sur2:#1A2F25;
+    --line:#214032; --line-soft:#1A3228;
     --mint:#5FD08A; --mint-bright:#8CEFB0; --mint-hi:#8CEFB0; --mint-dim:#2F6B4A; --mint-deep:#2F6B4A; --on-mint:#06120C;
     --blue:#7FB5E8; --tan:#E6C36A; --cream:#F4EFE2;
     --text:#EAF2EC; --muted:#93AC9E; --muted-2:#5E7468; --coral:#E2705F; --coral-dim:#5c322c;
@@ -390,10 +391,18 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   body{
     font-family:'Manrope',system-ui,sans-serif;font-size:16px;line-height:1.5;overscroll-behavior-y:none;
     background:
-      radial-gradient(120% 50% at 80% -5%, rgba(95,208,138,.11), transparent 60%),
-      radial-gradient(90% 45% at -10% 0%, rgba(127,181,232,.05), transparent 55%),
+      radial-gradient(130% 55% at 85% -8%, rgba(95,208,138,.18), transparent 58%),
+      radial-gradient(95% 48% at -12% 5%, rgba(95,208,138,.07), transparent 55%),
+      radial-gradient(90% 45% at -10% 0%, rgba(127,181,232,.04), transparent 55%),
       var(--bg);
     min-height:100vh;
+  }
+  html[data-theme="green"] body, html:not([data-theme]) body{
+    background:
+      radial-gradient(130% 55% at 85% -8%, rgba(95,208,138,.18), transparent 58%),
+      radial-gradient(95% 48% at -12% 5%, rgba(95,208,138,.07), transparent 55%),
+      radial-gradient(90% 45% at -10% 0%, rgba(127,181,232,.04), transparent 55%),
+      var(--bg);
   }
   #root{max-width:520px;margin:0 auto;min-height:100vh;position:relative;}
   .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}
@@ -586,9 +595,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-gastos-list-body{padding:0;}
 
   .v4-sheet-back{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;
-    /* Fondo TRANSPARENTE: se ve la app tal cual. El scale/filter del shell dejaba
-       huecos negros del body (feedback 2026-07-17 — «sigue saliendo negro»). */
-    background:transparent;
+    /* Velo verdoso suave: se ve la app, sin el negro seco ni el scale (feedback 2026-07-17). */
+    background:rgba(8,28,20,.28);
     pointer-events:auto;}
   .v4-sheet{width:100%;max-width:520px;max-height:88dvh;overflow:auto;background:var(--bg-2);border:1px solid var(--line);border-bottom:none;
     border-radius:26px 26px 0 0;padding:12px 18px calc(18px + var(--safe-bottom));
@@ -598,7 +606,6 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-sheet.dragging{transition:none;}
   .v4-sheet-handle{width:40px;height:5px;border-radius:4px;background:var(--line);margin:6px auto 14px;position:relative;flex:0 0 auto;cursor:grab;}
   .v4-sheet-handle::before{content:"";position:absolute;inset:-16px -48px;}
-  /* Sin scale ni filter en sheet-open: solo bloqueo de scroll/touch. */
   html.sheet-open .app-shell{
     pointer-events:none !important;
   }
@@ -639,8 +646,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* Perfil tipo Revolut: baja desde arriba; fondo de la app visible (dim aparte, sin scale). */
   .profile-pull{position:fixed;inset:0;z-index:72;max-width:520px;margin:0 auto;overflow-y:auto;
     padding:calc(var(--safe-top) + 6px) 16px calc(28px + var(--safe-bottom));
-    /* Casi opaco como Revolut (cards sobre fondo), pero NO 100% sólido negro. */
-    background:color-mix(in srgb, var(--bg) 94%, transparent);
+    background:var(--bg);
     transform:translate3d(0,-104%,0);
     transition:transform .5s cubic-bezier(.22,1,.36,1);
     will-change:transform;
@@ -648,7 +654,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
     box-shadow:0 24px 48px rgba(0,0,0,.4);}
   .profile-pull.open{transform:translate3d(0,0,0);border-radius:0;}
   .profile-pull.dragging{transition:none;}
-  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;
+  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.4);opacity:0;pointer-events:none;
     transition:opacity .45s ease;max-width:520px;margin:0 auto;}
   .profile-dim-layer.on{opacity:1;pointer-events:none;}
   .profile-pull-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
