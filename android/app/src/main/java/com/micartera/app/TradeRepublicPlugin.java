@@ -117,11 +117,10 @@ public class TradeRepublicPlugin extends Plugin {
                 if (wasVerify && res.optBoolean("ok", false)) {
                     prefs().edit().putBoolean("connected", true).apply();   // sesión TR establecida
                 }
-                // Solo desconecta en 401 «de verdad» (sesión muerta). Un softFail/waf no toca connected:
-                // el sync en frío a veces devolvía authExpired y pedía 2FA al abrir (feedback 2026-07-17).
-                if (res.optBoolean("authExpired", false) && !res.optBoolean("softFail", false) && !res.optBoolean("wafBlocked", false)) {
-                    prefs().edit().putBoolean("connected", false).apply();
-                }
+                // NUNCA desconecta por un sync fallido (arrancar la app en frío a menudo
+                // devolvía AUTHENTICATION/401 momentáneo y borraba connected → OTP otra vez).
+                // Solo logout() pone connected=false. Si la sesión murió de verdad, el botón
+                // Sincronizar lo canta y el usuario reconecta a mano (feedback 2026-07-17).
                 // Persistir cookies AHORA (tr_session/tr_refresh acaban de sentarse o rotar).
                 // Antes se hacía flush() síncrono en verify(), ANTES de que el fetch async
                 // terminara → la sesión podía no llegar a disco y el 2FA volvía tras reiniciar.

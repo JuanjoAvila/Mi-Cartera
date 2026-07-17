@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.7] — 2026-07-17
+### Feedback post-4.0.6
+- ✨ WhatsNew: delay 420 ms + `wn-in` (sin doble animación ni zarpazo).
+- 👤 Perfil: cierra tirando **arriba** (misma dirección que entró); resistencia; tap avatar monta cerrado un frame para animar entrada; sin `filter` en shell (WebView Android pintaba negro).
+- 🧾 Sheets: velo `rgba` suave + scale sin filter; dismiss ~200 ms; unlock `sheet-open` al empezar a salir.
+- 🎾 Categoría `padel` + KW (antes que ocio); «restaurante…» sigue en bares. Blur de input ya no cierra la ficha al tocar chips.
+- 🏦 `BrokerImport` en `bk-card` plano. TR JS: no `setConnected(false)` en authExpired. **APK versionCode 26 / 4.0.7** (nativo no borra `connected` en sync fallido).
+
 ## [4.0.6] — 2026-07-17
 ### Feedback post-4.0.5
 - 👤 Perfil: header compacto; askText `compact`; animación spring + stagger; dismiss tirando abajo (scrollTop=0).

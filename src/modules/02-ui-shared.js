@@ -440,9 +440,10 @@ function useBackClose(open, onClose){
    Si el contenido está scrolleado, primero sube; al llegar arriba, tira cierra. */
 function useSheetSwipe(open, onClose){
   const sheetRef=useRef(null);
-  const startY=useRef(0), startX=useRef(0), dy=useRef(0), dragging=useRef(false), armed=useRef(false), axis=useRef(null);
+  const startY=useRef(0), startX=useRef(0), dy=useRef(0), dragging=useRef(false), armed=useRef(false), axis=useRef(null), closing=useRef(false);
   useEffect(function(){
     if(!open) return undefined;
+    closing.current=false;
     const prev=document.body.style.overflow;
     document.body.style.overflow="hidden";
     document.documentElement.classList.add("sheet-open");
@@ -459,22 +460,19 @@ function useSheetSwipe(open, onClose){
     };
   },[open]);
   const onTouchStart=function(e){
+    if(closing.current) return;
     if(!(e.touches&&e.touches[0])) return;
-    // Antes se desarmaba entero en .v4-chips → en la ficha de gasto (casi todo son chips)
-    // solo podías tirar abajo desde el botón de tarjeta. Ahora el vertical cierra igual;
-    // el horizontal de chips no pisa el dismiss (feedback 2026-07-17).
     armed.current=true;
     dragging.current=true; dy.current=0; axis.current=null;
     startY.current=e.touches[0].clientY; startX.current=e.touches[0].clientX;
   };
   const onTouchMove=function(e){
-    if(!dragging.current||!armed.current) return;
+    if(!dragging.current||!armed.current||closing.current) return;
     const el=sheetRef.current;
     const t=e.touches[0], ddy=t.clientY-startY.current, ddx=t.clientX-startX.current;
     if(axis.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
       if(Math.abs(ddx)>Math.abs(ddy)*1.1){
-        // Scroll horizontal (chips): no cierres; deja el gesto a los chips.
         dragging.current=false; armed.current=false; return;
       }
       axis.current="y";
@@ -484,31 +482,35 @@ function useSheetSwipe(open, onClose){
       return;
     }
     if(ddy<=0){ dy.current=0; if(el) el.style.transform=""; return; }
-    dy.current=ddy;
+    // Resistencia tipo sheet (no 1:1): se siente más natural al tirar.
+    const resist=Math.min(ddy*0.92, ddy);
+    dy.current=resist;
     if(el){
       el.classList.add("dragging");
-      el.style.transform="translate3d(0,"+ddy+"px,0)";
+      el.style.transform="translate3d(0,"+resist+"px,0)";
     }
     if(e.cancelable) e.preventDefault();
   };
   const onTouchEnd=function(){
+    if(closing.current) return;
     if(!dragging.current && dy.current<=0){ armed.current=false; axis.current=null; return; }
     dragging.current=false; armed.current=false; axis.current=null;
     const dist=dy.current; dy.current=0;
     const el=sheetRef.current;
-    if(!el){ if(dist>90) onClose(); return; }
+    if(!el){ if(dist>80) onClose(); return; }
     el.classList.remove("dragging");
-    if(dist>90){
-      // Cierre suave (mismo ease que el swipe entre tabs).
-      // NO resetear transform a "" antes del unmount: un frame la ficha volvía al centro
-      // y se veía el «hitch» al tirar abajo (feedback 2026-07-17).
-      el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
+    if(dist>80){
+      closing.current=true;
+      // Desbloquea el fondo YA (el hitch era quitar sheet-open al unmount).
+      document.documentElement.classList.remove("sheet-open");
+      document.body.style.overflow="";
+      el.style.transition="transform .2s cubic-bezier(.32,.72,0,1)";
       el.style.transform="translate3d(0,110%,0)";
-      setTimeout(function(){ onClose(); }, 420);
+      setTimeout(function(){ onClose(); }, 200);
     } else {
-      el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
+      el.style.transition="transform .22s cubic-bezier(.32,.72,0,1)";
       el.style.transform="translate3d(0,0,0)";
-      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} }, 420);
+      setTimeout(function(){ try{ el.style.transition=""; el.style.transform=""; }catch(e){} }, 220);
     }
   };
   return { sheetRef:sheetRef, sheetTouch:{ onTouchStart:onTouchStart, onTouchMove:onTouchMove, onTouchEnd:onTouchEnd, onTouchCancel:onTouchEnd } };

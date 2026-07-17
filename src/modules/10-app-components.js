@@ -453,6 +453,14 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.7", d:"17 jul 2026", t:"Novedades suaves, perfil natural, Pádel y fichas sin negro", items:[
+    "✨ Tras un update, Novedades entra con animación suave (sin el salto de antes).",
+    "👤 Perfil: abrir y cerrar más naturales (cierra tirando hacia arriba, como entró); sin fondo negro raro.",
+    "🧾 En editar gasto y en +, se ve la app detrás con un velo suave; al tirar abajo cierra más rápido.",
+    "🎾 Nueva categoría Pádel (🎾): Playtomic y pádel ya no van a Ocio/cine. Un «restaurante de pádel» sigue en Bares.",
+    "🏦 Brókers en tarjetas planas; Trade Republic no se marca desconectado por un sync fallido (hace falta el APK 4.0.7).",
+    "🔌 MyInvestor: el captcha lo pone su anti-bot — espera un rato y reintenta; el device_id se reutiliza para pedirlo menos."
+  ]},
   {v:"4.0.6", d:"17 jul 2026", t:"Perfil más fino, Gastos ordenados y bancos claros", items:[
     "👤 Perfil: tipografía compacta, animación más suave, tirar abajo para salir; casillas de editar al tamaño del texto guardado.",
     "🧾 En Gastos: nombre, debajo la categoría y abajo fecha · banco (como Mapfre).",
@@ -691,11 +699,11 @@ function WhatsNew({onClose, showToast, set, state}){
     setFb("");
   };
   const delNote=function(id){ set(function(s){ return Object.assign({},s,{verNotes:(s.verNotes||[]).filter(function(n){ return n.id!==id; })}); }); };
-  const wrap={position:"fixed",inset:0,zIndex:97,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
-  const inner={maxWidth:480,margin:"0 auto"};
+  const wrap={}; // estilos en .wn-panel (animación de entrada)
+  const inner={};
   const card=function(cur){ return {padding:"12px 14px",borderRadius:14,border:"1px solid "+(cur?"var(--mint)":"var(--line)"),background:"var(--surface)",marginBottom:10}; };
   const inp={width:"100%",minHeight:74,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:14,fontFamily:"'Manrope',sans-serif",boxSizing:"border-box",resize:"vertical"};
-  return ReactDOM.createPortal(React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+  return ReactDOM.createPortal(React.createElement("div",{className:"wn-panel"}, React.createElement("div",{className:"wn-inner"},
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "✨ "+t("wn_title")),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}}, t("wn_sub")),
     RELEASE_NOTES.map(function(r){
