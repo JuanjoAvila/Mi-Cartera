@@ -255,3 +255,121 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
       )
     ), document.body);
 }
+
+/* Perfil personal (pull-down tipo Revolut). Datos en settings.profile — NUNCA PII de ejemplo
+   en el repo: placeholders vacíos y el usuario rellena en su móvil (feedback 2026-07-17). */
+function profileOf(s){
+  const p=((s&&s.settings)||{}).profile||{};
+  return {
+    handle:p.handle||"", fullName:p.fullName||"", birth:p.birth||"", nationality:p.nationality||"",
+    address:p.address||"", phone:p.phone||"", accountPurpose:p.accountPurpose||"",
+    taxResidency:p.taxResidency||"", jobStatus:p.jobStatus||"", jobSector:p.jobSector||"",
+    jobRole:p.jobRole||"", salaryRange:p.salaryRange||"", wealthSource:p.wealthSource||"",
+    netWorthRange:p.netWorthRange||"", investorPurpose:p.investorPurpose||""
+  };
+}
+function ProfilePanel({state, set, onClose, onOpenSettings}){
+  const p=profileOf(state);
+  const email=(function(){ try{ return window.__mcEmail||""; }catch(e){ return ""; } })();
+  const nameGuess=(function(){
+    if(p.fullName) return p.fullName;
+    if(email&&email.indexOf("@")>0) return email.split("@")[0].replace(/[._]/g," ");
+    return "";
+  })();
+  const initials=(function(){
+    const src=nameGuess||"MC";
+    const parts=src.trim().split(/\s+/);
+    return ((parts[0]||"M").charAt(0)+(parts[1]||parts[0]||"C").charAt(0)).toUpperCase();
+  })();
+  const handleShow=p.handle ? (p.handle.charAt(0)==="@"?p.handle:("@"+p.handle)) : "@"+(email?email.split("@")[0]:"micartera");
+  const patch=function(key,val){
+    set(function(s){
+      const cur=profileOf(s);
+      cur[key]=val;
+      return Object.assign({},s,{settings:Object.assign({},s.settings,{profile:cur})});
+    });
+  };
+  const edit=function(key, title, ph){
+    askText({ title:title, ph:ph||"", value:p[key]||"", ok:t("ask_ok"), mode:"text" })
+      .then(function(raw){ if(raw==null) return; patch(key, String(raw).trim()); });
+  };
+  const val=function(v){ return v&&String(v).trim() ? v : null; };
+  const row=function(lab, value, onEdit){
+    const empty=!val(value);
+    return React.createElement("button",{type:"button",className:"profile-row",onClick:onEdit},
+      React.createElement("div",{className:"pr-body"},
+        React.createElement("div",{className:"pr-lab"}, lab),
+        React.createElement("div",{className:"pr-val"+(empty?" empty":"")}, empty?t("pf_add"):value)
+      ),
+      React.createElement("span",{className:"pr-edit","aria-hidden":"true"}, "✎")
+    );
+  };
+  const jobLines=[p.jobStatus,p.jobSector,p.jobRole,p.salaryRange].filter(function(x){ return val(x); });
+  const jobDisplay=jobLines.length ? jobLines.join(" · ") : null;
+  return React.createElement(React.Fragment,null,
+    React.createElement("div",{className:"profile-pull-h"},
+      React.createElement("button",{type:"button",className:"back","aria-label":t("v4_back"),onClick:onClose},"‹"),
+      React.createElement("div",{className:"ph-main"},
+        React.createElement("h1",null, t("pf_title")),
+        React.createElement("button",{type:"button",className:"profile-handle",onClick:function(){ edit("handle", t("pf_handle"), "@usuario"); }},
+          handleShow, React.createElement("span",{"aria-hidden":"true"},"✎"))
+      ),
+      React.createElement("div",{className:"profile-av","aria-hidden":"true"}, initials)
+    ),
+    React.createElement("div",{className:"profile-sec"}, t("pf_personal")),
+    React.createElement("div",{className:"profile-card"},
+      row(t("pf_basic"), [val(p.fullName),val(p.birth)].filter(Boolean).join(" · ")||null, function(){
+        askText({ title:t("pf_name"), ph:t("pf_name_ph"), value:p.fullName||"", ok:t("ask_ok"), mode:"text" }).then(function(n){
+          if(n==null) return;
+          askText({ title:t("pf_birth"), ph:t("pf_birth_ph"), value:p.birth||"", ok:t("ask_ok"), mode:"text" }).then(function(b){
+            if(b==null) return;
+            set(function(s){
+              const cur=profileOf(s);
+              cur.fullName=String(n).trim(); cur.birth=String(b).trim();
+              return Object.assign({},s,{settings:Object.assign({},s.settings,{profile:cur})});
+            });
+          });
+        });
+      }),
+      row(t("pf_nationality"), p.nationality, function(){ edit("nationality", t("pf_nationality"), t("pf_country_ph")); }),
+      row(t("pf_address"), p.address, function(){ edit("address", t("pf_address"), t("pf_address_ph")); }),
+      row(t("pf_phone"), p.phone, function(){ edit("phone", t("pf_phone"), "+34 …"); }),
+      row(t("pf_email"), email||null, function(){
+        if(onOpenSettings) onOpenSettings();
+      }),
+      row(t("pf_account_purpose"), p.accountPurpose, function(){ edit("accountPurpose", t("pf_account_purpose"), t("pf_purpose_ph")); }),
+      row(t("pf_tax"), p.taxResidency, function(){ edit("taxResidency", t("pf_tax"), t("pf_country_ph")); })
+    ),
+    React.createElement("div",{className:"profile-sec"}, t("pf_wealth")),
+    React.createElement("div",{className:"profile-card"},
+      row(t("pf_job"), jobDisplay, function(){
+        askText({ title:t("pf_job_status"), ph:t("pf_job_status_ph"), value:p.jobStatus||"", ok:t("ask_ok"), mode:"text" }).then(function(a){
+          if(a==null) return;
+          askText({ title:t("pf_job_sector"), ph:t("pf_job_sector_ph"), value:p.jobSector||"", ok:t("ask_ok"), mode:"text" }).then(function(b){
+            if(b==null) return;
+            askText({ title:t("pf_job_role"), ph:t("pf_job_role_ph"), value:p.jobRole||"", ok:t("ask_ok"), mode:"text" }).then(function(c){
+              if(c==null) return;
+              askText({ title:t("pf_salary"), ph:t("pf_salary_ph"), value:p.salaryRange||"", ok:t("ask_ok"), mode:"text" }).then(function(d){
+                if(d==null) return;
+                set(function(s){
+                  const cur=profileOf(s);
+                  cur.jobStatus=String(a).trim(); cur.jobSector=String(b).trim();
+                  cur.jobRole=String(c).trim(); cur.salaryRange=String(d).trim();
+                  return Object.assign({},s,{settings:Object.assign({},s.settings,{profile:cur})});
+                });
+              });
+            });
+          });
+        });
+      }),
+      row(t("pf_wealth_src"), p.wealthSource, function(){ edit("wealthSource", t("pf_wealth_src"), t("pf_wealth_src_ph")); }),
+      row(t("pf_networth"), p.netWorthRange, function(){ edit("netWorthRange", t("pf_networth"), t("pf_networth_ph")); })
+    ),
+    React.createElement("div",{className:"profile-sec"}, t("pf_investor")),
+    React.createElement("div",{className:"profile-card"},
+      row(t("pf_inv_purpose"), p.investorPurpose, function(){ edit("investorPurpose", t("pf_inv_purpose"), t("pf_inv_purpose_ph")); })
+    ),
+    React.createElement("p",{style:{fontSize:12,color:"var(--muted-2)",lineHeight:1.45,margin:"18px 2px 0"}}, t("pf_hint")),
+    onOpenSettings && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:14},onClick:function(){ onClose(); onOpenSettings(); }}, t("pf_to_settings"))
+  );
+}

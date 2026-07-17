@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.5] — 2026-07-17
+### Feedback post-4.0.4
+- 🧾 Sheets: backdrop transparente (sin velo negro); `useSheetSwipe` ya no resetea `transform` antes del unmount (quita el hitch al dismiss).
+- 👤 Perfil pull-down tipo Revolut desde Inicio (`profile-pull` + gesto vertical al top / avatar); campos en `settings.profile`; tap avatar abre perfil (Ajustes sigue por swipe).
+- 🏦 `BankPanel` alineado al look v4 (`v4-mov` / chips).
+- 🔌 Brokers: sin `runBrokerSync` silencioso al boot; `_miDeviceId` persistente; keepalive/sync MI no marcan `expired` en 403; TR nativo solo limpia `connected` si `authExpired` sin softFail/waf. **APK versionCode 25.**
+
 ## [4.0.4] — 2026-07-17
 ### Feedback post-4.0.3
 - 🎓 Tour v4: pasos Inicio → Gastos → FAB + → Plan → Cartera → avatar Ajustes → swipe tabs; `goTab` + `data-tour`.

@@ -9,9 +9,11 @@ test("Ajustes: borrar cuenta pide confirmación", async ({ page }) => {
   const dismissNews = page.getByRole("button", { name: /Entendido|Got it/i });
   if (await dismissNews.count()) await dismissNews.first().click();
 
-  // v4: Ajustes se abre desde el avatar de Inicio
+  // v4.0.5: avatar abre Perfil; Ajustes sigue por swipe o «Ir a Ajustes»
   await page.locator(".v4-avatar").click();
-  await expect(page.locator(".settings-push")).toBeVisible({ timeout: 5_000 });
+  await expect(page.locator(".profile-pull.open")).toBeVisible({ timeout: 5_000 });
+  await page.getByRole("button", { name: /Ir a Ajustes|Go to Settings|Ves a Ajustos/i }).click();
+  await expect(page.locator(".settings-push.open")).toBeVisible({ timeout: 5_000 });
 
   await page.getByRole("button", { name: /Tu cuenta|Your account|El teu compte/i }).click();
 

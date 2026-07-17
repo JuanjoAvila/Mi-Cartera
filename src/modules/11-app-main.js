@@ -405,8 +405,11 @@ function App(){
   },[uid, state.hasBankLink]);
 
   // Y lo mismo para los brókers que SÍ sincronizan solos (TR nativo + MyInvestor): al abrir,
-  // en silencio y con throttle. Ver runBrokerSync: solo toca lo ya mapeado.
-  useEffect(function(){ if(uid) mcScheduleIdle(function(){ runBrokerSync(); }); },[uid]);
+  // Brokers: NO sync en silencio al abrir. Un 401 en frío (cookies TR) o un 403 de MI
+  // marcaban la sesión como caducada y pedían OTP/captcha sin que el usuario tocara nada
+  // (feedback 2026-07-17). Sync a mano desde Bancos / botón Sincronizar.
+  // useEffect(function(){ if(uid) mcScheduleIdle(function(){ runBrokerSync(); }); },[uid]);
+  void runBrokerSync; // disponible si se vuelve a activar a mano más adelante
 
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
@@ -414,8 +417,15 @@ function App(){
   // v4: Ajustes es push a pantalla completa (SPEC §9). drawerMounted = primera apertura.
   const [drawerMounted,setDrawerMounted]=useState(false);
   const [apuntarOpen,setApuntarOpen]=useState(false);
+  // Perfil pull-down (Inicio): panel hermano al shell, como Ajustes (feedback 2026-07-17).
+  const [profileOpen,setProfileOpen]=useState(false);
+  const [profileMounted,setProfileMounted]=useState(false);
+  const profileRef=useRef(null);
+  const pDY=useRef(0), pT=useRef(0);
   useEffect(function(){ if(drawerOpen) setDrawerMounted(true); },[drawerOpen]);
+  useEffect(function(){ if(profileOpen) setProfileMounted(true); },[profileOpen]);
   useBackClose(drawerOpen, function(){ setDrawerOpen(false); });
+  useBackClose(profileOpen, function(){ setProfileOpen(false); });
   useEffect(function(){
     try{ window.__mcEmail=(session&&session.user&&session.user.email)||""; }catch(e){}
   },[session]);
@@ -553,6 +563,29 @@ function App(){
     }
     return function(){ document.documentElement.classList.remove("settings-open"); };
   },[drawerOpen]);
+  const setProfileProgress=function(p){
+    const v=Math.min(1,Math.max(0,p));
+    if(appShellRef.current){
+      appShellRef.current.style.setProperty("--prof-p", String(v));
+      if(v>0.02) appShellRef.current.classList.add("profile-dim");
+      else appShellRef.current.classList.remove("profile-dim");
+    }
+    try{
+      const av=document.querySelector(".v4-avatar");
+      if(av){ if(v>0.02) av.classList.add("pulling"); else av.classList.remove("pulling"); }
+    }catch(e){}
+  };
+  useEffect(function(){
+    document.documentElement.classList.toggle("profile-open", !!profileOpen);
+    if(!dragging.current && gestureMode.current!=="profile"){
+      setProfileProgress(profileOpen?1:0);
+      if(profileRef.current){
+        profileRef.current.classList.toggle("open", !!profileOpen);
+        profileRef.current.style.transform="";
+      }
+    }
+    return function(){ document.documentElement.classList.remove("profile-open"); };
+  },[profileOpen]);
   const dSX=useRef(0), dSY=useRef(0), dAx=useRef(null), dDrag=useRef(false), dDX=useRef(0), dT=useRef(0);
   const drawerStart=function(e){ const t=e.touches[0]; dSX.current=t.clientX; dSY.current=t.clientY; dAx.current=null; dDrag.current=true; dDX.current=0; dT.current=Date.now(); };
   const drawerMove=function(e){
@@ -579,6 +612,39 @@ function App(){
     if(drawerRef.current) drawerRef.current.style.transform="";
     setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
+  };
+  // Cerrar perfil tirando hacia arriba (espejo del pull-down).
+  const pSX=useRef(0), pSY=useRef(0), pAx=useRef(null), pDrag=useRef(false);
+  const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
+  const profileMove=function(e){
+    if(!pDrag.current) return;
+    const t=e.touches[0], ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
+    if(pAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x"; if(pAx.current==="y"&&profileRef.current){ profileRef.current.classList.add("dragging"); if(appShellRef.current) appShellRef.current.classList.add("dragging"); } }
+    if(pAx.current!=="y") return;
+    // Solo cierra tirando arriba. Si tiras abajo (scroll del perfil), no pelea.
+    if(ddy>=0){ pDY.current=0; if(profileRef.current){ const el=profileRef.current; if(el.scrollTop<=0) el.style.transform="translate3d(0,0,0)"; } setProfileProgress(1); return; }
+    // Si el contenido del perfil está scrolleado, primero sube el scroll.
+    if(profileRef.current && profileRef.current.scrollTop>0){ pDY.current=0; return; }
+    pDY.current=ddy;
+    const h=window.innerHeight||700;
+    const closeProg=Math.min(1,Math.max(0,(-ddy)/(h*0.42)));
+    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-closeProg*100)+"%,0)";
+    setProfileProgress(1-closeProg);
+    if(e.cancelable) e.preventDefault();
+  };
+  const profileEnd=function(){
+    if(!pDrag.current) return; pDrag.current=false;
+    if(profileRef.current) profileRef.current.classList.remove("dragging");
+    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    if(pAx.current!=="y"){ pAx.current=null; return; }
+    const dist=pDY.current;
+    const dt=Math.max(1,Date.now()-pT.current);
+    const h=window.innerHeight||700;
+    const closeProg=Math.min(1,Math.max(0,(-dist)/(h*0.42)));
+    const flick=(dist/dt)<-0.45 && dist<-28;
+    if(profileRef.current) profileRef.current.style.transform="";
+    setProfileOpen(!(closeProg>0.35 || flick));
+    pAx.current=null; pDY.current=0;
   };
 
   const [authStart,setAuthStart]=useState("in");   // modo con el que se abre AuthPanel ("in"/"up")
@@ -797,7 +863,7 @@ function App(){
     setTourOpen(false);
     if(stateRef.current.tourSeen===false) set(function(s){ return Object.assign({},s,{tourSeen:true}); });
   };
-  const openTour=function(){ setDrawerOpen(false); setTab(0); setTourOpen(true); };
+  const openTour=function(){ setDrawerOpen(false); setProfileOpen(false); setTab(0); setTourOpen(true); };
   // ✨ Novedades: al estrenar una versión nueva, popup UNA vez (petición 2026-07-12: la pareja
   // no se entera de qué trae cada update). No en el primer arranque de un usuario nuevo (sella
   // silencioso tras el onboarding), ni encima del login/candado/tour.
@@ -955,16 +1021,18 @@ function App(){
   const EDGE_OPEN=52;
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
-    if(drawerOpen) return;
+    if(drawerOpen||profileOpen) return;
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
+    pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
     // En Inicio, swipe a la derecha abre Ajustes desde toda la pantalla (no solo el borde).
     // En el resto de tabs, el borde sigue valiendo (feedback 2026-07-17).
     if(tab===0 || startX.current<EDGE_OPEN) setDrawerMounted(true);
+    if(tab===0) setProfileMounted(true);
   };
   const onMove=(e)=>{
-    if(!dragging.current||drawerOpen) return;
+    if(!dragging.current||drawerOpen||profileOpen) return;
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
@@ -983,7 +1051,28 @@ function App(){
           gestureMode.current="tab";
           if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
         }
+      } else if(axis.current==="y" && tab===0 && ddy>0){
+        // Pull-down perfil (Revolut): solo Inicio, scrolleado arriba o tirando del avatar.
+        const pages=trackRef.current&&trackRef.current.children;
+        const pageEl=pages&&pages[tab];
+        const atTop=!pageEl||pageEl.scrollTop<=2;
+        const fromAv=!!(e.target&&e.target.closest&&e.target.closest(".v4-avatar"));
+        if(atTop||fromAv){
+          gestureMode.current="profile";
+          setProfileMounted(true);
+          if(profileRef.current) profileRef.current.classList.add("dragging");
+          if(appShellRef.current) appShellRef.current.classList.add("dragging","profile-dim");
+        }
       }
+    }
+    if(axis.current==="y" && gestureMode.current==="profile"){
+      const h=window.innerHeight||700;
+      const prog=Math.min(1,Math.max(0,ddy/(h*0.42)));
+      pDY.current=ddy;
+      if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-100+prog*100)+"%,0)";
+      setProfileProgress(prog);
+      if(e.cancelable) e.preventDefault();
+      return;
     }
     if(axis.current!=="x") return;
     dx.current=ddx;
@@ -1003,7 +1092,18 @@ function App(){
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
-    if(axis.current==="x"){
+    if(axis.current==="y" && gestureMode.current==="profile"){
+      if(profileRef.current) profileRef.current.classList.remove("dragging");
+      if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+      const h=window.innerHeight||700;
+      const dist=pDY.current;
+      const dt=Math.max(1,Date.now()-startT.current);
+      const open=dist>h*0.16 || ((dist/dt)>0.5 && dist>36);
+      if(profileRef.current) profileRef.current.style.transform="";
+      setProfileOpen(open);
+      setProfileProgress(open?1:0);
+      pDY.current=0;
+    } else if(axis.current==="x"){
       if(gestureMode.current==="drawer"){
         if(drawerRef.current) drawerRef.current.classList.remove("dragging");
         if(appShellRef.current) appShellRef.current.classList.remove("dragging");
@@ -1149,6 +1249,7 @@ function App(){
     const simple=!!(state.settings&&state.settings.simpleMode);
     if(id==="dash") return React.createElement(Dashboard,{state:state,totals:totals,set:set,
       onOpenSettings:function(){ setDrawerOpen(true); },
+      onOpenProfile:function(){ setProfileMounted(true); setProfileOpen(true); },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
       onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
     if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
@@ -1179,21 +1280,21 @@ function App(){
       ),
       React.createElement("nav",{className:"botnav","aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
-          React.createElement("div",{className:"botnav-ind"+(drawerOpen?" hide":""),
+          React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
             React.createElement("span",null)
           ),
-          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen?" active":""),"data-tour":"inicio",onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); goTab(0); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===0&&!drawerOpen&&!profileOpen?" active":""),"data-tour":"inicio",onTouchStart:function(){ prepMountTab(0); },onClick:function(){ setDrawerOpen(false); setProfileOpen(false); goTab(0); }},
             React.createElement(I.home,null), t("tab_dash")),
-          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen?" active":""),"data-tour":"gastos",onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); goTab(1); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===1&&!drawerOpen&&!profileOpen?" active":""),"data-tour":"gastos",onTouchStart:function(){ prepMountTab(1); },onClick:function(){ setDrawerOpen(false); setProfileOpen(false); goTab(1); }},
             React.createElement(I.expense,null), t("tab_gastos")),
           React.createElement("div",{className:"botnav-fab-slot"},
             React.createElement("button",{className:"botnav-fab","aria-label":t("v4_apuntar"),"data-tour":"apuntar",onClick:function(){ setApuntarOpen(true); }},
               React.createElement(I.plus,{width:26,height:26,stroke:"currentColor"}))
           ),
-          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen?" active":""),"data-tour":"plan",onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); goTab(2); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===2&&!drawerOpen&&!profileOpen?" active":""),"data-tour":"plan",onTouchStart:function(){ prepMountTab(2); },onClick:function(){ setDrawerOpen(false); setProfileOpen(false); goTab(2); }},
             React.createElement(I.calendar,null), t("tab_plan")),
-          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen?" active":""),"data-tour":"cartera",onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); goTab(3); }},
+          React.createElement("button",{className:"botnav-tab"+(tab===3&&!drawerOpen&&!profileOpen?" active":""),"data-tour":"cartera",onTouchStart:function(){ prepMountTab(3); },onClick:function(){ setDrawerOpen(false); setProfileOpen(false); goTab(3); }},
             React.createElement(I.invest,null), t("tab_cartera"))
         )
       )
@@ -1227,6 +1328,17 @@ function App(){
         React.createElement("h1",null, t("settings"))
       ),
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
+    ),
+    React.createElement("div",{
+      className:"profile-pull"+(profileOpen?" open":""),
+      ref:profileRef,
+      onTouchStart:profileOpen?profileStart:undefined,
+      onTouchMove:profileOpen?profileMove:undefined,
+      onTouchEnd:profileOpen?profileEnd:undefined
+    },
+      profileMounted && React.createElement(ProfilePanel,{state:state,set:set,
+        onClose:function(){ setProfileOpen(false); },
+        onOpenSettings:function(){ setProfileOpen(false); setDrawerOpen(true); }})
     )
   );
 }
