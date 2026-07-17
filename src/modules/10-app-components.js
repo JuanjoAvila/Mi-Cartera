@@ -448,6 +448,37 @@ function ActivityPanel({events, onReload, onClose}){
   ));
 }
 
+/* Privacidad DENTRO de la app (2026-07-17): antes era window.open("privacy.html","_blank"), que en
+   el móvil abría una ventana sin safe-area (el título quedaba bajo el notch, «muy arriba») y de la
+   que «costaba tirar para atrás». Ahora es un panel con cabecera, gesto atrás y el mismo diseño que
+   el resto — mismo patrón que ActivityPanel. El contenido va en i18n (pv_*), en los tres idiomas. */
+function PrivacyPanel({onClose}){
+  useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 32px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:560,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const card={background:"var(--sur)",border:"1px solid var(--line-soft)",borderRadius:18,padding:"6px 16px 14px",marginTop:14,boxShadow:"var(--shadow)"};
+  const h2={fontSize:14.5,fontWeight:800,color:"var(--mint)",margin:"16px 0 8px",letterSpacing:.2};
+  const pS={fontSize:14,lineHeight:1.6,color:"var(--text)",margin:0};
+  const sec=function(h, body){
+    return React.createElement("div",{style:card},
+      React.createElement("div",{style:Object.assign({},h2,{marginTop:8})}, h),
+      Array.isArray(body)
+        ? React.createElement("ul",{style:{margin:0,paddingLeft:"1.15em"}}, body.map(function(x,i){ return React.createElement("li",{key:i,style:{fontSize:14,lineHeight:1.6,marginBottom:6}}, x); }))
+        : React.createElement("p",{style:pS}, body)
+    );
+  };
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 4px"}}, "🔒 "+t("pv_title")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:12.5,marginBottom:4}}, t("pv_updated")),
+    sec(t("pv_s1_h"), t("pv_s1")),
+    sec(t("pv_s2_h"), t("pv_s2")),
+    sec(t("pv_s3_h"), t("pv_s3")),
+    sec(t("pv_s4_h"), t("pv_s4"))
+  ));
+}
+
 /* ============================================================
    ✨ NOVEDADES — popup al actualizar + histórico + sugerencias
    ============================================================
@@ -455,6 +486,13 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.15", d:"17 jul 2026", t:"Bancos que aguantan, oro con su %, barra que se esconde y Ajustes más guapos", items:[
+    "🏦 Open Banking ya no se cae «cada dos por tres»: un fallo pasajero del banco (rate-limit, un 403/404 suelto) ya NO te desconecta ni te pide reconectar. Solo se marca «reconéctate» cuando el permiso caducó de verdad.",
+    "🥇 Materias primas de Revolut: al importar el CSV puedes escribir lo que te costó en € y por fin ves si el oro/plata sube o baja (el precio ya se actualizaba solo; faltaba el coste, que Revolut no manda en ese extracto).",
+    "⬇️ La barra de abajo se esconde al bajar y vuelve al subir o al cambiar de pestaña (como Revolut), con la misma animación suave de siempre.",
+    "🔒 Privacidad: ahora se abre DENTRO de la app, con su botón de volver — se acabó la ventana que quedaba pegada arriba y de la que costaba salir.",
+    "⚙️ Ajustes: repaso de arriba abajo, quitando restos antiguos y dejándolo más limpio.",
+  ]},
   {v:"4.0.14", d:"17 jul 2026", t:"Editar gasto: categorías sin cambiar de pestaña", items:[
     "🧾 Al modificar un gasto, al deslizar las categorías ya no se mueve la app de detrás (igual que en el + y en los filtros de Gastos).",
   ]},
@@ -769,8 +807,9 @@ function WhatsNew({onClose, showToast, set, state}){
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices}){
   const [budget,setBudget]=useState(String(state.budget||0));
-  const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "theme" | "tabs" | "act" | null
+  const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
+  const [privOpen,setPrivOpen]=useState(false);    // política de privacidad DENTRO de la app (no _blank)
   const fileRef=useRef(null);
   // Telemetría: el panel «Actividad» SOLO existe para el admin (gate por email de la sesión;
   // la RLS de app_events lo re-valida en servidor — sin sesión de admin no devuelve filas).
@@ -850,11 +889,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     }).catch(function(e){ setBankBusy(false); showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
   };
   const refreshBank=function(){ if(!onBankSync) return; setBankBusy(true); Promise.resolve(onBankSync()).finally(function(){ setBankBusy(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }); };
-  const lbl={fontSize:"12px",color:"var(--muted)",margin:"14px 0 2px"};
+  // Estilos de los pocos controles con input propio (presupuesto). Los demás usan el sistema
+  // de filas .set-row/.swx. (lbl/btnGhost/link se quitaron en 2026-07-17: estaban muertos.)
   const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
   const btn={width:"100%",padding:"12px",borderRadius:"12px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:700,fontSize:"15px",marginTop:"10px",cursor:"pointer"};
-  const btnGhost=Object.assign({},btn,{background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"});
-  const link={background:"none",border:"none",color:"var(--blue)",cursor:"pointer",fontSize:"13px",marginTop:"14px",width:"100%"};
   const saveNums=function(){
     const b=parseFloat(String(budget).replace(',','.'))||0;
     set(function(s){ return Object.assign({},s,{budget:b}); });
@@ -1073,7 +1111,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
-      row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
+      row("priv","🔒",t("st_privacy"),null,function(){ setPrivOpen(true); }),
       row("delacc","🗑️",t("st_delete_acc"),null,function(){
         askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
           .then(function(ok){
@@ -1146,6 +1184,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       )
     ),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
+    privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),

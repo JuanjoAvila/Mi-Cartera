@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-17 · **v4.0.14** — editar gasto: scroll de categorías sin cambiar de tab (+ perfil cierre abajo + fondo sheets en todas las tabs).
+> Estado a 2026-07-17 · **v4.0.15** — Open Banking ya no se cae por fallos transitorios (solo caduca de verdad con 401/mensaje explícito), materias primas de Revolut con coste manual para ver el % sube/baja, nav inferior que se esconde al bajar (estilo Revolut) y privacidad DENTRO de la app (adiós ventana `_blank` bajo el notch) + limpieza de Ajustes.
 
 ## Listo para uso diario
 
@@ -10,15 +10,15 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.0.14** |
-| APK (`versionName` / `versionCode`) | **4.0.12** / **28** — gradle bumpeado, falta assembleRelease + release GitHub + `apk.json` (web 4.0.13 llega por OTA) |
+| Web / OTA (`VERSION`) | **4.0.15** |
+| APK (`versionName` / `versionCode`) | **4.0.12** / **28** — assembleRelease compilado e instalado en el móvil del usuario (adb, 2026-07-17) con el bundle 4.0.14 horneado. Los cambios de 4.0.15 son OTA (web + Edge). Falta subir el APK a un release de GitHub + `apk.json` si se quiere OTA de APK. |
 | `public/apk.json` | debe coincidir con el release publicado |
 
 ## Pendiente / limitaciones conocidas
 
 | Tema | Notas |
 |------|--------|
-| **MyInvestor reCAPTCHA** | Lo impone su anti-bot; no resoluble in-app. Reutilizar `device_id`; esperar y reintentar. |
+| **MyInvestor reCAPTCHA** | Mitigado desde 4.0.12: el login sale del MÓVIL (`CapacitorHttp`, IP residencial) en vez de la Edge (IP datacenter que dispara SECURITY_001). Requiere el bundle ≥4.0.12 en el dispositivo — el APK 28 ya lo hornea. Si aun desde el móvil saliera captcha (raro), es su anti-bot: reutilizar `device_id`, esperar y reintentar. Falta confirmación end-to-end con el login real del usuario. |
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |

@@ -9,6 +9,26 @@ function App(){
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
+  // Nav inferior que se esconde al bajar y reaparece al subir (estilo Revolut, petición 2026-07-17).
+  // navHiddenRef espeja el estado para no re-render en cada píxel de scroll; scrollTab evita que el
+  // primer scroll tras cambiar de pestaña (scrollTop distinto) lo lea como un salto y esconda la barra.
+  const [navHidden,setNavHidden]=useState(false);
+  const navHiddenRef=useRef(false);
+  const lastScrollY=useRef(0);
+  const scrollTab=useRef(0);
+  const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
+  const onPageScroll=function(e){
+    const y=e.currentTarget.scrollTop;
+    // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
+    // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
+    if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); return; }
+    const dy=y-lastScrollY.current;
+    lastScrollY.current=y;
+    if(y<=8){ revealNav(); return; }                 // arriba del todo → siempre visible
+    if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
+    if(dy>0 && y>56){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } }  // bajando → esconder
+    else if(dy<0){ revealNav(); }                     // subiendo → mostrar
+  };
   const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
   const trashRef=useRef(null);
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
@@ -154,7 +174,11 @@ function App(){
       // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
       if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
       if(expired.length){ showToast("⚠ "+bankLabelOf(expired[0])+": "+t("bank_expired_re")); }
-      else if(failed.length && (opts.manual || navigator.onLine!==false)){ showToast("⚠ "+bankLabelOf(failed[0])+": "+t("bank_syncfail")); }
+      // Fallo NO caducado = hipo transitorio del banco (rate-limit PSD2, 5xx…): el enlace sigue
+      // vivo (el servidor ya no lo marca 'expired' por un 403/404), así que no mandamos «reconéctate»
+      // — solo un aviso suave y únicamente si lo pediste tú (feedback 2026-07-17: «se caen cada dos
+      // por tres» era este falso positivo). En auto-sync nos callamos: se reintenta solo.
+      else if(failed.length && opts.manual){ showToast("⚠ "+tf("bank_syncsoft",{bank:bankLabelOf(failed[0])})); }
       else if(!preview.synced.length && !links.length && opts.manual){ showToast(t("bank_none")); }
     }).catch(function(e){
       if(opts.manual || navigator.onLine!==false) showToast("⚠ "+t("bank_syncfail"));
@@ -1057,6 +1081,7 @@ function App(){
   // startTransition: la animación del track va primero; React monta la pestaña en segundo plano.
   const goTab=function(i){
     if(i<0||i>=tabIds.length||i===tab) return;
+    revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
     prepMountTab(i);
     if(i>0) prepMountId(tabIds[i-1]);
     if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
@@ -1339,13 +1364,13 @@ function App(){
           tabIds.map(function(id,i){
             var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
             var show=live||!!mountedTabs[id];
-            return React.createElement("div",{className:"page"+(show?" page-live":""),key:id},
+            return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
               show ? pageFor(id) : null
             );
           })
         )
       ),
-      React.createElement("nav",{className:"botnav","aria-label":"Navegación"},
+      React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
           React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},

@@ -8,7 +8,8 @@
   <style>
     :root { --bg:#06120C; --text:#E8F5EE; --muted:#8FA89A; --mint:#5FD08A; --line:#1a2e24; }
     * { box-sizing: border-box; }
-    body { margin:0; font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; padding:24px 20px 48px; }
+    /* safe-area: en móvil con notch el título no debe quedar bajo la barra de estado («muy arriba»). */
+    body { margin:0; font-family:'Manrope',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; padding:calc(env(safe-area-inset-top,0px) + 24px) calc(env(safe-area-inset-right,0px) + 20px) calc(env(safe-area-inset-bottom,0px) + 48px) calc(env(safe-area-inset-left,0px) + 20px); }
     main { max-width:640px; margin:0 auto; }
     h1 { font-size:1.6rem; margin:0 0 8px; }
     h2 { font-size:1.05rem; margin:28px 0 8px; color:var(--mint); }
