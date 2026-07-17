@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-16 · **v3.113.3** — uso diario estable; Play Store y pulido visual a demanda.
+> Estado a 2026-07-17 · **v4.0.0** — rediseño UI (SPEC-v4); Play Store a demanda.
 
 ## Listo para uso diario
 

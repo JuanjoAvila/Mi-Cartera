@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.0] — 2026-07-17
+### Rediseño v4 (SPEC-v4)
+- 🧭 Nav inferior fija: Inicio · Gastos · FAB Apuntar · Plan · Cartera.
+- 🏠 Inicio nuevo (hero Fraunces, presupuesto humano, próximos cargos, metas, recientes).
+- 💶 Sheet de presupuesto desde la card de Inicio (stepper 50 €).
+- ➕ Sheet Apuntar con teclado propio; Gastos sin form de alta duplicado.
+- 🧾 Sheet detalle al tocar un movimiento (categoría, card flag, borrar con confirmación).
+- 📅 Plan = Recibos (hero + pendiente/pagado agrupado) + Deudas/Metas con cards v4.
+- 💼 Cartera = patrimonio + cuentas planas + round-up + inversiones sin hero duplicado.
+- 👋 Onboarding 3 pasos (claim · demo · presupuesto stepper).
+- ⚙️ Ajustes: perfil, swatches tema 30 px, Apariencia / Para empezar fácil / Conexiones / Avanzado.
+- 🎨 Tokens, tipografía y motion alineados a `docs/design/handoff/SPEC-v4.md`.
+- 📌 Lo marcado como v4.1 en el SPEC (arrastre de sheet, dividir gasto, búsqueda icon-only) queda fuera a propósito.
+
 ## [3.113.3] — 2026-07-16
 ### Cold start más honesto + swipe sin vacío
 - ⚡ Sentry (~340 KB) ya no bloquea el parse del arranque: se inyecta tras el primer pintado si hay DSN.

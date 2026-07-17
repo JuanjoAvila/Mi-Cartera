@@ -418,7 +418,7 @@ function Projection({invested, defMonthly}){
   );
 }
 
-function Investments({state, set, fetchPrices, pricing}){
+function Investments({state, set, fetchPrices, pricing, v4Embed}){
   const fx=state.fx;   // USD→EUR (legacy + display toggle); GBP/CHF van en state.fxRates
   const [editing,setEditing]=useState(false);
   const [showCost,setShowCost]=useState(false);
@@ -512,7 +512,7 @@ function Investments({state, set, fetchPrices, pricing}){
   const typeSegs=typeMeta.filter(function(ty){ return byType[ty[0]]>0; }).map(function(ty){ return {label:t("type_"+ty[0])+" · "+(total>0?Math.round(byType[ty[0]]/total*100):0)+"%", value:byType[ty[0]], color:ty[1]}; });
 
   return React.createElement("div",null,
-    React.createElement("div",{className:"total-bar"},
+    !v4Embed && React.createElement("div",{className:"total-bar"},
       React.createElement("div",null,
         React.createElement("div",{className:"tl"},t("inv_total")),
         React.createElement("div",{className:"tn num"},f2(total)),
@@ -532,6 +532,10 @@ function Investments({state, set, fetchPrices, pricing}){
             hasTickers && React.createElement("button",{className:"btn btn-primary",onClick:()=>fetchPrices(false),disabled:pricing}, pricing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),t("inv_pricing")):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:15,height:15}),t("inv_prices"))),
             React.createElement("button",{className:"btn btn-ghost",style:{padding:"8px 12px"},onClick:start},t("inv_editmanual"))
           )
+    ),
+    v4Embed && React.createElement("div",{className:"action-row",style:{marginTop:4}},
+      hasTickers && React.createElement("button",{className:"btn btn-ghost",onClick:function(){ fetchPrices(false); },disabled:pricing}, pricing?t("inv_pricing"):t("inv_prices")),
+      React.createElement("button",{className:"btn btn-ghost",onClick:start},t("inv_editmanual"))
     ),
     !editing && hasTickers && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
       React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"✓":""),
