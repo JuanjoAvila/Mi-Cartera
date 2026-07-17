@@ -25,9 +25,11 @@ function PlanTab({state, set, totals, showToast, simple}){
   );
 }
 
-/* Recibos prioriza lo que todavía saldrá de la cuenta este mes. Fijos se conserva debajo
-   como gestión completa para no mezclar edición y previsión en la vista diaria. */
+/* Recibos prioriza lo que todavía saldrá de la cuenta este mes. Fijos (edición completa,
+   simulador, conciliación…) vive SOLO dentro de la hoja «Gestionar» — mezclarlo aquí abajo
+   duplicaba próximos cargos y desglose de banco que ya se ven arriba (feedback 2026-07-17). */
 function PlanBills({state, set, totals, manageOpen, setManageOpen}){
+  const [paidExpanded,setPaidExpanded]=useState(false);
   const month=totals.curMonth, year=totals.curYear, today=totals.today;
   const charges=[];
   (state.fixed||[]).forEach(function(e){
@@ -89,16 +91,40 @@ function PlanBills({state, set, totals, manageOpen, setManageOpen}){
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},
         React.createElement("span",null,t("v4_pendiente")),
-        React.createElement("button",{className:"link",onClick:function(){ setManageOpen(function(open){ return !open; }); }},t("v4_gestionar"))
+        React.createElement("button",{className:"link",onClick:function(){ setManageOpen(true); }},t("v4_gestionar"))
       ),
       pending.map(row)
     ),
     React.createElement("div",{className:"v4-section"},
       React.createElement("div",{className:"v4-section-h"},t("v4_ya_pagado")+" · "+eur(paidTotal)),
-      paid.map(row)
+      (paidExpanded?paid:paid.slice(0,3)).map(row),
+      // más de 3 pagados: se pliegan para no llenar la pantalla de recibos ya resueltos (feedback 2026-07-17)
+      paid.length>3 && React.createElement("button",{className:"v4-link-mini",onClick:function(){ setPaidExpanded(function(v){ return !v; }); }},
+        paidExpanded ? t("v4_ver_menos") : tf("v4_ver_mas",{n:paid.length-3}))
     ),
-    manageOpen && React.createElement("div",{className:"v4-section"},React.createElement(Fijos,{state:state,set:set,totals:totals}))
+    React.createElement(BillsManageSheet,{open:manageOpen,onClose:function(){ setManageOpen(false); },state:state,set:set,totals:totals})
   );
+}
+
+/* Hoja «Gestionar»: aquí vive Fijos entero (servicios, cuotas, flujos, puntuales, simulador,
+   conciliación…). Antes se «dumpeaba» tal cual debajo de Recibos y mezclaba edición con la
+   vista diaria — ahora solo aparece si el usuario pide gestionar (feedback 2026-07-17). */
+function BillsManageSheet({open, onClose, state, set, totals}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  if(!open) return null;
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"90dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"v4-section-h"},
+          React.createElement("span",{className:"serif",style:{fontSize:19,fontWeight:600}}, t("v4_gestionar")),
+          React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
+        ),
+        React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_gestionar_h")),
+        React.createElement(Fijos,{state:state,set:set,totals:totals})
+      )
+    ), document.body);
 }
 
 function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
@@ -158,6 +184,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
     if(open){ setKind("gasto"); setRaw(""); setNote(""); setCat("super"); }
   },[open]);
   useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
   if(!open) return null;
   const tap=function(ch){
     if(ch==="⌫"){ setRaw(function(r){ return r.slice(0,-1); }); return; }
@@ -188,7 +215,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   const cats=CATEGORIES.filter(function(c){ return c.id!=="otros"; }).concat(CATEGORIES.filter(function(c){ return c.id==="otros"; }));
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"v4-toggle"},
           React.createElement("button",{className:kind==="gasto"?"on":"",onClick:function(){ setKind("gasto"); }},"💸 "+t("v4_gasto")),

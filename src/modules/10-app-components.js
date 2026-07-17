@@ -471,6 +471,15 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.1", d:"17 jul 2026", t:"Pulido del rediseño: gestos, fichas y números que cuadran", items:[
+    "👈 Ajustes se abre deslizando desde el borde (como Revolut) y se cierra tirando a la izquierda; el avatar sigue valiendo.",
+    "🏠 En Inicio, «Próximos cargos» ya no enseña recibos que ya pagaste este mes.",
+    "💶 En Gastos, el resumen cuenta también los ingresos (y el ajuste de Ajustes vuelve a cambiar la vista).",
+    "🧾 Fichas de gasto: fecha y banco con margen, fecha legible al editar, y tira hacia abajo para cerrar (también el +).",
+    "📅 En Plan › Recibos, «Gestionar» abre fijos y herramientas; «Ya pagado» enseña 3 y el resto con Ver más.",
+    "💼 Cartera más limpia: brókers desplegables sin botones ni auto-precios de más.",
+    "📱 Status bar del móvil al color de la app (hace falta actualizar el APK nativo)."
+  ]},
   {v:"4.0.0", d:"17 jul 2026", t:"Rediseño completo: más claro, más rápido, más tuyo", items:[
     "🏠 Nueva navegación: Inicio, Gastos, botón + para apuntar, Plan y Cartera.",
     "✨ Inicio responde «¿cómo voy?» con patrimonio, presupuesto en humano y próximos cargos.",
@@ -1066,7 +1075,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
       row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
     ),
-    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",meEmail||null,
+    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
+      meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
       row("priv","🔒",t("st_privacy"),null,function(){ window.open("privacy.html","_blank","noopener"); }),
       row("delacc","🗑️",t("st_delete_acc"),null,function(){
         askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })

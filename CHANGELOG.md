@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.0.1] — 2026-07-17
+### Pulido post-4.0.0 (feedback real)
+- 👈 Ajustes tipo Revolut: swipe desde borde izquierdo para abrir, swipe a la izquierda para cerrar; blur/scale del shell (panel hermano, no hijo).
+- 🏠 Inicio «Próximos cargos» alineado con Plan (`occursIn` / `isPaidIn`).
+- 💶 Gastos: `gTotalMode` vuelve a pintar neto/split; caja «Mi ciclo» sin nómina más clara; meta cat·fecha·banco con separadores.
+- 🧾 Sheets (detalle, Apuntar, Gestionar, presupuesto): `useSheetSwipe` + bloqueo de scroll del fondo; fecha humana en detalle.
+- 📅 Plan Recibos: Gestionar → sheet con Fijos; Ya pagado colapsado a 3 + Ver más.
+- 💼 Cartera embed: sin botones de precios/editar ni auto-precios; hint de brókers.
+- 📱 Edge-to-edge nativo (status bar transparente + `--bg`); `theme-color` alineado. Requiere rebuild APK.
+
 ## [4.0.0] — 2026-07-17
 ### Rediseño v4 (SPEC-v4)
 - 🧭 Nav inferior fija: Inicio · Gastos · FAB Apuntar · Plan · Cartera.

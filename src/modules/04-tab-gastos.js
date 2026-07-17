@@ -159,13 +159,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
   const monthSummary=useMemo(function(){
     const now=new Date(), start=startOfMonth(now);
-    const spent=(state.expenses||[]).reduce(function(total,e){
-      const d=parseDate(e.date);
-      return d>=start && e.amount>0 ? total+e.amount : total;
-    },0);
+    let spent=0, income=0;
+    (state.expenses||[]).forEach(function(e){
+      const d=parseDate(e.date); if(!(d>=start)) return;
+      if(e.amount>0) spent+=e.amount;
+      else if(e.amount<0) income+=Math.abs(e.amount);
+    });
     const budget=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
-    return {spent:spent,budget:budget,remaining:budget==null?null:budget-spent,day:now.getDate(),last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),month:monthLong(now.getMonth())};
-  },[state.expenses,state.budget]);
+    const mode=(state.settings&&state.settings.gTotalMode)||"split";
+    const balance=income-spent; // positivo = te queda / negativo = gastaste de más
+    return {
+      spent:spent, income:income, balance:balance, mode:mode,
+      budget:budget,
+      remaining:budget==null?null:(mode==="net"?budget-spent+income:budget-spent),
+      day:now.getDate(),
+      last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),
+      month:monthLong(now.getMonth())
+    };
+  },[state.expenses,state.budget,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
     if(!cloud.enabled()||!ex||aiBusy) return;
@@ -233,8 +244,19 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement("section",{className:"v4-gastos-summary"},
       React.createElement("div",{className:"v4-gastos-summary-top"},
         React.createElement("div",null,
-          React.createElement("div",{className:"v4-gastos-summary-label"},tf("v4_gastos_spent_in",{month:monthSummary.month})),
-          React.createElement("div",{className:"v4-gastos-summary-amount num"},eur(monthSummary.spent))
+          React.createElement("div",{className:"v4-gastos-summary-label"},
+            monthSummary.mode==="net"
+              ? tf("v4_gastos_net_in",{month:monthSummary.month})
+              : tf("v4_gastos_spent_in",{month:monthSummary.month})),
+          React.createElement("div",{className:"v4-gastos-summary-amount num"+(monthSummary.mode==="net"?(monthSummary.balance>=0?" pos":" neg"):"")},
+            monthSummary.mode==="net"
+              ? ((monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance)))
+              : eur(monthSummary.spent)),
+          monthSummary.mode==="net"
+            ? React.createElement("div",{className:"v4-gastos-summary-sub"},
+                tf("v4_gastos_split_line",{spent:eur(monthSummary.spent),income:eur(monthSummary.income)}))
+            : (monthSummary.income>0 && React.createElement("div",{className:"v4-gastos-summary-sub"},
+                tf("v4_gastos_inc_line",{x:eur(monthSummary.income),bal:(monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance))})))
         ),
         React.createElement("div",{className:"v4-gastos-summary-budget"},
           React.createElement("div",null,tf("v4_gastos_of",{x:monthSummary.budget==null?"—":eur(monthSummary.budget)})),
@@ -262,10 +284,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       ),
       // «Mi ciclo»: enseña QUÉ cobro ancla el ciclo (si el detectado no es el bueno, se corrige
       // apuntando la nómina real como ingreso, o usando Rango…).
-      preset==="cycle" && React.createElement("div",{className:"hint",style:{margin:"2px 2px 0"}},
+      preset==="cycle" && React.createElement("div",{className:"v4-cycle-box"},
         cycle
-          ? "📅 "+tf("g_cycle_from",{d:cycle.start.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}), x:"+"+eur0(Math.abs(cycle.inc.amount))+((cycle.inc.merchant&&cycle.inc.merchant!=="Ingreso")?" · "+cycle.inc.merchant:"")})
-          : "💡 "+t("g_cycle_none")
+          ? React.createElement(React.Fragment,null,
+              React.createElement("strong",null,"📅 "+t("g_cycle")),
+              tf("g_cycle_from",{d:cycle.start.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'}), x:"+"+eur0(Math.abs(cycle.inc.amount))+((cycle.inc.merchant&&cycle.inc.merchant!=="Ingreso")?" · "+cycle.inc.merchant:"")}))
+          : React.createElement(React.Fragment,null,
+              React.createElement("strong",null,t("g_cycle_none_t")),
+              t("g_cycle_none"))
       ),
       preset==="custom" && React.createElement("div",Object.assign({className:"range"},stopSwipe),
         React.createElement("input",{type:"date",value:range.from,onChange:e=>setRange(Object.assign({},range,{from:e.target.value}))}),
@@ -342,8 +368,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                       React.createElement("div",null,g.e.merchant||"—"),
                       React.createElement("div",{className:"meta"},
                         React.createElement("span",{style:{color:c.color}},catName(g.e.category)),
+                        React.createElement("span",{className:"sep"},"·"),
                         React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
-                        (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement("span",{style:{color:"var(--muted-2)"}}," · "+entOf(bk).mono):null; })()
+                        (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement(React.Fragment,null,
+                          React.createElement("span",{className:"sep"},"·"),
+                          React.createElement("span",{style:{color:"var(--muted-2)"}},entOf(bk).mono)
+                        ):null; })()
                       )
                     ),
                     React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(g.e.amount)))
@@ -375,11 +405,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 /* Sheet detalle/edición de un movimiento (SPEC §14). Cambios al momento; borrar pide confirmación. */
 function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
   useBackClose(!!exp, onClose);
+  const swipe=useSheetSwipe(!!exp, onClose);
   if(!exp || !editExp) return null;
   const c=catOf(exp.category);
   const isIncome=exp.amount<0;
   const bk=expenseBankOf(exp);
   const auto=exp.source && exp.source!=="manual";
+  const d=parseDate(exp.date);
+  const dateLbl=d&&!isNaN(d.getTime())
+    ? d.toLocaleDateString(loc(),{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})
+    : "—";
   const closeSave=function(){ saveEdit(exp); onClose(); };
   const doDel=function(){
     askConfirm({ title:tf("v4_exp_del_q",{name:(exp.merchant||"—")+" · "+eur(Math.abs(exp.amount))}), sub:t("v4_exp_del_sub"), ok:t("v4_exp_del"), danger:true })
@@ -387,7 +422,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
   };
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",{className:"v4-sheet",style:{maxHeight:"88dvh",overflowY:"auto"},onClick:function(e){ e.stopPropagation(); }},
+      React.createElement("div",Object.assign({className:"v4-sheet",style:{maxHeight:"88dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"v4-exp-head"},
           React.createElement("div",{className:"tile",style:{width:54,height:54,fontSize:26,borderRadius:16,border:"1px solid "+c.color+"55",color:c.color,background:c.color+"18",display:"grid",placeItems:"center"}}, c.icon),
@@ -396,8 +431,8 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
             React.createElement("input",{className:"v4-input num",style:{fontFamily:"'Fraunces',Georgia,serif",fontSize:28,fontWeight:550,textAlign:"center"},inputMode:"decimal",value:editExp.amount,onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{amount:v}); }); },onBlur:closeSave})
           )
         ),
-        React.createElement("div",{className:"v4-chips",style:{marginBottom:12}},
-          React.createElement("span",{className:"v4-chip"}, exp.date),
+        React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          React.createElement("span",{className:"v4-chip"}, dateLbl),
           bk && React.createElement("span",{className:"v4-chip"}, entOf(bk).label),
           React.createElement("span",{className:"v4-chip"}, auto?t("v4_exp_auto"):t("v4_exp_manual"))
         ),
@@ -422,10 +457,11 @@ function BudgetSheet({open, budget, onClose, onSave}){
   const [b,setB]=useState(budget||700);
   useEffect(function(){ if(open) setB(Math.max(100, Math.round(budget||700))); },[open,budget]);
   useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
   if(!open) return null;
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
-      React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
         React.createElement("div",{className:"v4-sheet-handle"}),
         React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:8}}, t("v4_budget_sheet")),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.45,margin:"0 0 18px"}}, t("v4_budget_sheet_h")),

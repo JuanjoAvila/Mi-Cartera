@@ -2,7 +2,12 @@ package com.micartera.app;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.view.View;
+import android.view.Window;
+
+import androidx.core.view.WindowCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -12,6 +17,17 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MiCarteraPlugin.class);       // antes de super.onCreate (así lo pide Capacitor)
         registerPlugin(TradeRepublicPlugin.class);   // puente TR (beta)
         super.onCreate(savedInstanceState);
+        // Edge-to-edge: contenido bajo la status bar; el CSS usa --safe-top para no tapar iconos.
+        try {
+            Window w = getWindow();
+            WindowCompat.setDecorFitsSystemWindows(w, false);
+            w.setStatusBarColor(Color.TRANSPARENT);
+            w.setNavigationBarColor(Color.parseColor("#0A1310"));
+            View decor = w.getDecorView();
+            decor.setSystemUiVisibility(decor.getSystemUiVisibility()
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        } catch (Exception ignored) {}
         stashGoto(getIntent());                      // punto 5: la app se ABRIÓ tocando una noti de gasto
     }
 
