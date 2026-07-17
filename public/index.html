@@ -447,6 +447,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
      encima de TODO: los paneles de Ajustes/Bancos llegan a z-index 215. */
   .askback{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:230;display:flex;align-items:flex-end;justify-content:center;}
   .ask-in{width:100%;box-sizing:border-box;text-align:right;font-size:19px;font-weight:800;padding:12px 14px;margin:2px 0 10px;}
+  /* Perfil / texto libre: mismo tamaño que el valor ya guardado (no el teclado de importes). */
+  .ask-in.ask-in-compact{text-align:left;font-size:15px;font-weight:600;padding:10px 12px;letter-spacing:0;}
+  .askback.ask-compact .ts-title{font-size:17px;font-weight:700;}
+  .askback.ask-compact .tabsheet{padding:16px 16px calc(14px + var(--safe-bottom));}
   .ask-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px;}
   .ask-btns{display:flex;gap:8px;margin-top:14px;}
   .ask-btns .btn{flex:1;margin:0;}
@@ -624,30 +628,48 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 
   /* Perfil tipo Revolut: baja desde arriba al tirar en Inicio (feedback 2026-07-17). */
   .profile-pull{position:fixed;inset:0;z-index:72;background:var(--bg);max-width:520px;margin:0 auto;overflow-y:auto;
-    padding:calc(var(--safe-top) + 10px) 18px calc(28px + var(--safe-bottom));
-    transform:translate3d(0,-105%,0);transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;
-    box-shadow:0 18px 48px rgba(0,0,0,.45);}
-  .profile-pull.open{transform:translate3d(0,0,0);}
+    padding:calc(var(--safe-top) + 6px) 16px calc(28px + var(--safe-bottom));
+    transform:translate3d(0,-108%,0);opacity:.35;
+    transition:transform .55s cubic-bezier(.22,1,.36,1),opacity .32s ease;
+    will-change:transform,opacity;box-shadow:0 22px 56px rgba(0,0,0,.5);
+    border-radius:0 0 28px 28px;}
+  .profile-pull.open{transform:translate3d(0,0,0);opacity:1;border-radius:0;}
   .profile-pull.dragging{transition:none;}
-  .profile-pull-h{display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;}
-  .profile-pull-h .back{width:44px;height:44px;border-radius:50%;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:20px;color:var(--text);flex:0 0 auto;}
-  .profile-pull-h .ph-main{flex:1;min-width:0;padding-top:2px;}
-  .profile-pull-h h1{font-family:'Fraunces',Georgia,serif;font-size:28px;font-weight:560;margin:0 0 4px;letter-spacing:-.4px;}
-  .profile-handle{font-size:14px;font-weight:700;color:var(--mint);display:inline-flex;align-items:center;gap:6px;}
-  .profile-av{width:72px;height:72px;border-radius:50%;background:linear-gradient(150deg,var(--sur2),var(--sur));border:1px solid var(--line);
-    display:grid;place-items:center;font-weight:800;font-size:20px;color:var(--text);flex:0 0 auto;position:relative;}
-  .profile-sec{font-size:15px;font-weight:700;color:var(--text);margin:22px 2px 10px;}
-  .profile-card{background:var(--sur);border:1px solid var(--line-soft);border-radius:18px;padding:4px 0;margin-bottom:4px;}
-  .profile-row{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;width:100%;text-align:left;background:none;border:none;color:inherit;cursor:pointer;}
+  .profile-pull-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
+  .profile-pull-h .back{width:34px;height:34px;border-radius:50%;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:17px;color:var(--text);flex:0 0 auto;line-height:1;}
+  .profile-pull-h .ph-main{flex:1;min-width:0;}
+  .profile-pull-h h1{font-family:'Manrope',sans-serif;font-size:18px;font-weight:800;margin:0;letter-spacing:-.2px;}
+  .profile-handle{font-size:12.5px;font-weight:700;color:var(--mint);display:inline-flex;align-items:center;gap:5px;margin-top:2px;}
+  .profile-av{width:52px;height:52px;border-radius:50%;background:linear-gradient(150deg,var(--sur2),var(--sur));border:1px solid var(--line);
+    display:grid;place-items:center;font-weight:800;font-size:15px;color:var(--text);flex:0 0 auto;position:relative;}
+  .profile-sec{font-size:13px;font-weight:700;color:var(--muted);margin:16px 2px 8px;}
+  .profile-card{background:var(--sur);border:1px solid var(--line-soft);border-radius:16px;padding:2px 0;margin-bottom:4px;}
+  .profile-pull.open .profile-card,.profile-pull.open .profile-sec,.profile-pull.open .profile-pull-h{
+    animation:pf-rise .48s cubic-bezier(.22,1,.36,1) both;}
+  .profile-pull.open .profile-pull-h{animation-delay:.02s;}
+  .profile-pull.open .profile-sec:nth-of-type(1),.profile-pull.open .profile-card:nth-of-type(1){animation-delay:.06s;}
+  .profile-pull.open .profile-sec:nth-of-type(2),.profile-pull.open .profile-card:nth-of-type(2){animation-delay:.12s;}
+  .profile-pull.open .profile-sec:nth-of-type(3),.profile-pull.open .profile-card:nth-of-type(3){animation-delay:.18s;}
+  @keyframes pf-rise{from{opacity:0;transform:translateY(-14px);}to{opacity:1;transform:none;}}
+  .profile-row{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;width:100%;text-align:left;background:none;border:none;color:inherit;cursor:pointer;}
   .profile-row + .profile-row{border-top:1px solid var(--line-soft);}
   .profile-row .pr-body{flex:1;min-width:0;}
-  .profile-row .pr-lab{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:3px;}
-  .profile-row .pr-val{font-size:15px;font-weight:700;color:var(--text);line-height:1.35;word-break:break-word;}
+  .profile-row .pr-lab{font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:2px;}
+  .profile-row .pr-val{font-size:14.5px;font-weight:700;color:var(--text);line-height:1.35;word-break:break-word;}
   .profile-row .pr-val.empty{color:var(--muted-2);font-weight:600;}
-  .profile-row .pr-edit{color:var(--mint);font-size:15px;flex:0 0 auto;padding-top:2px;opacity:.9;}
-  .app-shell.profile-dim{transform:scale(calc(1 - var(--prof-p,0)*0.04));filter:brightness(calc(1 - var(--prof-p,0)*0.25));transform-origin:top center;transition:transform .42s cubic-bezier(.32,.72,0,1),filter .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
+  .profile-row .pr-edit{color:var(--mint);font-size:13px;flex:0 0 auto;padding-top:2px;opacity:.9;}
+  .app-shell.profile-dim{transform:scale(calc(1 - var(--prof-p,0)*0.055)) translateY(calc(var(--prof-p,0)*8px));
+    filter:brightness(calc(1 - var(--prof-p,0)*0.28)) blur(calc(var(--prof-p,0)*1.2px));
+    transform-origin:top center;transition:transform .55s cubic-bezier(.22,1,.36,1),filter .4s ease;pointer-events:none;}
   .app-shell.profile-dim.dragging{transition:none;}
-  .v4-avatar.pulling{transform:translateY(calc(var(--prof-p,0)*28px)) scale(calc(1 + var(--prof-p,0)*0.35));box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  .v4-avatar.pulling{transform:translateY(calc(var(--prof-p,0)*36px)) scale(calc(1 + var(--prof-p,0)*0.55));box-shadow:0 10px 28px rgba(0,0,0,.4);}
+  .v4-mov .nm-title{font-weight:700;font-size:15.5px;line-height:1.25;}
+  .v4-mov .nm-cat{font-size:12.5px;font-weight:650;margin-top:2px;line-height:1.2;}
+  .v4-banks .bk-sec{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);margin:18px 2px 8px;}
+  .v4-banks .bk-card{background:var(--sur);border:1px solid var(--line-soft);border-radius:16px;padding:14px;margin-bottom:10px;}
+  .v4-banks .bk-card .bk-h{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .v4-banks .bk-card .bk-h .ttl{flex:1;min-width:0;font-weight:800;font-size:15px;}
+  .v4-banks .bk-card .bk-h .sub{font-size:12px;color:var(--muted);font-weight:600;}
   .v4-banks .v4-mov{margin-bottom:8px;}
   .v4-banks .bk-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:0 2px;}
   .v4-banks .bk-actions .btn{flex:1 1 auto;min-width:0;padding:10px 12px;font-size:13px;}
@@ -1475,7 +1497,8 @@ const cloud = (function(){
       const {data:{session}}=await sb.auth.getSession();
       if(!session) return null;
       // Solo columnas NO sensibles (grant a nivel de columna; los tokens no se exponen).
-      const {data,error}=await sb.from('myinvestor_links').select('status,last_sync,updated_at').eq('user_id',session.user.id).maybeSingle();
+      // device_id: para reutilizar el mismo móvil al reconectar (menos captchas).
+      const {data,error}=await sb.from('myinvestor_links').select('status,last_sync,updated_at,device_id').eq('user_id',session.user.id).maybeSingle();
       if(error) return null;
       return data||null;
     },
@@ -3158,6 +3181,7 @@ Object.assign(LANG.es,{
   bp_remove:"Quitar", bp_remove_q:"¿Quitar {bank}?", bp_remove_yes:"Sí, quitar", bp_remove_no:"Cancelar",
   bp_removing:"Quitando…", bp_removed:"{bank} quitado · puedes reconectarlo cuando quieras",
   bp_foot:"Trade Republic no está en Open Banking (es un bróker): su gasto con tarjeta sigue siendo manual.",
+  bp_brokers:"Brókers",
 });
 Object.assign(LANG.en,{
   bp_title:"My banks", bp_intro:"Connect one or more banks via Open Banking. Read-only, no card. Each consent renews every ~3 months.",
@@ -3178,6 +3202,7 @@ Object.assign(LANG.en,{
   bp_remove:"Remove", bp_remove_q:"Remove {bank}?", bp_remove_yes:"Yes, remove", bp_remove_no:"Cancel",
   bp_removing:"Removing…", bp_removed:"{bank} removed · you can reconnect it whenever you want",
   bp_foot:"Trade Republic isn't in Open Banking (it's a broker): its card spending stays manual.",
+  bp_brokers:"Brokers",
 });
 Object.assign(LANG.ca,{
   bp_title:"Els meus bancs", bp_intro:"Connecta un o més bancs per Open Banking. Només lectura, sense targeta. Cada permís es renova cada ~3 mesos.",
@@ -3198,6 +3223,7 @@ Object.assign(LANG.ca,{
   bp_remove:"Treu", bp_remove_q:"Treure {bank}?", bp_remove_yes:"Sí, treu", bp_remove_no:"Cancel·la",
   bp_removing:"Traient…", bp_removed:"{bank} tret · pots reconnectar-lo quan vulguis",
   bp_foot:"Trade Republic no és a Open Banking (és un bróker): la seva despesa amb targeta segueix sent manual.",
+  bp_brokers:"Brókers",
 });
 Object.assign(LANG.en,{
   rec_title:"Bank reconciliation",
@@ -5061,14 +5087,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                     }},
                     React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
                     React.createElement("div",{className:"nm"},
-                      React.createElement("div",null,g.e.merchant||"—"),
+                      React.createElement("div",{className:"nm-title"}, g.e.merchant||"—"),
+                      React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(g.e.category)),
                       React.createElement("div",{className:"meta"},
-                        React.createElement("span",{style:{color:c.color}},catName(g.e.category)),
-                        React.createElement("span",{className:"sep"},"·"),
                         React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
                         (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement(React.Fragment,null,
                           React.createElement("span",{className:"sep"},"·"),
-                          React.createElement("span",{style:{color:"var(--muted-2)"}},entOf(bk).mono)
+                          React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
                         ):null; })()
                       )
                     ),
@@ -5203,11 +5228,11 @@ function AskHost(){
   const ok=function(){ done(cur.input?String(val):true); };
   const cancel=function(){ done(cur.input?null:false); };
   return ReactDOM.createPortal(
-    React.createElement("div",{className:"askback",onClick:cancel},
+    React.createElement("div",{className:"askback"+(cur.compact?" ask-compact":""),onClick:cancel},
       React.createElement("div",{className:"tabsheet",onClick:function(e){ e.stopPropagation(); }},
         React.createElement("div",{className:"ts-title"},cur.title),
         cur.sub && React.createElement("div",{className:"ts-hint"},cur.sub),
-        cur.input && React.createElement("input",{className:"af-in num ask-in",autoFocus:true,
+        cur.input && React.createElement("input",{className:"af-in num ask-in"+(cur.compact?" ask-in-compact":""),autoFocus:true,
           type:cur.secret?"password":"text",
           inputMode:cur.secret?"text":(cur.mode||"decimal"), placeholder:cur.ph||"", value:val,
           onChange:function(e){ setVal(e.target.value); },
@@ -5630,9 +5655,29 @@ function MyInvestorSync({state, set}){
       devRef.current=d; return d;
     }catch(e){ devRef.current="mi-"+Date.now(); return devRef.current; }
   };
+  const adoptDeviceId=function(id){
+    if(!id) return;
+    try{ localStorage.setItem("_miDeviceId", String(id)); }catch(e){}
+    devRef.current=String(id);
+  };
   useEffect(function(){
     if(!cloud.enabled()){ setNoSession(true); return; }
-    cloud.session().then(function(se){ if(!se){ setNoSession(true); return; } cloud.myinvestorStatus().then(function(r){ if(r&&r.status==="active") setStep("connected"); else if(r&&r.status==="expired") setExpired(true); }).catch(function(){}); }).catch(function(){ setNoSession(true); });
+    cloud.session().then(function(se){
+      if(!se){ setNoSession(true); return; }
+      cloud.myinvestorStatus().then(function(r){
+        if(r&&r.device_id) adoptDeviceId(r.device_id);
+        if(r&&r.status==="active"){ setStep("connected"); return; }
+        // «expired» a veces era un falso positivo (403 anti-bot). Probamos sync suave:
+        // si el token sigue vivo, reactivamos sin login ni captcha (feedback 2026-07-17).
+        if(r&&r.status==="expired"){
+          setExpired(true);
+          cloud.myinvestorSync().then(function(res){
+            if(res&&res.ok){ setExpired(false); setStep("connected"); }
+          }).catch(function(){});
+          return;
+        }
+      }).catch(function(){});
+    }).catch(function(){ setNoSession(true); });
   },[]);
   const fail=function(r){ setBusy(false); const m=(r&&(r.error||r.message))||t("mi_err"); setErr(m); try{ cloud.logEvent('error','MI: '+m); }catch(e){} };
   const doConnect=function(){
@@ -5640,7 +5685,11 @@ function MyInvestorSync({state, set}){
     cloud.myinvestorConnect({ customerId:cid.trim(), password:pass, deviceId:deviceId() }).then(function(r){
       setBusy(false);
       if(!r){ fail(r); return; }
-      if(r.recaptcha){ setErr(r.error||t("mi_recaptcha")); return; }
+      if(r.recaptcha){
+        // No hay WebView para resolver captcha: pedir paciencia y NO spamear reintentos.
+        setErr(r.error||t("mi_recaptcha"));
+        return;
+      }
       if(r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
       if(r.connected){ try{ localStorage.setItem("_miCid",cid.trim()); }catch(e){} setExpired(false); setStep("connected"); doSync(); return; }
       fail(r);
@@ -5691,51 +5740,60 @@ function MyInvestorSync({state, set}){
   };
   const disconnect=function(){ cloud.myinvestorDisconnect(); try{ localStorage.removeItem("_miCid"); }catch(e){} setExpired(false); setStep("idle"); setPositions(null); setCid(""); setPass(""); setOtpInfo(null); };
   const inpStyle={marginTop:8};
-  return React.createElement(CollapsibleCard,{title:t("mi_title"),sub:t("tr_beta")+" · "+t("mi_sub"),dot:"#E85D9A",defaultOpen:false,storageKey:"inv_misync"},
-    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("mi_hint")),
-    noSession
-      ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_need_login"))
-      : React.createElement(React.Fragment,null,
-          step==="idle" && React.createElement(React.Fragment,null,
-            expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
-            React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
-            React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
-            React.createElement("div",{className:"hint",style:{marginTop:8}},t("mi_nostore"))
-          ),
-          step==="otp" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
-            React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:8,placeholder:t("mi_otp_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doOtp}, busy?t("mi_verifying"):t("mi_verify"))
-          ),
-          step==="connected" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("mi_connected")),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("mi_syncing"):t("mi_sync")),
-            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("mi_disconnect"))
-          ),
-          step==="preview" && positions && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("mi_preview",{n:positions.length})),
-            positions.map(function(po){
-              return React.createElement("div",{key:keyOf(po),className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
-                React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
-                  React.createElement("div",{style:{minWidth:0}},
-                    React.createElement("div",{className:"rname"},po.name),
-                    React.createElement("div",{className:"rsub"},(po.isin||"")+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):""))),
-                  React.createElement("div",{className:"rval num"}, (po.shares!=null?po.shares:"")+" "+t("bi_shares"),
-                    React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0)))),
-                React.createElement("select",{className:"af-in",value:map[keyOf(po)]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[keyOf(po)]=v; return n; }); }},
-                  React.createElement("option",{value:""},t("bi_notouch")),
-                  React.createElement("option",{value:"__new"},t("tr_createnew")),
-                  (state.investments||[]).map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
-                )
-              );
-            }),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("mi_apply",{n:mappedN})),
-            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:function(){ setStep("connected"); setPositions(null); }},t("fj_cancel"))
-          ),
-          doneN!=null && step==="connected" && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}},tf("mi_done",{n:doneN})),
-          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
-        )
+  // UI plana v4 (sin CollapsibleCard pesada) — feedback 2026-07-17 redesing bancos.
+  const body=noSession
+    ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_need_login"))
+    : React.createElement(React.Fragment,null,
+        step==="idle" && React.createElement(React.Fragment,null,
+          expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
+          React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
+          React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
+          React.createElement("div",{className:"hint",style:{marginTop:8}},t("mi_nostore"))
+        ),
+        step==="otp" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
+          React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:8,placeholder:t("mi_otp_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doOtp}, busy?t("mi_verifying"):t("mi_verify"))
+        ),
+        step==="connected" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("mi_connected")),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("mi_syncing"):t("mi_sync")),
+          React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("mi_disconnect"))
+        ),
+        step==="preview" && positions && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("mi_preview",{n:positions.length})),
+          positions.map(function(po){
+            return React.createElement("div",{key:keyOf(po),className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
+              React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
+                React.createElement("div",{style:{minWidth:0}},
+                  React.createElement("div",{className:"rname"},po.name),
+                  React.createElement("div",{className:"rsub"},(po.isin||"")+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):""))),
+                React.createElement("div",{className:"rval num"}, (po.shares!=null?po.shares:"")+" "+t("bi_shares"),
+                  React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0)))),
+              React.createElement("select",{className:"af-in",value:map[keyOf(po)]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[keyOf(po)]=v; return n; }); }},
+                React.createElement("option",{value:""},t("bi_notouch")),
+                React.createElement("option",{value:"__new"},t("tr_createnew")),
+                (state.investments||[]).map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+              )
+            );
+          }),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("mi_apply",{n:mappedN})),
+          React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:function(){ setStep("connected"); setPositions(null); }},t("fj_cancel"))
+        ),
+        doneN!=null && step==="connected" && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}},tf("mi_done",{n:doneN})),
+        err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
+      );
+  return React.createElement("div",{className:"bk-card"},
+    React.createElement("div",{className:"bk-h"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"ttl"}, t("mi_title")),
+        React.createElement("div",{className:"sub"}, t("mi_sub"))
+      ),
+      step==="connected" ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
+    ),
+    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("mi_hint")),
+    body
   );
 }
 
@@ -5800,7 +5858,8 @@ function TRSync({state, set, totals}){
     setBusy(true); setErr(false); setErrMsg(""); setStep("idle"); setDoneN(null);
     return Promise.resolve(bridge.sync()).then(function(r){
       setBusy(false);
-      if(r&&r.authExpired){ setConnected(false); setStep("idle"); fail(r); return; }   // sesión caducó → volver al login
+      if(r&&r.authExpired && !r.softFail && !r.wafBlocked){ setConnected(false); setStep("idle"); fail(r); return; }
+      if(r&&(r.softFail||r.wafBlocked)){ fail(r); return; }   // anti-bot: sesión sigue, no pedir 2FA
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
       r.positions.forEach(function(po){
@@ -5875,59 +5934,63 @@ function TRSync({state, set, totals}){
     setConnected(false); setStep("idle"); setPositions(null); setPhone(""); setPin("");
   };
   const inpStyle={marginTop:8};
-  return React.createElement(CollapsibleCard,{title:t("tr_title"),sub:t("tr_beta")+" · "+t("tr_sub"),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_trsync"},
-    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_hint")),
-    !bridge
-      ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("tr_web_only"))
-      : React.createElement(React.Fragment,null,
-          React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
-          // PASO 1 · login (teléfono + PIN) — solo si no hay sesión activa
-          !connected && step!=="code" && React.createElement(React.Fragment,null,
-            React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
-            React.createElement("input",{className:"af-in",style:inpStyle,type:"password",inputMode:"numeric",placeholder:t("tr_pin_ph"),value:pin,onChange:function(e){ setPin(e.target.value); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!phone.trim()||!pin.trim(),onClick:doLogin}, busy?t("tr_connecting"):t("tr_connect"))
-          ),
-          // PASO 2 · código 2FA
-          step==="code" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0}},t("tr_code_intro")),
-            React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:6,placeholder:t("tr_code_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doVerify}, busy?t("tr_verifying"):t("tr_verify"))
-          ),
-          // conectado y sin previsualización pendiente → botón sincronizar
-          connected && step!=="preview" && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("tr_connected")),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("tr_syncing"):t("tr_sync")),
-            React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("tr_disconnect"))
-          ),
-          // PASO 3 · previsualización + mapeo por ISIN (reutiliza el patrón del importador)
-          step==="preview" && positions && React.createElement(React.Fragment,null,
-            React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("tr_preview",{n:positions.length})),
-            cash!=null && React.createElement("div",{className:"hint"}, tf("tr_cash",{x:eur(cash)})),
-            positions.map(function(po){
-              return React.createElement("div",{key:po.isin,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
-                React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
-                  React.createElement("div",{style:{minWidth:0}},
-                    React.createElement("div",{className:"rname"},po.name),
-                    React.createElement("div",{className:"rsub"},po.isin)
-                  ),
-                  React.createElement("div",{className:"rval num"},
-                    po.shares+" "+t("bi_shares"),
-                    React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0))
-                  )
+  const body=!bridge
+    ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("tr_web_only"))
+    : React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
+        !connected && step!=="code" && React.createElement(React.Fragment,null,
+          React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
+          React.createElement("input",{className:"af-in",style:inpStyle,type:"password",inputMode:"numeric",placeholder:t("tr_pin_ph"),value:pin,onChange:function(e){ setPin(e.target.value); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!phone.trim()||!pin.trim(),onClick:doLogin}, busy?t("tr_connecting"):t("tr_connect"))
+        ),
+        step==="code" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0}},t("tr_code_intro")),
+          React.createElement("input",{className:"af-in num",style:Object.assign({},inpStyle,{letterSpacing:"0.3em",textAlign:"center",fontSize:20}),type:"tel",inputMode:"numeric",maxLength:6,placeholder:t("tr_code_ph"),value:code,onChange:function(e){ setCode(e.target.value.replace(/[^0-9]/g,"")); }}),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||code.trim().length<4,onClick:doVerify}, busy?t("tr_verifying"):t("tr_verify"))
+        ),
+        connected && step!=="preview" && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--mint)",fontWeight:700}},t("tr_connected")),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:busy,onClick:doSync}, busy?t("tr_syncing"):t("tr_sync")),
+          React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:disconnect},t("tr_disconnect"))
+        ),
+        step==="preview" && positions && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("tr_preview",{n:positions.length})),
+          cash!=null && React.createElement("div",{className:"hint"}, tf("tr_cash",{x:eur(cash)})),
+          positions.map(function(po){
+            return React.createElement("div",{key:po.isin,className:"row",style:{alignItems:"flex-start",flexDirection:"column",gap:6}},
+              React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
+                React.createElement("div",{style:{minWidth:0}},
+                  React.createElement("div",{className:"rname"},po.name),
+                  React.createElement("div",{className:"rsub"},po.isin)
                 ),
-                React.createElement("select",{className:"af-in",value:map[po.isin]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.isin]=v; return n; }); }},
-                  React.createElement("option",{value:""},t("bi_notouch")),
-                  React.createElement("option",{value:"__new"},t("tr_createnew")),
-                  state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+                React.createElement("div",{className:"rval num"},
+                  po.shares+" "+t("bi_shares"),
+                  React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0))
                 )
-              );
-            }),
-            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("tr_apply",{n:mappedN})),
-            React.createElement("div",{className:"hint"},t("tr_apply_hint"))
-          ),
-          doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
-          err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
-        )
+              ),
+              React.createElement("select",{className:"af-in",value:map[po.isin]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[po.isin]=v; return n; }); }},
+                React.createElement("option",{value:""},t("bi_notouch")),
+                React.createElement("option",{value:"__new"},t("tr_createnew")),
+                state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name+(i.cur==="USD"?" ($)":"")); })
+              )
+            );
+          }),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply},tf("tr_apply",{n:mappedN})),
+          React.createElement("div",{className:"hint"},t("tr_apply_hint"))
+        ),
+        doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
+        err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
+      );
+  return React.createElement("div",{className:"bk-card"},
+    React.createElement("div",{className:"bk-h"},
+      React.createElement("div",null,
+        React.createElement("div",{className:"ttl"}, t("tr_title")),
+        React.createElement("div",{className:"sub"}, t("tr_sub"))
+      ),
+      connected ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
+    ),
+    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("tr_hint")),
+    body
   );
 }
 
@@ -8322,11 +8385,10 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     })(),
     ((links||[]).some(function(l){ return l.status==='active'; })) && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:14,border:"1px solid var(--line-soft)",background:"var(--sur)",color:"var(--text)",fontWeight:700,fontSize:13.5,cursor:"pointer",marginTop:12},onClick:function(){ setHistOpen(true); }}, t("bp_hist_btn")),
     histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
-    React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"22px 0 14px"}}),
+    React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"22px 0 8px"}}),
+    React.createElement("div",{className:"bk-sec"}, t("bp_brokers")),
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
-    React.createElement("div",{style:{height:8}}),
     React.createElement(MyInvestorSync,{state:state,set:set}),
-    React.createElement("div",{style:{height:8}}),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
   ));
@@ -8382,6 +8444,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.6", d:"17 jul 2026", t:"Perfil más fino, Gastos ordenados y bancos claros", items:[
+    "👤 Perfil: tipografía compacta, animación más suave, tirar abajo para salir; casillas de editar al tamaño del texto guardado.",
+    "🧾 En Gastos: nombre, debajo la categoría y abajo fecha · banco (como Mapfre).",
+    "🏦 Bancos: brókers en tarjetas planas (sin acordeones) y sync suave de TR/MI al abrir sin pedir captcha a ciegas.",
+    "🔌 MyInvestor reutiliza el device_id de la nube y prueba un sync suave si estaba «caducado»."
+  ]},
   {v:"4.0.5", d:"17 jul 2026", t:"Perfil al tirar abajo, fichas sin velo y bancos que no se desconectan solos", items:[
     "👤 En Inicio, tira hacia abajo (o el avatar) y baja tu perfil al estilo Revolut: datos personales, patrimonio y perfil inversor, editables.",
     "🧾 Las fichas de gasto y Apuntar ya no ponen el fondo negro; al cerrarlas no hay el parpadeo de antes.",
@@ -9855,7 +9923,7 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
     });
   };
   const edit=function(key, title, ph){
-    askText({ title:title, ph:ph||"", value:p[key]||"", ok:t("ask_ok"), mode:"text" })
+    askText({ title:title, ph:ph||"", value:p[key]||"", ok:t("ask_ok"), mode:"text", compact:true })
       .then(function(raw){ if(raw==null) return; patch(key, String(raw).trim()); });
   };
   const val=function(v){ return v&&String(v).trim() ? v : null; };
@@ -9884,9 +9952,9 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
     React.createElement("div",{className:"profile-sec"}, t("pf_personal")),
     React.createElement("div",{className:"profile-card"},
       row(t("pf_basic"), [val(p.fullName),val(p.birth)].filter(Boolean).join(" · ")||null, function(){
-        askText({ title:t("pf_name"), ph:t("pf_name_ph"), value:p.fullName||"", ok:t("ask_ok"), mode:"text" }).then(function(n){
+        askText({ title:t("pf_name"), ph:t("pf_name_ph"), value:p.fullName||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(n){
           if(n==null) return;
-          askText({ title:t("pf_birth"), ph:t("pf_birth_ph"), value:p.birth||"", ok:t("ask_ok"), mode:"text" }).then(function(b){
+          askText({ title:t("pf_birth"), ph:t("pf_birth_ph"), value:p.birth||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(b){
             if(b==null) return;
             set(function(s){
               const cur=profileOf(s);
@@ -9908,13 +9976,13 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
     React.createElement("div",{className:"profile-sec"}, t("pf_wealth")),
     React.createElement("div",{className:"profile-card"},
       row(t("pf_job"), jobDisplay, function(){
-        askText({ title:t("pf_job_status"), ph:t("pf_job_status_ph"), value:p.jobStatus||"", ok:t("ask_ok"), mode:"text" }).then(function(a){
+        askText({ title:t("pf_job_status"), ph:t("pf_job_status_ph"), value:p.jobStatus||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(a){
           if(a==null) return;
-          askText({ title:t("pf_job_sector"), ph:t("pf_job_sector_ph"), value:p.jobSector||"", ok:t("ask_ok"), mode:"text" }).then(function(b){
+          askText({ title:t("pf_job_sector"), ph:t("pf_job_sector_ph"), value:p.jobSector||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(b){
             if(b==null) return;
-            askText({ title:t("pf_job_role"), ph:t("pf_job_role_ph"), value:p.jobRole||"", ok:t("ask_ok"), mode:"text" }).then(function(c){
+            askText({ title:t("pf_job_role"), ph:t("pf_job_role_ph"), value:p.jobRole||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(c){
               if(c==null) return;
-              askText({ title:t("pf_salary"), ph:t("pf_salary_ph"), value:p.salaryRange||"", ok:t("ask_ok"), mode:"text" }).then(function(d){
+              askText({ title:t("pf_salary"), ph:t("pf_salary_ph"), value:p.salaryRange||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(d){
                 if(d==null) return;
                 set(function(s){
                   const cur=profileOf(s);
@@ -10345,11 +10413,9 @@ function App(){
   },[uid, state.hasBankLink]);
 
   // Y lo mismo para los brókers que SÍ sincronizan solos (TR nativo + MyInvestor): al abrir,
-  // Brokers: NO sync en silencio al abrir. Un 401 en frío (cookies TR) o un 403 de MI
-  // marcaban la sesión como caducada y pedían OTP/captcha sin que el usuario tocara nada
-  // (feedback 2026-07-17). Sync a mano desde Bancos / botón Sincronizar.
-  // useEffect(function(){ if(uid) mcScheduleIdle(function(){ runBrokerSync(); }); },[uid]);
-  void runBrokerSync; // disponible si se vuelve a activar a mano más adelante
+  // Brokers: sync suave al abrir (solo si ya conectados). Nunca crea posiciones nuevas.
+  // TR/MI: authExpired/softFail/waf se callan — no piden OTP/captcha (feedback 2026-07-17).
+  useEffect(function(){ if(uid) mcScheduleIdle(function(){ runBrokerSync(); }); },[uid]);
 
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
@@ -10553,22 +10619,28 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
   };
-  // Cerrar perfil tirando hacia arriba (espejo del pull-down).
+  // Cerrar perfil tirando HACIA ABAJO (como Revolut / sheet). Arriba→abajo = sale.
   const pSX=useRef(0), pSY=useRef(0), pAx=useRef(null), pDrag=useRef(false);
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
     if(!pDrag.current) return;
     const t=e.touches[0], ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
-    if(pAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x"; if(pAx.current==="y"&&profileRef.current){ profileRef.current.classList.add("dragging"); if(appShellRef.current) appShellRef.current.classList.add("dragging"); } }
+    if(pAx.current===null){
+      if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
+      pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
+      if(pAx.current==="y"&&profileRef.current){
+        profileRef.current.classList.add("dragging");
+        if(appShellRef.current) appShellRef.current.classList.add("dragging");
+      }
+    }
     if(pAx.current!=="y") return;
-    // Solo cierra tirando arriba. Si tiras abajo (scroll del perfil), no pelea.
-    if(ddy>=0){ pDY.current=0; if(profileRef.current){ const el=profileRef.current; if(el.scrollTop<=0) el.style.transform="translate3d(0,0,0)"; } setProfileProgress(1); return; }
-    // Si el contenido del perfil está scrolleado, primero sube el scroll.
+    // Si hay scroll, primero sube el contenido; solo al llegar arriba tiras abajo cierra.
     if(profileRef.current && profileRef.current.scrollTop>0){ pDY.current=0; return; }
+    if(ddy<=0){ pDY.current=0; if(profileRef.current) profileRef.current.style.transform="translate3d(0,0,0)"; setProfileProgress(1); return; }
     pDY.current=ddy;
     const h=window.innerHeight||700;
-    const closeProg=Math.min(1,Math.max(0,(-ddy)/(h*0.42)));
-    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-closeProg*100)+"%,0)";
+    const closeProg=Math.min(1,Math.max(0,ddy/(h*0.38)));
+    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(closeProg*100)+"%,0)";
     setProfileProgress(1-closeProg);
     if(e.cancelable) e.preventDefault();
   };
@@ -10580,10 +10652,10 @@ function App(){
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
-    const closeProg=Math.min(1,Math.max(0,(-dist)/(h*0.42)));
-    const flick=(dist/dt)<-0.45 && dist<-28;
+    const closeProg=Math.min(1,Math.max(0,dist/(h*0.38)));
+    const flick=(dist/dt)>0.45 && dist>28;
     if(profileRef.current) profileRef.current.style.transform="";
-    setProfileOpen(!(closeProg>0.35 || flick));
+    setProfileOpen(!(closeProg>0.28 || flick));
     pAx.current=null; pDY.current=0;
   };
 

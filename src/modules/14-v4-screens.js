@@ -290,7 +290,7 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
     });
   };
   const edit=function(key, title, ph){
-    askText({ title:title, ph:ph||"", value:p[key]||"", ok:t("ask_ok"), mode:"text" })
+    askText({ title:title, ph:ph||"", value:p[key]||"", ok:t("ask_ok"), mode:"text", compact:true })
       .then(function(raw){ if(raw==null) return; patch(key, String(raw).trim()); });
   };
   const val=function(v){ return v&&String(v).trim() ? v : null; };
@@ -319,9 +319,9 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
     React.createElement("div",{className:"profile-sec"}, t("pf_personal")),
     React.createElement("div",{className:"profile-card"},
       row(t("pf_basic"), [val(p.fullName),val(p.birth)].filter(Boolean).join(" · ")||null, function(){
-        askText({ title:t("pf_name"), ph:t("pf_name_ph"), value:p.fullName||"", ok:t("ask_ok"), mode:"text" }).then(function(n){
+        askText({ title:t("pf_name"), ph:t("pf_name_ph"), value:p.fullName||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(n){
           if(n==null) return;
-          askText({ title:t("pf_birth"), ph:t("pf_birth_ph"), value:p.birth||"", ok:t("ask_ok"), mode:"text" }).then(function(b){
+          askText({ title:t("pf_birth"), ph:t("pf_birth_ph"), value:p.birth||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(b){
             if(b==null) return;
             set(function(s){
               const cur=profileOf(s);
@@ -343,13 +343,13 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
     React.createElement("div",{className:"profile-sec"}, t("pf_wealth")),
     React.createElement("div",{className:"profile-card"},
       row(t("pf_job"), jobDisplay, function(){
-        askText({ title:t("pf_job_status"), ph:t("pf_job_status_ph"), value:p.jobStatus||"", ok:t("ask_ok"), mode:"text" }).then(function(a){
+        askText({ title:t("pf_job_status"), ph:t("pf_job_status_ph"), value:p.jobStatus||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(a){
           if(a==null) return;
-          askText({ title:t("pf_job_sector"), ph:t("pf_job_sector_ph"), value:p.jobSector||"", ok:t("ask_ok"), mode:"text" }).then(function(b){
+          askText({ title:t("pf_job_sector"), ph:t("pf_job_sector_ph"), value:p.jobSector||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(b){
             if(b==null) return;
-            askText({ title:t("pf_job_role"), ph:t("pf_job_role_ph"), value:p.jobRole||"", ok:t("ask_ok"), mode:"text" }).then(function(c){
+            askText({ title:t("pf_job_role"), ph:t("pf_job_role_ph"), value:p.jobRole||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(c){
               if(c==null) return;
-              askText({ title:t("pf_salary"), ph:t("pf_salary_ph"), value:p.salaryRange||"", ok:t("ask_ok"), mode:"text" }).then(function(d){
+              askText({ title:t("pf_salary"), ph:t("pf_salary_ph"), value:p.salaryRange||"", ok:t("ask_ok"), mode:"text", compact:true }).then(function(d){
                 if(d==null) return;
                 set(function(s){
                   const cur=profileOf(s);

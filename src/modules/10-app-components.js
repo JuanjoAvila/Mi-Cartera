@@ -394,11 +394,10 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     })(),
     ((links||[]).some(function(l){ return l.status==='active'; })) && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:14,border:"1px solid var(--line-soft)",background:"var(--sur)",color:"var(--text)",fontWeight:700,fontSize:13.5,cursor:"pointer",marginTop:12},onClick:function(){ setHistOpen(true); }}, t("bp_hist_btn")),
     histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
-    React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"22px 0 14px"}}),
+    React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"22px 0 8px"}}),
+    React.createElement("div",{className:"bk-sec"}, t("bp_brokers")),
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
-    React.createElement("div",{style:{height:8}}),
     React.createElement(MyInvestorSync,{state:state,set:set}),
-    React.createElement("div",{style:{height:8}}),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
   ));
@@ -454,6 +453,12 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.6", d:"17 jul 2026", t:"Perfil más fino, Gastos ordenados y bancos claros", items:[
+    "👤 Perfil: tipografía compacta, animación más suave, tirar abajo para salir; casillas de editar al tamaño del texto guardado.",
+    "🧾 En Gastos: nombre, debajo la categoría y abajo fecha · banco (como Mapfre).",
+    "🏦 Bancos: brókers en tarjetas planas (sin acordeones) y sync suave de TR/MI al abrir sin pedir captcha a ciegas.",
+    "🔌 MyInvestor reutiliza el device_id de la nube y prueba un sync suave si estaba «caducado»."
+  ]},
   {v:"4.0.5", d:"17 jul 2026", t:"Perfil al tirar abajo, fichas sin velo y bancos que no se desconectan solos", items:[
     "👤 En Inicio, tira hacia abajo (o el avatar) y baja tu perfil al estilo Revolut: datos personales, patrimonio y perfil inversor, editables.",
     "🧾 Las fichas de gasto y Apuntar ya no ponen el fondo negro; al cerrarlas no hay el parpadeo de antes.",

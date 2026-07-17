@@ -405,11 +405,9 @@ function App(){
   },[uid, state.hasBankLink]);
 
   // Y lo mismo para los brókers que SÍ sincronizan solos (TR nativo + MyInvestor): al abrir,
-  // Brokers: NO sync en silencio al abrir. Un 401 en frío (cookies TR) o un 403 de MI
-  // marcaban la sesión como caducada y pedían OTP/captcha sin que el usuario tocara nada
-  // (feedback 2026-07-17). Sync a mano desde Bancos / botón Sincronizar.
-  // useEffect(function(){ if(uid) mcScheduleIdle(function(){ runBrokerSync(); }); },[uid]);
-  void runBrokerSync; // disponible si se vuelve a activar a mano más adelante
+  // Brokers: sync suave al abrir (solo si ya conectados). Nunca crea posiciones nuevas.
+  // TR/MI: authExpired/softFail/waf se callan — no piden OTP/captcha (feedback 2026-07-17).
+  useEffect(function(){ if(uid) mcScheduleIdle(function(){ runBrokerSync(); }); },[uid]);
 
   const [showAuth,setShowAuth]=useState(false);
   const [recovery,setRecovery]=useState(false);
@@ -613,22 +611,28 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     dAx.current=null;
   };
-  // Cerrar perfil tirando hacia arriba (espejo del pull-down).
+  // Cerrar perfil tirando HACIA ABAJO (como Revolut / sheet). Arriba→abajo = sale.
   const pSX=useRef(0), pSY=useRef(0), pAx=useRef(null), pDrag=useRef(false);
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
     if(!pDrag.current) return;
     const t=e.touches[0], ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
-    if(pAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x"; if(pAx.current==="y"&&profileRef.current){ profileRef.current.classList.add("dragging"); if(appShellRef.current) appShellRef.current.classList.add("dragging"); } }
+    if(pAx.current===null){
+      if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
+      pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
+      if(pAx.current==="y"&&profileRef.current){
+        profileRef.current.classList.add("dragging");
+        if(appShellRef.current) appShellRef.current.classList.add("dragging");
+      }
+    }
     if(pAx.current!=="y") return;
-    // Solo cierra tirando arriba. Si tiras abajo (scroll del perfil), no pelea.
-    if(ddy>=0){ pDY.current=0; if(profileRef.current){ const el=profileRef.current; if(el.scrollTop<=0) el.style.transform="translate3d(0,0,0)"; } setProfileProgress(1); return; }
-    // Si el contenido del perfil está scrolleado, primero sube el scroll.
+    // Si hay scroll, primero sube el contenido; solo al llegar arriba tiras abajo cierra.
     if(profileRef.current && profileRef.current.scrollTop>0){ pDY.current=0; return; }
+    if(ddy<=0){ pDY.current=0; if(profileRef.current) profileRef.current.style.transform="translate3d(0,0,0)"; setProfileProgress(1); return; }
     pDY.current=ddy;
     const h=window.innerHeight||700;
-    const closeProg=Math.min(1,Math.max(0,(-ddy)/(h*0.42)));
-    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(-closeProg*100)+"%,0)";
+    const closeProg=Math.min(1,Math.max(0,ddy/(h*0.38)));
+    if(profileRef.current) profileRef.current.style.transform="translate3d(0,"+(closeProg*100)+"%,0)";
     setProfileProgress(1-closeProg);
     if(e.cancelable) e.preventDefault();
   };
@@ -640,10 +644,10 @@ function App(){
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
-    const closeProg=Math.min(1,Math.max(0,(-dist)/(h*0.42)));
-    const flick=(dist/dt)<-0.45 && dist<-28;
+    const closeProg=Math.min(1,Math.max(0,dist/(h*0.38)));
+    const flick=(dist/dt)>0.45 && dist>28;
     if(profileRef.current) profileRef.current.style.transform="";
-    setProfileOpen(!(closeProg>0.35 || flick));
+    setProfileOpen(!(closeProg>0.28 || flick));
     pAx.current=null; pDY.current=0;
   };
 

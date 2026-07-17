@@ -400,14 +400,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
                     }},
                     React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
                     React.createElement("div",{className:"nm"},
-                      React.createElement("div",null,g.e.merchant||"—"),
+                      React.createElement("div",{className:"nm-title"}, g.e.merchant||"—"),
+                      React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(g.e.category)),
                       React.createElement("div",{className:"meta"},
-                        React.createElement("span",{style:{color:c.color}},catName(g.e.category)),
-                        React.createElement("span",{className:"sep"},"·"),
                         React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
                         (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement(React.Fragment,null,
                           React.createElement("span",{className:"sep"},"·"),
-                          React.createElement("span",{style:{color:"var(--muted-2)"}},entOf(bk).mono)
+                          React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
                         ):null; })()
                       )
                     ),

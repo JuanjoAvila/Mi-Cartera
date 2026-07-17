@@ -403,7 +403,8 @@ const cloud = (function(){
       const {data:{session}}=await sb.auth.getSession();
       if(!session) return null;
       // Solo columnas NO sensibles (grant a nivel de columna; los tokens no se exponen).
-      const {data,error}=await sb.from('myinvestor_links').select('status,last_sync,updated_at').eq('user_id',session.user.id).maybeSingle();
+      // device_id: para reutilizar el mismo móvil al reconectar (menos captchas).
+      const {data,error}=await sb.from('myinvestor_links').select('status,last_sync,updated_at,device_id').eq('user_id',session.user.id).maybeSingle();
       if(error) return null;
       return data||null;
     },
