@@ -139,20 +139,37 @@ function shareMonthReport(state, tt){
 function Tour({onDone, goTab, tabIds}){
   // Tour v4: barra inferior (Inicio / Gastos / + / Plan / Cartera) + avatar de perfil.
   // goTab prepara la pestaña antes de medir el foco (lazy-mount).
+  const pickVisible=function(sel){
+    const nodes=document.querySelectorAll(sel);
+    const W=window.innerWidth||400, H=window.innerHeight||700;
+    let best=null, bestArea=0;
+    for(let n=0;n<nodes.length;n++){
+      const r=nodes[n].getBoundingClientRect();
+      if(r.width<8||r.height<8) continue;
+      // Visible de verdad (no la página del track todavía a mitad de swipe).
+      const visL=Math.max(0,r.left), visR=Math.min(W,r.right);
+      const visT=Math.max(0,r.top), visB=Math.min(H,r.bottom);
+      const area=Math.max(0,visR-visL)*Math.max(0,visB-visT);
+      if(area>bestArea && r.left>=-4 && r.left<W-20){ bestArea=area; best=nodes[n]; }
+    }
+    return best||nodes[0]||null;
+  };
   const steps=[
-    {k:"tour_1", tab:"dash", sel:function(){ return document.querySelector(".page-live .v4-hero")||document.querySelector("[data-tour='hero']")||document.querySelector(".v4-hero"); }},
+    {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero, [data-tour='hero']"); }},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
     {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
     {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
     {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
-    {k:"tour_6", tab:"dash", sel:function(){ return document.querySelector(".v4-avatar")||document.querySelector("[data-tour='avatar']"); }},
+    // Avatar: SOLO el que está en viewport (el track anima 0.42s; medir a medias dejaba el
+    // foco en vacío — feedback 2026-07-17).
+    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
     {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
   ];
   const [i,setI]=useState(0);
   const [rect,setRect]=useState(null);
   const inViewport=function(r){
     const H=window.innerHeight||700, W=window.innerWidth||400;
-    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left<W-8 && r.right>8;
+    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left>=0 && r.left<W-8 && r.right>8;
   };
   const bringIntoView=function(el){
     try{
@@ -179,25 +196,26 @@ function Tour({onDone, goTab, tabIds}){
       if(!el) continue;
       bringIntoView(el);
       const r=el.getBoundingClientRect();
-      if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
+      if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}, round:!!steps[j].round};
     }
     return null;
   };
   useEffect(function(){
     let cancelled=false;
-    // Espera al goTab + layout (lazy mount) antes de medir el foco.
     ensureTab(steps[i]&&steps[i].tab);
+    // El track anima 420 ms: medir antes = foco desplazado (bug avatar del tutorial).
+    const wait=(steps[i]&&steps[i].tab)?520:80;
     const run=function(){
       if(cancelled) return;
       const m=measure(i);
       if(!m){ onDone(); return; }
       if(m.j!==i){ setI(m.j); return; }
-      setRect(m.r);
+      setRect(Object.assign({},m.r,{round:m.round}));
     };
     const tm=setTimeout(function(){
       requestAnimationFrame(function(){ requestAnimationFrame(run); });
-    }, 180);
-    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(mm.r); };
+    }, wait);
+    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(Object.assign({},mm.r,{round:mm.round})); };
     window.addEventListener("resize",onR);
     return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
   },[i]);
@@ -212,15 +230,17 @@ function Tour({onDone, goTab, tabIds}){
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
     )
   );
-  const pad=8;
+  const pad=rect.round?6:8;
   const H=window.innerHeight||700;
   const below = rect.y + rect.h/2 < H*0.55;
   const tipStyle = below
     ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
     : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
   const last=i===steps.length-1;
+  const spotStyle={left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2};
+  if(rect.round) spotStyle.borderRadius="50%";
   return React.createElement("div",{className:"tour-wrap"},
-    React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),
+    React.createElement("div",{className:"tour-spot",style:spotStyle}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
       React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{
         gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")

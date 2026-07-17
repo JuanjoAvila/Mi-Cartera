@@ -196,18 +196,8 @@ function App(){
     brokerSyncing.current=true;
     const jobs=[];
     const st=stateRef.current||{};
-    // Trade Republic — puente NATIVO (solo en la app). La sesión vive en el dispositivo.
-    const b=trBridge();
-    if(b && b.status && b.sync && Date.now()-(st.lastTrSync||0) >= BROKER_SYNC_THROTTLE){
-      jobs.push(Promise.resolve(b.status()).then(function(r){
-        if(!(r && r.connected)) return;                       // no conectado → ni lo intentamos
-        return Promise.resolve(b.sync()).then(function(res){
-          // authExpired / wafBlocked / sin posiciones → callar: la tarjeta ya lo explica al entrar
-          if(!res || !res.ok || !Array.isArray(res.positions)) return;
-          applyBrokerPositions(res.positions, "lastTrSync");
-        });
-      }).catch(function(){}));
-    }
+    // Trade Republic — NO sync automático al boot con APK viejo: un 401 de arranque
+    // borraba connected en nativo y pedía OTP otra vez (feedback 2026-07-17). Sync a mano.
     // MyInvestor — Edge Function (funciona en web y en app)
     if(cloud.enabled() && sessionRef.current && Date.now()-(st.lastMiSync||0) >= BROKER_SYNC_THROTTLE){
       jobs.push(cloud.myinvestorStatus().then(function(r){
@@ -567,6 +557,11 @@ function App(){
       appShellRef.current.style.setProperty("--prof-p", String(v));
       if(v>0.02) appShellRef.current.classList.add("profile-dim");
       else appShellRef.current.classList.remove("profile-dim");
+    }
+    const dim=document.querySelector(".profile-dim-layer");
+    if(dim){
+      dim.style.opacity=String(v*0.9);
+      if(v>0.02) dim.classList.add("on"); else dim.classList.remove("on");
     }
     try{
       const av=document.querySelector(".v4-avatar");
@@ -1339,6 +1334,7 @@ function App(){
       ),
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     ),
+    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"0.9"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{
       className:"profile-pull"+(profileOpen?" open":""),
       ref:profileRef,

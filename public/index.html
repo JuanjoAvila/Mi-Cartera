@@ -586,10 +586,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-gastos-list-body{padding:0;}
 
   .v4-sheet-back{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;
-    /* Velo suave (no negro opaco). Sin filter en .app-shell: en WebView Android el filter
-       compone fondo negro (feedback 2026-07-17). */
-    background:rgba(6,14,12,.38);
-    pointer-events:auto;animation:v4fade .22s ease both;}
+    /* Fondo TRANSPARENTE: se ve la app tal cual. El scale/filter del shell dejaba
+       huecos negros del body (feedback 2026-07-17 — «sigue saliendo negro»). */
+    background:transparent;
+    pointer-events:auto;}
   .v4-sheet{width:100%;max-width:520px;max-height:88dvh;overflow:auto;background:var(--bg-2);border:1px solid var(--line);border-bottom:none;
     border-radius:26px 26px 0 0;padding:12px 18px calc(18px + var(--safe-bottom));
     animation:sheetup .3s cubic-bezier(.22,1,.36,1);
@@ -598,11 +598,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-sheet.dragging{transition:none;}
   .v4-sheet-handle{width:40px;height:5px;border-radius:4px;background:var(--line);margin:6px auto 14px;position:relative;flex:0 0 auto;cursor:grab;}
   .v4-sheet-handle::before{content:"";position:absolute;inset:-16px -48px;}
-  /* Solo scale (sin filter): se ve la app detrás del velo, sin hitch negro en Android. */
+  /* Sin scale ni filter en sheet-open: solo bloqueo de scroll/touch. */
   html.sheet-open .app-shell{
-    transform:scale(.988);
-    transform-origin:center top;
-    transition:transform .28s cubic-bezier(.22,1,.36,1);
     pointer-events:none !important;
   }
   .v4-exp-sheet .v4-exp-hero{text-align:center;padding:4px 0 14px;}
@@ -639,15 +636,21 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .settings-push-h .back,.settings-slide-h .back{width:44px;height:44px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:20px;border:1px solid var(--line-soft);background:var(--sur);color:var(--text);}
   .settings-push-h h1,.settings-slide-h h1{font-family:'Fraunces',Georgia,serif;font-size:26px;font-weight:560;margin:0;}
 
-  /* Perfil tipo Revolut: baja desde arriba; cierra subiendo (misma dirección). */
-  .profile-pull{position:fixed;inset:0;z-index:72;background:var(--bg);max-width:520px;margin:0 auto;overflow-y:auto;
+  /* Perfil tipo Revolut: baja desde arriba; fondo de la app visible (dim aparte, sin scale). */
+  .profile-pull{position:fixed;inset:0;z-index:72;max-width:520px;margin:0 auto;overflow-y:auto;
     padding:calc(var(--safe-top) + 6px) 16px calc(28px + var(--safe-bottom));
-    transform:translate3d(0,-100%,0);
-    transition:transform .42s cubic-bezier(.32,.72,0,1);
-    will-change:transform;box-shadow:0 18px 48px rgba(0,0,0,.45);
-    border-radius:0 0 24px 24px;}
+    /* Casi opaco como Revolut (cards sobre fondo), pero NO 100% sólido negro. */
+    background:color-mix(in srgb, var(--bg) 94%, transparent);
+    transform:translate3d(0,-104%,0);
+    transition:transform .5s cubic-bezier(.22,1,.36,1);
+    will-change:transform;
+    border-radius:0 0 28px 28px;
+    box-shadow:0 24px 48px rgba(0,0,0,.4);}
   .profile-pull.open{transform:translate3d(0,0,0);border-radius:0;}
   .profile-pull.dragging{transition:none;}
+  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(0,0,0,.28);opacity:0;pointer-events:none;
+    transition:opacity .45s ease;max-width:520px;margin:0 auto;}
+  .profile-dim-layer.on{opacity:1;pointer-events:none;}
   .profile-pull-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
   .profile-pull-h .back{width:34px;height:34px;border-radius:50%;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:17px;color:var(--text);flex:0 0 auto;line-height:1;}
   .profile-pull-h .ph-main{flex:1;min-width:0;}
@@ -664,14 +667,17 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .profile-row .pr-val{font-size:14.5px;font-weight:700;color:var(--text);line-height:1.35;word-break:break-word;}
   .profile-row .pr-val.empty{color:var(--muted-2);font-weight:600;}
   .profile-row .pr-edit{color:var(--mint);font-size:13px;flex:0 0 auto;padding-top:2px;opacity:.9;}
-  /* Sin filter: en WebView Android el filter deja el fondo negro (mismo bug que sheets). */
-  .app-shell.profile-dim{
-    transform:scale(calc(1 - var(--prof-p,0)*0.035));
-    transform-origin:top center;
-    transition:transform .42s cubic-bezier(.32,.72,0,1);
-    pointer-events:none;}
-  .app-shell.profile-dim.dragging{transition:none;}
+  /* Sin scale/filter en shell (huecos negros + WebView). El dim es la capa aparte. */
+  .app-shell.profile-dim{pointer-events:none;}
   .v4-avatar.pulling{transform:scale(calc(1 + var(--prof-p,0)*0.18));opacity:calc(1 - var(--prof-p,0)*0.75);}
+  .v4-banks .bk-brand{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .v4-banks .bk-brand .bk-logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:13px;flex:0 0 auto;border:1px solid var(--line-soft);}
+  .v4-banks .bk-card{background:var(--sur);border:1px solid var(--line-soft);border-radius:18px;padding:16px;margin-bottom:12px;
+    box-shadow:0 8px 24px -16px rgba(0,0,0,.45);}
+  .v4-banks .bk-card.bk-tr{border-left:4px solid #1a1a1a;}
+  .v4-banks .bk-card.bk-mi{border-left:4px solid #C9A0E0;}
+  .v4-banks .bk-card.bk-csv{border-left:4px solid #9BD0E0;}
+  .v4-banks .bk-ver{font-size:11px;color:var(--muted-2);text-align:center;margin-top:18px;font-weight:600;}
   /* Novedades: entra con el resto (sin «delay y luego zarpazo»). */
   .wn-panel{position:fixed;inset:0;z-index:97;overflow-y:auto;background:var(--bg);color:var(--text);
     padding:calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px);font-family:'Manrope',sans-serif;
@@ -681,7 +687,6 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-mov .nm-title{font-weight:700;font-size:15.5px;line-height:1.25;}
   .v4-mov .nm-cat{font-size:12.5px;font-weight:650;margin-top:2px;line-height:1.2;}
   .v4-banks .bk-sec{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);margin:18px 2px 8px;}
-  .v4-banks .bk-card{background:var(--sur);border:1px solid var(--line-soft);border-radius:16px;padding:14px;margin-bottom:10px;}
   .v4-banks .bk-card .bk-h{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .v4-banks .bk-card .bk-h .ttl{flex:1;min-width:0;font-weight:800;font-size:15px;}
   .v4-banks .bk-card .bk-h .sub{font-size:12px;color:var(--muted);font-weight:600;}
@@ -3203,6 +3208,7 @@ Object.assign(LANG.es,{
   bp_removing:"Quitando…", bp_removed:"{bank} quitado · puedes reconectarlo cuando quieras",
   bp_foot:"Trade Republic no está en Open Banking (es un bróker): su gasto con tarjeta sigue siendo manual.",
   bp_brokers:"Brókers",
+  bp_apk_hint:"Si Trade Republic se desconecta solo: hace falta el APK nuevo (el arreglo es nativo). MyInvestor pide captcha por su anti-bot — espera un rato y reintenta.",
 });
 Object.assign(LANG.en,{
   bp_title:"My banks", bp_intro:"Connect one or more banks via Open Banking. Read-only, no card. Each consent renews every ~3 months.",
@@ -3224,6 +3230,7 @@ Object.assign(LANG.en,{
   bp_removing:"Removing…", bp_removed:"{bank} removed · you can reconnect it whenever you want",
   bp_foot:"Trade Republic isn't in Open Banking (it's a broker): its card spending stays manual.",
   bp_brokers:"Brokers",
+  bp_apk_hint:"If Trade Republic keeps logging you out: install the new APK (native fix). MyInvestor captcha is their anti-bot — wait and retry.",
 });
 Object.assign(LANG.ca,{
   bp_title:"Els meus bancs", bp_intro:"Connecta un o més bancs per Open Banking. Només lectura, sense targeta. Cada permís es renova cada ~3 mesos.",
@@ -3245,6 +3252,7 @@ Object.assign(LANG.ca,{
   bp_removing:"Traient…", bp_removed:"{bank} tret · pots reconnectar-lo quan vulguis",
   bp_foot:"Trade Republic no és a Open Banking (és un bróker): la seva despesa amb targeta segueix sent manual.",
   bp_brokers:"Brókers",
+  bp_apk_hint:"Si Trade Republic es desconnecta sol: cal l'APK nou (l'arreglo és natiu). MyInvestor demana captcha pel seu anti-bot — espera i torna-ho a provar.",
 });
 Object.assign(LANG.en,{
   rec_title:"Bank reconciliation",
@@ -4046,20 +4054,37 @@ function shareMonthReport(state, tt){
 function Tour({onDone, goTab, tabIds}){
   // Tour v4: barra inferior (Inicio / Gastos / + / Plan / Cartera) + avatar de perfil.
   // goTab prepara la pestaña antes de medir el foco (lazy-mount).
+  const pickVisible=function(sel){
+    const nodes=document.querySelectorAll(sel);
+    const W=window.innerWidth||400, H=window.innerHeight||700;
+    let best=null, bestArea=0;
+    for(let n=0;n<nodes.length;n++){
+      const r=nodes[n].getBoundingClientRect();
+      if(r.width<8||r.height<8) continue;
+      // Visible de verdad (no la página del track todavía a mitad de swipe).
+      const visL=Math.max(0,r.left), visR=Math.min(W,r.right);
+      const visT=Math.max(0,r.top), visB=Math.min(H,r.bottom);
+      const area=Math.max(0,visR-visL)*Math.max(0,visB-visT);
+      if(area>bestArea && r.left>=-4 && r.left<W-20){ bestArea=area; best=nodes[n]; }
+    }
+    return best||nodes[0]||null;
+  };
   const steps=[
-    {k:"tour_1", tab:"dash", sel:function(){ return document.querySelector(".page-live .v4-hero")||document.querySelector("[data-tour='hero']")||document.querySelector(".v4-hero"); }},
+    {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero, [data-tour='hero']"); }},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
     {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
     {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
     {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
-    {k:"tour_6", tab:"dash", sel:function(){ return document.querySelector(".v4-avatar")||document.querySelector("[data-tour='avatar']"); }},
+    // Avatar: SOLO el que está en viewport (el track anima 0.42s; medir a medias dejaba el
+    // foco en vacío — feedback 2026-07-17).
+    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
     {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
   ];
   const [i,setI]=useState(0);
   const [rect,setRect]=useState(null);
   const inViewport=function(r){
     const H=window.innerHeight||700, W=window.innerWidth||400;
-    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left<W-8 && r.right>8;
+    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left>=0 && r.left<W-8 && r.right>8;
   };
   const bringIntoView=function(el){
     try{
@@ -4086,25 +4111,26 @@ function Tour({onDone, goTab, tabIds}){
       if(!el) continue;
       bringIntoView(el);
       const r=el.getBoundingClientRect();
-      if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}};
+      if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}, round:!!steps[j].round};
     }
     return null;
   };
   useEffect(function(){
     let cancelled=false;
-    // Espera al goTab + layout (lazy mount) antes de medir el foco.
     ensureTab(steps[i]&&steps[i].tab);
+    // El track anima 420 ms: medir antes = foco desplazado (bug avatar del tutorial).
+    const wait=(steps[i]&&steps[i].tab)?520:80;
     const run=function(){
       if(cancelled) return;
       const m=measure(i);
       if(!m){ onDone(); return; }
       if(m.j!==i){ setI(m.j); return; }
-      setRect(m.r);
+      setRect(Object.assign({},m.r,{round:m.round}));
     };
     const tm=setTimeout(function(){
       requestAnimationFrame(function(){ requestAnimationFrame(run); });
-    }, 180);
-    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(mm.r); };
+    }, wait);
+    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(Object.assign({},mm.r,{round:mm.round})); };
     window.addEventListener("resize",onR);
     return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
   },[i]);
@@ -4119,15 +4145,17 @@ function Tour({onDone, goTab, tabIds}){
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
     )
   );
-  const pad=8;
+  const pad=rect.round?6:8;
   const H=window.innerHeight||700;
   const below = rect.y + rect.h/2 < H*0.55;
   const tipStyle = below
     ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
     : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
   const last=i===steps.length-1;
+  const spotStyle={left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2};
+  if(rect.round) spotStyle.borderRadius="50%";
   return React.createElement("div",{className:"tour-wrap"},
-    React.createElement("div",{className:"tour-spot",style:{left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2}}),
+    React.createElement("div",{className:"tour-spot",style:spotStyle}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
       React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{
         gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")
@@ -5600,11 +5628,12 @@ function BrokerImport({state, set, fetchPrices}){
     // y nada más re-anclar, precios en vivo en silencio: el valor pasa de «último conocido» a real
     if(fetchPrices) setTimeout(function(){ fetchPrices(true); },50);
   };
-  return React.createElement("div",{className:"bk-card"},
-    React.createElement("div",{className:"bk-h"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"ttl"}, t("bi_rev_title")),
-        React.createElement("div",{className:"sub"}, t("bi_sub"))
+  return React.createElement("div",{className:"bk-card bk-csv"},
+    React.createElement("div",{className:"bk-brand"},
+      React.createElement("div",{className:"bk-logo",style:{background:"#9BD0E022",color:"#9BD0E0"}}, "CSV"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("bi_rev_title")),
+        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("bi_sub"))
       )
     ),
     React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("bi_hint")),
@@ -5814,11 +5843,12 @@ function MyInvestorSync({state, set}){
         doneN!=null && step==="connected" && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700,marginTop:8}},tf("mi_done",{n:doneN})),
         err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
       );
-  return React.createElement("div",{className:"bk-card"},
-    React.createElement("div",{className:"bk-h"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"ttl"}, t("mi_title")),
-        React.createElement("div",{className:"sub"}, t("mi_sub"))
+  return React.createElement("div",{className:"bk-card bk-mi"},
+    React.createElement("div",{className:"bk-brand"},
+      React.createElement("div",{className:"bk-logo",style:{background:"#C9A0E022",color:"#C9A0E0"}}, "MI"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("mi_title")),
+        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("mi_sub"))
       ),
       step==="connected" ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
     ),
@@ -6011,11 +6041,12 @@ function TRSync({state, set, totals}){
         doneN!=null && React.createElement("div",{className:"hint",style:{color:"var(--mint)",fontWeight:700}},tf("tr_done",{n:doneN})),
         err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
       );
-  return React.createElement("div",{className:"bk-card"},
-    React.createElement("div",{className:"bk-h"},
-      React.createElement("div",null,
-        React.createElement("div",{className:"ttl"}, t("tr_title")),
-        React.createElement("div",{className:"sub"}, t("tr_sub"))
+  return React.createElement("div",{className:"bk-card bk-tr"},
+    React.createElement("div",{className:"bk-brand"},
+      React.createElement("div",{className:"bk-logo",style:{background:"#111",color:"#fff"}}, "TR"),
+      React.createElement("div",{style:{flex:1,minWidth:0}},
+        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("tr_title")),
+        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("tr_sub"))
       ),
       connected ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
     ),
@@ -8420,7 +8451,9 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
     React.createElement(MyInvestorSync,{state:state,set:set}),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
-    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
+    React.createElement("div",{className:"bk-ver"}, "v"+(CONFIG.APP_VERSION||"?")),
+    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:8,lineHeight:1.5}}, t("bp_apk_hint")),
+    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6,lineHeight:1.5}}, t("bp_foot"))
   ));
 }
 
@@ -8474,6 +8507,13 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.8", d:"17 jul 2026", t:"Tutorial al avatar, fichas sin negro y bancos claros", items:[
+    "🎓 El tutorial ahora encierra el círculo del avatar (antes medía a medias del swipe y el foco salía vacío).",
+    "🧾 Al editar un gasto o pulsar +, se ve la app detrás de verdad: sin fondo negro ni scale raro.",
+    "👤 Perfil: capa de atenuado aparte (sin achicar la app), botón ✕ y animación más suave.",
+    "🏦 Brókers con tarjetas marcadas (TR / MI / CSV) y la versión abajo — así ves si ya tienes el update.",
+    "🔌 Trade Republic ya no se sincroniza solo al abrir (eso te deslogueaba con el APK viejo). Sync a mano. El arreglo nativo sigue necesitando APK 4.0.7+."
+  ]},
   {v:"4.0.7", d:"17 jul 2026", t:"Novedades suaves, perfil natural, Pádel y fichas sin negro", items:[
     "✨ Tras un update, Novedades entra con animación suave (sin el salto de antes).",
     "👤 Perfil: abrir y cerrar más naturales (cierra tirando hacia arriba, como entró); sin fondo negro raro.",
@@ -9979,7 +10019,7 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
   const jobDisplay=jobLines.length ? jobLines.join(" · ") : null;
   return React.createElement(React.Fragment,null,
     React.createElement("div",{className:"profile-pull-h"},
-      React.createElement("button",{type:"button",className:"back","aria-label":t("v4_back"),onClick:onClose},"‹"),
+      React.createElement("button",{type:"button",className:"back","aria-label":t("v4_back"),onClick:onClose},"✕"),
       React.createElement("div",{className:"ph-main"},
         React.createElement("h1",null, t("pf_title")),
         React.createElement("button",{type:"button",className:"profile-handle",onClick:function(){ edit("handle", t("pf_handle"), "@usuario"); }},
@@ -10242,18 +10282,8 @@ function App(){
     brokerSyncing.current=true;
     const jobs=[];
     const st=stateRef.current||{};
-    // Trade Republic — puente NATIVO (solo en la app). La sesión vive en el dispositivo.
-    const b=trBridge();
-    if(b && b.status && b.sync && Date.now()-(st.lastTrSync||0) >= BROKER_SYNC_THROTTLE){
-      jobs.push(Promise.resolve(b.status()).then(function(r){
-        if(!(r && r.connected)) return;                       // no conectado → ni lo intentamos
-        return Promise.resolve(b.sync()).then(function(res){
-          // authExpired / wafBlocked / sin posiciones → callar: la tarjeta ya lo explica al entrar
-          if(!res || !res.ok || !Array.isArray(res.positions)) return;
-          applyBrokerPositions(res.positions, "lastTrSync");
-        });
-      }).catch(function(){}));
-    }
+    // Trade Republic — NO sync automático al boot con APK viejo: un 401 de arranque
+    // borraba connected en nativo y pedía OTP otra vez (feedback 2026-07-17). Sync a mano.
     // MyInvestor — Edge Function (funciona en web y en app)
     if(cloud.enabled() && sessionRef.current && Date.now()-(st.lastMiSync||0) >= BROKER_SYNC_THROTTLE){
       jobs.push(cloud.myinvestorStatus().then(function(r){
@@ -10613,6 +10643,11 @@ function App(){
       appShellRef.current.style.setProperty("--prof-p", String(v));
       if(v>0.02) appShellRef.current.classList.add("profile-dim");
       else appShellRef.current.classList.remove("profile-dim");
+    }
+    const dim=document.querySelector(".profile-dim-layer");
+    if(dim){
+      dim.style.opacity=String(v*0.9);
+      if(v>0.02) dim.classList.add("on"); else dim.classList.remove("on");
     }
     try{
       const av=document.querySelector(".v4-avatar");
@@ -11385,6 +11420,7 @@ function App(){
       ),
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
     ),
+    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"0.9"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{
       className:"profile-pull"+(profileOpen?" open":""),
       ref:profileRef,

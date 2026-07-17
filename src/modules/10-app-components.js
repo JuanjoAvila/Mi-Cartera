@@ -399,7 +399,9 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
     React.createElement(MyInvestorSync,{state:state,set:set}),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
-    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:14,lineHeight:1.5}}, t("bp_foot"))
+    React.createElement("div",{className:"bk-ver"}, "v"+(CONFIG.APP_VERSION||"?")),
+    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:8,lineHeight:1.5}}, t("bp_apk_hint")),
+    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6,lineHeight:1.5}}, t("bp_foot"))
   ));
 }
 
@@ -453,6 +455,13 @@ function ActivityPanel({events, onReload, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.0.8", d:"17 jul 2026", t:"Tutorial al avatar, fichas sin negro y bancos claros", items:[
+    "🎓 El tutorial ahora encierra el círculo del avatar (antes medía a medias del swipe y el foco salía vacío).",
+    "🧾 Al editar un gasto o pulsar +, se ve la app detrás de verdad: sin fondo negro ni scale raro.",
+    "👤 Perfil: capa de atenuado aparte (sin achicar la app), botón ✕ y animación más suave.",
+    "🏦 Brókers con tarjetas marcadas (TR / MI / CSV) y la versión abajo — así ves si ya tienes el update.",
+    "🔌 Trade Republic ya no se sincroniza solo al abrir (eso te deslogueaba con el APK viejo). Sync a mano. El arreglo nativo sigue necesitando APK 4.0.7+."
+  ]},
   {v:"4.0.7", d:"17 jul 2026", t:"Novedades suaves, perfil natural, Pádel y fichas sin negro", items:[
     "✨ Tras un update, Novedades entra con animación suave (sin el salto de antes).",
     "👤 Perfil: abrir y cerrar más naturales (cierra tirando hacia arriba, como entró); sin fondo negro raro.",
