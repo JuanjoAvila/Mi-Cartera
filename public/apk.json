@@ -1,6 +1,6 @@
 {
-  "versionCode": 29,
-  "versionName": "4.4.0",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.4.0/Mi-Cartera-4.4.0.apk",
-  "notes": "APK 4.4.0 (29): avisos de recibos con la app cerrada + sesión TR estable. Instálalo una vez; el resto sigue por OTA."
+  "versionCode": 30,
+  "versionName": "4.6.0",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.6.0/Mi-Cartera-4.6.0.apk",
+  "notes": "APK 4.6.0 (30): widget «Puedes gastar X €» + bundle 4.6.0 (temáticas, accesibilidad, metas con teclado…). Instálalo una vez; el resto sigue por OTA."
 }
