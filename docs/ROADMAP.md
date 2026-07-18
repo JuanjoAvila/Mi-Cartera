@@ -11,8 +11,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | Qué | Valor |
 |-----|--------|
 | Web / OTA (`VERSION`) | **4.6.0** |
-| APK (`versionName` / `versionCode`) | fuente lista en **4.6.0** / **30** — *falta compilar y publicar el release GitHub* (el widget «lo que te puedes permitir» es nativo y necesita este APK) |
-| `public/apk.json` | **29** / 4.4.0 → `Mi-Cartera-4.4.0.apk` (sin cambiar: NUNCA apuntar a un release que aún no existe; se actualiza al publicar el APK 30) |
+| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado) |
+| `public/apk.json` | **30** / 4.6.0 → `Mi-Cartera-4.6.0.apk` |
 
 ## Pendiente / limitaciones conocidas
 

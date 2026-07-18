@@ -36,6 +36,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 **Widget Android — «lo que te puedes permitir» (§1, NATIVO)**
 - Web empuja `afford` = mín(presupuesto restante, liquidez segura de la cuenta de gasto) en `updateWidget`. `MiCarteraPlugin` lo persiste; `MiCarteraWidget` pinta «✅ Puedes gastar X €» (mint/coral). Nuevo `TextView w_afford`.
 - **Requiere APK nuevo** (versionName 4.6.0 / versionCode 30). El resto es OTA.
+- **Publicado:** GitHub Release `v4.6.0` + asset `Mi-Cartera-4.6.0.apk` + `public/apk.json` → versionCode 30.
 
 **MyInvestor captcha (§12, parcial)**
 - `miDeviceLogin` acepta `captchaToken` → cabeceras `X-Recaptcha-Token` + `X-Recaptcha-Action: SECURITY_CHECK` (contrato del cliente `finanze`). Plumbing listo; resolverlo del todo necesita una WebView nativa con el site key (cambio de APK) — pendiente documentado.
