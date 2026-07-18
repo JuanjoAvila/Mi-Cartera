@@ -4,7 +4,7 @@
 
 ## Listo para uso diario
 
-Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1+2** (+ fix RLS `0014`), informe mensual, fin de mes en paz, presupuesto por categoría, recibos gordos, widget Android, export JSON + informe imagen, **multi-banco en Gastos** + filtro por banco, tutorial/roles claros, **FX multi-divisa (USD/GBP/CHF + costEur)**, **sugerencia de categoría (KW + IA opcional)**, **diccionario ampliado de comercios** (impuestos/multas, **Pádel**), **Sentry en prod**, perfil pull-down, sheets sin velo negro, brókers en tarjetas planas, **APK nueva se ofrece sola** (noti + instalador al abrir).
+Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1+2** (+ fix RLS `0014`), informe mensual, fin de mes en paz, presupuesto por categoría, recibos gordos, widget Android, export JSON + informe imagen, **multi-banco en Gastos** + filtro por banco, tutorial/roles claros, **FX multi-divisa (USD/GBP/CHF + costEur)**, **sugerencia de categoría (KW + IA opcional)**, **diccionario ampliado de comercios** (impuestos/multas, **Pádel**), **Sentry en prod**, perfil pull-down, sheets sin velo negro, brókers en tarjetas planas, **APK nueva se ofrece sola** (noti + instalador al abrir), **OB a demanda** (botón en Cartera), **gráfico de Cartera multiseleccionable**, **editor de cuentas v4** (nombre+rol, saldo bloqueado si viene del banco), **bienes editables**, **monedas £/CHF**, **huella + logout en Ajustes**, **Hogar accesible desde Ajustes**.
 
 ## Versión actual (alineación)
 
@@ -18,7 +18,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Tema | Notas |
 |------|--------|
-| **MyInvestor reCAPTCHA** | Mitigado desde 4.0.12: el login sale del MÓVIL (`CapacitorHttp`, IP residencial) en vez de la Edge (IP datacenter que dispara SECURITY_001). Requiere el bundle ≥4.0.12 en el dispositivo — el APK 28 ya lo hornea. Si aun desde el móvil saliera captcha (raro), es su anti-bot: reutilizar `device_id`, esperar y reintentar. Falta confirmación end-to-end con el login real del usuario. |
+| **MyInvestor reCAPTCHA** | Mitigado desde 4.0.12: el login sale del MÓVIL (`CapacitorHttp`, IP residencial) en vez de la Edge (IP datacenter que dispara SECURITY_001). Requiere el bundle ≥4.0.12 en el dispositivo — el APK 28 ya lo hornea. El usuario reportó captcha de nuevo (2026-07-18) → la 4.1.0 apunta a `app_events` **por qué vía salió el login** (Edge vs nativo, y si el nativo petó por qué). Siguiente paso: reproducir el login real y leer Actividad para saber si la vía móvil se está usando de verdad. |
+| **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
@@ -29,6 +30,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 |------|--------|
 | **Play Store** | Cuando quieras publicar |
 | **Pulido visual gordo** | SPEC-v4 / handoff en `docs/design/` |
+| **Logos de banco reales** | Idea 2026-07-18: sustituir el monograma (Sb/Cx…) por el logo del banco. Regla de la casa: cero CDNs → habría que auto-hospedar los ~8 logos habituales en `public/vendor/banks/` (los de Enable Banking vienen de fuera y solo se usan en el picker). |
+| **Freemium / suscripciones** | Idea 2026-07-18 (medio en broma, medio en serio): gratis = cuentas manuales (importe editable a mano); plan de pago = sync bancaria automática. El nombre editable en ambos. La 4.1.0 ya deja la semántica lista (manual = saldo editable; conectada = solo nombre/rol). Para monetizar de verdad faltan pasarela de pago + entitlements en Supabase — se diseña cuando lo pidas, no se mete de tapadillo. |
 
 ## Widget Android (ya existe)
 
@@ -40,7 +43,9 @@ Muestra gasto del mes vs presupuesto + saldo de la cuenta diaria.
 | Qué | Dónde | Estado |
 |-----|--------|--------|
 | Backup JSON | Ajustes → Copia de seguridad → Exportar | ✅ |
-| Informe del mes (imagen WhatsApp) | Ajustes → Personalización · popup día 1 | ✅ |
+| Informe del mes (imagen WhatsApp) | Ajustes → Avanzado · popup día 1 · si el share de la WebView falla, descarga el PNG (4.1.0) | ✅ |
+| Hogar y gastos compartidos | Ajustes → Conexiones → «Hogar y gastos compartidos» (desde 4.1.0; antes tab Compartido) | ✅ |
+| Sugerencias / errores del usuario | Ajustes → App → «Enviar sugerencia» (desde 4.1.0; antes dentro de Novedades) | ✅ |
 
 ## Mantenimiento habitual
 
