@@ -124,6 +124,13 @@ function shareMonthReport(state, tt, showToast){
         const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=fname; a.click();
         setTimeout(function(){ URL.revokeObjectURL(u); },1000);
       };
+      // Al descargar, decir DÓNDE queda (toast + notificación con el nombre del fichero): antes
+      // solo «descargado» y el usuario no sabía ni dónde buscarlo (feedback 2026-07-18).
+      const saidSaved=function(){
+        if(showToast) showToast(t("rp_saved"));
+        const nat=natPlugin();
+        if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera", body:tf("rp_saved_notif",{f:fname})}).catch(function(){}); }catch(e){} }
+      };
       const file=new File([b], fname, {type:"image/png"});
       if(navigator.canShare && navigator.canShare({files:[file]})){
         // El share de la WebView puede rechazar en silencio («el informe no hace nada»,
@@ -132,11 +139,11 @@ function shareMonthReport(state, tt, showToast){
           const aborted=err && (err.name==="AbortError");   // canceló el usuario: no insistir
           if(aborted) return;
           dl();
-          if(showToast) showToast(t("rp_saved"));
+          saidSaved();
         });
       } else {
         dl();
-        if(showToast) showToast(t("rp_saved"));
+        saidSaved();
       }
     },"image/png");
   }catch(e){ try{ alert("Informe: "+((e&&e.message)||e)); }catch(_){} }

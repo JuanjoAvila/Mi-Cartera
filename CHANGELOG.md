@@ -2,6 +2,29 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.3.0] — 2026-07-18
+### Avisos proactivos, deudas con fecha estimada y celebración de últimas cuotas (feedback 2026-07-18, 3ª ronda)
+
+**Notificaciones (todas app-side: se evalúan al abrir/sincronizar; sin cambios nativos).**
+- Presupuesto: efecto en App que al cruzar 50/80/95/100% del presupuesto del mes lanza toast + `nat.showNotification`. Una vez por umbral y mes (`localStorage _bn{th}_{ym}`); si al abrir ya vas por el 97% solo suena el umbral más alto y los inferiores se sellan en silencio. Claves `bn_50/80/95/100` (es/en/ca).
+- Recibos: TODOS los fijos y cuotas de deuda avisan LA VÍSPERA (`rc_title_tmrw`/`rc_body_tmrw`); los gordos (≥80 € o 12% de fijos) mantienen además el aviso a 2-3 días. Una noti por cargo y mes.
+
+**Deudas.**
+- Sin plazo (hipoteca/préstamo): `endsLabel` estima el fin con `ceil(debtBalance/debtAmort)` → «a este ritmo acabas ~{mes año}» (`v4_debts_ends_est`). Antes esas tarjetas no enseñaban fecha ninguna («se quedó ahí muerto»).
+- Inicio: tarjeta 🎉 cuando a una deuda activa le queda la última cuota (`debtLeft<=1`): nombre + importe + «después, X €/mes libres» (`v4_debt_party_*`).
+
+**Gastos.**
+- `PeriodMoreSheet`: el sheet «Más…» de períodos era el único portal sin `useSheetSwipe`/`useBackClose` — ahora se cierra tirando abajo y con el gesto atrás. E2E nuevo que lo cubre con gesto táctil real.
+
+**Informe del mes.**
+- Al caer al download (share fallido/no disponible): toast que dice que está en Descargas + notificación nativa con el nombre del fichero (`rp_saved_notif`). Abrirlo directo desde la noti necesitaría plugin nativo (pendiente si se pide).
+
+**Ajustes.**
+- `grp()` despliega con el patrón `.collapsible` (grid-template-rows animado, contenido siempre montado) en vez de montar/desmontar en seco («muy seco y robótico»).
+
+**MyInvestor.**
+- Confirmado con foto: el captcha salta TAMBIÉN desde el móvil («Captcha required»). `x-myinvestor-app` sube a `version=3.150.0` en cliente y `_shared/myinvestor.ts` (primera palanca documentada: el anti-bot puntúa peor a clientes viejos). El error crudo de la API se sustituye por `mi_recaptcha` reescrito (esperar horas, no insistir, WiFi de casa). Si persiste, lo siguiente es resolver el captcha real (WebView nativa) — fuera del alcance OTA.
+
 ## [4.2.0] — 2026-07-18
 ### Financiación simulada, banco por apunte y lote de arreglos (feedback 2026-07-18, 2ª ronda)
 

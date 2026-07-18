@@ -48,3 +48,30 @@ test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(sheet).toHaveCount(0, { timeout: 3_000 });
 });
+
+// El sheet «Más…» de períodos en Gastos era el ÚNICO sin swipe-para-cerrar (feedback 2026-07-18,
+// «el más de la foto»): ahora usa el mismo patrón que el resto.
+test("Gastos › Más… (períodos): cierra tirando hacia abajo", async ({ page }) => {
+  await seedLoggedInDashboard(page);
+  await page.goto("/");
+  await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+  const dismissNews = page.getByRole("button", { name: /Entendido|Got it/i });
+  if (await dismissNews.count()) await dismissNews.first().click();
+
+  await page.locator('.botnav-tab[data-tour="gastos"]').click();
+  await page.getByRole("button", { name: /Más…|More…|Més…/ }).first().click();
+  const sheet = page.locator(".v4-sheet");
+  await expect(sheet).toBeVisible();
+  await page.waitForTimeout(450); // fin de la animación de entrada antes de medir
+
+  const bb = await sheet.boundingBox();
+  const cdp = await page.context().newCDPSession(page);
+  const x = Math.round(bb.x + bb.width / 2);
+  const y0 = Math.round(bb.y + 30);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y: y0 }] });
+  for (let i = 1; i <= 6; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y0 + i * 40 }] });
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect(sheet).toHaveCount(0, { timeout: 3_000 });
+});

@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-18 · **v4.2.0** — «¿Me lo puedo permitir?» también A PLAZOS (cuota, impacto en fijos, margen mensual y crear la deuda de un toque), banco elegible en gastos manuales (+ y ficha; viaja en `source` como `manual:<ent>`), Sincronizar de Cartera incluye TR + MyInvestor, fix del alta de Hogar (**pegar migración 0015 en Supabase**), entrada de Ajustes sin blur/scale raros, «Ver más» del Inicio aterriza al principio, cartelito de Mi ciclo con aire, editar Bienes sin nombres partidos, textos de bancos a dieta y persistencia local debounced (menos micro-tirones).
+> Estado a 2026-07-18 · **v4.3.0** — Avisos proactivos (presupuesto 50/80/95/100% + víspera de CADA recibo y cuota), hipoteca/préstamos sin plazo con fecha fin estimada («a este ritmo acabas ~feb 2049»), tarjeta 🎉 en Inicio con la última cuota de una financiación, sheet «Más…» de períodos cerrable con swipe/atrás, informe que dice dónde queda (Descargas + noti), secciones de Ajustes con despliegue animado y MyInvestor con versión de cliente nueva + mensaje de captcha en cristiano. (La 4.2.0 del mismo día: permitirse a plazos, banco por apunte, Hogar arreglado — migración 0015 YA aplicada por CI —, sync total de Cartera y persistencia debounced.)
 
 ## Listo para uso diario
 
@@ -10,7 +10,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.2.0** |
+| Web / OTA (`VERSION`) | **4.3.0** |
 | APK (`versionName` / `versionCode`) | **4.0.12** / **28** — assembleRelease compilado e instalado en el móvil del usuario (adb, 2026-07-17) con el bundle 4.0.14 horneado. Los cambios de 4.0.15 → 4.2.0 son OTA (web + Edge + SQL), sin cambios nativos. Falta subir el APK a un release de GitHub + `apk.json` si se quiere OTA de APK. |
 | `public/apk.json` | debe coincidir con el release publicado |
 
@@ -18,7 +18,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Tema | Notas |
 |------|--------|
-| **MyInvestor reCAPTCHA** | Mitigado desde 4.0.12: el login sale del MÓVIL (`CapacitorHttp`, IP residencial) en vez de la Edge (IP datacenter que dispara SECURITY_001). Requiere el bundle ≥4.0.12 en el dispositivo — el APK 28 ya lo hornea. El usuario reportó captcha de nuevo (2026-07-18) → la 4.1.0 apunta a `app_events` **por qué vía salió el login**. **Sigue pendiente (2026-07-18 tarde):** las fotos de Actividad que mandó no incluían el error de MI — falta el TEXTO exacto del toast/error de MyInvestor (o un pantallazo de Actividad tras intentar conectar) para saber si es captcha vía Edge, fallo del login nativo u otra cosa. La 4.2.0 añade además el sync de MI al botón de Cartera, que hará el fallo más visible/reproducible. |
+| **MyInvestor reCAPTCHA** | CONFIRMADO con foto (2026-07-18): «Captcha required» salta TAMBIÉN por la vía del móvil (IP residencial, bundle 4.2.0). La 4.3.0 prueba la palanca documentada: `x-myinvestor-app` sube a 3.150.0 (cliente + Edge) — el anti-bot puntúa peor a clientes con versión vieja — y el error se explica en humano (esperar horas, no insistir). **Si tras unas horas y con la 4.3.0 sigue saliendo captcha, el siguiente escalón es resolver el reCAPTCHA de verdad en una WebView nativa (cambio de APK, no OTA) — decidir si compensa.** |
 | **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |

@@ -33,7 +33,9 @@ export function miHeaders(deviceId: string, token?: string): Record<string, stri
     "Origin": MI_BASE,
     "User-Agent": "Mozilla/5.0 (Linux; Android 11; moto g(20)) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.74 Mobile Safari/537.36",
     "x-device-id": deviceId,
-    "x-myinvestor-app": "version=3.125.0,platform=web",
+    // 3.150.0 (2026-07-18): captcha también desde IP residencial — subir la versión declarada
+    // es lo primero a probar (ver cabecera). Mantener SIEMPRE igual que miDeviceLogin (cliente).
+    "x-myinvestor-app": "version=3.150.0,platform=web",
   };
   if (token) h["Authorization"] = "Bearer " + token;
   return h;

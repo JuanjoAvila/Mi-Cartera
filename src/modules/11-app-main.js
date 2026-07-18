@@ -967,7 +967,9 @@ function App(){
     },3000);
     return function(){ clearTimeout(tmr); };
   },[state.onboarded,locked,showAuth,tourOpen,whatsNew]);
-  // Recordatorio de recibos gordos (2–3 días antes). Una noti/día máx. por cargo.
+  // Recordatorio de recibos: TODOS avisan LA VÍSPERA (petición 2026-07-18: «el banco no te
+  // avisa, la app podría»); los gordos además con 2–3 días de antelación como hasta ahora.
+  // Incluye también las cuotas de deuda. Una noti por cargo y mes.
   useEffect(function(){
     if(state.onboarded===false||locked||showAuth) return;
     const nat=natPlugin();
@@ -976,19 +978,55 @@ function App(){
     const cm=totals.curMonth, cy=totals.curYear;
     const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
     const ym=cy+"-"+String(cm).padStart(2,"0");
+    const notify=function(key,title,body){
+      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
+      try{ nat.showNotification({title:title,body:body}).catch(function(){}); }catch(err){}
+    };
     (state.fixed||[]).forEach(function(e){
       if(!occursIn(e,cm)) return;
       const d=dayIn(e,cm); if(d==null) return;
       if(isPaidIn(e,cm,today)) return;
       const amt=occAmountIn(e,cm)||0;
-      if(amt<minAmt) return;
+      if(!(amt>0)) return;
       const daysLeft=d-today;
-      if(daysLeft<1||daysLeft>3) return;
-      const key="_rc_"+e.id+"_"+ym+"_"+d;
-      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
-      try{ nat.showNotification({title:t("rc_title"),body:tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)})}).catch(function(){}); }catch(err){}
+      if(daysLeft===1){
+        notify("_rc1_"+e.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:e.name||"?",x:eur0(amt)}));
+      } else if(amt>=minAmt && daysLeft>=2 && daysLeft<=3){
+        notify("_rc_"+e.id+"_"+ym+"_"+d, t("rc_title"), tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)}));
+      }
     });
-  },[state.onboarded,locked,showAuth,state.fixed,totals.today,totals.curMonth]);
+    // cuotas de deuda (hipoteca, financiaciones…): también avisan la víspera
+    (state.debts||[]).forEach(function(d){
+      if(!debtActive(d) || !(d.monthly>0)) return;
+      if(isDebtPaidThisMonth(d,today)) return;
+      if(debtChargeDay(d)-today!==1) return;
+      notify("_rc1_debt_"+d.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:d.name||"?",x:eur0(d.monthly)}));
+    });
+  },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
+
+  // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
+  // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
+  // en silencio para no disparar tres de golpe). Suena también como toast en la app.
+  useEffect(function(){
+    if(state.onboarded===false||locked) return;
+    const bud=state.budget||0; if(!(bud>0)) return;
+    const spent=totals.thisMonthSpent||0;
+    const pct=spent/bud*100;
+    const ym=new Date().toISOString().slice(0,7);
+    let fired=false;
+    [100,95,80,50].forEach(function(th){
+      if(pct<th) return;
+      const k="_bn"+th+"_"+ym;
+      let seen=true;
+      try{ seen=localStorage.getItem(k)==="1"; localStorage.setItem(k,"1"); }catch(e){}
+      if(seen||fired) return;
+      fired=true;
+      const msg=tf("bn_"+th,{x:eur0(spent),b:eur0(bud),p:Math.round(pct)});
+      showToast(msg);
+      const nat=natPlugin();
+      if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} }
+    });
+  },[state.onboarded,locked,totals.thisMonthSpent,state.budget]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){

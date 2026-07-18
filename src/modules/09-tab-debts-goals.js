@@ -145,9 +145,19 @@ function Debts({state, set, showToast}){
     return "💳";
   };
   const endsLabel=function(d){
-    const left=debtLeft(d); if(left==null) return null;
-    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+left);
-    return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
+    const left=debtLeft(d);
+    if(left!=null){
+      const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+left);
+      return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
+    }
+    // Sin plazo (hipoteca/préstamo a mano de las primeras versiones): antes no salía NADA y la
+    // tarjeta parecía «muerta» (feedback 2026-07-18). Se estima con el ritmo de amortización
+    // actual — por eso lleva «~»: una amortización anticipada o cambio de cuota la mueve.
+    const am=debtAmort(d), bal=debtBalance(d);
+    if(!(am>0) || !(bal>0.005)) return null;
+    const k=Math.ceil(bal/am);
+    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+k);
+    return tf("v4_debts_ends_est",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
   };
   return React.createElement("div",null,
     React.createElement("div",{className:"v4-card v4-card-hero rise"},
