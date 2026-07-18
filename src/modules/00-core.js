@@ -285,6 +285,17 @@ const cloud = (function(){
       );
       if(error) throw error;
     },
+    // Persiste el BANCO elegido de un gasto (va embebido en source: manual:caixabank…) para
+    // que sobreviva a reinstalaciones — mismo truco que ob: (2026-07-18).
+    async setExpenseBank(e, ent){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      const src=expenseSourceForCloud(Object.assign({},e,{ent:ent||undefined}));
+      const {error}=await sb.from('expenses').update({ source:src })
+        .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
+      if(error) throw error;
+    },
     // Persiste el flag 💳/🔄 en la tabla (si no, el siguiente pull lo pisaría en gastos de la nube).
     async setExpenseNoCard(e, noCard){
       if(!sb) return;
@@ -509,14 +520,17 @@ const cloud = (function(){
       if(!session) throw new Error("sin sesión");
       const code=String(inviteCode||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);
       if(code.length<4) throw new Error("código inválido");
-      const {data:hh,error}=await sb.from("households").insert({
-        name:String(name||"Mi hogar").slice(0,80),
-        invite_code:code,
-        created_by:session.user.id,
-      }).select().single();
+      // id generado AQUÍ y sin .select(): el RETURNING del insert pasa por la policy de SELECT
+      // y el creador aún no es miembro → 0 filas y el alta petaba (error real 2026-07-18:
+      // «new row violates row-level security policy for table households» = además faltaba
+      // la policy de INSERT en la BD → migración 0015).
+      const hid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID()
+        :"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(c){ const r=Math.random()*16|0; return (c==="x"?r:(r&0x3|0x8)).toString(16); });
+      const hh={ id:hid, name:String(name||"Mi hogar").slice(0,80), invite_code:code, created_by:session.user.id };
+      const {error}=await sb.from("households").insert(hh);
       if(error) throw error;
       const {error:e2}=await sb.from("household_members").insert({
-        household_id:hh.id, user_id:session.user.id, role:"owner",
+        household_id:hid, user_id:session.user.id, role:"owner",
       });
       if(e2) throw e2;
       return hh;
@@ -572,6 +586,9 @@ function expenseSourceForCloud(e){
   if(ent&&(s==="ob-hist"||String(s).indexOf("ob-hist:")===0)) return "ob-hist:"+ent;
   if(s==="macrodroid"||s==="tr") return "macrodroid";
   if(s==="supabase") return "manual";
+  // Manual CON banco elegido (2026-07-18): mismo truco que ob: — el banco viaja en source
+  // y sobrevive a reinstalaciones sin migración SQL.
+  if(ent&&(s==="manual"||String(s).indexOf("manual:")===0)) return "manual:"+ent;
   return s||"manual";
 }
 /* Banco de un gasto (ent) o null si es a mano / desconocido. */
@@ -582,6 +599,7 @@ function expenseBankOf(e){
   if(s==="macrodroid"||s==="tr") return "trade_republic";
   if(s.indexOf("ob:")===0) return s.slice(3)||null;
   if(s.indexOf("ob-hist:")===0) return s.slice(8)||null;
+  if(s.indexOf("manual:")===0) return s.slice(7)||null;
   return null;
 }
 /* Convierte una fila de la tabla `expenses` al formato interno de la app. */
@@ -591,6 +609,7 @@ function expenseFromRow(r){
   if(raw==="macrodroid"||raw==="tr"){ ent="trade_republic"; source="macrodroid"; }
   else if(raw.indexOf("ob:")===0){ ent=raw.slice(3)||null; source="ob"; }
   else if(raw.indexOf("ob-hist:")===0){ ent=raw.slice(8)||null; source="ob-hist"; }
+  else if(raw.indexOf("manual:")===0){ ent=raw.slice(7)||null; source="manual"; }   // manual con banco elegido
   else if(raw==="supabase"){ source="manual"; }   // legado: antes el pull marcaba todo como supabase
   return {
     id: r.id,

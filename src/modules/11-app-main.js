@@ -39,7 +39,36 @@ function App(){
   const [syncing,setSyncing]=useState(false);
   const [syncStatus,setSyncStatus]=useState({type:"idle",msg:""});
 
-  const set=useCallback((updater)=>{ setStateRaw(prev=>{ const next=typeof updater==="function"?updater(prev):updater; if(next===prev) return prev; const stamped=Object.assign({},next,{_savedAt:Date.now()}); store.set("micartera_v3",stamped); return stamped; }); },[]);
+  // Persistencia DEBOUNCED (2026-07-18): antes cada set() serializaba TODO el estado a
+  // localStorage en el hilo principal (varios cientos de KB) → los micro-tirones esporádicos
+  // («a veces se ralentiza, cuando chuta va hiper fluida»). Ahora se escribe como mucho 1 vez
+  // cada 400 ms con el último valor, y SIEMPRE se vuelca al esconder/cerrar la app (pagehide +
+  // visibilitychange) para no perder nada si Android mata el proceso.
+  const persistRef=useRef({t:null,val:null});
+  const flushPersist=useCallback(function(){
+    const p=persistRef.current;
+    if(p.t){ clearTimeout(p.t); p.t=null; }
+    if(p.val!=null){ store.set("micartera_v3",p.val); p.val=null; }
+  },[]);
+  const set=useCallback((updater)=>{ setStateRaw(prev=>{
+    const next=typeof updater==="function"?updater(prev):updater;
+    if(next===prev) return prev;
+    const stamped=Object.assign({},next,{_savedAt:Date.now()});
+    const p=persistRef.current;
+    p.val=stamped;
+    if(!p.t) p.t=setTimeout(function(){ p.t=null; const v=persistRef.current.val; persistRef.current.val=null; if(v!=null) store.set("micartera_v3",v); },400);
+    return stamped;
+  }); },[]);
+  useEffect(function(){
+    const onVis=function(){ if(document.visibilityState==="hidden") flushPersist(); };
+    document.addEventListener("visibilitychange",onVis);
+    window.addEventListener("pagehide",flushPersist);
+    return function(){
+      flushPersist();
+      document.removeEventListener("visibilitychange",onVis);
+      window.removeEventListener("pagehide",flushPersist);
+    };
+  },[flushPersist]);
   const showToast=(m)=>{ setToast(m); setTimeout(()=>setToast(null),2200);
     // Telemetría: TODO error que ve el usuario en pantalla viaja a app_events. Antes solo se
     // subían los crashes/errores no capturados — los fallos "domados" (✕/⚠ en un toast, como el
@@ -224,24 +253,45 @@ function App(){
     });
   };
 
-  const runBrokerSync=function(){
+  // opts.manual = botón «Sincronizar» de Cartera (2026-07-18): además de MyInvestor entra
+  // Trade Republic (solo a demanda: el TR de arranque deslogueaba APKs viejos) y se salta el
+  // throttle. En automático (al abrir) sigue siendo solo MI, silencioso y con throttle.
+  const runBrokerSync=function(opts){
+    opts=opts||{};
     if(brokerSyncing.current) return Promise.resolve();
     brokerSyncing.current=true;
     const jobs=[];
     const st=stateRef.current||{};
-    // Trade Republic — NO sync automático al boot con APK viejo: un 401 de arranque
-    // borraba connected en nativo y pedía OTP otra vez (feedback 2026-07-17). Sync a mano.
-    // MyInvestor — Edge Function (funciona en web y en app)
-    if(cloud.enabled() && sessionRef.current && Date.now()-(st.lastMiSync||0) >= BROKER_SYNC_THROTTLE){
-      jobs.push(cloud.myinvestorStatus().then(function(r){
-        if(!(r && r.status==="active")) return;               // caducada → se reconecta a mano
-        return cloud.myinvestorSync().then(function(res){
-          if(!res || !res.ok || !Array.isArray(res.positions)) return;
-          applyBrokerPositions(res.positions, "lastMiSync");
+    let touched=0; const expiredB=[];
+    const bridge=(opts.manual && typeof trBridge==="function") ? trBridge() : null;
+    if(bridge && bridge.status && bridge.sync){
+      jobs.push(Promise.resolve(bridge.status()).then(function(r){
+        if(!(r&&r.connected)) return;
+        return Promise.resolve(bridge.sync()).then(function(res){
+          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); return; }
+          if(!res||!res.ok||!Array.isArray(res.positions)) return;   // anti-bot/hipo: silencio, se reintenta luego
+          applyBrokerPositions(res.positions, "lastTrSync"); touched++;
         });
       }).catch(function(){}));
     }
-    return Promise.all(jobs).catch(function(){}).then(function(){ brokerSyncing.current=false; });
+    // MyInvestor — Edge Function (funciona en web y en app)
+    if(cloud.enabled() && sessionRef.current && (opts.manual || Date.now()-(st.lastMiSync||0) >= BROKER_SYNC_THROTTLE)){
+      jobs.push(cloud.myinvestorStatus().then(function(r){
+        if(!(r && r.status==="active")) return;               // caducada → se reconecta a mano
+        return cloud.myinvestorSync().then(function(res){
+          if(res&&res.authExpired){ expiredB.push("MyInvestor"); return; }
+          if(!res || !res.ok || !Array.isArray(res.positions)) return;
+          applyBrokerPositions(res.positions, "lastMiSync"); touched++;
+        });
+      }).catch(function(){}));
+    }
+    return Promise.all(jobs).catch(function(){}).then(function(){
+      brokerSyncing.current=false;
+      if(opts.manual){
+        if(expiredB.length) showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+        else if(touched) showToast(t("v4_sync_brokers_ok"));
+      }
+    });
   };
 
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
@@ -1031,6 +1081,14 @@ function App(){
     if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
     React.startTransition(function(){ setTab(i); });
   };
+  // «Ver más» desde Resumen: la pestaña destino conserva su scroll y aterrizabas a mitad de
+  // Metas/Gastos (feedback 2026-07-18) → estos enlaces resetean el scroll de la página destino.
+  const goTabTop=function(i){
+    if(i<0) return;
+    goTab(i);
+    const pg=trackRef.current&&trackRef.current.children&&trackRef.current.children[i];
+    if(pg) pg.scrollTop=0;
+  };
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
@@ -1286,11 +1344,13 @@ function App(){
         setProfileMounted(true);
         requestAnimationFrame(function(){ requestAnimationFrame(function(){ profSetOrigin(); setProfileOpen(true); }); });
       },
-      onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
-      onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
+      onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); },
+      onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
     if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
-    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return runBankSync({manual:true}); }});
+    // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
+    // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
+    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); }});
     return null;
   };
 
@@ -1337,7 +1397,7 @@ function App(){
     ),
     React.createElement(AskHost,null),
     React.createElement(ApuntarSheet,{open:apuntarOpen,onClose:function(){ setApuntarOpen(false); },state:state,set:set,showToast:showToast,
-      goGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); }}),
+      goGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }}),
     tourOpen && React.createElement(Tour,{onDone:endTour, goTab:goTab, tabIds:tabIds}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
     monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),

@@ -475,7 +475,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     React.createElement(MyInvestorSync,{state:state,set:set}),
     React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
     React.createElement("div",{className:"bk-ver"}, "v"+(CONFIG.APP_VERSION||"?")),
-    React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:8,lineHeight:1.5}}, t("bp_apk_hint")),
+    // (bp_apk_hint fuera 2026-07-18: párrafo de circunstancias ya resueltas — menos letra aquí)
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6,lineHeight:1.5}}, t("bp_foot"))
   ));
 }
@@ -616,6 +616,18 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.2.0", d:"18 jul 2026", t:"Compras a plazos simuladas, banco en cada apunte y la ronda de arreglos que pediste", items:[
+    "📅 «¿Me lo puedo permitir?» ahora también A PLAZOS: pones meses y entrada y te dice la cuota, cómo suben tus fijos, si te cabe cada mes con tu nómina… y con un botón creas la deuda directamente (aparece en Plan → Deudas y descuenta del líquido sola).",
+    "🏦 Al apuntar un gasto a mano (el + o editando uno) puedes elegir de qué banco sale. Se recuerda hasta reinstalando la app.",
+    "↻ El «Sincronizar» de Cartera ahora también actualiza Trade Republic y MyInvestor (si están conectados), no solo los bancos de Open Banking.",
+    "🏠 Arreglado el error al crear un hogar («row-level security policy»): a la base de datos le faltaba un permiso. Hay que pegar la migración 0015 en Supabase (docs/HOGAR.md) — la app ahora además te lo dice en cristiano.",
+    "⚙️ Entrar en Ajustes ya no hace ese efecto raro e incómodo: ahora es un deslizamiento limpio, sin desenfoques.",
+    "🔀 «Ver más» y «Ver plan» desde Inicio te dejan al PRINCIPIO de Gastos/Metas (antes aterrizabas a mitad de pantalla).",
+    "📅 El cartelito de «Mi ciclo» ya no choca con los filtros de abajo.",
+    "🖊 Editar los Bienes en Cartera ya no parte los nombres palabra a palabra (la casilla del importe iba sin estilo).",
+    "🧹 Textos de bancos en Ajustes a dieta: menos párrafos, mismo contenido.",
+    "⚡ Menos micro-tirones usando la app: el guardado local ahora va en segundo plano (y se vuelca siempre al salir).",
+  ]},
   {v:"4.1.0", d:"18 jul 2026", t:"Cartera a tu gusto, bancos que no caducan solos y Ajustes puestos al día", items:[
     "🏦 Los bancos ya NO se sincronizan solos al abrir la app (eso les olía a robot y te caducaban la conexión cada dos por tres). Ahora sincronizas tú con el botón «↻ Sincronizar bancos» en Cartera, cuando quieras.",
     "📊 El gráfico de Cartera es tuyo: toca Liquidez, Inversiones o Bienes en la leyenda para marcarlos/desmarcarlos y ver, por ejemplo, líquido + inversiones a secas. Todo marcado = tu patrimonio de siempre.",
@@ -1027,7 +1039,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   };
   const doExport=function(){
     try{
-      const data=JSON.stringify(store.get("micartera_v3")||state,null,2);
+      // El estado React manda: localStorage puede ir ~400 ms por detrás (persistencia debounced 2026-07-18)
+      const data=JSON.stringify(state||store.get("micartera_v3"),null,2);
       const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
       const a=document.createElement("a");
       a.href=url; a.download="mi-cartera-"+new Date().toISOString().slice(0,10)+".json"; a.click();

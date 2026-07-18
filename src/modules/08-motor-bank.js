@@ -354,6 +354,13 @@ function AffordSim({state, totals, set}){
   const [amount,setAmount]=useState("");
   const [day,setDay]=useState(String(totals.today||new Date().getDate()));
   const [bank,setBank]=useState(defBank);
+  // Modo «a plazos» (petición 2026-07-18): además del contado, simula financiarlo — cuota,
+  // cómo suben tus fijos y si te cabe cada mes; y puede crear la deuda de un toque.
+  const [mode,setMode]=useState("cash");     // cash | fin
+  const [months,setMonths]=useState("12");
+  const [down,setDown]=useState("");
+  const [finName,setFinName]=useState("");
+  const [finDone,setFinDone]=useState(false);
   const acc=accounts.find(function(a){return a.ent===bank;});
   const floor=(acc&&acc.floor>0)?acc.floor:0;          // colchón mínimo opcional de esta cuenta
   const setFloor=function(v){ const n=parseFloat(String(v).replace(',','.')); set(function(s){ return Object.assign({},s,{accounts:s.accounts.map(function(a){ return a.ent===bank?Object.assign({},a,{floor:(isNaN(n)||n<=0)?undefined:n}):a; })}); }); };
@@ -362,16 +369,47 @@ function AffordSim({state, totals, set}){
   const start=(totals.bankBal&&totals.bankBal[bank])||0;
   const evs=bankPendingEvents(state, bank, totals.curYear, totals.curMonth, totals.today);
   const base=minWalk(start, evs);
-  const sim=minWalk(start, evs.concat([{day:dd, amt:-amt}]));
+  // A plazos: este mes solo sale la ENTRADA (la 1ª cuota llega el mes que viene); al contado, todo.
+  const fin=mode==="fin";
+  const nM=Math.max(1,Math.min(120,parseInt(months)||12));
+  const dw=fin ? Math.min(amt, Math.max(0,parseFloat(String(down).replace(',','.'))||0)) : 0;
+  const quota=fin ? +(((amt-dw)/nM).toFixed(2)) : 0;
+  const hitNow=fin ? dw : amt;
+  const sim=minWalk(start, hitNow>0?evs.concat([{day:dd, amt:-hitNow}]):evs);
   const BUFFER=50;
   const breaksFloor = floor>0 && sim.min < floor;
   const verdict = amt<=0 ? null : (sim.min<-0.005 ? "no" : (breaksFloor ? "floor" : (sim.min<BUFFER ? "tight" : "yes")));
   const lowTxt = sim.minDay ? tf("af_low",{x:eur(sim.min),d:sim.minDay}) : tf("af_low_noday",{x:eur(sim.min)});
   const verdictTxt = verdict==="no"?t("af_no"):(verdict==="floor"?tf("af_floor_break",{x:eur0(floor)}):(verdict==="tight"?t("af_tight"):t("af_yes")));
+  // ¿Te cabe la cuota CADA MES? margen libre = nómina − fijos − presupuesto variable.
+  const incomeM=(state.flows||[]).reduce(function(a,f){ return a+((f&&f.kind==="income"&&!f.once)?(f.amount||0):0); },0);
+  const freeM=incomeM-(totals.fijosMensual||0)-(state.budget||0);
+  const quotaVerdict = !fin||quota<=0 ? null
+    : incomeM<=0 ? "none"
+    : quota>freeM ? "no" : (quota>freeM*0.5 ? "tight" : "ok");
+  const endLbl=(function(){ const d0=new Date(); d0.setDate(1); d0.setMonth(d0.getMonth()+nM); return monthLong(d0.getMonth())+" "+d0.getFullYear(); })();
+  const createDebt=function(){
+    if(!(quota>0)) return;
+    const financed=+((amt-dw).toFixed(2));
+    const it={ id:uid(), ent:"familia", name:finName.trim()||t("db_newdebt"), value:financed, original:financed,
+      monthly:quota, amort:quota, months:nM, asOf:ymNow(), account:bank, day:dd, note:t("db_addedmanual") };
+    if(dw>0) it.downPayment=dw;
+    set(function(s){ return Object.assign({},s,{debts:(s.debts||[]).concat([it])}); });
+    setFinDone(true);
+  };
   return React.createElement(CollapsibleCard,{title:t("af_title"),sub:t("af_sub"),dot:"#9BD0E0",defaultOpen:false,storageKey:"fj_afford",help:t("h_afford")},
+    React.createElement("div",{style:{display:"flex",gap:6,marginBottom:8}},
+      [["cash","af_mode_cash"],["fin","af_mode_fin"]].map(function(mm){
+        return React.createElement("button",{key:mm[0],className:"chip"+(mode===mm[0]?" on":""),style:mode===mm[0]?{background:"var(--mint)",color:"#06120C",borderColor:"var(--mint)"}:null,
+          onClick:function(){ setMode(mm[0]); setFinDone(false); }}, t(mm[1]));
+      })),
     React.createElement("div",{className:"af-row"},
-      React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:t("af_amount"),value:amount,onChange:function(e){ setAmount(e.target.value); }}),
+      React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:t("af_amount"),value:amount,onChange:function(e){ setAmount(e.target.value); setFinDone(false); }}),
       React.createElement("input",{className:"af-in num",inputMode:"numeric",style:{flex:"0 0 30%"},placeholder:t("af_day"),value:day,onChange:function(e){ setDay(e.target.value); }})
+    ),
+    fin && React.createElement("div",{className:"af-row",style:{marginTop:8}},
+      React.createElement("input",{className:"af-in num",inputMode:"numeric",placeholder:t("af_fin_months"),value:months,onChange:function(e){ setMonths(e.target.value); setFinDone(false); }}),
+      React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:t("af_fin_down"),value:down,onChange:function(e){ setDown(e.target.value); setFinDone(false); }})
     ),
     accounts.length>1 && React.createElement("select",{className:"af-in",style:{marginTop:8},value:bank,onChange:function(e){ setBank(e.target.value); }},
       accounts.map(function(a){ return React.createElement("option",{key:a.id,value:a.ent}, entOf(a.ent).label); })),
@@ -387,6 +425,21 @@ function AffordSim({state, totals, set}){
       React.createElement("div",{className:"af-verdict"}, verdictTxt),
       React.createElement("div",{className:"af-low"}, lowTxt),
       React.createElement("div",{className:"af-delta num"}, tf("af_from_to",{a:eur(base.min),b:eur(sim.min)}))
+    ),
+    fin && amt>0 && quota>0 && React.createElement("div",{style:{marginTop:10,padding:"10px 12px",borderRadius:12,background:"var(--surface-2)",border:"1px solid var(--line)"}},
+      React.createElement("div",{className:"hint",style:{marginTop:0,color:"var(--text)",fontWeight:700}}, "📅 "+tf("af_fin_quota",{x:eur(quota),n:nM,d:endLbl})),
+      React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("af_fin_fixed",{a:eur0(totals.fijosMensual||0),b:eur0((totals.fijosMensual||0)+quota)})),
+      quotaVerdict==="ok" && React.createElement("div",{className:"hint",style:{marginTop:6,color:"var(--mint)"}}, tf("af_fin_margin_ok",{x:eur0(freeM-quota)})),
+      quotaVerdict==="tight" && React.createElement("div",{className:"hint",style:{marginTop:6,color:"var(--tan)"}}, tf("af_fin_margin_tight",{x:eur0(freeM)})),
+      quotaVerdict==="no" && React.createElement("div",{className:"hint",style:{marginTop:6,color:"var(--coral)"}}, tf("af_fin_margin_no",{x:eur0(Math.max(0,freeM))})),
+      quotaVerdict==="none" && React.createElement("div",{className:"hint",style:{marginTop:6}}, t("af_fin_margin_none")),
+      finDone
+        ? React.createElement("div",{className:"hint",style:{marginTop:8,color:"var(--mint)",fontWeight:700}}, t("af_fin_created"))
+        : React.createElement(React.Fragment,null,
+            React.createElement("input",{className:"af-in",style:{marginTop:8},placeholder:t("af_fin_name_ph"),value:finName,onChange:function(e){ setFinName(e.target.value); }}),
+            React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:8},onClick:createDebt}, tf("af_fin_create",{x:eur(quota)}))
+          ),
+      React.createElement("div",{className:"hint",style:{marginTop:8,fontSize:11.5}}, t("af_fin_hint"))
     )
   );
 }

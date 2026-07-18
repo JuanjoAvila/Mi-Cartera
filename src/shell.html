@@ -730,7 +730,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp,.settings-push.open .set-card,.settings-push.open .v4-set-sec,.settings-push.open .v4-set-profile{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp{animation:none !important;transition:none !important;}
   }
 
   .card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line-soft);border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;}
@@ -898,7 +898,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .row .rval{font-weight:700;text-align:right;}
   .row .rval .rvsub{font-size:11px;color:var(--mint);font-weight:600;margin-top:1px;}
   .row .rval .rvsub.neg{color:var(--coral);}
-  .row input.editv{width:108px;text-align:right;background:var(--bg-2);border:1px solid var(--mint-dim);color:var(--text);border-radius:9px;padding:7px 9px;font-size:14px;font-weight:600;}
+  /* Sin el prefijo .row: en Cartera (v4-mov) el input salía SIN estilo y a todo lo ancho,
+     partiendo el nombre del bien palabra a palabra (foto feedback 2026-07-18). */
+  input.editv{width:108px;flex:0 0 auto;text-align:right;background:var(--bg-2);border:1px solid var(--mint-dim);color:var(--text);border-radius:9px;padding:7px 9px;font-size:14px;font-weight:600;}
   .editpair{display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
   .editpair label{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted-2);font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
   .editpair input{width:96px;text-align:right;background:var(--bg-2);border:1px solid var(--mint-dim);color:var(--text);border-radius:8px;padding:6px 8px;font-size:13px;font-weight:600;}
@@ -922,9 +924,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .set-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border:none;border-top:1px solid var(--line-soft);width:100%;background:none;color:var(--text);font-size:14.5px;font-family:inherit;text-align:left;cursor:pointer;box-sizing:border-box;min-height:48px;}
   /* Entrada por secciones al abrir Ajustes y al desplegar un acordeón (2026-07-18):
      el mismo rise sutil del resto de la app, con un pelín de escalera. */
-  .settings-push.open .v4-set-profile{animation:rise .32s var(--ease) both;}
-  .settings-push.open .v4-set-sec{animation:rise .34s var(--ease) both;animation-delay:.03s;}
-  .settings-push.open .set-card{animation:rise .36s var(--ease) both;animation-delay:.06s;}
+  /* (Las animaciones escalonadas de .set-card/.v4-set-sec al abrir se retiraron el 2026-07-18:
+     el contenido «saltaba» en cada apertura y sumaba al efecto raro del panel.) */
   .set-exp{animation:rise .26s var(--ease) both;}
   .chip.active,.v4-period-btn.on{background:var(--mint);border-color:var(--mint);color:var(--on-mint);}
   .v4-period{display:flex;gap:8px;margin:12px 0 10px;}
@@ -993,9 +994,13 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* position:relative — ancla de la .botnav flotante (2026-07-18). */
   .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;position:relative;}
   .app-shell .viewport{flex:1;min-height:0;}
-  .app-shell.settings-dim{transform:scale(calc(1 - 0.04 * var(--set-p,0)));filter:blur(calc(var(--set-p,0) * 14px)) brightness(calc(1 - 0.28 * var(--set-p,0)));border-radius:calc(var(--set-p,0) * 18px);overflow:hidden;transition:transform .42s cubic-bezier(.32,.72,0,1),filter .42s cubic-bezier(.32,.72,0,1),border-radius .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
+  /* Push limpio tipo Revolut (feedback 2026-07-18: el blur+scale se sentía «raro e incómodo»
+     y además el blur de pantalla completa daba tirones en la WebView): la app solo se desplaza
+     un pelín a la derecha y se atenúa mientras el panel la cubre. */
+  .app-shell.settings-dim{transform:translate3d(calc(var(--set-p,0) * 24px),0,0);filter:brightness(calc(1 - 0.22 * var(--set-p,0)));transition:transform .42s cubic-bezier(.32,.72,0,1),filter .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
   .app-shell.settings-dim.dragging{transition:none;}
-  .v4-cycle-box{margin:10px 2px 0;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}
+  /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
+  .v4-cycle-box{margin:10px 2px 14px;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}
   .v4-cycle-box strong{display:block;color:var(--text);font-weight:800;font-size:14px;margin-bottom:6px;}
   .v4-gastos-summary-sub{font-size:12.5px;color:var(--muted);margin-top:4px;font-weight:600;}
   .v4-gastos-summary-amount.pos{color:var(--mint);}

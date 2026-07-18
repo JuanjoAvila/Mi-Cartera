@@ -109,6 +109,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{noCard:noCard?true:undefined}):e; })}); });
     if(cloud.enabled()) cloud.setExpenseNoCard(ex,noCard).catch(function(){});   // durable en la tabla
   };
+  // Cambia el BANCO de un gasto manual (petición 2026-07-18). Solo manuales: los de OB/TR ya
+  // vienen con su banco real y cambiárselo sería mentirse.
+  const setBank=function(ex,b){
+    set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{ent:b||undefined}):e; })}); });
+    if(cloud.enabled()) cloud.setExpenseBank(ex,b).catch(function(){});   // durable (source manual:banco)
+  };
   // EDITAR un gasto (comercio / importe / gasto↔ingreso): para corregir lo que la ingesta parsea
   // mal (financiación Cofidis que notifica el TOTAL pero TR solo cobra la cuota, bizums antiguos
   // que entraron como gasto…). En la nube la clave es fecha|importe|comercio → se hace tombstone
@@ -430,14 +436,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
       onClose:function(){ setDetailId(null); setEditExp(null); },
-      setCat:setCat, setCardFlag:setCardFlag, delExpense:delExpense, saveEdit:saveEdit,
+      setCat:setCat, setCardFlag:setCardFlag, setBank:setBank, delExpense:delExpense, saveEdit:saveEdit,
       showToast:showToast, aiBusy:aiBusy, suggestAi:suggestAi, state:state
     })
   );
 }
 
 /* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */
-function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
+function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, setBank, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
   useBackClose(!!exp, onClose);
   const swipe=useSheetSwipe(!!exp, onClose);
   if(!exp || !editExp) return null;
@@ -475,6 +481,21 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
           ),
           React.createElement("button",{type:"button",className:"v4-sheet-row"+(exp.noCard?"":" on"),style:{marginTop:12},onClick:function(){ setCardFlag(exp,!exp.noCard); }},
             exp.noCard?("💸 "+t("v4_exp_not_card")):("💳 "+t("v4_exp_with_card"))),
+          // Banco del gasto: SOLO editable en apuntes manuales (los de OB/TR traen su banco real).
+          (!auto && setBank) && (function(){
+            const seen={}; const opts=[];
+            (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&!seen[a.ent]){ seen[a.ent]=1; opts.push(a.ent); } });
+            if(!opts.length) return null;
+            return React.createElement(React.Fragment,null,
+              React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("ap_bank")),
+              React.createElement("div",{className:"v4-chips"},
+                React.createElement("button",{type:"button",className:"v4-chip"+(!bk?" on":""),onClick:function(){ setBank(exp,null); }}, t("ap_bank_none")),
+                opts.map(function(b){
+                  return React.createElement("button",{key:b,type:"button",className:"v4-chip"+(bk===b?" on":""),onClick:function(){ setBank(exp,b); }}, "🏦 "+entOf(b).label);
+                })
+              )
+            );
+          })(),
           exp.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
         ),
         React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_type")),
