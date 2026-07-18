@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.5.0] — 2026-07-18
+### Histórico OB: ingresos + destino Gasto / Recibo / Ingreso
+- `BankHistoryImport`: también lista créditos (ingresos); por fila chips Gasto | Recibo | Ingreso.
+- Defaults: tarjeta→Gasto, no-tarjeta→Recibo, crédito→Ingreso (todos pre-marcados; recibo ya existente en `fixed` se desmarca).
+- Recibo → `state.fixed` mensual con `day` del movimiento (como conciliación «Añadir a Fijos»).
+- Ingreso → `expenses` con importe negativo + `category:"ingreso"` + `noCard`.
+- Bancos del histórico: todos los enlaces OB activos (no solo `expenseBanks`), para poder sacar recibos del banco de fijos.
+- Sync ya existente: `importObExpenses` mete TODAS las compras tarjeta del mes de `expenseBanks` en Gastos (no era «últimos 5» a medias — ya estaba).
+- OTA only.
+
 ## [4.4.3] — 2026-07-18
 ### Gestos: Resumen visible otra vez (sin el negro cutre)
 - Quita `visibility:hidden` de `.gesture-freeze` (feedback: fluido pero «cutre»). Se mantiene lo que sí cura el lag: no interpolar filter/`--set-p`/opacidad del shell por frame; solo mueve el panel.

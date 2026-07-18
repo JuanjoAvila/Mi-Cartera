@@ -234,61 +234,103 @@ function AuthPanel({session, onClose, showToast, recovery, startMode}){
    ve su estado y elige de la lista REAL de Enable Banking (con buscador y logos).
    Overlay a pantalla completa que abre SettingsPanel.
    ============================================================ */
-/* IMPORTAR HISTÓRICO de gastos vía Open Banking (tope PSD2 ~90 días). Trae los movimientos de
-   la cuenta de GASTO DIARIO (rol "diario"/"ambos") conectada al banco y deja ELEGIR cuáles
-   apuntar como gasto variable (compras con tarjeta pre-marcadas; recibos/otros desmarcados).
-   Idempotente: descarta lo ya importado (ext_id) y lo que ya existe (fecha|importe|comercio).
-   Para Trade Republic no aplica: TR no está en Open Banking (no hay movimientos que traer). */
-function BankHistoryImport({state, set, showToast, onClose}){
+/* IMPORTAR HISTÓRICO vía Open Banking (~90 días PSD2). Cargos + ingresos; por fila eliges
+   destino: Gasto (variable) · Recibo (fijo mensual) · Ingreso. Tarjeta→Gasto, no-tarjeta→Recibo,
+   crédito→Ingreso (pre-marcados). TR no aplica (no está en OB). Feedback 2026-07-18. */
+function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   const expEnts=expenseBankEnts(state);
-  const allow={}; expEnts.forEach(function(e){ allow[e]=1; });
-  const banksLbl=expEnts.map(function(e){ return entOf(e).label; }).join(", ");
+  const allowList=(linkEnts&&linkEnts.length)? linkEnts : expEnts;
+  const allow={}; allowList.forEach(function(e){ allow[e]=1; });
+  const banksLbl=allowList.map(function(e){ return entOf(e).label; }).join(", ");
   const [months,setMonths]=useState(3);
   const [loading,setLoading]=useState(false);
-  const [cands,setCands]=useState(null);          // null = aún no se ha buscado
-  const [sel,setSel]=useState({});                // índice -> bool
+  const [cands,setCands]=useState(null);
+  const [sel,setSel]=useState({});       // índice -> bool
+  const [dest,setDest]=useState({});     // índice -> "gasto"|"recibo"|"ingreso"
   const [importing,setImporting]=useState(false);
   useBackClose(true, onClose);
   const kOf=function(dt,am,mc){ return String(dt).slice(0,10)+"|"+am+"|"+(mc||""); };
+  const defDest=function(x){
+    if(x.kind==="in") return "ingreso";
+    if(x.card) return "gasto";
+    return "recibo";
+  };
   const search=function(){
-    if(!expEnts.length){ showToast(t("bp_hist_nodaily")); return; }
+    if(!allowList.length){ showToast(t("bp_hist_nodaily")); return; }
     setLoading(true); setCands(null);
     const d=new Date(); d.setMonth(d.getMonth()-months); const dateFrom=d.toISOString().slice(0,10);
     cloud.bankSyncHistory(dateFrom).then(function(res){
       const links=(res&&res.links)||[];
       const seen={}; (state.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
       const keys={}; (state.expenses||[]).forEach(function(e){ keys[kOf(e.date,e.amount,e.merchant)]=1; });
+      const fixNames={}; (state.fixed||[]).forEach(function(f){ fixNames[(f.name||"").toLowerCase()+"|"+(f.amount||0)+"|"+(f.account||"")]=1; });
       const out=[], uniq={};
       links.forEach(function(lk){
         const ent=entFromAspsp(lk&&lk.aspsp); if(!allow[ent]) return;
         (lk.accounts||[]).forEach(function(ac){
           (ac.transactions||[]).forEach(function(tx){
             const dt=String(tx.date||"").slice(0,10), am=Number(tx.amount)||0;
-            if(!dt || !(am>0)) return;                              // solo cargos (gasto)
-            if(tx.ext_id && seen[tx.ext_id]) return;                // ya importado
-            if(keys[kOf(dt,am,tx.merchant)]) return;                // ya existe a mano/otro origen
-            const k=tx.ext_id||kOf(dt,am,tx.merchant); if(uniq[k]) return; uniq[k]=1;   // dedup entre páginas
-            out.push({ id:tx.ext_id||null, date:dt, amount:am, merchant:tx.merchant||"Compra", card:!!tx.card, ent:ent });
+            if(!dt || !am) return;
+            const isIn=am<0;
+            const abs=Math.abs(am);
+            if(tx.ext_id && seen[tx.ext_id]) return;
+            if(!isIn && keys[kOf(dt,abs,tx.merchant)]) return;
+            if(isIn && keys[kOf(dt,-abs,tx.merchant)]) return;
+            const k=(tx.ext_id||"")+"|"+(isIn?"in":"out")+"|"+kOf(dt,abs,tx.merchant); if(uniq[k]) return; uniq[k]=1;
+            out.push({ id:tx.ext_id||null, date:dt, amount:abs, merchant:tx.merchant||(isIn?t("cat_ingreso"):"Compra"), card:!!tx.card, ent:ent, kind:isIn?"in":"out" });
           });
         });
       });
       out.sort(function(a,b){ return b.date.localeCompare(a.date); });
       setCands(out);
-      const s0={}; out.forEach(function(x,i){ s0[i]=!!x.card; }); setSel(s0);   // tarjeta = pre-marcado
+      const s0={}, d0={};
+      out.forEach(function(x,i){
+        d0[i]=defDest(x);
+        // Pre-marca: tarjeta/ingreso sí; recibo (no tarjeta) también — es lo que evita teclear fijos.
+        s0[i]=true;
+        if(d0[i]==="recibo"){
+          const fk=(x.merchant||"").toLowerCase()+"|"+x.amount+"|"+x.ent;
+          if(fixNames[fk]) s0[i]=false;   // ya tienes ese fijo
+        }
+      });
+      setSel(s0); setDest(d0);
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); setCands([]); }).finally(function(){ setLoading(false); });
   };
   const toggle=function(i){ setSel(function(p){ const n=Object.assign({},p); n[i]=!n[i]; return n; }); };
+  const setDestI=function(i,d){ setDest(function(p){ const n=Object.assign({},p); n[i]=d; return n; }); setSel(function(p){ const n=Object.assign({},p); n[i]=true; return n; }); };
   const selCount=cands? cands.filter(function(x,i){ return sel[i]; }).length : 0;
   const doImport=function(){
     if(!cands || !selCount) return;
     setImporting(true);
-    const adds=cands.filter(function(x,i){ return sel[i]; }).map(function(x){
-      const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:x.amount, category:autoCategory(x.merchant||""), source:"ob-hist", ent:x.ent };
-      if(x.id) e.extId=x.id; return e;
+    const expAdds=[], fixAdds=[];
+    cands.forEach(function(x,i){
+      if(!sel[i]) return;
+      const d=dest[i]||defDest(x);
+      if(d==="recibo"){
+        const it={id:uid(),name:x.merchant||t("bp_hist_recibo"),amount:+Number(x.amount).toFixed(2),freq:"mes",account:x.ent};
+        const dd=recDay(x.date); if(dd) it.day=dd;
+        fixAdds.push(it);
+        return;
+      }
+      if(d==="ingreso"){
+        const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:-Math.abs(x.amount), category:"ingreso", source:"ob-hist", ent:x.ent, noCard:true, income:true };
+        if(x.id) e.extId=x.id; expAdds.push(e); return;
+      }
+      const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:Math.abs(x.amount), category:autoCategory(x.merchant||""), source:"ob-hist", ent:x.ent };
+      if(x.id) e.extId=x.id; expAdds.push(e);
     });
-    set(function(s){ return Object.assign({},s,{expenses:adds.concat(s.expenses||[])}); });
-    setTimeout(function(){ adds.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); },0);
-    showToast(tf("bp_hist_done",{n:adds.length}));
+    set(function(s){
+      const next=Object.assign({},s);
+      if(expAdds.length) next.expenses=expAdds.concat(s.expenses||[]);
+      if(fixAdds.length) next.fixed=(s.fixed||[]).concat(fixAdds);
+      return next;
+    });
+    setTimeout(function(){ expAdds.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); },0);
+    const parts=[];
+    if(expAdds.filter(function(e){ return e.amount>0; }).length) parts.push(tf("bp_hist_done_g",{n:expAdds.filter(function(e){ return e.amount>0; }).length}));
+    if(expAdds.filter(function(e){ return e.amount<0; }).length) parts.push(tf("bp_hist_done_i",{n:expAdds.filter(function(e){ return e.amount<0; }).length}));
+    if(fixAdds.length) parts.push(tf("bp_hist_done_r",{n:fixAdds.length}));
+    showToast(parts.length?parts.join(" · "):tf("bp_hist_done",{n:selCount}));
     setImporting(false); onClose();
   };
   const wrap={position:"fixed",inset:0,zIndex:97,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
@@ -296,12 +338,17 @@ function BankHistoryImport({state, set, showToast, onClose}){
   const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
   const chip=function(n){ const on=months===n; return React.createElement("button",{key:n,onClick:function(){ setMonths(n); },style:{flex:1,padding:"9px 0",borderRadius:10,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)":"var(--surface)",color:on?"#06120C":"var(--text)",fontWeight:800,fontSize:13,cursor:"pointer"}}, tf("bp_hist_m",{n:n})); };
   const bigBtn={width:"100%",padding:"14px",borderRadius:14,border:"none",background:"var(--mint)",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer",marginTop:12};
+  const destChip=function(i,id,label){
+    const on=(dest[i]||"")==id;
+    return React.createElement("button",{key:id,type:"button",onClick:function(e){ e.stopPropagation(); setDestI(i,id); },
+      style:{padding:"4px 9px",borderRadius:999,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"rgba(95,208,138,.18)":"transparent",color:on?"var(--mint)":"var(--muted)",fontWeight:800,fontSize:11,cursor:"pointer"}}, label);
+  };
   return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("bp_close")),
     React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px"}}, t("bp_hist_title")),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}},
-      expEnts.length? tf("bp_hist_sub",{banks:banksLbl}) : t("bp_hist_nodaily")),
-    expEnts.length>0 && React.createElement(React.Fragment,null,
+      allowList.length? tf("bp_hist_sub",{banks:banksLbl}) : t("bp_hist_nodaily")),
+    allowList.length>0 && React.createElement(React.Fragment,null,
       React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12}}, [1,2,3].map(chip)),
       React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:800,fontSize:14,cursor:"pointer"},disabled:loading,onClick:search}, loading?t("bp_hist_searching"):t("bp_hist_search")),
       cands!==null && cands.length===0 && !loading && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,textAlign:"center",padding:"20px 0"}}, t("bp_hist_none")),
@@ -309,12 +356,20 @@ function BankHistoryImport({state, set, showToast, onClose}){
         React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginBottom:8}}, tf("bp_hist_found",{n:cands.length})),
         cands.map(function(x,i){
           const on=!!sel[i];
-          return React.createElement("button",{key:i,onClick:function(){ toggle(i); },style:{display:"flex",alignItems:"center",gap:11,width:"100%",padding:"10px 12px",borderRadius:12,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)14":"var(--surface)",marginBottom:7,cursor:"pointer",textAlign:"left"}},
-            React.createElement("span",{style:{width:20,height:20,borderRadius:6,border:"2px solid "+(on?"var(--mint)":"var(--muted-2)"),background:on?"var(--mint)":"transparent",color:"#06120C",fontWeight:900,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, on?"✓":""),
-            React.createElement("div",{style:{flex:1,minWidth:0}},
-              React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, x.merchant),
-              React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, x.card?"":" · "+t("bp_hist_notcard"))),
-            React.createElement("span",{style:{fontWeight:800,fontSize:14,flexShrink:0}}, eur(x.amount))
+          const isIn=x.kind==="in";
+          return React.createElement("div",{key:i,style:{border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)14":"var(--surface)",borderRadius:12,marginBottom:7,padding:"10px 12px"}},
+            React.createElement("button",{type:"button",onClick:function(){ toggle(i); },style:{display:"flex",alignItems:"center",gap:11,width:"100%",background:"none",border:"none",color:"inherit",cursor:"pointer",textAlign:"left",padding:0}},
+              React.createElement("span",{style:{width:20,height:20,borderRadius:6,border:"2px solid "+(on?"var(--mint)":"var(--muted-2)"),background:on?"var(--mint)":"transparent",color:"#06120C",fontWeight:900,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, on?"✓":""),
+              React.createElement("div",{style:{flex:1,minWidth:0}},
+                React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, x.merchant),
+                React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, " · ", entOf(x.ent).label, isIn?"":(x.card?"":" · "+t("bp_hist_notcard")))),
+              React.createElement("span",{style:{fontWeight:800,fontSize:14,flexShrink:0,color:isIn?"var(--mint)":"var(--text)"}}, (isIn?"+":"")+eur(x.amount))
+            ),
+            on && React.createElement("div",{style:{display:"flex",gap:6,marginTop:8,flexWrap:"wrap",paddingLeft:31}},
+              !isIn && destChip(i,"gasto",t("bp_hist_as_gasto")),
+              !isIn && destChip(i,"recibo",t("bp_hist_as_recibo")),
+              destChip(i,"ingreso",t("bp_hist_as_ingreso"))
+            )
           );
         }),
         React.createElement("button",{style:Object.assign({},bigBtn,{opacity:(selCount&&!importing)?1:0.5}),disabled:!selCount||importing,onClick:doImport}, tf("bp_hist_import",{n:selCount}))
@@ -468,7 +523,17 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       );
     })(),
     ((links||[]).some(function(l){ return l.status==='active'; })) && React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:14,border:"1px solid var(--line-soft)",background:"var(--sur)",color:"var(--text)",fontWeight:700,fontSize:13.5,cursor:"pointer",marginTop:12},onClick:function(){ setHistOpen(true); }}, t("bp_hist_btn")),
-    histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
+    histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{
+      state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); },
+      linkEnts:(function(){
+        const ents=[];
+        (links||[]).forEach(function(l){
+          if(!(l&&(l.status==="active"||l.status==="pending"))) return;
+          const e=entFromAspsp(l.aspsp_name||l.aspsp); if(e&&ents.indexOf(e)<0) ents.push(e);
+        });
+        return ents.length?ents:null;
+      })()
+    }), document.body),
     React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"22px 0 8px"}}),
     React.createElement("div",{className:"bk-sec"}, t("bp_brokers")),
     React.createElement(TRSync,{state:state,set:set,totals:totals}),
@@ -616,6 +681,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.5.0", d:"18 jul 2026", t:"Histórico del banco: a Gastos, Recibos o Ingresos", items:[
+    "🏦 Al importar histórico ya salen también los ingresos (nómina, bizums…). En cada movimiento eliges si va a Gastos, a Recibos (fijo mensual con su día) o a Ingresos — así no tienes que teclear la luz a mano si ya está en el banco.",
+    "🛒 Al sincronizar un banco marcado en «También apuntar gastos de tarjeta», las compras con tarjeta del mes siguen entrando solas en Gastos (se ven en Todos y filtrando por ese banco) y cuentan para el presupuesto. El rol «gasto diario» sigue siendo uno (TR); el resto son bancos extra de tarjeta.",
+  ]},
   {v:"4.4.3", d:"18 jul 2026", t:"Gesto fluido Y con Resumen visible detrás", items:[
     "✨ Al abrir Ajustes o el perfil ya se ve otra vez Inicio detrás (adiós al fondo negro cutre de la 4.4.2), sin volver a los tirones: el truco es no re-pintar el shell en cada milímetro, no ocultarlo.",
   ]},
