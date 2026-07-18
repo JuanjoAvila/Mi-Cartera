@@ -39,6 +39,10 @@ jobs:
 
       # Migraciones: solo si das la contraseña de la BD como secret (si no, aplícalas a mano una vez en el SQL Editor).
       # continue-on-error: el deploy de funciones es lo crítico; una migración ya aplicada a mano no debe bloquearlo.
+      # --include-all (2026-07-18): hay migraciones aplicadas a mano que no constan en el registro
+      # remoto (p.ej. las dos «0012») y sin el flag `db push` abortaba EN SILENCIO — así se quedó
+      # la 0015 del Hogar sin aplicar. Todas las migraciones del repo son idempotentes
+      # (if not exists / or replace / drop if exists / on conflict), así que re-pasarlas es seguro.
       - name: Aplicar migraciones
         if: steps.gate.outputs.skip != 'true' && steps.gate.outputs.migrate == 'true'
         continue-on-error: true
@@ -47,7 +51,7 @@ jobs:
           DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           supabase link --project-ref "${{ vars.SUPABASE_PROJECT_REF }}" --password "$DB_PASSWORD"
-          supabase db push --password "$DB_PASSWORD"
+          supabase db push --include-all --password "$DB_PASSWORD"
 
       - name: Desplegar Edge Functions
         if: steps.gate.outputs.skip != 'true'
