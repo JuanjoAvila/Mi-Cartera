@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.5.1] — 2026-07-18
+### Gestos: primera apertura con contenido + scroll de Resumen bloqueado en perfil
+- Premonta `SettingsPanel`/`ProfilePanel` en idle (~1,4 s) y también al fijar el eje del gesto: la 1ª vez el panel ya no va negro vacío (4.4.1 difería el montaje al soltar).
+- Al gesto de perfil: clase `profile-gesturing` + `overflow:hidden`/`touch-action:none` en `.page` (y lock de `scrollTop`) para que Resumen no pelee con el pull-down → lag.
+- OTA only.
+
 ## [4.5.0] — 2026-07-18
 ### Histórico OB: ingresos + destino Gasto / Recibo / Ingreso
 - `BankHistoryImport`: también lista créditos (ingresos); por fila chips Gasto | Recibo | Ingreso.

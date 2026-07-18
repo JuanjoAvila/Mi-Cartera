@@ -995,10 +995,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .app-shell .viewport{flex:1;min-height:0;}
   /* Push Ajustes: el panel cubre; NO transform/filter en el shell (feedback 2026-07-18). */
   .app-shell.settings-dim{pointer-events:none;}
-  /* gesture-freeze: solo marca el gesto (pointer-events). NUNCA visibility:hidden del
-     viewport — eso dejaba el fondo negro «cutre» (feedback 2026-07-18 tras 4.4.2).
-     El FPS se sostiene porque ya no se interpola filter/--set-p/opacidad del shell. */
+  /* gesture-freeze: no re-pinta el shell. profile-gesturing: bloquea scroll de .page
+     (si Resumen scrollea a la vez que el pull-down → lag — feedback 2026-07-18). */
   .app-shell.gesture-freeze{pointer-events:none;}
+  .app-shell.gesture-freeze.profile-gesturing .page{overflow:hidden !important;overscroll-behavior:none;touch-action:none !important;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
   .v4-cycle-box{margin:10px 2px 14px;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}

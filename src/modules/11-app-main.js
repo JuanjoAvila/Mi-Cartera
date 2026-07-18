@@ -534,6 +534,18 @@ function App(){
     return function(){ try{ Promise.resolve(h).then(function(x){ x&&x.remove&&x.remove(); }); }catch(e){} };
   },[]);
   const [locked,setLocked]=useState(function(){ return bio.enabled(); });
+  // Premonta Settings/Perfil en idle: la 1ª vez que arrastras salía el panel negro vacío
+  // (contenido solo al soltar — feedback 2026-07-18). El shell cerrado no se ve.
+  useEffect(function(){
+    if(state.onboarded===false||locked) return undefined;
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setDrawerMounted(true);
+      setProfileMounted(true);
+    }, 1400);
+    return function(){ cancelled=true; };
+  },[state.onboarded, locked]);
 
   // Estado de conexión: la app es offline-first (todo en localStorage); esto solo informa y, al
   // reconectar, sube los cambios hechos sin red. Sin conexión NO se rompe ni se pierde nada.
@@ -620,10 +632,33 @@ function App(){
       if(av){ if(v>0.5) av.classList.add("pulling"); else av.classList.remove("pulling"); }
     }catch(e){}
   };
-  const freezeShell=function(on){
+  const freezeShell=function(on, kind){
     if(!appShellRef.current) return;
-    if(on) appShellRef.current.classList.add("gesture-freeze","dragging");
-    else appShellRef.current.classList.remove("gesture-freeze","dragging");
+    if(on){
+      appShellRef.current.classList.add("gesture-freeze","dragging");
+      if(kind==="profile") appShellRef.current.classList.add("profile-gesturing");
+      // Bloquea scroll de Resumen: si pelea con el pull-down del perfil → lag (feedback 2026-07-18).
+      if(kind==="profile" && trackRef.current){
+        const pageEl=trackRef.current.children[tabRef.current];
+        if(pageEl){
+          pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
+          pageEl.style.overflow="hidden";
+          pageEl.style.touchAction="none";
+        }
+      }
+    } else {
+      appShellRef.current.classList.remove("gesture-freeze","dragging","profile-gesturing");
+      if(trackRef.current){
+        const pageEl=trackRef.current.children[tabRef.current];
+        if(pageEl){
+          pageEl.style.overflow="";
+          pageEl.style.touchAction="";
+          const y=parseFloat(pageEl.dataset.mcLockY);
+          if(!isNaN(y)) try{ pageEl.scrollTop=y; }catch(e){}
+          delete pageEl.dataset.mcLockY;
+        }
+      }
+    }
   };
   // Ancla la animación del perfil al avatar REAL (vídeo Revolut 2026-07-17): transform-origin en
   // su centro y escala inicial = diámetro del avatar / ancho del panel. Se mide en cada apertura
@@ -665,7 +700,7 @@ function App(){
   const drawerMove=function(e){
     if(!dDrag.current) return;
     const t=e.touches[0], ddx=t.clientX-dSX.current, ddy=t.clientY-dSY.current;
-    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current){ drawerRef.current.classList.add("dragging"); freezeShell(true); } }
+    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current){ drawerRef.current.classList.add("dragging"); freezeShell(true,"drawer"); } }
     if(dAx.current!=="x") return;
     // Solo cierra tirando a la izquierda (derecha→izquierda). Si tiras a la derecha, no pelea.
     if(ddx>0){ dDX.current=0; if(drawerRef.current) drawerRef.current.style.transform="translate3d(0,0,0)"; return; }
@@ -700,7 +735,7 @@ function App(){
       if(pAx.current==="y"&&profileRef.current){
         profSetOrigin();
         profileRef.current.classList.add("dragging");
-        freezeShell(true);
+        freezeShell(true,"profile");
         // Velo fijo una sola vez — sin interpolar opacidad por frame.
         const dim=dimLayerRef.current;
         if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
@@ -1222,8 +1257,9 @@ function App(){
         const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
         if(openSettings){
           gestureMode.current="drawer";
+          setDrawerMounted(true);   // por si el idle aún no ha premontado (1ª vez sin negro)
           if(drawerRef.current) drawerRef.current.classList.add("dragging");
-          freezeShell(true);
+          freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
           if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
@@ -1235,9 +1271,10 @@ function App(){
         const fromAv=!!(e.target&&e.target.closest&&e.target.closest(".v4-avatar"));
         if(atTop||fromAv){
           gestureMode.current="profile";
+          setProfileMounted(true);
           profSetOrigin();
           if(profileRef.current) profileRef.current.classList.add("dragging");
-          freezeShell(true);
+          freezeShell(true,"profile");
           const dim=dimLayerRef.current;
           if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
         }
