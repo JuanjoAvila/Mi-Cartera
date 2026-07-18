@@ -141,8 +141,18 @@ function BillsManageSheet({open, onClose, state, set, totals}){
     ), document.body);
 }
 
-function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSync}){
+function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSync, onReconnectBank}){
   const [invTools,setInvTools]=useState(false);
+  // TR desconectado (y el usuario SÍ lo tuvo conectado alguna vez → mc_tr_phone guardado):
+  // banner con botón que abre Mis bancos directamente. UX padre 2026-07-18: al ver el saldo
+  // descuadrado se fue a la app de Trade Republic — el arreglo debe estar donde está el problema.
+  const [trDead,setTrDead]=useState(false);
+  useEffect(function(){
+    const b=(typeof trBridge==="function")?trBridge():null;
+    if(!b||!b.status) return;
+    if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())) return;
+    Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+  },[]);
   // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
   // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
   const [selParts,setSelParts]=useState({liq:true,inv:true,goods:true});
@@ -196,6 +206,20 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
         t("v4_debts_foot_a"),
         React.createElement("span",{style:{color:"var(--coral)",fontWeight:700}}, " "+eur0(-(totals.debtTotal||0))+" "),
         t("v4_debts_foot_b"))
+    ),
+    // Banners de reconexión: el arreglo a UN toque, en la pantalla donde se VE el problema.
+    (state.bankIssues||[]).map(function(is){
+      const lbl=is.ent?entOf(is.ent).label:(is.aspsp||"🏦");
+      return React.createElement("div",{key:"bi_"+is.aspsp,className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+        React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, tf("bk_issue",{bank:lbl})),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_issue_sub")),
+        onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
+      );
+    }),
+    trDead && React.createElement("div",{className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+      React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, t("bk_tr_dead")),
+      React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
+      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
     ),
     React.createElement("div",{className:"v4-sec-h",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
       React.createElement("span",null, t("v4_cuentas")),

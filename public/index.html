@@ -1900,6 +1900,10 @@ const LANG = {
     v4_sync_banks:"Sincronizar bancos", v4_sync_banks_done:"✓ Bancos sincronizados",
     v4_sync_brokers_ok:"📈 Brókers al día (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sesión caducada · reconecta en Ajustes → Bancos",
     ap_bank:"Banco", ap_bank_none:"Sin banco",
+    bk_issue:"⚠ {bank} necesita tu permiso otra vez", bk_issue_sub:"El permiso de lectura caducó (obligatorio cada ~3 meses): el saldo puede estar desfasado. Un toque y listo.",
+    bk_issue_cta:"🔓 Reconectar {bank}", bk_tr_dead:"⚠ Trade Republic está desconectado",
+    bk_tr_sub:"Su sesión caducó: las posiciones y el efectivo no se actualizan. Se reconecta aquí, en la app (PIN + código SMS) — no en la app de Trade Republic.",
+    bk_tr_cta:"🔓 Reconectar Trade Republic",
     v4_acc_locked:"El saldo de las cuentas conectadas lo trae el banco solo; el nombre y el rol sí puedes cambiarlos.",
     v4_sel_partial:"Seleccionado", v4_edit_goods:"Editar bienes",
     v4_gestionar_h:"Edita fijos, cuotas, flujos y conciliación del banco — sin llenar la vista diaria.",
@@ -2000,6 +2004,10 @@ const LANG = {
     v4_sync_banks:"Sync banks", v4_sync_banks_done:"✓ Banks synced",
     v4_sync_brokers_ok:"📈 Brokers up to date (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: session expired · reconnect in Settings → Banks",
     ap_bank:"Bank", ap_bank_none:"No bank",
+    bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
+    bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
+    bk_tr_sub:"Its session expired: positions and cash aren't updating. Reconnect HERE in the app (PIN + SMS code) — not in the Trade Republic app.",
+    bk_tr_cta:"🔓 Reconnect Trade Republic",
     v4_acc_locked:"Connected accounts get their balance from the bank; you can still change the name and role.",
     v4_sel_partial:"Selected", v4_edit_goods:"Edit assets",
     v4_gestionar_h:"Edit fixed bills, installments, cash flows and bank reconciliation — without cluttering the daily view.",
@@ -2102,6 +2110,10 @@ const LANG = {
     v4_sync_banks:"Sincronitza els bancs", v4_sync_banks_done:"✓ Bancs sincronitzats",
     v4_sync_brokers_ok:"📈 Brókers al dia (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sessió caducada · reconnecta a Ajustos → Bancs",
     ap_bank:"Banc", ap_bank_none:"Sense banc",
+    bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
+    bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
+    bk_tr_sub:"La sessió ha caducat: posicions i efectiu no s'actualitzen. Es reconnecta AQUÍ, a l'app (PIN + codi SMS) — no a l'app de Trade Republic.",
+    bk_tr_cta:"🔓 Reconnecta Trade Republic",
     v4_acc_locked:"El saldo dels comptes connectats el porta el banc sol; el nom i el rol sí que els pots canviar.",
     v4_sel_partial:"Seleccionat", v4_edit_goods:"Edita els béns",
     v4_gestionar_h:"Edita fixes, quotes, fluxos i conciliació del banc — sense omplir la vista diària.",
@@ -9179,6 +9191,11 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.4.0", d:"18 jul 2026", t:"Reconectar un banco en UN toque y avisos con la app cerrada (APK 29)", items:[
+    "🔓 Si un banco pierde el permiso, ahora te enteras DONDE miras el saldo: banner en Cartera con botón «Reconectar CaixaBank» que te lleva directo a autorizar — sin bucear por Ajustes. Y si Trade Republic se desconecta, su banner abre la pantalla de reconexión con el teléfono ya puesto (y te aclara que es AQUÍ, no en la app de TR 😉).",
+    "🛎 Recibos con la app CERRADA: la app deja programado en Android el calendario del mes y el móvil avisa solo la víspera de cada recibo y cuota, como ya hacían los updates. Necesita el APK 29 (pendiente de compilar e instalar una vez; el resto sigue por OTA).",
+    "📊 Los avisos de presupuesto de los gastos que entran con la app cerrada (notis de TR) ahora también saltan al 50% y al 95% (antes solo al 80% y al pasarte). Esto va por servidor: funciona ya, sin APK nuevo.",
+  ]},
   {v:"4.3.0", d:"18 jul 2026", t:"Avisos que valen dinero, deudas con fecha de fin y alegrías en Inicio", items:[
     "🔔 La app ahora te avisa sola: al cruzar el 50%, 80%, 95% y 100% del presupuesto del mes (una vez por umbral), y la VÍSPERA de cada recibo y cuota («mañana se cobran X €») — porque el banco no avisa. Los recibos gordos siguen avisando además con 2-3 días.",
     "📅 La hipoteca y los préstamos sin plazo ya no están «muertos»: ahora ponen «a este ritmo acabas ~febrero 2049» calculado con tu cuota. Amortiza y verás la fecha acercarse.",
@@ -9500,7 +9517,7 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
@@ -9581,6 +9598,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   useEffect(function(){ const b=trBridge(); if(!b||!b.status) return; Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); },[uid]);
   const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
   useBackClose(manageBanks, function(){ setManageBanks(false); });   // gesto atrás: cierra "Mis bancos"
+  // Banner «Reconectar TR» de Cartera (evento mc-open-banks → App abre Ajustes + goBanks):
+  // aterriza DIRECTO en Mis bancos, donde el formulario de TR ya trae el teléfono puesto.
+  useEffect(function(){ if(goBanks) setManageBanks(true); },[goBanks]);
   useEffect(function(){
     if(!cloud.enabled()){ setBankLinks([]); return; }
     cloud.bankLinks().then(function(rows){
@@ -10603,8 +10623,18 @@ function BillsManageSheet({open, onClose, state, set, totals}){
     ), document.body);
 }
 
-function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSync}){
+function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSync, onReconnectBank}){
   const [invTools,setInvTools]=useState(false);
+  // TR desconectado (y el usuario SÍ lo tuvo conectado alguna vez → mc_tr_phone guardado):
+  // banner con botón que abre Mis bancos directamente. UX padre 2026-07-18: al ver el saldo
+  // descuadrado se fue a la app de Trade Republic — el arreglo debe estar donde está el problema.
+  const [trDead,setTrDead]=useState(false);
+  useEffect(function(){
+    const b=(typeof trBridge==="function")?trBridge():null;
+    if(!b||!b.status) return;
+    if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())) return;
+    Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+  },[]);
   // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
   // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
   const [selParts,setSelParts]=useState({liq:true,inv:true,goods:true});
@@ -10658,6 +10688,20 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
         t("v4_debts_foot_a"),
         React.createElement("span",{style:{color:"var(--coral)",fontWeight:700}}, " "+eur0(-(totals.debtTotal||0))+" "),
         t("v4_debts_foot_b"))
+    ),
+    // Banners de reconexión: el arreglo a UN toque, en la pantalla donde se VE el problema.
+    (state.bankIssues||[]).map(function(is){
+      const lbl=is.ent?entOf(is.ent).label:(is.aspsp||"🏦");
+      return React.createElement("div",{key:"bi_"+is.aspsp,className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+        React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, tf("bk_issue",{bank:lbl})),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_issue_sub")),
+        onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
+      );
+    }),
+    trDead && React.createElement("div",{className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+      React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, t("bk_tr_dead")),
+      React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
+      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
     ),
     React.createElement("div",{className:"v4-sec-h",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
       React.createElement("span",null, t("v4_cuentas")),
@@ -11097,7 +11141,12 @@ function App(){
         obAdded=add||[];
         const withExp=add? Object.assign({},prev,{expenses:add.concat(prev.expenses||[])}) : prev;
         const r=applyBankBalances(withExp, links);
-        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs });
+        // Bancos con permiso CADUCADO → banner «Reconectar» en Cartera (UX padre 2026-07-18:
+        // el saldo no cuadraba, le dio a sincronizar, no pasó nada y acabó en la app de TR).
+        // Se recalcula entero en cada sync: reconectar un banco lo saca solo.
+        const issues=links.filter(function(l){ return l&&l.ok===false&&l.expired; })
+          .map(function(l){ return {aspsp:l.aspsp, ent:entFromAspsp(l.aspsp)}; });
+        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: issues });
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
@@ -11444,6 +11493,21 @@ function App(){
     window.addEventListener("mc-open-settings",h);
     return function(){ window.removeEventListener("mc-open-settings",h); };
   },[]);
+  // «Reconectar Trade Republic» desde el banner de Cartera: abre Ajustes YA en Mis bancos
+  // (con el teléfono precargado) — sin pasear al usuario por menús (UX padre 2026-07-18).
+  const [banksGoto,setBanksGoto]=useState(0);
+  useEffect(function(){
+    const h=function(){ setDrawerMounted(true); setDrawerOpen(true); setBanksGoto(Date.now()); };
+    window.addEventListener("mc-open-banks",h);
+    return function(){ window.removeEventListener("mc-open-banks",h); };
+  },[]);
+  // Banner «Reconectar {banco}» de Cartera: directo a la autorización del banco (vuelve con ?bank=ok).
+  const reconnectBank=function(aspsp){
+    if(!cloud.enabled()||!sessionRef.current){ showToast(t("bp_need_login")); return; }
+    showToast(t("bank_connecting"));
+    cloud.bankConnect(aspsp,"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){ showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
+  };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
     window.addEventListener("online",on); window.addEventListener("offline",off);
@@ -11904,6 +11968,34 @@ function App(){
     });
   },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
 
+  // Empuja el calendario de recibos del mes al NATIVO (APK ≥29): AlertCheckWorker avisa la
+  // víspera aunque la app esté CERRADA. Intercambio de sellos para no avisar dos veces:
+  // mandamos lo que la web ya avisó (_rc1_*) y sellamos lo que avisó el nativo.
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.setAlertData) return;
+    const cm=totals.curMonth, cy=totals.curYear;
+    const ym=cy+"-"+String(cm).padStart(2,"0");
+    const charges=[];
+    (state.fixed||[]).forEach(function(e){
+      if(!occursIn(e,cm)) return;
+      const d=dayIn(e,cm); const amt=occAmountIn(e,cm)||0;
+      if(d==null||!(amt>0)) return;
+      charges.push({id:String(e.id),name:e.name||"Recibo",amount:+amt.toFixed(2),day:d});
+    });
+    (state.debts||[]).forEach(function(d){
+      if(!debtActive(d)||!(d.monthly>0)) return;
+      charges.push({id:"debt_"+d.id,name:d.name||"Cuota",amount:+d.monthly.toFixed(2),day:debtChargeDay(d)});
+    });
+    const fired=[];
+    charges.forEach(function(c){ try{ if(localStorage.getItem("_rc1_"+c.id+"_"+ym)==="1") fired.push(c.id); }catch(e){} });
+    try{
+      nat.setAlertData({ym:ym,charges:charges,fired:fired}).then(function(r){
+        ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+ym,"1"); }catch(e){} });
+      }).catch(function(){});
+    }catch(e){}
+  },[state.fixed,state.debts,totals.curMonth]);
+
   // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
   // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
   // en silencio para no disparar tres de golpe). Suena también como toast en la app.
@@ -12288,7 +12380,7 @@ function App(){
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
-    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); }});
+    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); },onReconnectBank:reconnectBank});
     return null;
   };
 
@@ -12356,7 +12448,7 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{

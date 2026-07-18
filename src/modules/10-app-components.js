@@ -616,6 +616,11 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.4.0", d:"18 jul 2026", t:"Reconectar un banco en UN toque y avisos con la app cerrada (APK 29)", items:[
+    "🔓 Si un banco pierde el permiso, ahora te enteras DONDE miras el saldo: banner en Cartera con botón «Reconectar CaixaBank» que te lleva directo a autorizar — sin bucear por Ajustes. Y si Trade Republic se desconecta, su banner abre la pantalla de reconexión con el teléfono ya puesto (y te aclara que es AQUÍ, no en la app de TR 😉).",
+    "🛎 Recibos con la app CERRADA: la app deja programado en Android el calendario del mes y el móvil avisa solo la víspera de cada recibo y cuota, como ya hacían los updates. Necesita el APK 29 (pendiente de compilar e instalar una vez; el resto sigue por OTA).",
+    "📊 Los avisos de presupuesto de los gastos que entran con la app cerrada (notis de TR) ahora también saltan al 50% y al 95% (antes solo al 80% y al pasarte). Esto va por servidor: funciona ya, sin APK nuevo.",
+  ]},
   {v:"4.3.0", d:"18 jul 2026", t:"Avisos que valen dinero, deudas con fecha de fin y alegrías en Inicio", items:[
     "🔔 La app ahora te avisa sola: al cruzar el 50%, 80%, 95% y 100% del presupuesto del mes (una vez por umbral), y la VÍSPERA de cada recibo y cuota («mañana se cobran X €») — porque el banco no avisa. Los recibos gordos siguen avisando además con 2-3 días.",
     "📅 La hipoteca y los préstamos sin plazo ya no están «muertos»: ahora ponen «a este ritmo acabas ~febrero 2049» calculado con tu cuota. Amortiza y verás la fecha acercarse.",
@@ -937,7 +942,7 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
@@ -1018,6 +1023,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   useEffect(function(){ const b=trBridge(); if(!b||!b.status) return; Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); },[uid]);
   const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
   useBackClose(manageBanks, function(){ setManageBanks(false); });   // gesto atrás: cierra "Mis bancos"
+  // Banner «Reconectar TR» de Cartera (evento mc-open-banks → App abre Ajustes + goBanks):
+  // aterriza DIRECTO en Mis bancos, donde el formulario de TR ya trae el teléfono puesto.
+  useEffect(function(){ if(goBanks) setManageBanks(true); },[goBanks]);
   useEffect(function(){
     if(!cloud.enabled()){ setBankLinks([]); return; }
     cloud.bankLinks().then(function(rows){

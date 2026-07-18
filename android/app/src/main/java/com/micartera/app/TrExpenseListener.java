@@ -211,9 +211,14 @@ public class TrExpenseListener extends NotificationListenerService {
                 double budget = alert.optDouble("budget", 0);
                 if (kind.equals("over")) {
                     Notif.show(this, "🚨 Presupuesto superado", "Llevas " + eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
+                } else if (kind.equals("p95")) {
+                    // p95/p50 añadidos 2026-07-18 (los calcula `ingest`; con APK viejo se ignoran sin romper)
+                    Notif.show(this, "🔶 ¡95% del presupuesto!", eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
                 } else if (kind.equals("p80")) {
                     long p = budget > 0 ? Math.round(spent / budget * 100) : 0;
                     Notif.show(this, "⚠️ Ya llevas el " + p + "% del presupuesto", eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
+                } else if (kind.equals("p50")) {
+                    Notif.show(this, "🟢 Mitad del presupuesto", eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
                 } else if (kind.equals("big")) {
                     Notif.show(this, "💥 Gasto tocho apuntado", eur(importe) + " en " + comercio, id + 1);
                 }
