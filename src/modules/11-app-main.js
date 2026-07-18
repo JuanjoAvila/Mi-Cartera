@@ -568,6 +568,14 @@ function App(){
     window.addEventListener("mc-open-banks",h);
     return function(){ window.removeEventListener("mc-open-banks",h); };
   },[]);
+  // Hogar y gastos compartidos: sacado de Ajustes (2026-07-18: «es una funcionalidad de la app,
+  // no un ajuste»). Se abre desde Cartera (dinero compartido) por evento, como Mis bancos.
+  const [sharedOpen,setSharedOpen]=useState(false);   // SharedPanel gestiona su propio useBackClose
+  useEffect(function(){
+    const h=function(){ setSharedOpen(true); };
+    window.addEventListener("mc-open-shared",h);
+    return function(){ window.removeEventListener("mc-open-shared",h); };
+  },[]);
   // Banner «Reconectar {banco}» de Cartera: directo a la autorización del banco (vuelve con ?bank=ok).
   const reconnectBank=function(aspsp){
     if(!cloud.enabled()||!sessionRef.current){ showToast(t("bp_need_login")); return; }
@@ -1507,15 +1515,34 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // Capa ambiental de temporada (emojis cayendo): solo si hay temática y no está «reducir animaciones».
+  // Capa ambiental de temporada: solo si hay temática y no está «reducir animaciones».
+  // Estilo «Revolut» (2026-07-18): 3 capas de profundidad (lejos/medio/cerca) con distinto tamaño,
+  // opacidad, desenfoque y velocidad → parallax; y movimiento ORGÁNICO (deriva lateral + giro +
+  // pulso de escala) en vez de una caída recta y sosa. ~18 piezas repartidas.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonFx=(season && season!=="none" && !reduceMo && SEASON_FX[season])
     ? React.createElement("div",{className:"season-fx","data-season":season,"aria-hidden":"true"},
-        SEASON_FX[season].map(function(em,i){
-          const left=(i*11+7)%96, dur=(7+(i%4)*2.5), delay=(i*0.9), sz=17+(i%3)*4;
-          return React.createElement("span",{key:i,style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:(-delay)+"s"}}, em);
-        }))
+        (function(){
+          const pool=SEASON_FX[season], N=18, out=[];
+          for(let i=0;i<N;i++){
+            const layer=i%3;                                   // 0=lejos, 1=medio, 2=cerca
+            const em=pool[i%pool.length];
+            // reparto pseudo-aleatorio pero estable (sin saltos entre renders)
+            const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
+            const left=Math.round(rnd(12.9898)*98);
+            const sz=[13,18,25][layer]+Math.round(rnd(4.1)*4);
+            const dur=[16,12,9][layer]+rnd(7.7)*4;             // lejos = más lento (parallax)
+            const delay=-(rnd(3.3)*dur);
+            const sway=(6+Math.round(rnd(5.5)*18))*(rnd(9.1)>0.5?1:-1);   // deriva lateral px
+            const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
+            const op=[0.5,0.72,0.9][layer];
+            out.push(React.createElement("span",{key:i,className:"sfx-l"+layer,
+              style:{left:left+"vw",fontSize:sz+"px",opacity:op,animationDuration:dur+"s",animationDelay:delay+"s",
+                "--sway":sway+"px","--spin":spin+"deg"}}, em));
+          }
+          return out;
+        })())
     : null;
   return React.createElement("div",{className:"app v4"},
     seasonFx,
@@ -1553,6 +1580,8 @@ function App(){
       )
     ),
     React.createElement(AskHost,null),
+    cloud.enabled() && sharedOpen && React.createElement(SharedPanel,{state:state,set:set,uid:uid,totals:totals,showToast:showToast,
+      meEmail:(session&&session.user&&session.user.email)||null,onClose:function(){ setSharedOpen(false); }}),
     React.createElement(ApuntarSheet,{open:apuntarOpen,onClose:function(){ setApuntarOpen(false); },state:state,set:set,showToast:showToast,
       goGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }}),
     tourOpen && React.createElement(Tour,{onDone:endTour, goTab:goTab, tabIds:tabIds}),

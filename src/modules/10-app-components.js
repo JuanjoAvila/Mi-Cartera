@@ -628,7 +628,7 @@ function SharedPanel({state, set, uid, totals, showToast, meEmail, onClose}){
   const inner={maxWidth:480,margin:"0 auto"};
   const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
   return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
-    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("v4_back")),
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 10px"}}, "🏠 "+t("st_shared")),
     React.createElement(Shared,{state:state,set:set,uid:uid,totals:totals,showToast:showToast,meEmail:meEmail})
   ));
@@ -681,6 +681,13 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.6.1", d:"18 jul 2026", t:"Ajustes del lote: letra pequeña, Hogar fuera de Ajustes, animaciones con más chispa", items:[
+    "🔡 En Accesibilidad ahora hay también «Pequeña» (además de Normal/Grande/Enorme).",
+    "🏠 «Hogar y gastos compartidos» sale de Ajustes y vive en Cartera, abajo del todo — es una funcionalidad de la app, no un ajuste.",
+    "🪙 Los «bancos de gasto diario» (marcar varios para el mismo presupuesto) se ven y se editan también en Cartera → editar cuentas, no solo en Ajustes → Dinero.",
+    "✨ Las temáticas de temporada tienen ahora más vidilla estilo Revolut: 3 capas de profundidad (parallax), caída orgánica con giro y balanceo, un halo de color que respira arriba y el botón + con pulso. (Se apaga con «Reducir animaciones».)",
+    "🔌 MyInvestor y el widget: el código nuevo ya está, pero el captcha necesita una pieza nativa que aún no puedo montar por actualización web, y el widget necesita que el APK que lo lleva esté bien instalado. Sigo con ello.",
+  ]},
   {v:"4.6.0", d:"18 jul 2026", t:"Temáticas, accesibilidad, metas con teclado propio y más monedas", items:[
     "🎯 Al aportar a una meta ya no salta el teclado del móvil (que rompía la estética): ahora abre una hoja con teclado numérico propio, como el botón +, y eliges de qué banco lo aportas.",
     "🎉 Temáticas de temporada en Ajustes → Apariencia: Mundial (España), Halloween, Navidad, Verano, Invierno y Pascua. Cada una re-tinta el botón + y deja caer un detalle animado (nieve, hojas, balón…). Se apaga con «Reducir animaciones» o eligiendo «Ninguna».",
@@ -1277,9 +1284,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     grp("a11y","♿",t("v4_set_a11y"),"accesibilidad letra grande tamaño texto contraste animaciones reduce motion accessibility",t("ts_"+curTextSize),
       React.createElement("div",{style:{padding:"6px 14px 4px"}},
         React.createElement("div",{style:{fontSize:13,fontWeight:700,marginBottom:6}}, t("st_textsize")),
-        React.createElement("div",{style:{display:"flex",gap:8}},
-          [["normal","ts_normal"],["big","ts_big"],["huge","ts_huge"]].map(function(ts){
-            return React.createElement("button",{key:ts[0],onClick:function(){ applyTextSize(ts[0]); setS({textSize:ts[0]}); },style:segBtn(curTextSize===ts[0])}, t(ts[1]));
+        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap"}},
+          [["small","ts_small"],["normal","ts_normal"],["big","ts_big"],["huge","ts_huge"]].map(function(ts){
+            return React.createElement("button",{key:ts[0],onClick:function(){ applyTextSize(ts[0]); setS({textSize:ts[0]}); },style:Object.assign({},segBtn(curTextSize===ts[0]),{flex:"1 1 40%"})}, t(ts[1]));
           })),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:6}}, t("st_textsize_hint"))
       ),
@@ -1390,12 +1397,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       );
     })(),
     manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
-    // Hogar + grupos compartidos: perdieron su tab con la nav v4 y quedaron inalcanzables
-    // hasta hoy (feedback 2026-07-18 «¿dónde está lo del hogar?»).
-    cloud.enabled() && grp("sharedhh","🏠",t("st_shared"),"hogar compartido shared household pareja grupo crucero viaje",null,
-      row("sharedhh","🏠",t("st_shared"),null,function(){ setSharedOpen(true); })
-    ),
-    sharedOpen && ReactDOM.createPortal(React.createElement(SharedPanel,{state:state,set:set,uid:uid,totals:totals,showToast:showToast,meEmail:meEmail,onClose:function(){ setSharedOpen(false); }}), document.body),
+    // (Hogar y gastos compartidos se movió FUERA de Ajustes 2026-07-18: es una funcionalidad de
+    //  la app, no un ajuste. Ahora se abre desde Cartera → «Hogar y gastos compartidos».)
     !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
       t("na_body"),
       React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix")),

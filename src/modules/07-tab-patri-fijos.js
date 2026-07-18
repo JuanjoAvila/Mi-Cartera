@@ -122,7 +122,33 @@ function Wealth({state, set, totals, v4Embed}){
           );
         }),
         anySynced && React.createElement("div",{className:"hint"}, t("v4_acc_locked")),
-        React.createElement("div",{className:"hint"}, t("rl_hint"))
+        React.createElement("div",{className:"hint"}, t("rl_hint")),
+        // Bancos de gasto diario (varios): mismo selector que Ajustes → Dinero, reflejado AQUÍ
+        // (feedback 2026-07-18: «no se ve en Cartera»). Marca varios y sus compras cuentan en el
+        // mismo presupuesto. Escribe settings.expenseBanks, que es lo que lee el motor.
+        (function(){
+          const ents=[]; (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&ents.indexOf(a.ent)<0) ents.push(a.ent); });
+          if(ents.length<2) return null;   // con una sola cuenta no hay nada que elegir
+          const cur=expenseBankEnts(state);
+          const toggleEnt=function(ent){
+            set(function(s){
+              const base=expenseBankEnts(s).slice();
+              const i=base.indexOf(ent);
+              if(i>=0){ if(base.length===1) return s; base.splice(i,1); }
+              else base.push(ent);
+              return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
+            });
+          };
+          return React.createElement("div",{style:{marginTop:14,paddingTop:12,borderTop:"1px solid var(--line-soft)"}},
+            React.createElement("div",{style:{fontWeight:800,fontSize:13.5,marginBottom:4}}, "🪙 "+t("v4_expdaily_here")),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginBottom:8}}, t("v4_expdaily_here_hint")),
+            React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
+              ents.map(function(ent){
+                const on=cur.indexOf(ent)>=0;
+                return React.createElement("button",{key:ent,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleEnt(ent); }},
+                  (on?"✓ ":"")+entOf(ent).label);
+              })));
+        })()
       ),
       (state.assets||[]).length>0 && React.createElement(React.Fragment,null,
         React.createElement("div",{className:"v4-sec-h"}, t("pt_goods")),
