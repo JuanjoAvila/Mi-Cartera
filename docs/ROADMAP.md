@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-18 · **v4.4.0** — Reconexión a UN toque (banner en Cartera cuando un banco OB caduca → botón directo a autorizar; TR muerto → botón que abre Mis bancos con el teléfono puesto) y avisos con la app CERRADA: vísperas de recibos vía worker nativo (**APK 29, pendiente de compilar**) y umbrales de presupuesto 50/95 añadidos a la Edge `ingest` (ya activos vía TR-notis). Antes el mismo día: 4.3.0 (avisos in-app 50/80/95/100% + víspera, deudas sin plazo con fecha estimada, tarjeta 🎉 última cuota, «Más…» cerrable, informe con ubicación, Ajustes animado, MI 3.150.0) y 4.2.0 (permitirse a plazos, banco por apunte, Hogar arreglado con 0015 aplicada por CI, sync total de Cartera, persistencia debounced).
+> Estado a 2026-07-18 · **v4.4.0** — Reconexión a UN toque (banner en Cartera cuando un banco OB caduca → botón directo a autorizar; TR muerto → botón que abre Mis bancos con el teléfono puesto) y avisos con la app CERRADA: vísperas de recibos vía worker nativo (**APK 29 publicado**) y umbrales de presupuesto 50/95 añadidos a la Edge `ingest` (ya activos vía TR-notis). Antes el mismo día: 4.3.0 (avisos in-app 50/80/95/100% + víspera, deudas sin plazo con fecha estimada, tarjeta 🎉 última cuota, «Más…» cerrable, informe con ubicación, Ajustes animado, MI 3.150.0) y 4.2.0 (permitirse a plazos, banco por apunte, Hogar arreglado con 0015 aplicada por CI, sync total de Cartera, persistencia debounced).
 
 ## Listo para uso diario
 
@@ -11,8 +11,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | Qué | Valor |
 |-----|--------|
 | Web / OTA (`VERSION`) | **4.4.0** |
-| APK (`versionName` / `versionCode`) | Instalado: **4.0.12** / **28**. En el repo YA está preparado el **29 / 4.4.0** (notis de recibos con la app cerrada): compilar en el PC con `npm run build && npx cap sync android && cd android && ./gradlew assembleRelease`, instalar (adb o subir a release + `apk.json`). Todo lo demás de 4.0.15 → 4.4.0 llega por OTA/Edge sin APK. |
-| `public/apk.json` | debe coincidir con el release publicado |
+| APK (`versionName` / `versionCode`) | **4.4.0** / **29** — release GitHub `v4.4.0` + `apk.json` publicados |
+| `public/apk.json` | **29** / 4.4.0 → `Mi-Cartera-4.4.0.apk` |
 
 ## Pendiente / limitaciones conocidas
 
