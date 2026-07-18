@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-18 · **v4.4.2** — gestos Ajustes/perfil congelan Resumen (sin re-pintar) + ocultar «Próximos cargos» si vacío.
+> Estado a 2026-07-18 · **v4.4.3** — gestos Ajustes/perfil fluidos CON Resumen visible (sin fondo negro).
 
 ## Listo para uso diario
 
@@ -10,7 +10,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.4.2** |
+| Web / OTA (`VERSION`) | **4.4.3** |
 | APK (`versionName` / `versionCode`) | **4.4.0** / **29** — release GitHub `v4.4.0` + `apk.json` publicados |
 | `public/apk.json` | **29** / 4.4.0 → `Mi-Cartera-4.4.0.apk` |
 
