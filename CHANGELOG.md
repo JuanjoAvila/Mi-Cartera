@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.6.1] — 2026-07-18
+### Ajustes del lote 4.6.0 (feedback en caliente)
+- **Accesibilidad:** nuevo nivel de letra `small` (`html.smalltext body{zoom:.92}`) además de normal/big/huge. `applyTextSize` togglea la clase.
+- **Hogar fuera de Ajustes:** `SharedPanel` se saca del grupo de Ajustes y se abre a nivel de App por evento `mc-open-shared`, disparado desde una fila nueva en `CarteraTab` («🏠 Hogar y gastos compartidos»). Botón «volver» genérico (ya no dice «Ajustes»).
+- **Bancos de gasto diario en Cartera:** el multiselector de `settings.expenseBanks` (mismo que Ajustes → Dinero) se refleja/edita también en el editor de cuentas de Cartera (`Wealth` v4Embed). Aclara que el rol único `spendFrom` sigue siendo uno; `expenseBanks` decide qué compras cuentan.
+- **Animaciones de temporada «tipo Revolut»:** capa ambiental reescrita a 18 piezas en **3 capas de profundidad** (parallax: tamaño/opacidad/blur/velocidad por capa), caída **orgánica** con `--sway`/`--spin` por pieza (deriva lateral + giro + pulso de escala), halo de color superior que respira (`html[data-season]::before`, `@keyframes seasonglow`) y pulso en `.botnav-fab` (`fabpulse`). Todo bajo `prefers-reduced-motion`/`reduceMotion`.
+  - Bug corregido en el camino: la generación de partículas hacía `return out.push(...)` dentro del bucle (salía en la 1ª iteración con un número) → 0 partículas; ahora `out.push(...)` + `return out`.
+- **Pendiente honesto:** widget «afford» y captcha MyInvestor siguen siendo nativos (widget = APK 30 bien instalado; captcha = WebView nativa con site key, no resoluble por OTA — el site key de MyInvestor no es accesible y meter el script de Google reCAPTCHA rompería la regla de cero-CDN).
+- OTA only (lo de esta versión).
+
 ## [4.6.0] — 2026-07-18
 ### Temáticas de temporada, accesibilidad, metas con teclado propio, más monedas y varios bancos de gasto
 **Metas — aportar con teclado propio + banco (§2 feedback)**

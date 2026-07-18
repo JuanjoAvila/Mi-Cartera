@@ -238,6 +238,17 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
       React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
       React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›"),
       React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})
+    ),
+    // Hogar y gastos compartidos: se mudó aquí desde Ajustes (es una funcionalidad, no un ajuste;
+    // y en Cartera encaja porque va de dinero compartido). Abre el panel a nivel de App por evento.
+    React.createElement("button",{type:"button",className:"v4-mov",style:{width:"100%",marginTop:18,cursor:"pointer",textAlign:"left"},
+      onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-shared")); }catch(e){} }},
+      React.createElement("div",{className:"tile",style:{fontSize:22}}, "🏠"),
+      React.createElement("div",{className:"nm"},
+        React.createElement("div",null, t("st_shared")),
+        React.createElement("div",{className:"meta"}, t("v4_shared_sub"))
+      ),
+      React.createElement("div",{style:{color:"var(--muted-2)",fontSize:20}}, "›")
     )
   );
 }

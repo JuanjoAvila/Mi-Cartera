@@ -470,6 +470,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* Letra grande (accesibilidad). Zoom en BODY, no en #root: los sheets/diálogos van
      portaleados a document.body (fuera de #root) y con el zoom en #root se quedaban pequeños
      y descuadrados (feedback 2026-07-18). En body escala TODO por igual. */
+  html.smalltext body{zoom:0.92;}
   html.bigtext body{zoom:1.12;}
   html.hugetext body{zoom:1.26;}
   /* Reducir animaciones (accesibilidad): mata deslizamientos/rebotes/ambiente de temporada. */
@@ -481,24 +482,44 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   html.hi-contrast[data-theme="light"]{ --muted:#33463C; --muted-2:#5A6E63; }
   html.hi-contrast[data-theme="dark"]{ --muted:#C7C7CE; --muted-2:#9C9CA6; }
   html.hi-contrast[data-theme="blue"]{ --muted:#BFD2E6; --muted-2:#93A8C2; }
-  /* Temáticas de temporada: capa ambiental de emojis cayendo (decorativa, sin interacción). */
+  /* Temáticas de temporada: capa ambiental con PROFUNDIDAD (3 capas parallax) y movimiento
+     orgánico (deriva lateral + giro + pulso de escala) — estilo Revolut, no una caída plana. */
   .season-fx{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;}
-  .season-fx span{position:absolute;top:-10vh;opacity:.85;will-change:transform;
-    animation-name:seasonfall;animation-timing-function:linear;animation-iteration-count:infinite;
-    filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));}
+  .season-fx span{position:absolute;top:-12vh;will-change:transform;
+    animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);animation-iteration-count:infinite;}
+  /* Capas de profundidad: lejos = pequeña, desenfocada y lenta; cerca = grande, nítida, sombra. */
+  .season-fx .sfx-l0{filter:blur(1.4px) drop-shadow(0 1px 2px rgba(0,0,0,.18));}
+  .season-fx .sfx-l1{filter:blur(.4px) drop-shadow(0 2px 4px rgba(0,0,0,.22));}
+  .season-fx .sfx-l2{filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));}
+  /* --sway (deriva px) y --spin (giro) los pone cada pieza en JS → cada una cae distinto. */
   @keyframes seasonfall{
-    0%{transform:translateY(-12vh) translateX(0) rotate(0deg);}
-    50%{transform:translateY(45vh) translateX(14px) rotate(180deg);}
-    100%{transform:translateY(115vh) translateX(-10px) rotate(360deg);}
+    0%{transform:translate3d(0,-14vh,0) rotate(0deg) scale(.85);}
+    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15)) scale(1);}
+    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55)) scale(1.06);}
+    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
+    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
   }
-  /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes). */
+  /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
+     con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
+  html[data-season] .botnav-fab{animation:fabpulse 3.4s ease-in-out infinite;}
+  @keyframes fabpulse{0%,100%{box-shadow:0 14px 28px -8px rgba(0,0,0,.35), 0 0 0 0 rgba(255,255,255,.0), inset 0 1px 0 rgba(255,255,255,.35);}50%{box-shadow:0 16px 32px -6px rgba(0,0,0,.4), 0 0 22px 2px rgba(255,255,255,.22), inset 0 1px 0 rgba(255,255,255,.45);}}
   html[data-season="mundial"] .botnav-fab{background:linear-gradient(160deg,#E63946,#F1C40F);}
   html[data-season="halloween"] .botnav-fab{background:linear-gradient(160deg,#F0862B,#7A3FA0);}
   html[data-season="navidad"] .botnav-fab{background:linear-gradient(160deg,#D64550,#2E9E5B);}
   html[data-season="verano"] .botnav-fab{background:linear-gradient(160deg,#FFB347,#39B6C9);}
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
-  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} }
+  /* Un velo de color muy tenue y vivo arriba, a juego con la temática (toque Revolut). */
+  html[data-season]::before{content:"";position:fixed;top:0;left:0;right:0;height:38vh;z-index:1;pointer-events:none;
+    opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;}
+  html[data-season="mundial"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.18), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.14), transparent 60%);}
+  html[data-season="halloween"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.16), transparent 60%);}
+  html[data-season="navidad"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.16), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.14), transparent 60%);}
+  html[data-season="verano"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.14), transparent 60%);}
+  html[data-season="invierno"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
+  html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
+  @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
+  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab{animation:none;} }
   /* Ayuda contextual "?" */
   .helpq{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
   .helpq:active{color:var(--mint);border-color:var(--mint-dim);}
