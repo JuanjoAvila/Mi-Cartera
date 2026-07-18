@@ -169,7 +169,7 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
       })
     ),
 
-    React.createElement("div",{className:"v4-section rise",style:{animationDelay:".15s"}},
+    upcoming.length>0 && React.createElement("div",{className:"v4-section rise",style:{animationDelay:".15s"}},
       React.createElement("div",{className:"v4-section-h"},
         React.createElement("span",null, t("v4_upcoming")),
         // «Ver plan» fuerza el segmento Recibos: sin esto aterrizabas en el último subtab
@@ -177,9 +177,7 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
         React.createElement("button",{className:"link",onClick:function(){ if(onGoPlan) onGoPlan("recibos"); }}, t("v4_see_plan"))
       ),
       React.createElement("div",{className:"v4-card",style:{padding:"6px 16px"}},
-        upcoming.length===0
-          ? React.createElement("div",{style:{padding:"18px 4px",color:"var(--muted)",fontSize:14}}, t("v4_upcoming_empty"))
-          : upcoming.map(function(u,i){
+        upcoming.map(function(u,i){
               return React.createElement("div",{key:i,className:"v4-charge"},
                 React.createElement("div",{className:"dt"},
                   React.createElement("div",{className:"d"}, String(u.day).padStart(2,"0")),

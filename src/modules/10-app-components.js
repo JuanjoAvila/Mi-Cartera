@@ -616,6 +616,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.4.2", d:"18 jul 2026", t:"Gestos fluidos de verdad + sin cargos vacíos", items:[
+    "✨ Al abrir Ajustes o el perfil tirando despacio, Resumen se «congela» un momento: ya no se re-pinta el gráfico en cada milímetro (el tirón de antes).",
+    "🏠 Si no hay próximos cargos este mes, esa sección desaparece del todo en Inicio (antes quedaba el hueco vacío).",
+  ]},
   {v:"4.4.1", d:"18 jul 2026", t:"Ajustes y perfil sin tirones al arrastrar lento", items:[
     "✨ Si abres Ajustes o el perfil tirando despacio con el dedo, ya no se pone a «cámara lenta» (antes el móvil re-pintaba toda la pantalla en cada milímetro).",
     "🧾 El velo del perfil sigue ahí; el desenfoque fino entra al soltar, que es cuando se nota y no cuesta frames.",

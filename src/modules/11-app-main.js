@@ -585,7 +585,7 @@ function App(){
   const setSettingsProgress=function(p){
     const v=Math.min(1,Math.max(0,p));
     if(appShellRef.current){
-      appShellRef.current.style.setProperty("--set-p", String(v));
+      // Solo clase on/off — sin --set-p ni transform en el shell (feedback 2026-07-18).
       if(v>0.02) appShellRef.current.classList.add("settings-dim");
       else appShellRef.current.classList.remove("settings-dim");
     }
@@ -601,26 +601,29 @@ function App(){
     }
     return function(){ document.documentElement.classList.remove("settings-open"); };
   },[drawerOpen]);
+  const dimLayerRef=useRef(null);
   const setProfileProgress=function(p){
     const v=Math.min(1,Math.max(0,p));
     if(appShellRef.current){
-      appShellRef.current.style.setProperty("--prof-p", String(v));
       if(v>0.02) appShellRef.current.classList.add("profile-dim");
       else appShellRef.current.classList.remove("profile-dim");
     }
-    const dim=document.querySelector(".profile-dim-layer");
+    const dim=dimLayerRef.current||document.querySelector(".profile-dim-layer");
     if(dim){
-      dim.style.opacity=String(v);
+      // Opacidad fija al abrir/cerrar — NUNCA interpolar frame a frame (re-pintaba el fondo).
+      dim.style.opacity=v>0.02?"1":"0";
       if(v>0.02) dim.classList.add("on"); else dim.classList.remove("on");
-      // Blur solo al final del gesto (abierto y sin dragging). Durante el drag el velo plano
-      // basta — backdrop-filter frame a frame mataba la WebView (vídeo 2026-07-18).
-      const drag=appShellRef.current&&appShellRef.current.classList.contains("dragging");
-      if(v>0.92 && !drag) dim.classList.add("blurred"); else dim.classList.remove("blurred");
+      if(v>0.5) dim.classList.add("blurred"); else dim.classList.remove("blurred");
     }
     try{
       const av=document.querySelector(".v4-avatar");
-      if(av){ if(v>0.02) av.classList.add("pulling"); else av.classList.remove("pulling"); }
+      if(av){ if(v>0.5) av.classList.add("pulling"); else av.classList.remove("pulling"); }
     }catch(e){}
+  };
+  const freezeShell=function(on){
+    if(!appShellRef.current) return;
+    if(on) appShellRef.current.classList.add("gesture-freeze","dragging");
+    else appShellRef.current.classList.remove("gesture-freeze","dragging");
   };
   // Ancla la animación del perfil al avatar REAL (vídeo Revolut 2026-07-17): transform-origin en
   // su centro y escala inicial = diámetro del avatar / ancho del panel. Se mide en cada apertura
@@ -662,19 +665,18 @@ function App(){
   const drawerMove=function(e){
     if(!dDrag.current) return;
     const t=e.touches[0], ddx=t.clientX-dSX.current, ddy=t.clientY-dSY.current;
-    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current){ drawerRef.current.classList.add("dragging"); if(appShellRef.current) appShellRef.current.classList.add("dragging"); } }
+    if(dAx.current===null){ if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return; dAx.current=Math.abs(ddx)>Math.abs(ddy)?"x":"y"; if(dAx.current==="x"&&drawerRef.current){ drawerRef.current.classList.add("dragging"); freezeShell(true); } }
     if(dAx.current!=="x") return;
     // Solo cierra tirando a la izquierda (derecha→izquierda). Si tiras a la derecha, no pelea.
-    if(ddx>0){ dDX.current=0; if(drawerRef.current) drawerRef.current.style.transform="translate3d(0,0,0)"; setSettingsProgress(1); return; }
+    if(ddx>0){ dDX.current=0; if(drawerRef.current) drawerRef.current.style.transform="translate3d(0,0,0)"; return; }
     dDX.current=ddx;
     const closeProg=Math.min(1,Math.max(0,(-ddx)/dW()));
     if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-closeProg*100)+"%,0,0)";
-    setSettingsProgress(1-closeProg);
   };
   const drawerEnd=function(){
     if(!dDrag.current) return; dDrag.current=false;
     if(drawerRef.current) drawerRef.current.classList.remove("dragging");
-    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    freezeShell(false);
     const dist=dDX.current;
     const dt=Math.max(1,Date.now()-dT.current);
     const vel=dist/dt;
@@ -682,6 +684,7 @@ function App(){
     const flick=vel<-0.35 && dist<-24;
     if(drawerRef.current) drawerRef.current.style.transform="";
     setDrawerOpen(!(closeProg>0.35 || flick));
+    setSettingsProgress(!(closeProg>0.35 || flick)?1:0);
     dAx.current=null;
   };
   // Cerrar perfil tirando ABAJO (arriba→abajo): misma escala al avatar en reversa.
@@ -695,47 +698,46 @@ function App(){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
       pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
       if(pAx.current==="y"&&profileRef.current){
-        profSetOrigin();   // re-mide el avatar por si giró la pantalla desde la apertura
+        profSetOrigin();
         profileRef.current.classList.add("dragging");
-        if(appShellRef.current) appShellRef.current.classList.add("dragging");
+        freezeShell(true);
+        // Velo fijo una sola vez — sin interpolar opacidad por frame.
+        const dim=dimLayerRef.current;
+        if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
       }
     }
     if(pAx.current!=="y") return;
-    // Con scroll: primero el contenido; al top, tirar abajo cierra (reversa al avatar).
     if(profileRef.current && profileRef.current.scrollTop>0){
       pDY.current=0;
-      // El primer tirón puede haber encogido un pelín el panel antes de que el scroll tomara
-      // el gesto: deshazlo o se queda congelado a ~0.93 mientras scrolleas (visto en E2E táctil).
       profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius="";
-      setProfileProgress(1);
       return;
     }
-    if(ddy<=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } setProfileProgress(1); return; }
-    pDY.current=ddy;   // positivo = hacia abajo
+    if(ddy<=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } return; }
+    pDY.current=ddy;
     const h=window.innerHeight||700;
     const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.48))),0.88);
-    // ENCOGE hacia el avatar (misma curva que la entrada, en reversa) — nada de deslizar.
     const s0c=profS0(), sc=1-(1-s0c)*resist;
     if(profileRef.current){
       profileRef.current.style.transform="scale("+sc+")";
       profileRef.current.style.opacity=String(1-resist*0.8);
       profileRef.current.style.borderRadius=Math.round(resist*24)+"px";
     }
-    setProfileProgress(1-resist);
     if(e.cancelable) e.preventDefault();
   };
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
     if(profileRef.current) profileRef.current.classList.remove("dragging");
-    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    freezeShell(false);
     if(pAx.current!=="y"){ pAx.current=null; return; }
-    const dist=pDY.current;   // distancia hacia abajo
+    const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
     const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
     const flick=(dist/dt)>0.45 && dist>24;
     if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
-    setProfileOpen(!(closeProg>0.22 || flick));
+    const stay=!(closeProg>0.22 || flick);
+    setProfileOpen(stay);
+    setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
   };
 
@@ -1207,50 +1209,50 @@ function App(){
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
+    // Inicio arriba: cortar overscroll/rebote ANTES de fijar eje (vídeo 2026-07-18).
+    if(axis.current===null && tab===0 && ddy>0 && Math.abs(ddy)>=Math.abs(ddx)){
+      const pages=trackRef.current&&trackRef.current.children;
+      const pageEl=pages&&pages[tab];
+      if((!pageEl||pageEl.scrollTop<=2) && e.cancelable) e.preventDefault();
+    }
     if(axis.current===null){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        // Inicio: cualquier swipe a la derecha = Ajustes. Otras tabs: solo borde izquierdo.
         const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
         if(openSettings){
           gestureMode.current="drawer";
-          // Solo mueve el shell vacío; SettingsPanel se monta al soltar (drawerOpen).
           if(drawerRef.current) drawerRef.current.classList.add("dragging");
-          if(appShellRef.current) appShellRef.current.classList.add("dragging");
+          freezeShell(true);
         } else {
           gestureMode.current="tab";
           if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
         }
       } else if(axis.current==="y" && tab===0 && ddy>0){
-        // Pull-down perfil (Revolut): solo Inicio, scrolleado arriba o tirando del avatar.
         const pages=trackRef.current&&trackRef.current.children;
         const pageEl=pages&&pages[tab];
         const atTop=!pageEl||pageEl.scrollTop<=2;
         const fromAv=!!(e.target&&e.target.closest&&e.target.closest(".v4-avatar"));
         if(atTop||fromAv){
           gestureMode.current="profile";
-          // Shell del perfil vacío durante el gesto; ProfilePanel al soltar (profileOpen).
-          profSetOrigin();   // ancla la miniatura al avatar ANTES del primer frame del gesto
+          profSetOrigin();
           if(profileRef.current) profileRef.current.classList.add("dragging");
-          if(appShellRef.current) appShellRef.current.classList.add("dragging","profile-dim");
+          freezeShell(true);
+          const dim=dimLayerRef.current;
+          if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
         }
       }
     }
     if(axis.current==="y" && gestureMode.current==="profile"){
       const h=window.innerHeight||700;
-      // Resistencia (no 1:1): el panel “pesa” un poco, como Revolut.
       const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.55))),0.85);
       pDY.current=ddy;
-      // La miniatura del perfil CRECE desde el avatar siguiendo el dedo (vídeo 2026-07-17);
-      // aparece rápido (opacidad ×3) para que no se vea el panel fantasma a medio nacer.
       const s0o=profS0(), so=s0o+(1-s0o)*resist;
       if(profileRef.current){
         profileRef.current.style.transform="scale("+so+")";
         profileRef.current.style.opacity=String(Math.min(1,resist*3));
         profileRef.current.style.borderRadius=Math.round((1-resist)*24)+"px";
       }
-      setProfileProgress(resist);
       if(e.cancelable) e.preventDefault();
       return;
     }
@@ -1259,13 +1261,14 @@ function App(){
     if(gestureMode.current==="drawer"){
       const prog=Math.min(1,Math.max(0,ddx/drawerW()));
       if(drawerRef.current) drawerRef.current.style.transform="translate3d("+(-100+prog*100)+"%,0,0)";
-      setSettingsProgress(prog);
       if(e.cancelable) e.preventDefault();
       return;
     }
     const w=trackRef.current?trackRef.current.offsetWidth:360;
     let off=-tab*100+(dx.current/w)*100;
-    if((tab===0&&dx.current>0)||(tab===tabIds.length-1&&dx.current<0)) off=-tab*100+(dx.current/w)*100*0.28;
+    // Sin rubber-band a la derecha en Inicio (ese gesto es Ajustes) — evitaba el rebote raro.
+    if(tab===tabIds.length-1&&dx.current<0) off=-tab*100+(dx.current/w)*100*0.28;
+    else if(tab===0&&dx.current>0) off=-tab*100;
     if(trackRef.current) trackRef.current.style.transform="translateX("+off+"%)";
     if(dx.current<-24 && tab<tabIds.length-1) prepMountTab(tab+1);
     else if(dx.current>24 && tab>0) prepMountTab(tab-1);
@@ -1274,7 +1277,7 @@ function App(){
     if(!dragging.current) return; dragging.current=false;
     if(axis.current==="y" && gestureMode.current==="profile"){
       if(profileRef.current) profileRef.current.classList.remove("dragging");
-      if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+      freezeShell(false);
       const h=window.innerHeight||700;
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
@@ -1286,7 +1289,7 @@ function App(){
     } else if(axis.current==="x"){
       if(gestureMode.current==="drawer"){
         if(drawerRef.current) drawerRef.current.classList.remove("dragging");
-        if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+        freezeShell(false);
         const dw=drawerW(), dist=dx.current, dt=Math.max(1,Date.now()-startT.current);
         const open = dist > dw*0.35 || ((dist/dt)>0.4 && dist>28);
         if(drawerRef.current) drawerRef.current.style.transform="";
@@ -1391,7 +1394,7 @@ function App(){
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
     if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; }
     if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
-    if(appShellRef.current) appShellRef.current.classList.remove("dragging");
+    freezeShell(false);
     setSettingsProgress(drawerOpen?1:0);
   };
 
@@ -1510,7 +1513,7 @@ function App(){
       ),
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto})
     ),
-    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
+    React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{
       className:"profile-pull"+(profileOpen?" open":""),
       ref:profileRef,

@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.4.2] — 2026-07-18
+### Gestos Ajustes/perfil: congelar Resumen + sin sección vacía
+- Durante el drag de Ajustes/perfil: clase `gesture-freeze` oculta `.viewport`+`.botnav` (una vez). Solo se anima el panel sobre el fondo; cero re-pintado de gráfico/anillo (4.4.1 no bastó — feedback).
+- Sin `--set-p`/translate en el shell; sin interpolar opacidad del dim por frame; velo fijo al empezar el gesto.
+- Anti-rebote Inicio: `preventDefault` del overscroll antes de fijar eje; sin rubber-band del track a la derecha en tab 0.
+- Inicio: «Próximos cargos» solo si `upcoming.length>0` (si no hay, la sección no se pinta).
+- OTA only.
+
 ## [4.4.1] — 2026-07-18
 ### Gestos Ajustes/perfil: sin filter ni blur en el drag (feedback vídeo)
 - Ajustes: quitado `filter:brightness` en `.app-shell.settings-dim` — en cada frame del gesto lento re-rasterizaba Resumen entero en WebView (~3 fps). Solo queda el `translate3d` barato.

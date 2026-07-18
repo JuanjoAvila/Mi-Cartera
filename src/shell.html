@@ -994,10 +994,13 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* position:relative — ancla de la .botnav flotante (2026-07-18). */
   .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;position:relative;}
   .app-shell .viewport{flex:1;min-height:0;}
-  /* Push limpio tipo Revolut: solo translate. NUNCA filter/brightness en el shell —
-     en cada frame del gesto lento el WebView re-rasteriza Resumen entero → ~3 fps
-     (feedback vídeo 2026-07-18). El panel ya cubre; el desplazamiento basta. */
-  .app-shell.settings-dim{transform:translate3d(calc(var(--set-p,0) * 24px),0,0);transition:transform .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
+  /* Push Ajustes: el panel cubre; NO transform/filter en el shell (cada frame del drag
+     re-pintaba Resumen → 3 fps, vídeo 2026-07-18 y re-feedback tras 4.4.1). */
+  .app-shell.settings-dim{pointer-events:none;}
+  /* Durante gesto Ajustes/perfil: oculta viewport+nav (una sola vez). El panel se mueve
+     sobre el fondo del body; al soltar se restaura. Sin esto el WebView recompone gráficos. */
+  .app-shell.gesture-freeze .viewport,
+  .app-shell.gesture-freeze .botnav{visibility:hidden;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
   .v4-cycle-box{margin:10px 2px 14px;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}
