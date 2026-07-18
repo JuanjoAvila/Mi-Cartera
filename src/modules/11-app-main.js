@@ -80,9 +80,8 @@ function App(){
   // que enseñar un número inventado (regla de la casa: nunca inventar un tipo de cambio).
   (function(){
     const c=(state.settings&&state.settings.currency)||"EUR";
-    const SYM={EUR:"€",USD:"$",GBP:"£",CHF:"CHF"};
     const r=c==="EUR"?1:fxTableOf(state)[c];
-    if(c!=="EUR" && r>0){ DISP.sym=SYM[c]||c; DISP.k=1/r; }
+    if(c!=="EUR" && r>0){ DISP.sym=CUR_SYM[c]||c; DISP.k=1/r; }
     else { DISP.sym="€"; DISP.k=1; }
   })();
   CURLANG = (state.settings&&state.settings.lang) || "es";   // idioma activo (i18n)
@@ -898,7 +897,7 @@ function App(){
   const [pricing,setPricing]=useState(false);
   // Cambio USD→EUR dinámico (tipos de referencia del BCE vía frankfurter.app, gratis y sin key).
   const refreshFx=function(){
-    fetch("https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF").then(function(r){ return r.json(); }).then(function(d){
+    fetch("https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF,JPY,CAD,AUD,CNY,MXN,SEK,NOK,DKK,PLN,BRL,INR").then(function(r){ return r.json(); }).then(function(d){
       const rates=d&&d.rates;
       if(!rates) return;
       const fxRates={};
@@ -917,7 +916,11 @@ function App(){
   };
   useEffect(function(){ mcScheduleIdle(refreshFx, 4000); },[]);   // FX tras primer pintado
   useEffect(function(){ applyTheme(state.settings&&state.settings.theme); },[state.settings&&state.settings.theme]);  // tema de color
-  useEffect(function(){ applyBigText(state.settings&&state.settings.bigText); },[state.settings&&state.settings.bigText]);  // letra grande
+  // Accesibilidad + temática de temporada: tamaño de letra, reducir animaciones, contraste, estación.
+  useEffect(function(){ applyTextSize(textSizeOf(state)); },[state.settings&&state.settings.textSize, state.settings&&state.settings.bigText]);
+  useEffect(function(){ applyReduceMotion(!!(state.settings&&state.settings.reduceMotion)); },[state.settings&&state.settings.reduceMotion]);
+  useEffect(function(){ applyContrast(!!(state.settings&&state.settings.hiContrast)); },[state.settings&&state.settings.hiContrast]);
+  useEffect(function(){ applySeason(state.settings&&state.settings.season); },[state.settings&&state.settings.season]);
   // App Android: pide el permiso de notificaciones (Android 13+) una sola vez al arrancar.
   useEffect(function(){
     const nat=natPlugin();
@@ -972,13 +975,26 @@ function App(){
   // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
   const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
   const widgetCash=trAccW ? Math.round((totals.bankBal[trAccW.ent]||0)*100)/100 : null;
+  // «Lo que te puedes permitir» (petición 2026-07-18): lo que puedes gastar SIN pasarte ni quedarte
+  // en rojo = mínimo entre lo que te deja el presupuesto y la liquidez segura de la cuenta de gasto
+  // (su peor saldo del mes; no puedes gastar lo que no tienes). Nunca negativo.
+  const widgetAfford=(function(){
+    const budgetLeft = (state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null;
+    const dailyEnt = trAccW && trAccW.ent;
+    const safeLiq = dailyEnt!=null
+      ? Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0))
+      : null;
+    let a = budgetLeft!=null && safeLiq!=null ? Math.min(budgetLeft, safeLiq) : (budgetLeft!=null?budgetLeft:safeLiq);
+    return a!=null ? Math.round(a*100)/100 : null;
+  })();
   useEffect(function(){
     const nat=natPlugin();
     if(!nat || !nat.updateWidget) return;
     const data={ spent:Math.round((totals.thisMonthSpent||0)*100)/100, budget:state.budget||0 };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
+    if(widgetAfford!=null) data.afford=widgetAfford;
     try{ nat.updateWidget(data).catch(function(){}); }catch(e){}
-  },[totals.thisMonthSpent,state.budget,widgetCash]);
+  },[totals.thisMonthSpent,state.budget,widgetCash,widgetAfford]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos
@@ -1491,7 +1507,18 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
+  // Capa ambiental de temporada (emojis cayendo): solo si hay temática y no está «reducir animaciones».
+  const season=(state.settings&&state.settings.season)||"";
+  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
+  const seasonFx=(season && season!=="none" && !reduceMo && SEASON_FX[season])
+    ? React.createElement("div",{className:"season-fx","data-season":season,"aria-hidden":"true"},
+        SEASON_FX[season].map(function(em,i){
+          const left=(i*11+7)%96, dur=(7+(i%4)*2.5), delay=(i*0.9), sz=17+(i%3)*4;
+          return React.createElement("span",{key:i,style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:(-delay)+"s"}}, em);
+        }))
+    : null;
   return React.createElement("div",{className:"app v4"},
+    seasonFx,
     React.createElement("div",{className:"app-shell",ref:appShellRef},
       React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
         React.createElement("div",{className:"track",ref:trackRef},

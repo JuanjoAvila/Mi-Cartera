@@ -152,9 +152,11 @@ public class MiCarteraPlugin extends Plugin {
         Double spent = call.getDouble("spent");
         Double budget = call.getDouble("budget");
         Double cash = call.getDouble("cash");
+        Double afford = call.getDouble("afford");   // «lo que te puedes permitir» (gasto seguro)
         ed.putFloat("spent", spent != null ? spent.floatValue() : 0f);
         ed.putFloat("budget", budget != null ? budget.floatValue() : 0f);
         if (cash != null) ed.putFloat("cash", cash.floatValue()); else ed.remove("cash");
+        if (afford != null) ed.putFloat("afford", afford.floatValue()); else ed.remove("afford");
         String label = call.getString("cashLabel");
         ed.putString("cashLabel", label != null ? label : "");
         ed.putLong("updated", System.currentTimeMillis());

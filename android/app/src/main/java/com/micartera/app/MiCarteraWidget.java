@@ -68,9 +68,22 @@ public class MiCarteraWidget extends AppWidgetProvider {
         String cashLabel = p.getString("cashLabel", "");
         long updated = p.getLong("updated", 0L);
 
+        boolean hasAfford = p.contains("afford");
+        double afford = p.getFloat("afford", 0f);
+
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_micartera);
         rv.setTextViewText(R.id.w_amount, eur0(spent));
         rv.setTextColor(R.id.w_amount, (budget > 0 && spent > budget) ? CORAL : MINT);
+
+        // «Lo que te puedes permitir» (gasto seguro): lo que puedes gastar sin pasarte ni quedarte
+        // en rojo. Es la cifra que el usuario quería ver, no solo lo ya gastado (feedback 2026-07-18).
+        if (hasAfford) {
+            rv.setViewVisibility(R.id.w_afford, View.VISIBLE);
+            rv.setTextViewText(R.id.w_afford, "✅ Puedes gastar " + eur0(afford));
+            rv.setTextColor(R.id.w_afford, afford > 0 ? MINT : CORAL);
+        } else {
+            rv.setViewVisibility(R.id.w_afford, View.GONE);
+        }
 
         if (budget > 0) {
             double left = budget - spent;
