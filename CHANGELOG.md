@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.4.3] — 2026-07-18
+### Gestos: Resumen visible otra vez (sin el negro cutre)
+- Quita `visibility:hidden` de `.gesture-freeze` (feedback: fluido pero «cutre»). Se mantiene lo que sí cura el lag: no interpolar filter/`--set-p`/opacidad del shell por frame; solo mueve el panel.
+- Velo del perfil más suave (`rgba(…,.28)`) para que se lea Inicio detrás durante el gesto.
+- OTA only.
+
 ## [4.4.2] — 2026-07-18
 ### Gestos Ajustes/perfil: congelar Resumen + sin sección vacía
 - Durante el drag de Ajustes/perfil: clase `gesture-freeze` oculta `.viewport`+`.botnav` (una vez). Solo se anima el panel sobre el fondo; cero re-pintado de gráfico/anillo (4.4.1 no bastó — feedback).

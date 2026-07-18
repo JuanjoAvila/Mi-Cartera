@@ -675,9 +675,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
     transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
   .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
-  /* Velo verdoso barato durante el gesto. El blur SOLO con .blurred (perfil ya abierto):
-     backdrop-filter en cada frame del drag = mismos 3 fps que el filter del shell (2026-07-18). */
-  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.5);opacity:0;pointer-events:none;
+  /* Velo verdoso barato (Resumen SE VE detrás). Sin blur en el drag; .blurred solo al soltar. */
+  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.28);opacity:0;pointer-events:none;
     transition:opacity .45s ease;max-width:520px;margin:0 auto;}
   .profile-dim-layer.on{opacity:1;pointer-events:none;}
   .profile-dim-layer.blurred{-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);}
@@ -994,13 +993,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* position:relative — ancla de la .botnav flotante (2026-07-18). */
   .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;position:relative;}
   .app-shell .viewport{flex:1;min-height:0;}
-  /* Push Ajustes: el panel cubre; NO transform/filter en el shell (cada frame del drag
-     re-pintaba Resumen → 3 fps, vídeo 2026-07-18 y re-feedback tras 4.4.1). */
+  /* Push Ajustes: el panel cubre; NO transform/filter en el shell (feedback 2026-07-18). */
   .app-shell.settings-dim{pointer-events:none;}
-  /* Durante gesto Ajustes/perfil: oculta viewport+nav (una sola vez). El panel se mueve
-     sobre el fondo del body; al soltar se restaura. Sin esto el WebView recompone gráficos. */
-  .app-shell.gesture-freeze .viewport,
-  .app-shell.gesture-freeze .botnav{visibility:hidden;}
+  /* gesture-freeze: solo marca el gesto (pointer-events). NUNCA visibility:hidden del
+     viewport — eso dejaba el fondo negro «cutre» (feedback 2026-07-18 tras 4.4.2).
+     El FPS se sostiene porque ya no se interpola filter/--set-p/opacidad del shell. */
+  .app-shell.gesture-freeze{pointer-events:none;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
   .v4-cycle-box{margin:10px 2px 14px;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}

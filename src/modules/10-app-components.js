@@ -616,6 +616,9 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.4.3", d:"18 jul 2026", t:"Gesto fluido Y con Resumen visible detrás", items:[
+    "✨ Al abrir Ajustes o el perfil ya se ve otra vez Inicio detrás (adiós al fondo negro cutre de la 4.4.2), sin volver a los tirones: el truco es no re-pintar el shell en cada milímetro, no ocultarlo.",
+  ]},
   {v:"4.4.2", d:"18 jul 2026", t:"Gestos fluidos de verdad + sin cargos vacíos", items:[
     "✨ Al abrir Ajustes o el perfil tirando despacio, Resumen se «congela» un momento: ya no se re-pinta el gráfico en cada milímetro (el tirón de antes).",
     "🏠 Si no hay próximos cargos este mes, esa sección desaparece del todo en Inicio (antes quedaba el hueco vacío).",
