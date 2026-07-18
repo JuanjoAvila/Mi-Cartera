@@ -109,6 +109,23 @@ const LANG = {
     ob_returning:"¿Reinstalaste la app o cambiaste de móvil? Inicia sesión y recuperas todos tus datos al instante.",
     ob_foot:"Podrás editar y añadir todo cuando quieras. Inicia sesión para sincronizar entre dispositivos y recuperar tus datos.",
     ob_name_ph:"Nombre (opcional, ej. Cuenta corriente)", ob_balance_ph:"Saldo €",
+    // v4.6 — aportar a metas con banco + teclado propio
+    gl_contribute_title:"Aportar a {name}", gl_contribute_from:"¿De qué banco sale?", gl_contribute_save:"Aportar {x}", gl_contribute_need:"Pon un importe 🙂",
+    // Accesibilidad
+    v4_set_a11y:"Accesibilidad",
+    st_textsize:"Tamaño de letra", st_textsize_hint:"Agranda toda la app. Si algo se descuadra en «Enorme», dímelo y lo ajusto.",
+    ts_normal:"Normal", ts_big:"Grande", ts_huge:"Enorme",
+    st_reduce_motion:"Reducir animaciones", st_reduce_motion_hint:"Quita deslizamientos y rebotes: la app va más sobria y directa. Útil si mareas.",
+    st_contrast:"Más contraste", st_contrast_hint:"Sube el contraste del texto para que se lea mejor.",
+    // Temáticas de temporada
+    st_theme_season:"Temática", st_theme_season_hint:"Cambia los colores y añade un detalle animado de temporada (nieve, hojas, balón…). Quítalo cuando quieras.",
+    th_none:"Ninguna", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Navidad 🎄", th_verano:"Verano ☀️", th_invierno:"Invierno ❄️", th_pascua:"Pascua 🐣",
+    // Bancos de gasto diario (varios)
+    st_expense_banks:"Bancos de gasto diario", st_expense_banks_hint:"Marca todos los bancos cuyas compras cuentan en tu presupuesto del día a día (p. ej. Trade Republic + Revolut en un viaje). El saldo de gasto sigue saliendo del principal.",
+    st_expense_banks_none:"Aún no tienes cuentas para elegir.",
+    // Comparativa de monedas
+    st_cur_compare:"Comparar monedas", st_cur_compare_hint:"Tipos del BCE (referencia). Toca una moneda para verla al cambio.",
+    cur_jpy:"¥ Yen", cur_cad:"C$ Dólar canadiense", cur_aud:"A$ Dólar australiano", cur_cny:"¥ Yuan", cur_mxn:"$ Peso mexicano", cur_sek:"kr Corona sueca", cur_nok:"kr Corona noruega", cur_dkk:"kr Corona danesa", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rupia",
   },
   en:{
     tab_dash:"Home", tab_gastos:"Spending", tab_plan:"Plan", tab_cartera:"Portfolio", tab_fijos:"Fixed", tab_inv:"Investments", tab_patri:"Net worth", tab_debt:"Debts", tab_compartido:"Shared",
@@ -215,6 +232,18 @@ const LANG = {
     ob_returning:"Reinstalled the app or switched phones? Sign in and recover all your data instantly.",
     ob_foot:"You can edit and add everything whenever you want. Sign in to sync across devices and recover your data.",
     ob_name_ph:"Name (optional, e.g. Checking account)", ob_balance_ph:"Balance €",
+    gl_contribute_title:"Add to {name}", gl_contribute_from:"Which bank does it come from?", gl_contribute_save:"Add {x}", gl_contribute_need:"Enter an amount 🙂",
+    v4_set_a11y:"Accessibility",
+    st_textsize:"Text size", st_textsize_hint:"Enlarges the whole app. If anything breaks on «Huge», tell me and I'll fix it.",
+    ts_normal:"Normal", ts_big:"Large", ts_huge:"Huge",
+    st_reduce_motion:"Reduce motion", st_reduce_motion_hint:"Removes slides and bounces: the app feels calmer and more direct. Useful if motion bothers you.",
+    st_contrast:"More contrast", st_contrast_hint:"Boosts text contrast for easier reading.",
+    st_theme_season:"Theme", st_theme_season_hint:"Changes colors and adds a seasonal animated touch (snow, leaves, football…). Turn it off anytime.",
+    th_none:"None", th_mundial:"World Cup 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Christmas 🎄", th_verano:"Summer ☀️", th_invierno:"Winter ❄️", th_pascua:"Easter 🐣",
+    st_expense_banks:"Daily-spending banks", st_expense_banks_hint:"Tick every bank whose card spending counts toward your daily budget (e.g. Trade Republic + Revolut on a trip). The spending balance still comes from the main one.",
+    st_expense_banks_none:"No accounts to choose yet.",
+    st_cur_compare:"Compare currencies", st_cur_compare_hint:"ECB reference rates. Tap a currency to see it converted.",
+    cur_jpy:"¥ Yen", cur_cad:"C$ Canadian dollar", cur_aud:"A$ Australian dollar", cur_cny:"¥ Yuan", cur_mxn:"$ Mexican peso", cur_sek:"kr Swedish krona", cur_nok:"kr Norwegian krone", cur_dkk:"kr Danish krone", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rupee",
   },
   ca:{
     tab_dash:"Inici", tab_gastos:"Despeses", tab_plan:"Pla", tab_cartera:"Cartera", tab_fijos:"Fixes", tab_inv:"Inversions", tab_patri:"Patrimoni", tab_debt:"Deutes", tab_compartido:"Compartit",
@@ -321,6 +350,18 @@ const LANG = {
     ob_returning:"Has reinstal·lat l'app o has canviat de mòbil? Inicia sessió i recuperes totes les teves dades a l'instant.",
     ob_foot:"Podràs editar i afegir-ho tot quan vulguis. Inicia sessió per sincronitzar entre dispositius i recuperar les teves dades.",
     ob_name_ph:"Nom (opcional, ex. Compte corrent)", ob_balance_ph:"Saldo €",
+    gl_contribute_title:"Aportar a {name}", gl_contribute_from:"De quin banc surt?", gl_contribute_save:"Aportar {x}", gl_contribute_need:"Posa un import 🙂",
+    v4_set_a11y:"Accessibilitat",
+    st_textsize:"Mida de la lletra", st_textsize_hint:"Amplia tota l'app. Si alguna cosa es descoloca amb «Enorme», digues-m'ho i ho ajusto.",
+    ts_normal:"Normal", ts_big:"Gran", ts_huge:"Enorme",
+    st_reduce_motion:"Reduir animacions", st_reduce_motion_hint:"Treu lliscaments i rebots: l'app va més sòbria i directa. Útil si et mareges.",
+    st_contrast:"Més contrast", st_contrast_hint:"Puja el contrast del text perquè es llegeixi millor.",
+    st_theme_season:"Temàtica", st_theme_season_hint:"Canvia els colors i afegeix un detall animat de temporada (neu, fulles, pilota…). Treu-lo quan vulguis.",
+    th_none:"Cap", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Nadal 🎄", th_verano:"Estiu ☀️", th_invierno:"Hivern ❄️", th_pascua:"Pasqua 🐣",
+    st_expense_banks:"Bancs de despesa diària", st_expense_banks_hint:"Marca tots els bancs les compres dels quals compten al teu pressupost diari (p. ex. Trade Republic + Revolut en un viatge). El saldo de despesa continua sortint del principal.",
+    st_expense_banks_none:"Encara no tens comptes per triar.",
+    st_cur_compare:"Comparar monedes", st_cur_compare_hint:"Tipus del BCE (referència). Toca una moneda per veure-la al canvi.",
+    cur_jpy:"¥ Ien", cur_cad:"C$ Dòlar canadenc", cur_aud:"A$ Dòlar australià", cur_cny:"¥ Iuan", cur_mxn:"$ Peso mexicà", cur_sek:"kr Corona sueca", cur_nok:"kr Corona noruega", cur_dkk:"kr Corona danesa", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rúpia",
   },
 };
 // Modo Sencillo: además de ocultar pestañas/widgets, suaviza la JERGA en las etiquetas clave
@@ -2211,9 +2252,44 @@ function applyTheme(t){
     if(meta && bg) meta.setAttribute("content", bg);
   }catch(e){}
 }
-// Letra grande (accesibilidad): escala toda la app un 12% (settings.bigText)
-function applyBigText(on){ try{ document.documentElement.classList.toggle("bigtext", !!on); }catch(e){} }
+// Nivel de letra (accesibilidad). Antes era un booleano (bigText); ahora 3 niveles en
+// settings.textSize (normal|big|huge). El zoom se aplica al BODY, no a #root: los sheets y
+// diálogos van portaleados a document.body (fuera de #root) y con el zoom en #root se
+// quedaban a tamaño normal → «se descuadra» (feedback 2026-07-18). En body todo escala igual.
+function textSizeOf(s){ const st=s&&s.settings; if(st&&st.textSize) return st.textSize; return (st&&st.bigText)?"big":"normal"; }
+function applyTextSize(size){
+  try{
+    const el=document.documentElement;
+    el.classList.toggle("bigtext", size==="big");
+    el.classList.toggle("hugetext", size==="huge");
+  }catch(e){}
+}
+// Compat: algunos sitios aún llaman applyBigText(bool). Se mapea al nuevo sistema.
+function applyBigText(on){ applyTextSize(on?"big":"normal"); }
+function applyReduceMotion(on){ try{ document.documentElement.classList.toggle("reduce-motion", !!on); }catch(e){} }
+function applyContrast(on){ try{ document.documentElement.classList.toggle("hi-contrast", !!on); }catch(e){} }
+// Temática de temporada (Mundial, Halloween, Navidad…): re-tinta acentos decorativos y activa
+// una capa ambiental animada. data-season en <html>; "" o "none" = sin temática.
+function applySeason(season){ try{ document.documentElement.setAttribute("data-season", (season&&season!=="none")?season:""); }catch(e){} }
+function applyA11y(s){
+  applyTextSize(textSizeOf(s));
+  applyReduceMotion(!!(s&&s.settings&&s.settings.reduceMotion));
+  applyContrast(!!(s&&s.settings&&s.settings.hiContrast));
+  applySeason(s&&s.settings&&s.settings.season);
+}
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
+// Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
+// lo sigue mandando el tema de arriba; la temporada solo añade acentos + animación ambiental.
+const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
+// Emojis que caen en la capa ambiental de cada temática.
+const SEASON_FX={
+  mundial:["⚽","🇪🇸","⚽","🏆","⚽","🥅","⚽","🇪🇸"],
+  halloween:["🎃","👻","🦇","🕷️","🎃","👻","🍬","🦇"],
+  navidad:["❄️","🎄","🎁","⭐","❄️","🎅","🎄","❄️"],
+  verano:["☀️","🌴","🏖️","🍦","🌊","🐚","🍉","☀️"],
+  invierno:["❄️","⛄","❄️","🌨️","❄️","🧣","❄️","⛄"],
+  pascua:["🐣","🥚","🐰","🌷","🐣","🥚","🌸","🐰"]
+};
 function loadState(){
   const saved = store.get("micartera_v3");
   if(saved && saved.accounts){
@@ -2223,14 +2299,14 @@ function loadState(){
     const s = seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))))));
     if(writeBack) store.set("micartera_v3", s);
     applyTheme(s.settings&&s.settings.theme);
-    applyBigText(s.settings&&s.settings.bigText);
+    applyA11y(s);
     return s;
   }
   // Sin estado guardado = usuario nuevo → arranca VACÍO y verá el onboarding (no hereda la cartera de ejemplo).
   const init = buildEmpty();
   store.set("micartera_v3", init);
   applyTheme(init.settings&&init.settings.theme);
-  applyBigText(init.settings&&init.settings.bigText);
+  applyA11y(init);
   return init;
 }
 

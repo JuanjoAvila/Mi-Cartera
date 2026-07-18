@@ -16,18 +16,23 @@ function miNativeHttp(){
     return (p&&typeof p.request==="function")?p:null;
   }catch(e){ return null; }
 }
-function miDeviceLogin(http, loginBody, devId){
+function miDeviceLogin(http, loginBody, devId, captchaToken){
   // Mismas cabeceras que _shared/myinvestor.ts (la API valida x-device-id y x-myinvestor-app).
   // Origin/Referer aquí SÍ se pueden fijar: la petición sale en nativo, no la limita el navegador.
+  const headers={ "Content-Type":"application/json", "Accept":"application/json",
+    "Referer":"https://api.myinvestor.es", "Origin":"https://api.myinvestor.es",
+    // 3.150.0 (2026-07-18): el captcha salía TAMBIÉN desde el móvil («Captcha required», foto).
+    // Subir la versión declarada es la primera palanca documentada: el anti-bot de MI puntúa
+    // peor a clientes con versión vieja. Mantener SIEMPRE igual que _shared/myinvestor.ts.
+    "x-device-id":devId, "x-myinvestor-app":"version=3.150.0,platform=web" };
+  // Cuando podamos resolver el reCAPTCHA en una WebView nativa, el token viaja en estas cabeceras
+  // (mismo contrato que el cliente `finanze`): X-Recaptcha-Token + acción SECURITY_CHECK. Hoy es
+  // opcional y casi siempre va vacío — el plumbing queda listo para cuando exista el site key.
+  if(captchaToken){ headers["X-Recaptcha-Token"]=captchaToken; headers["X-Recaptcha-Action"]="SECURITY_CHECK"; }
   return Promise.resolve(http.request({
     url:"https://api.myinvestor.es/login/api/v2/auth/token",
     method:"POST",
-    headers:{ "Content-Type":"application/json", "Accept":"application/json",
-      "Referer":"https://api.myinvestor.es", "Origin":"https://api.myinvestor.es",
-      // 3.150.0 (2026-07-18): el captcha salía TAMBIÉN desde el móvil («Captcha required», foto).
-      // Subir la versión declarada es la primera palanca documentada: el anti-bot de MI puntúa
-      // peor a clientes con versión vieja. Mantener SIEMPRE igual que _shared/myinvestor.ts.
-      "x-device-id":devId, "x-myinvestor-app":"version=3.150.0,platform=web" },
+    headers:headers,
     data:loginBody
   })).then(function(res){
     const st=res?res.status:0; let j=res?res.data:null;

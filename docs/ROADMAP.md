@@ -1,24 +1,24 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-18 · **v4.5.1** — gestos: 1ª apertura con contenido + Resumen bloqueado al bajar perfil.
+> Estado a 2026-07-18 · **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
 
 ## Listo para uso diario
 
-Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1+2** (+ fix RLS `0014`), informe mensual, fin de mes en paz, presupuesto por categoría, recibos gordos, widget Android, export JSON + informe imagen, **multi-banco en Gastos** + filtro por banco, tutorial/roles claros, **FX multi-divisa (USD/GBP/CHF + costEur)**, **sugerencia de categoría (KW + IA opcional)**, **diccionario ampliado de comercios** (impuestos/multas, **Pádel**), **Sentry en prod**, perfil pull-down, sheets sin velo negro, brókers en tarjetas planas, **APK nueva se ofrece sola** (noti + instalador al abrir), **OB a demanda** (botón en Cartera), **gráfico de Cartera multiseleccionable**, **editor de cuentas v4** (nombre+rol, saldo bloqueado si viene del banco), **bienes editables**, **monedas £/CHF**, **huella + logout en Ajustes**, **Hogar accesible desde Ajustes**, **«¿Me lo puedo permitir?» a plazos** (cuota + crear deuda), **banco elegible en gastos manuales**, **Sincronizar de Cartera con TR/MI**.
+Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas, Open Banking, MyInvestor, RGPD mínimo, tests unit + E2E, código modular, **Hogar Fase 1+2** (+ fix RLS `0014`), informe mensual, fin de mes en paz, presupuesto por categoría, recibos gordos, widget Android, export JSON + informe imagen, **multi-banco en Gastos** + filtro por banco, tutorial/roles claros, **FX multi-divisa (USD/GBP/CHF + costEur)**, **sugerencia de categoría (KW + IA opcional)**, **diccionario ampliado de comercios** (impuestos/multas, **Pádel**), **Sentry en prod**, perfil pull-down, sheets sin velo negro, brókers en tarjetas planas, **APK nueva se ofrece sola** (noti + instalador al abrir), **OB a demanda** (botón en Cartera), **gráfico de Cartera multiseleccionable**, **editor de cuentas v4** (nombre+rol, saldo bloqueado si viene del banco), **bienes editables**, **monedas £/CHF**, **huella + logout en Ajustes**, **Hogar accesible desde Ajustes**, **«¿Me lo puedo permitir?» a plazos** (cuota + crear deuda), **banco elegible en gastos manuales**, **Sincronizar de Cartera con TR/MI**, **temáticas de temporada** (Mundial/Halloween/Navidad/Verano/Invierno/Pascua con animación ambiental), **accesibilidad** (letra grande a nivel body sin descuadres, reducir animaciones, contraste), **aportar a metas con teclado propio + banco**, **15 monedas + comparativa**, **varios bancos de gasto diario**, **selección de Cartera persistida**, **Ajustes reordenados/encogidos**, **widget con «lo que te puedes permitir»**.
 
 ## Versión actual (alineación)
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.5.1** |
-| APK (`versionName` / `versionCode`) | **4.4.0** / **29** — release GitHub `v4.4.0` + `apk.json` publicados |
-| `public/apk.json` | **29** / 4.4.0 → `Mi-Cartera-4.4.0.apk` |
+| Web / OTA (`VERSION`) | **4.6.0** |
+| APK (`versionName` / `versionCode`) | fuente lista en **4.6.0** / **30** — *falta compilar y publicar el release GitHub* (el widget «lo que te puedes permitir» es nativo y necesita este APK) |
+| `public/apk.json` | **29** / 4.4.0 → `Mi-Cartera-4.4.0.apk` (sin cambiar: NUNCA apuntar a un release que aún no existe; se actualiza al publicar el APK 30) |
 
 ## Pendiente / limitaciones conocidas
 
 | Tema | Notas |
 |------|--------|
-| **MyInvestor reCAPTCHA** | CONFIRMADO con foto (2026-07-18): «Captcha required» salta TAMBIÉN por la vía del móvil (IP residencial, bundle 4.2.0). La 4.3.0 prueba la palanca documentada: `x-myinvestor-app` sube a 3.150.0 (cliente + Edge) — el anti-bot puntúa peor a clientes con versión vieja — y el error se explica en humano (esperar horas, no insistir). **Si tras unas horas y con la 4.3.0 sigue saliendo captcha, el siguiente escalón es resolver el reCAPTCHA de verdad en una WebView nativa (cambio de APK, no OTA) — decidir si compensa.** |
+| **MyInvestor reCAPTCHA** | CONFIRMADO con foto (2026-07-18): «Captcha required» salta TAMBIÉN por la vía del móvil (IP residencial). Palancas ya aplicadas: `x-myinvestor-app` = 3.150.0 (cliente + Edge) y mensaje humano. **4.6.0:** el cliente (`miDeviceLogin`) ya acepta un `captchaToken` y lo envía en las cabeceras `X-Recaptcha-Token` + `X-Recaptcha-Action: SECURITY_CHECK` (mismo contrato que el cliente open-source `finanze`). Falta la pieza que **genera** ese token: una WebView nativa que resuelva el reCAPTCHA de `myinvestor.es` (necesita el *site key* de MyInvestor y un cambio de APK, no OTA). Ese es el único paso que queda para saltarlo de verdad; el plumbing ya está listo para enchufarlo. |
 | **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |

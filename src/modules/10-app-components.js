@@ -681,6 +681,19 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.6.0", d:"18 jul 2026", t:"Temáticas, accesibilidad, metas con teclado propio y más monedas", items:[
+    "🎯 Al aportar a una meta ya no salta el teclado del móvil (que rompía la estética): ahora abre una hoja con teclado numérico propio, como el botón +, y eliges de qué banco lo aportas.",
+    "🎉 Temáticas de temporada en Ajustes → Apariencia: Mundial (España), Halloween, Navidad, Verano, Invierno y Pascua. Cada una re-tinta el botón + y deja caer un detalle animado (nieve, hojas, balón…). Se apaga con «Reducir animaciones» o eligiendo «Ninguna».",
+    "♿ Nueva sección Accesibilidad: tamaño de letra en 3 niveles (Normal/Grande/Enorme) que ahora escala TODA la app —incluidos los diálogos y hojas, que antes se quedaban pequeños y descuadrados—, «Reducir animaciones» y «Más contraste».",
+    "💱 Muchas más monedas (yen, dólar canadiense/australiano, yuan, coronas, złoty, real, rupia…) y una comparativa rápida «1 € = …» con los tipos del BCE.",
+    "🪙 Ahora puedes marcar VARIOS bancos como gasto diario (Ajustes → Dinero): si en un viaje usas Trade Republic y Revolut, las compras de ambos cuentan en el mismo presupuesto.",
+    "📱 El widget de inicio ya no enseña solo lo gastado: añade «Puedes gastar X €» — lo que te puedes permitir sin pasarte ni quedarte en rojo. (Necesita el APK nuevo para que llegue al escritorio.)",
+    "💼 En Cartera se guarda tu selección de patrimonio (líquido/inversiones/bienes) aunque cierres la app, y la zona de inversiones entra con una animación suave.",
+    "🎛️ Ajustes abre siempre con todas las secciones encogidas y con un orden más lógico: Apariencia → Accesibilidad → Para empezar → Dinero → Conexiones → App → Avanzado.",
+    "🧾 «Gestionar recibos» y «Herramientas de inversión» ahora combinan con la estética nueva (tarjetas, inputs y enlaces al mismo estilo que el resto).",
+    "🌬️ Los ocultamientos (barra inferior, plegar tarjetas) son más suaves, sin cortes secos, tanto al esconder como al aparecer.",
+    "🔌 MyInvestor: seguimos preparando el terreno para el captcha (el envío del token ya viaja en la petición). Resolverlo del todo necesita una pantalla nativa nueva; mientras tanto, el aviso sigue explicándolo en cristiano.",
+  ]},
   {v:"4.5.1", d:"18 jul 2026", t:"Primera vez que abres Ajustes/perfil: ya se ve el contenido", items:[
     "✨ La primera vez que tiras despacio hacia Ajustes o el perfil ya no sale el panel negro vacío: el contenido se prepara en segundo plano y está listo al arrastrar.",
     "👆 Al bajar el perfil, Resumen se queda quieto (sin scroll a la vez) — eso quitaba fluidez cuando pelean los dos gestos.",
@@ -1186,8 +1199,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const curLang=(state.settings&&state.settings.lang)||"es";
   const curTheme=(state.settings&&state.settings.theme)||"green";
   const curCur=(state.settings&&state.settings.currency)||"EUR";
-  const bigOn=!!(state.settings&&state.settings.bigText);
+  const curSeason=(state.settings&&state.settings.season)||"none";
+  const curTextSize=textSizeOf(state);
   const simOn=!!(state.settings&&state.settings.simpleMode);
+  const [curCompare,setCurCompare]=useState(false);   // acordeón «comparar monedas» (Dinero)
   const segBtn=function(on){ return Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}); };
   // ── Secciones colapsables + buscador (feedback 2026-07-13: «Ajustes se está haciendo
   // kilométrico»). Cada tarjeta es ahora un grupo plegado (estado en localStorage); el
@@ -1195,8 +1210,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [q,setQ]=useState("");
   const normQ=function(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); };
   const [grps,setGrps]=useState({});
-  const isOpen=function(id){ const v=grps[id]; if(v!=null) return v; try{ const st=localStorage.getItem("_setg_"+id); if(st!=null) return st==="1"; }catch(e){} return id==="general"; };
-  const toggleGrp=function(id){ const v=!isOpen(id); try{ localStorage.setItem("_setg_"+id, v?"1":"0"); }catch(e){} setGrps(function(g){ const n=Object.assign({},g); n[id]=v; return n; }); };
+  // Al abrir la app TODAS las secciones arrancan encogidas (petición 2026-07-18): ya no se
+  // recuerda el estado abierto entre sesiones — solo dentro de la sesión actual (grps en memoria).
+  const isOpen=function(id){ const v=grps[id]; return v!=null ? v : false; };
+  const toggleGrp=function(id){ const v=!isOpen(id); setGrps(function(g){ const n=Object.assign({},g); n[id]=v; return n; }); };
   let grpMatches=0;   // cuántos grupos pasan el filtro del buscador (para el «sin resultados»)
   const grp=function(id,icon,title,keywords,val){
     const kids=Array.prototype.slice.call(arguments,5);
@@ -1230,7 +1247,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     React.createElement("input",{style:Object.assign({},inp,{marginTop:12}),placeholder:t("st_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
 
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_appear")),
-    grp("general","🎨",t("v4_set_appear"),"idioma language tema theme color letra grande big text apariencia look",null,
+    grp("general","🎨",t("v4_set_appear"),"idioma language tema theme color temática temporada mundial halloween navidad verano invierno apariencia look",null,
       React.createElement("div",{className:"v4-theme-row","aria-label":t("theme")},
         THEMES.map(function(th){
           return React.createElement("button",{key:th[0],type:"button",title:t("th_"+th[0]),
@@ -1239,13 +1256,52 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
             onClick:function(){ applyTheme(th[0]); setS({theme:th[0]}); }});
         })
       ),
+      // Temáticas de temporada (Mundial/Halloween/Navidad…): color de acento + animación ambiental.
+      row("season","🎉",t("st_theme_season"),t("th_"+(curSeason==="none"?"none":curSeason)),function(){ toggleExp("season"); }),
+      expand==="season" && React.createElement("div",{className:"set-exp"},
+        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
+          SEASONS.map(function(se){
+            return React.createElement("button",{key:se[0],onClick:function(){ applySeason(se[0]); setS({season:se[0]}); },style:segBtn(curSeason===se[0])}, se[1]+" "+t("th_"+se[0]));
+          })),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"8px 2px 0"}}, t("st_theme_season_hint"))),
       row("lang","🌐",t("language"),(LANGS.find(function(L){return L[0]===curLang;})||LANGS[0])[1],function(){ toggleExp("lang"); }),
       expand==="lang" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
           LANGS.map(function(L){
             return React.createElement("button",{key:L[0],onClick:function(){ CURLANG=L[0]; setS({lang:L[0]}); },style:segBtn(curLang===L[0])}, L[1]);
-          }))),
-      row("big","🔠",t("st_bigtext").replace(/^[^ ]+ /,""),null,function(){ applyBigText(!bigOn); setS({bigText:!bigOn}); }, sw(bigOn))
+          })))
+    ),
+
+    // ACCESIBILIDAD (justo debajo de Apariencia): tamaño de letra, reducir animaciones, contraste.
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_a11y")),
+    grp("a11y","♿",t("v4_set_a11y"),"accesibilidad letra grande tamaño texto contraste animaciones reduce motion accessibility",t("ts_"+curTextSize),
+      React.createElement("div",{style:{padding:"6px 14px 4px"}},
+        React.createElement("div",{style:{fontSize:13,fontWeight:700,marginBottom:6}}, t("st_textsize")),
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          [["normal","ts_normal"],["big","ts_big"],["huge","ts_huge"]].map(function(ts){
+            return React.createElement("button",{key:ts[0],onClick:function(){ applyTextSize(ts[0]); setS({textSize:ts[0]}); },style:segBtn(curTextSize===ts[0])}, t(ts[1]));
+          })),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:6}}, t("st_textsize_hint"))
+      ),
+      (function(){ const on=!!(state.settings&&state.settings.reduceMotion);
+        return React.createElement(React.Fragment,null,
+          row("redmo",on?"🐢":"🎞️",t("st_reduce_motion"),null,function(){ applyReduceMotion(!on); setS({reduceMotion:!on}); }, sw(on)),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("st_reduce_motion_hint"))); })(),
+      (function(){ const on=!!(state.settings&&state.settings.hiContrast);
+        return React.createElement(React.Fragment,null,
+          row("hicon",on?"🌗":"🌓",t("st_contrast"),null,function(){ applyContrast(!on); setS({hiContrast:!on}); }, sw(on)),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("st_contrast_hint"))); })()
+    ),
+
+    // «Para empezar» reubicado justo bajo Apariencia/Accesibilidad (petición 2026-07-18).
+    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_easy")),
+    grp("easy","🍃",t("v4_set_easy"),"modo sencillo simple mode tutorial tour empezar fácil easy start",null,
+      row("simple","🍃",t("st_simple_lbl"),null,function(){
+        const sim=!simOn;
+        setS({simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[], dashHidden: sim?SIMPLE_DASH_HIDDEN.slice():[]});
+      }, sw(simOn)),
+      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",padding:"0 14px 10px"}}, t("st_mode_hint")),
+      onTour && row("tour","🎓",t("v4_set_tour"),null,onTour)
     ),
 
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_money")),
@@ -1254,14 +1310,56 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
         React.createElement("button",{style:btn,onClick:saveNums},t("save"))
       ),
-      // Antes era un toggle €↔$ a pelo; ahora acordeón con las divisas del FX del BCE
-      // (EUR/USD/GBP/CHF — petición 2026-07-18 «más monedas»).
+      // Acordeón con TODAS las divisas del FX del BCE (ampliado 2026-07-18: «más monedas»).
       row("cur","💱",t("currency"),t("cur_"+curCur.toLowerCase()),function(){ toggleExp("cur"); }),
       expand==="cur" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
-          ["EUR","USD","GBP","CHF"].map(function(c){
-            return React.createElement("button",{key:c,onClick:function(){ setS({currency:c}); showToast(t("cur_"+c.toLowerCase())); },style:segBtn(curCur===c)}, t("cur_"+c.toLowerCase()));
+          CUR_LIST.map(function(c){
+            return React.createElement("button",{key:c,onClick:function(){ setS({currency:c}); showToast(t("cur_"+c.toLowerCase())); },style:Object.assign({},segBtn(curCur===c),{flex:"1 1 44%"})}, t("cur_"+c.toLowerCase()));
           }))),
+      // Comparativa: 1 € al cambio en cada moneda (tipos BCE ya guardados en fxRates).
+      row("curcmp","📊",t("st_cur_compare"),null,function(){ setCurCompare(!curCompare); }),
+      curCompare && React.createElement("div",{className:"set-exp"},
+        (function(){
+          const tbl=fxTableOf(state);   // c → (1 c = tbl[c] €)
+          const rows=CUR_LIST.filter(function(c){ return c!=="EUR"; }).map(function(c){
+            const per=tbl[c]>0 ? (1/tbl[c]) : null;   // 1 € = per c
+            return React.createElement("div",{key:c,style:{display:"flex",justifyContent:"space-between",padding:"7px 2px",borderBottom:"1px solid var(--line-soft)",fontSize:13.5}},
+              React.createElement("span",{style:{color:"var(--muted)"}}, "1 € ="),
+              React.createElement("span",{className:"num",style:{fontWeight:700}}, per!=null ? (NF.format(per)+" "+(CUR_SYM[c]||c)) : "—"));
+          });
+          return React.createElement("div",{style:{marginTop:6}},
+            rows,
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}}, t("st_cur_compare_hint")));
+        })()),
+      // VARIOS bancos de gasto diario (petición 2026-07-18: TR + Revolut en un viaje, mismo
+      // presupuesto). Lista TODAS tus cuentas (no solo las de Open Banking): al marcar un banco,
+      // sus compras cuentan en el presupuesto y aparecen en Gastos. El saldo de gasto sigue
+      // saliendo de la cuenta «diario» principal; esto solo decide QUÉ compras se contabilizan.
+      row("expbanks","🪙",t("st_expense_banks"),null,function(){ toggleExp("expbanks"); }),
+      expand==="expbanks" && React.createElement("div",{className:"set-exp"},
+        (function(){
+          const ents=[]; (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&ents.indexOf(a.ent)<0) ents.push(a.ent); });
+          if(!ents.length) return React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:8}}, t("st_expense_banks_none"));
+          const cur=expenseBankEnts(state);
+          const toggleEnt=function(ent){
+            set(function(s){
+              const base=expenseBankEnts(s).slice();
+              const i=base.indexOf(ent);
+              if(i>=0){ if(base.length===1) return s; base.splice(i,1); }   // no dejar 0 marcados
+              else base.push(ent);
+              return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
+            });
+          };
+          return React.createElement(React.Fragment,null,
+            React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginTop:8}},
+              ents.map(function(ent){
+                const on=cur.indexOf(ent)>=0;
+                return React.createElement("button",{key:ent,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleEnt(ent); }},
+                  (on?"✓ ":"")+entOf(ent).label);
+              })),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}}, t("st_expense_banks_hint")));
+        })()),
       (function(){
         const gm=(state.settings&&state.settings.gTotalMode)||"split";
         return React.createElement(React.Fragment,null,
@@ -1341,16 +1439,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_aicat_hint"))
       );
     })(),
-
-    React.createElement("div",{className:"v4-set-sec"}, t("v4_set_easy")),
-    grp("easy","🍃",t("v4_set_easy"),"modo sencillo simple mode tutorial tour empezar fácil easy start",null,
-      row("simple","🍃",t("st_simple_lbl"),null,function(){
-        const sim=!simOn;
-        setS({simpleMode:sim, tabHidden: sim?ADVANCED_TABS.slice():[], dashHidden: sim?SIMPLE_DASH_HIDDEN.slice():[]});
-      }, sw(simOn)),
-      React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",padding:"0 14px 10px"}}, t("st_mode_hint")),
-      onTour && row("tour","🎓",t("v4_set_tour"),null,onTour)
-    ),
 
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_app")),
     grp("news","✨",t("st_news"),"novedades news version sugerencias feedback historial whatsnew","v"+CONFIG.APP_VERSION,

@@ -237,6 +237,7 @@ function Goals({state, set, totals, showToast}){
   const [adding,setAdding]=useState(false);
   const [editing,setEditing]=useState(false);
   const [drafts,setDrafts]=useState({});
+  const [contribGoal,setContribGoal]=useState(null);   // meta abierta en la hoja de aportar
   const blank={name:"",emoji:"🎯",target:"",saved:"",deadline:"",monthly:""};
   const [form,setForm]=useState(blank);
 
@@ -249,19 +250,18 @@ function Goals({state, set, totals, showToast}){
     set(function(s){ return Object.assign({},s,{goals:(s.goals||[]).concat([g])}); });
     setForm(blank); setAdding(false);
   };
-  const contribute=function(g){
-    askText({ title:tf("gl_contribute_prompt",{name:g.name}), sub:t("gl_contribute_sub"), ph:"0,00 €",
-      ok:t("gl_contribute"), chips:[25,50,100,250].map(function(v){ return {v:v,label:eur0(v)}; })
-    }).then(function(raw){ if(raw!=null) addToGoal(g, parseFloat(String(raw).replace(',','.'))); });
-  };
-  const addToGoal=function(g,amt){
+  // Aportar a una meta: hoja propia con teclado numérico in-app (como el + de gastos) y elección
+  // de banco de origen — así no salta el teclado del sistema y no rompe la estética (2026-07-18).
+  const contribute=function(g){ setContribGoal(g); };
+  const addToGoal=function(g,amt,bank){
     if(!amt) return;
     set(function(s){ return Object.assign({},s,{goals:(s.goals||[]).map(function(x){
       if(x.id!==g.id) return x;
       const ns=Math.max(0,(x.saved||0)+amt);
       const becameDone=!x.done && ns>=x.target;
       if(becameDone){ celebrate(); if(showToast) showToast(tf("gl_celebrate",{name:x.name})); }
-      return Object.assign({},x,{saved:ns,done:ns>=x.target,doneAt:(ns>=x.target&&!x.doneAt)?new Date().toISOString():x.doneAt});
+      // fromBank: recuerda el último banco de origen (para pre-seleccionarlo la próxima vez y mostrarlo).
+      return Object.assign({},x,{saved:ns,fromBank:bank||x.fromBank,done:ns>=x.target,doneAt:(ns>=x.target&&!x.doneAt)?new Date().toISOString():x.doneAt});
     })}); });
   };
   const delGoal=function(id){ set(function(s){ return Object.assign({},s,{goals:(s.goals||[]).filter(function(g){return g.id!==id;})}); }); if(goals.length<=1) setEditing(false); };
@@ -347,8 +347,76 @@ function Goals({state, set, totals, showToast}){
           React.createElement("button",{className:"btn btn-primary btn-block",onClick:addGoal},t("gl_create")),
           React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAdding(false); setForm(blank); }},t("gl_cancel"))
         )
-      : (!editing || goals.length===0) && React.createElement("button",{className:"v4-ghost-add",onClick:function(){ setAdding(true); }},t("v4_goal_new"))
+      : (!editing || goals.length===0) && React.createElement("button",{className:"v4-ghost-add",onClick:function(){ setAdding(true); }},t("v4_goal_new")),
+
+    React.createElement(ContributeGoalSheet,{goal:contribGoal,state:state,onClose:function(){ setContribGoal(null); },
+      onContribute:function(amt,bank){ addToGoal(contribGoal,amt,bank); setContribGoal(null); }})
   );
+}
+
+/* Hoja «Aportar a una meta» — teclado numérico propio + banco de origen (2026-07-18).
+   El teclado del sistema rompía la estética y no dejaba elegir el banco; esto es igual que
+   el sheet «Apuntar» del +. No mueve saldos de cuentas (la hucha de metas es un bote aparte),
+   solo suma a la meta y recuerda de qué banco la nutres. */
+function ContributeGoalSheet({goal, state, onClose, onContribute}){
+  const [raw,setRaw]=useState("");
+  const [bank,setBank]=useState(null);
+  const bankOpts=useMemo(function(){
+    const seen={}; const out=[];
+    (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&!seen[a.ent]){ seen[a.ent]=1; out.push(a.ent); } });
+    return out;
+  },[state.accounts]);
+  useEffect(function(){
+    if(goal){
+      setRaw("");
+      // Pre-selecciona el último banco usado en esta meta, o la cuenta de gasto diario, o la 1ª.
+      const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
+      setBank(goal.fromBank || (daily&&daily.ent) || (bankOpts[0]||null));
+    }
+  },[goal]);
+  useBackClose(!!goal, onClose);
+  const swipe=useSheetSwipe(!!goal, onClose);
+  if(!goal) return null;
+  const tap=function(ch){
+    if(ch==="⌫"){ setRaw(function(r){ return r.slice(0,-1); }); return; }
+    setRaw(function(r){
+      if(ch===","){ if(r.indexOf(",")>=0||r.indexOf(".")>=0) return r; return (r||"0")+","; }
+      if(r.replace(",","").length>=7) return r;
+      return r==="0"?ch:(r+ch);
+    });
+  };
+  const amt=parseFloat(String(raw).replace(/\./g,"").replace(",","."))||0;
+  const keys=["1","2","3","4","5","6","7","8","9",",","0","⌫"];
+  const save=function(){
+    if(!(amt>0)) return;
+    try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){}
+    onContribute(amt, bank);
+  };
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"serif",style:{fontSize:20,fontWeight:600,textAlign:"center",marginBottom:2}}, (goal.emoji||"🎯")+" "+tf("gl_contribute_title",{name:goal.name})),
+        React.createElement("div",{className:"v4-apuntar-amt serif num"},
+          raw?raw+" €":React.createElement("span",{style:{color:"var(--muted-2)"}},"0 €")),
+        bankOpts.length>0 && React.createElement(React.Fragment,null,
+          React.createElement("div",{className:"v4-exp-sec",style:{marginTop:2}}, t("gl_contribute_from")),
+          React.createElement("div",{className:"v4-chips"},
+            bankOpts.map(function(b){
+              return React.createElement("button",{key:b,className:"v4-chip"+(bank===b?" on":""),onClick:function(){ setBank(b); }},
+                "🏦 "+entOf(b).label);
+            })
+          )
+        ),
+        React.createElement("div",{className:"v4-keys"},
+          keys.map(function(k){
+            return React.createElement("button",{key:k,type:"button","aria-label":k==="⌫"?"Borrar":k,onClick:function(){ tap(k); }}, k);
+          })
+        ),
+        React.createElement("button",{className:"v4-cta",disabled:!(amt>0),style:!(amt>0)?{opacity:.5}:null,onClick:save},
+          amt>0?tf("gl_contribute_save",{x:eur(amt)}):t("gl_contribute"))
+      )
+    ), document.body);
 }
 
 /* Pantalla "Logros" (rediseño 1a): la gamificación (nivel + retos + medallas) vive aquí, FUERA de

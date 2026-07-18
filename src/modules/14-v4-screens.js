@@ -136,7 +136,7 @@ function BillsManageSheet({open, onClose, state, set, totals}){
           React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
         ),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_gestionar_h")),
-        React.createElement(Fijos,{state:state,set:set,totals:totals})
+        React.createElement("div",{className:"v4-embed-legacy"}, React.createElement(Fijos,{state:state,set:set,totals:totals}))
       )
     ), document.body);
 }
@@ -155,12 +155,16 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
   },[]);
   // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
   // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
-  const [selParts,setSelParts]=useState({liq:true,inv:true,goods:true});
+  // Se PERSISTE en settings.carteraParts (petición 2026-07-18: «que se guarde tu elección aunque
+  // cierres la app»): al arrancar se lee de ahí, y cada toque escribe el estado (sincroniza como todo).
+  const savedParts=(state.settings&&state.settings.carteraParts)||null;
+  const [selParts,setSelParts]=useState(savedParts||{liq:true,inv:true,goods:true});
   const [bankBusy,setBankBusy]=useState(false);
   const togglePart=function(k){
     setSelParts(function(p){
       const n=Object.assign({},p,{[k]:!p[k]});
       if(!n.liq&&!n.inv&&!n.goods) return p;   // dejar 0 marcados = gráfico vacío sin sentido
+      set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{carteraParts:n})}); });
       return n;
     });
   };
@@ -229,7 +233,7 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
         disabled:bankBusy,onClick:doBankSync}, bankBusy?t("bp_syncing"):("↻ "+t("v4_sync_banks")))
     ),
     React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true}),
-    !simple && React.createElement(React.Fragment,null,
+    !simple && React.createElement("div",{className:"rise",style:{animationDelay:".12s"}},
       React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),
       React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
       React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›"),
@@ -251,7 +255,7 @@ function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
           React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
         ),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_inv_tools_h")),
-        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false,toolsMode:true})
+        React.createElement("div",{className:"v4-embed-legacy"}, React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false,toolsMode:true}))
       )
     ), document.body);
 }
