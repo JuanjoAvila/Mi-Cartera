@@ -280,7 +280,7 @@ function MonthReportPrompt({state, totals, onClose, showToast}){
           t("rp_networth")+": ", React.createElement("span",{className:"num",style:{fontWeight:700}}, eur0(totals.netWorth)))
       ),
       React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},onClick:function(){
-        shareMonthReport(state, totals);
+        shareMonthReport(state, totals, showToast);
         showToast(t("mr_shared"));
         onClose();
       }}, t("mr_share")),

@@ -3,7 +3,7 @@
    Spec: docs/design/handoff/SPEC-v4.md §5–7
    ============================================================ */
 
-function PlanTab({state, set, totals, showToast, simple}){
+function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
   const [seg,setSeg]=useState("recibos");
   const [manageOpen,setManageOpen]=useState(false);
   // Modo sencillo: solo Recibos (spec §2).
@@ -11,6 +11,14 @@ function PlanTab({state, set, totals, showToast, simple}){
     ? [{id:"recibos",lab:t("v4_plan_recibos")}]
     : [{id:"recibos",lab:t("v4_plan_recibos")},{id:"deudas",lab:t("v4_plan_deudas")},{id:"metas",lab:t("v4_plan_metas")}];
   useEffect(function(){ if(simple && seg!=="recibos") setSeg("recibos"); },[simple,seg]);
+  // «Ver plan» desde Inicio fuerza el segmento (recibos/metas): sin esto quedaba el último
+  // que usaste (p.ej. Deudas) y el link engañaba (feedback 2026-07-18). gotoSeg lleva ts para
+  // re-disparar aunque pidas dos veces el mismo segmento.
+  useEffect(function(){
+    if(!gotoSeg||!gotoSeg.id) return;
+    setSeg(simple?"recibos":gotoSeg.id);
+    if(clearGoto) clearGoto();
+  },[gotoSeg&&gotoSeg.ts]);
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_plan_title")),
     React.createElement("div",{className:"v4-seg",role:"tablist"},
@@ -133,34 +141,69 @@ function BillsManageSheet({open, onClose, state, set, totals}){
     ), document.body);
 }
 
-function CarteraTab({state, set, totals, fetchPrices, pricing, simple}){
+function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSync}){
   const [invTools,setInvTools]=useState(false);
+  // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
+  // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
+  const [selParts,setSelParts]=useState({liq:true,inv:true,goods:true});
+  const [bankBusy,setBankBusy]=useState(false);
+  const togglePart=function(k){
+    setSelParts(function(p){
+      const n=Object.assign({},p,{[k]:!p[k]});
+      if(!n.liq&&!n.inv&&!n.goods) return p;   // dejar 0 marcados = gráfico vacío sin sentido
+      return n;
+    });
+  };
   const liq=totals.liquid||0, inv=totals.invested||0, goods=totals.assetsTotal||0;
-  const sum=Math.max(0.01, liq+inv+goods);
-  const wLiq=(liq/sum)*100, wInv=(inv/sum)*100, wGoods=(goods/sum)*100;
-  const p=eurParts(totals.netWorth);
+  const parts=[
+    {k:"liq",  v:liq,   color:"var(--mint)",  lab:t("d_liquid")},
+    {k:"inv",  v:inv,   color:"var(--blue)",  lab:t("d_invest")},
+    {k:"goods",v:goods, color:"var(--cream)", lab:t("d_goods")},
+  ];
+  const active=parts.filter(function(x){ return selParts[x.k]; });
+  const allOn=active.length===3;
+  const sum=Math.max(0.01, active.reduce(function(a,x){ return a+x.v; },0));
+  // Con todo marcado el hero sigue siendo el patrimonio neto (deudas descontadas, como siempre);
+  // con selección parcial enseña la suma de lo marcado (sin deudas — no aplican a un subconjunto).
+  const p=eurParts(allOn ? totals.netWorth : active.reduce(function(a,x){ return a+x.v; },0));
+  const heroLab=allOn ? t(simple?"v4_money_total":"d_networth")
+    : t("v4_sel_partial")+" · "+active.map(function(x){ return x.lab; }).join(" + ");
+  const doBankSync=function(){
+    if(!onBankSync||bankBusy) return;
+    setBankBusy(true);
+    Promise.resolve(onBankSync()).finally(function(){ setBankBusy(false); });
+  };
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_cartera_title")),
     React.createElement("div",{className:"v4-card v4-card-hero rise",style:{animationDelay:".05s"}},
-      React.createElement("div",{className:"v4-micro"}, t(simple?"v4_money_total":"d_networth")),
+      React.createElement("div",{className:"v4-micro"}, heroLab),
       React.createElement("div",{className:"serif num",style:{fontSize:40,fontWeight:550,letterSpacing:"-1px",lineHeight:1.05,marginTop:6}},
         p.ent, React.createElement("span",{style:{fontSize:22,color:"var(--muted)"}},","+p.dec+" "+p.sym)),
       React.createElement("div",{className:"v4-stackbar",style:{marginTop:16}},
-        React.createElement("i",{style:{flex:wLiq,background:"var(--mint)"}}),
-        React.createElement("i",{style:{flex:wInv,background:"var(--blue)"}}),
-        React.createElement("i",{style:{flex:wGoods,background:"var(--cream)"}})
+        active.map(function(x){
+          return React.createElement("i",{key:x.k,style:{flex:Math.max(0.02,(x.v/sum)*100),background:x.color}});
+        })
       ),
       React.createElement("div",{className:"v4-legend"},
-        React.createElement("span",null, React.createElement("b",{style:{background:"var(--mint)"}}), t("d_liquid")+" "+eur0(liq)),
-        React.createElement("span",null, React.createElement("b",{style:{background:"var(--blue)"}}), t("d_invest")+" "+eur0(inv)),
-        React.createElement("span",null, React.createElement("b",{style:{background:"var(--cream)"}}), t("d_goods")+" "+eur0(goods))
+        parts.map(function(x){
+          const on=!!selParts[x.k];
+          return React.createElement("button",{key:x.k,type:"button",className:"v4-legend-btn"+(on?"":" off"),
+            "aria-pressed":on,onClick:function(){ togglePart(x.k); }},
+            React.createElement("b",{style:{background:x.color}}), x.lab+" "+eur0(x.v));
+        })
       ),
-      React.createElement("div",{style:{marginTop:12,fontSize:13,color:"var(--muted)"}},
+      allOn && React.createElement("div",{style:{marginTop:12,fontSize:13,color:"var(--muted)"}},
         t("v4_debts_foot_a"),
         React.createElement("span",{style:{color:"var(--coral)",fontWeight:700}}, " "+eur0(-(totals.debtTotal||0))+" "),
         t("v4_debts_foot_b"))
     ),
-    React.createElement("div",{className:"v4-sec-h"}, t("v4_cuentas")),
+    React.createElement("div",{className:"v4-sec-h",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+      React.createElement("span",null, t("v4_cuentas")),
+      // Sync a demanda: el auto-sync al abrir la app se retiró (los bancos veían «bot» y
+      // caducaban la conexión cada dos por tres — feedback 2026-07-18).
+      state.hasBankLink && onBankSync && React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:0},
+        disabled:bankBusy,onClick:doBankSync}, bankBusy?t("bp_syncing"):("↻ "+t("v4_sync_banks")))
+    ),
     React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true}),
     !simple && React.createElement(React.Fragment,null,
       React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),

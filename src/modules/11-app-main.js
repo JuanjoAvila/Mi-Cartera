@@ -33,6 +33,7 @@ function App(){
   const trashRef=useRef(null);
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
   const [gotoExp,setGotoExp]=useState(null);               // punto 5: gasto a enfocar al tocar la noti ({amount,merchant,ts})
+  const [planGoto,setPlanGoto]=useState(null);             // segmento de Plan a forzar desde «Ver plan» ({id,ts})
   const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
   const [toast,setToast]=useState(null);
   const [syncing,setSyncing]=useState(false);
@@ -46,7 +47,15 @@ function App(){
     try{ const s=String(m||""); if(/^[✕⚠✗]/.test(s)) cloud.logEvent('error','TOAST: '+s.slice(0,300)); }catch(e){}
   };
   // Moneda de visualización: convierte todos los importes (en €) a la moneda elegida en Ajustes.
-  (function(){ const c=(state.settings&&state.settings.currency)||"EUR"; DISP.sym=c==="USD"?"$":"€"; DISP.k=c==="USD"?((state.fx>0)?1/state.fx:1):1; })();
+  // GBP/CHF usan fxRates (XXX→EUR, del BCE) — si aún no ha llegado el FX, se queda en € antes
+  // que enseñar un número inventado (regla de la casa: nunca inventar un tipo de cambio).
+  (function(){
+    const c=(state.settings&&state.settings.currency)||"EUR";
+    const SYM={EUR:"€",USD:"$",GBP:"£",CHF:"CHF"};
+    const r=c==="EUR"?1:fxTableOf(state)[c];
+    if(c!=="EUR" && r>0){ DISP.sym=SYM[c]||c; DISP.k=1/r; }
+    else { DISP.sym="€"; DISP.k=1; }
+  })();
   CURLANG = (state.settings&&state.settings.lang) || "es";   // idioma activo (i18n)
   SIMPLEMODE = !!(state.settings&&state.settings.simpleMode); // modo sencillo → etiquetas sin jerga
 
@@ -127,8 +136,8 @@ function App(){
 
   // CAPA 2 — Open Banking: lee el saldo del banco y re-ancla el motor (= editar el saldo a mano,
   // pero con el número real). opts.manual = avisa siempre (botón "Actualizar saldo").
-  const BANK_SYNC_THROTTLE=90*60*1000;    // auto: ~cada 1,5h (cap PSD2 desatendido ≈ 4/día; antes 6h se quedaba frío)
-  const BANK_FG_MIN=30*60*1000;           // al volver a primer plano: sync si han pasado ≥30 min
+  // (Los throttles de auto-sync BANK_SYNC_THROTTLE/BANK_FG_MIN se retiraron el 2026-07-18
+  //  junto con el propio auto-sync: el banco solo se consulta a demanda.)
   const runBankSync=function(opts){
     opts=opts||{};
     if(!cloud.enabled() || !sessionRef.current || bankSyncing.current) return Promise.resolve();
@@ -274,10 +283,11 @@ function App(){
       if(Date.now()-lastVisSync.current < 30000) return;   // ya sincronizado hace nada: no recargues
       lastVisSync.current=Date.now();
       syncCloudExpenses().catch(function(){});
-      const st=stateRef.current||{};
-      if(st.hasBankLink && Date.now()-(st.lastBankSync||0) >= BANK_FG_MIN){
-        mcScheduleIdle(function(){ runBankSync({}); });
-      }
+      // (2026-07-18) Aquí había un bankSync automático al volver a primer plano. RETIRADO:
+      // cada apertura disparaba una consulta PSD2 desatendida y los bancos (Caixa, Sabadell)
+      // acababan tumbando el consentimiento por «uso robótico». Ahora el banco se sincroniza
+      // SOLO cuando lo pides: botón «Sincronizar bancos» en Cartera, «Actualizar» en Mis
+      // bancos, o la noti del banco (ajuste st_banksync_notif, que sí es un evento real).
       // APK: ping pendiente del listener de notis de banco (si la app estaba en frío).
       const nat=natPlugin();
       if(nat&&nat.consumeBankSyncPing){
@@ -417,17 +427,16 @@ function App(){
     }
   },[]);
 
-  // CAPA 2 — auto-sync del saldo al abrir: justo tras conectar, o pasado el margen (throttle).
+  // CAPA 2 — al abrir, el banco YA NO se sincroniza solo (2026-07-18): el sync desatendido en
+  // cada apertura hacía que Caixa/Sabadell marcaran el consentimiento como uso robótico y lo
+  // caducaran una y otra vez. Quedan solo dos syncs «con motivo»:
+  //  · justo tras autorizar un banco (vuelta del ?bank=ok) — lo acabas de pedir tú;
+  //  · la primera vez que hay banco sin movimientos capturados (bootstrap de conciliación).
   useEffect(function(){
     if(!uid) return;
     if(bankJustConnected.current){ bankJustConnected.current=false; runBankSync({manual:true}); return; }
     if(!state.hasBankLink) return;   // nadie ha conectado banco en esta cartera → no llamamos a la función
-    // CAPA 3: primera vez que hay banco pero aún no se han capturado movimientos (bankTx sin definir)
-    // → sincroniza saltándose el throttle, para que la tarjeta de conciliación aparezca sola.
-    // Tras el 1er sync, bankTx es un array (aunque vacío) y deja de cumplirse → no se repite.
-    if(typeof state.bankTx==="undefined"){ runBankSync({}); return; }
-    if(Date.now()-(state.lastBankSync||0) < BANK_SYNC_THROTTLE) return;
-    runBankSync({});
+    if(typeof state.bankTx==="undefined"){ runBankSync({}); return; }   // bootstrap: solo 1 vez en la vida del enlace
   },[uid, state.hasBankLink]);
 
   // Y lo mismo para los brókers que SÍ sincronizan solos (TR nativo + MyInvestor): al abrir,
@@ -475,81 +484,16 @@ function App(){
   // reconectar, sube los cambios hechos sin red. Sin conexión NO se rompe ni se pierde nada.
   const [online,setOnline]=useState(typeof navigator==="undefined" || navigator.onLine!==false);
   const wasOnline=useRef(online);
-  // Aviso "hay una versión nueva" (lo dispara el registro del Service Worker cuando queda una esperando)
-  const [updateReady,setUpdateReady]=useState(false);
-  useEffect(function(){
-    const h=function(){
-      setUpdateReady(true);
-      if(window._mcNotifyUpdate) window._mcNotifyUpdate(null);
-    };
-    window.addEventListener("mc-sw-update", h);
-    return function(){ window.removeEventListener("mc-sw-update", h); };
-  },[]);
-  // App nativa: cuando el OTA descarga un bundle web nuevo y lo deja listo, volvemos a enseñar
-  // el botoncito de arriba «Nueva versión · toca para actualizar» (feedback 2026-07-12: había
-  // desaparecido al pasar el OTA a modo silencioso «entra al próximo arranque»). Tocarlo lo
-  // estrena al momento (up.set); si no se toca, entra solo en el siguiente arranque igual.
-  const [otaReady,setOtaReady]=useState(function(){
-    if(window._mcOtaReady&&window._mcOtaReady.id) return true;
-    try{
-      var p=localStorage.getItem("_otaPending");
-      return !!(p&&window._mcNewerVer&&window._mcNewerVer(p, CONFIG.APP_VERSION));
-    }catch(e){ return false; }
-  });
-  useEffect(function(){
-    const h=function(){
-      // Pill si hay bundle listo O si ya hay pending (descargando / listo al próximo arranque).
-      if(window._mcOtaReady&&window._mcOtaReady.id){ setOtaReady(true); return; }
-      try{
-        var p=localStorage.getItem("_otaPending");
-        setOtaReady(!!(p&&window._mcNewerVer&&window._mcNewerVer(p, CONFIG.APP_VERSION)));
-      }catch(e){ setOtaReady(false); }
-    };
-    window.addEventListener("mc-ota-ready", h);
-    if(window._mcRestoreOtaPending) window._mcRestoreOtaPending();
-    var tick=function(){
-      if(window._mcCheckOtaUpdates) window._mcCheckOtaUpdates();
-      if(window._mcCheckApkUpdate) window._mcCheckApkUpdate();
-    };
-    setTimeout(tick, 150);
-    var onVis=function(){ if(document.visibilityState==="visible") tick(); };
-    document.addEventListener("visibilitychange", onVis);
-    var iv=setInterval(tick, 30*60*1000);
-    return function(){
-      window.removeEventListener("mc-ota-ready", h);
-      document.removeEventListener("visibilitychange", onVis);
-      clearInterval(iv);
-    };
-  },[]);
-  // Ajustes › "Personalizar widgets del Resumen": salta a la pestaña Resumen (Dashboard
-  // enciende su modo edición con el mismo evento).
-  useEffect(function(){
-    const h=function(){ const i=tabOrderOf(stateRef.current).indexOf("dash"); if(i>=0) setTab(i); };
-    window.addEventListener("mc-dash-edit",h);
-    return function(){ window.removeEventListener("mc-dash-edit",h); };
-  },[]);
+  // Actualizaciones (SW web + OTA + APK): TODO el estado vive en useUpdates (10-app-components).
+  // Antes eran tres efectos sueltos aquí — el «spaghetti» del feedback 2026-07-18.
+  const upd=useUpdates();
+  // («Personalizar widgets del Resumen» y su evento mc-dash-edit se retiraron el 2026-07-18:
+  //  apuntaban al Dashboard v3, que ya no existe en la nav v4.)
   useEffect(function(){
     const h=function(){ setDrawerOpen(true); };
     window.addEventListener("mc-open-settings",h);
     return function(){ window.removeEventListener("mc-open-settings",h); };
   },[]);
-  // Aviso "hay APK nuevo" (solo app nativa; lo dispara el chequeo de apk.json del bloque OTA).
-  // Al tocar: MiCartera.installApk descarga y abre el instalador — actualización SIN cable.
-  const [apkUpd,setApkUpd]=useState(window._mcApkUpdate||null);
-  useEffect(function(){
-    const h=function(){ setApkUpd(window._mcApkUpdate||null); };
-    window.addEventListener("mc-apk-update", h);
-    return function(){ window.removeEventListener("mc-apk-update", h); };
-  },[]);
-  const doApkInstall=function(){
-    const nat=natPlugin();
-    if(!nat||!nat.installApk||!apkUpd) return;
-    showToast(t("apk_downloading"));
-    nat.installApk({url:apkUpd.url}).then(function(r){
-      if(r&&r.needsPermission){ showToast(t("apk_perm")); return; }   // Android abrió el ajuste; reintocar el botón
-      // ok: el instalador del sistema se abre solo encima de la app
-    }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); });
-  };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
     window.addEventListener("online",on); window.addEventListener("offline",off);
@@ -1343,10 +1287,10 @@ function App(){
         requestAnimationFrame(function(){ requestAnimationFrame(function(){ profSetOrigin(); setProfileOpen(true); }); });
       },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTab(i); },
-      onGoPlan:function(){ const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
+      onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTab(i); }});
     if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
-    if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple});
-    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple});
+    if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
+    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return runBankSync({manual:true}); }});
     return null;
   };
 
@@ -1397,14 +1341,9 @@ function App(){
     tourOpen && React.createElement(Tour,{onDone:endTour, goTab:goTab, tabIds:tabIds}),
     whatsNew && React.createElement(WhatsNew,{onClose:function(){ setWhatsNew(false); },showToast:showToast,set:set,state:state}),
     monthReportOpen && React.createElement(MonthReportPrompt,{state:state,totals:totals,showToast:showToast,onClose:function(){ setMonthReportOpen(false); }}),
-    (updateReady||otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){
-      if(otaReady){
-        if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
-        showToast(t("upd_downloading")); return;
-      }
-      if(window.__mcApplyUpdate) window.__mcApplyUpdate();
-    }}, (otaReady&&!(window._mcOtaReady&&window._mcOtaReady.id))?t("upd_downloading"):t("upd_ready")),
-    apkUpd && React.createElement("button",{className:"update-pill",onClick:doApkInstall}, tf("apk_ready",{v:apkUpd.versionName})),
+    (upd.updateReady||upd.otaReady) && React.createElement("button",{className:"update-pill",onClick:function(){ upd.applyUpdate(showToast); }},
+      (upd.otaReady&&!upd.otaDownloaded)?t("upd_downloading"):t("upd_ready")),
+    upd.apkUpd && React.createElement("button",{className:"update-pill",onClick:function(){ upd.installApk(showToast); }}, tf("apk_ready",{v:upd.apkUpd.versionName})),
     !online && React.createElement("div",{className:"offline-pill"}, t("off_pill")),
     toast && React.createElement("div",{className:"toast"},toast),
     showAuth && React.createElement(AuthPanel,{session:session,onClose:function(){ setShowAuth(false); setRecovery(false); },showToast:showToast,recovery:recovery,startMode:authStart}),

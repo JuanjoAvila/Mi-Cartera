@@ -2,6 +2,46 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.1.0] — 2026-07-18
+### Cartera editable de verdad, Open Banking solo a demanda y Ajustes al día (lote feedback 2026-07-18)
+
+**Open Banking — sync SOLO a demanda (los consentimientos caducaban por «uso robótico»).**
+- `11-app-main.js`: retirados el auto-sync al abrir/volver a primer plano y sus throttles (`BANK_SYNC_THROTTLE`/`BANK_FG_MIN`). Un sync PSD2 desatendido en cada apertura hacía que Caixa/Sabadell tumbaran el consentimiento una y otra vez. Quedan los syncs «con motivo»: tras autorizar (`?bank=ok`), bootstrap de conciliación (1ª vez sin `bankTx`), noti del banco (ajuste `st_banksync_notif`) y manual.
+- `CarteraTab`: botón discreto «↻ Sincronizar bancos» (`v4-link-mini`) junto a «Tus cuentas», visible con `hasBankLink`; llama a `runBankSync({manual:true})`.
+
+**Cartera.**
+- Hero con leyenda TOCABLE (`.v4-legend-btn`): liquidez/inversiones/bienes multiseleccionables; el stackbar y la cifra se recalculan (selección parcial = suma de lo marcado, sin deudas; todo marcado = patrimonio neto como siempre). Nunca se pueden desmarcar los tres.
+- Editor de cuentas v4 COMPLETO: nombre + rol (recibos/diario/todo) + borrar — el rol se quedó inaccesible con la nav v4 (solo existía en el Wealth v3 no montado). Cuentas re-ancladas por el banco (`bankIban`): saldo solo-lectura (editable solo el nombre/rol) + hint `v4_acc_locked`. Cuentas extra OB: renombrar + promocionar con rol (como en v3).
+- Bienes: vuelve el editar (valor + nombre) con el mismo patrón `edit-link` — desapareció en el rediseño.
+- Inversiones: fuera el hint anticuado `v4_inv_embed_h`; «✎ Editar a mano» pequeño al pie (despliega todos los brókers con inputs; reutiliza el editor de siempre).
+- Badge OB (`.v4-ob-badge`) movida a la línea de meta con wrap: pegada al nombre se cortaba y descuadraba con nombres largos o «· caducado».
+
+**Inicio / Plan.**
+- Carrusel de metas con `stopPropagation` en touch: scrollearlo horizontal ya no cambia de pestaña (aparecía al crear la primera meta).
+- «Ver plan ›» fuerza el segmento de Plan (`planGoto {id,ts}` → `PlanTab.gotoSeg`): cargos → Recibos, metas → Metas. Antes quedaba el último subtab usado (Deudas).
+
+**Nav inferior.**
+- `.botnav` pasa de flex-child a `position:absolute` dentro de `.app-shell` (ahora `relative`): al esconderse ya no deja un bloque vacío — el contenido corre por debajo de la barra translúcida. Curva/duración unificadas con el track (.42s) y sin fade.
+
+**Ajustes.**
+- Filas `.set-row` compactas (48px de alto mínimo, sigue ≥44px táctil) y botones inline más pequeños; entrada `rise` escalonada por secciones y en los acordeones (`set-exp`), con `prefers-reduced-motion` respetado.
+- Moneda de visualización: EUR/USD/GBP/CHF (acordeón). `DISP` en App usa `fxTableOf`; sin FX aún descargado se queda en € (nunca inventar tipo).
+- «Tu cuenta»: vuelven huella (toggle `bio`) y cerrar sesión — desde el rediseño solo vivían en el AuthPanel, inalcanzable estando logueado.
+- Conexiones → «Hogar y gastos compartidos» (`SharedPanel`): Hogar Fase 1+2 y grupos compartidos eran INALCANZABLES desde la nav v4. Fix de paso: `Shared` sombreaba el generador `uid()` con el id de usuario (crear grupo/gasto habría petado con «uid is not a function»).
+- Sugerencias con pantalla propia (`FeedbackPanel`, fila «Enviar sugerencia»); el popup de Novedades queda solo como historial.
+- Avanzado: fuera «Personalizar widgets del Resumen» (+ evento `mc-dash-edit` y clave `st_widgets`) — apuntaba al Dashboard v3.
+- «Informe del mes»: `shareMonthReport` acepta `showToast` y si `navigator.share` falla (WebView) descarga el PNG y avisa (`rp_saved`); cancelar el share no descarga.
+
+**Actualizaciones (des-spaghettización).**
+- Nuevo hook `useUpdates()` (10-app-components): agrupa los 3 canales (SW web / OTA Capgo / APK) con el mapa documentado; App pasa de 3 efectos sueltos + `doApkInstall` a `const upd=useUpdates()`. 12-boot queda como transporte puro (comentario de cabecera con el reparto). Comportamiento idéntico.
+
+**MyInvestor (diagnóstico captcha).**
+- Telemetría de VÍA de login: si el captcha salta por la Edge se apunta si había nativo disponible; si el login nativo peta y se cae a Edge, se apunta el motivo. Con esto Actividad dirá por fin por qué un móvil con APK ≥28 sigue viendo captcha.
+
+**i18n:** nuevas `v4_sync_banks(_done)`, `v4_acc_locked`, `v4_sel_partial`, `v4_edit_goods`, `cur_gbp`, `cur_chf`, `st_feedback`, `st_shared`, `rp_saved` (es/en/ca); retiradas `st_widgets`, `v4_inv_embed_h`.
+
+Sin cambios nativos Android: todo llega por OTA (web + APK 28 con bundle ≥4.0.12).
+
 ## [4.0.15] — 2026-07-17
 ### Open Banking estable, oro con % (coste manual), nav auto-oculta y Ajustes/privacidad in-app
 

@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-17 · **v4.0.15** — Open Banking ya no se cae por fallos transitorios (solo caduca de verdad con 401/mensaje explícito), materias primas de Revolut con coste manual para ver el % sube/baja, nav inferior que se esconde al bajar (estilo Revolut) y privacidad DENTRO de la app (adiós ventana `_blank` bajo el notch) + limpieza de Ajustes.
+> Estado a 2026-07-18 · **v4.1.0** — Open Banking solo a demanda (botón «Sincronizar bancos» en Cartera; el auto-sync al abrir caducaba los consentimientos), gráfico de Cartera multiseleccionable, editor de cuentas v4 completo (nombre+rol+bienes; el rol se había quedado inaccesible), Hogar/Compartido de vuelta (Ajustes → Conexiones), huella + cerrar sesión de vuelta en Ajustes, monedas £/CHF, sugerencias con pantalla propia, `useUpdates()` (fin del spaghetti de updates en App) y nav inferior flotante sin bloque al esconderse.
 
 ## Listo para uso diario
 
@@ -10,8 +10,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.0.15** |
-| APK (`versionName` / `versionCode`) | **4.0.12** / **28** — assembleRelease compilado e instalado en el móvil del usuario (adb, 2026-07-17) con el bundle 4.0.14 horneado. Los cambios de 4.0.15 son OTA (web + Edge). Falta subir el APK a un release de GitHub + `apk.json` si se quiere OTA de APK. |
+| Web / OTA (`VERSION`) | **4.1.0** |
+| APK (`versionName` / `versionCode`) | **4.0.12** / **28** — assembleRelease compilado e instalado en el móvil del usuario (adb, 2026-07-17) con el bundle 4.0.14 horneado. Los cambios de 4.0.15 y 4.1.0 son OTA (web + Edge), sin cambios nativos. Falta subir el APK a un release de GitHub + `apk.json` si se quiere OTA de APK. |
 | `public/apk.json` | debe coincidir con el release publicado |
 
 ## Pendiente / limitaciones conocidas

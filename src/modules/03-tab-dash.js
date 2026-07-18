@@ -157,7 +157,9 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
     React.createElement("div",{className:"v4-section rise",style:{animationDelay:".15s"}},
       React.createElement("div",{className:"v4-section-h"},
         React.createElement("span",null, t("v4_upcoming")),
-        React.createElement("button",{className:"link",onClick:function(){ if(onGoPlan) onGoPlan(); }}, t("v4_see_plan"))
+        // «Ver plan» fuerza el segmento Recibos: sin esto aterrizabas en el último subtab
+        // usado (Deudas) — feedback 2026-07-18.
+        React.createElement("button",{className:"link",onClick:function(){ if(onGoPlan) onGoPlan("recibos"); }}, t("v4_see_plan"))
       ),
       React.createElement("div",{className:"v4-card",style:{padding:"6px 16px"}},
         upcoming.length===0
@@ -183,7 +185,11 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
         React.createElement("span",null, t("v4_your_goals")),
         React.createElement("button",{className:"link",onClick:function(){ if(onGoPlan) onGoPlan("metas"); }}, t("v4_see_plan"))
       ),
-      React.createElement("div",{className:"v4-goals"},
+      // stopPropagation: el carrusel scrollea en horizontal y sin esto el gesto burbujeaba al
+      // viewport y cambiaba de pestaña a la vez (feedback 2026-07-18, aparecía al crear metas).
+      React.createElement("div",{className:"v4-goals",
+        onTouchStart:function(e){ e.stopPropagation(); },
+        onTouchMove:function(e){ e.stopPropagation(); }},
         goals.map(function(g){
           const pct=goalPct(g); const eta=goalEta(g, tt.ahorroMensual);
           return React.createElement("div",{key:g.id,className:"v4-goal"},
