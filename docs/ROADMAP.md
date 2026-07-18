@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-18 · **v4.5.0** — histórico del banco con destino Gasto/Recibo/Ingreso (+ ingresos).
+> Estado a 2026-07-18 · **v4.5.1** — gestos: 1ª apertura con contenido + Resumen bloqueado al bajar perfil.
 
 ## Listo para uso diario
 
@@ -10,7 +10,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.5.0** |
+| Web / OTA (`VERSION`) | **4.5.1** |
 | APK (`versionName` / `versionCode`) | **4.4.0** / **29** — release GitHub `v4.4.0` + `apk.json` publicados |
 | `public/apk.json` | **29** / 4.4.0 → `Mi-Cartera-4.4.0.apk` |
 

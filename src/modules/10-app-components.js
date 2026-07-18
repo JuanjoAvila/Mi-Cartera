@@ -681,6 +681,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.5.1", d:"18 jul 2026", t:"Primera vez que abres Ajustes/perfil: ya se ve el contenido", items:[
+    "✨ La primera vez que tiras despacio hacia Ajustes o el perfil ya no sale el panel negro vacío: el contenido se prepara en segundo plano y está listo al arrastrar.",
+    "👆 Al bajar el perfil, Resumen se queda quieto (sin scroll a la vez) — eso quitaba fluidez cuando pelean los dos gestos.",
+  ]},
   {v:"4.5.0", d:"18 jul 2026", t:"Histórico del banco: a Gastos, Recibos o Ingresos", items:[
     "🏦 Al importar histórico ya salen también los ingresos (nómina, bizums…). En cada movimiento eliges si va a Gastos, a Recibos (fijo mensual con su día) o a Ingresos — así no tienes que teclear la luz a mano si ya está en el banco.",
     "🛒 Al sincronizar un banco marcado en «También apuntar gastos de tarjeta», las compras con tarjeta del mes siguen entrando solas en Gastos (se ven en Todos y filtrando por ese banco) y cuentan para el presupuesto. El rol «gasto diario» sigue siendo uno (TR); el resto son bancos extra de tarjeta.",
