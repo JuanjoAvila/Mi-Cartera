@@ -1908,7 +1908,8 @@ const LANG = {
     v4_apuntar_need:"Pon un importe 🙂", v4_apuntar_ok:"✓ Gasto apuntado", v4_apuntar_ok_in:"✓ Ingreso apuntado",
     v4_save_gasto:"Guardar gasto", v4_save_in:"Guardar ingreso", v4_back:"Volver",
     v4_debts_hero:"Debes en total", v4_debts_sub:"{x}/mes en cuotas · bajando cada mes 📉",
-    v4_debts_ends:"acabas en {d}", v4_amort_now:"💸 Amortizar ahora",
+    v4_debts_ends:"acabas en {d}", v4_debts_ends_est:"a este ritmo acabas ~{d}", v4_amort_now:"💸 Amortizar ahora",
+    v4_debt_party_1:"🎉 {name}: ¡ÚLTIMA cuota este mes ({x})!", v4_debt_party_sub:"Después, {x}/mes libres para ti.",
     v4_goals_hero:"Ahorrado en metas", v4_goal_new:"+ Nueva meta de ahorro",
     v4_paid_group:"{names} · {n} recibos",
     v4_roundup_card:"El redondeo de tus compras invirtió {x} este mes sin que hicieras nada.",
@@ -1968,7 +1969,8 @@ const LANG = {
     st_sentry:"Sentry (errores en prod)", st_sentry_test:"Enviar error de prueba", st_sentry_sent:"✓ Enviado a Sentry (mira Issues en unos segundos)", st_sentry_hint:"Solo tú ves este bloque (admin). Sirve para comprobar que los crashes llegan a Sentry; el resto de usuarios no lo ve.",
     bp_empty_hint:"Aquí se conectan tus bancos de verdad (Open Banking): el saldo y los movimientos entran solos. Las cuentas con saldo apuntado a mano viven en Patrimonio — conectar el banco es opcional y puedes hacerlo cuando quieras.",
     th_green:"Verde", th_dark:"Oscuro", th_light:"Claro", th_blue:"Azul", cur_eur:"€ Euro", cur_usd:"$ Dólar", cur_gbp:"£ Libra", cur_chf:"CHF Franco suizo",
-    rp_saved:"✓ Informe descargado (no se pudo abrir el menú de compartir)",
+    rp_saved:"✓ Informe guardado en Descargas (busca «mi-cartera-…png»)",
+    rp_saved_notif:"📊 Informe del mes guardado en Descargas: {f}. Ábrelo desde tu app de Archivos o la galería.",
     ob_welcome:"Bienvenido/a 👋",
     ob_intro:"Vamos a montar tu cartera en 1 minuto. Empieza por tus cuentas y el presupuesto; las inversiones, deudas y gastos fijos los añades luego en sus pestañas.",
     ob_budget:"Presupuesto mensual para gastos (€)", ob_accounts:"Tus cuentas (banco y saldo actual)",
@@ -2006,7 +2008,8 @@ const LANG = {
     v4_apuntar_need:"Enter an amount 🙂", v4_apuntar_ok:"✓ Expense added", v4_apuntar_ok_in:"✓ Income added",
     v4_save_gasto:"Save expense", v4_save_in:"Save income", v4_back:"Back",
     v4_debts_hero:"You owe in total", v4_debts_sub:"{x}/mo in payments · going down each month 📉",
-    v4_debts_ends:"done by {d}", v4_amort_now:"💸 Pay down now",
+    v4_debts_ends:"done by {d}", v4_debts_ends_est:"at this pace done ~{d}", v4_amort_now:"💸 Pay down now",
+    v4_debt_party_1:"🎉 {name}: LAST instalment this month ({x})!", v4_debt_party_sub:"After that, {x}/mo back in your pocket.",
     v4_goals_hero:"Saved in goals", v4_goal_new:"+ New savings goal",
     v4_paid_group:"{names} · {n} bills",
     v4_roundup_card:"Rounding up your purchases invested {x} this month without you lifting a finger.",
@@ -2068,7 +2071,8 @@ const LANG = {
     st_sentry:"Sentry (prod errors)", st_sentry_test:"Send test error", st_sentry_sent:"✓ Sent to Sentry (check Issues in a few seconds)", st_sentry_hint:"Only you see this block (admin). Use it to verify crashes reach Sentry; other users never see it.",
     bp_empty_hint:"This is where your real banks connect (Open Banking): balance and transactions come in on their own. Accounts with a hand-typed balance live in Net worth — connecting the bank is optional and you can do it anytime.",
     th_green:"Green", th_dark:"Dark", th_light:"Light", th_blue:"Blue", cur_eur:"€ Euro", cur_usd:"$ Dollar", cur_gbp:"£ Pound", cur_chf:"CHF Swiss franc",
-    rp_saved:"✓ Report downloaded (share menu unavailable)",
+    rp_saved:"✓ Report saved to Downloads (look for “mi-cartera-…png”)",
+    rp_saved_notif:"📊 Monthly report saved to Downloads: {f}. Open it from your Files app or gallery.",
     ob_welcome:"Welcome 👋",
     ob_intro:"Let's set up your wallet in 1 minute. Start with your accounts and budget; you can add investments, debts and fixed costs later in their tabs.",
     ob_budget:"Monthly spending budget (€)", ob_accounts:"Your accounts (bank and current balance)",
@@ -2106,7 +2110,8 @@ const LANG = {
     v4_apuntar_need:"Posa un import 🙂", v4_apuntar_ok:"✓ Despesa apuntada", v4_apuntar_ok_in:"✓ Ingrés apuntat",
     v4_save_gasto:"Desar despesa", v4_save_in:"Desar ingrés", v4_back:"Tornar",
     v4_debts_hero:"Deus en total", v4_debts_sub:"{x}/mes en quotes · baixant cada mes 📉",
-    v4_debts_ends:"acabes el {d}", v4_amort_now:"💸 Amortitza ara",
+    v4_debts_ends:"acabes el {d}", v4_debts_ends_est:"a aquest ritme acabes ~{d}", v4_amort_now:"💸 Amortitza ara",
+    v4_debt_party_1:"🎉 {name}: ÚLTIMA quota aquest mes ({x})!", v4_debt_party_sub:"Després, {x}/mes lliures per a tu.",
     v4_goals_hero:"Estalviat en metes", v4_goal_new:"+ Nova meta d'estalvi",
     v4_paid_group:"{names} · {n} rebuts",
     v4_roundup_card:"L'arrodoniment de les teves compres ha invertit {x} aquest mes sense que facis res.",
@@ -2168,7 +2173,8 @@ const LANG = {
     st_sentry:"Sentry (errors en prod)", st_sentry_test:"Envia error de prova", st_sentry_sent:"✓ Enviat a Sentry (mira Issues en uns segons)", st_sentry_hint:"Només tu veus aquest bloc (admin). Serveix per comprovar que els crashes arriben a Sentry; la resta d'usuaris no el veuen.",
     bp_empty_hint:"Aquí es connecten els teus bancs de debò (Open Banking): el saldo i els moviments entren sols. Els comptes amb saldo apuntat a mà viuen a Patrimoni — connectar el banc és opcional i ho pots fer quan vulguis.",
     th_green:"Verd", th_dark:"Fosc", th_light:"Clar", th_blue:"Blau", cur_eur:"€ Euro", cur_usd:"$ Dòlar", cur_gbp:"£ Lliura", cur_chf:"CHF Franc suís",
-    rp_saved:"✓ Informe descarregat (no s'ha pogut obrir el menú de compartir)",
+    rp_saved:"✓ Informe desat a Baixades (busca «mi-cartera-…png»)",
+    rp_saved_notif:"📊 Informe del mes desat a Baixades: {f}. Obre'l des de l'app d'Arxius o la galeria.",
     ob_welcome:"Benvingut/da 👋",
     ob_intro:"Muntem la teva cartera en 1 minut. Comença pels comptes i el pressupost; les inversions, deutes i despeses fixes les afegeixes després a les seves pestanyes.",
     ob_budget:"Pressupost mensual per a despeses (€)", ob_accounts:"Els teus comptes (banc i saldo actual)",
@@ -2348,6 +2354,11 @@ Object.assign(LANG.es,{
   cb_edit_sub:"Escribe categoría=importe separados por comas. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
   h_catbudget:"Pon un tope en las categorías que más te preocupan. La barra se llena con lo gastado este mes.",
   rc_title:"Recibo gordo cerca", rc_body:"{name}: {x} el día {d}",
+  rc_title_tmrw:"Mañana toca recibo", rc_body_tmrw:"{name}: mañana se cobran {x}. Si algo no cuadra, aún estás a tiempo.",
+  bn_50:"🟢 Mitad del presupuesto del mes: llevas {x} de {b}",
+  bn_80:"⚠️ 80% del presupuesto usado: {x} de {b}",
+  bn_95:"🔶 ¡95%! Casi agotado el presupuesto: {x} de {b}",
+  bn_100:"🚨 Presupuesto del mes agotado: {x} de {b}",
 });
 Object.assign(LANG.en,{
   rl_fijos:"🏦 Bills", rl_diario:"🛒 Daily spending", rl_ambos:"🔁 Everything",
@@ -2382,6 +2393,11 @@ Object.assign(LANG.en,{
   cb_edit_sub:"Write category=amount separated by commas. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
   h_catbudget:"Cap the categories that worry you most. The bar fills with this month's spend.",
   rc_title:"Big bill coming", rc_body:"{name}: {x} on day {d}",
+  rc_title_tmrw:"Bill due tomorrow", rc_body_tmrw:"{name}: {x} will be charged tomorrow. If something's off, there's still time.",
+  bn_50:"🟢 Half the monthly budget: {x} of {b}",
+  bn_80:"⚠️ 80% of the budget used: {x} of {b}",
+  bn_95:"🔶 95%! Budget nearly gone: {x} of {b}",
+  bn_100:"🚨 Monthly budget spent: {x} of {b}",
 });
 Object.assign(LANG.ca,{
   rl_fijos:"🏦 Rebuts", rl_diario:"🛒 Despesa diària", rl_ambos:"🔁 Tot",
@@ -2416,6 +2432,11 @@ Object.assign(LANG.ca,{
   cb_edit_sub:"Escriu categoria=import separats per comes. IDs: super, bares, ocio, transporte, compras, hogar, salud…",
   h_catbudget:"Posa un topall a les categories que més et preocupen. La barra es omple amb el gastat aquest mes.",
   rc_title:"Rebut gros a prop", rc_body:"{name}: {x} el dia {d}",
+  rc_title_tmrw:"Demà toca rebut", rc_body_tmrw:"{name}: demà es cobren {x}. Si alguna cosa no quadra, encara ets a temps.",
+  bn_50:"🟢 Meitat del pressupost del mes: portes {x} de {b}",
+  bn_80:"⚠️ 80% del pressupost usat: {x} de {b}",
+  bn_95:"🔶 95%! Pressupost gairebé esgotat: {x} de {b}",
+  bn_100:"🚨 Pressupost del mes esgotat: {x} de {b}",
 });
 /* Importador CSV del bróker (Inversiones) */
 Object.assign(LANG.es,{
@@ -2566,7 +2587,7 @@ Object.assign(LANG.es,{
   mi_user_ph:"Usuario / DNI de MyInvestor", mi_pass_ph:"Contraseña de MyInvestor",
   mi_connect:"Conectar", mi_connecting:"Conectando…", mi_nostore:"🔒 Tu contraseña no se guarda. Viaja cifrada solo para el login.",
   mi_otp_intro:"MyInvestor te ha mandado un código por SMS. Escríbelo aquí:", mi_otp_ph:"Código SMS", mi_verify:"Verificar", mi_verifying:"Verificando…",
-  mi_recaptcha:"MyInvestor pide una verificación extra ahora mismo (reCAPTCHA). Espera un rato y vuelve a intentarlo.",
+  mi_recaptcha:"🛡 El anti-bot de MyInvestor pide captcha ahora mismo y la app no puede resolverlo. No insistas seguido (alarga el bloqueo): espera unas horas y reintenta desde el WiFi de casa. Suele desbloquearse solo.",
   mi_connected:"✓ MyInvestor conectado", mi_sync:"Sincronizar posiciones", mi_syncing:"Sincronizando…", mi_disconnect:"Desconectar",
   mi_preview:"{n} posiciones encontradas. Elige a cuál de tus posiciones va cada una:",
   mi_apply:"Aplicar a {n} posiciones", mi_done:"✓ {n} posiciones actualizadas desde MyInvestor",
@@ -2619,7 +2640,7 @@ Object.assign(LANG.en,{
   mi_user_ph:"MyInvestor username / ID", mi_pass_ph:"MyInvestor password",
   mi_connect:"Connect", mi_connecting:"Connecting…", mi_nostore:"🔒 Your password is never stored. It travels encrypted only for the login.",
   mi_otp_intro:"MyInvestor texted you a code. Type it here:", mi_otp_ph:"SMS code", mi_verify:"Verify", mi_verifying:"Verifying…",
-  mi_recaptcha:"MyInvestor is asking for an extra check right now (reCAPTCHA). Wait a bit and try again.",
+  mi_recaptcha:"🛡 MyInvestor's anti-bot is demanding a captcha and the app can't solve it. Don't retry repeatedly (it extends the block): wait a few hours and retry from your home WiFi. It usually clears on its own.",
   mi_connected:"✓ MyInvestor connected", mi_sync:"Sync positions", mi_syncing:"Syncing…", mi_disconnect:"Disconnect",
   mi_preview:"{n} positions found. Choose which of your positions each maps to:",
   mi_apply:"Apply to {n} positions", mi_done:"✓ {n} positions updated from MyInvestor",
@@ -2675,7 +2696,7 @@ Object.assign(LANG.ca,{
   mi_user_ph:"Usuari / DNI de MyInvestor", mi_pass_ph:"Contrasenya de MyInvestor",
   mi_connect:"Connecta", mi_connecting:"Connectant…", mi_nostore:"🔒 La teva contrasenya no es desa. Viatja xifrada només per al login.",
   mi_otp_intro:"MyInvestor t'ha enviat un codi per SMS. Escriu-lo aquí:", mi_otp_ph:"Codi SMS", mi_verify:"Verifica", mi_verifying:"Verificant…",
-  mi_recaptcha:"MyInvestor demana una verificació extra ara mateix (reCAPTCHA). Espera una estona i torna-ho a provar.",
+  mi_recaptcha:"🛡 L'anti-bot de MyInvestor demana captcha ara mateix i l'app no pot resoldre'l. No insisteixis seguit (allarga el bloqueig): espera unes hores i torna-ho a provar des del WiFi de casa. Sol desbloquejar-se sol.",
   mi_connected:"✓ MyInvestor connectat", mi_sync:"Sincronitza posicions", mi_syncing:"Sincronitzant…", mi_disconnect:"Desconnecta",
   mi_preview:"{n} posicions trobades. Tria a quina de les teves posicions va cada una:",
   mi_apply:"Aplica a {n} posicions", mi_done:"✓ {n} posicions actualitzades des de MyInvestor",
@@ -4201,6 +4222,13 @@ function shareMonthReport(state, tt, showToast){
         const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=fname; a.click();
         setTimeout(function(){ URL.revokeObjectURL(u); },1000);
       };
+      // Al descargar, decir DÓNDE queda (toast + notificación con el nombre del fichero): antes
+      // solo «descargado» y el usuario no sabía ni dónde buscarlo (feedback 2026-07-18).
+      const saidSaved=function(){
+        if(showToast) showToast(t("rp_saved"));
+        const nat=natPlugin();
+        if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera", body:tf("rp_saved_notif",{f:fname})}).catch(function(){}); }catch(e){} }
+      };
       const file=new File([b], fname, {type:"image/png"});
       if(navigator.canShare && navigator.canShare({files:[file]})){
         // El share de la WebView puede rechazar en silencio («el informe no hace nada»,
@@ -4209,11 +4237,11 @@ function shareMonthReport(state, tt, showToast){
           const aborted=err && (err.name==="AbortError");   // canceló el usuario: no insistir
           if(aborted) return;
           dl();
-          if(showToast) showToast(t("rp_saved"));
+          saidSaved();
         });
       } else {
         dl();
-        if(showToast) showToast(t("rp_saved"));
+        saidSaved();
       }
     },"image/png");
   }catch(e){ try{ alert("Informe: "+((e&&e.message)||e)); }catch(_){} }
@@ -4778,6 +4806,12 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
     return rows.slice(0,3);
   })();
 
+  // 🎉 Deudas a las que les queda LA ÚLTIMA cuota: alegría en Inicio (petición 2026-07-18
+  // «para alegrar un poco el mes»). debtLeft<=1 = la cuota de este mes (o la próxima) es la última.
+  const partyDebts=(state.debts||[]).filter(function(d){
+    const l=debtLeft(d); return debtActive(d) && l!=null && l<=1;
+  });
+
   const goals=(state.goals||[]).filter(function(g){ return !g.done; }).slice(0,4);
   const recent=(state.expenses||[]).slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); }).slice(0,3);
   const p=eurParts(shownNet);
@@ -4842,6 +4876,15 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
     React.createElement(BudgetSheet,{open:budgetOpen,budget:state.budget,onClose:function(){ setBudgetOpen(false); },onSave:function(b){
       set(function(s){ return Object.assign({},s,{budget:b}); });
     }}),
+
+    partyDebts.length>0 && React.createElement("div",{className:"v4-card rise",style:{animationDelay:".12s",marginTop:8,border:"1px solid rgba(95,208,138,.4)",background:"rgba(95,208,138,.07)",padding:"14px 16px"}},
+      partyDebts.map(function(d){
+        return React.createElement("div",{key:d.id},
+          React.createElement("div",{style:{fontWeight:800,fontSize:15,lineHeight:1.35}}, tf("v4_debt_party_1",{name:d.name,x:eur0(d.monthly||0)})),
+          React.createElement("div",{style:{fontSize:13,color:"var(--muted)",marginTop:3}}, tf("v4_debt_party_sub",{x:eur0(d.monthly||0)}))
+        );
+      })
+    ),
 
     React.createElement("div",{className:"v4-section rise",style:{animationDelay:".15s"}},
       React.createElement("div",{className:"v4-section-h"},
@@ -5344,16 +5387,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
       )
     ),
-    morePeriods && ReactDOM.createPortal(
-      React.createElement("div",{className:"v4-sheet-back",onClick:function(){ setMorePeriods(false); }},
-        React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
-          React.createElement("div",{className:"v4-sheet-handle"}),
-          React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:14}}, t("v4_period_more")),
-          DATE_PRESETS.slice(2).map(function(p){
-            return React.createElement("button",{key:p.id,type:"button",className:"v4-sheet-row"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); setMorePeriods(false); }}, t("g_"+p.id));
-          })
-        )
-      ), document.body),
+    React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
     detailId && React.createElement(ExpenseDetailSheet,{
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
@@ -5362,6 +5396,25 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       showToast:showToast, aiBusy:aiBusy, suggestAi:suggestAi, state:state
     })
   );
+}
+
+/* Sheet «Más…» de períodos. Antes era un portal pelado SIN useSheetSwipe/useBackClose: era el
+   único sheet que no se podía cerrar tirando hacia abajo («el más de la foto» — feedback
+   2026-07-18) ni con el gesto atrás. Mismo patrón que BudgetSheet. */
+function PeriodMoreSheet({open, onClose, preset, setPreset}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  if(!open) return null;
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:14}}, t("v4_period_more")),
+        DATE_PRESETS.slice(2).map(function(p){
+          return React.createElement("button",{key:p.id,type:"button",className:"v4-sheet-row"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); onClose(); }}, t("g_"+p.id));
+        })
+      )
+    ), document.body);
 }
 
 /* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */
@@ -5928,7 +5981,10 @@ function miDeviceLogin(http, loginBody, devId){
     method:"POST",
     headers:{ "Content-Type":"application/json", "Accept":"application/json",
       "Referer":"https://api.myinvestor.es", "Origin":"https://api.myinvestor.es",
-      "x-device-id":devId, "x-myinvestor-app":"version=3.125.0,platform=web" },
+      // 3.150.0 (2026-07-18): el captcha salía TAMBIÉN desde el móvil («Captcha required», foto).
+      // Subir la versión declarada es la primera palanca documentada: el anti-bot de MI puntúa
+      // peor a clientes con versión vieja. Mantener SIEMPRE igual que _shared/myinvestor.ts.
+      "x-device-id":devId, "x-myinvestor-app":"version=3.150.0,platform=web" },
     data:loginBody
   })).then(function(res){
     const st=res?res.status:0; let j=res?res.data:null;
@@ -6010,7 +6066,8 @@ function MyInvestorSync({state, set}){
         // Telemetría con la VÍA usada (2026-07-18): si esto sale en Actividad, el login fue por
         // la Edge (IP datacenter) — o estás en web, o el APK no tiene CapacitorHttp. La vía
         // móvil casi nunca ve captcha; saber cuál falló es la mitad del diagnóstico.
-        setErr(r.error||t("mi_recaptcha"));
+        // El texto crudo de la API («Captcha required») no le dice nada al usuario → mensaje propio.
+        setErr(t("mi_recaptcha"));
         try{ cloud.logEvent('error','MI: recaptcha vía Edge'+(miNativeHttp()?' (con nativo disponible)':' (web/APK sin CapacitorHttp)')); }catch(e){}
         return;
       }
@@ -6028,8 +6085,9 @@ function MyInvestorSync({state, set}){
         setBusy(false);
         if(r&&r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
         if(r&&r.recaptcha){
-          // reCAPTCHA TAMBIÉN desde IP residencial: rarísimo — se apunta para saberlo de verdad.
-          setErr(r.error||t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha desde el móvil'); }catch(e){}
+          // reCAPTCHA TAMBIÉN desde IP residencial (confirmado con foto 2026-07-18: «Captcha
+          // required» en el móvil) — mensaje humano en vez del texto crudo de la API.
+          setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha desde el móvil'); }catch(e){}
           return;
         }
         fail(r);
@@ -8241,9 +8299,19 @@ function Debts({state, set, showToast}){
     return "💳";
   };
   const endsLabel=function(d){
-    const left=debtLeft(d); if(left==null) return null;
-    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+left);
-    return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
+    const left=debtLeft(d);
+    if(left!=null){
+      const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+left);
+      return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
+    }
+    // Sin plazo (hipoteca/préstamo a mano de las primeras versiones): antes no salía NADA y la
+    // tarjeta parecía «muerta» (feedback 2026-07-18). Se estima con el ritmo de amortización
+    // actual — por eso lleva «~»: una amortización anticipada o cambio de cuota la mueve.
+    const am=debtAmort(d), bal=debtBalance(d);
+    if(!(am>0) || !(bal>0.005)) return null;
+    const k=Math.ceil(bal/am);
+    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+k);
+    return tf("v4_debts_ends_est",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
   };
   return React.createElement("div",null,
     React.createElement("div",{className:"v4-card v4-card-hero rise"},
@@ -9111,6 +9179,15 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.3.0", d:"18 jul 2026", t:"Avisos que valen dinero, deudas con fecha de fin y alegrías en Inicio", items:[
+    "🔔 La app ahora te avisa sola: al cruzar el 50%, 80%, 95% y 100% del presupuesto del mes (una vez por umbral), y la VÍSPERA de cada recibo y cuota («mañana se cobran X €») — porque el banco no avisa. Los recibos gordos siguen avisando además con 2-3 días.",
+    "📅 La hipoteca y los préstamos sin plazo ya no están «muertos»: ahora ponen «a este ritmo acabas ~febrero 2049» calculado con tu cuota. Amortiza y verás la fecha acercarse.",
+    "🎉 Cuando a una financiación le queda LA ÚLTIMA cuota, te lo celebra en Inicio: «¡última cuota este mes! Después, X €/mes libres para ti».",
+    "👇 El sheet «Más…» de períodos en Gastos (mes pasado, 3 meses, rango…) ya se cierra tirando hacia abajo y con el gesto atrás — era el único que no.",
+    "📊 El informe ahora te dice DÓNDE queda: toast + notificación con el nombre del fichero (carpeta Descargas).",
+    "⚙️ Las secciones de Ajustes se despliegan con animación suave (se acabó el corte seco).",
+    "🔌 MyInvestor: el «Captcha required» ahora se explica en cristiano (es su anti-bot; esperar y reintentar desde casa) y la app se presenta con versión más nueva ante su API — la palanca documentada contra el captcha. Si con esto sigue, el siguiente paso es resolver el captcha de verdad (necesita trabajo nativo).",
+  ]},
   {v:"4.2.0", d:"18 jul 2026", t:"Compras a plazos simuladas, banco en cada apunte y la ronda de arreglos que pediste", items:[
     "📅 «¿Me lo puedo permitir?» ahora también A PLAZOS: pones meses y entrada y te dice la cuota, cómo suben tus fijos, si te cabe cada mes con tu nómina… y con un botón creas la deuda directamente (aparece en Plan → Deudas y descuenta del líquido sola).",
     "🏦 Al apuntar un gasto a mano (el + o editando uno) puedes elegir de qué banco sale. Se recuerda hasta reinstalando la app.",
@@ -9598,13 +9675,18 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     if(nq && normQ(title+" "+(keywords||"")).indexOf(nq)<0) return null;
     grpMatches++;
     const open=nq!==""?true:isOpen(id);
+    // Despliegue ANIMADO con el patrón .collapsible (grid-rows): montar/desmontar en seco se
+    // sentía «robótico» (feedback 2026-07-18). El contenido queda siempre montado (solo Ajustes,
+    // coste asumible) y la altura transiciona suave en ambos sentidos.
     return React.createElement("div",{className:"set-card"},
       React.createElement("button",{className:"set-row",onClick:function(){ toggleGrp(id); }},
         React.createElement("span",{className:"sr-ic"},icon),
         React.createElement("span",{className:"sr-lb",style:{fontWeight:800}},title),
         val!=null && React.createElement("span",{className:"sr-val"},val),
         React.createElement("span",{className:"sr-chev"+(open?" open":"")},"›")),
-      open && React.createElement.apply(null,[React.Fragment,null].concat(kids))
+      React.createElement("div",{className:"collapsible"+(open?" open":"")},
+        React.createElement("div",null, React.createElement.apply(null,[React.Fragment,null].concat(kids)))
+      )
     );
   };
   return React.createElement(React.Fragment,null,
@@ -11785,7 +11867,9 @@ function App(){
     },3000);
     return function(){ clearTimeout(tmr); };
   },[state.onboarded,locked,showAuth,tourOpen,whatsNew]);
-  // Recordatorio de recibos gordos (2–3 días antes). Una noti/día máx. por cargo.
+  // Recordatorio de recibos: TODOS avisan LA VÍSPERA (petición 2026-07-18: «el banco no te
+  // avisa, la app podría»); los gordos además con 2–3 días de antelación como hasta ahora.
+  // Incluye también las cuotas de deuda. Una noti por cargo y mes.
   useEffect(function(){
     if(state.onboarded===false||locked||showAuth) return;
     const nat=natPlugin();
@@ -11794,19 +11878,55 @@ function App(){
     const cm=totals.curMonth, cy=totals.curYear;
     const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
     const ym=cy+"-"+String(cm).padStart(2,"0");
+    const notify=function(key,title,body){
+      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
+      try{ nat.showNotification({title:title,body:body}).catch(function(){}); }catch(err){}
+    };
     (state.fixed||[]).forEach(function(e){
       if(!occursIn(e,cm)) return;
       const d=dayIn(e,cm); if(d==null) return;
       if(isPaidIn(e,cm,today)) return;
       const amt=occAmountIn(e,cm)||0;
-      if(amt<minAmt) return;
+      if(!(amt>0)) return;
       const daysLeft=d-today;
-      if(daysLeft<1||daysLeft>3) return;
-      const key="_rc_"+e.id+"_"+ym+"_"+d;
-      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
-      try{ nat.showNotification({title:t("rc_title"),body:tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)})}).catch(function(){}); }catch(err){}
+      if(daysLeft===1){
+        notify("_rc1_"+e.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:e.name||"?",x:eur0(amt)}));
+      } else if(amt>=minAmt && daysLeft>=2 && daysLeft<=3){
+        notify("_rc_"+e.id+"_"+ym+"_"+d, t("rc_title"), tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)}));
+      }
     });
-  },[state.onboarded,locked,showAuth,state.fixed,totals.today,totals.curMonth]);
+    // cuotas de deuda (hipoteca, financiaciones…): también avisan la víspera
+    (state.debts||[]).forEach(function(d){
+      if(!debtActive(d) || !(d.monthly>0)) return;
+      if(isDebtPaidThisMonth(d,today)) return;
+      if(debtChargeDay(d)-today!==1) return;
+      notify("_rc1_debt_"+d.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:d.name||"?",x:eur0(d.monthly)}));
+    });
+  },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
+
+  // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
+  // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
+  // en silencio para no disparar tres de golpe). Suena también como toast en la app.
+  useEffect(function(){
+    if(state.onboarded===false||locked) return;
+    const bud=state.budget||0; if(!(bud>0)) return;
+    const spent=totals.thisMonthSpent||0;
+    const pct=spent/bud*100;
+    const ym=new Date().toISOString().slice(0,7);
+    let fired=false;
+    [100,95,80,50].forEach(function(th){
+      if(pct<th) return;
+      const k="_bn"+th+"_"+ym;
+      let seen=true;
+      try{ seen=localStorage.getItem(k)==="1"; localStorage.setItem(k,"1"); }catch(e){}
+      if(seen||fired) return;
+      fired=true;
+      const msg=tf("bn_"+th,{x:eur0(spent),b:eur0(bud),p:Math.round(pct)});
+      showToast(msg);
+      const nat=natPlugin();
+      if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} }
+    });
+  },[state.onboarded,locked,totals.thisMonthSpent,state.budget]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){

@@ -24,7 +24,10 @@ function miDeviceLogin(http, loginBody, devId){
     method:"POST",
     headers:{ "Content-Type":"application/json", "Accept":"application/json",
       "Referer":"https://api.myinvestor.es", "Origin":"https://api.myinvestor.es",
-      "x-device-id":devId, "x-myinvestor-app":"version=3.125.0,platform=web" },
+      // 3.150.0 (2026-07-18): el captcha salía TAMBIÉN desde el móvil («Captcha required», foto).
+      // Subir la versión declarada es la primera palanca documentada: el anti-bot de MI puntúa
+      // peor a clientes con versión vieja. Mantener SIEMPRE igual que _shared/myinvestor.ts.
+      "x-device-id":devId, "x-myinvestor-app":"version=3.150.0,platform=web" },
     data:loginBody
   })).then(function(res){
     const st=res?res.status:0; let j=res?res.data:null;
@@ -106,7 +109,8 @@ function MyInvestorSync({state, set}){
         // Telemetría con la VÍA usada (2026-07-18): si esto sale en Actividad, el login fue por
         // la Edge (IP datacenter) — o estás en web, o el APK no tiene CapacitorHttp. La vía
         // móvil casi nunca ve captcha; saber cuál falló es la mitad del diagnóstico.
-        setErr(r.error||t("mi_recaptcha"));
+        // El texto crudo de la API («Captcha required») no le dice nada al usuario → mensaje propio.
+        setErr(t("mi_recaptcha"));
         try{ cloud.logEvent('error','MI: recaptcha vía Edge'+(miNativeHttp()?' (con nativo disponible)':' (web/APK sin CapacitorHttp)')); }catch(e){}
         return;
       }
@@ -124,8 +128,9 @@ function MyInvestorSync({state, set}){
         setBusy(false);
         if(r&&r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
         if(r&&r.recaptcha){
-          // reCAPTCHA TAMBIÉN desde IP residencial: rarísimo — se apunta para saberlo de verdad.
-          setErr(r.error||t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha desde el móvil'); }catch(e){}
+          // reCAPTCHA TAMBIÉN desde IP residencial (confirmado con foto 2026-07-18: «Captcha
+          // required» en el móvil) — mensaje humano en vez del texto crudo de la API.
+          setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha desde el móvil'); }catch(e){}
           return;
         }
         fail(r);

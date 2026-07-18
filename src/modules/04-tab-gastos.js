@@ -422,16 +422,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
       )
     ),
-    morePeriods && ReactDOM.createPortal(
-      React.createElement("div",{className:"v4-sheet-back",onClick:function(){ setMorePeriods(false); }},
-        React.createElement("div",{className:"v4-sheet",onClick:function(e){ e.stopPropagation(); }},
-          React.createElement("div",{className:"v4-sheet-handle"}),
-          React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:14}}, t("v4_period_more")),
-          DATE_PRESETS.slice(2).map(function(p){
-            return React.createElement("button",{key:p.id,type:"button",className:"v4-sheet-row"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); setMorePeriods(false); }}, t("g_"+p.id));
-          })
-        )
-      ), document.body),
+    React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
     detailId && React.createElement(ExpenseDetailSheet,{
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
@@ -440,6 +431,25 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       showToast:showToast, aiBusy:aiBusy, suggestAi:suggestAi, state:state
     })
   );
+}
+
+/* Sheet «Más…» de períodos. Antes era un portal pelado SIN useSheetSwipe/useBackClose: era el
+   único sheet que no se podía cerrar tirando hacia abajo («el más de la foto» — feedback
+   2026-07-18) ni con el gesto atrás. Mismo patrón que BudgetSheet. */
+function PeriodMoreSheet({open, onClose, preset, setPreset}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  if(!open) return null;
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:14}}, t("v4_period_more")),
+        DATE_PRESETS.slice(2).map(function(p){
+          return React.createElement("button",{key:p.id,type:"button",className:"v4-sheet-row"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); onClose(); }}, t("g_"+p.id));
+        })
+      )
+    ), document.body);
 }
 
 /* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */

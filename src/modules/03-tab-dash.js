@@ -89,6 +89,12 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
     return rows.slice(0,3);
   })();
 
+  // 🎉 Deudas a las que les queda LA ÚLTIMA cuota: alegría en Inicio (petición 2026-07-18
+  // «para alegrar un poco el mes»). debtLeft<=1 = la cuota de este mes (o la próxima) es la última.
+  const partyDebts=(state.debts||[]).filter(function(d){
+    const l=debtLeft(d); return debtActive(d) && l!=null && l<=1;
+  });
+
   const goals=(state.goals||[]).filter(function(g){ return !g.done; }).slice(0,4);
   const recent=(state.expenses||[]).slice().sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); }).slice(0,3);
   const p=eurParts(shownNet);
@@ -153,6 +159,15 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
     React.createElement(BudgetSheet,{open:budgetOpen,budget:state.budget,onClose:function(){ setBudgetOpen(false); },onSave:function(b){
       set(function(s){ return Object.assign({},s,{budget:b}); });
     }}),
+
+    partyDebts.length>0 && React.createElement("div",{className:"v4-card rise",style:{animationDelay:".12s",marginTop:8,border:"1px solid rgba(95,208,138,.4)",background:"rgba(95,208,138,.07)",padding:"14px 16px"}},
+      partyDebts.map(function(d){
+        return React.createElement("div",{key:d.id},
+          React.createElement("div",{style:{fontWeight:800,fontSize:15,lineHeight:1.35}}, tf("v4_debt_party_1",{name:d.name,x:eur0(d.monthly||0)})),
+          React.createElement("div",{style:{fontSize:13,color:"var(--muted)",marginTop:3}}, tf("v4_debt_party_sub",{x:eur0(d.monthly||0)}))
+        );
+      })
+    ),
 
     React.createElement("div",{className:"v4-section rise",style:{animationDelay:".15s"}},
       React.createElement("div",{className:"v4-section-h"},

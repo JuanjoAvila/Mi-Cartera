@@ -616,6 +616,15 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.3.0", d:"18 jul 2026", t:"Avisos que valen dinero, deudas con fecha de fin y alegrías en Inicio", items:[
+    "🔔 La app ahora te avisa sola: al cruzar el 50%, 80%, 95% y 100% del presupuesto del mes (una vez por umbral), y la VÍSPERA de cada recibo y cuota («mañana se cobran X €») — porque el banco no avisa. Los recibos gordos siguen avisando además con 2-3 días.",
+    "📅 La hipoteca y los préstamos sin plazo ya no están «muertos»: ahora ponen «a este ritmo acabas ~febrero 2049» calculado con tu cuota. Amortiza y verás la fecha acercarse.",
+    "🎉 Cuando a una financiación le queda LA ÚLTIMA cuota, te lo celebra en Inicio: «¡última cuota este mes! Después, X €/mes libres para ti».",
+    "👇 El sheet «Más…» de períodos en Gastos (mes pasado, 3 meses, rango…) ya se cierra tirando hacia abajo y con el gesto atrás — era el único que no.",
+    "📊 El informe ahora te dice DÓNDE queda: toast + notificación con el nombre del fichero (carpeta Descargas).",
+    "⚙️ Las secciones de Ajustes se despliegan con animación suave (se acabó el corte seco).",
+    "🔌 MyInvestor: el «Captcha required» ahora se explica en cristiano (es su anti-bot; esperar y reintentar desde casa) y la app se presenta con versión más nueva ante su API — la palanca documentada contra el captcha. Si con esto sigue, el siguiente paso es resolver el captcha de verdad (necesita trabajo nativo).",
+  ]},
   {v:"4.2.0", d:"18 jul 2026", t:"Compras a plazos simuladas, banco en cada apunte y la ronda de arreglos que pediste", items:[
     "📅 «¿Me lo puedo permitir?» ahora también A PLAZOS: pones meses y entrada y te dice la cuota, cómo suben tus fijos, si te cabe cada mes con tu nómina… y con un botón creas la deuda directamente (aparece en Plan → Deudas y descuenta del líquido sola).",
     "🏦 Al apuntar un gasto a mano (el + o editando uno) puedes elegir de qué banco sale. Se recuerda hasta reinstalando la app.",
@@ -1103,13 +1112,18 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     if(nq && normQ(title+" "+(keywords||"")).indexOf(nq)<0) return null;
     grpMatches++;
     const open=nq!==""?true:isOpen(id);
+    // Despliegue ANIMADO con el patrón .collapsible (grid-rows): montar/desmontar en seco se
+    // sentía «robótico» (feedback 2026-07-18). El contenido queda siempre montado (solo Ajustes,
+    // coste asumible) y la altura transiciona suave en ambos sentidos.
     return React.createElement("div",{className:"set-card"},
       React.createElement("button",{className:"set-row",onClick:function(){ toggleGrp(id); }},
         React.createElement("span",{className:"sr-ic"},icon),
         React.createElement("span",{className:"sr-lb",style:{fontWeight:800}},title),
         val!=null && React.createElement("span",{className:"sr-val"},val),
         React.createElement("span",{className:"sr-chev"+(open?" open":"")},"›")),
-      open && React.createElement.apply(null,[React.Fragment,null].concat(kids))
+      React.createElement("div",{className:"collapsible"+(open?" open":"")},
+        React.createElement("div",null, React.createElement.apply(null,[React.Fragment,null].concat(kids)))
+      )
     );
   };
   return React.createElement(React.Fragment,null,
