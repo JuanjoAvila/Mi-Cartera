@@ -93,6 +93,15 @@ Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
 - Si parseas un fichero (CSV de bróker…), monta un banco de pruebas en Node contra el fichero
   REAL y comprueba el resultado por **dos vías independientes** (así se validó el oro: saldo
   acumulado vs. suma de importes − comisiones, ambas 0,258218 XAU).
+- **Si quitas o rediseñas una pantalla, audita sus puertas de entrada.** El rediseño v4 dejó
+  huérfanos (código vivo sin camino en la UI) el rol de cuenta, Hogar/Compartido, la huella y
+  el cerrar sesión — el usuario tardó un día en notarlo y hubo que recuperarlos (4.1.0).
+  Lista qué solo se alcanzaba desde lo que tocas antes de darlo por terminado.
+- **Open Banking se sincroniza SOLO a demanda** (4.1.0): no reintroduzcas syncs al abrir o al
+  volver a primer plano — los bancos lo leen como bot y caducan el consentimiento. El detalle
+  de qué syncs siguen vivos está en docs/ARQUITECTURA.md.
+- **Updates:** transporte en `12-boot.js`, estado de UI en `useUpdates()` (10-app-components).
+  Lógica nueva de updates → al hook, no a efectos sueltos en App.
 
 ## 8. Privacidad y dinero
 

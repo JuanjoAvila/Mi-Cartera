@@ -25,7 +25,7 @@ mi-cartera/
 ├── src/                    # 👈 Fuente editable (v3.108+)
 │   ├── shell.html          #     HTML shell (React, CSS, vendors)
 │   ├── build-order.json    #     Orden de ensamblado de módulos
-│   └── modules/            #     13 ficheros JS (core, i18n, motor, app, boot…)
+│   └── modules/            #     15 ficheros JS (core, i18n, motor, app, boot, v4…)
 ├── public/                 # Artefacto desplegable (generado + estáticos)
 │   ├── index.html          #     Generado por `npm run build` — no editar a mano
 │   ├── manifest.json · sw.js · vendor/ · fonts/
@@ -78,4 +78,10 @@ Push a `main` → GitHub Actions sella la versión del SW y publica `public/` en
 
 ## 🗺️ Roadmap
 
-Estado actual: **v4.0.10** — detalle en [docs/ROADMAP.md](docs/ROADMAP.md), [CHANGELOG.md](CHANGELOG.md) y [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+Estado actual: **v4.1.0** — detalle en [docs/ROADMAP.md](docs/ROADMAP.md), [CHANGELOG.md](CHANGELOG.md) y [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+
+Notas rápidas del rediseño v4 (para no perderse):
+- **Rol de cuenta** (Recibos / Gasto diario / Todo): Cartera → Editar.
+- **Hogar y gastos compartidos:** Ajustes → Conexiones ([docs/HOGAR.md](docs/HOGAR.md)).
+- **Open Banking se sincroniza a demanda** (botón en Cartera), no al abrir la app.
+- **Updates:** transporte en `12-boot.js`, estado de UI en `useUpdates()` (`10-app-components.js`).

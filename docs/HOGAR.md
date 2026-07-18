@@ -1,11 +1,16 @@
 # Hogar compartido (Fase 1 + 2)
 
+> **Dónde está (desde v4.1.0):** **Ajustes → Conexiones → «Hogar y gastos compartidos»**.
+> Con la nav v4 (4 tabs + FAB) la pestaña «Compartido» desapareció y esta pantalla quedó
+> huérfana hasta la 4.1.0. Ahí viven el Hogar (esta doc) Y los grupos de gastos compartidos
+> (crucero, cenas…). Toda mención antigua a «Compartido → …» = esa pantalla de Ajustes.
+
 ## Qué hace
 
 Como la cuenta conjunta de CaixaBank, pero **sin mezclar datos**:
 
 1. Persona A crea un **Hogar** → recibe código de 6 letras
-2. Persona B entra en **Compartido → Unirme con código**
+2. Persona B entra en **Hogar y compartido → Unirme con código**
 3. Cada uno pulsa **Actualizar mi vista** → publica un snapshot (patrimonio, cuentas)
 4. Todos ven la **suma fusionada** + detalle por miembro (solo lectura)
 
@@ -20,8 +25,8 @@ Des-compartir = salir del hogar (borra tu snapshot, no toca el `app_state` del o
 
 ## Probar con dos cuentas
 
-1. Cuenta A: Compartido → Crear hogar → copia el código
-2. Cuenta B (otro email): Compartido → Unirme → código
+1. Cuenta A: Ajustes → Conexiones → Hogar y compartido → Crear hogar → copia el código
+2. Cuenta B (otro email): misma pantalla → Unirme → código
 3. Ambas: **Actualizar mi vista**
 4. Deberíais ver patrimonio sumado
 
