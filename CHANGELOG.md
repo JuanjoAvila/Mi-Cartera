@@ -9,11 +9,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - `runBankSync` guarda `state.bankIssues` (bancos con `expired` en el último sync; se recalcula entero en cada sync → reconectar lo limpia solo).
 - `CarteraTab`: banner rojo por banco caducado — «{banco} necesita tu permiso otra vez» + botón «🔓 Reconectar {banco}» que llama a `cloud.bankConnect(aspsp)` directo (vuelve con `?bank=ok` y se re-sincroniza solo). Banner equivalente para TR muerto (solo si hubo login antes: `mc_tr_phone`): botón que dispara `mc-open-banks` → App abre Ajustes con `goBanks` → `SettingsPanel` aterriza directo en Mis bancos (el form de TR ya precarga el teléfono). Los textos aclaran que se reconecta EN la app, no en la del banco.
 
-**Notis con la app CERRADA (APK 29 — pendiente de compilar).**
+**Notis con la app CERRADA (APK 29 — publicado).**
 - Nativo nuevo: `AlertCheckWorker` + `AlertCheckScheduler` (WorkManager cada 6 h, patrón OtaCheck). La web empuja el calendario de cargos del mes (fijos + cuotas) vía `MiCartera.setAlertData({ym,charges,fired})`; el worker avisa la víspera con dedupe por cargo y mes en prefs, y el plugin devuelve `fired` para que la web selle su localStorage (nunca dos avisos por el mismo cargo entre web y nativo).
 - `MainActivity`: `AlertCheckScheduler.ensure()` junto al de OTA. `build.gradle`: versionCode **29**, versionName **4.4.0**.
 - Umbrales de presupuesto en frío: la Edge `ingest` ahora emite también `p50`/`p95` (antes over/p80/big) y `TrExpenseListener` los pinta — los gastos capturados por noti de TR avisan al 50/80/95/100% con la app cerrada. p50/p95 funcionan al desplegar la Edge (sin APK); las vísperas en frío sí requieren APK 29.
-- Compilar: `npm run build && npx cap sync android && cd android && ./gradlew assembleRelease` (en el PC de siempre; después subir APK a release + `apk.json`).
+- **Publicado:** GitHub Release `v4.4.0` + asset `Mi-Cartera-4.4.0.apk` + `public/apk.json` → versionCode 29.
 
 ## [4.3.0] — 2026-07-18
 ### Avisos proactivos, deudas con fecha estimada y celebración de últimas cuotas (feedback 2026-07-18, 3ª ronda)
