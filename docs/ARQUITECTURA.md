@@ -140,7 +140,7 @@ CHANGELOG 4.1.0 y en el comentario del propio código.
 - v4.0.x: rediseño completo (SPEC-v4), MyInvestor login desde el móvil, OB sin falsos «caducado».
 
 ### Pendiente (a demanda)
-- **MyInvestor captcha:** confirmar end-to-end con la telemetría de vía de login (4.1.0) leyendo Actividad.
+- **MyInvestor captcha:** el plumbing está en 4.6.0 (`miDeviceLogin` acepta `captchaToken` → cabeceras `X-Recaptcha-Token`/`X-Recaptcha-Action`). Falta la WebView nativa que resuelve el reCAPTCHA de `myinvestor.es` y produce el token (site key + APK). Ver ROADMAP.
 - **Logos de banco auto-hospedados** en las filas de cuentas (ver ROADMAP).
 - **Freemium / suscripciones** (ver ROADMAP — solo diseño, nada implementado).
 - Play Store (Data safety + NotificationListener).

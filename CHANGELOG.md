@@ -2,6 +2,44 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.6.0] — 2026-07-18
+### Temáticas de temporada, accesibilidad, metas con teclado propio, más monedas y varios bancos de gasto
+**Metas — aportar con teclado propio + banco (§2 feedback)**
+- Nuevo `ContributeGoalSheet` (14→09-tab-debts-goals): hoja `v4-sheet` con teclado `.v4-keys` y chips de banco, igual que el sheet «Apuntar». Sustituye al `askText` (que abría el teclado del sistema y rompía la estética).
+- `addToGoal(g, amt, bank)` guarda `g.fromBank` (memoria del último banco; se pre-selecciona la próxima vez). No mueve saldos de cuentas (la hucha de metas es un bote aparte).
+
+**Temáticas de temporada (§3)**
+- `settings.season` (`mundial|halloween|navidad|verano|invierno|pascua|none`) → `data-season` en `<html>`. `SEASONS`/`SEASON_FX`/`applySeason` en 01-i18n.
+- Capa ambiental `.season-fx` (emojis cayendo, `@keyframes seasonfall`) renderizada en App solo si hay temática y no está «Reducir animaciones». Guiño de color por temática en `.botnav-fab` (sin tocar `--mint`/`--coral`, que pintan importes).
+- Selector en Ajustes → Apariencia.
+
+**Accesibilidad (§7)**
+- Niveles de letra `settings.textSize` (`normal|big|huge`) con `applyTextSize` + `textSizeOf` (compat con el viejo `bigText`). **El zoom pasa a `body`, no a `#root`**: los sheets/diálogos van portaleados a `document.body` (fuera de `#root`) y con el zoom en `#root` se quedaban a tamaño normal → descuadre. `html.hugetext body{zoom:1.26}`.
+- `settings.reduceMotion` (`html.reduce-motion *{animation/transition ~0}`), `settings.hiContrast` (sube `--muted`/`--muted-2` por tema). `applyA11y(s)` centraliza y se llama en `loadState` + efectos de App.
+- Nueva sección Ajustes → Accesibilidad.
+
+**Más monedas + comparativa (§4)**
+- `CUR_SYM`/`CUR_LIST` en 00-core (15 divisas). `refreshFx` pide todas al BCE (frankfurter). Selector ampliado + acordeón «Comparar monedas» (`1 € = …`).
+
+**Varios bancos de gasto diario (§11)**
+- Selector en Ajustes → Dinero que lista TODAS las cuentas (no solo OB) y escribe `settings.expenseBanks` (la lógica `expenseBankEnts`/`importObExpenses` ya lo respetaba). Caso: TR + Revolut en un viaje, mismo presupuesto.
+
+**Cartera (§5, §6)**
+- Selección de patrimonio (líquido/inversiones/bienes) persistida en `settings.carteraParts`. Animación `rise` en la zona de inversiones.
+
+**Ajustes (§10)**
+- Todas las secciones arrancan encogidas en cada apertura (`isOpen` ya no lee/escribe `localStorage`; solo memoria de sesión). Reorden: Apariencia → Accesibilidad → Para empezar → Dinero → Conexiones → App → Avanzado.
+
+**Estética / transiciones (§8, §9)**
+- Ocultado de `.botnav` más lento y con fade (`.55s`), colapsables `.42s` + fade. Wrapper `.v4-embed-legacy` armoniza «Gestionar recibos» y «Herramientas de inversión» (Fijos/Investments) con la estética v4 (tarjetas planas, inputs/enlaces al estilo nuevo).
+
+**Widget Android — «lo que te puedes permitir» (§1, NATIVO)**
+- Web empuja `afford` = mín(presupuesto restante, liquidez segura de la cuenta de gasto) en `updateWidget`. `MiCarteraPlugin` lo persiste; `MiCarteraWidget` pinta «✅ Puedes gastar X €» (mint/coral). Nuevo `TextView w_afford`.
+- **Requiere APK nuevo** (versionName 4.6.0 / versionCode 30). El resto es OTA.
+
+**MyInvestor captcha (§12, parcial)**
+- `miDeviceLogin` acepta `captchaToken` → cabeceras `X-Recaptcha-Token` + `X-Recaptcha-Action: SECURITY_CHECK` (contrato del cliente `finanze`). Plumbing listo; resolverlo del todo necesita una WebView nativa con el site key (cambio de APK) — pendiente documentado.
+
 ## [4.5.1] — 2026-07-18
 ### Gestos: primera apertura con contenido + scroll de Resumen bloqueado en perfil
 - Premonta `SettingsPanel`/`ProfilePanel` en idle (~1,4 s) y también al fijar el eje del gesto: la 1ª vez el panel ya no va negro vacío (4.4.1 difería el montaje al soltar).
