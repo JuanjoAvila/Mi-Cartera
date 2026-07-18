@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.4.1] — 2026-07-18
+### Gestos Ajustes/perfil: sin filter ni blur en el drag (feedback vídeo)
+- Ajustes: quitado `filter:brightness` en `.app-shell.settings-dim` — en cada frame del gesto lento re-rasterizaba Resumen entero en WebView (~3 fps). Solo queda el `translate3d` barato.
+- Perfil: `backdrop-filter` solo con `.blurred` al soltar (abierto); durante el drag, velo verdoso plano.
+- No montar `SettingsPanel`/`ProfilePanel` en `touchstart`/lock del eje — el contenido entra al abrir (`drawerOpen`/`profileOpen`). Shell vacío durante el arrastre.
+- OTA only (sin cambio nativo).
+
 ## [4.4.0] — 2026-07-18
 ### Reconexión a un toque y avisos con la app cerrada (feedback 2026-07-18, 4ª ronda — «lo del padre»)
 

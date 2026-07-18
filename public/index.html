@@ -675,12 +675,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
     transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
   .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
-  /* El blur del fondo: backdrop-filter en la capa (NO filter en el shell). Si el WebView no lo
-     soporta, queda el velo verdoso y ya — mejor plano que negro. */
-  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.45);opacity:0;pointer-events:none;
-    -webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);
+  /* Velo verdoso barato durante el gesto. El blur SOLO con .blurred (perfil ya abierto):
+     backdrop-filter en cada frame del drag = mismos 3 fps que el filter del shell (2026-07-18). */
+  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.5);opacity:0;pointer-events:none;
     transition:opacity .45s ease;max-width:520px;margin:0 auto;}
   .profile-dim-layer.on{opacity:1;pointer-events:none;}
+  .profile-dim-layer.blurred{-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);}
   .profile-pull-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
   .profile-pull-h .back{width:34px;height:34px;border-radius:50%;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:17px;color:var(--text);flex:0 0 auto;line-height:1;}
   .profile-pull-h .ph-main{flex:1;min-width:0;}
@@ -994,10 +994,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* position:relative — ancla de la .botnav flotante (2026-07-18). */
   .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;position:relative;}
   .app-shell .viewport{flex:1;min-height:0;}
-  /* Push limpio tipo Revolut (feedback 2026-07-18: el blur+scale se sentía «raro e incómodo»
-     y además el blur de pantalla completa daba tirones en la WebView): la app solo se desplaza
-     un pelín a la derecha y se atenúa mientras el panel la cubre. */
-  .app-shell.settings-dim{transform:translate3d(calc(var(--set-p,0) * 24px),0,0);filter:brightness(calc(1 - 0.22 * var(--set-p,0)));transition:transform .42s cubic-bezier(.32,.72,0,1),filter .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
+  /* Push limpio tipo Revolut: solo translate. NUNCA filter/brightness en el shell —
+     en cada frame del gesto lento el WebView re-rasteriza Resumen entero → ~3 fps
+     (feedback vídeo 2026-07-18). El panel ya cubre; el desplazamiento basta. */
+  .app-shell.settings-dim{transform:translate3d(calc(var(--set-p,0) * 24px),0,0);transition:transform .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
   .v4-cycle-box{margin:10px 2px 14px;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}
@@ -9191,6 +9191,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.4.1", d:"18 jul 2026", t:"Ajustes y perfil sin tirones al arrastrar lento", items:[
+    "✨ Si abres Ajustes o el perfil tirando despacio con el dedo, ya no se pone a «cámara lenta» (antes el móvil re-pintaba toda la pantalla en cada milímetro).",
+    "🧾 El velo del perfil sigue ahí; el desenfoque fino entra al soltar, que es cuando se nota y no cuesta frames.",
+  ]},
   {v:"4.4.0", d:"18 jul 2026", t:"Reconectar un banco en UN toque y avisos con la app cerrada (APK 29)", items:[
     "🔓 Si un banco pierde el permiso, ahora te enteras DONDE miras el saldo: banner en Cartera con botón «Reconectar CaixaBank» que te lleva directo a autorizar — sin bucear por Ajustes. Y si Trade Republic se desconecta, su banner abre la pantalla de reconexión con el teléfono ya puesto (y te aclara que es AQUÍ, no en la app de TR 😉).",
     "🛎 Recibos con la app CERRADA: la app deja programado en Android el calendario del mes y el móvil avisa solo la víspera de cada recibo y cuota. Necesita el APK 4.4.0 (te lo ofrece sola al abrir; instálalo una vez).",
@@ -11554,8 +11558,12 @@ function App(){
     }
     const dim=document.querySelector(".profile-dim-layer");
     if(dim){
-      dim.style.opacity=String(v);   // opacidad = progreso: el blur del backdrop entra en sincronía con el gesto
+      dim.style.opacity=String(v);
       if(v>0.02) dim.classList.add("on"); else dim.classList.remove("on");
+      // Blur solo al final del gesto (abierto y sin dragging). Durante el drag el velo plano
+      // basta — backdrop-filter frame a frame mataba la WebView (vídeo 2026-07-18).
+      const drag=appShellRef.current&&appShellRef.current.classList.contains("dragging");
+      if(v>0.92 && !drag) dim.classList.add("blurred"); else dim.classList.remove("blurred");
     }
     try{
       const av=document.querySelector(".v4-avatar");
@@ -12138,8 +12146,8 @@ function App(){
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
     // En Inicio, swipe a la derecha abre Ajustes desde toda la pantalla (no solo el borde).
     // En el resto de tabs, el borde sigue valiendo (feedback 2026-07-17).
-    if(tab===0 || startX.current<EDGE_OPEN) setDrawerMounted(true);
-    if(tab===0) setProfileMounted(true);
+    // No montar Settings/Perfil en touchstart: cada toque en Inicio montaba el árbol pesado
+    // a mitad de gesto → drag lento a ~3 fps (vídeo 2026-07-18). Contenido al soltar/abrir.
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen||profileOpen) return;
@@ -12155,7 +12163,7 @@ function App(){
         const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
         if(openSettings){
           gestureMode.current="drawer";
-          setDrawerMounted(true);
+          // Solo mueve el shell vacío; SettingsPanel se monta al soltar (drawerOpen).
           if(drawerRef.current) drawerRef.current.classList.add("dragging");
           if(appShellRef.current) appShellRef.current.classList.add("dragging");
         } else {
@@ -12170,7 +12178,7 @@ function App(){
         const fromAv=!!(e.target&&e.target.closest&&e.target.closest(".v4-avatar"));
         if(atTop||fromAv){
           gestureMode.current="profile";
-          setProfileMounted(true);
+          // Shell del perfil vacío durante el gesto; ProfilePanel al soltar (profileOpen).
           profSetOrigin();   // ancla la miniatura al avatar ANTES del primer frame del gesto
           if(profileRef.current) profileRef.current.classList.add("dragging");
           if(appShellRef.current) appShellRef.current.classList.add("dragging","profile-dim");
