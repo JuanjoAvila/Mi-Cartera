@@ -24,9 +24,13 @@ Des-compartir = salir del hogar (borra tu snapshot, no toca el `app_state` del o
    pégalo en **SQL Editor → Run** (arregla las políticas RLS).
 3. `0015_household_policies_rebuild.sql` — **si ves**  
    `new row violates row-level security policy for table "households"`  
-   (error real del 2026-07-18 al crear un hogar): pégalo en **SQL Editor → Run**.  
-   Reconstruye TODAS las políticas de las 3 tablas (a la BD le faltaba la de INSERT)
-   y además deja visible el hogar recién creado para su creador. Idempotente.
+   (error real del 2026-07-18 al crear un hogar): reconstruye TODAS las políticas de
+   las 3 tablas (a la BD le faltaba la de INSERT) y además deja visible el hogar recién
+   creado para su creador. Idempotente.
+
+> **Desde 2026-07-18 el CI aplica las migraciones solo** (workflow «Deploy Supabase»,
+> `db push --include-all`; antes abortaba en silencio por las dos «0012» aplicadas a mano).
+> Plan B si el CI no puede: pegar el fichero en **SQL Editor → Run**.
 
 ## Probar con dos cuentas
 
