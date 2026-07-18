@@ -610,8 +610,12 @@ function App(){
     }
     const dim=document.querySelector(".profile-dim-layer");
     if(dim){
-      dim.style.opacity=String(v);   // opacidad = progreso: el blur del backdrop entra en sincronía con el gesto
+      dim.style.opacity=String(v);
       if(v>0.02) dim.classList.add("on"); else dim.classList.remove("on");
+      // Blur solo al final del gesto (abierto y sin dragging). Durante el drag el velo plano
+      // basta — backdrop-filter frame a frame mataba la WebView (vídeo 2026-07-18).
+      const drag=appShellRef.current&&appShellRef.current.classList.contains("dragging");
+      if(v>0.92 && !drag) dim.classList.add("blurred"); else dim.classList.remove("blurred");
     }
     try{
       const av=document.querySelector(".v4-avatar");
@@ -1194,8 +1198,8 @@ function App(){
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
     // En Inicio, swipe a la derecha abre Ajustes desde toda la pantalla (no solo el borde).
     // En el resto de tabs, el borde sigue valiendo (feedback 2026-07-17).
-    if(tab===0 || startX.current<EDGE_OPEN) setDrawerMounted(true);
-    if(tab===0) setProfileMounted(true);
+    // No montar Settings/Perfil en touchstart: cada toque en Inicio montaba el árbol pesado
+    // a mitad de gesto → drag lento a ~3 fps (vídeo 2026-07-18). Contenido al soltar/abrir.
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen||profileOpen) return;
@@ -1211,7 +1215,7 @@ function App(){
         const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
         if(openSettings){
           gestureMode.current="drawer";
-          setDrawerMounted(true);
+          // Solo mueve el shell vacío; SettingsPanel se monta al soltar (drawerOpen).
           if(drawerRef.current) drawerRef.current.classList.add("dragging");
           if(appShellRef.current) appShellRef.current.classList.add("dragging");
         } else {
@@ -1226,7 +1230,7 @@ function App(){
         const fromAv=!!(e.target&&e.target.closest&&e.target.closest(".v4-avatar"));
         if(atTop||fromAv){
           gestureMode.current="profile";
-          setProfileMounted(true);
+          // Shell del perfil vacío durante el gesto; ProfilePanel al soltar (profileOpen).
           profSetOrigin();   // ancla la miniatura al avatar ANTES del primer frame del gesto
           if(profileRef.current) profileRef.current.classList.add("dragging");
           if(appShellRef.current) appShellRef.current.classList.add("dragging","profile-dim");

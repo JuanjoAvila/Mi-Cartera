@@ -15,6 +15,8 @@ test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }
   await page.locator(".botnav-fab").click();
   const sheet = page.locator(".v4-sheet");
   await expect(sheet).toBeVisible();
+  // Esperar sheetup (.3s): si mides/arrastras a mitad de animación el gesto no cierra (flaky).
+  await page.waitForTimeout(450);
 
   // Banco del apunte: sale el banco de la cuenta sembrada (Sabadell) + «Sin banco».
   await expect(sheet.getByRole("button", { name: /Sabadell/ })).toBeVisible();
@@ -26,8 +28,8 @@ test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }
   const x = Math.round(bb.x + bb.width / 2);
   const y0 = Math.round(bb.y + 24);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y: y0 }] });
-  for (let i = 1; i <= 6; i++) {
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y0 + i * 40 }] });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y0 + i * 48 }] });
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(sheet).toHaveCount(0, { timeout: 3_000 });

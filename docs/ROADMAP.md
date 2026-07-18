@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-18 · **v4.4.0** — Reconexión a UN toque (banner en Cartera cuando un banco OB caduca → botón directo a autorizar; TR muerto → botón que abre Mis bancos con el teléfono puesto) y avisos con la app CERRADA: vísperas de recibos vía worker nativo (**APK 29 publicado**) y umbrales de presupuesto 50/95 añadidos a la Edge `ingest` (ya activos vía TR-notis). Antes el mismo día: 4.3.0 (avisos in-app 50/80/95/100% + víspera, deudas sin plazo con fecha estimada, tarjeta 🎉 última cuota, «Más…» cerrable, informe con ubicación, Ajustes animado, MI 3.150.0) y 4.2.0 (permitirse a plazos, banco por apunte, Hogar arreglado con 0015 aplicada por CI, sync total de Cartera, persistencia debounced).
+> Estado a 2026-07-18 · **v4.4.1** — gestos Ajustes/perfil sin tirones al arrastrar lento (sin `filter`/`backdrop-filter` en el drag). Antes: 4.4.0 reconexión a un toque + avisos app cerrada (APK 29).
 
 ## Listo para uso diario
 
@@ -10,7 +10,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.4.0** |
+| Web / OTA (`VERSION`) | **4.4.1** |
 | APK (`versionName` / `versionCode`) | **4.4.0** / **29** — release GitHub `v4.4.0` + `apk.json` publicados |
 | `public/apk.json` | **29** / 4.4.0 → `Mi-Cartera-4.4.0.apk` |
 

@@ -616,6 +616,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.4.1", d:"18 jul 2026", t:"Ajustes y perfil sin tirones al arrastrar lento", items:[
+    "✨ Si abres Ajustes o el perfil tirando despacio con el dedo, ya no se pone a «cámara lenta» (antes el móvil re-pintaba toda la pantalla en cada milímetro).",
+    "🧾 El velo del perfil sigue ahí; el desenfoque fino entra al soltar, que es cuando se nota y no cuesta frames.",
+  ]},
   {v:"4.4.0", d:"18 jul 2026", t:"Reconectar un banco en UN toque y avisos con la app cerrada (APK 29)", items:[
     "🔓 Si un banco pierde el permiso, ahora te enteras DONDE miras el saldo: banner en Cartera con botón «Reconectar CaixaBank» que te lleva directo a autorizar — sin bucear por Ajustes. Y si Trade Republic se desconecta, su banner abre la pantalla de reconexión con el teléfono ya puesto (y te aclara que es AQUÍ, no en la app de TR 😉).",
     "🛎 Recibos con la app CERRADA: la app deja programado en Android el calendario del mes y el móvil avisa solo la víspera de cada recibo y cuota. Necesita el APK 4.4.0 (te lo ofrece sola al abrir; instálalo una vez).",

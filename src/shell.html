@@ -675,12 +675,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
     transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
   .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
-  /* El blur del fondo: backdrop-filter en la capa (NO filter en el shell). Si el WebView no lo
-     soporta, queda el velo verdoso y ya — mejor plano que negro. */
-  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.45);opacity:0;pointer-events:none;
-    -webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);
+  /* Velo verdoso barato durante el gesto. El blur SOLO con .blurred (perfil ya abierto):
+     backdrop-filter en cada frame del drag = mismos 3 fps que el filter del shell (2026-07-18). */
+  .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.5);opacity:0;pointer-events:none;
     transition:opacity .45s ease;max-width:520px;margin:0 auto;}
   .profile-dim-layer.on{opacity:1;pointer-events:none;}
+  .profile-dim-layer.blurred{-webkit-backdrop-filter:blur(18px) saturate(1.15);backdrop-filter:blur(18px) saturate(1.15);}
   .profile-pull-h{display:flex;align-items:center;gap:10px;margin-bottom:6px;min-height:40px;}
   .profile-pull-h .back{width:34px;height:34px;border-radius:50%;background:var(--sur);border:1px solid var(--line-soft);display:grid;place-items:center;font-size:17px;color:var(--text);flex:0 0 auto;line-height:1;}
   .profile-pull-h .ph-main{flex:1;min-width:0;}
@@ -994,10 +994,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* position:relative — ancla de la .botnav flotante (2026-07-18). */
   .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;position:relative;}
   .app-shell .viewport{flex:1;min-height:0;}
-  /* Push limpio tipo Revolut (feedback 2026-07-18: el blur+scale se sentía «raro e incómodo»
-     y además el blur de pantalla completa daba tirones en la WebView): la app solo se desplaza
-     un pelín a la derecha y se atenúa mientras el panel la cubre. */
-  .app-shell.settings-dim{transform:translate3d(calc(var(--set-p,0) * 24px),0,0);filter:brightness(calc(1 - 0.22 * var(--set-p,0)));transition:transform .42s cubic-bezier(.32,.72,0,1),filter .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
+  /* Push limpio tipo Revolut: solo translate. NUNCA filter/brightness en el shell —
+     en cada frame del gesto lento el WebView re-rasteriza Resumen entero → ~3 fps
+     (feedback vídeo 2026-07-18). El panel ya cubre; el desplazamiento basta. */
+  .app-shell.settings-dim{transform:translate3d(calc(var(--set-p,0) * 24px),0,0);transition:transform .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
   .v4-cycle-box{margin:10px 2px 14px;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}
