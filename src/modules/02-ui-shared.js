@@ -55,7 +55,7 @@ function HelpTip({text}){
    INFORME DEL MES — imagen 1080×1350 (para compartir por WhatsApp/IG) con los
    colores del tema activo. Todo en el dispositivo (canvas → share/descarga).
    ============================================================ */
-function shareMonthReport(state, tt){
+function shareMonthReport(state, tt, showToast){
   try{
     // Paleta FIJA por tema (mismos hex que el CSS). No se lee getComputedStyle: en algunos
     // móviles el "modo oscuro automático" del navegador reescribe/oscurece las variables CSS
@@ -118,14 +118,25 @@ function shareMonthReport(state, tt){
     g.fillText(tf("rp_delta",{x:dl}), W-108, py+95); g.textAlign="left";
     g.fillStyle=muted; g.font="600 26px Manrope, sans-serif"; g.fillText(t("rp_footer")+" · v"+CONFIG.APP_VERSION, 72, H-72);
     cv.toBlob(function(b){
-      if(!b) return;
+      if(!b){ if(showToast) showToast("✕ Informe: canvas vacío"); return; }
       const fname="mi-cartera-"+new Date().toISOString().slice(0,7)+".png";
-      const file=new File([b], fname, {type:"image/png"});
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file], title:"Mi Cartera"}).catch(function(){});
-      } else {
+      const dl=function(){
         const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=fname; a.click();
         setTimeout(function(){ URL.revokeObjectURL(u); },1000);
+      };
+      const file=new File([b], fname, {type:"image/png"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        // El share de la WebView puede rechazar en silencio («el informe no hace nada»,
+        // feedback 2026-07-18): si falla, descargamos la imagen igualmente y lo decimos.
+        navigator.share({files:[file], title:"Mi Cartera"}).catch(function(err){
+          const aborted=err && (err.name==="AbortError");   // canceló el usuario: no insistir
+          if(aborted) return;
+          dl();
+          if(showToast) showToast(t("rp_saved"));
+        });
+      } else {
+        dl();
+        if(showToast) showToast(t("rp_saved"));
       }
     },"image/png");
   }catch(e){ try{ alert("Informe: "+((e&&e.message)||e)); }catch(_){} }

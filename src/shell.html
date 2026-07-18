@@ -494,13 +494,17 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
   /* ===== v4: nav inferior + FAB + sheets (SPEC-v4 §1–2, §7) ===== */
-  .botnav{flex:0 0 auto;position:relative;z-index:40;
+  /* FLOTANTE (absolute, no flex-child): antes ocupaba sitio en el layout y al esconderse
+     dejaba un bloque vacío tapando el fondo (feedback 2026-07-18). Ahora el contenido corre
+     por debajo (la barra es translúcida con blur) y al esconderse se ve la app, no un hueco.
+     El padding-bottom de .page ya reserva el espacio para que nada quede oculto al final. */
+  .botnav{position:absolute;left:0;right:0;bottom:0;z-index:40;
     background:color-mix(in srgb, var(--bg-2) 88%, transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
     border-top:1px solid var(--line-soft);
     padding:8px 10px calc(10px + var(--safe-bottom));
-    /* Se esconde al bajar y reaparece al subir (estilo Revolut). Misma curva que el resto de la app. */
-    transition:transform .34s cubic-bezier(.32,.72,0,1),opacity .26s ease;will-change:transform;}
-  .botnav.botnav-hidden{transform:translateY(130%);opacity:0;pointer-events:none;}
+    /* Se esconde al bajar y reaparece al subir. Misma curva y duración que el track de tabs. */
+    transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;}
+  .botnav.botnav-hidden{transform:translateY(110%);pointer-events:none;}
   .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
@@ -548,8 +552,14 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-sec-h{font-size:15px;font-weight:800;margin:22px 0 10px;}
   .v4-stackbar{display:flex;gap:3px;height:14px;border-radius:6px;overflow:hidden;}
   .v4-stackbar i{display:block;height:100%;border-radius:6px;min-width:4px;transform-origin:left center;animation:v4bar .75s var(--ease) both;}
-  .v4-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px;font-size:12.5px;color:var(--muted);}
+  .v4-legend{display:flex;flex-wrap:wrap;gap:8px 6px;margin-top:12px;font-size:12.5px;color:var(--muted);}
   .v4-legend b{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+  /* Leyenda de Cartera tocable: marca/desmarca liquidez·inversiones·bienes y el gráfico se
+     recalcula (2026-07-18). Apagado = atenuado, sin cambiar el layout. */
+  .v4-legend-btn{display:inline-flex;align-items:center;padding:5px 9px;border-radius:11px;border:1px solid transparent;background:none;color:var(--muted);font-size:12.5px;font-weight:650;font-family:inherit;cursor:pointer;transition:opacity .2s,border-color .2s,background .2s;}
+  .v4-legend-btn b{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+  .v4-legend-btn:not(.off){border-color:var(--line-soft);background:var(--sur2);}
+  .v4-legend-btn.off{opacity:.4;}
   .v4-seg{display:flex;gap:4px;background:var(--sur);border:1px solid var(--line-soft);border-radius:16px;padding:4px;margin-bottom:14px;}
   .v4-seg-btn{flex:1;min-height:40px;border-radius:12px;font-size:13.5px;font-weight:700;color:var(--muted);padding:8px 6px;}
   .v4-seg-btn.on{background:var(--mint);color:var(--on-mint);}
@@ -720,7 +730,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp,.settings-push.open .set-card,.settings-push.open .v4-set-sec,.settings-push.open .v4-set-profile{animation:none !important;transition:none !important;}
   }
 
   .card{background:linear-gradient(180deg,var(--surface),var(--bg-2));border:1px solid var(--line-soft);border-radius:var(--radius);margin-bottom:14px;box-shadow:var(--shadow);overflow:hidden;}
@@ -907,7 +917,15 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* Ajustes rediseñados (Claude Design): tarjetas con filas agrupadas + switches */
   .set-card{background:var(--sur);border:1px solid var(--line-soft);border-radius:20px;margin-top:14px;overflow:hidden;box-shadow:var(--shadow);}
   .set-card .sc-title{font-weight:800;font-size:11.5px;color:var(--muted-2);padding:14px 16px 4px;letter-spacing:1.4px;text-transform:uppercase;}
-  .set-row{display:flex;align-items:center;gap:11px;padding:14px 16px;border:none;border-top:1px solid var(--line-soft);width:100%;background:none;color:var(--text);font-size:15px;font-family:inherit;text-align:left;cursor:pointer;box-sizing:border-box;min-height:56px;}
+  /* Filas más compactas (feedback 2026-07-18: «los botones son gigantescos»): 48px sigue
+     siendo target táctil válido (≥44px, SPEC §0) pero deja de parecer un listón. */
+  .set-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border:none;border-top:1px solid var(--line-soft);width:100%;background:none;color:var(--text);font-size:14.5px;font-family:inherit;text-align:left;cursor:pointer;box-sizing:border-box;min-height:48px;}
+  /* Entrada por secciones al abrir Ajustes y al desplegar un acordeón (2026-07-18):
+     el mismo rise sutil del resto de la app, con un pelín de escalera. */
+  .settings-push.open .v4-set-profile{animation:rise .32s var(--ease) both;}
+  .settings-push.open .v4-set-sec{animation:rise .34s var(--ease) both;animation-delay:.03s;}
+  .settings-push.open .set-card{animation:rise .36s var(--ease) both;animation-delay:.06s;}
+  .set-exp{animation:rise .26s var(--ease) both;}
   .chip.active,.v4-period-btn.on{background:var(--mint);border-color:var(--mint);color:var(--on-mint);}
   .v4-period{display:flex;gap:8px;margin:12px 0 10px;}
   .v4-period-btn{flex:1;min-height:48px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);font-weight:700;font-size:14px;color:var(--text);}
@@ -972,7 +990,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-sheet.dragging{transition:none !important;}
   .v4-sheet-back.lock{overscroll-behavior:none;touch-action:none;}
   html.settings-open,html.settings-open body{overflow:hidden;overscroll-behavior:none;}
-  .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;}
+  /* position:relative — ancla de la .botnav flotante (2026-07-18). */
+  .app-shell{flex:1;min-height:0;display:flex;flex-direction:column;transform-origin:center center;position:relative;}
   .app-shell .viewport{flex:1;min-height:0;}
   .app-shell.settings-dim{transform:scale(calc(1 - 0.04 * var(--set-p,0)));filter:blur(calc(var(--set-p,0) * 14px)) brightness(calc(1 - 0.28 * var(--set-p,0)));border-radius:calc(var(--set-p,0) * 18px);overflow:hidden;transition:transform .42s cubic-bezier(.32,.72,0,1),filter .42s cubic-bezier(.32,.72,0,1),border-radius .42s cubic-bezier(.32,.72,0,1);pointer-events:none;}
   .app-shell.settings-dim.dragging{transition:none;}
@@ -983,8 +1002,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-gastos-summary-amount.neg{color:var(--coral);}
   .v4-chips.meta-chips{flex-wrap:wrap;gap:8px;margin-bottom:12px;}
   .v4-chips.meta-chips .v4-chip{min-height:36px;font-size:12.5px;font-weight:650;padding:0 12px;}
-  .v4-mov .meta{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;}
+  .v4-mov .meta{display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline;}
   .v4-mov .meta .sep{color:var(--muted-2);margin:0 1px;}
+  /* Badge de cuenta Open Banking: vive en la línea de meta y puede saltar de línea entera —
+     pegada al nombre se cortaba con nombres largos o con «· caducado» (2026-07-18). */
+  .v4-ob-badge{display:inline-block;font-size:10.5px;font-weight:800;border-radius:8px;padding:2px 7px;margin-left:7px;vertical-align:middle;white-space:nowrap;line-height:1.4;}
+  .v4-mov .meta .v4-ob-badge{margin-left:0;}
   html.sheet-open .v4-sheet,html.sheet-open .v4-chips{touch-action:pan-y pan-x;pointer-events:auto;}
   html.sheet-open .v4-sheet-back{pointer-events:auto;}
   .v4-link-mini{display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:6px 10px;border-radius:999px;border:none;background:rgba(95,208,138,.16);color:var(--mint);font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer;}

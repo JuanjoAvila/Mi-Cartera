@@ -37,6 +37,81 @@ function tabOrderOf(s){
   return ["dash","gastos","plan","cartera"];
 }
 
+/* ============================================================
+   ACTUALIZACIONES — hook único (2026-07-18)
+   ============================================================
+   La app tiene TRES canales de update y estaban desperdigados por App en efectos sueltos
+   («spaghetti», feedback 2026-07-18). Este hook los agrupa; el transporte de bajo nivel
+   (descargas, notis, service worker) sigue en 12-boot.js, que publica window._mc* y avisa
+   por eventos. El mapa completo:
+     1) WEB (PWA):  Service Worker esperando  → evento "mc-sw-update"  → pill «actualizar».
+     2) OTA (APK):  bundle web nuevo (Capgo)  → evento "mc-ota-ready"  → pill; entra solo
+        al próximo arranque si no lo tocas.
+     3) APK:        apk.json con versionCode mayor → evento "mc-apk-update" → instalador.
+   Chequeos: al arrancar (tick 150ms), al volver a primer plano y cada 30 min. */
+function useUpdates(){
+  // 1) SW web esperando
+  const [updateReady,setUpdateReady]=useState(false);
+  useEffect(function(){
+    const h=function(){ setUpdateReady(true); if(window._mcNotifyUpdate) window._mcNotifyUpdate(null); };
+    window.addEventListener("mc-sw-update", h);
+    return function(){ window.removeEventListener("mc-sw-update", h); };
+  },[]);
+  // 2) OTA: pill también mientras descarga (hay _otaPending más nuevo aunque el bundle no esté listo)
+  const readOta=function(){
+    if(window._mcOtaReady&&window._mcOtaReady.id) return true;
+    try{
+      var p=localStorage.getItem("_otaPending");
+      return !!(p&&window._mcNewerVer&&window._mcNewerVer(p, CONFIG.APP_VERSION));
+    }catch(e){ return false; }
+  };
+  const [otaReady,setOtaReady]=useState(readOta);
+  useEffect(function(){
+    const h=function(){ setOtaReady(readOta()); };
+    window.addEventListener("mc-ota-ready", h);
+    if(window._mcRestoreOtaPending) window._mcRestoreOtaPending();
+    var tick=function(){
+      if(window._mcCheckOtaUpdates) window._mcCheckOtaUpdates();
+      if(window._mcCheckApkUpdate) window._mcCheckApkUpdate();
+    };
+    setTimeout(tick, 150);
+    var onVis=function(){ if(document.visibilityState==="visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    var iv=setInterval(tick, 30*60*1000);
+    return function(){
+      window.removeEventListener("mc-ota-ready", h);
+      document.removeEventListener("visibilitychange", onVis);
+      clearInterval(iv);
+    };
+  },[]);
+  // 3) APK nativo
+  const [apkUpd,setApkUpd]=useState(window._mcApkUpdate||null);
+  useEffect(function(){
+    const h=function(){ setApkUpd(window._mcApkUpdate||null); };
+    window.addEventListener("mc-apk-update", h);
+    return function(){ window.removeEventListener("mc-apk-update", h); };
+  },[]);
+  // Acciones (la pill/el toast las pinta App; aquí solo la lógica).
+  const applyUpdate=function(showToast){
+    if(otaReady){
+      if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
+      if(showToast) showToast(t("upd_downloading"));   // pending sin bundle listo aún
+      return;
+    }
+    if(window.__mcApplyUpdate) window.__mcApplyUpdate();
+  };
+  const installApk=function(showToast){
+    const nat=natPlugin();
+    if(!nat||!nat.installApk||!apkUpd) return;
+    if(showToast) showToast(t("apk_downloading"));
+    nat.installApk({url:apkUpd.url}).then(function(r){
+      if(r&&r.needsPermission&&showToast){ showToast(t("apk_perm")); return; }   // Android abrió el ajuste; reintocar
+    }).catch(function(e){ if(showToast) showToast("⚠ "+((e&&e.message)||e)); });
+  };
+  const otaDownloaded=!!(window._mcOtaReady&&window._mcOtaReady.id);
+  return { updateReady:updateReady, otaReady:otaReady, otaDownloaded:otaDownloaded, apkUpd:apkUpd, applyUpdate:applyUpdate, installApk:installApk };
+}
+
 /* Pantalla de bloqueo: pide huella al abrir la app cuando el candado está activado. */
 function LockScreen({onUnlock}){
   const [err,setErr]=useState(false);
@@ -479,6 +554,61 @@ function PrivacyPanel({onClose}){
   ));
 }
 
+/* Hogar y compartido DENTRO de Ajustes (2026-07-18): con la nav v4 de 4 tabs, la pestaña
+   «Compartido» (hogar + grupos de gastos) se quedó sin sitio y era inalcanzable. Mismo patrón
+   de pantalla propia que ActivityPanel/PrivacyPanel. */
+function SharedPanel({state, set, uid, totals, showToast, meEmail, onClose}){
+  useBackClose(true, onClose);
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 10px"}}, "🏠 "+t("st_shared")),
+    React.createElement(Shared,{state:state,set:set,uid:uid,totals:totals,showToast:showToast,meEmail:meEmail})
+  ));
+}
+
+/* Sugerencias con pantalla propia (2026-07-18): antes la caja vivía dentro del popup de
+   Novedades y quedaba enterrada entre versiones. Novedades queda solo como historial. */
+function FeedbackPanel({state, set, showToast, onClose}){
+  useBackClose(true, onClose);
+  const [fb,setFb]=useState("");
+  const [sending,setSending]=useState(false);
+  const notes=(state&&state.verNotes)||[];
+  const sendFb=function(){
+    const txt=fb.trim(); if(!txt||sending) return;
+    // El apunte se guarda SIEMPRE en el estado (sincroniza y se ve abajo); el envío a
+    // app_events es aparte y avisa si no pudo (sin perder nada).
+    const note={id:uid(), v:CONFIG.APP_VERSION, text:txt, date:new Date().toISOString()};
+    set(function(s){ return Object.assign({},s,{verNotes:[note].concat(s.verNotes||[])}); });
+    setSending(true);
+    Promise.resolve().then(function(){ return cloud.feedback(txt); })
+      .then(function(){ showToast(t("wn_fb_sent")); })
+      .catch(function(){ showToast(t("wn_fb_offline")); })
+      .then(function(){ setSending(false); });
+    setFb("");
+  };
+  const delNote=function(id){ set(function(s){ return Object.assign({},s,{verNotes:(s.verNotes||[]).filter(function(n){ return n.id!==id; })}); }); };
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const inp={width:"100%",minHeight:96,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:14,fontFamily:"'Manrope',sans-serif",boxSizing:"border-box",resize:"vertical"};
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 4px"}}, t("wn_fb_title")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}}, t("wn_fb_hint")),
+    React.createElement("textarea",{style:inp,placeholder:t("wn_fb_ph"),value:fb,onChange:function(e){ setFb(e.target.value); }}),
+    React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:10},disabled:!fb.trim()||sending,onClick:sendFb}, sending?"…":("💬 "+t("wn_fb_send"))),
+    notes.length>0 && React.createElement("div",{style:{marginTop:16}},
+      React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"var(--muted)",marginBottom:6}}, t("wn_yours")),
+      notes.map(function(n){ return React.createElement("div",{key:n.id,style:{display:"flex",gap:8,alignItems:"flex-start",padding:"7px 0",borderTop:"1px solid var(--line)",fontSize:12,lineHeight:1.5}},
+        React.createElement("div",{style:{flex:1,overflowWrap:"anywhere"}}, React.createElement("span",{style:{color:"var(--muted-2)"}},"v"+n.v+" · "+new Date(n.date).toLocaleDateString(loc(),{day:"2-digit",month:"2-digit"})+" — "), n.text),
+        React.createElement("button",{className:"ex-del",title:"🗑",onClick:function(){ delNote(n.id); }},"🗑")); })
+    )
+  ));
+}
+
 /* ============================================================
    ✨ NOVEDADES — popup al actualizar + histórico + sugerencias
    ============================================================
@@ -486,6 +616,17 @@ function PrivacyPanel({onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.1.0", d:"18 jul 2026", t:"Cartera a tu gusto, bancos que no caducan solos y Ajustes puestos al día", items:[
+    "🏦 Los bancos ya NO se sincronizan solos al abrir la app (eso les olía a robot y te caducaban la conexión cada dos por tres). Ahora sincronizas tú con el botón «↻ Sincronizar bancos» en Cartera, cuando quieras.",
+    "📊 El gráfico de Cartera es tuyo: toca Liquidez, Inversiones o Bienes en la leyenda para marcarlos/desmarcarlos y ver, por ejemplo, líquido + inversiones a secas. Todo marcado = tu patrimonio de siempre.",
+    "✏️ Vuelve el editar de verdad en Cartera: nombre y rol (Recibos / Gasto diario / Todo) de cada cuenta — el rol se había quedado sin sitio con el rediseño —, los bienes otra vez editables, y en inversiones un «Editar a mano» pequeñito al pie.",
+    "🔒 En las cuentas conectadas al banco solo editas el nombre: el saldo lo trae el banco solo (editarlo a mano era engañarse).",
+    "🏠 Hogar y gastos compartidos han vuelto: estaban implementados pero el rediseño los dejó sin puerta. Ahora en Ajustes → Conexiones → «Hogar y gastos compartidos».",
+    "🎯 Al scrollear las metas en Inicio ya no se te escapa la pestaña, y los dos «Ver plan ›» te llevan al sitio correcto (cargos → Recibos, metas → Metas).",
+    "⬇️ La barra de abajo, al esconderse, deja ver el contenido (antes quedaba un bloque vacío) y anima con la misma curva que el resto.",
+    "⚙️ Ajustes: botones a tamaño humano, animación suave por secciones, huella y cerrar sesión otra vez a mano, sugerencias con su propio botón, más monedas (£ y CHF), y fuera lo deprecado.",
+    "📸 El informe del mes ya no «no hace nada»: si el menú de compartir falla, la imagen se descarga igualmente.",
+  ]},
   {v:"4.0.15", d:"17 jul 2026", t:"Bancos que aguantan, oro con su %, barra que se esconde y Ajustes más guapos", items:[
     "🏦 Open Banking ya no se cae «cada dos por tres»: un fallo pasajero del banco (rate-limit, un 403/404 suelto) ya NO te desconecta ni te pide reconectar. Solo se marca «reconéctate» cuando el permiso caducó de verdad.",
     "🥇 Materias primas de Revolut: al importar el CSV puedes escribir lo que te costó en € y por fin ves si el oro/plata sube o baja (el precio ya se actualizaba solo; faltaba el coste, que Revolut no manda en ese extracto).",
@@ -754,27 +895,9 @@ var RELEASE_NOTES=[
 function WhatsNew({onClose, showToast, set, state}){
   useBackClose(true, onClose);
   const [openV,setOpenV]=useState(RELEASE_NOTES.length?RELEASE_NOTES[0].v:null);
-  const [fb,setFb]=useState("");
-  const [sending,setSending]=useState(false);
-  const notes=(state&&state.verNotes)||[];
-  const sendFb=function(){
-    const txt=fb.trim(); if(!txt||sending) return;
-    // El apunte se guarda SIEMPRE en el estado (sincroniza con su nube y se ve en «Tus
-    // apuntes»); el envío a app_events es aparte y avisa si no pudo (sin perder nada).
-    const note={id:uid(), v:CONFIG.APP_VERSION, text:txt, date:new Date().toISOString()};
-    set(function(s){ return Object.assign({},s,{verNotes:[note].concat(s.verNotes||[])}); });
-    setSending(true);
-    Promise.resolve().then(function(){ return cloud.feedback(txt); })
-      .then(function(){ showToast(t("wn_fb_sent")); })
-      .catch(function(){ showToast(t("wn_fb_offline")); })
-      .then(function(){ setSending(false); });
-    setFb("");
-  };
-  const delNote=function(id){ set(function(s){ return Object.assign({},s,{verNotes:(s.verNotes||[]).filter(function(n){ return n.id!==id; })}); }); };
-  const wrap={}; // estilos en .wn-panel (animación de entrada)
-  const inner={};
+  // (La caja de sugerencias se mudó a Ajustes → «Enviar sugerencia» el 2026-07-18: aquí
+  // quedaba enterrada bajo el historial de versiones. Este popup es solo el historial.)
   const card=function(cur){ return {padding:"12px 14px",borderRadius:14,border:"1px solid "+(cur?"var(--mint)":"var(--line)"),background:"var(--surface)",marginBottom:10}; };
-  const inp={width:"100%",minHeight:74,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:14,fontFamily:"'Manrope',sans-serif",boxSizing:"border-box",resize:"vertical"};
   return ReactDOM.createPortal(React.createElement("div",{className:"wn-panel"}, React.createElement("div",{className:"wn-inner"},
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "✨ "+t("wn_title")),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}}, t("wn_sub")),
@@ -788,19 +911,7 @@ function WhatsNew({onClose, showToast, set, state}){
         open && r.items.map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
       );
     }),
-    React.createElement("div",{style:{padding:"12px 14px",borderRadius:14,border:"1px solid var(--line)",background:"var(--surface)",margin:"16px 0 10px"}},
-      React.createElement("div",{style:{fontWeight:800,fontSize:14,marginBottom:4}}, t("wn_fb_title")),
-      React.createElement("div",{style:{color:"var(--muted)",fontSize:12,lineHeight:1.5,marginBottom:9}}, t("wn_fb_hint")),
-      React.createElement("textarea",{style:inp,placeholder:t("wn_fb_ph"),value:fb,onChange:function(e){ setFb(e.target.value); }}),
-      React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:9},disabled:!fb.trim()||sending,onClick:sendFb}, sending?"…":("💬 "+t("wn_fb_send"))),
-      notes.length>0 && React.createElement("div",{style:{marginTop:12}},
-        React.createElement("div",{style:{fontWeight:700,fontSize:12,color:"var(--muted)",marginBottom:6}}, t("wn_yours")),
-        notes.map(function(n){ return React.createElement("div",{key:n.id,style:{display:"flex",gap:8,alignItems:"flex-start",padding:"7px 0",borderTop:"1px solid var(--line)",fontSize:12,lineHeight:1.5}},
-          React.createElement("div",{style:{flex:1,overflowWrap:"anywhere"}}, React.createElement("span",{style:{color:"var(--muted-2)"}},"v"+n.v+" · "+new Date(n.date).toLocaleDateString(loc(),{day:"2-digit",month:"2-digit"})+" — "), n.text),
-          React.createElement("button",{className:"ex-del",title:"🗑",onClick:function(){ delNote(n.id); }},"🗑")); })
-      )
-    ),
-    React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:4},onClick:onClose}, t("wn_close"))
+    React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},onClick:onClose}, t("wn_close"))
   )), document.body);
 }
 
@@ -810,6 +921,20 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
   const [privOpen,setPrivOpen]=useState(false);    // política de privacidad DENTRO de la app (no _blank)
+  const [sharedOpen,setSharedOpen]=useState(false);// Hogar + gastos compartidos (sin tab propia en v4)
+  const [fbOpen,setFbOpen]=useState(false);        // sugerencias (mudadas fuera de Novedades, 2026-07-18)
+  const [bioOn,setBioOn]=useState(bio.enabled());  // candado con huella (volvió a Ajustes, 2026-07-18)
+  const toggleBio=function(){
+    if(bioOn){ bio.disable(); setBioOn(false); showToast(t("au_bio_dis")); return; }
+    bio.enable(uid, meEmail).then(function(){ setBioOn(true); showToast(t("au_bio_en")); })
+      .catch(function(e){ showToast("✕ "+((e&&e.message)||e)); });
+  };
+  const doSignOut=function(){
+    askConfirm({ title:t("au_signout"), ok:t("au_signout"), danger:true }).then(function(yes){
+      if(!yes) return;
+      cloud.signOut().then(function(){ showToast(t("au_signedout")); onClose(); });
+    });
+  };
   const fileRef=useRef(null);
   // Telemetría: el panel «Actividad» SOLO existe para el admin (gate por email de la sesión;
   // la RLS de app_events lo re-valida en servidor — sin sesión de admin no devuelve filas).
@@ -891,8 +1016,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const refreshBank=function(){ if(!onBankSync) return; setBankBusy(true); Promise.resolve(onBankSync()).finally(function(){ setBankBusy(false); cloud.bankLinks().then(function(r){ setBankLinks(r||[]); }).catch(function(){}); }); };
   // Estilos de los pocos controles con input propio (presupuesto). Los demás usan el sistema
   // de filas .set-row/.swx. (lbl/btnGhost/link se quitaron en 2026-07-17: estaban muertos.)
-  const inp={width:"100%",padding:"12px 14px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
-  const btn={width:"100%",padding:"12px",borderRadius:"12px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:700,fontSize:"15px",marginTop:"10px",cursor:"pointer"};
+  // Inputs se quedan en 16px (menos = zoom automático del móvil al enfocar); los botones sí
+  // bajan de tamaño para no parecer listones (feedback 2026-07-18).
+  const inp={width:"100%",padding:"10px 13px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
+  const btn={width:"100%",padding:"10px 12px",borderRadius:"12px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:700,fontSize:"14px",marginTop:"10px",cursor:"pointer"};
   const saveNums=function(){
     const b=parseFloat(String(budget).replace(',','.'))||0;
     set(function(s){ return Object.assign({},s,{budget:b}); });
@@ -1008,10 +1135,14 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
         React.createElement("button",{style:btn,onClick:saveNums},t("save"))
       ),
-      row("cur","💱",t("currency"),curCur==="EUR"?t("cur_eur"):t("cur_usd"),function(){
-        const c=curCur==="EUR"?"USD":"EUR";
-        setS({currency:c}); showToast(c==="USD"?"Mostrando en $":"Mostrando en €");
-      }),
+      // Antes era un toggle €↔$ a pelo; ahora acordeón con las divisas del FX del BCE
+      // (EUR/USD/GBP/CHF — petición 2026-07-18 «más monedas»).
+      row("cur","💱",t("currency"),t("cur_"+curCur.toLowerCase()),function(){ toggleExp("cur"); }),
+      expand==="cur" && React.createElement("div",{className:"set-exp"},
+        React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
+          ["EUR","USD","GBP","CHF"].map(function(c){
+            return React.createElement("button",{key:c,onClick:function(){ setS({currency:c}); showToast(t("cur_"+c.toLowerCase())); },style:segBtn(curCur===c)}, t("cur_"+c.toLowerCase()));
+          }))),
       (function(){
         const gm=(state.settings&&state.settings.gTotalMode)||"split";
         return React.createElement(React.Fragment,null,
@@ -1042,6 +1173,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       );
     })(),
     manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
+    // Hogar + grupos compartidos: perdieron su tab con la nav v4 y quedaron inalcanzables
+    // hasta hoy (feedback 2026-07-18 «¿dónde está lo del hogar?»).
+    cloud.enabled() && grp("sharedhh","🏠",t("st_shared"),"hogar compartido shared household pareja grupo crucero viaje",null,
+      row("sharedhh","🏠",t("st_shared"),null,function(){ setSharedOpen(true); })
+    ),
+    sharedOpen && ReactDOM.createPortal(React.createElement(SharedPanel,{state:state,set:set,uid:uid,totals:totals,showToast:showToast,meEmail:meEmail,onClose:function(){ setSharedOpen(false); }}), document.body),
     !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
       t("na_body"),
       React.createElement("button",{style:Object.assign({},btn,{marginTop:10}),onClick:function(){ const nat=natPlugin(); if(nat&&nat.openNotifAccess){ try{ nat.openNotifAccess().catch(function(){}); }catch(e){} } }},t("na_fix")),
@@ -1097,10 +1234,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
 
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_app")),
-    grp("news","✨",t("st_news"),"novedades news version sugerencias historial whatsnew","v"+CONFIG.APP_VERSION,
-      row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); })
+    grp("news","✨",t("st_news"),"novedades news version sugerencias feedback historial whatsnew","v"+CONFIG.APP_VERSION,
+      row("news","✨",t("st_news_row"),null,function(){ setNewsOpen(true); }),
+      row("fb","💬",t("st_feedback"),null,function(){ setFbOpen(true); })
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
+    fbOpen && ReactDOM.createPortal(React.createElement(FeedbackPanel,{state:state,set:set,showToast:showToast,onClose:function(){ setFbOpen(false); }}), document.body),
     natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
       row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
@@ -1109,8 +1248,14 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
       row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
     ),
-    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy",null,
+    cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
+      // Huella y cerrar sesión volvieron aquí (2026-07-18): con el rediseño solo existían
+      // dentro del AuthPanel, al que ya no se llegaba estando logueado.
+      bio.supported()
+        ? row("biolock","🔐",(bioOn?t("au_bio_off"):t("au_bio_on")).replace(/^[^ ]+ /,""),null,toggleBio, sw(bioOn))
+        : React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("au_nobio")),
+      row("signout","🚪",t("au_signout"),null,doSignOut),
       row("priv","🔒",t("st_privacy"),null,function(){ setPrivOpen(true); }),
       row("delacc","🗑️",t("st_delete_acc"),null,function(){
         askConfirm({ title:t("st_delete_acc"), sub:t("st_delete_acc_sub"), ok:t("st_delete_acc_ok"), danger:true })
@@ -1129,11 +1274,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
 
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_adv")),
-    grp("custom","🎛️",t("v4_set_adv"),"avanzado advanced personalizar widgets resumen pestañas tabs vista gastos bloques blocks informe report customise",null,
-      row("widgets","✎",t("st_widgets"),null,function(){
-        onClose();
-        try{ window.dispatchEvent(new CustomEvent("mc-dash-edit")); }catch(e){}
-      }),
+    grp("custom","🎛️",t("v4_set_adv"),"avanzado advanced pestañas tabs vista gastos bloques blocks informe report customise",null,
+      // («Personalizar widgets del Resumen» se retiró el 2026-07-18: era del Dashboard v3.)
       row("tabs","✎",t("et_tabs").replace("✎ ",""),null,function(){ toggleExp("tabs"); }),
       expand==="tabs" && React.createElement("div",{className:"set-exp"},(function(){
         const order=tabOrderOf(state);
@@ -1172,7 +1314,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         return row("blocks","🧩",t("st_blocks"),null,function(){ setS({blocksEdit:!on}); }, sw(on));
       })(),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}}, t("st_blocks_hint")),
-      totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals); })
+      totals && row("report","📸",t("rp_btn").replace(/^[^ ]+ /,""),null,function(){ shareMonthReport(state, totals, showToast); })
     ),
 
     // Admin al FINAL (fuera del flujo diario). Sentry de prueba quitado: no aporta en móvil.
@@ -1286,7 +1428,9 @@ function sharedBalances(g){
   return {bal:bal, settle:settle, total:+(((g&&g.expenses)||[]).reduce(function(a,e){return a+(e.amount||0);},0)).toFixed(2)};
 }
 
-function Shared({state, set, uid, totals, showToast, meEmail}){
+// uid:userId — renombrado al destructurar (2026-07-18): el prop (id del USUARIO) sombreaba al
+// generador global uid() y crear un grupo/gasto compartido reventaba con «uid is not a function».
+function Shared({state, set, uid:userId, totals, showToast, meEmail}){
   const groups=state.shared||[];
   const [openId,setOpenId]=useState(null);
   const [addingG,setAddingG]=useState(false);
@@ -1378,7 +1522,7 @@ function Shared({state, set, uid, totals, showToast, meEmail}){
 
   // Vista de lista de grupos
   return React.createElement("div",null,
-    React.createElement(HogarSection,{state:state,totals:totals,uid:uid,showToast:showToast,meEmail:meEmail}),
+    React.createElement(HogarSection,{state:state,totals:totals,uid:userId,showToast:showToast,meEmail:meEmail}),
     React.createElement("div",{className:"gm-sec-h",style:{margin:"8px 0 10px"}}, t("sh_groups_title")),
     groups.length===0 && !addingG && React.createElement("div",{className:"empty"},
       React.createElement("div",{className:"ttl"}, t("sh_empty_t")), t("sh_empty_d")),

@@ -32,42 +32,96 @@ function Wealth({state, set, totals, v4Embed}){
       if(r==="ambos") return t("rl_ambos");
       return a.name||"";
     };
+    // Cuenta re-anclada por Open Banking: su saldo lo trae el banco (no se edita a mano).
+    const isSynced=function(a){ return !!a.bankIban; };
+    const badge=function(txt, color){
+      return React.createElement("span",{className:"v4-ob-badge",style:{background:color+"22",color:color}}, txt);
+    };
     const accRow=function(a){
       return React.createElement("div",{className:"v4-mov",key:a.id},
         React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:a.ent,size:44})),
         React.createElement("div",{className:"nm"},
-          React.createElement("div",null,entOf(a.ent).label),
-          React.createElement("div",{className:"meta"}, roleLab(a)||a.name||"—")
+          React.createElement("div",null,entOf(a.ent).label, isSynced(a)&&badge(t("pt_ob_badge"),"#7FB5E8")),
+          React.createElement("div",{className:"meta"}, [roleLab(a),a.name].filter(Boolean).join(" · ")||"—")
         ),
         React.createElement("div",{className:"am num"},eur(accDaily(a)?spendBal(a):(a.value+pn(a))))
       );
     };
     const obRow=function(o){
       const custom=(state.obLabels||{})[o.key]; const disp=(custom!=null&&custom!=="")?custom:niceObName(o);
+      // La badge va en la línea de meta, no pegada al nombre: con nombres largos (o «caducado»)
+      // se cortaba y descuadraba la fila (feedback 2026-07-18).
       return React.createElement("div",{className:"v4-mov",key:"ob_"+o.key},
         React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:o.ent||"",size:44})),
         React.createElement("div",{className:"nm"},
-          React.createElement("div",null, disp,
-            React.createElement("span",{className:"day-badge",style:{marginLeft:6,background:"#7FB5E822",color:"var(--blue)"}}, t("pt_ob_badge"))),
-          React.createElement("div",{className:"meta"}, entOf(o.ent).label)
+          React.createElement("div",null, disp),
+          React.createElement("div",{className:"meta"}, entOf(o.ent).label,
+            o.stale ? badge(t("pt_ob_badge")+" · "+t("bp_st_expired"),"#E2A05F") : badge(t("pt_ob_badge"),"#7FB5E8"))
         ),
         React.createElement("div",{className:"am num"}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
       );
     };
+    const roleChips=function(a){
+      return React.createElement("div",{className:"rolechips",style:{padding:"8px 0 2px"}},
+        [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+          const on=accRole(a)===rr[0];
+          return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){ setRole(a.id, rr[0]); }}, t(rr[1]));
+        }),
+        React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:t("pt_acc_del"),onClick:function(){ setDelAcc(a.id); }},"🗑")
+      );
+    };
+    const anySynced=state.accounts.some(isSynced);
     return React.createElement("div",null,
       React.createElement("div",{className:"v4-card-list"},
         state.accounts.map(accRow),
         (state.obAccounts||[]).map(obRow),
         React.createElement("button",{className:"edit-link",style:{margin:"8px 4px"},onClick:function(){ accEd.editing?accEd.save():accEd.start(); }},accEd.editing?t("fj_save"):t("fj_edit"))
       ),
-      // Editor de saldos (mismo motor) cuando se pulsa Editar
+      // Editor completo (2026-07-18): nombre + rol (recibos/diario/todo) SIEMPRE; el saldo solo
+      // en cuentas manuales — el de las conectadas lo trae el banco y editarlo aquí sería mentirse.
       accEd.editing && React.createElement("div",{className:"add-form",style:{marginTop:8}},
         state.accounts.map(function(a){
-          return React.createElement("div",{className:"af-row",key:a.id,style:{alignItems:"center"}},
-            React.createElement("span",{style:{flex:1,fontWeight:700}},entOf(a.ent).label),
-            React.createElement("input",{className:"af-in num",style:{width:110},value:accEd.draft[a.id],inputMode:"decimal",onChange:function(e){const v=e.target.value;accEd.setDraft(function(d){return Object.assign({},d,{[a.id]:v});});}})
+          const synced=isSynced(a);
+          return React.createElement("div",{key:a.id,style:{borderBottom:"1px solid var(--line-soft)",paddingBottom:8}},
+            React.createElement("div",{className:"af-row",style:{alignItems:"center"}},
+              React.createElement("span",{style:{flex:"0 0 auto",fontWeight:700}},entOf(a.ent).label),
+              React.createElement("input",{className:"af-in",style:{flex:1,fontSize:13,padding:"7px 10px"},value:a.name||"",placeholder:t("pt_name_ph"),
+                onChange:function(e){ const v=e.target.value; set(function(s){ return Object.assign({},s,{accounts:s.accounts.map(function(x){ return x.id===a.id?Object.assign({},x,{name:v}):x; })}); }); }}),
+              synced
+                ? React.createElement("span",{className:"am num",style:{flex:"0 0 auto",color:"var(--muted)",fontSize:14}}, eur(accDaily(a)?spendBal(a):(a.value+pn(a))))
+                : React.createElement("input",{className:"af-in num",style:{width:104,flex:"0 0 auto"},value:accEd.draft[a.id],inputMode:"decimal",
+                    onChange:function(e){const v=e.target.value;accEd.setDraft(function(d){return Object.assign({},d,{[a.id]:v});});}})
+            ),
+            roleChips(a),
+            delAcc===a.id && React.createElement("div",{className:"rolechips",style:{alignItems:"center",flexWrap:"wrap",padding:"4px 0"}},
+              React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 100%",marginBottom:2}}, t("pt_acc_del_q")),
+              React.createElement("button",{className:"rchip",style:{color:"var(--coral)",borderColor:"var(--coral)"},onClick:function(){ removeAccount(a.id); }}, t("pt_acc_del_yes")),
+              React.createElement("button",{className:"rchip",onClick:function(){ setDelAcc(""); }}, t("pt_acc_del_no"))
+            )
           );
         }),
+        // Cuentas extra del banco: nombre editable + darles rol las promociona (como en v3).
+        (state.obAccounts||[]).map(function(o){
+          const custom=(state.obLabels||{})[o.key]; const disp=(custom!=null&&custom!=="")?custom:niceObName(o);
+          return React.createElement("div",{key:"obed_"+o.key,style:{borderBottom:"1px solid var(--line-soft)",paddingBottom:8}},
+            React.createElement("div",{className:"af-row",style:{alignItems:"center"}},
+              React.createElement("span",{style:{flex:"0 0 auto",fontWeight:700}},entOf(o.ent).label),
+              React.createElement("input",{className:"af-in",style:{flex:1,fontSize:13,padding:"7px 10px"},value:custom!=null?custom:disp,placeholder:disp,
+                onChange:function(e){ const v=e.target.value; set(function(s){ const ob=Object.assign({},s.obLabels); ob[o.key]=v; return Object.assign({},s,{obLabels:ob}); }); }}),
+              React.createElement("span",{className:"am num",style:{flex:"0 0 auto",color:"var(--muted)",fontSize:14}}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
+            ),
+            o.ent && React.createElement("div",{className:"rolechips",style:{padding:"8px 0 2px"}},
+              [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+                return React.createElement("button",{key:rr[0],className:"rchip",onClick:function(){
+                  const nid=uid();
+                  set(function(s){ return promoteObAccount(s, totals, o.key, rr[0], nid); });
+                  accEd.setDraft(function(d){ const nd=Object.assign({},d); nd[nid]=+toEurAmt(o.value||0, o.cur||"EUR", state).toFixed(2); return nd; });
+                }}, t(rr[1]));
+              })
+            )
+          );
+        }),
+        anySynced && React.createElement("div",{className:"hint"}, t("v4_acc_locked")),
         React.createElement("div",{className:"hint"}, t("rl_hint"))
       ),
       (state.assets||[]).length>0 && React.createElement(React.Fragment,null,
@@ -79,9 +133,24 @@ function Wealth({state, set, totals, v4Embed}){
               React.createElement("div",null,a.name),
               a.note && React.createElement("div",{className:"meta"},a.note)
             ),
-            React.createElement("div",{className:"am num"},eur0(a.value))
+            astEd.editing
+              ? React.createElement("input",{className:"editv num",value:astEd.draft[a.id],inputMode:"decimal",onChange:function(e){const v=e.target.value;astEd.setDraft(function(d){return Object.assign({},d,{[a.id]:v});})}})
+              : React.createElement("div",{className:"am num"},eur0(a.value))
           );
-        })
+        }),
+        // El botón de editar bienes «desapareció» con el rediseño (feedback 2026-07-18):
+        // mismo patrón edit-link que las cuentas de arriba.
+        React.createElement("button",{className:"edit-link",style:{margin:"8px 4px"},onClick:function(){ astEd.editing?astEd.save():astEd.start(); }},astEd.editing?t("fj_save"):t("v4_edit_goods")),
+        astEd.editing && React.createElement("div",{className:"add-form",style:{marginTop:4}},
+          state.assets.map(function(a){
+            return React.createElement("div",{className:"af-row",key:"an_"+a.id,style:{alignItems:"center"}},
+              React.createElement("span",{style:{flex:"0 0 auto",fontSize:18}},a.kind==="piso"?"🏡":"🚙"),
+              React.createElement("input",{className:"af-in",style:{flex:1,fontSize:13,padding:"7px 10px"},value:a.name||"",
+                onChange:function(e){ const v=e.target.value; set(function(s){ return Object.assign({},s,{assets:s.assets.map(function(x){ return x.id===a.id?Object.assign({},x,{name:v}):x; })}); }); }})
+            );
+          }),
+          React.createElement("div",{className:"hint"}, t("pt_nonliquid"))
+        )
       )
     );
   }

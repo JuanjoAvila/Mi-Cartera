@@ -1,4 +1,7 @@
 /* ---------- Actualizaciones: OTA web bundle + APK nativo + aviso push/local ----------
+   Este fichero es SOLO el transporte (descargas, service worker, notis): publica window._mc*
+   y avisa con eventos mc-sw-update / mc-ota-ready / mc-apk-update. El estado de UI (pills,
+   botones, chequeo manual) vive en useUpdates() — 10-app-components.js (mapa completo allí).
    La app nativa arranca del bundle LOCAL (instantáneo, offline) y este bloque baja el bundle
    nuevo de GitHub Pages en segundo plano. Bug fix 2026-07-15: si _otaPending ya coincidía con
    version.json, el chequeo salía sin enseñar el botón — ahora restauramos el bundle al arrancar.

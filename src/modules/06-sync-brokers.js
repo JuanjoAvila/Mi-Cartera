@@ -103,7 +103,11 @@ function MyInvestorSync({state, set}){
       if(!r){ fail(r); return; }
       if(r.recaptcha){
         // No hay WebView para resolver captcha: pedir paciencia y NO spamear reintentos.
+        // Telemetría con la VÍA usada (2026-07-18): si esto sale en Actividad, el login fue por
+        // la Edge (IP datacenter) — o estás en web, o el APK no tiene CapacitorHttp. La vía
+        // móvil casi nunca ve captcha; saber cuál falló es la mitad del diagnóstico.
         setErr(r.error||t("mi_recaptcha"));
+        try{ cloud.logEvent('error','MI: recaptcha vía Edge'+(miNativeHttp()?' (con nativo disponible)':' (web/APK sin CapacitorHttp)')); }catch(e){}
         return;
       }
       if(r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
@@ -125,7 +129,12 @@ function MyInvestorSync({state, set}){
           return;
         }
         fail(r);
-      }).catch(function(){ connectViaEdge(); });   // CapacitorHttp no disponible/peta → vía Edge de siempre
+      }).catch(function(e){
+        // CapacitorHttp peta → vía Edge de siempre, dejando rastro: sin esto era imposible saber
+        // desde Actividad por qué un móvil con APK nuevo seguía viendo captcha (2026-07-18).
+        try{ cloud.logEvent('error','MI: login nativo falló, caigo a Edge: '+((e&&e.message)||e)); }catch(_){}
+        connectViaEdge();
+      });
       return;
     }
     connectViaEdge();
@@ -670,7 +679,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
             React.createElement("button",{className:"btn btn-ghost",style:{padding:"8px 12px"},onClick:start},t("inv_editmanual"))
           )
     ),
-    v4Embed && React.createElement("div",{className:"hint",style:{margin:"4px 2px 10px",lineHeight:1.45}}, t("v4_inv_embed_h")),
+    // (El hint «toca un bróker…» se retiró el 2026-07-18: ya estaba anticuado y ocupaba sitio.)
     !editing && hasTickers && !v4Embed && !toolsOnly && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
       React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"✓":""),
       React.createElement("span",null,t("inv_autoprices")+(state.lastPriceSync?tf("inv_lastprice",{d:new Date(state.lastPriceSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):""))
@@ -686,10 +695,11 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
         const items=state.investments.filter(function(i){ return i.ent===g[0]; });
         if(items.length===0) return null;
         const sub=items.reduce(function(a,i){ return a+invValueEur(i,state); },0);
-        const open=!!brokerOpen[g[0]];
+        // Editando: todos los brókers desplegados con sus inputs (si no, había que ir uno a uno).
+        const open=editing||!!brokerOpen[g[0]];
         return React.createElement(React.Fragment,{key:g[0]},
           React.createElement("button",{type:"button",className:"v4-mov",
-            onClick:function(){ setBrokerOpen(function(o){ return Object.assign({},o,{[g[0]]:!o[g[0]]}); }); }},
+            onClick:function(){ if(!editing) setBrokerOpen(function(o){ return Object.assign({},o,{[g[0]]:!o[g[0]]}); }); }},
             React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:g[0],size:44})),
             React.createElement("div",{className:"nm"},
               React.createElement("div",null,g[1]),
@@ -701,9 +711,15 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
             )
           ),
           open && React.createElement("div",{style:{padding:"0 2px 8px"}},
-            React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:false,showCost:false,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete}))
+            React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:editing,showCost:editing&&showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete}))
         );
-      })
+      }),
+      // Editar a mano en discreto, al pie de la lista (feedback 2026-07-18): normalmente los
+      // números entran solos por los brókers; esto es el plan B para cuadrar algo puntual.
+      state.investments.length>0 && React.createElement("div",{style:{display:"flex",gap:8,margin:"8px 4px 0"}},
+        React.createElement("button",{type:"button",className:"edit-link"+(editing?" save":""),onClick:function(){ editing?save():start(); }}, editing?t("inv_save"):("✎ "+t("inv_editmanual"))),
+        editing && React.createElement("button",{type:"button",className:"edit-link",style:{background:"transparent",color:"var(--muted)"},onClick:cancel}, t("inv_cancel"))
+      )
     ),
     !v4Embed && React.createElement(OrderableSections,{tab:"inv",state:state,set:set,items:[
       {id:"ru",label:SIMPLEMODE?t("ru_title_simple"):t("ru_title"),el:
