@@ -204,8 +204,8 @@ function MyInvestorSync({state, set}){
           expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
           React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
-          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
-          React.createElement("div",{className:"hint",style:{marginTop:8}},t("mi_nostore"))
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect"))
+          // (mi_nostore fuera: repetía lo que ya dice mi_hint arriba — limpieza 2026-07-18)
         ),
         step==="otp" && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
@@ -405,7 +405,8 @@ function TRSync({state, set, totals}){
   const body=!bridge
     ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("tr_web_only"))
     : React.createElement(React.Fragment,null,
-        React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:10}},t("tr_tos")),
+        // (El párrafo tr_tos se fusionó en tr_hint el 2026-07-18: tres textos apilados en la
+        //  tarjeta «quedaban raros» — feedback del rediseño de bancos.)
         !connected && step!=="code" && React.createElement(React.Fragment,null,
           expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0,marginBottom:10}},t("tr_expired_re")),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),

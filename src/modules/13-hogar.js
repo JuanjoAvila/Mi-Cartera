@@ -133,7 +133,12 @@ function HogarSection({state, totals, uid, showToast, meEmail}){
       showToast(t("hh_created"));
       setMode(null);
       return reload();
-    }).catch(function(e){ showToast("✕ "+((e&&e.message)||e)); }).finally(function(){ setBusy(false); });
+    }).catch(function(e){
+      const m=(e&&e.message)||String(e);
+      // RLS rota en la BD (caso real 2026-07-18): el error de Postgres no le dice nada al
+      // usuario; se traduce a algo accionable (aplicar la migración 0015).
+      showToast(m.indexOf("row-level security")>=0 ? ("✕ "+t("hh_rls_fix")) : ("✕ "+m));
+    }).finally(function(){ setBusy(false); });
   };
 
   const doJoin=function(){

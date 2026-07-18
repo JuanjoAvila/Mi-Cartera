@@ -22,6 +22,11 @@ Des-compartir = salir del hogar (borra tu snapshot, no toca el `app_state` del o
 2. `0014_household_rls_no_recursion.sql` — **si ves**  
    `infinite recursion detected in policy for relation "household_members"`  
    pégalo en **SQL Editor → Run** (arregla las políticas RLS).
+3. `0015_household_policies_rebuild.sql` — **si ves**  
+   `new row violates row-level security policy for table "households"`  
+   (error real del 2026-07-18 al crear un hogar): pégalo en **SQL Editor → Run**.  
+   Reconstruye TODAS las políticas de las 3 tablas (a la BD le faltaba la de INSERT)
+   y además deja visible el hogar recién creado para su creador. Idempotente.
 
 ## Probar con dos cuentas
 

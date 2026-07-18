@@ -2,6 +2,37 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.2.0] — 2026-07-18
+### Financiación simulada, banco por apunte y lote de arreglos (feedback 2026-07-18, 2ª ronda)
+
+**«¿Me lo puedo permitir?» a plazos (nueva funcionalidad).**
+- `AffordSim` (08-motor-bank): toggle Al contado / A plazos. A plazos = meses + entrada → cuota al 0% (`(importe−entrada)/meses`), simulación del mes con solo la ENTRADA (la 1ª cuota llega el mes siguiente), impacto en fijos (`fijosMensual → +cuota`) y veredicto de si la cuota cabe cada mes (margen libre = nómina de `flows` − fijos − presupuesto; sin nómina apuntada, lo dice en vez de inventar). Botón «Crear la deuda» monta la deuda con el mismo shape que `Debts.addDebt` (value=financiado, `amort`, `months`, `day`, `downPayment`, `asOf:ymNow()`) → entra sola en el motor de líquido y en Plan → Deudas. Claves `af_mode_*`/`af_fin_*` en es/en/ca.
+
+**Banco en gastos manuales.**
+- `ApuntarSheet` (14-v4-screens): chips de banco (cuentas del usuario + «Sin banco»); por defecto la cuenta de gasto diario, como hacía Gastos. `ExpenseDetailSheet`: mismos chips SOLO para apuntes manuales (los de OB/TR traen su banco real).
+- Persistencia sin migración SQL: `source` embebe el banco como `manual:<ent>` (mismo truco que `ob:`) — `expenseSourceForCloud`/`expenseFromRow`/`expenseBankOf` lo codifican/decodifican y nuevo `cloud.setExpenseBank` lo actualiza en la tabla.
+
+**Hogar — crear hogar roto (error real en Actividad: «new row violates row-level security policy for table households»).**
+- Migración `0015_household_policies_rebuild.sql`: recrea TODAS las políticas de las 3 tablas (a la BD le faltaba la de INSERT de `households`; la 0014 solo rehízo los SELECT) y el SELECT de `households` añade `or created_by = auth.uid()` (un hogar recién creado aún no tiene membresía y el RETURNING devolvía 0 filas). Idempotente.
+- Cliente (`cloud.createHousehold`): genera el uuid en el cliente e inserta SIN `.select()` (return=minimal) → deja de depender del RETURNING filtrado por RLS. `HogarSection.doCreate` traduce el error RLS a un toast accionable (`hh_rls_fix`, 3 idiomas) que apunta a la migración.
+
+**Cartera → Sincronizar TODO.**
+- `runBrokerSync(opts)` acepta `{manual:true}`: entra Trade Republic (bridge nativo, solo si `status().connected`; 401 real → toast «reconecta», softFail/waf → silencio) y MyInvestor sin throttle. Aplica posiciones con `applyBrokerPositions` (solo mapeadas, nunca crea). El botón de Cartera lanza `Promise.all([runBankSync({manual}), runBrokerSync({manual})])`. El auto-sync al abrir sigue siendo solo MI con throttle de 30 min.
+
+**UI/UX.**
+- Ajustes: la entrada ya no escala+desenfoca el shell (se sentía «raro e incómodo» y el blur full-screen daba tirones): ahora parallax sutil (translate 24px) + brightness, y fuera las animaciones escalonadas de `.set-card` en cada apertura.
+- «Ver más/Ver plan» desde Inicio: `goTabTop()` resetea el `scrollTop` de la página destino (conservaba el scroll y aterrizabas a mitad de Metas/Gastos).
+- `.v4-cycle-box`: margen inferior 14px (chocaba con los chips de categorías).
+- `input.editv` sin el prefijo `.row`: en Cartera (filas `v4-mov`) el input de editar Bienes salía sin estilo y a todo lo ancho, partiendo los nombres (foto del feedback).
+- Textos de bancos (Ajustes → Mis bancos) a dieta en es/en/ca: `bp_intro`, `bp_pick_sub`, `bp_expbanks_hint`, `bp_foot`, `tr_hint` (absorbe `tr_tos`), `mi_hint`; fuera de la UI `bp_apk_hint`, `tr_tos` y `mi_nostore` (redundantes).
+
+**Rendimiento (lags esporádicos).**
+- Persistencia debounced: `set()` ya no serializa TODO el estado a localStorage en cada llamada (cientos de KB en el hilo principal = micro-tirones); escribe como mucho 1×/400 ms con el último valor y SIEMPRE vuelca en `pagehide`/`visibilitychange:hidden` (+ flush al desmontar). `doExport` pasa a leer el estado React (localStorage puede ir 400 ms por detrás).
+- El blur de pantalla completa de Ajustes (caro en WebView) desaparece con el rediseño de la animación.
+
+**Tests.**
+- Nuevo e2e `apuntar-sheet.spec.mjs`: chips de banco visibles y cierre del «+» tirando hacia abajo con gesto táctil real (CDP), también arrancando desde el teclado numérico. (Ojo del propio test: medir el teclado a mitad de la animación `sheetup` da coordenadas fuera del viewport.)
+
 ## [4.1.0] — 2026-07-18
 ### Cartera editable de verdad, Open Banking solo a demanda y Ajustes al día (lote feedback 2026-07-18)
 
