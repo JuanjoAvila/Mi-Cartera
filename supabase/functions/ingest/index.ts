@@ -153,9 +153,15 @@ Deno.serve(async (req) => {
     month = { spent: Math.round(after * 100) / 100, budget };
     if (tipo === "gasto" && budget > 0) {
       const before = after - importe;
+      // Umbrales 50/95 añadidos 2026-07-18 (petición: avisos aunque la app esté cerrada —
+      // esta respuesta la renderiza el lector nativo, así que funciona en frío).
       if (before <= budget && after > budget)       alert = { kind: "over", monthSpent: after, budget };
-      else if (before < budget * 0.8 && after >= budget * 0.8 && after <= budget)
+      else if (before < budget * 0.95 && after >= budget * 0.95 && after <= budget)
+                                                    alert = { kind: "p95", monthSpent: after, budget };
+      else if (before < budget * 0.8 && after >= budget * 0.8 && after < budget * 0.95)
                                                     alert = { kind: "p80", monthSpent: after, budget };
+      else if (before < budget * 0.5 && after >= budget * 0.5 && after < budget * 0.8)
+                                                    alert = { kind: "p50", monthSpent: after, budget };
       else if (importe >= budget * 0.15 && importe >= 50)
                                                     alert = { kind: "big", monthSpent: after, budget };
     }

@@ -54,6 +54,10 @@ import com.getcapacitor.annotation.PermissionCallback;
  *                                y evita doble noti (nativo ya avisó ↔ JS al abrir).
  *   - setNotifPrefs({expenseConfirm, bankSyncOnNotif}) -> prefs del lector de notis
  *   - consumeBankSyncPing()   -> { ping } si una noti de banco pidió sync (app en frío)
+ *   - setAlertData({ym, charges, fired}) -> calendario de recibos del mes para las notis
+ *                                «la víspera» con la app CERRADA (AlertCheckWorker). Devuelve
+ *                                { fired:[ids] } con lo que el nativo ya avisó, para que la web
+ *                                selle sus claves y no avise dos veces.
  *   - evento JS `bankNotif`   -> cuando llega noti de Caixa/Sabadell/… (app en caliente)
  */
 @CapacitorPlugin(
@@ -313,6 +317,50 @@ public class MiCarteraPlugin extends Plugin {
         JSObject r = new JSObject();
         r.put("ping", pending);
         call.resolve(r);
+    }
+
+    // Calendario de recibos del mes → notis «la víspera» con la app cerrada (AlertCheckWorker).
+    // La web lo empuja al abrir/cambiar datos; aquí se guarda, se re-arma el worker y se hace
+    // una pasada inmediata (por si YA es la víspera de algo). Intercambio de sellos anti-doble:
+    // entra `fired` (lo que la web ya avisó) y sale `fired` (lo que avisó el nativo).
+    @PluginMethod
+    public void setAlertData(PluginCall call) {
+        try {
+            String ym = call.getString("ym", "");
+            SharedPreferences sp = getContext().getSharedPreferences(AlertCheckWorker.PREFS, Context.MODE_PRIVATE);
+            SharedPreferences.Editor ed = sp.edit();
+            org.json.JSONObject cal = new org.json.JSONObject();
+            cal.put("ym", ym);
+            org.json.JSONArray charges = call.getArray("charges") != null
+                    ? new org.json.JSONArray(call.getArray("charges").toString())
+                    : new org.json.JSONArray();
+            cal.put("charges", charges);
+            ed.putString(AlertCheckWorker.KEY_CAL, cal.toString());
+            // sellos de la web → prefs nativas (no re-avisar lo que la web ya avisó)
+            com.getcapacitor.JSArray fired = call.getArray("fired");
+            if (fired != null) {
+                for (int i = 0; i < fired.length(); i++) {
+                    String id = String.valueOf(fired.get(i));
+                    if (!id.isEmpty()) ed.putBoolean("rc_" + id + "_" + ym, true);
+                }
+            }
+            ed.apply();
+            AlertCheckScheduler.ensure(getContext());
+            AlertCheckWorker.check(getContext());
+            // sellos nativos → web (para que selle su localStorage)
+            com.getcapacitor.JSArray out = new com.getcapacitor.JSArray();
+            for (int i = 0; i < charges.length(); i++) {
+                org.json.JSONObject c = charges.optJSONObject(i);
+                if (c == null) continue;
+                String id = c.optString("id", "");
+                if (!id.isEmpty() && sp.getBoolean("rc_" + id + "_" + ym, false)) out.put(id);
+            }
+            JSObject r = new JSObject();
+            r.put("fired", out);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.resolve(new JSObject());   // best-effort: un calendario que falla no rompe nada
+        }
     }
 
     // Multiusuario del lector de gastos TR (migración 0008): la web guarda aquí la URL de

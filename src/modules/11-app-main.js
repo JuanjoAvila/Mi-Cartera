@@ -197,7 +197,12 @@ function App(){
         obAdded=add||[];
         const withExp=add? Object.assign({},prev,{expenses:add.concat(prev.expenses||[])}) : prev;
         const r=applyBankBalances(withExp, links);
-        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs });
+        // Bancos con permiso CADUCADO → banner «Reconectar» en Cartera (UX padre 2026-07-18:
+        // el saldo no cuadraba, le dio a sincronizar, no pasó nada y acabó en la app de TR).
+        // Se recalcula entero en cada sync: reconectar un banco lo saca solo.
+        const issues=links.filter(function(l){ return l&&l.ok===false&&l.expired; })
+          .map(function(l){ return {aspsp:l.aspsp, ent:entFromAspsp(l.aspsp)}; });
+        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: issues });
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
@@ -544,6 +549,21 @@ function App(){
     window.addEventListener("mc-open-settings",h);
     return function(){ window.removeEventListener("mc-open-settings",h); };
   },[]);
+  // «Reconectar Trade Republic» desde el banner de Cartera: abre Ajustes YA en Mis bancos
+  // (con el teléfono precargado) — sin pasear al usuario por menús (UX padre 2026-07-18).
+  const [banksGoto,setBanksGoto]=useState(0);
+  useEffect(function(){
+    const h=function(){ setDrawerMounted(true); setDrawerOpen(true); setBanksGoto(Date.now()); };
+    window.addEventListener("mc-open-banks",h);
+    return function(){ window.removeEventListener("mc-open-banks",h); };
+  },[]);
+  // Banner «Reconectar {banco}» de Cartera: directo a la autorización del banco (vuelve con ?bank=ok).
+  const reconnectBank=function(aspsp){
+    if(!cloud.enabled()||!sessionRef.current){ showToast(t("bp_need_login")); return; }
+    showToast(t("bank_connecting"));
+    cloud.bankConnect(aspsp,"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){ showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
+  };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
     window.addEventListener("online",on); window.addEventListener("offline",off);
@@ -1004,6 +1024,34 @@ function App(){
     });
   },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
 
+  // Empuja el calendario de recibos del mes al NATIVO (APK ≥29): AlertCheckWorker avisa la
+  // víspera aunque la app esté CERRADA. Intercambio de sellos para no avisar dos veces:
+  // mandamos lo que la web ya avisó (_rc1_*) y sellamos lo que avisó el nativo.
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.setAlertData) return;
+    const cm=totals.curMonth, cy=totals.curYear;
+    const ym=cy+"-"+String(cm).padStart(2,"0");
+    const charges=[];
+    (state.fixed||[]).forEach(function(e){
+      if(!occursIn(e,cm)) return;
+      const d=dayIn(e,cm); const amt=occAmountIn(e,cm)||0;
+      if(d==null||!(amt>0)) return;
+      charges.push({id:String(e.id),name:e.name||"Recibo",amount:+amt.toFixed(2),day:d});
+    });
+    (state.debts||[]).forEach(function(d){
+      if(!debtActive(d)||!(d.monthly>0)) return;
+      charges.push({id:"debt_"+d.id,name:d.name||"Cuota",amount:+d.monthly.toFixed(2),day:debtChargeDay(d)});
+    });
+    const fired=[];
+    charges.forEach(function(c){ try{ if(localStorage.getItem("_rc1_"+c.id+"_"+ym)==="1") fired.push(c.id); }catch(e){} });
+    try{
+      nat.setAlertData({ym:ym,charges:charges,fired:fired}).then(function(r){
+        ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+ym,"1"); }catch(e){} });
+      }).catch(function(){});
+    }catch(e){}
+  },[state.fixed,state.debts,totals.curMonth]);
+
   // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
   // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
   // en silencio para no disparar tres de golpe). Suena también como toast en la app.
@@ -1388,7 +1436,7 @@ function App(){
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
-    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); }});
+    if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); },onReconnectBank:reconnectBank});
     return null;
   };
 
@@ -1456,7 +1504,7 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{
