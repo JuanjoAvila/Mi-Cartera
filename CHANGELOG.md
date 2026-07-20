@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.6.4] — 2026-07-20
+### MyInvestor: intento OTA de resolver el reCAPTCHA en la WebView
+- `miSolveCaptcha(action)` + `miLoadRecaptcha(key)` + `miRecaptchaKey()` (06-sync-brokers): cargan bajo demanda `https://www.google.com/recaptcha/enterprise.js?render=<siteKey>` y ejecutan la acción para obtener un token. **Excepción consciente a cero-CDN**: solo al conectar MI (nunca en arranque; la app sigue offline-complete para el resto).
+- `doConnect` refactor a `attempt(captchaToken, retried)`: ante `recaptcha`, si hay site key guardado, resuelve el token y reintenta UNA vez con `X-Recaptcha-Token` (plumbing de `miDeviceLogin`, ya existía). Telemetría distingue «sin site key» / «token rechazado por MI (¿dominio?)».
+- UI: campo avanzado en la tarjeta MI para pegar el site key (`localStorage._miRcKey`), visible al saltar el captcha o si ya hay uno; instrucciones para sacarlo con devtools.
+- **Límite honesto:** reCAPTCHA v3 suele atar el token al dominio registrado (myinvestor.es). Si MI valida el origen, el token de nuestra WebView será rechazado → haría falta WebView nativa (APK). Esto es el intento barato y verificable antes de tocar nativo.
+- OTA only.
+
 ## [4.6.3] — 2026-07-20
 ### «Gasto diario» multi-banco en el chip de siempre (no un chip nuevo)
 - Se retira el chip `dailyChip` («En gasto diario») que dupli­caba el concepto (feedback: «ya existía un gasto diario y me añades otro»).

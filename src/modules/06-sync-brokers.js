@@ -16,6 +16,54 @@ function miNativeHttp(){
     return (p&&typeof p.request==="function")?p:null;
   }catch(e){ return null; }
 }
+// --- reCAPTCHA de MyInvestor resuelto EN LA WEBVIEW (intento OTA) -----------------------------
+// Cuando MI responde SECURITY_001 (captcha), la app oficial genera un token de reCAPTCHA v3 en la
+// web de MyInvestor y lo manda en la cabecera X-Recaptcha-Token. Aquí intentamos lo mismo desde la
+// WebView de la app: cargamos el script de Google reCAPTCHA con EL SITE KEY DE MYINVESTOR (que el
+// usuario pega — no es accesible de otra forma) y ejecutamos la acción. EXCEPCIÓN consciente a la
+// regla de cero-CDN: solo se carga bajo demanda al conectar MI (nunca en el arranque; la app sigue
+// funcionando offline para todo lo demás). Puede que MI valide el dominio del token y lo rechace
+// (entonces haría falta WebView nativa); esto es el intento barato antes de tocar APK.
+function miRecaptchaKey(){ try{ return (localStorage.getItem("_miRcKey")||"").trim(); }catch(e){ return ""; } }
+function miLoadRecaptcha(key){
+  return new Promise(function(resolve){
+    try{
+      const gre=window.grecaptcha && (window.grecaptcha.enterprise||window.grecaptcha);
+      if(gre && gre.execute){ resolve(gre); return; }
+      if(document.getElementById("mi-rc-js")){
+        let n=0; const iv=setInterval(function(){
+          const g=window.grecaptcha && (window.grecaptcha.enterprise||window.grecaptcha);
+          if(g&&g.execute){ clearInterval(iv); resolve(g); } else if(++n>20){ clearInterval(iv); resolve(null); }
+        },200);
+        return;
+      }
+      const s=document.createElement("script"); s.id="mi-rc-js"; s.async=true; s.defer=true;
+      // enterprise.js cubre las dos variantes (grecaptcha.enterprise); si la clave fuera v3 normal,
+      // grecaptcha (sin enterprise) también queda expuesto por este mismo script.
+      s.src="https://www.google.com/recaptcha/enterprise.js?render="+encodeURIComponent(key);
+      s.onload=function(){
+        let n=0; const iv=setInterval(function(){
+          const g=window.grecaptcha && (window.grecaptcha.enterprise||window.grecaptcha);
+          if(g&&g.execute){ clearInterval(iv); resolve(g); } else if(++n>20){ clearInterval(iv); resolve(null); }
+        },200);
+      };
+      s.onerror=function(){ resolve(null); };
+      (document.head||document.documentElement).appendChild(s);
+    }catch(e){ resolve(null); }
+  });
+}
+function miSolveCaptcha(action){
+  return new Promise(function(resolve){
+    const key=miRecaptchaKey(); if(!key){ resolve(null); return; }
+    miLoadRecaptcha(key).then(function(gre){
+      if(!gre||!gre.execute){ resolve(null); return; }
+      try{
+        const go=function(){ gre.execute(key,{action:action||"login"}).then(function(tok){ resolve(tok||null); }).catch(function(){ resolve(null); }); };
+        if(gre.ready) gre.ready(go); else go();
+      }catch(e){ resolve(null); }
+    });
+  });
+}
 function miDeviceLogin(http, loginBody, devId, captchaToken){
   // Mismas cabeceras que _shared/myinvestor.ts (la API valida x-device-id y x-myinvestor-app).
   // Origin/Referer aquí SÍ se pueden fijar: la petición sale en nativo, no la limita el navegador.
@@ -62,6 +110,9 @@ function MyInvestorSync({state, set}){
   const [map,setMap]=useState({});
   const [doneN,setDoneN]=useState(null);
   const [noSession,setNoSession]=useState(false);
+  // Site key de reCAPTCHA de MyInvestor (lo pega el usuario): habilita el intento de resolver el
+  // captcha en la WebView. Se guarda en localStorage para no volver a pedirlo.
+  const [rcKey,setRcKey]=useState(function(){ try{ return localStorage.getItem("_miRcKey")||""; }catch(e){ return ""; } });
   const devRef=useRef(null);
   const deviceId=function(){
     // Mismo deviceId siempre (antes UUID nuevo → MyInvestor veía «otro móvil» y pedía captcha).
@@ -128,23 +179,34 @@ function MyInvestorSync({state, set}){
     if(!cid.trim()||!pass) return; setBusy(true); setErr("");
     const http=miNativeHttp();
     if(http){
-      miDeviceLogin(http,{ customerId:cid.trim(), password:pass },deviceId()).then(function(r){
-        if(r&&r.tokens){ storeTokens(r.tokens); return; }
-        setBusy(false);
-        if(r&&r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
-        if(r&&r.recaptcha){
-          // reCAPTCHA TAMBIÉN desde IP residencial (confirmado con foto 2026-07-18: «Captcha
-          // required» en el móvil) — mensaje humano en vez del texto crudo de la API.
-          setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha desde el móvil'); }catch(e){}
-          return;
-        }
-        fail(r);
-      }).catch(function(e){
-        // CapacitorHttp peta → vía Edge de siempre, dejando rastro: sin esto era imposible saber
-        // desde Actividad por qué un móvil con APK nuevo seguía viendo captcha (2026-07-18).
-        try{ cloud.logEvent('error','MI: login nativo falló, caigo a Edge: '+((e&&e.message)||e)); }catch(_){}
-        connectViaEdge();
-      });
+      // Reintenta el login del móvil; si sale captcha y hay site key, lo resuelve en la WebView y
+      // reintenta UNA vez con el token (retried evita bucle si MI lo rechaza por dominio).
+      const attempt=function(captchaToken, retried){
+        miDeviceLogin(http,{ customerId:cid.trim(), password:pass },deviceId(),captchaToken).then(function(r){
+          if(r&&r.tokens){ storeTokens(r.tokens); return; }
+          if(r&&r.otp){ setBusy(false); setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
+          if(r&&r.recaptcha){
+            if(!retried && miRecaptchaKey()){
+              setErr(t("mi_solving_captcha"));
+              miSolveCaptcha("login").then(function(tok){
+                if(tok){ attempt(tok, true); }
+                else { setBusy(false); setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView'); }catch(e){} }
+              });
+              return;
+            }
+            setBusy(false);
+            setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI — ¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
+            return;
+          }
+          setBusy(false); fail(r);
+        }).catch(function(e){
+          // CapacitorHttp peta → vía Edge de siempre, dejando rastro: sin esto era imposible saber
+          // desde Actividad por qué un móvil con APK nuevo seguía viendo captcha (2026-07-18).
+          try{ cloud.logEvent('error','MI: login nativo falló, caigo a Edge: '+((e&&e.message)||e)); }catch(_){}
+          connectViaEdge();
+        });
+      };
+      attempt(null, false);
       return;
     }
     connectViaEdge();
@@ -214,8 +276,13 @@ function MyInvestorSync({state, set}){
           expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
           React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
-          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect"))
-          // (mi_nostore fuera: repetía lo que ya dice mi_hint arriba — limpieza 2026-07-18)
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
+          // Campo avanzado del site key de reCAPTCHA: aparece al saltar el captcha (o si ya hay uno
+          // guardado). Con él la app intenta resolver el captcha sola en la WebView (2026-07-20).
+          (err===t("mi_recaptcha") || rcKey) && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid var(--line-soft)"}},
+            React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,marginBottom:6}}, t("mi_rc_key_hint")),
+            React.createElement("input",{className:"af-in",style:Object.assign({},inpStyle,{fontFamily:"monospace",fontSize:13}),placeholder:"6L…",autoComplete:"off",value:rcKey,onChange:function(e){ const v=e.target.value.trim(); setRcKey(v); try{ if(v) localStorage.setItem("_miRcKey",v); else localStorage.removeItem("_miRcKey"); }catch(_){} }}),
+            rcKey && React.createElement("div",{style:{fontSize:11.5,color:"var(--mint)",marginTop:6}}, t("mi_rc_key_saved")))
         ),
         step==="otp" && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),

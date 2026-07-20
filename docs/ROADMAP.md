@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-20 · **v4.6.2** — arreglos sobre feedback con fotos: barra inferior pegada abajo con letra pequeña/enorme, «En gasto diario» por banco en Cartera → editar cuentas (multi + badge 🛒), widget re-empuja al volver a la app. (4.6.1:) letra pequeña, Hogar movido a Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
+> Estado a 2026-07-20 · **v4.6.4** — MyInvestor: intento OTA de resolver el reCAPTCHA en la WebView (pegando el site key). **v4.6.3:** «Gasto diario» multi-banco en el chip de siempre (quitado el duplicado). **v4.6.2:** barra inferior pegada abajo con letra pequeña/enorme, widget re-empuja al volver a la app. (4.6.1:) letra pequeña, Hogar movido a Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
 
 ## Listo para uso diario
 
@@ -10,15 +10,15 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.6.3** |
-| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado; 4.6.1–4.6.3 son OTA, no tocan nativo) |
+| Web / OTA (`VERSION`) | **4.6.4** |
+| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado; 4.6.1–4.6.4 son OTA, no tocan nativo) |
 | `public/apk.json` | **30** / 4.6.0 → `Mi-Cartera-4.6.0.apk` |
 
 ## Pendiente / limitaciones conocidas
 
 | Tema | Notas |
 |------|--------|
-| **MyInvestor reCAPTCHA** | CONFIRMADO con foto (2026-07-18): «Captcha required» salta TAMBIÉN por la vía del móvil (IP residencial). Palancas ya aplicadas: `x-myinvestor-app` = 3.150.0 (cliente + Edge) y mensaje humano. **4.6.0:** el cliente (`miDeviceLogin`) ya acepta un `captchaToken` y lo envía en las cabeceras `X-Recaptcha-Token` + `X-Recaptcha-Action: SECURITY_CHECK` (mismo contrato que el cliente open-source `finanze`). Falta la pieza que **genera** ese token: una WebView nativa que resuelva el reCAPTCHA de `myinvestor.es` (necesita el *site key* de MyInvestor y un cambio de APK, no OTA). Ese es el único paso que queda para saltarlo de verdad; el plumbing ya está listo para enchufarlo. |
+| **MyInvestor reCAPTCHA** | **4.6.4:** intento OTA — la app carga el reCAPTCHA de Google bajo demanda con el **site key de MyInvestor** (que el usuario pega en la tarjeta MI; su web va tras Incapsula y no se puede extraer desde el CI), ejecuta la acción, y reintenta el login con `X-Recaptcha-Token`. **Riesgo:** reCAPTCHA v3 suele atar el token al dominio registrado (`myinvestor.es`); si MI valida el origen, rechazará el token de nuestra WebView → entonces el único camino es una **WebView nativa** que cargue la web de MI (APK). El intento OTA se prueba en 1 min: si el token cuela, resuelto sin tocar nativo. Palancas previas: `x-myinvestor-app`=3.150.0, mensaje humano, `captchaToken` en cabeceras (plumbing listo). |
 | **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
 | **Widget «Puedes gastar»** | El código va en el APK 30 (verificado: strings `Puedes gastar`/`te quedan` en `classes.dex`). Si en el móvil sigue saliendo solo el gasto: el widget se alimenta de `updateWidget` (app → plugin) y MIUI/HyperOS a veces no lo re-pinta. 4.6.2 re-empuja al volver a primer plano; si aún falla, **quitar y re-añadir el widget**. No es bug de código OTA. |
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
