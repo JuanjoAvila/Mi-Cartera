@@ -10,8 +10,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.6.2** |
-| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado; 4.6.1–4.6.2 son OTA, no tocan nativo) |
+| Web / OTA (`VERSION`) | **4.6.3** |
+| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado; 4.6.1–4.6.3 son OTA, no tocan nativo) |
 | `public/apk.json` | **30** / 4.6.0 → `Mi-Cartera-4.6.0.apk` |
 
 ## Pendiente / limitaciones conocidas

@@ -681,6 +681,9 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.6.3", d:"20 jul 2026", t:"El «Gasto diario» de siempre ahora admite varios bancos", items:[
+    "🛒 Quitado el chip «En gasto diario» duplicado que añadí por error. Ahora el chip «Gasto diario» de toda la vida es el que deja marcar VARIOS bancos: el primero es tu cuenta principal (de la que sale el efectivo y el redondeo) y los demás solo suman sus compras al mismo presupuesto. Sin líos ni chips de más.",
+  ]},
   {v:"4.6.2", d:"20 jul 2026", t:"Arreglos: tabs con letra pequeña + «gasto diario» en cada banco", items:[
     "📱 Con la letra en «Pequeña» la barra de abajo se quedaba flotando más arriba de la cuenta: ya vuelve a estar pegada abajo (y de paso queda perfecta también en Grande/Enorme).",
     "🛒 «Gasto diario» con varios bancos ahora está DONDE tiene que estar: en Cartera → editar cuentas, un botón «En gasto diario» en cada banco (con su iniciales), y puedes marcar los que quieras. Los marcados salen con un 🛒 en la lista. Ya no está escondido en una sección aparte.",

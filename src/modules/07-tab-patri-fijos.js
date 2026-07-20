@@ -37,11 +37,11 @@ function Wealth({state, set, totals, v4Embed}){
     const badge=function(txt, color){
       return React.createElement("span",{className:"v4-ob-badge",style:{background:color+"22",color:color}}, txt);
     };
-    // Bancos marcados «en gasto diario» (varios): para pintar el badge 🛒 en la lista.
+    // Bancos marcados «gasto diario» (principal + extras): para el badge 🛒 en la lista.
     const expDaily=expenseBankEnts(state);
     const multiDaily=expDaily.length>1;   // solo tiene interés mostrarlo si hay más de uno
     const accRow=function(a){
-      const inDaily=multiDaily && expDaily.indexOf(a.ent)>=0;
+      const inDaily=multiDaily && !accDaily(a) && expDaily.indexOf(a.ent)>=0;   // extra de gasto diario
       return React.createElement("div",{className:"v4-mov",key:a.id},
         React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:a.ent,size:44})),
         React.createElement("div",{className:"nm"},
@@ -66,34 +66,46 @@ function Wealth({state, set, totals, v4Embed}){
         React.createElement("div",{className:"am num"}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
       );
     };
+    // «Gasto diario» ahora admite VARIOS bancos (feedback 2026-07-20). Modelo: sigue habiendo UNA
+    // cuenta PRINCIPAL de gasto (spendFrom, de la que sale el saldo/efectivo y el redondeo — el motor
+    // necesita una sola); las DEMÁS que marques «Gasto diario» se añaden a settings.expenseBanks, así
+    // sus compras también cuentan en el mismo presupuesto (pero su saldo se calcula normal, sin doble
+    // conteo del gasto del mes). El chip se ve verde tanto en la principal como en las añadidas.
+    const dailyOnFor=function(a){ return accDaily(a) || expenseBankEnts(state).indexOf(a.ent)>=0; };
+    const toggleDaily=function(a){
+      set(function(s){
+        const isDaily=accDaily(a);
+        const eb=expenseBankEnts(s);
+        const inEb=eb.indexOf(a.ent)>=0;
+        if(isDaily || inEb){
+          // Quitar: si es la principal, se degrada a «Recibos»; y se saca de expenseBanks (sin dejar 0).
+          let ns=s;
+          if(isDaily){ ns=applyAccountRole(ns, totals, a.id, "fijos"); }
+          const b=expenseBankEnts(ns).slice(); const i=b.indexOf(a.ent);
+          if(i>=0 && b.length>1){ b.splice(i,1); ns=Object.assign({},ns,{settings:Object.assign({},ns.settings,{expenseBanks:b})}); }
+          return ns;
+        }
+        // Añadir: si aún no hay cuenta principal de gasto, ésta lo será; si ya hay, se suma como banco
+        // extra de gasto diario (expenseBanks) sin tocar su saldo ni quitarle el rol a la principal.
+        const hasPrimary=(s.accounts||[]).some(function(x){ return accDaily(x); });
+        if(!hasPrimary){ return applyAccountRole(s, totals, a.id, "diario"); }
+        const base=expenseBankEnts(s).slice();
+        if(base.indexOf(a.ent)<0) base.push(a.ent);
+        return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
+      });
+    };
     const roleChips=function(a){
       return React.createElement("div",{className:"rolechips",style:{padding:"8px 0 2px"}},
         [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
+          if(rr[0]==="diario"){
+            // Multi: verde si es la principal o un banco extra de gasto diario.
+            return React.createElement("button",{key:"diario",className:"rchip"+(dailyOnFor(a)?" on":""),onClick:function(){ toggleDaily(a); }}, t("rl_diario"));
+          }
           const on=accRole(a)===rr[0];
           return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){ setRole(a.id, rr[0]); }}, t(rr[1]));
         }),
         React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:t("pt_acc_del"),onClick:function(){ setDelAcc(a.id); }},"🗑")
       );
-    };
-    // «En gasto diario» POR CUENTA (feedback 2026-07-20: se quería aquí, junto al rol, con su icono,
-    // y poder marcar VARIOS). Escribe settings.expenseBanks (lo que lee el motor): cada banco marcado
-    // suma sus compras al presupuesto del día. El rol único (spendFrom) sigue decidiendo el saldo/redondeo.
-    const dailyChip=function(ent){
-      if(!ent) return null;
-      const cur=expenseBankEnts(state);
-      const on=cur.indexOf(ent)>=0;
-      const toggle=function(){
-        set(function(s){
-          const base=expenseBankEnts(s).slice();
-          const i=base.indexOf(ent);
-          if(i>=0){ if(base.length===1) return s; base.splice(i,1); }   // no dejar 0 marcados
-          else base.push(ent);
-          return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
-        });
-      };
-      return React.createElement("button",{type:"button",className:"rchip daily-chip"+(on?" on":""),style:{marginTop:2},onClick:toggle},
-        React.createElement("span",{className:"dc-ic",style:{color:entOf(ent).color}}, entOf(ent).mono),
-        (on?"✅ ":"🛒 ")+t("v4_expdaily_chip"));
     };
     const anySynced=state.accounts.some(isSynced);
     return React.createElement("div",null,
@@ -118,7 +130,6 @@ function Wealth({state, set, totals, v4Embed}){
                     onChange:function(e){const v=e.target.value;accEd.setDraft(function(d){return Object.assign({},d,{[a.id]:v});});}})
             ),
             roleChips(a),
-            React.createElement("div",{className:"rolechips",style:{padding:"0 0 4px"}}, dailyChip(a.ent)),
             delAcc===a.id && React.createElement("div",{className:"rolechips",style:{alignItems:"center",flexWrap:"wrap",padding:"4px 0"}},
               React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 100%",marginBottom:2}}, t("pt_acc_del_q")),
               React.createElement("button",{className:"rchip",style:{color:"var(--coral)",borderColor:"var(--coral)"},onClick:function(){ removeAccount(a.id); }}, t("pt_acc_del_yes")),
@@ -149,7 +160,7 @@ function Wealth({state, set, totals, v4Embed}){
         }),
         anySynced && React.createElement("div",{className:"hint"}, t("v4_acc_locked")),
         React.createElement("div",{className:"hint"}, t("rl_hint")),
-        // Pista de qué hace el «En gasto diario» por cuenta (el control está en cada banco de arriba).
+        // Pista: «Gasto diario» se puede marcar en varios bancos (cuentan en el mismo presupuesto).
         (state.accounts||[]).length>1 && React.createElement("div",{className:"hint"}, t("v4_expdaily_row_hint"))
       ),
       (state.assets||[]).length>0 && React.createElement(React.Fragment,null,
