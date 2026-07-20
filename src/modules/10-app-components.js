@@ -681,6 +681,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.6.4", d:"20 jul 2026", t:"MyInvestor: intento de resolver el captcha en la propia app", items:[
+    "🔓 Nuevo intento para el captcha de MyInvestor SIN cambiar el APK: cuando salta el captcha, aparece un campo «avanzado» para pegar el «site key» de reCAPTCHA de MyInvestor. Con él, la app intenta resolver el captcha ella sola dentro de la app y reintenta el login. Cómo sacar el site key: en el PC, en la web de MyInvestor, F12 → Red → filtra «recaptcha» → copia el «render=6L…».",
+    "ℹ️ Aviso honesto: puede que MyInvestor rechace el token por venir de un sitio distinto al suyo. Si es así, el único camino que queda es una pantalla nativa (otro APK) — pero esto se prueba en 1 minuto y si funciona, resuelto sin tocar nada más.",
+  ]},
   {v:"4.6.3", d:"20 jul 2026", t:"El «Gasto diario» de siempre ahora admite varios bancos", items:[
     "🛒 Quitado el chip «En gasto diario» duplicado que añadí por error. Ahora el chip «Gasto diario» de toda la vida es el que deja marcar VARIOS bancos: el primero es tu cuenta principal (de la que sale el efectivo y el redondeo) y los demás solo suman sus compras al mismo presupuesto. Sin líos ni chips de más.",
   ]},

@@ -2733,6 +2733,9 @@ Object.assign(LANG.es,{
   mi_connect:"Conectar", mi_connecting:"Conectando…", mi_nostore:"🔒 Tu contraseña no se guarda. Viaja cifrada solo para el login.",
   mi_otp_intro:"MyInvestor te ha mandado un código por SMS. Escríbelo aquí:", mi_otp_ph:"Código SMS", mi_verify:"Verificar", mi_verifying:"Verificando…",
   mi_recaptcha:"🛡 El anti-bot de MyInvestor pide captcha ahora mismo y la app no puede resolverlo. No insistas seguido (alarga el bloqueo): espera unas horas y reintenta desde el WiFi de casa. Suele desbloquearse solo.",
+  mi_solving_captcha:"🛡 Resolviendo el captcha de MyInvestor…",
+  mi_rc_key_hint:"Avanzado: para que la app intente resolver el captcha sola, pega aquí el «site key» de reCAPTCHA de MyInvestor. Cómo sacarlo: en el PC entra a la web de MyInvestor, abre las herramientas de desarrollador (F12) → pestaña Red, filtra «recaptcha», y copia el valor «render=6L…» (empieza por 6L).",
+  mi_rc_key_saved:"✓ Site key guardado · al conectar, la app intentará resolver el captcha sola.",
   mi_connected:"✓ MyInvestor conectado", mi_sync:"Sincronizar posiciones", mi_syncing:"Sincronizando…", mi_disconnect:"Desconectar",
   mi_preview:"{n} posiciones encontradas. Elige a cuál de tus posiciones va cada una:",
   mi_apply:"Aplicar a {n} posiciones", mi_done:"✓ {n} posiciones actualizadas desde MyInvestor",
@@ -2786,6 +2789,9 @@ Object.assign(LANG.en,{
   mi_connect:"Connect", mi_connecting:"Connecting…", mi_nostore:"🔒 Your password is never stored. It travels encrypted only for the login.",
   mi_otp_intro:"MyInvestor texted you a code. Type it here:", mi_otp_ph:"SMS code", mi_verify:"Verify", mi_verifying:"Verifying…",
   mi_recaptcha:"🛡 MyInvestor's anti-bot is demanding a captcha and the app can't solve it. Don't retry repeatedly (it extends the block): wait a few hours and retry from your home WiFi. It usually clears on its own.",
+  mi_solving_captcha:"🛡 Solving MyInvestor's captcha…",
+  mi_rc_key_hint:"Advanced: to let the app try to solve the captcha itself, paste MyInvestor's reCAPTCHA «site key» here. How to get it: on your computer open MyInvestor's website, open dev tools (F12) → Network tab, filter «recaptcha», and copy the «render=6L…» value (starts with 6L).",
+  mi_rc_key_saved:"✓ Site key saved · on connect, the app will try to solve the captcha itself.",
   mi_connected:"✓ MyInvestor connected", mi_sync:"Sync positions", mi_syncing:"Syncing…", mi_disconnect:"Disconnect",
   mi_preview:"{n} positions found. Choose which of your positions each maps to:",
   mi_apply:"Apply to {n} positions", mi_done:"✓ {n} positions updated from MyInvestor",
@@ -2842,6 +2848,9 @@ Object.assign(LANG.ca,{
   mi_connect:"Connecta", mi_connecting:"Connectant…", mi_nostore:"🔒 La teva contrasenya no es desa. Viatja xifrada només per al login.",
   mi_otp_intro:"MyInvestor t'ha enviat un codi per SMS. Escriu-lo aquí:", mi_otp_ph:"Codi SMS", mi_verify:"Verifica", mi_verifying:"Verificant…",
   mi_recaptcha:"🛡 L'anti-bot de MyInvestor demana captcha ara mateix i l'app no pot resoldre'l. No insisteixis seguit (allarga el bloqueig): espera unes hores i torna-ho a provar des del WiFi de casa. Sol desbloquejar-se sol.",
+  mi_solving_captcha:"🛡 Resolent el captcha de MyInvestor…",
+  mi_rc_key_hint:"Avançat: perquè l'app intenti resoldre el captcha sola, enganxa aquí el «site key» de reCAPTCHA de MyInvestor. Com treure'l: al PC entra al web de MyInvestor, obre les eines de desenvolupador (F12) → pestanya Xarxa, filtra «recaptcha» i copia el valor «render=6L…» (comença per 6L).",
+  mi_rc_key_saved:"✓ Site key desat · en connectar, l'app intentarà resoldre el captcha sola.",
   mi_connected:"✓ MyInvestor connectat", mi_sync:"Sincronitza posicions", mi_syncing:"Sincronitzant…", mi_disconnect:"Desconnecta",
   mi_preview:"{n} posicions trobades. Tria a quina de les teves posicions va cada una:",
   mi_apply:"Aplica a {n} posicions", mi_done:"✓ {n} posicions actualitzades des de MyInvestor",
@@ -6152,6 +6161,54 @@ function miNativeHttp(){
     return (p&&typeof p.request==="function")?p:null;
   }catch(e){ return null; }
 }
+// --- reCAPTCHA de MyInvestor resuelto EN LA WEBVIEW (intento OTA) -----------------------------
+// Cuando MI responde SECURITY_001 (captcha), la app oficial genera un token de reCAPTCHA v3 en la
+// web de MyInvestor y lo manda en la cabecera X-Recaptcha-Token. Aquí intentamos lo mismo desde la
+// WebView de la app: cargamos el script de Google reCAPTCHA con EL SITE KEY DE MYINVESTOR (que el
+// usuario pega — no es accesible de otra forma) y ejecutamos la acción. EXCEPCIÓN consciente a la
+// regla de cero-CDN: solo se carga bajo demanda al conectar MI (nunca en el arranque; la app sigue
+// funcionando offline para todo lo demás). Puede que MI valide el dominio del token y lo rechace
+// (entonces haría falta WebView nativa); esto es el intento barato antes de tocar APK.
+function miRecaptchaKey(){ try{ return (localStorage.getItem("_miRcKey")||"").trim(); }catch(e){ return ""; } }
+function miLoadRecaptcha(key){
+  return new Promise(function(resolve){
+    try{
+      const gre=window.grecaptcha && (window.grecaptcha.enterprise||window.grecaptcha);
+      if(gre && gre.execute){ resolve(gre); return; }
+      if(document.getElementById("mi-rc-js")){
+        let n=0; const iv=setInterval(function(){
+          const g=window.grecaptcha && (window.grecaptcha.enterprise||window.grecaptcha);
+          if(g&&g.execute){ clearInterval(iv); resolve(g); } else if(++n>20){ clearInterval(iv); resolve(null); }
+        },200);
+        return;
+      }
+      const s=document.createElement("script"); s.id="mi-rc-js"; s.async=true; s.defer=true;
+      // enterprise.js cubre las dos variantes (grecaptcha.enterprise); si la clave fuera v3 normal,
+      // grecaptcha (sin enterprise) también queda expuesto por este mismo script.
+      s.src="https://www.google.com/recaptcha/enterprise.js?render="+encodeURIComponent(key);
+      s.onload=function(){
+        let n=0; const iv=setInterval(function(){
+          const g=window.grecaptcha && (window.grecaptcha.enterprise||window.grecaptcha);
+          if(g&&g.execute){ clearInterval(iv); resolve(g); } else if(++n>20){ clearInterval(iv); resolve(null); }
+        },200);
+      };
+      s.onerror=function(){ resolve(null); };
+      (document.head||document.documentElement).appendChild(s);
+    }catch(e){ resolve(null); }
+  });
+}
+function miSolveCaptcha(action){
+  return new Promise(function(resolve){
+    const key=miRecaptchaKey(); if(!key){ resolve(null); return; }
+    miLoadRecaptcha(key).then(function(gre){
+      if(!gre||!gre.execute){ resolve(null); return; }
+      try{
+        const go=function(){ gre.execute(key,{action:action||"login"}).then(function(tok){ resolve(tok||null); }).catch(function(){ resolve(null); }); };
+        if(gre.ready) gre.ready(go); else go();
+      }catch(e){ resolve(null); }
+    });
+  });
+}
 function miDeviceLogin(http, loginBody, devId, captchaToken){
   // Mismas cabeceras que _shared/myinvestor.ts (la API valida x-device-id y x-myinvestor-app).
   // Origin/Referer aquí SÍ se pueden fijar: la petición sale en nativo, no la limita el navegador.
@@ -6198,6 +6255,9 @@ function MyInvestorSync({state, set}){
   const [map,setMap]=useState({});
   const [doneN,setDoneN]=useState(null);
   const [noSession,setNoSession]=useState(false);
+  // Site key de reCAPTCHA de MyInvestor (lo pega el usuario): habilita el intento de resolver el
+  // captcha en la WebView. Se guarda en localStorage para no volver a pedirlo.
+  const [rcKey,setRcKey]=useState(function(){ try{ return localStorage.getItem("_miRcKey")||""; }catch(e){ return ""; } });
   const devRef=useRef(null);
   const deviceId=function(){
     // Mismo deviceId siempre (antes UUID nuevo → MyInvestor veía «otro móvil» y pedía captcha).
@@ -6264,23 +6324,34 @@ function MyInvestorSync({state, set}){
     if(!cid.trim()||!pass) return; setBusy(true); setErr("");
     const http=miNativeHttp();
     if(http){
-      miDeviceLogin(http,{ customerId:cid.trim(), password:pass },deviceId()).then(function(r){
-        if(r&&r.tokens){ storeTokens(r.tokens); return; }
-        setBusy(false);
-        if(r&&r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
-        if(r&&r.recaptcha){
-          // reCAPTCHA TAMBIÉN desde IP residencial (confirmado con foto 2026-07-18: «Captcha
-          // required» en el móvil) — mensaje humano en vez del texto crudo de la API.
-          setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha desde el móvil'); }catch(e){}
-          return;
-        }
-        fail(r);
-      }).catch(function(e){
-        // CapacitorHttp peta → vía Edge de siempre, dejando rastro: sin esto era imposible saber
-        // desde Actividad por qué un móvil con APK nuevo seguía viendo captcha (2026-07-18).
-        try{ cloud.logEvent('error','MI: login nativo falló, caigo a Edge: '+((e&&e.message)||e)); }catch(_){}
-        connectViaEdge();
-      });
+      // Reintenta el login del móvil; si sale captcha y hay site key, lo resuelve en la WebView y
+      // reintenta UNA vez con el token (retried evita bucle si MI lo rechaza por dominio).
+      const attempt=function(captchaToken, retried){
+        miDeviceLogin(http,{ customerId:cid.trim(), password:pass },deviceId(),captchaToken).then(function(r){
+          if(r&&r.tokens){ storeTokens(r.tokens); return; }
+          if(r&&r.otp){ setBusy(false); setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
+          if(r&&r.recaptcha){
+            if(!retried && miRecaptchaKey()){
+              setErr(t("mi_solving_captcha"));
+              miSolveCaptcha("login").then(function(tok){
+                if(tok){ attempt(tok, true); }
+                else { setBusy(false); setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView'); }catch(e){} }
+              });
+              return;
+            }
+            setBusy(false);
+            setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI — ¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
+            return;
+          }
+          setBusy(false); fail(r);
+        }).catch(function(e){
+          // CapacitorHttp peta → vía Edge de siempre, dejando rastro: sin esto era imposible saber
+          // desde Actividad por qué un móvil con APK nuevo seguía viendo captcha (2026-07-18).
+          try{ cloud.logEvent('error','MI: login nativo falló, caigo a Edge: '+((e&&e.message)||e)); }catch(_){}
+          connectViaEdge();
+        });
+      };
+      attempt(null, false);
       return;
     }
     connectViaEdge();
@@ -6350,8 +6421,13 @@ function MyInvestorSync({state, set}){
           expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_expired")),
           React.createElement("input",{className:"af-in",style:inpStyle,placeholder:t("mi_user_ph"),autoComplete:"off",value:cid,onChange:function(e){ setCid(e.target.value); }}),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
-          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect"))
-          // (mi_nostore fuera: repetía lo que ya dice mi_hint arriba — limpieza 2026-07-18)
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
+          // Campo avanzado del site key de reCAPTCHA: aparece al saltar el captcha (o si ya hay uno
+          // guardado). Con él la app intenta resolver el captcha sola en la WebView (2026-07-20).
+          (err===t("mi_recaptcha") || rcKey) && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid var(--line-soft)"}},
+            React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,marginBottom:6}}, t("mi_rc_key_hint")),
+            React.createElement("input",{className:"af-in",style:Object.assign({},inpStyle,{fontFamily:"monospace",fontSize:13}),placeholder:"6L…",autoComplete:"off",value:rcKey,onChange:function(e){ const v=e.target.value.trim(); setRcKey(v); try{ if(v) localStorage.setItem("_miRcKey",v); else localStorage.removeItem("_miRcKey"); }catch(_){} }}),
+            rcKey && React.createElement("div",{style:{fontSize:11.5,color:"var(--mint)",marginTop:6}}, t("mi_rc_key_saved")))
         ),
         step==="otp" && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
@@ -9535,6 +9611,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.6.4", d:"20 jul 2026", t:"MyInvestor: intento de resolver el captcha en la propia app", items:[
+    "🔓 Nuevo intento para el captcha de MyInvestor SIN cambiar el APK: cuando salta el captcha, aparece un campo «avanzado» para pegar el «site key» de reCAPTCHA de MyInvestor. Con él, la app intenta resolver el captcha ella sola dentro de la app y reintenta el login. Cómo sacar el site key: en el PC, en la web de MyInvestor, F12 → Red → filtra «recaptcha» → copia el «render=6L…».",
+    "ℹ️ Aviso honesto: puede que MyInvestor rechace el token por venir de un sitio distinto al suyo. Si es así, el único camino que queda es una pantalla nativa (otro APK) — pero esto se prueba en 1 minuto y si funciona, resuelto sin tocar nada más.",
+  ]},
   {v:"4.6.3", d:"20 jul 2026", t:"El «Gasto diario» de siempre ahora admite varios bancos", items:[
     "🛒 Quitado el chip «En gasto diario» duplicado que añadí por error. Ahora el chip «Gasto diario» de toda la vida es el que deja marcar VARIOS bancos: el primero es tu cuenta principal (de la que sale el efectivo y el redondeo) y los demás solo suman sus compras al mismo presupuesto. Sin líos ni chips de más.",
   ]},
