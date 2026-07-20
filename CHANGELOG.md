@@ -2,6 +2,12 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.6.3] — 2026-07-20
+### «Gasto diario» multi-banco en el chip de siempre (no un chip nuevo)
+- Se retira el chip `dailyChip` («En gasto diario») que dupli­caba el concepto (feedback: «ya existía un gasto diario y me añades otro»).
+- El chip de rol **«Gasto diario»** pasa a ser multi: `dailyOnFor(a)= accDaily(a) || expenseBanks.includes(a.ent)`; `toggleDaily(a)` mantiene UNA principal (`spendFrom`, primera marcada, vía `applyAccountRole`) y añade/quita las demás en `settings.expenseBanks` sin tocar su saldo (evita el doble conteo del gasto). Badge `🛒` en la lista solo para los bancos EXTRA (no la principal). Verificado: marcar Revolut deja `["trade_republic","revolut"]`, TR sigue `diario/spendFrom`, Revolut `fijos` (saldo intacto), sin chip duplicado.
+- OTA only.
+
 ## [4.6.2] — 2026-07-20
 ### Arreglos sobre fotos del usuario
 - **Barra inferior descuadrada con letra pequeña:** el `zoom` en `body` escala también `100dvh`, así que `.botnav` (`bottom:0`) flotaba por encima del borde con `smalltext` (o se salía con `hugetext`). Fix: `html.smalltext .app{height:calc(100dvh/.92)}` (y `/1.12`, `/1.26`) → tras el zoom el alto vuelve a ser la pantalla y las tabs quedan pegadas abajo en todos los tamaños. Verificado (gap 0 px).
