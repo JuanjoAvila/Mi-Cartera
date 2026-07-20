@@ -681,6 +681,11 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.6.2", d:"20 jul 2026", t:"Arreglos: tabs con letra pequeña + «gasto diario» en cada banco", items:[
+    "📱 Con la letra en «Pequeña» la barra de abajo se quedaba flotando más arriba de la cuenta: ya vuelve a estar pegada abajo (y de paso queda perfecta también en Grande/Enorme).",
+    "🛒 «Gasto diario» con varios bancos ahora está DONDE tiene que estar: en Cartera → editar cuentas, un botón «En gasto diario» en cada banco (con su iniciales), y puedes marcar los que quieras. Los marcados salen con un 🛒 en la lista. Ya no está escondido en una sección aparte.",
+    "🔄 El widget vuelve a empujar sus datos cada vez que abres la app, no solo cuando cambian — para que MIUI/HyperOS no se quede con la cifra vieja. (Si aún así no se actualiza: quítalo del escritorio y vuelve a añadirlo.)",
+  ]},
   {v:"4.6.1", d:"18 jul 2026", t:"Ajustes del lote: letra pequeña, Hogar fuera de Ajustes, animaciones con más chispa", items:[
     "🔡 En Accesibilidad ahora hay también «Pequeña» (además de Normal/Grande/Enorme).",
     "🏠 «Hogar y gastos compartidos» sale de Ajustes y vive en Cartera, abajo del todo — es una funcionalidad de la app, no un ajuste.",

@@ -125,6 +125,7 @@ const LANG = {
     st_expense_banks_none:"Aún no tienes cuentas para elegir.",
     v4_shared_sub:"Hogar, pareja y grupos de gastos",
     v4_expdaily_here:"Bancos de gasto diario", v4_expdaily_here_hint:"Marca varios si sus compras cuentan en el mismo presupuesto. También está en Ajustes → Dinero.",
+    v4_expdaily_chip:"En gasto diario", v4_expdaily_row_hint:"Toca «En gasto diario» en cada banco cuyas compras quieras que cuenten en tu presupuesto del día (puedes marcar varios).",
     // Comparativa de monedas
     st_cur_compare:"Comparar monedas", st_cur_compare_hint:"Tipos del BCE (referencia). Toca una moneda para verla al cambio.",
     cur_jpy:"¥ Yen", cur_cad:"C$ Dólar canadiense", cur_aud:"A$ Dólar australiano", cur_cny:"¥ Yuan", cur_mxn:"$ Peso mexicano", cur_sek:"kr Corona sueca", cur_nok:"kr Corona noruega", cur_dkk:"kr Corona danesa", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rupia",
@@ -246,6 +247,7 @@ const LANG = {
     st_expense_banks_none:"No accounts to choose yet.",
     v4_shared_sub:"Household, partner and expense groups",
     v4_expdaily_here:"Daily-spending banks", v4_expdaily_here_hint:"Tick several if their spending counts toward the same budget. Also in Settings → Money.",
+    v4_expdaily_chip:"In daily spending", v4_expdaily_row_hint:"Tap «In daily spending» on each bank whose purchases should count toward your daily budget (you can tick several).",
     st_cur_compare:"Compare currencies", st_cur_compare_hint:"ECB reference rates. Tap a currency to see it converted.",
     cur_jpy:"¥ Yen", cur_cad:"C$ Canadian dollar", cur_aud:"A$ Australian dollar", cur_cny:"¥ Yuan", cur_mxn:"$ Mexican peso", cur_sek:"kr Swedish krona", cur_nok:"kr Norwegian krone", cur_dkk:"kr Danish krone", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rupee",
   },
@@ -366,6 +368,7 @@ const LANG = {
     st_expense_banks_none:"Encara no tens comptes per triar.",
     v4_shared_sub:"Llar, parella i grups de despeses",
     v4_expdaily_here:"Bancs de despesa diària", v4_expdaily_here_hint:"Marca'n diversos si les seves compres compten al mateix pressupost. També a Ajustos → Diners.",
+    v4_expdaily_chip:"En despesa diària", v4_expdaily_row_hint:"Toca «En despesa diària» a cada banc les compres del qual vulguis que comptin al teu pressupost del dia (en pots marcar diversos).",
     st_cur_compare:"Comparar monedes", st_cur_compare_hint:"Tipus del BCE (referència). Toca una moneda per veure-la al canvi.",
     cur_jpy:"¥ Ien", cur_cad:"C$ Dòlar canadenc", cur_aud:"A$ Dòlar australià", cur_cny:"¥ Iuan", cur_mxn:"$ Peso mexicà", cur_sek:"kr Corona sueca", cur_nok:"kr Corona noruega", cur_dkk:"kr Corona danesa", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rúpia",
   },
