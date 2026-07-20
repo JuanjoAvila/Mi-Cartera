@@ -467,12 +467,25 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .rolechips{display:flex;gap:6px;padding:0 0 10px 50px;}
   .rchip{font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:9px;background:var(--bg-2);border:1px solid var(--line-soft);color:var(--muted);}
   .rchip.on{color:#08120C;background:linear-gradient(160deg,var(--mint-bright),var(--mint));border-color:transparent;}
+  /* «En gasto diario» por cuenta: chip con el monograma del banco (2026-07-20). */
+  .daily-chip{display:inline-flex;align-items:center;gap:6px;}
+  .daily-chip .dc-ic{font-size:10px;font-weight:800;letter-spacing:.3px;opacity:.9;}
+  .daily-chip.on .dc-ic{color:#08120C !important;}
+  /* Badge 🛒 en la lista de cuentas para las que cuentan en el gasto diario (varias). */
+  .dc-badge{display:inline-block;margin-left:6px;font-size:11px;padding:1px 6px;border-radius:8px;background:rgba(95,208,138,.16);color:var(--mint);font-weight:700;vertical-align:middle;}
   /* Letra grande (accesibilidad). Zoom en BODY, no en #root: los sheets/diálogos van
      portaleados a document.body (fuera de #root) y con el zoom en #root se quedaban pequeños
      y descuadrados (feedback 2026-07-18). En body escala TODO por igual. */
   html.smalltext body{zoom:0.92;}
   html.bigtext body{zoom:1.12;}
   html.hugetext body{zoom:1.26;}
+  /* El `zoom` en body escala también el alto de la app (100dvh), así que la barra inferior
+     (bottom:0) se quedaba flotando arriba con «Pequeña» (o se salía por abajo con «Enorme»).
+     Se compensa: alto = 100dvh / zoom → tras el zoom vuelve a ser exactamente la pantalla,
+     y las tabs quedan pegadas abajo en todos los tamaños (feedback 2026-07-20). */
+  html.smalltext .app{height:calc(100dvh / 0.92);}
+  html.bigtext .app{height:calc(100dvh / 1.12);}
+  html.hugetext .app{height:calc(100dvh / 1.26);}
   /* Reducir animaciones (accesibilidad): mata deslizamientos/rebotes/ambiente de temporada. */
   html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after{
     animation-duration:.001ms !important; animation-iteration-count:1 !important;

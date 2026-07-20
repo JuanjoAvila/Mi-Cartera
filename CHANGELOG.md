@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.6.2] — 2026-07-20
+### Arreglos sobre fotos del usuario
+- **Barra inferior descuadrada con letra pequeña:** el `zoom` en `body` escala también `100dvh`, así que `.botnav` (`bottom:0`) flotaba por encima del borde con `smalltext` (o se salía con `hugetext`). Fix: `html.smalltext .app{height:calc(100dvh/.92)}` (y `/1.12`, `/1.26`) → tras el zoom el alto vuelve a ser la pantalla y las tabs quedan pegadas abajo en todos los tamaños. Verificado (gap 0 px).
+- **«Gasto diario» multi-banco donde toca:** se retira la sección separada del fondo del editor y se pone un chip **«En gasto diario» por cuenta** (con el monograma del banco) junto a los chips de rol, en Cartera → editar cuentas. Multi-selección → `settings.expenseBanks`; el rol único `spendFrom` sigue mandando en saldo/redondeo. Badge `🛒` en la lista para las cuentas marcadas cuando hay más de una. Verificado (persiste `["trade_republic","revolut"]`, 2 badges).
+- **Widget re-empuja al volver a primer plano:** además de al cambiar el estado, `updateWidget` se reenvía en `visibilitychange→visible` (MIUI/HyperOS no siempre coge el dato nuevo con la app cerrada). El código del widget (afford) ya iba en el APK 30; esto solo mejora que le lleguen los datos.
+- OTA only.
+
 ## [4.6.1] — 2026-07-18
 ### Ajustes del lote 4.6.0 (feedback en caliente)
 - **Accesibilidad:** nuevo nivel de letra `small` (`html.smalltext body{zoom:.92}`) además de normal/big/huge. `applyTextSize` togglea la clase.

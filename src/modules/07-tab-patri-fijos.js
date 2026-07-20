@@ -37,11 +37,16 @@ function Wealth({state, set, totals, v4Embed}){
     const badge=function(txt, color){
       return React.createElement("span",{className:"v4-ob-badge",style:{background:color+"22",color:color}}, txt);
     };
+    // Bancos marcados «en gasto diario» (varios): para pintar el badge 🛒 en la lista.
+    const expDaily=expenseBankEnts(state);
+    const multiDaily=expDaily.length>1;   // solo tiene interés mostrarlo si hay más de uno
     const accRow=function(a){
+      const inDaily=multiDaily && expDaily.indexOf(a.ent)>=0;
       return React.createElement("div",{className:"v4-mov",key:a.id},
         React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:a.ent,size:44})),
         React.createElement("div",{className:"nm"},
-          React.createElement("div",null,entOf(a.ent).label, isSynced(a)&&badge(t("pt_ob_badge"),"#7FB5E8")),
+          React.createElement("div",null,entOf(a.ent).label, isSynced(a)&&badge(t("pt_ob_badge"),"#7FB5E8"),
+            inDaily && React.createElement("span",{className:"dc-badge"}, "🛒")),
           React.createElement("div",{className:"meta"}, [roleLab(a),a.name].filter(Boolean).join(" · ")||"—")
         ),
         React.createElement("div",{className:"am num"},eur(accDaily(a)?spendBal(a):(a.value+pn(a))))
@@ -70,6 +75,26 @@ function Wealth({state, set, totals, v4Embed}){
         React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:t("pt_acc_del"),onClick:function(){ setDelAcc(a.id); }},"🗑")
       );
     };
+    // «En gasto diario» POR CUENTA (feedback 2026-07-20: se quería aquí, junto al rol, con su icono,
+    // y poder marcar VARIOS). Escribe settings.expenseBanks (lo que lee el motor): cada banco marcado
+    // suma sus compras al presupuesto del día. El rol único (spendFrom) sigue decidiendo el saldo/redondeo.
+    const dailyChip=function(ent){
+      if(!ent) return null;
+      const cur=expenseBankEnts(state);
+      const on=cur.indexOf(ent)>=0;
+      const toggle=function(){
+        set(function(s){
+          const base=expenseBankEnts(s).slice();
+          const i=base.indexOf(ent);
+          if(i>=0){ if(base.length===1) return s; base.splice(i,1); }   // no dejar 0 marcados
+          else base.push(ent);
+          return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
+        });
+      };
+      return React.createElement("button",{type:"button",className:"rchip daily-chip"+(on?" on":""),style:{marginTop:2},onClick:toggle},
+        React.createElement("span",{className:"dc-ic",style:{color:entOf(ent).color}}, entOf(ent).mono),
+        (on?"✅ ":"🛒 ")+t("v4_expdaily_chip"));
+    };
     const anySynced=state.accounts.some(isSynced);
     return React.createElement("div",null,
       React.createElement("div",{className:"v4-card-list"},
@@ -93,6 +118,7 @@ function Wealth({state, set, totals, v4Embed}){
                     onChange:function(e){const v=e.target.value;accEd.setDraft(function(d){return Object.assign({},d,{[a.id]:v});});}})
             ),
             roleChips(a),
+            React.createElement("div",{className:"rolechips",style:{padding:"0 0 4px"}}, dailyChip(a.ent)),
             delAcc===a.id && React.createElement("div",{className:"rolechips",style:{alignItems:"center",flexWrap:"wrap",padding:"4px 0"}},
               React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 100%",marginBottom:2}}, t("pt_acc_del_q")),
               React.createElement("button",{className:"rchip",style:{color:"var(--coral)",borderColor:"var(--coral)"},onClick:function(){ removeAccount(a.id); }}, t("pt_acc_del_yes")),
@@ -123,32 +149,8 @@ function Wealth({state, set, totals, v4Embed}){
         }),
         anySynced && React.createElement("div",{className:"hint"}, t("v4_acc_locked")),
         React.createElement("div",{className:"hint"}, t("rl_hint")),
-        // Bancos de gasto diario (varios): mismo selector que Ajustes → Dinero, reflejado AQUÍ
-        // (feedback 2026-07-18: «no se ve en Cartera»). Marca varios y sus compras cuentan en el
-        // mismo presupuesto. Escribe settings.expenseBanks, que es lo que lee el motor.
-        (function(){
-          const ents=[]; (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&ents.indexOf(a.ent)<0) ents.push(a.ent); });
-          if(ents.length<2) return null;   // con una sola cuenta no hay nada que elegir
-          const cur=expenseBankEnts(state);
-          const toggleEnt=function(ent){
-            set(function(s){
-              const base=expenseBankEnts(s).slice();
-              const i=base.indexOf(ent);
-              if(i>=0){ if(base.length===1) return s; base.splice(i,1); }
-              else base.push(ent);
-              return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
-            });
-          };
-          return React.createElement("div",{style:{marginTop:14,paddingTop:12,borderTop:"1px solid var(--line-soft)"}},
-            React.createElement("div",{style:{fontWeight:800,fontSize:13.5,marginBottom:4}}, "🪙 "+t("v4_expdaily_here")),
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginBottom:8}}, t("v4_expdaily_here_hint")),
-            React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8}},
-              ents.map(function(ent){
-                const on=cur.indexOf(ent)>=0;
-                return React.createElement("button",{key:ent,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleEnt(ent); }},
-                  (on?"✓ ":"")+entOf(ent).label);
-              })));
-        })()
+        // Pista de qué hace el «En gasto diario» por cuenta (el control está en cada banco de arriba).
+        (state.accounts||[]).length>1 && React.createElement("div",{className:"hint"}, t("v4_expdaily_row_hint"))
       ),
       (state.assets||[]).length>0 && React.createElement(React.Fragment,null,
         React.createElement("div",{className:"v4-sec-h"}, t("pt_goods")),

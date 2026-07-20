@@ -1001,7 +1001,14 @@ function App(){
     const data={ spent:Math.round((totals.thisMonthSpent||0)*100)/100, budget:state.budget||0 };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
     if(widgetAfford!=null) data.afford=widgetAfford;
-    try{ nat.updateWidget(data).catch(function(){}); }catch(e){}
+    const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
+    push();
+    // Re-empuja al VOLVER a primer plano (feedback 2026-07-20: el widget de MIUI/HyperOS no
+    // siempre coge el dato nuevo con la app cerrada). Reenvía lo último bueno para forzar el
+    // re-pintado del widget aunque el estado no haya cambiado.
+    const onVis=function(){ if(document.visibilityState==="visible") push(); };
+    document.addEventListener("visibilitychange", onVis);
+    return function(){ document.removeEventListener("visibilitychange", onVis); };
   },[totals.thisMonthSpent,state.budget,widgetCash,widgetAfford]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){

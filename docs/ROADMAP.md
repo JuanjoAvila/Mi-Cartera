@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-18 · **v4.6.1** — ajustes del lote: letra pequeña, Hogar movido a Cartera, «bancos de gasto diario» visibles en Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
+> Estado a 2026-07-20 · **v4.6.2** — arreglos sobre feedback con fotos: barra inferior pegada abajo con letra pequeña/enorme, «En gasto diario» por banco en Cartera → editar cuentas (multi + badge 🛒), widget re-empuja al volver a la app. (4.6.1:) letra pequeña, Hogar movido a Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
 
 ## Listo para uso diario
 
@@ -10,8 +10,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.6.1** |
-| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado; 4.6.1 es OTA, no toca nativo) |
+| Web / OTA (`VERSION`) | **4.6.2** |
+| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado; 4.6.1–4.6.2 son OTA, no tocan nativo) |
 | `public/apk.json` | **30** / 4.6.0 → `Mi-Cartera-4.6.0.apk` |
 
 ## Pendiente / limitaciones conocidas
@@ -20,6 +20,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 |------|--------|
 | **MyInvestor reCAPTCHA** | CONFIRMADO con foto (2026-07-18): «Captcha required» salta TAMBIÉN por la vía del móvil (IP residencial). Palancas ya aplicadas: `x-myinvestor-app` = 3.150.0 (cliente + Edge) y mensaje humano. **4.6.0:** el cliente (`miDeviceLogin`) ya acepta un `captchaToken` y lo envía en las cabeceras `X-Recaptcha-Token` + `X-Recaptcha-Action: SECURITY_CHECK` (mismo contrato que el cliente open-source `finanze`). Falta la pieza que **genera** ese token: una WebView nativa que resuelva el reCAPTCHA de `myinvestor.es` (necesita el *site key* de MyInvestor y un cambio de APK, no OTA). Ese es el único paso que queda para saltarlo de verdad; el plumbing ya está listo para enchufarlo. |
 | **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
+| **Widget «Puedes gastar»** | El código va en el APK 30 (verificado: strings `Puedes gastar`/`te quedan` en `classes.dex`). Si en el móvil sigue saliendo solo el gasto: el widget se alimenta de `updateWidget` (app → plugin) y MIUI/HyperOS a veces no lo re-pinta. 4.6.2 re-empuja al volver a primer plano; si aún falla, **quitar y re-añadir el widget**. No es bug de código OTA. |
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
