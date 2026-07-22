@@ -1059,49 +1059,9 @@ function App(){
     },3000);
     return function(){ clearTimeout(tmr); };
   },[state.onboarded,locked,showAuth,tourOpen,whatsNew]);
-  // Recordatorio de recibos: TODOS avisan LA VÍSPERA (petición 2026-07-18: «el banco no te
-  // avisa, la app podría»); los gordos además con 2–3 días de antelación como hasta ahora.
-  // Incluye también las cuotas de deuda. Una noti por cargo y mes.
-  useEffect(function(){
-    if(state.onboarded===false||locked||showAuth) return;
-    const nat=natPlugin();
-    if(!nat||!nat.showNotification) return;
-    const today=totals.today||new Date().getDate();
-    const cm=totals.curMonth, cy=totals.curYear;
-    const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
-    const ym=cy+"-"+String(cm).padStart(2,"0");
-    const notify=function(key,title,body){
-      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
-      try{ nat.showNotification({title:title,body:body}).catch(function(){}); }catch(err){}
-    };
-    (state.fixed||[]).forEach(function(e){
-      if(!occursIn(e,cm)) return;
-      const d=dayIn(e,cm); if(d==null) return;
-      if(isPaidIn(e,cm,today)) return;
-      const amt=occAmountIn(e,cm)||0;
-      if(!(amt>0)) return;
-      const daysLeft=d-today;
-      if(daysLeft===1){
-        notify("_rc1_"+e.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:e.name||"?",x:eur0(amt)}));
-      } else if(amt>=minAmt && daysLeft>=2 && daysLeft<=3){
-        notify("_rc_"+e.id+"_"+ym+"_"+d, t("rc_title"), tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)}));
-      }
-    });
-    // cuotas de deuda (hipoteca, financiaciones…): también avisan la víspera
-    (state.debts||[]).forEach(function(d){
-      if(!debtActive(d) || !(d.monthly>0)) return;
-      if(isDebtPaidThisMonth(d,today)) return;
-      if(debtChargeDay(d)-today!==1) return;
-      notify("_rc1_debt_"+d.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:d.name||"?",x:eur0(d.monthly)}));
-    });
-  },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
-
-  // Empuja el calendario de recibos del mes al NATIVO (APK ≥29): AlertCheckWorker avisa la
-  // víspera aunque la app esté CERRADA. Intercambio de sellos para no avisar dos veces:
-  // mandamos lo que la web ya avisó (_rc1_*) y sellamos lo que avisó el nativo.
-  useEffect(function(){
-    const nat=natPlugin();
-    if(!nat||!nat.setAlertData) return;
+  // Calendario de cargos del mes (fijos + cuotas) para el intercambio con el nativo: lo usan
+  // el efecto de avisos de la víspera Y el push al AlertCheckWorker — misma lista en ambos.
+  const alertCalendarOf=function(){
     const cm=totals.curMonth, cy=totals.curYear;
     const ym=cy+"-"+String(cm).padStart(2,"0");
     const charges=[];
@@ -1117,9 +1077,72 @@ function App(){
     });
     const fired=[];
     charges.forEach(function(c){ try{ if(localStorage.getItem("_rc1_"+c.id+"_"+ym)==="1") fired.push(c.id); }catch(e){} });
+    return {ym:ym,charges:charges,fired:fired};
+  };
+  // Recordatorio de recibos: TODOS avisan LA VÍSPERA (petición 2026-07-18: «el banco no te
+  // avisa, la app podría»); los gordos además con 2–3 días de antelación como hasta ahora.
+  // Incluye también las cuotas de deuda. Una noti por cargo y mes. Importes con eur() EXACTO:
+  // redondear aquí hizo que «la luz» saliera como 90 € cuando el cargo real era 89,54 (2026-07-21).
+  useEffect(function(){
+    if(state.onboarded===false||locked||showAuth) return;
+    const nat=natPlugin();
+    if(!nat||!nat.showNotification) return;
+    const today=totals.today||new Date().getDate();
+    const cm=totals.curMonth;
+    const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
+    const cal=alertCalendarOf();
+    const ym=cal.ym;
+    const notify=function(key,title,body){
+      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
+      try{ nat.showNotification({title:title,body:body}).catch(function(){}); }catch(err){}
+    };
+    const run=function(){
+      (state.fixed||[]).forEach(function(e){
+        if(!occursIn(e,cm)) return;
+        const d=dayIn(e,cm); if(d==null) return;
+        if(isPaidIn(e,cm,today)) return;
+        const amt=occAmountIn(e,cm)||0;
+        if(!(amt>0)) return;
+        const daysLeft=d-today;
+        if(daysLeft===1){
+          notify("_rc1_"+e.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:e.name||"?",x:eur(amt)}));
+        } else if(amt>=minAmt && daysLeft>=2 && daysLeft<=3){
+          notify("_rc_"+e.id+"_"+ym+"_"+d, t("rc_title"), tf("rc_body",{name:e.name||"?",x:eur(amt),d:String(d)}));
+        }
+      });
+      // cuotas de deuda (hipoteca, financiaciones…): también avisan la víspera
+      (state.debts||[]).forEach(function(d){
+        if(!debtActive(d) || !(d.monthly>0)) return;
+        if(isDebtPaidThisMonth(d,today)) return;
+        if(debtChargeDay(d)-today!==1) return;
+        notify("_rc1_debt_"+d.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:d.name||"?",x:eur(d.monthly)}));
+      });
+    };
+    // ANTES de avisar, sella lo que el NATIVO ya avisó. Este efecto corría en paralelo al
+    // intercambio de sellos (asíncrono) y ganaba la carrera: el worker había avisado la víspera
+    // con el importe exacto y al abrir la app salía una SEGUNDA noti redondeada (bug 2026-07-21).
+    if(nat.setAlertData){
+      try{
+        nat.setAlertData(cal).then(function(r){
+          ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+ym,"1"); }catch(e){} });
+          run();
+        }).catch(run);
+      }catch(e){ run(); }
+    } else run();
+  },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
+
+  // Empuja el calendario de recibos del mes al NATIVO (APK ≥29): AlertCheckWorker avisa la
+  // víspera aunque la app esté CERRADA. Intercambio de sellos para no avisar dos veces:
+  // mandamos lo que la web ya avisó (_rc1_*) y sellamos lo que avisó el nativo. Se mantiene
+  // aparte del efecto de arriba para que el calendario llegue al worker TAMBIÉN con la app
+  // bloqueada o a medio onboarding (el de arriba sale temprano en esos casos).
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.setAlertData) return;
+    const cal=alertCalendarOf();
     try{
-      nat.setAlertData({ym:ym,charges:charges,fired:fired}).then(function(r){
-        ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+ym,"1"); }catch(e){} });
+      nat.setAlertData(cal).then(function(r){
+        ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+cal.ym,"1"); }catch(e){} });
       }).catch(function(){});
     }catch(e){}
   },[state.fixed,state.debts,totals.curMonth]);

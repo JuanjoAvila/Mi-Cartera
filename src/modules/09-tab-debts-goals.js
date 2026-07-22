@@ -144,20 +144,23 @@ function Debts({state, set, showToast}){
     if(/estudio|máster|master|uni/.test(n)) return "🎓";
     return "💳";
   };
-  const endsLabel=function(d){
+  // Cuotas que quedan: las financiaciones lo saben por su plazo; sin plazo (hipoteca/préstamo
+  // a mano) se ESTIMA con el ritmo de amortización actual. Devuelve {n,tot} o null.
+  const leftInfo=function(d){
     const left=debtLeft(d);
-    if(left!=null){
-      const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+left);
-      return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
-    }
-    // Sin plazo (hipoteca/préstamo a mano de las primeras versiones): antes no salía NADA y la
-    // tarjeta parecía «muerta» (feedback 2026-07-18). Se estima con el ritmo de amortización
-    // actual — por eso lleva «~»: una amortización anticipada o cambio de cuota la mueve.
+    if(left!=null) return {n:left, tot:d.months||left};
     const am=debtAmort(d), bal=debtBalance(d);
     if(!(am>0) || !(bal>0.005)) return null;
-    const k=Math.ceil(bal/am);
-    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+k);
-    return tf("v4_debts_ends_est",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
+    return {n:Math.ceil(bal/am), tot:Math.ceil((d.original||bal)/am)};
+  };
+  const endsLabel=function(d){
+    // Mismo texto para TODAS las deudas (feedback 2026-07-21: el «a este ritmo acabas ~» de
+    // hipoteca/préstamo cantaba distinto del «acabas en» de las financiaciones). La fecha sin
+    // plazo sigue siendo una estimación con la amortización actual, igual de honesta.
+    const li=leftInfo(d);
+    if(!li) return null;
+    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+li.n);
+    return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
   };
   return React.createElement("div",null,
     React.createElement("div",{className:"v4-card v4-card-hero rise"},
@@ -169,7 +172,8 @@ function Debts({state, set, showToast}){
       const bal=debtBalance(d);
       const paid=Math.max(0,(d.original||bal)-bal);
       const pct=Math.min(100,(paid/(d.original||1))*100);
-      const left=debtLeft(d);
+      // «Quedan n/tot cuotas» en TODAS las deudas (feedback 2026-07-21): sin plazo va estimado.
+      const li=leftInfo(d);
       const day=debtChargeDay(d);
       return React.createElement("div",{className:"v4-debt-card rise",key:d.id},
         React.createElement("div",{className:"v4-debt-top"},
@@ -177,7 +181,7 @@ function Debts({state, set, showToast}){
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"v4-debt-name"},d.name),
             React.createElement("div",{className:"v4-debt-sub"},
-              [d.monthly?tf("db_quota",{x:eur0(d.monthly)}):null, day?tf("fj_day_n",{d:day}):null, left!=null?tf("db_left",{n:left,tot:d.months||left,x:eur0(d.monthly||0)}):null].filter(Boolean).join(" · ")
+              [d.monthly?tf("db_quota",{x:eur0(d.monthly)}):null, day?tf("fj_day_n",{d:day}):null, li?tf("db_left",{n:li.n,tot:li.tot,x:eur0(d.monthly||0)}):null].filter(Boolean).join(" · ")
             )
           ),
           ed.editing

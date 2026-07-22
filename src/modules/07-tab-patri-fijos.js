@@ -25,11 +25,20 @@ function Wealth({state, set, totals, v4Embed}){
   const tt=totals;
   // En Cartera (v4Embed) pintamos cuentas y bienes planos; inversiones van aparte (Investments).
   if(v4Embed){
+    // Rol EFECTIVO para pintar (feedback 2026-07-21, como Trade Republic original: el rol va
+    // DEBAJO del banco, sin carritos sueltos): «gasto diario» cuenta tanto si la cuenta es la
+    // principal (rol diario/ambos) como si su banco es extra de gasto diario (expenseBanks);
+    // «recibos» se apaga en los extras marcados solo-diario (settings.dailyOnlyBanks — flag
+    // SOLO visual: sin recibos domiciliados en ese banco no mueve ningún número).
+    const expDaily=expenseBankEnts(state);
+    const dailyOnlyEnts=function(s){ return ((s&&s.settings&&s.settings.dailyOnlyBanks)||[]); };
+    const dailyEffOf=function(a){ return accDaily(a) || expDaily.indexOf(a.ent)>=0; };
+    const fixedEffOf=function(a){ return accRole(a)==="ambos" || (accFixed(a) && !(dailyEffOf(a) && dailyOnlyEnts(state).indexOf(a.ent)>=0)); };
     const roleLab=function(a){
-      const r=accRole(a);
-      if(r==="fijos") return t("rl_fijos");
-      if(r==="diario") return t("rl_diario");
-      if(r==="ambos") return t("rl_ambos");
+      const dy=dailyEffOf(a), fx=fixedEffOf(a);
+      if(dy&&fx) return t("rl_diario")+" · "+t("rl_fijos");
+      if(dy) return t("rl_diario");
+      if(fx) return t("rl_fijos");
       return a.name||"";
     };
     // Cuenta re-anclada por Open Banking: su saldo lo trae el banco (no se edita a mano).
@@ -37,16 +46,11 @@ function Wealth({state, set, totals, v4Embed}){
     const badge=function(txt, color){
       return React.createElement("span",{className:"v4-ob-badge",style:{background:color+"22",color:color}}, txt);
     };
-    // Bancos marcados «gasto diario» (principal + extras): para el badge 🛒 en la lista.
-    const expDaily=expenseBankEnts(state);
-    const multiDaily=expDaily.length>1;   // solo tiene interés mostrarlo si hay más de uno
     const accRow=function(a){
-      const inDaily=multiDaily && !accDaily(a) && expDaily.indexOf(a.ent)>=0;   // extra de gasto diario
       return React.createElement("div",{className:"v4-mov",key:a.id},
         React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:a.ent,size:44})),
         React.createElement("div",{className:"nm"},
-          React.createElement("div",null,entOf(a.ent).label, isSynced(a)&&badge(t("pt_ob_badge"),"#7FB5E8"),
-            inDaily && React.createElement("span",{className:"dc-badge"}, "🛒")),
+          React.createElement("div",null,entOf(a.ent).label, isSynced(a)&&badge(t("pt_ob_badge"),"#7FB5E8")),
           React.createElement("div",{className:"meta"}, [roleLab(a),a.name].filter(Boolean).join(" · ")||"—")
         ),
         React.createElement("div",{className:"am num"},eur(accDaily(a)?spendBal(a):(a.value+pn(a))))
@@ -66,43 +70,49 @@ function Wealth({state, set, totals, v4Embed}){
         React.createElement("div",{className:"am num"}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
       );
     };
-    // «Gasto diario» ahora admite VARIOS bancos (feedback 2026-07-20). Modelo: sigue habiendo UNA
-    // cuenta PRINCIPAL de gasto (spendFrom, de la que sale el saldo/efectivo y el redondeo — el motor
-    // necesita una sola); las DEMÁS que marques «Gasto diario» se añaden a settings.expenseBanks, así
-    // sus compras también cuentan en el mismo presupuesto (pero su saldo se calcula normal, sin doble
-    // conteo del gasto del mes). El chip se ve verde tanto en la principal como en las añadidas.
-    const dailyOnFor=function(a){ return accDaily(a) || expenseBankEnts(state).indexOf(a.ent)>=0; };
-    const toggleDaily=function(a){
+    // «Gasto diario» sigue admitiendo VARIOS bancos (v4.6.3). Modelo por debajo: UNA cuenta
+    // PRINCIPAL de gasto (spendFrom — el motor necesita una sola) + bancos extra en
+    // settings.expenseBanks. Lo que cambia (feedback 2026-07-21) es la selección: cada banco
+    // muestra UN solo estado — o Recibos, o Gasto diario, o Todo — nada de «recibos fijo» en
+    // los extras. En un extra, «Gasto diario» = expenseBanks + dailyOnlyBanks (recibos fuera);
+    // «Todo» = expenseBanks sin dailyOnly (recibos y gasto diario a la vez).
+    const pickRole=function(a,r){
       set(function(s){
-        const isDaily=accDaily(a);
-        const eb=expenseBankEnts(s);
-        const inEb=eb.indexOf(a.ent)>=0;
-        if(isDaily || inEb){
-          // Quitar: si es la principal, se degrada a «Recibos»; y se saca de expenseBanks (sin dejar 0).
-          let ns=s;
-          if(isDaily){ ns=applyAccountRole(ns, totals, a.id, "fijos"); }
-          const b=expenseBankEnts(ns).slice(); const i=b.indexOf(a.ent);
-          if(i>=0 && b.length>1){ b.splice(i,1); ns=Object.assign({},ns,{settings:Object.assign({},ns.settings,{expenseBanks:b})}); }
-          return ns;
-        }
-        // Añadir: si aún no hay cuenta principal de gasto, ésta lo será; si ya hay, se suma como banco
-        // extra de gasto diario (expenseBanks) sin tocar su saldo ni quitarle el rol a la principal.
+        const patchSet=function(ns,patch){ return Object.assign({},ns,{settings:Object.assign({},ns.settings,patch)}); };
+        const drop=function(list,e){ const i=list.indexOf(e); if(i>=0) list.splice(i,1); return list; };
+        const add=function(list,e){ if(list.indexOf(e)<0) list.push(e); return list; };
+        const eb=expenseBankEnts(s).slice();
+        const dOnly=dailyOnlyEnts(s).slice();
+        const isPrimary=accDaily(a);
         const hasPrimary=(s.accounts||[]).some(function(x){ return accDaily(x); });
-        if(!hasPrimary){ return applyAccountRole(s, totals, a.id, "diario"); }
-        const base=expenseBankEnts(s).slice();
-        if(base.indexOf(a.ent)<0) base.push(a.ent);
-        return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
+        let ns=s;
+        if(r==="fijos"){
+          if(isPrimary) ns=applyAccountRole(ns, totals, a.id, "fijos");
+          return patchSet(ns,{expenseBanks:drop(eb,a.ent), dailyOnlyBanks:drop(dOnly,a.ent)});
+        }
+        if(r==="diario"){
+          // La principal (o la primera que se marca) lleva el rol de verdad; un banco extra
+          // se apunta a expenseBanks y apaga su «recibos» visual con dailyOnlyBanks.
+          if(isPrimary || !hasPrimary){
+            ns=applyAccountRole(ns, totals, a.id, "diario");
+            return patchSet(ns,{dailyOnlyBanks:drop(dOnly,a.ent)});
+          }
+          return patchSet(ns,{expenseBanks:add(eb,a.ent), dailyOnlyBanks:add(dOnly,a.ent)});
+        }
+        // «Todo»: la principal pasa a rol ambos; un extra queda en expenseBanks CON recibos.
+        if(isPrimary || !hasPrimary){
+          ns=applyAccountRole(ns, totals, a.id, "ambos");
+          return patchSet(ns,{dailyOnlyBanks:drop(dOnly,a.ent)});
+        }
+        return patchSet(ns,{expenseBanks:add(eb,a.ent), dailyOnlyBanks:drop(dOnly,a.ent)});
       });
     };
     const roleChips=function(a){
+      const dy=dailyEffOf(a), fx=fixedEffOf(a);
+      const on={fijos:fx&&!dy, diario:dy&&!fx, ambos:fx&&dy};
       return React.createElement("div",{className:"rolechips",style:{padding:"8px 0 2px"}},
         [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
-          if(rr[0]==="diario"){
-            // Multi: verde si es la principal o un banco extra de gasto diario.
-            return React.createElement("button",{key:"diario",className:"rchip"+(dailyOnFor(a)?" on":""),onClick:function(){ toggleDaily(a); }}, t("rl_diario"));
-          }
-          const on=accRole(a)===rr[0];
-          return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){ setRole(a.id, rr[0]); }}, t(rr[1]));
+          return React.createElement("button",{key:rr[0],className:"rchip"+(on[rr[0]]?" on":""),onClick:function(){ pickRole(a, rr[0]); }}, t(rr[1]));
         }),
         React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:t("pt_acc_del"),onClick:function(){ setDelAcc(a.id); }},"🗑")
       );
