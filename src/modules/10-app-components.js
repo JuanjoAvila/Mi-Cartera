@@ -1005,6 +1005,9 @@ var RELEASE_NOTES=[
   {v:"3.95.1", d:"12 jul 2026", t:"Retoque: el «−» que se colaba en «Lo que te queda»", items:[
     "En la vista «Lo que te queda» de Gastos, cuando te pasabas de gasto seguía saliendo un «−» delante del número. Ya no: el color rojo o verde te dice solo si ahorras o te pasas, igual que en el resto de la app."
   ]},
+  {v:"3.96.0", d:"23 jul 2026", t:"Limpieza técnica: quitar UI de ordenar brókers", items:[
+    "Se quita el botón deshabilitado «⇅ Ordenar brókers» en Cartera → Inversiones (ya no funciona; las clases CSS y lógica huérfana también)."
+  ]},
   {v:"3.95.0", d:"12 jul 2026", t:"Novedades a la vista, sugerencias sin salir de la app y gastos sin «−»", items:[
     "🎉 Este popup: a partir de ahora, cada actualización te cuenta qué trae. Se abre solo una vez por versión.",
     "📜 Histórico en Ajustes → «✨ Novedades y sugerencias»: relee las novedades de cualquier versión cuando quieras.",

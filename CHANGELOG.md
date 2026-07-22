@@ -2,6 +2,10 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.7.1] — 2026-07-23
+### Limpieza técnica: quitar UI de ordenar brókers
+- Se quita el botón deshabilitado "⇅ Ordenar brókers" en Cartera → Inversiones (ya no funciona; las clases CSS y lógica huérfana también).
+
 ## [4.7.0] — 2026-07-22
 ### Notis sin duplicados + roles de cuenta excluyentes + deudas uniformes (fotos del usuario 2026-07-21)
 - **Noti duplicada del «gasto tocho» (Java → APK 31):** `TrExpenseListener.handleResponse` miraba la alerta DESPUÉS de pintar la confirmación → «💥 Gasto tocho apuntado» + «✓ Gasto apuntado» con el mismo importe. Ahora la alerta se lee antes y, si es `big`, SUSTITUYE a la confirmación (y hereda el deep-link `mc_goto` que no tenía). `versionCode` 31 / `versionName` 4.7.0 preparados; **APK pendiente de compilar y publicar** (apk.json sin tocar hasta que el release exista de verdad).
