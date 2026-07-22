@@ -1986,7 +1986,6 @@ const LANG = {
     v4_gastos_inc_line:"Ingresos {x} · balance {bal}", v4_gastos_split_line:"Gastos {spent} · ingresos {income}",
     v4_cartera_title:"Tu cartera", v4_cuentas:"Tus cuentas", v4_inversiones:"Tus inversiones", v4_inv_positions:"{n} posiciones",
     v4_inv_tools:"Herramientas de inversión", v4_inv_tools_h:"Precios, redondeo, proyección y edición manual — lo que antes llenaba Cartera.",
-    v4_broker_order:"Orden de los brókers", v4_broker_order_h:"Así salen los bloques en Cartera → Inversiones.",
     v4_sync_banks:"Sincronizar bancos", v4_sync_banks_done:"✓ Bancos sincronizados",
     v4_sync_brokers_ok:"📈 Brókers al día (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sesión caducada · reconecta en Ajustes → Bancos",
     ap_bank:"Banco", ap_bank_none:"Sin banco",
@@ -2111,7 +2110,6 @@ const LANG = {
     v4_gastos_inc_line:"Income {x} · balance {bal}", v4_gastos_split_line:"Spent {spent} · income {income}",
     v4_cartera_title:"Your portfolio", v4_cuentas:"Your accounts", v4_inversiones:"Your investments", v4_inv_positions:"{n} positions",
     v4_inv_tools:"Investment tools", v4_inv_tools_h:"Prices, round-ups, projections and manual edit — what used to clutter Portfolio.",
-    v4_broker_order:"Broker order", v4_broker_order_h:"This is how the blocks show up in Portfolio → Investments.",
     v4_sync_banks:"Sync banks", v4_sync_banks_done:"✓ Banks synced",
     v4_sync_brokers_ok:"📈 Brokers up to date (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: session expired · reconnect in Settings → Banks",
     ap_bank:"Bank", ap_bank_none:"No bank",
@@ -2232,8 +2230,7 @@ const LANG = {
     v4_gastos_title:"Les teves despeses", v4_gastos_spent_in:"Gastat al {month}", v4_gastos_net_in:"Balanç al {month}", v4_gastos_of:"de {x}", v4_gastos_left:"queden {x}", v4_gastos_today_mark:"avui · dia {d}", v4_period_more:"Més…",
     v4_gastos_inc_line:"Ingressos {x} · balanç {bal}", v4_gastos_split_line:"Despeses {spent} · ingressos {income}",
     v4_cartera_title:"La teva cartera", v4_cuentas:"Els teus comptes", v4_inversiones:"Les teves inversions", v4_inv_positions:"{n} posicions",
-    v4_inv_tools:"Eines d’inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
-    v4_broker_order:"Ordre dels brokers", v4_broker_order_h:"Així surten els blocs a Cartera → Inversions.",
+    v4_inv_tools:"Eines d'inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
     v4_sync_banks:"Sincronitza els bancs", v4_sync_banks_done:"✓ Bancs sincronitzats",
     v4_sync_brokers_ok:"📈 Brókers al dia (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sessió caducada · reconnecta a Ajustos → Bancs",
     ap_bank:"Banc", ap_bank_none:"Sense banc",
@@ -6828,10 +6825,9 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   // nuevo le aparecía "MyInvestor" sin haberlo conectado nunca; feedback pareja 2026-07-10).
   const groupsBase=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
     .filter(function(g){ return state.investments.some(function(i){ return i.ent===g[0]; }); });
-  // Orden elegido en Herramientas → «Orden de los brókers» (petición 2026-07-21): reutiliza el
-  // mecanismo secOrder de las secciones, con la pestaña virtual "cartera_brokers".
-  const groups=secOrderOf(state,"cartera_brokers",groupsBase.map(function(g){ return g[0]; }))
-    .map(function(id){ return groupsBase.find(function(g){ return g[0]===id; }); });
+  // Orden fijo de los brókers (2026-07-23: se borró la UI de ordenación en Herramientas;
+  // mantengo el orden que servía por defecto antes del control manual).
+  const groups=groupsBase.map(function(g){ return g[0]; });
   const start=()=>{ const d={}; state.investments.forEach(i=>d[i.id]={value:i.value,cost:i.cost}); setDraft(d); setEditing(true); };
   const cancel=()=>{ setEditing(false); setShowCost(false); };
   const save=()=>{
@@ -11343,34 +11339,6 @@ function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
           React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
         ),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_inv_tools_h")),
-        // Orden de los bloques de bróker en Cartera (petición 2026-07-21: «poder mover el bloque
-        // entero»): vive aquí, en avanzado, para no llenar Cartera de botones. Mismo secOrder
-        // que las secciones (pestaña virtual "cartera_brokers" — lo lee Investments v4Embed).
-        (function(){
-          const names={revolut:"Revolut",trade_republic:"Trade Republic",myinvestor:"MyInvestor"};
-          const ids=Object.keys(names).filter(function(e){ return (state.investments||[]).some(function(i){ return i.ent===e; }); });
-          if(ids.length<2) return null;
-          const order=secOrderOf(state,"cartera_brokers",ids);
-          const move=function(id,dir){
-            set(function(s){
-              const o=secOrderOf(s,"cartera_brokers",ids); const i=o.indexOf(id), j=i+dir;
-              if(i<0||j<0||j>=o.length) return s;
-              const n=o.slice(); n[i]=o[j]; n[j]=id;
-              return Object.assign({},s,{settings:Object.assign({},s.settings,{secOrder:Object.assign({},((s.settings||{}).secOrder)||{},{cartera_brokers:n})})});
-            });
-          };
-          return React.createElement("div",{style:{marginBottom:14}},
-            React.createElement("div",{className:"v4-exp-sec"}, t("v4_broker_order")),
-            React.createElement("div",{className:"hint",style:{margin:"2px 0 6px"}}, t("v4_broker_order_h")),
-            order.map(function(id,idx){
-              return React.createElement("div",{key:id,className:"wedit-bar",style:{margin:"6px 0"}},
-                React.createElement("span",{className:"wedit-lbl"},names[id]),
-                React.createElement("div",{className:"wedit-btns"},
-                  React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
-                  React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓")));
-            })
-          );
-        })(),
         React.createElement("div",{className:"v4-embed-legacy"}, React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false,toolsMode:true}))
       )
     ), document.body);
