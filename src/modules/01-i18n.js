@@ -267,7 +267,7 @@ const LANG = {
     v4_gastos_title:"Les teves despeses", v4_gastos_spent_in:"Gastat al {month}", v4_gastos_net_in:"Balanç al {month}", v4_gastos_of:"de {x}", v4_gastos_left:"queden {x}", v4_gastos_today_mark:"avui · dia {d}", v4_period_more:"Més…",
     v4_gastos_inc_line:"Ingressos {x} · balanç {bal}", v4_gastos_split_line:"Despeses {spent} · ingressos {income}",
     v4_cartera_title:"La teva cartera", v4_cuentas:"Els teus comptes", v4_inversiones:"Les teves inversions", v4_inv_positions:"{n} posicions",
-    v4_inv_tools:"Eines d'inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
+    v4_inv_tools:"Eines d’inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
     v4_sync_banks:"Sincronitza els bancs", v4_sync_banks_done:"✓ Bancs sincronitzats",
     v4_sync_brokers_ok:"📈 Brókers al dia (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sessió caducada · reconnecta a Ajustos → Bancs",
     ap_bank:"Banc", ap_bank_none:"Sense banc",

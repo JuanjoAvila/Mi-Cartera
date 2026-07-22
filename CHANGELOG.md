@@ -3,8 +3,11 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [4.7.1] — 2026-07-23
-### Limpieza técnica: quitar UI de ordenar brókers
-- Se quita el botón deshabilitado "⇅ Ordenar brókers" en Cartera → Inversiones (ya no funciona; las clases CSS y lógica huérfana también).
+### Quitar la UI de ordenar brókers (petición del usuario 2026-07-23)
+- Fuera la sección «Orden de los brókers» (flechas ↑↓) de la hoja **Herramientas de inversión** (`14-v4-screens.js`), y fuera las claves `v4_broker_order`/`v4_broker_order_h` en es/en/ca. El orden de los brókers en Cartera → Inversiones pasa a ser fijo: Revolut → Trade Republic → MyInvestor (solo los que tienen posiciones).
+- **Fix de regresión introducida al quitarlo:** el reemplazo de `secOrderOf(...)` se dejó como `groups=groupsBase.map(g=>g[0])`, convirtiendo las ternas `[id,nombre,subtítulo]` en strings sueltos. Aguas abajo se leen `g[0]`/`g[1]`, así que `g[0]` pasaba a ser la primera LETRA (`"revolut"[0]==="r"`), `state.investments.filter(i=>i.ent==="r")` no casaba nada y **los tres bloques de brókers desaparecían** de Cartera → Inversiones, del desglose «Coste vs valor» y de la pestaña «Por bróker». Corregido a `groups=groupsBase` (`06-sync-brokers.js`).
+- **Fix de versionado:** el bump se hizo solo en `package.json`; el fichero `VERSION` —del que leen `scripts/stamp-version.mjs` (sella `CONFIG.APP_VERSION` y el SW) y el paso OTA de `deploy.yml` (`version.json`)— seguía en `4.7.0`, así que el popup de Novedades no disparaba y el bundle OTA salía con la versión que el móvil ya tenía. `VERSION` → `4.7.1`.
+- **Fix de notas:** la entrada de `RELEASE_NOTES` se había añadido como `3.96.0` (versión ya existente del 12 jul → clave duplicada) y colocada en mitad del histórico, donde no la ve nadie. Reescrita como `4.7.1` y movida al principio. Además, la nota de 4.7.0 ya no anuncia las flechas de ordenar brókers, que acaban de retirarse.
 
 ## [4.7.0] — 2026-07-22
 ### Notis sin duplicados + roles de cuenta excluyentes + deudas uniformes (fotos del usuario 2026-07-21)
