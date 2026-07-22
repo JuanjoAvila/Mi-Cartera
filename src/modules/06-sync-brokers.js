@@ -666,8 +666,9 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   const groupsBase=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
     .filter(function(g){ return state.investments.some(function(i){ return i.ent===g[0]; }); });
   // Orden fijo de los brókers (2026-07-23: se borró la UI de ordenación en Herramientas;
-  // mantengo el orden que servía por defecto antes del control manual).
-  const groups=groupsBase.map(function(g){ return g[0]; });
+  // mantengo el orden por defecto de groupsBase). OJO: `groups` son las TERNAS
+  // [id, nombre, subtítulo] — abajo se leen g[0]/g[1]/g[2]. No mapear a solo el id.
+  const groups=groupsBase;
   const start=()=>{ const d={}; state.investments.forEach(i=>d[i.id]={value:i.value,cost:i.cost}); setDraft(d); setEditing(true); };
   const cancel=()=>{ setEditing(false); setShowCost(false); };
   const save=()=>{
