@@ -1,0 +1,18 @@
+# feat: quitar UI de ordenar brókers en Herramientas de inversion
+
+## Cambios
+
+- **`14-v4-screens.js`**: borrado el IIFE que renderizaba las flechas arriba/abajo (botones "al inicio" / "al fondo") y los inputs de orden dentro de la hoja lateral "Herramientas de inversion" del modal Cartera.
+- **`06-sync-brokers.js`**: eliminada la lectura de state para el orden (ya no existe UI que lo cambie), vuelta al orden fijo: revolut -> trade_republic -> myinvestor.
+- **`01-i18n.js`**: borrado `v4_broker_order` y `v4_broker_order_h` en los 3 idiomas (es/en/ca).
+
+## Build
+
+npm run build pasa sin errores.
+
+## Testing
+
+Verificar con Playwright en la vista Cartera -> Inversiones que:
+- Las 3 inversiones (Revolut, Trade Republic, MyInvestor) siguen visibles.
+- No aparecen controles de orden en Herramientas.
+- El resto del modal Cartera funciona igual.
