@@ -665,10 +665,9 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   // nuevo le aparecía "MyInvestor" sin haberlo conectado nunca; feedback pareja 2026-07-10).
   const groupsBase=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
     .filter(function(g){ return state.investments.some(function(i){ return i.ent===g[0]; }); });
-  // Orden elegido en Herramientas → «Orden de los brókers» (petición 2026-07-21): reutiliza el
-  // mecanismo secOrder de las secciones, con la pestaña virtual "cartera_brokers".
-  const groups=secOrderOf(state,"cartera_brokers",groupsBase.map(function(g){ return g[0]; }))
-    .map(function(id){ return groupsBase.find(function(g){ return g[0]===id; }); });
+  // Orden fijo de los brókers (2026-07-23: se borró la UI de ordenación en Herramientas;
+  // mantengo el orden que servía por defecto antes del control manual).
+  const groups=groupsBase.map(function(g){ return g[0]; });
   const start=()=>{ const d={}; state.investments.forEach(i=>d[i.id]={value:i.value,cost:i.cost}); setDraft(d); setEditing(true); };
   const cancel=()=>{ setEditing(false); setShowCost(false); };
   const save=()=>{
