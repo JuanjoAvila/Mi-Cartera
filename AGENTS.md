@@ -97,13 +97,41 @@ Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
   huérfanos (código vivo sin camino en la UI) el rol de cuenta, Hogar/Compartido, la huella y
   el cerrar sesión — el usuario tardó un día en notarlo y hubo que recuperarlos (4.1.0).
   Lista qué solo se alcanzaba desde lo que tocas antes de darlo por terminado.
+- **`npm test` (unitarios + sintaxis) NO prueba qué se pinta.** Bug real (4.7.1, 2026-07-23): al
+  quitar la UI de ordenar brókers, `groups=groupsBase.map(g=>g[0])` convertía las ternas
+  `[id,nombre,subtítulo]` en strings sueltos; aguas abajo se leía `g[0]`/`g[1]` como si siguieran
+  siendo la terna, así que `g[0]` pasaba a ser la PRIMERA LETRA del id. El filtro por `i.ent` dejó
+  de casar nada y **los tres bloques de Cartera → Inversiones desaparecieron**. `npm test` seguía
+  en verde (sintaxis y lógica pura estaban bien) y nadie lo vio hasta que el usuario preguntó por
+  qué no cambiaba la versión. **Regla:** cualquier cambio que toque qué se PINTA de una lista/
+  render derivado del estado (no solo lógica) necesita un e2e que abra la pantalla de verdad y
+  compruebe el DOM — no basta con leer el diff y decir «tiene buena pinta». Antes de dar un cambio
+  de UI por terminado, pregúntate: *¿qué e2e fallaría si este cambio rompe lo que se ve?* Si la
+  respuesta es «ninguno», añade uno (ver `e2e/cartera-inversiones.spec.mjs` como plantilla:
+  siembra estado con `seedLoggedInDashboard(page, overrides)` de `e2e/fixtures.mjs`, navega a la
+  pantalla real y asere contra selectores del DOM, no contra el código fuente).
 - **Open Banking se sincroniza SOLO a demanda** (4.1.0): no reintroduzcas syncs al abrir o al
   volver a primer plano — los bancos lo leen como bot y caducan el consentimiento. El detalle
   de qué syncs siguen vivos está en docs/ARQUITECTURA.md.
 - **Updates:** transporte en `12-boot.js`, estado de UI en `useUpdates()` (10-app-components).
   Lógica nueva de updates → al hook, no a efectos sueltos en App.
 
-## 8. Privacidad y dinero
+## 8. Cobertura e2e: pendiente ampliar (no solo brókers)
+
+Hoy `e2e/` cubre: arranque/onboarding, el sheet de «Apuntar», borrar cuenta, la animación de
+perfil y (desde 4.7.1) los bloques de brókers en Cartera. El resto de listas derivadas del estado
+— Deudas y Metas (`09-tab-debts-goals.js`), Fijos (`07-tab-patri-fijos.js`), Hogar/Compartido
+(`13-hogar.js`), «Tus cuentas» en Cartera — pueden sufrir el mismo tipo de bug que los brókers
+(un `.map` que cambia de forma y deja de casar downstream) sin que ningún test se entere, porque
+son render puro y `npm test` no abre pantallas.
+
+**Si tocas o rediseñas cualquiera de esas listas, añade un e2e** siguiendo el patrón de
+`e2e/cartera-inversiones.spec.mjs`: siembra estado con `seedLoggedInDashboard(page, overrides)`
+(acepta overrides desde 4.7.1 — no dupliques el objeto de estado entero), navega a la pantalla
+real y asere `toHaveCount`/`toContainText` contra el DOM, no contra el código. No hace falta
+migrar todo de golpe: añade cobertura de la zona que toques, así el hueco se va cerrando solo.
+
+## 9. Privacidad y dinero
 
 - Repo **público** (lo exige Pages gratis) → **jamás** un secreto, una clave ni datos personales
   en el cliente ni en el repo. Los CSV de extractos del usuario **no se commitean nunca**.
