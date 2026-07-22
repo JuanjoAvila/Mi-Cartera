@@ -681,6 +681,14 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.7.0", d:"22 jul 2026", t:"Notis sin duplicados, roles de banco claros y deudas que hablan igual", items:[
+    "🔔 Se acabaron las notis dobles: cuando un gasto es «tocho» ya solo sale esa noti (antes salía TAMBIÉN la de «✓ Gasto apuntado» con el mismo importe). Esta parte va en el APK 31 — la app te lo ofrecerá cuando esté publicado.",
+    "🧾 El aviso de recibo de la víspera tampoco sale ya dos veces (una exacta del móvil y otra redondeada al abrir la app): ahora la app comprueba primero qué avisó ya el móvil. Y los avisos de recibos van SIEMPRE con el importe exacto: 89,54 €, no «90 €».",
+    "🏦 En Cartera cada banco dice debajo lo que es, como Trade Republic: «Gasto diario», «Recibos», o las dos si hace ambas cosas — y fuera el carrito suelto al lado del nombre. Al editar, cada banco es UNA cosa: o Recibos, o Gasto diario, o Todo (ya no se queda «Recibos» clavado en verde).",
+    "📈 Desplegar un bróker en Cartera va con la misma animación suave del resto de la app, y en «Herramientas de inversión» puedes ordenar los bloques de brókers con flechas ↑↓.",
+    "💳 Deudas: todas hablan igual. La hipoteca y el préstamo dicen «acabas en febrero 2049» como las demás (fuera el «a este ritmo acabas ~») y también muestran «Quedan X/Y cuotas · Z €/mes», estimado con lo que amortizas cada mes.",
+    "🛡 El logo de reCAPTCHA que se quedaba flotando abajo en TODA la app ya no sale. Y si el captcha de MyInvestor falla, el mensaje ahora dice QUÉ falló exactamente: si Google no quiso dar el token dentro de la app, o si MyInvestor lo rechazó — así sabemos si el atajo del site key tiene recorrido o toca pantalla nativa.",
+  ]},
   {v:"4.6.4", d:"20 jul 2026", t:"MyInvestor: intento de resolver el captcha en la propia app", items:[
     "🔓 Nuevo intento para el captcha de MyInvestor SIN cambiar el APK: cuando salta el captcha, aparece un campo «avanzado» para pegar el «site key» de reCAPTCHA de MyInvestor. Con él, la app intenta resolver el captcha ella sola dentro de la app y reintenta el login. Cómo sacar el site key: en el PC, en la web de MyInvestor, F12 → Red → filtra «recaptcha» → copia el «render=6L…».",
     "ℹ️ Aviso honesto: puede que MyInvestor rechace el token por venir de un sitio distinto al suyo. Si es así, el único camino que queda es una pantalla nativa (otro APK) — pero esto se prueba en 1 minuto y si funciona, resuelto sin tocar nada más.",

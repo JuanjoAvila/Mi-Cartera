@@ -190,12 +190,16 @@ function MyInvestorSync({state, set}){
               setErr(t("mi_solving_captcha"));
               miSolveCaptcha("login").then(function(tok){
                 if(tok){ attempt(tok, true); }
-                else { setBusy(false); setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView'); }catch(e){} }
+                // Mensajes distintos por causa (2026-07-21: con el genérico era imposible saber si
+                // falló Google o MyInvestor): sin token = Google no lo da fuera de su dominio.
+                else { setBusy(false); setErr(t("mi_rc_fail_gen")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView (¿dominio del site key?)'); }catch(e){} }
               });
               return;
             }
             setBusy(false);
-            setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI — ¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
+            // retried = hubo token y aun así MI dijo captcha → lo rechazó él, no Google.
+            setErr(retried?t("mi_rc_rejected"):t("mi_recaptcha"));
+            try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI — ¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
             return;
           }
           setBusy(false); fail(r);
@@ -279,10 +283,13 @@ function MyInvestorSync({state, set}){
           React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
           // Campo avanzado del site key de reCAPTCHA: aparece al saltar el captcha (o si ya hay uno
           // guardado). Con él la app intenta resolver el captcha sola en la WebView (2026-07-20).
-          (err===t("mi_recaptcha") || rcKey) && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid var(--line-soft)"}},
+          (err===t("mi_recaptcha") || err===t("mi_rc_fail_gen") || err===t("mi_rc_rejected") || rcKey) && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid var(--line-soft)"}},
             React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,marginBottom:6}}, t("mi_rc_key_hint")),
             React.createElement("input",{className:"af-in",style:Object.assign({},inpStyle,{fontFamily:"monospace",fontSize:13}),placeholder:"6L…",autoComplete:"off",value:rcKey,onChange:function(e){ const v=e.target.value.trim(); setRcKey(v); try{ if(v) localStorage.setItem("_miRcKey",v); else localStorage.removeItem("_miRcKey"); }catch(_){} }}),
-            rcKey && React.createElement("div",{style:{fontSize:11.5,color:"var(--mint)",marginTop:6}}, t("mi_rc_key_saved")))
+            rcKey && React.createElement("div",{style:{fontSize:11.5,color:"var(--mint)",marginTop:6}}, t("mi_rc_key_saved")),
+            // Atribución obligatoria: el badge flotante de Google se oculta por CSS (salía FIJO en
+            // toda la app, no solo aquí — feedback 2026-07-21) y sus términos piden citarlo en el flujo.
+            rcKey && React.createElement("div",{style:{fontSize:10.5,color:"var(--muted-2)",marginTop:4}}, t("mi_rc_badge_note")))
         ),
         step==="otp" && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
@@ -656,8 +663,12 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   const toggleAuto=()=> set(s=>Object.assign({},s,{settings:Object.assign({},s.settings,{autoPrices:!(s.settings&&s.settings.autoPrices)})}));
   // Solo los brókers donde el usuario TIENE posiciones (antes salían los 3 fijos — a un usuario
   // nuevo le aparecía "MyInvestor" sin haberlo conectado nunca; feedback pareja 2026-07-10).
-  const groups=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
+  const groupsBase=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
     .filter(function(g){ return state.investments.some(function(i){ return i.ent===g[0]; }); });
+  // Orden elegido en Herramientas → «Orden de los brókers» (petición 2026-07-21): reutiliza el
+  // mecanismo secOrder de las secciones, con la pestaña virtual "cartera_brokers".
+  const groups=secOrderOf(state,"cartera_brokers",groupsBase.map(function(g){ return g[0]; }))
+    .map(function(id){ return groupsBase.find(function(g){ return g[0]===id; }); });
   const start=()=>{ const d={}; state.investments.forEach(i=>d[i.id]={value:i.value,cost:i.cost}); setDraft(d); setEditing(true); };
   const cancel=()=>{ setEditing(false); setShowCost(false); };
   const save=()=>{
@@ -788,7 +799,9 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
               React.createElement(I.chev,{className:"chev"+(open?" open":"")})
             )
           ),
-          open && React.createElement("div",{style:{padding:"0 2px 8px"}},
+          // .v4-inv-drop: el mismo «rise» suave del resto de la app — antes las posiciones
+          // aparecían de golpe al desplegar el bróker (feedback 2026-07-21).
+          open && React.createElement("div",{className:"v4-inv-drop",style:{padding:"0 2px 8px"}},
             React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:editing,showCost:editing&&showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete}))
         );
       }),
