@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-20 · **v4.6.4** — MyInvestor: intento OTA de resolver el reCAPTCHA en la WebView (pegando el site key). **v4.6.3:** «Gasto diario» multi-banco en el chip de siempre (quitado el duplicado). **v4.6.2:** barra inferior pegada abajo con letra pequeña/enorme, widget re-empuja al volver a la app. (4.6.1:) letra pequeña, Hogar movido a Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
+> Estado a 2026-07-22 · **v4.7.0** — notis sin duplicados (gasto tocho y recibo de la víspera, éste además con importe exacto), roles de cuenta excluyentes y en el subtítulo del banco, brókers con animación + orden configurable, deudas con «Quedan n/tot cuotas» y «acabas en» uniformes, badge de reCAPTCHA oculto con errores diagnosticables. El fix del gasto tocho es Java → **APK 31 pendiente de compilar/publicar**. **v4.6.4:** MyInvestor: intento OTA de resolver el reCAPTCHA en la WebView (pegando el site key). **v4.6.3:** «Gasto diario» multi-banco en el chip de siempre (quitado el duplicado). **v4.6.2:** barra inferior pegada abajo con letra pequeña/enorme, widget re-empuja al volver a la app. (4.6.1:) letra pequeña, Hogar movido a Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
 
 ## Listo para uso diario
 
@@ -10,9 +10,9 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.6.4** |
-| APK (`versionName` / `versionCode`) | **4.6.0** / **30** (publicado; 4.6.1–4.6.4 son OTA, no tocan nativo) |
-| `public/apk.json` | **30** / 4.6.0 → `Mi-Cartera-4.6.0.apk` |
+| Web / OTA (`VERSION`) | **4.7.0** |
+| APK (`versionName` / `versionCode`) | **4.7.0** / **31** preparados en el repo — **pendiente compilar y publicar el release** (lleva el fix de la noti duplicada del gasto tocho) |
+| `public/apk.json` | **30** / 4.6.0 → `Mi-Cartera-4.6.0.apk` (se actualizará al publicar el APK 31 de verdad) |
 
 ## Pendiente / limitaciones conocidas
 
