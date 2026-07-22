@@ -473,6 +473,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .daily-chip.on .dc-ic{color:#08120C !important;}
   /* Badge 🛒 en la lista de cuentas para las que cuentan en el gasto diario (varias). */
   .dc-badge{display:inline-block;margin-left:6px;font-size:11px;padding:1px 6px;border-radius:8px;background:rgba(95,208,138,.16);color:var(--mint);font-weight:700;vertical-align:middle;}
+  /* El badge flotante de reCAPTCHA (lo inyecta el script de Google al intentar el captcha de
+     MyInvestor) se quedaba FIJO abajo en TODA la app (feedback 2026-07-21). Google permite
+     ocultarlo si la atribución se muestra en el flujo — está junto al campo del site key. */
+  .grecaptcha-badge{visibility:hidden !important;}
   /* Letra grande (accesibilidad). Zoom en BODY, no en #root: los sheets/diálogos van
      portaleados a document.body (fuera de #root) y con el zoom en #root se quedaban pequeños
      y descuadrados (feedback 2026-07-18). En body escala TODO por igual. */
@@ -794,7 +798,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
   }
 
   /* «Gestionar recibos» y «Herramientas de inversión» viven en un sheet v4 pero por dentro
@@ -1004,6 +1008,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* (Las animaciones escalonadas de .set-card/.v4-set-sec al abrir se retiraron el 2026-07-18:
      el contenido «saltaba» en cada apertura y sumaba al efecto raro del panel.) */
   .set-exp{animation:rise .26s var(--ease) both;}
+  /* Posiciones al desplegar un bróker en Cartera: mismo rise suave (feedback 2026-07-21). */
+  .v4-inv-drop{animation:rise .26s var(--ease) both;}
   .chip.active,.v4-period-btn.on{background:var(--mint);border-color:var(--mint);color:var(--on-mint);}
   .v4-period{display:flex;gap:8px;margin:12px 0 10px;}
   .v4-period-btn{flex:1;min-height:48px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);font-weight:700;font-size:14px;color:var(--text);}

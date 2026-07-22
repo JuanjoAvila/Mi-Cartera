@@ -187,6 +187,12 @@ public class TrExpenseListener extends NotificationListenerService {
             String comercio = r.optString("comercio", "");
             int id = (int) (System.currentTimeMillis() % 100000);
 
+            // La alerta se mira ANTES de la confirmación: si es «gasto tocho», esa noti ya dice
+            // importe y comercio → la "✓ Gasto apuntado" salía ADEMÁS, duplicada (feedback 2026-07-21).
+            JSONObject alert = r.optJSONObject("alert");
+            String alertKind = alert != null ? alert.optString("kind", "") : "";
+            boolean big = alertKind.equals("big");
+
             // Ajuste "confirmar gastos" (punto 9): TR ya avisa del cargo, así que la confirmación
             // "✓ Gasto apuntado" es opcional (MiCartera.setNotifPrefs). Los avisos de presupuesto
             // de abajo salen SIEMPRE — esos no los da el banco.
@@ -194,7 +200,7 @@ public class TrExpenseListener extends NotificationListenerService {
                     .getBoolean("expenseConfirm", true);
             // Punto 5: deep-link a la ficha del gasto — al tocar la noti, la web abre este gasto en Gastos.
             String gotoTok = "exp|" + importe + "|" + comercio;
-            if (confirm) {
+            if (confirm && !big) {
                 if (tipo.equals("ingreso")) {
                     Notif.show(this, "💰 Dinero recibido", "+" + eur(-importe) + " · " + comercio, id, gotoTok);
                 } else if (tipo.equals("gasto_nocard")) {
@@ -204,23 +210,22 @@ public class TrExpenseListener extends NotificationListenerService {
                 }
             }
 
-            JSONObject alert = r.optJSONObject("alert");
             if (alert != null) {
-                String kind = alert.optString("kind", "");
                 double spent = alert.optDouble("monthSpent", 0);
                 double budget = alert.optDouble("budget", 0);
-                if (kind.equals("over")) {
+                if (alertKind.equals("over")) {
                     Notif.show(this, "🚨 Presupuesto superado", "Llevas " + eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
-                } else if (kind.equals("p95")) {
+                } else if (alertKind.equals("p95")) {
                     // p95/p50 añadidos 2026-07-18 (los calcula `ingest`; con APK viejo se ignoran sin romper)
                     Notif.show(this, "🔶 ¡95% del presupuesto!", eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
-                } else if (kind.equals("p80")) {
+                } else if (alertKind.equals("p80")) {
                     long p = budget > 0 ? Math.round(spent / budget * 100) : 0;
                     Notif.show(this, "⚠️ Ya llevas el " + p + "% del presupuesto", eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
-                } else if (kind.equals("p50")) {
+                } else if (alertKind.equals("p50")) {
                     Notif.show(this, "🟢 Mitad del presupuesto", eur0(spent) + " de " + eur0(budget) + " este mes", id + 1);
-                } else if (kind.equals("big")) {
-                    Notif.show(this, "💥 Gasto tocho apuntado", eur(importe) + " en " + comercio, id + 1);
+                } else if (big) {
+                    // Sustituye a la confirmación (arriba se salta): una sola noti, con su deep-link.
+                    Notif.show(this, "💥 Gasto tocho apuntado", eur(importe) + " en " + comercio, id + 1, gotoTok);
                 }
             }
 

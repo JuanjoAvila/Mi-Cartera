@@ -266,6 +266,34 @@ function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
           React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
         ),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_inv_tools_h")),
+        // Orden de los bloques de bróker en Cartera (petición 2026-07-21: «poder mover el bloque
+        // entero»): vive aquí, en avanzado, para no llenar Cartera de botones. Mismo secOrder
+        // que las secciones (pestaña virtual "cartera_brokers" — lo lee Investments v4Embed).
+        (function(){
+          const names={revolut:"Revolut",trade_republic:"Trade Republic",myinvestor:"MyInvestor"};
+          const ids=Object.keys(names).filter(function(e){ return (state.investments||[]).some(function(i){ return i.ent===e; }); });
+          if(ids.length<2) return null;
+          const order=secOrderOf(state,"cartera_brokers",ids);
+          const move=function(id,dir){
+            set(function(s){
+              const o=secOrderOf(s,"cartera_brokers",ids); const i=o.indexOf(id), j=i+dir;
+              if(i<0||j<0||j>=o.length) return s;
+              const n=o.slice(); n[i]=o[j]; n[j]=id;
+              return Object.assign({},s,{settings:Object.assign({},s.settings,{secOrder:Object.assign({},((s.settings||{}).secOrder)||{},{cartera_brokers:n})})});
+            });
+          };
+          return React.createElement("div",{style:{marginBottom:14}},
+            React.createElement("div",{className:"v4-exp-sec"}, t("v4_broker_order")),
+            React.createElement("div",{className:"hint",style:{margin:"2px 0 6px"}}, t("v4_broker_order_h")),
+            order.map(function(id,idx){
+              return React.createElement("div",{key:id,className:"wedit-bar",style:{margin:"6px 0"}},
+                React.createElement("span",{className:"wedit-lbl"},names[id]),
+                React.createElement("div",{className:"wedit-btns"},
+                  React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
+                  React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓")));
+            })
+          );
+        })(),
         React.createElement("div",{className:"v4-embed-legacy"}, React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false,toolsMode:true}))
       )
     ), document.body);

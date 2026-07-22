@@ -473,6 +473,10 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .daily-chip.on .dc-ic{color:#08120C !important;}
   /* Badge 🛒 en la lista de cuentas para las que cuentan en el gasto diario (varias). */
   .dc-badge{display:inline-block;margin-left:6px;font-size:11px;padding:1px 6px;border-radius:8px;background:rgba(95,208,138,.16);color:var(--mint);font-weight:700;vertical-align:middle;}
+  /* El badge flotante de reCAPTCHA (lo inyecta el script de Google al intentar el captcha de
+     MyInvestor) se quedaba FIJO abajo en TODA la app (feedback 2026-07-21). Google permite
+     ocultarlo si la atribución se muestra en el flujo — está junto al campo del site key. */
+  .grecaptcha-badge{visibility:hidden !important;}
   /* Letra grande (accesibilidad). Zoom en BODY, no en #root: los sheets/diálogos van
      portaleados a document.body (fuera de #root) y con el zoom en #root se quedaban pequeños
      y descuadrados (feedback 2026-07-18). En body escala TODO por igual. */
@@ -794,7 +798,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
   }
 
   /* «Gestionar recibos» y «Herramientas de inversión» viven en un sheet v4 pero por dentro
@@ -1004,6 +1008,8 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   /* (Las animaciones escalonadas de .set-card/.v4-set-sec al abrir se retiraron el 2026-07-18:
      el contenido «saltaba» en cada apertura y sumaba al efecto raro del panel.) */
   .set-exp{animation:rise .26s var(--ease) both;}
+  /* Posiciones al desplegar un bróker en Cartera: mismo rise suave (feedback 2026-07-21). */
+  .v4-inv-drop{animation:rise .26s var(--ease) both;}
   .chip.active,.v4-period-btn.on{background:var(--mint);border-color:var(--mint);color:var(--on-mint);}
   .v4-period{display:flex;gap:8px;margin:12px 0 10px;}
   .v4-period-btn{flex:1;min-height:48px;border-radius:14px;background:var(--sur);border:1px solid var(--line-soft);font-weight:700;font-size:14px;color:var(--text);}
@@ -1980,6 +1986,7 @@ const LANG = {
     v4_gastos_inc_line:"Ingresos {x} · balance {bal}", v4_gastos_split_line:"Gastos {spent} · ingresos {income}",
     v4_cartera_title:"Tu cartera", v4_cuentas:"Tus cuentas", v4_inversiones:"Tus inversiones", v4_inv_positions:"{n} posiciones",
     v4_inv_tools:"Herramientas de inversión", v4_inv_tools_h:"Precios, redondeo, proyección y edición manual — lo que antes llenaba Cartera.",
+    v4_broker_order:"Orden de los brókers", v4_broker_order_h:"Así salen los bloques en Cartera → Inversiones.",
     v4_sync_banks:"Sincronizar bancos", v4_sync_banks_done:"✓ Bancos sincronizados",
     v4_sync_brokers_ok:"📈 Brókers al día (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sesión caducada · reconecta en Ajustes → Bancos",
     ap_bank:"Banco", ap_bank_none:"Sin banco",
@@ -1995,7 +2002,7 @@ const LANG = {
     v4_apuntar_need:"Pon un importe 🙂", v4_apuntar_ok:"✓ Gasto apuntado", v4_apuntar_ok_in:"✓ Ingreso apuntado",
     v4_save_gasto:"Guardar gasto", v4_save_in:"Guardar ingreso", v4_back:"Volver",
     v4_debts_hero:"Debes en total", v4_debts_sub:"{x}/mes en cuotas · bajando cada mes 📉",
-    v4_debts_ends:"acabas en {d}", v4_debts_ends_est:"a este ritmo acabas ~{d}", v4_amort_now:"💸 Amortizar ahora",
+    v4_debts_ends:"acabas en {d}", v4_amort_now:"💸 Amortizar ahora",
     v4_debt_party_1:"🎉 {name}: ¡ÚLTIMA cuota este mes ({x})!", v4_debt_party_sub:"Después, {x}/mes libres para ti.",
     v4_goals_hero:"Ahorrado en metas", v4_goal_new:"+ Nueva meta de ahorro",
     v4_paid_group:"{names} · {n} recibos",
@@ -2082,7 +2089,7 @@ const LANG = {
     st_expense_banks_none:"Aún no tienes cuentas para elegir.",
     v4_shared_sub:"Hogar, pareja y grupos de gastos",
     v4_expdaily_here:"Bancos de gasto diario", v4_expdaily_here_hint:"Marca varios si sus compras cuentan en el mismo presupuesto. También está en Ajustes → Dinero.",
-    v4_expdaily_chip:"En gasto diario", v4_expdaily_row_hint:"Puedes marcar «Gasto diario» en varios bancos: sus compras cuentan en el mismo presupuesto del día. La primera es la cuenta principal (de la que sale el efectivo); las demás solo suman sus gastos.",
+    v4_expdaily_chip:"En gasto diario", v4_expdaily_row_hint:"Cada banco es UNA cosa: Recibos, Gasto diario o Todo (ambas). «Gasto diario» se puede marcar en varios bancos y sus compras cuentan en el mismo presupuesto del día; el primero es la cuenta principal (de la que sale el efectivo).",
     // Comparativa de monedas
     st_cur_compare:"Comparar monedas", st_cur_compare_hint:"Tipos del BCE (referencia). Toca una moneda para verla al cambio.",
     cur_jpy:"¥ Yen", cur_cad:"C$ Dólar canadiense", cur_aud:"A$ Dólar australiano", cur_cny:"¥ Yuan", cur_mxn:"$ Peso mexicano", cur_sek:"kr Corona sueca", cur_nok:"kr Corona noruega", cur_dkk:"kr Corona danesa", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rupia",
@@ -2104,6 +2111,7 @@ const LANG = {
     v4_gastos_inc_line:"Income {x} · balance {bal}", v4_gastos_split_line:"Spent {spent} · income {income}",
     v4_cartera_title:"Your portfolio", v4_cuentas:"Your accounts", v4_inversiones:"Your investments", v4_inv_positions:"{n} positions",
     v4_inv_tools:"Investment tools", v4_inv_tools_h:"Prices, round-ups, projections and manual edit — what used to clutter Portfolio.",
+    v4_broker_order:"Broker order", v4_broker_order_h:"This is how the blocks show up in Portfolio → Investments.",
     v4_sync_banks:"Sync banks", v4_sync_banks_done:"✓ Banks synced",
     v4_sync_brokers_ok:"📈 Brokers up to date (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: session expired · reconnect in Settings → Banks",
     ap_bank:"Bank", ap_bank_none:"No bank",
@@ -2119,7 +2127,7 @@ const LANG = {
     v4_apuntar_need:"Enter an amount 🙂", v4_apuntar_ok:"✓ Expense added", v4_apuntar_ok_in:"✓ Income added",
     v4_save_gasto:"Save expense", v4_save_in:"Save income", v4_back:"Back",
     v4_debts_hero:"You owe in total", v4_debts_sub:"{x}/mo in payments · going down each month 📉",
-    v4_debts_ends:"done by {d}", v4_debts_ends_est:"at this pace done ~{d}", v4_amort_now:"💸 Pay down now",
+    v4_debts_ends:"done by {d}", v4_amort_now:"💸 Pay down now",
     v4_debt_party_1:"🎉 {name}: LAST instalment this month ({x})!", v4_debt_party_sub:"After that, {x}/mo back in your pocket.",
     v4_goals_hero:"Saved in goals", v4_goal_new:"+ New savings goal",
     v4_paid_group:"{names} · {n} bills",
@@ -2204,7 +2212,7 @@ const LANG = {
     st_expense_banks_none:"No accounts to choose yet.",
     v4_shared_sub:"Household, partner and expense groups",
     v4_expdaily_here:"Daily-spending banks", v4_expdaily_here_hint:"Tick several if their spending counts toward the same budget. Also in Settings → Money.",
-    v4_expdaily_chip:"In daily spending", v4_expdaily_row_hint:"You can set «Daily spending» on several banks: their purchases count toward the same daily budget. The first is the main account (where the cash comes from); the others only add their spending.",
+    v4_expdaily_chip:"In daily spending", v4_expdaily_row_hint:"Each bank is ONE thing: Bills, Daily spending or Both. «Daily spending» can be set on several banks and their purchases count toward the same daily budget; the first is the main account (where the cash comes from).",
     st_cur_compare:"Compare currencies", st_cur_compare_hint:"ECB reference rates. Tap a currency to see it converted.",
     cur_jpy:"¥ Yen", cur_cad:"C$ Canadian dollar", cur_aud:"A$ Australian dollar", cur_cny:"¥ Yuan", cur_mxn:"$ Mexican peso", cur_sek:"kr Swedish krona", cur_nok:"kr Norwegian krone", cur_dkk:"kr Danish krone", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rupee",
   },
@@ -2225,6 +2233,7 @@ const LANG = {
     v4_gastos_inc_line:"Ingressos {x} · balanç {bal}", v4_gastos_split_line:"Despeses {spent} · ingressos {income}",
     v4_cartera_title:"La teva cartera", v4_cuentas:"Els teus comptes", v4_inversiones:"Les teves inversions", v4_inv_positions:"{n} posicions",
     v4_inv_tools:"Eines d’inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
+    v4_broker_order:"Ordre dels brokers", v4_broker_order_h:"Així surten els blocs a Cartera → Inversions.",
     v4_sync_banks:"Sincronitza els bancs", v4_sync_banks_done:"✓ Bancs sincronitzats",
     v4_sync_brokers_ok:"📈 Brókers al dia (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sessió caducada · reconnecta a Ajustos → Bancs",
     ap_bank:"Banc", ap_bank_none:"Sense banc",
@@ -2240,7 +2249,7 @@ const LANG = {
     v4_apuntar_need:"Posa un import 🙂", v4_apuntar_ok:"✓ Despesa apuntada", v4_apuntar_ok_in:"✓ Ingrés apuntat",
     v4_save_gasto:"Desar despesa", v4_save_in:"Desar ingrés", v4_back:"Tornar",
     v4_debts_hero:"Deus en total", v4_debts_sub:"{x}/mes en quotes · baixant cada mes 📉",
-    v4_debts_ends:"acabes el {d}", v4_debts_ends_est:"a aquest ritme acabes ~{d}", v4_amort_now:"💸 Amortitza ara",
+    v4_debts_ends:"acabes el {d}", v4_amort_now:"💸 Amortitza ara",
     v4_debt_party_1:"🎉 {name}: ÚLTIMA quota aquest mes ({x})!", v4_debt_party_sub:"Després, {x}/mes lliures per a tu.",
     v4_goals_hero:"Estalviat en metes", v4_goal_new:"+ Nova meta d'estalvi",
     v4_paid_group:"{names} · {n} rebuts",
@@ -2325,7 +2334,7 @@ const LANG = {
     st_expense_banks_none:"Encara no tens comptes per triar.",
     v4_shared_sub:"Llar, parella i grups de despeses",
     v4_expdaily_here:"Bancs de despesa diària", v4_expdaily_here_hint:"Marca'n diversos si les seves compres compten al mateix pressupost. També a Ajustos → Diners.",
-    v4_expdaily_chip:"En despesa diària", v4_expdaily_row_hint:"Pots marcar «Despesa diària» a diversos bancs: les seves compres compten al mateix pressupost del dia. El primer és el compte principal (d'on surt l'efectiu); els altres només sumen les seves despeses.",
+    v4_expdaily_chip:"En despesa diària", v4_expdaily_row_hint:"Cada banc és UNA cosa: Rebuts, Despesa diària o Tot (ambdues). «Despesa diària» es pot marcar a diversos bancs i les seves compres compten al mateix pressupost del dia; el primer és el compte principal (d'on surt l'efectiu).",
     st_cur_compare:"Comparar monedes", st_cur_compare_hint:"Tipus del BCE (referència). Toca una moneda per veure-la al canvi.",
     cur_jpy:"¥ Ien", cur_cad:"C$ Dòlar canadenc", cur_aud:"A$ Dòlar australià", cur_cny:"¥ Iuan", cur_mxn:"$ Peso mexicà", cur_sek:"kr Corona sueca", cur_nok:"kr Corona noruega", cur_dkk:"kr Corona danesa", cur_pln:"zł Złoty", cur_brl:"R$ Real", cur_inr:"₹ Rúpia",
   },
@@ -2736,6 +2745,9 @@ Object.assign(LANG.es,{
   mi_solving_captcha:"🛡 Resolviendo el captcha de MyInvestor…",
   mi_rc_key_hint:"Avanzado: para que la app intente resolver el captcha sola, pega aquí el «site key» de reCAPTCHA de MyInvestor. Cómo sacarlo: en el PC entra a la web de MyInvestor, abre las herramientas de desarrollador (F12) → pestaña Red, filtra «recaptcha», y copia el valor «render=6L…» (empieza por 6L).",
   mi_rc_key_saved:"✓ Site key guardado · al conectar, la app intentará resolver el captcha sola.",
+  mi_rc_fail_gen:"🛡 Google no ha dado un token de captcha dentro de la app (el site key de MyInvestor solo funciona en su propia web). El atajo del site key no da más de sí: espera unas horas y reintenta desde el WiFi de casa.",
+  mi_rc_rejected:"🛡 La app generó el token del captcha pero MyInvestor lo rechazó (comprueba desde dónde se generó). No se puede forzar más desde la app: espera unas horas y reintenta desde el WiFi de casa.",
+  mi_rc_badge_note:"Protegido por reCAPTCHA · aplican la privacidad y los términos de Google.",
   mi_connected:"✓ MyInvestor conectado", mi_sync:"Sincronizar posiciones", mi_syncing:"Sincronizando…", mi_disconnect:"Desconectar",
   mi_preview:"{n} posiciones encontradas. Elige a cuál de tus posiciones va cada una:",
   mi_apply:"Aplicar a {n} posiciones", mi_done:"✓ {n} posiciones actualizadas desde MyInvestor",
@@ -2792,6 +2804,9 @@ Object.assign(LANG.en,{
   mi_solving_captcha:"🛡 Solving MyInvestor's captcha…",
   mi_rc_key_hint:"Advanced: to let the app try to solve the captcha itself, paste MyInvestor's reCAPTCHA «site key» here. How to get it: on your computer open MyInvestor's website, open dev tools (F12) → Network tab, filter «recaptcha», and copy the «render=6L…» value (starts with 6L).",
   mi_rc_key_saved:"✓ Site key saved · on connect, the app will try to solve the captcha itself.",
+  mi_rc_fail_gen:"🛡 Google wouldn't issue a captcha token inside the app (MyInvestor's site key only works on their own website). The site-key shortcut can't do more: wait a few hours and retry from your home WiFi.",
+  mi_rc_rejected:"🛡 The app generated the captcha token but MyInvestor rejected it (it checks where it was generated). Nothing more can be forced from the app: wait a few hours and retry from your home WiFi.",
+  mi_rc_badge_note:"Protected by reCAPTCHA · Google's privacy policy and terms apply.",
   mi_connected:"✓ MyInvestor connected", mi_sync:"Sync positions", mi_syncing:"Syncing…", mi_disconnect:"Disconnect",
   mi_preview:"{n} positions found. Choose which of your positions each maps to:",
   mi_apply:"Apply to {n} positions", mi_done:"✓ {n} positions updated from MyInvestor",
@@ -2851,6 +2866,9 @@ Object.assign(LANG.ca,{
   mi_solving_captcha:"🛡 Resolent el captcha de MyInvestor…",
   mi_rc_key_hint:"Avançat: perquè l'app intenti resoldre el captcha sola, enganxa aquí el «site key» de reCAPTCHA de MyInvestor. Com treure'l: al PC entra al web de MyInvestor, obre les eines de desenvolupador (F12) → pestanya Xarxa, filtra «recaptcha» i copia el valor «render=6L…» (comença per 6L).",
   mi_rc_key_saved:"✓ Site key desat · en connectar, l'app intentarà resoldre el captcha sola.",
+  mi_rc_fail_gen:"🛡 Google no ha volgut donar un token de captcha dins de l'app (el site key de MyInvestor només funciona al seu propi web). La drecera del site key no dona més de si: espera unes hores i torna-ho a provar des del WiFi de casa.",
+  mi_rc_rejected:"🛡 L'app va generar el token del captcha però MyInvestor el va rebutjar (comprova des d'on es va generar). No es pot forçar més des de l'app: espera unes hores i torna-ho a provar des del WiFi de casa.",
+  mi_rc_badge_note:"Protegit per reCAPTCHA · s'apliquen la privadesa i els termes de Google.",
   mi_connected:"✓ MyInvestor connectat", mi_sync:"Sincronitza posicions", mi_syncing:"Sincronitzant…", mi_disconnect:"Desconnecta",
   mi_preview:"{n} posicions trobades. Tria a quina de les teves posicions va cada una:",
   mi_apply:"Aplica a {n} posicions", mi_done:"✓ {n} posicions actualitzades des de MyInvestor",
@@ -6335,12 +6353,16 @@ function MyInvestorSync({state, set}){
               setErr(t("mi_solving_captcha"));
               miSolveCaptcha("login").then(function(tok){
                 if(tok){ attempt(tok, true); }
-                else { setBusy(false); setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView'); }catch(e){} }
+                // Mensajes distintos por causa (2026-07-21: con el genérico era imposible saber si
+                // falló Google o MyInvestor): sin token = Google no lo da fuera de su dominio.
+                else { setBusy(false); setErr(t("mi_rc_fail_gen")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView (¿dominio del site key?)'); }catch(e){} }
               });
               return;
             }
             setBusy(false);
-            setErr(t("mi_recaptcha")); try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI — ¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
+            // retried = hubo token y aun así MI dijo captcha → lo rechazó él, no Google.
+            setErr(retried?t("mi_rc_rejected"):t("mi_recaptcha"));
+            try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI — ¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
             return;
           }
           setBusy(false); fail(r);
@@ -6424,10 +6446,13 @@ function MyInvestorSync({state, set}){
           React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
           // Campo avanzado del site key de reCAPTCHA: aparece al saltar el captcha (o si ya hay uno
           // guardado). Con él la app intenta resolver el captcha sola en la WebView (2026-07-20).
-          (err===t("mi_recaptcha") || rcKey) && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid var(--line-soft)"}},
+          (err===t("mi_recaptcha") || err===t("mi_rc_fail_gen") || err===t("mi_rc_rejected") || rcKey) && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid var(--line-soft)"}},
             React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,marginBottom:6}}, t("mi_rc_key_hint")),
             React.createElement("input",{className:"af-in",style:Object.assign({},inpStyle,{fontFamily:"monospace",fontSize:13}),placeholder:"6L…",autoComplete:"off",value:rcKey,onChange:function(e){ const v=e.target.value.trim(); setRcKey(v); try{ if(v) localStorage.setItem("_miRcKey",v); else localStorage.removeItem("_miRcKey"); }catch(_){} }}),
-            rcKey && React.createElement("div",{style:{fontSize:11.5,color:"var(--mint)",marginTop:6}}, t("mi_rc_key_saved")))
+            rcKey && React.createElement("div",{style:{fontSize:11.5,color:"var(--mint)",marginTop:6}}, t("mi_rc_key_saved")),
+            // Atribución obligatoria: el badge flotante de Google se oculta por CSS (salía FIJO en
+            // toda la app, no solo aquí — feedback 2026-07-21) y sus términos piden citarlo en el flujo.
+            rcKey && React.createElement("div",{style:{fontSize:10.5,color:"var(--muted-2)",marginTop:4}}, t("mi_rc_badge_note")))
         ),
         step==="otp" && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"hint",style:{marginTop:0}},t("mi_otp_intro")),
@@ -6801,8 +6826,12 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   const toggleAuto=()=> set(s=>Object.assign({},s,{settings:Object.assign({},s.settings,{autoPrices:!(s.settings&&s.settings.autoPrices)})}));
   // Solo los brókers donde el usuario TIENE posiciones (antes salían los 3 fijos — a un usuario
   // nuevo le aparecía "MyInvestor" sin haberlo conectado nunca; feedback pareja 2026-07-10).
-  const groups=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
+  const groupsBase=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
     .filter(function(g){ return state.investments.some(function(i){ return i.ent===g[0]; }); });
+  // Orden elegido en Herramientas → «Orden de los brókers» (petición 2026-07-21): reutiliza el
+  // mecanismo secOrder de las secciones, con la pestaña virtual "cartera_brokers".
+  const groups=secOrderOf(state,"cartera_brokers",groupsBase.map(function(g){ return g[0]; }))
+    .map(function(id){ return groupsBase.find(function(g){ return g[0]===id; }); });
   const start=()=>{ const d={}; state.investments.forEach(i=>d[i.id]={value:i.value,cost:i.cost}); setDraft(d); setEditing(true); };
   const cancel=()=>{ setEditing(false); setShowCost(false); };
   const save=()=>{
@@ -6933,7 +6962,9 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
               React.createElement(I.chev,{className:"chev"+(open?" open":"")})
             )
           ),
-          open && React.createElement("div",{style:{padding:"0 2px 8px"}},
+          // .v4-inv-drop: el mismo «rise» suave del resto de la app — antes las posiciones
+          // aparecían de golpe al desplegar el bróker (feedback 2026-07-21).
+          open && React.createElement("div",{className:"v4-inv-drop",style:{padding:"0 2px 8px"}},
             React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:editing,showCost:editing&&showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete}))
         );
       }),
@@ -7096,11 +7127,20 @@ function Wealth({state, set, totals, v4Embed}){
   const tt=totals;
   // En Cartera (v4Embed) pintamos cuentas y bienes planos; inversiones van aparte (Investments).
   if(v4Embed){
+    // Rol EFECTIVO para pintar (feedback 2026-07-21, como Trade Republic original: el rol va
+    // DEBAJO del banco, sin carritos sueltos): «gasto diario» cuenta tanto si la cuenta es la
+    // principal (rol diario/ambos) como si su banco es extra de gasto diario (expenseBanks);
+    // «recibos» se apaga en los extras marcados solo-diario (settings.dailyOnlyBanks — flag
+    // SOLO visual: sin recibos domiciliados en ese banco no mueve ningún número).
+    const expDaily=expenseBankEnts(state);
+    const dailyOnlyEnts=function(s){ return ((s&&s.settings&&s.settings.dailyOnlyBanks)||[]); };
+    const dailyEffOf=function(a){ return accDaily(a) || expDaily.indexOf(a.ent)>=0; };
+    const fixedEffOf=function(a){ return accRole(a)==="ambos" || (accFixed(a) && !(dailyEffOf(a) && dailyOnlyEnts(state).indexOf(a.ent)>=0)); };
     const roleLab=function(a){
-      const r=accRole(a);
-      if(r==="fijos") return t("rl_fijos");
-      if(r==="diario") return t("rl_diario");
-      if(r==="ambos") return t("rl_ambos");
+      const dy=dailyEffOf(a), fx=fixedEffOf(a);
+      if(dy&&fx) return t("rl_diario")+" · "+t("rl_fijos");
+      if(dy) return t("rl_diario");
+      if(fx) return t("rl_fijos");
       return a.name||"";
     };
     // Cuenta re-anclada por Open Banking: su saldo lo trae el banco (no se edita a mano).
@@ -7108,16 +7148,11 @@ function Wealth({state, set, totals, v4Embed}){
     const badge=function(txt, color){
       return React.createElement("span",{className:"v4-ob-badge",style:{background:color+"22",color:color}}, txt);
     };
-    // Bancos marcados «gasto diario» (principal + extras): para el badge 🛒 en la lista.
-    const expDaily=expenseBankEnts(state);
-    const multiDaily=expDaily.length>1;   // solo tiene interés mostrarlo si hay más de uno
     const accRow=function(a){
-      const inDaily=multiDaily && !accDaily(a) && expDaily.indexOf(a.ent)>=0;   // extra de gasto diario
       return React.createElement("div",{className:"v4-mov",key:a.id},
         React.createElement("div",{className:"tile",style:{background:"transparent",border:"none",padding:0}},React.createElement(Mono,{ent:a.ent,size:44})),
         React.createElement("div",{className:"nm"},
-          React.createElement("div",null,entOf(a.ent).label, isSynced(a)&&badge(t("pt_ob_badge"),"#7FB5E8"),
-            inDaily && React.createElement("span",{className:"dc-badge"}, "🛒")),
+          React.createElement("div",null,entOf(a.ent).label, isSynced(a)&&badge(t("pt_ob_badge"),"#7FB5E8")),
           React.createElement("div",{className:"meta"}, [roleLab(a),a.name].filter(Boolean).join(" · ")||"—")
         ),
         React.createElement("div",{className:"am num"},eur(accDaily(a)?spendBal(a):(a.value+pn(a))))
@@ -7137,43 +7172,49 @@ function Wealth({state, set, totals, v4Embed}){
         React.createElement("div",{className:"am num"}, eur(toEurAmt(o.value||0, o.cur||"EUR", state)))
       );
     };
-    // «Gasto diario» ahora admite VARIOS bancos (feedback 2026-07-20). Modelo: sigue habiendo UNA
-    // cuenta PRINCIPAL de gasto (spendFrom, de la que sale el saldo/efectivo y el redondeo — el motor
-    // necesita una sola); las DEMÁS que marques «Gasto diario» se añaden a settings.expenseBanks, así
-    // sus compras también cuentan en el mismo presupuesto (pero su saldo se calcula normal, sin doble
-    // conteo del gasto del mes). El chip se ve verde tanto en la principal como en las añadidas.
-    const dailyOnFor=function(a){ return accDaily(a) || expenseBankEnts(state).indexOf(a.ent)>=0; };
-    const toggleDaily=function(a){
+    // «Gasto diario» sigue admitiendo VARIOS bancos (v4.6.3). Modelo por debajo: UNA cuenta
+    // PRINCIPAL de gasto (spendFrom — el motor necesita una sola) + bancos extra en
+    // settings.expenseBanks. Lo que cambia (feedback 2026-07-21) es la selección: cada banco
+    // muestra UN solo estado — o Recibos, o Gasto diario, o Todo — nada de «recibos fijo» en
+    // los extras. En un extra, «Gasto diario» = expenseBanks + dailyOnlyBanks (recibos fuera);
+    // «Todo» = expenseBanks sin dailyOnly (recibos y gasto diario a la vez).
+    const pickRole=function(a,r){
       set(function(s){
-        const isDaily=accDaily(a);
-        const eb=expenseBankEnts(s);
-        const inEb=eb.indexOf(a.ent)>=0;
-        if(isDaily || inEb){
-          // Quitar: si es la principal, se degrada a «Recibos»; y se saca de expenseBanks (sin dejar 0).
-          let ns=s;
-          if(isDaily){ ns=applyAccountRole(ns, totals, a.id, "fijos"); }
-          const b=expenseBankEnts(ns).slice(); const i=b.indexOf(a.ent);
-          if(i>=0 && b.length>1){ b.splice(i,1); ns=Object.assign({},ns,{settings:Object.assign({},ns.settings,{expenseBanks:b})}); }
-          return ns;
-        }
-        // Añadir: si aún no hay cuenta principal de gasto, ésta lo será; si ya hay, se suma como banco
-        // extra de gasto diario (expenseBanks) sin tocar su saldo ni quitarle el rol a la principal.
+        const patchSet=function(ns,patch){ return Object.assign({},ns,{settings:Object.assign({},ns.settings,patch)}); };
+        const drop=function(list,e){ const i=list.indexOf(e); if(i>=0) list.splice(i,1); return list; };
+        const add=function(list,e){ if(list.indexOf(e)<0) list.push(e); return list; };
+        const eb=expenseBankEnts(s).slice();
+        const dOnly=dailyOnlyEnts(s).slice();
+        const isPrimary=accDaily(a);
         const hasPrimary=(s.accounts||[]).some(function(x){ return accDaily(x); });
-        if(!hasPrimary){ return applyAccountRole(s, totals, a.id, "diario"); }
-        const base=expenseBankEnts(s).slice();
-        if(base.indexOf(a.ent)<0) base.push(a.ent);
-        return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
+        let ns=s;
+        if(r==="fijos"){
+          if(isPrimary) ns=applyAccountRole(ns, totals, a.id, "fijos");
+          return patchSet(ns,{expenseBanks:drop(eb,a.ent), dailyOnlyBanks:drop(dOnly,a.ent)});
+        }
+        if(r==="diario"){
+          // La principal (o la primera que se marca) lleva el rol de verdad; un banco extra
+          // se apunta a expenseBanks y apaga su «recibos» visual con dailyOnlyBanks.
+          if(isPrimary || !hasPrimary){
+            ns=applyAccountRole(ns, totals, a.id, "diario");
+            return patchSet(ns,{dailyOnlyBanks:drop(dOnly,a.ent)});
+          }
+          return patchSet(ns,{expenseBanks:add(eb,a.ent), dailyOnlyBanks:add(dOnly,a.ent)});
+        }
+        // «Todo»: la principal pasa a rol ambos; un extra queda en expenseBanks CON recibos.
+        if(isPrimary || !hasPrimary){
+          ns=applyAccountRole(ns, totals, a.id, "ambos");
+          return patchSet(ns,{dailyOnlyBanks:drop(dOnly,a.ent)});
+        }
+        return patchSet(ns,{expenseBanks:add(eb,a.ent), dailyOnlyBanks:drop(dOnly,a.ent)});
       });
     };
     const roleChips=function(a){
+      const dy=dailyEffOf(a), fx=fixedEffOf(a);
+      const on={fijos:fx&&!dy, diario:dy&&!fx, ambos:fx&&dy};
       return React.createElement("div",{className:"rolechips",style:{padding:"8px 0 2px"}},
         [["fijos","rl_fijos"],["diario","rl_diario"],["ambos","rl_ambos"]].map(function(rr){
-          if(rr[0]==="diario"){
-            // Multi: verde si es la principal o un banco extra de gasto diario.
-            return React.createElement("button",{key:"diario",className:"rchip"+(dailyOnFor(a)?" on":""),onClick:function(){ toggleDaily(a); }}, t("rl_diario"));
-          }
-          const on=accRole(a)===rr[0];
-          return React.createElement("button",{key:rr[0],className:"rchip"+(on?" on":""),onClick:function(){ setRole(a.id, rr[0]); }}, t(rr[1]));
+          return React.createElement("button",{key:rr[0],className:"rchip"+(on[rr[0]]?" on":""),onClick:function(){ pickRole(a, rr[0]); }}, t(rr[1]));
         }),
         React.createElement("button",{className:"ex-del",style:{marginLeft:"auto"},title:t("pt_acc_del"),onClick:function(){ setDelAcc(a.id); }},"🗑")
       );
@@ -8597,20 +8638,23 @@ function Debts({state, set, showToast}){
     if(/estudio|máster|master|uni/.test(n)) return "🎓";
     return "💳";
   };
-  const endsLabel=function(d){
+  // Cuotas que quedan: las financiaciones lo saben por su plazo; sin plazo (hipoteca/préstamo
+  // a mano) se ESTIMA con el ritmo de amortización actual. Devuelve {n,tot} o null.
+  const leftInfo=function(d){
     const left=debtLeft(d);
-    if(left!=null){
-      const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+left);
-      return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
-    }
-    // Sin plazo (hipoteca/préstamo a mano de las primeras versiones): antes no salía NADA y la
-    // tarjeta parecía «muerta» (feedback 2026-07-18). Se estima con el ritmo de amortización
-    // actual — por eso lleva «~»: una amortización anticipada o cambio de cuota la mueve.
+    if(left!=null) return {n:left, tot:d.months||left};
     const am=debtAmort(d), bal=debtBalance(d);
     if(!(am>0) || !(bal>0.005)) return null;
-    const k=Math.ceil(bal/am);
-    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+k);
-    return tf("v4_debts_ends_est",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
+    return {n:Math.ceil(bal/am), tot:Math.ceil((d.original||bal)/am)};
+  };
+  const endsLabel=function(d){
+    // Mismo texto para TODAS las deudas (feedback 2026-07-21: el «a este ritmo acabas ~» de
+    // hipoteca/préstamo cantaba distinto del «acabas en» de las financiaciones). La fecha sin
+    // plazo sigue siendo una estimación con la amortización actual, igual de honesta.
+    const li=leftInfo(d);
+    if(!li) return null;
+    const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+li.n);
+    return tf("v4_debts_ends",{d:monthLong(dt.getMonth())+" "+dt.getFullYear()});
   };
   return React.createElement("div",null,
     React.createElement("div",{className:"v4-card v4-card-hero rise"},
@@ -8622,7 +8666,8 @@ function Debts({state, set, showToast}){
       const bal=debtBalance(d);
       const paid=Math.max(0,(d.original||bal)-bal);
       const pct=Math.min(100,(paid/(d.original||1))*100);
-      const left=debtLeft(d);
+      // «Quedan n/tot cuotas» en TODAS las deudas (feedback 2026-07-21): sin plazo va estimado.
+      const li=leftInfo(d);
       const day=debtChargeDay(d);
       return React.createElement("div",{className:"v4-debt-card rise",key:d.id},
         React.createElement("div",{className:"v4-debt-top"},
@@ -8630,7 +8675,7 @@ function Debts({state, set, showToast}){
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"v4-debt-name"},d.name),
             React.createElement("div",{className:"v4-debt-sub"},
-              [d.monthly?tf("db_quota",{x:eur0(d.monthly)}):null, day?tf("fj_day_n",{d:day}):null, left!=null?tf("db_left",{n:left,tot:d.months||left,x:eur0(d.monthly||0)}):null].filter(Boolean).join(" · ")
+              [d.monthly?tf("db_quota",{x:eur0(d.monthly)}):null, day?tf("fj_day_n",{d:day}):null, li?tf("db_left",{n:li.n,tot:li.tot,x:eur0(d.monthly||0)}):null].filter(Boolean).join(" · ")
             )
           ),
           ed.editing
@@ -9611,6 +9656,14 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.7.0", d:"22 jul 2026", t:"Notis sin duplicados, roles de banco claros y deudas que hablan igual", items:[
+    "🔔 Se acabaron las notis dobles: cuando un gasto es «tocho» ya solo sale esa noti (antes salía TAMBIÉN la de «✓ Gasto apuntado» con el mismo importe). Esta parte va en el APK 31 — la app te lo ofrecerá cuando esté publicado.",
+    "🧾 El aviso de recibo de la víspera tampoco sale ya dos veces (una exacta del móvil y otra redondeada al abrir la app): ahora la app comprueba primero qué avisó ya el móvil. Y los avisos de recibos van SIEMPRE con el importe exacto: 89,54 €, no «90 €».",
+    "🏦 En Cartera cada banco dice debajo lo que es, como Trade Republic: «Gasto diario», «Recibos», o las dos si hace ambas cosas — y fuera el carrito suelto al lado del nombre. Al editar, cada banco es UNA cosa: o Recibos, o Gasto diario, o Todo (ya no se queda «Recibos» clavado en verde).",
+    "📈 Desplegar un bróker en Cartera va con la misma animación suave del resto de la app, y en «Herramientas de inversión» puedes ordenar los bloques de brókers con flechas ↑↓.",
+    "💳 Deudas: todas hablan igual. La hipoteca y el préstamo dicen «acabas en febrero 2049» como las demás (fuera el «a este ritmo acabas ~») y también muestran «Quedan X/Y cuotas · Z €/mes», estimado con lo que amortizas cada mes.",
+    "🛡 El logo de reCAPTCHA que se quedaba flotando abajo en TODA la app ya no sale. Y si el captcha de MyInvestor falla, el mensaje ahora dice QUÉ falló exactamente: si Google no quiso dar el token dentro de la app, o si MyInvestor lo rechazó — así sabemos si el atajo del site key tiene recorrido o toca pantalla nativa.",
+  ]},
   {v:"4.6.4", d:"20 jul 2026", t:"MyInvestor: intento de resolver el captcha en la propia app", items:[
     "🔓 Nuevo intento para el captcha de MyInvestor SIN cambiar el APK: cuando salta el captcha, aparece un campo «avanzado» para pegar el «site key» de reCAPTCHA de MyInvestor. Con él, la app intenta resolver el captcha ella sola dentro de la app y reintenta el login. Cómo sacar el site key: en el PC, en la web de MyInvestor, F12 → Red → filtra «recaptcha» → copia el «render=6L…».",
     "ℹ️ Aviso honesto: puede que MyInvestor rechace el token por venir de un sitio distinto al suyo. Si es así, el único camino que queda es una pantalla nativa (otro APK) — pero esto se prueba en 1 minuto y si funciona, resuelto sin tocar nada más.",
@@ -11290,6 +11343,34 @@ function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
           React.createElement("button",{className:"link","aria-label":t("au_close"),onClick:onClose},"✕")
         ),
         React.createElement("p",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.45,margin:"0 0 12px"}}, t("v4_inv_tools_h")),
+        // Orden de los bloques de bróker en Cartera (petición 2026-07-21: «poder mover el bloque
+        // entero»): vive aquí, en avanzado, para no llenar Cartera de botones. Mismo secOrder
+        // que las secciones (pestaña virtual "cartera_brokers" — lo lee Investments v4Embed).
+        (function(){
+          const names={revolut:"Revolut",trade_republic:"Trade Republic",myinvestor:"MyInvestor"};
+          const ids=Object.keys(names).filter(function(e){ return (state.investments||[]).some(function(i){ return i.ent===e; }); });
+          if(ids.length<2) return null;
+          const order=secOrderOf(state,"cartera_brokers",ids);
+          const move=function(id,dir){
+            set(function(s){
+              const o=secOrderOf(s,"cartera_brokers",ids); const i=o.indexOf(id), j=i+dir;
+              if(i<0||j<0||j>=o.length) return s;
+              const n=o.slice(); n[i]=o[j]; n[j]=id;
+              return Object.assign({},s,{settings:Object.assign({},s.settings,{secOrder:Object.assign({},((s.settings||{}).secOrder)||{},{cartera_brokers:n})})});
+            });
+          };
+          return React.createElement("div",{style:{marginBottom:14}},
+            React.createElement("div",{className:"v4-exp-sec"}, t("v4_broker_order")),
+            React.createElement("div",{className:"hint",style:{margin:"2px 0 6px"}}, t("v4_broker_order_h")),
+            order.map(function(id,idx){
+              return React.createElement("div",{key:id,className:"wedit-bar",style:{margin:"6px 0"}},
+                React.createElement("span",{className:"wedit-lbl"},names[id]),
+                React.createElement("div",{className:"wedit-btns"},
+                  React.createElement("button",{disabled:idx===0,onClick:function(){ move(id,-1); }},"↑"),
+                  React.createElement("button",{disabled:idx===order.length-1,onClick:function(){ move(id,1); }},"↓")));
+            })
+          );
+        })(),
         React.createElement("div",{className:"v4-embed-legacy"}, React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:false,toolsMode:true}))
       )
     ), document.body);
@@ -12560,49 +12641,9 @@ function App(){
     },3000);
     return function(){ clearTimeout(tmr); };
   },[state.onboarded,locked,showAuth,tourOpen,whatsNew]);
-  // Recordatorio de recibos: TODOS avisan LA VÍSPERA (petición 2026-07-18: «el banco no te
-  // avisa, la app podría»); los gordos además con 2–3 días de antelación como hasta ahora.
-  // Incluye también las cuotas de deuda. Una noti por cargo y mes.
-  useEffect(function(){
-    if(state.onboarded===false||locked||showAuth) return;
-    const nat=natPlugin();
-    if(!nat||!nat.showNotification) return;
-    const today=totals.today||new Date().getDate();
-    const cm=totals.curMonth, cy=totals.curYear;
-    const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
-    const ym=cy+"-"+String(cm).padStart(2,"0");
-    const notify=function(key,title,body){
-      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
-      try{ nat.showNotification({title:title,body:body}).catch(function(){}); }catch(err){}
-    };
-    (state.fixed||[]).forEach(function(e){
-      if(!occursIn(e,cm)) return;
-      const d=dayIn(e,cm); if(d==null) return;
-      if(isPaidIn(e,cm,today)) return;
-      const amt=occAmountIn(e,cm)||0;
-      if(!(amt>0)) return;
-      const daysLeft=d-today;
-      if(daysLeft===1){
-        notify("_rc1_"+e.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:e.name||"?",x:eur0(amt)}));
-      } else if(amt>=minAmt && daysLeft>=2 && daysLeft<=3){
-        notify("_rc_"+e.id+"_"+ym+"_"+d, t("rc_title"), tf("rc_body",{name:e.name||"?",x:eur0(amt),d:String(d)}));
-      }
-    });
-    // cuotas de deuda (hipoteca, financiaciones…): también avisan la víspera
-    (state.debts||[]).forEach(function(d){
-      if(!debtActive(d) || !(d.monthly>0)) return;
-      if(isDebtPaidThisMonth(d,today)) return;
-      if(debtChargeDay(d)-today!==1) return;
-      notify("_rc1_debt_"+d.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:d.name||"?",x:eur0(d.monthly)}));
-    });
-  },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
-
-  // Empuja el calendario de recibos del mes al NATIVO (APK ≥29): AlertCheckWorker avisa la
-  // víspera aunque la app esté CERRADA. Intercambio de sellos para no avisar dos veces:
-  // mandamos lo que la web ya avisó (_rc1_*) y sellamos lo que avisó el nativo.
-  useEffect(function(){
-    const nat=natPlugin();
-    if(!nat||!nat.setAlertData) return;
+  // Calendario de cargos del mes (fijos + cuotas) para el intercambio con el nativo: lo usan
+  // el efecto de avisos de la víspera Y el push al AlertCheckWorker — misma lista en ambos.
+  const alertCalendarOf=function(){
     const cm=totals.curMonth, cy=totals.curYear;
     const ym=cy+"-"+String(cm).padStart(2,"0");
     const charges=[];
@@ -12618,9 +12659,72 @@ function App(){
     });
     const fired=[];
     charges.forEach(function(c){ try{ if(localStorage.getItem("_rc1_"+c.id+"_"+ym)==="1") fired.push(c.id); }catch(e){} });
+    return {ym:ym,charges:charges,fired:fired};
+  };
+  // Recordatorio de recibos: TODOS avisan LA VÍSPERA (petición 2026-07-18: «el banco no te
+  // avisa, la app podría»); los gordos además con 2–3 días de antelación como hasta ahora.
+  // Incluye también las cuotas de deuda. Una noti por cargo y mes. Importes con eur() EXACTO:
+  // redondear aquí hizo que «la luz» saliera como 90 € cuando el cargo real era 89,54 (2026-07-21).
+  useEffect(function(){
+    if(state.onboarded===false||locked||showAuth) return;
+    const nat=natPlugin();
+    if(!nat||!nat.showNotification) return;
+    const today=totals.today||new Date().getDate();
+    const cm=totals.curMonth;
+    const minAmt=Math.max(80, (totals.fijosMensual||0)*0.12);
+    const cal=alertCalendarOf();
+    const ym=cal.ym;
+    const notify=function(key,title,body){
+      try{ if(localStorage.getItem(key)==="1") return; localStorage.setItem(key,"1"); }catch(err){}
+      try{ nat.showNotification({title:title,body:body}).catch(function(){}); }catch(err){}
+    };
+    const run=function(){
+      (state.fixed||[]).forEach(function(e){
+        if(!occursIn(e,cm)) return;
+        const d=dayIn(e,cm); if(d==null) return;
+        if(isPaidIn(e,cm,today)) return;
+        const amt=occAmountIn(e,cm)||0;
+        if(!(amt>0)) return;
+        const daysLeft=d-today;
+        if(daysLeft===1){
+          notify("_rc1_"+e.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:e.name||"?",x:eur(amt)}));
+        } else if(amt>=minAmt && daysLeft>=2 && daysLeft<=3){
+          notify("_rc_"+e.id+"_"+ym+"_"+d, t("rc_title"), tf("rc_body",{name:e.name||"?",x:eur(amt),d:String(d)}));
+        }
+      });
+      // cuotas de deuda (hipoteca, financiaciones…): también avisan la víspera
+      (state.debts||[]).forEach(function(d){
+        if(!debtActive(d) || !(d.monthly>0)) return;
+        if(isDebtPaidThisMonth(d,today)) return;
+        if(debtChargeDay(d)-today!==1) return;
+        notify("_rc1_debt_"+d.id+"_"+ym, t("rc_title_tmrw"), tf("rc_body_tmrw",{name:d.name||"?",x:eur(d.monthly)}));
+      });
+    };
+    // ANTES de avisar, sella lo que el NATIVO ya avisó. Este efecto corría en paralelo al
+    // intercambio de sellos (asíncrono) y ganaba la carrera: el worker había avisado la víspera
+    // con el importe exacto y al abrir la app salía una SEGUNDA noti redondeada (bug 2026-07-21).
+    if(nat.setAlertData){
+      try{
+        nat.setAlertData(cal).then(function(r){
+          ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+ym,"1"); }catch(e){} });
+          run();
+        }).catch(run);
+      }catch(e){ run(); }
+    } else run();
+  },[state.onboarded,locked,showAuth,state.fixed,state.debts,totals.today,totals.curMonth]);
+
+  // Empuja el calendario de recibos del mes al NATIVO (APK ≥29): AlertCheckWorker avisa la
+  // víspera aunque la app esté CERRADA. Intercambio de sellos para no avisar dos veces:
+  // mandamos lo que la web ya avisó (_rc1_*) y sellamos lo que avisó el nativo. Se mantiene
+  // aparte del efecto de arriba para que el calendario llegue al worker TAMBIÉN con la app
+  // bloqueada o a medio onboarding (el de arriba sale temprano en esos casos).
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.setAlertData) return;
+    const cal=alertCalendarOf();
     try{
-      nat.setAlertData({ym:ym,charges:charges,fired:fired}).then(function(r){
-        ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+ym,"1"); }catch(e){} });
+      nat.setAlertData(cal).then(function(r){
+        ((r&&r.fired)||[]).forEach(function(id){ try{ localStorage.setItem("_rc1_"+id+"_"+cal.ym,"1"); }catch(e){} });
       }).catch(function(){});
     }catch(e){}
   },[state.fixed,state.debts,totals.curMonth]);
