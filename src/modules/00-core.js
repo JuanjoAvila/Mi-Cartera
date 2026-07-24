@@ -603,6 +603,26 @@ const cloud = (function(){
       });
       if(error) throw error;
     },
+    // Veredicto de una beta probada EN EL MÓVIL (2026-07-24): «esto lo he probado y va / esto
+    // falla». Va a app_events (kind 'beta'), que ya existe con RLS solo-admin — cero infraestructura
+    // nueva para algo que solo usa el dueño. Como `feedback`, sin dedupe y fallando visible: un
+    // «no subas esto, que está roto» no se puede perder en silencio.
+    async betaReport(payload){
+      if(!sb) throw new Error("sin nube");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      const p=payload||{};
+      const {error}=await sb.from('app_events').insert({
+        user_id:session.user.id,
+        email:session.user.email||null,
+        kind:'beta',
+        message:String(p.summary||"").slice(0,500),
+        detail:JSON.stringify(p).slice(0,2000),
+        app_version:CONFIG.APP_VERSION,
+        platform:(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())?'android':'web'
+      });
+      if(error) throw error;
+    },
     // Panel del admin: últimos eventos de TODOS los usuarios (RLS deja leer solo al admin).
     async adminEvents(limit){
       if(!sb) return [];
@@ -705,8 +725,8 @@ const cloud = (function(){
 const CLOUD_WRITES=[
   "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
   "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
-  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","feedback","deleteAccount",
-  "createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
+  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","feedback","betaReport",
+  "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
 ];
 (function(){
   CLOUD_WRITES.forEach(function(name){

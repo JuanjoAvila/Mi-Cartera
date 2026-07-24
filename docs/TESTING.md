@@ -109,3 +109,46 @@ Copia tu cartera a `micartera_sandbox` y, mientras estás dentro:
 Cubierto por `e2e/modo-pruebas.spec.mjs`. Ese test ya pagó su precio: encontró que salir del modo
 pruebas escribía el estado de prueba **encima de la cartera real** (el volcado de `pagehide` corría
 entre quitar la bandera y recargar). Por eso el modo se fija al arrancar y no se relee.
+
+### 3. Aprobar la beta desde el móvil («code review», pero probando)
+
+**Ajustes → Dev → 🧪 Pruebas → 🔍 Revisar esta beta** (solo en canal beta).
+
+La checklist **sale de `RELEASE_NOTES` de la versión que corre**, así que no hay nada que mantener
+aparte: cada release trae su lista sola. Cada punto se marca *✓ Va bien* o *✗ Falla*; al marcar que
+falla aparece un campo para decir qué pasa. El progreso se guarda por versión en localStorage —
+probar lleva días y cerrar la app no puede borrarlo.
+
+**Regla que impone el panel:** no se puede aprobar con cosas sin probar ni con nada marcado como que
+falla. Si esa puerta se abriera, el botón dejaría de significar nada. Cubierto por
+`e2e/revisar-beta.spec.mjs`.
+
+El veredicto se guarda en `app_events` con `kind:'beta'` (tabla que ya existía, RLS solo-admin) y se
+lee en **Actividad → filtro 🧪 Betas**. Dentro del banco de pruebas NO se manda nada: `betaReport`
+está en `CLOUD_WRITES` (aprobar con datos falsos no aprueba nada).
+
+#### Subirla a producción
+
+El panel **no despliega**: la app no puede hacer un merge de git, y meter un token de GitHub con
+permiso de escritura en Supabase sería una credencial nueva y jugosa a cambio de ahorrar un clic.
+Dos caminos, los dos de una línea:
+
+1. Decírselo a Claude («sube la beta»).
+2. GitHub → Actions → **Promocionar beta a producción** → Run workflow → escribir `SUBIR`.
+   Vuelve a pasar la suite entera, mergea `beta` → `main` y el deploy de Pages sale solo.
+
+#### La primera vez: `?canal=beta`
+
+El interruptor de canal vive en Ajustes → Dev → Pruebas, que **solo existe a partir de la versión
+que quieres probar** — pescadilla que se muerde la cola. Para romperla, abre en el móvil:
+
+```
+https://juanjoavila.github.io/Mi-Cartera/?canal=beta      → activa el canal beta
+https://juanjoavila.github.io/Mi-Cartera/?canal=estable   → vuelve al de todos
+```
+
+Ojo: eso activa el canal **en el navegador**, que es un origen distinto del de la APK. Una beta llega
+a la APK por OTA solo si la APK ya trae el interruptor, así que **el canal beta empieza a funcionar
+de verdad en la APK a partir de la primera versión que lo incluya** (la 4.8.0). Hasta entonces, la
+beta se prueba en el navegador del móvil — que cubre todo menos lo nativo (notificaciones, widget,
+huella).

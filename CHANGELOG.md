@@ -39,6 +39,24 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 - **Bug encontrado por su propio e2e:** salir del modo pruebas hacía `mcExitSandbox()` y luego `location.reload()`, y entre medias el volcado pendiente de `pagehide` preguntaba la clave — ya sin bandera — y escribía **el estado de pruebas encima de la cartera real**. Arreglado fijando el modo al arrancar (`mcSandbox()` pinneado); `mcSandboxFlag()` queda para la UI de Ajustes.
 - **Canal beta:** `mcChannel()`/`mcSetChannel()` + `mcFetchManifest()` con caída a estable si el canal beta está vacío. La beta se publica como assets de una release fija `beta` (workflow `beta.yml`), NO por Pages — Pages sirve una sola versión y es la que usan el padre y la pareja. Ambas cosas solo se ven con `profiles.is_admin`.
 
+#### Revisar la beta desde el móvil («code review», pero probando la app)
+- `BetaReviewPanel` (Ajustes → Dev → Pruebas, solo en canal beta). **La checklist sale de
+  `RELEASE_NOTES` de la versión en curso** — cero duplicación: cada release trae su lista sola, y
+  `betaChecklist()` casa la beta (`4.8.0.1`) con las notas de su versión base (`4.8.0`) por prefijo.
+- Cada punto se marca ✓/✗; al marcar ✗ aparece un campo para decir qué pasa. **No se puede aprobar
+  con cosas sin probar ni con fallos marcados** — si esa puerta se abre, el botón no significa nada.
+  El progreso se guarda por versión en localStorage: probar lleva días.
+- Veredicto → `app_events` con `kind:'beta'` (tabla existente, RLS solo-admin; sin migración nueva) y
+  filtro «🧪 Betas» en Actividad. `betaReport` va en `CLOUD_WRITES`: dentro del banco de pruebas no
+  se manda nada.
+- **El panel no despliega a propósito.** La app no puede hacer un merge de git, y meter un token de
+  GitHub con permiso de escritura en Supabase sería una credencial nueva y jugosa a cambio de
+  ahorrar un clic. En su lugar, `promote-beta.yml` (workflow_dispatch, exige escribir `SUBIR`)
+  vuelve a pasar la suite y mergea `beta` → `main`.
+- `?canal=beta` / `?canal=estable` en la URL: sin esto el canal beta era **inalcanzable la primera
+  vez** — el interruptor vive en la versión que quieres probar. Sin riesgo de enlace malicioso: la
+  URL de la beta está fija en el código y apunta a la release de este mismo repo.
+
 #### Seguridad
 - **CSP** en `shell.html` con inventario documentado de cada destino permitido (`object-src 'none'`, `base-uri 'none'`, `form-action 'self'`, `connect-src` como lista cerrada) + `referrer` a `strict-origin-when-cross-origin`. Cubierta por `e2e/csp.spec.mjs`, que falla si la política bloquea algo que la app necesita — un CSP mal puesto rompe en SILENCIO.
 - **Token de ingest con entropía de verdad** (`mcRandomToken`, 256 bits de `crypto.getRandomValues`). El camino de respaldo era `Date.now()+Math.random()`: predecible, y ese token es lo único que protege la función que apunta gastos en tu cuenta. Sin generador seguro ya no se activa la captura — mejor eso que una clave adivinable.
