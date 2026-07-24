@@ -522,9 +522,15 @@ function App(){
   },[uid,state.lastBackup]);
 
   /* Activar el canal beta desde una URL: ?canal=beta (y ?canal=estable para volver).
-     Sin esto el canal beta era INALCANZABLE la primera vez — la pescadilla que se muerde la cola:
-     el interruptor vive en Ajustes → Dev → Pruebas, que solo existe A PARTIR de la versión que
-     quieres probar. Con esto basta abrir el enlace en el móvil (2026-07-24).
+     Sirve para arrancar el canal en un móvil cuya app todavía no tiene el interruptor de Ajustes.
+
+     ⚠ EL CANAL SOLO SIRVE EN LA APP ANDROID. Las actualizaciones por canal viajan por el OTA de
+     Capgo (`_mcCheckOtaUpdates`), que lo primero que hace es salirse si no existe
+     `Capacitor.Plugins.CapacitorUpdater` — o sea, SIEMPRE en la web. En el navegador la versión la
+     manda el Service Worker, que sirve lo que haya en GitHub Pages, o sea `main`, o sea
+     producción. Por eso aquí se avisa en vez de callar: poner el canal en la web y quedarte
+     esperando una beta que no puede llegar es justo la confusión que hubo el 2026-07-24.
+
      Sin riesgo de que te la cuelen por un enlace: la URL de la beta está fija en el código y
      apunta a la release de este mismo repo, así que lo peor que puede pasar es que recibas tu
      propia beta — y se ve en el pie de Ajustes y se desactiva en un toque. */
@@ -533,7 +539,12 @@ function App(){
     const c=p && p.get("canal");
     if(!c || typeof mcSetChannel!=="function") return;
     try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}
-    if(c==="beta"){ mcSetChannel("beta"); showToast("🚧 Canal beta activado en este dispositivo"); }
+    const nativo=(typeof _mcNative!=="undefined") && _mcNative;
+    if(c==="beta"){
+      mcSetChannel("beta");
+      showToast(nativo ? "🚧 Canal beta activado en este dispositivo"
+                       : "🚧 Canal beta guardado · OJO: en el navegador NO llega la beta (solo en la app Android)");
+    }
     else if(c==="estable"||c==="stable"){ mcSetChannel("stable"); showToast("📦 Canal estable"); }
   },[]);
 

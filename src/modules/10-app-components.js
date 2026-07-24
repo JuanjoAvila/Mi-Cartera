@@ -1740,7 +1740,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
               });
             }, sw(beta)),
             React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},
-              beta?"Este móvil recibe las versiones antes que nadie.":"Este móvil recibe lo mismo que el resto de la familia."),
+              // El canal SOLO manda en la app Android: en el navegador la versión la sirve Pages
+              // (= main = producción) y el OTA de Capgo ni existe. Decirlo aquí evita quedarse
+              // esperando una beta que no puede llegar (confusión real del 2026-07-24).
+              (typeof _mcNative!=="undefined" && !_mcNative)
+                ? "⚠ Estás en el navegador: aquí el canal no hace nada, la beta solo llega a la app Android."
+                : (beta?"Este móvil recibe las versiones antes que nadie.":"Este móvil recibe lo mismo que el resto de la familia.")),
             // «Code review» pero probando la app: la checklist sale de las notas de esta versión.
             // Solo tiene sentido estando en beta — en estable no hay nada que aprobar.
             beta && (function(){

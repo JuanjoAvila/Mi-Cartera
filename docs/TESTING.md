@@ -137,18 +137,42 @@ Dos caminos, los dos de una línea:
 2. GitHub → Actions → **Promocionar beta a producción** → Run workflow → escribir `SUBIR`.
    Vuelve a pasar la suite entera, mergea `beta` → `main` y el deploy de Pages sale solo.
 
-#### La primera vez: `?canal=beta`
+#### ⚠ El canal beta SOLO funciona en la app Android
 
-El interruptor de canal vive en Ajustes → Dev → Pruebas, que **solo existe a partir de la versión
-que quieres probar** — pescadilla que se muerde la cola. Para romperla, abre en el móvil:
+Esto hay que tenerlo clarísimo porque ya causó una confusión (2026-07-24):
 
-```
-https://juanjoavila.github.io/Mi-Cartera/?canal=beta      → activa el canal beta
-https://juanjoavila.github.io/Mi-Cartera/?canal=estable   → vuelve al de todos
-```
+| | De dónde saca la versión | ¿El canal hace algo? |
+|---|---|---|
+| **App Android (APK)** | OTA de Capgo → `version.json` del canal | **Sí** |
+| **Navegador / PWA** | Service Worker → GitHub Pages = `main` = **producción** | **No** |
 
-Ojo: eso activa el canal **en el navegador**, que es un origen distinto del de la APK. Una beta llega
-a la APK por OTA solo si la APK ya trae el interruptor, así que **el canal beta empieza a funcionar
-de verdad en la APK a partir de la primera versión que lo incluya** (la 4.8.0). Hasta entonces, la
-beta se prueba en el navegador del móvil — que cubre todo menos lo nativo (notificaciones, widget,
-huella).
+`_mcCheckOtaUpdates` se sale en la primera línea si no existe `Capacitor.Plugins.CapacitorUpdater`,
+o sea siempre en la web. En el navegador **no hay forma de servir la beta**: Pages publica un único
+sitio, el de `main`. Y servirla desde otro dominio tampoco valdría — sería otro origen, o sea otro
+localStorage: entrarías a una cartera vacía y sin sesión.
+
+Así que en la web siempre verás la versión de producción. La app avisa de ello (en Ajustes y en el
+toast de `?canal=beta`) en vez de callarse.
+
+#### El arranque: cómo llega la PRIMERA beta a la APK
+
+Pescadilla que se muerde la cola: el interruptor de canal vive en la versión que quieres probar, así
+que una APK antigua nunca mirará la release `beta`. Hay que romperlo **una vez**, y solo hay dos
+formas:
+
+1. **Instalar a mano un APK de beta** (sideload). Desde ahí, cada beta siguiente entra sola por OTA.
+   Requiere firmar el APK → o lo compilas en el PC (`npx cap sync android` + `assembleRelease`), o se
+   añade la firma al workflow (ver abajo).
+2. **Subir esa versión a producción** y aceptar que el canal beta empieza a servir de la siguiente
+   en adelante.
+
+`?canal=beta` / `?canal=estable` en la URL sirven para cambiar de canal **una vez la app ya tiene el
+interruptor** — no para saltarse el arranque.
+
+##### Si algún día se quiere compilar el APK de beta en CI
+
+Hoy la firma vive solo en el PC (`local.properties` → keystore en `~/.micartera`, **nunca en el
+repo**). Para que `beta.yml` publique un APK firmado harían falta como secrets del repo el keystore
+en base64, su contraseña, el alias y la del alias. **Es una decisión con coste:** esa clave es la
+identidad de la app; quien la tenga puede firmar una actualización que los móviles aceptarían como
+tuya. Mientras no compense, el APK se compila en el PC.
