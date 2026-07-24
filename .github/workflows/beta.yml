@@ -1,0 +1,80 @@
+name: Publicar BETA (solo el móvil del dueño)
+
+# Entorno de pruebas del creador (petición 2026-07-24): poder probar una versión EN EL MÓVIL antes
+# de que le llegue al resto de la familia.
+#
+# Por qué NO va por GitHub Pages: Pages sirve UNA sola versión (la de `main`), que es justo la que
+# usan su padre y su pareja. Si la beta se publicara ahí, dejaría de ser una beta. Así que la beta
+# se publica como assets de una Release con la etiqueta fija `beta`, y la app —solo en los móviles
+# con el canal beta activado en Ajustes → Dev → Pruebas— lee los manifiestos de esa release.
+#
+# Uso: push a la rama `beta` (o lanzarlo a mano desde Actions).
+# Para promocionar una beta a producción: mergea esa rama a `main` como siempre.
+
+on:
+  push:
+    branches: [beta]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write        # crear/actualizar la release `beta` y subir sus assets
+
+concurrency:
+  group: beta
+  cancel-in-progress: false
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Una beta que no arranca no sirve de nada para probar: mismos tests que producción.
+      - name: Tests + privacidad
+        run: npm ci && npx playwright install chromium --with-deps && node scripts/run-tests.mjs
+
+      - name: Ensamblar y sellar
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          node scripts/build-app.mjs
+          node scripts/stamp-version.mjs
+          npm install --no-save --no-audit --no-fund esbuild@0.25.5
+          node scripts/minify-html.mjs
+
+      # La versión de la beta lleva sufijo -beta.N para que se distinga de un vistazo en Ajustes
+      # y para que _mcNewerVer la vea como NUEVA respecto a la estable del mismo número.
+      - name: Empaquetar bundle OTA de beta
+        id: pack
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          BETA="${VERSION}.${GITHUB_RUN_NUMBER}"
+          (cd public && zip -qr ../bundle.zip .)
+          printf '{"version":"%s","url":"https://github.com/%s/releases/download/beta/bundle.zip","channel":"beta"}\n' \
+            "$BETA" "$GITHUB_REPOSITORY" > version.json
+          echo "beta=$BETA" >> "$GITHUB_OUTPUT"
+          echo "BETA $BETA → $(du -h bundle.zip | cut -f1)"
+
+      # Release fija `beta`: siempre la misma etiqueta y las mismas URLs de descarga, así la app no
+      # tiene que descubrir nada. Marcada como prerelease para que no salga como «última versión».
+      - name: Publicar en la release `beta`
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view beta >/dev/null 2>&1; then
+            gh release create beta --prerelease --title "Beta (canal de pruebas)" \
+              --notes "Canal de pruebas del dueño. Se activa en Ajustes → Dev → Pruebas. No es la versión publicada para el resto."
+          fi
+          gh release upload beta bundle.zip version.json --clobber
+          gh release edit beta --title "Beta ${{ steps.pack.outputs.beta }}"
+
+      - name: Resumen
+        run: |
+          echo "### 🚧 Beta publicada: ${{ steps.pack.outputs.beta }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Llega SOLO a los móviles con el canal beta activado (Ajustes → Dev → Pruebas)." >> $GITHUB_STEP_SUMMARY
+          echo "La estable de GitHub Pages no se ha tocado." >> $GITHUB_STEP_SUMMARY

@@ -79,13 +79,23 @@ export function mapTransaction(t: any) {
   const remit = Array.isArray(t?.remittance_information)
     ? t.remittance_information.join(" ")
     : (t?.remittance_information || "");
-  const merchant = (isCredit ? t?.debtor?.name : t?.creditor?.name) || remit || "Movimiento";
+  const counterparty = (isCredit ? t?.debtor?.name : t?.creditor?.name) || "";
+  const merchant = counterparty || remit || "Movimiento";
   const haystack = `${remit} ${t?.creditor?.name || ""} ${t?.debtor?.name || ""} ${t?.bank_transaction_code?.description || ""}`;
+  // CONCEPTO (petición 2026-07-24): hasta ahora `remittance_information` solo se usaba de comodín
+  // para el título y, si el banco mandaba el nombre del ordenante, se TIRABA. Es justo el mensaje
+  // del bizum («cena del sábado», «alquiler julio»), que era lo que obligaba a abrir la app del
+  // banco. Se manda aparte para pintarlo bajo el título, sin repetir lo que ya se ve.
+  const note = [remit, t?.bank_transaction_code?.description || ""]
+    .map((x: string) => String(x || "").replace(/\s+/g, " ").trim())
+    .filter((x: string, i: number, all: string[]) => x && all.indexOf(x) === i)   // sin duplicados
+    .join(" · ");
   return {
     ext_id: t?.entry_reference || null,            // id único del banco (dedup robusto en Capa 3)
     date: String(t?.booking_date || t?.value_date || "").slice(0, 10),
     amount: isCredit ? -amt : amt,
     merchant: String(merchant).trim().slice(0, 80),
+    note: note.slice(0, 160),
     card: /TARJ|TARJETA|COMPRA TARJ/i.test(haystack),  // best-effort: compra con tarjeta
     status: t?.status || "",
   };

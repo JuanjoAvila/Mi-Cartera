@@ -214,9 +214,12 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
     // Banners de reconexión: el arreglo a UN toque, en la pantalla donde se VE el problema.
     (state.bankIssues||[]).map(function(is){
       const lbl=is.ent?entOf(is.ent).label:(is.aspsp||"🏦");
-      return React.createElement("div",{key:"bi_"+is.aspsp,className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
-        React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, tf("bk_issue",{bank:lbl})),
-        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_issue_sub")),
+      // «noacct» = enlazado pero el banco no devuelve ninguna cuenta: el texto de «permiso
+      // caducado» ahí despistaba, porque no hay ningún permiso que renovar (2026-07-24).
+      const noacct=is.kind==="noacct";
+      return React.createElement("div",{key:"bi_"+is.aspsp,className:"v4-card v4-bank-issue",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+        React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, tf(noacct?"bk_issue_noacct":"bk_issue",{bank:lbl})),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t(noacct?"bk_issue_noacct_sub":"bk_issue_sub")),
         onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
       );
     }),

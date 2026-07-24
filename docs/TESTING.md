@@ -63,3 +63,49 @@ npx playwright test --ui
 ```
 
 Abre una ventana donde ves el navegador y cada paso del test.
+
+---
+
+## Entorno de pruebas del dueño (v4.8.0)
+
+Dos cosas distintas, ambas en **Ajustes → Dev → 🧪 Pruebas** y visibles solo con
+`profiles.is_admin = true` (o sea: solo tú).
+
+### 1. Canal beta — QUÉ versión recibe este móvil
+
+GitHub Pages sirve **una sola** versión: la de `main`, que es la que usan tu padre y tu pareja.
+Por eso la beta no va por Pages, sino como assets de una **release fija con la etiqueta `beta`**.
+
+```
+rama `beta`  ──push──►  .github/workflows/beta.yml
+                          ├─ npm test (los mismos que producción)
+                          ├─ build + stamp + minify
+                          └─ sube bundle.zip + version.json a la release `beta`
+                                     │
+                    solo los móviles con canal beta ◄┘
+```
+
+- La versión de beta lleva sufijo con el número de ejecución (`4.8.0.17`), así se distingue de un
+  vistazo en el pie de Ajustes y `_mcNewerVer` la ve como más nueva que la estable del mismo número.
+- Si el canal beta está vacío o la release no existe, la app **cae a estable** sola
+  (`mcFetchManifest`): nunca se queda un móvil sin poder actualizarse.
+- Volver a estable: el mismo interruptor. Limpia lo que hubiera pendiente del otro canal.
+
+**Promocionar una beta a producción:** mergea la rama `beta` a `main` como siempre.
+
+### 2. Banco de pruebas — CON QUÉ datos trabajas
+
+Copia tu cartera a `micartera_sandbox` y, mientras estás dentro:
+
+- todo lo que escribas se queda en esa clave; tu `micartera_v3` no se toca;
+- **ninguna** operación de escritura llega a la nube — las 20 que hay (`CLOUD_WRITES` en
+  `00-core.js`) pasan por un envoltorio que las anula, así que ni tu padre ni tu pareja ven nada;
+- las lecturas (sincronizar el banco, precios) siguen funcionando: probar con datos reales es la gracia;
+- una **banda naranja** permanente lo recuerda, y tocarla te saca.
+
+> ⚠️ **Si añades un método a `cloud` que escriba algo, mételo en `CLOUD_WRITES`.** Si se olvida, el
+> modo pruebas escribiría en producción. `tests/security.test.mjs` lo detecta y falla el build.
+
+Cubierto por `e2e/modo-pruebas.spec.mjs`. Ese test ya pagó su precio: encontró que salir del modo
+pruebas escribía el estado de prueba **encima de la cartera real** (el volcado de `pagehide` corría
+entre quitar la bandera y recargar). Por eso el modo se fija al arrancar y no se relee.

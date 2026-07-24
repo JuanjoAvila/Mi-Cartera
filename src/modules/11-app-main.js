@@ -44,11 +44,22 @@ function App(){
   // («a veces se ralentiza, cuando chuta va hiper fluida»). Ahora se escribe como mucho 1 vez
   // cada 400 ms con el último valor, y SIEMPRE se vuelca al esconder/cerrar la app (pagehide +
   // visibilitychange) para no perder nada si Android mata el proceso.
-  const persistRef=useRef({t:null,val:null});
+  //
+  // Y desde 2026-07-24 el guardado va PARTIDO (ver mcSaveRaw en 00-core): el histórico de gastos
+  // solo se reescribe cuando ha cambiado de verdad. El debounce por sí solo no bastaba, porque lo
+  // que costaba caro era el TAMAÑO de cada escritura, y ese crecía cada día con el histórico: por
+  // eso la app iba poniéndose más lenta cuanto más se usaba. `p.exp` recuerda si en la tanda
+  // pendiente hubo algún cambio de gastos.
+  const persistRef=useRef({t:null,val:null,exp:false});
+  const writeNow=function(p){
+    const v=p.val; const withExp=p.exp;
+    p.val=null; p.exp=false;
+    if(v!=null) mcSaveRaw(mcStateKey(), v, {expenses:withExp});
+  };
   const flushPersist=useCallback(function(){
     const p=persistRef.current;
     if(p.t){ clearTimeout(p.t); p.t=null; }
-    if(p.val!=null){ store.set("micartera_v3",p.val); p.val=null; }
+    writeNow(p);
   },[]);
   const set=useCallback((updater)=>{ setStateRaw(prev=>{
     const next=typeof updater==="function"?updater(prev):updater;
@@ -56,7 +67,10 @@ function App(){
     const stamped=Object.assign({},next,{_savedAt:Date.now()});
     const p=persistRef.current;
     p.val=stamped;
-    if(!p.t) p.t=setTimeout(function(){ p.t=null; const v=persistRef.current.val; persistRef.current.val=null; if(v!=null) store.set("micartera_v3",v); },400);
+    // Comparación por REFERENCIA: los updaters siempre construyen un array nuevo cuando tocan
+    // gastos, así que basta con esto y cuesta cero.
+    if(prev.expenses!==stamped.expenses) p.exp=true;
+    if(!p.t) p.t=setTimeout(function(){ const q=persistRef.current; q.t=null; writeNow(q); },400);
     return stamped;
   }); },[]);
   useEffect(function(){
@@ -119,7 +133,13 @@ function App(){
         const keepKeys={}; keep.forEach(function(e){ keepKeys[keyOf(e)]=1; });
         const seen={}; const add=[];
         incoming.forEach(function(e){ const k=keyOf(e); if(!keepKeys[k] && !seen[k]){ seen[k]=1; add.push(e); } });
-        return Object.assign({},prev,{expenses:keep.concat(add),lastSync:Date.now()});
+        // Si el resultado es EXACTAMENTE la lista que ya había (el caso normal: sincronizas y no
+        // hay nada nuevo), se conserva el MISMO array. Antes se construía uno nuevo siempre, y eso
+        // repintaba toda la app y reescribía el histórico entero en cada vuelta a primer plano —
+        // varias veces al día, y cada vez más caro según crecía el histórico (2026-07-24).
+        const next=keep.concat(add);
+        const igual = next.length===prev.expenses.length && next.every(function(e,i){ return e===prev.expenses[i]; });
+        return Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()});
       });
       return { total:incoming.length, nuevos:count };
     });
@@ -194,14 +214,13 @@ function App(){
         // se re-ancla con el saldo real del banco (que ya incluye esas compras).
         const add=importObExpenses(prev, txs);
         obAdded=add||[];
-        const withExp=add? Object.assign({},prev,{expenses:add.concat(prev.expenses||[])}) : prev;
+        const baseExp=add? add.concat(prev.expenses||[]) : (prev.expenses||[]);
+        // Rellena el CONCEPTO de lo que ya estaba apuntado con lo que acaba de traer el banco
+        // (2026-07-24): si no, el histórico viejo —el que se consulta— seguiría sin explicar nada.
+        const withNotes=enrichNotesFromBankTx(baseExp, txs);
+        const withExp=(withNotes!==(prev.expenses||[])) ? Object.assign({},prev,{expenses:withNotes}) : prev;
         const r=applyBankBalances(withExp, links);
-        // Bancos con permiso CADUCADO → banner «Reconectar» en Cartera (UX padre 2026-07-18:
-        // el saldo no cuadraba, le dio a sincronizar, no pasó nada y acabó en la app de TR).
-        // Se recalcula entero en cada sync: reconectar un banco lo saca solo.
-        const issues=links.filter(function(l){ return l&&l.ok===false&&l.expired; })
-          .map(function(l){ return {aspsp:l.aspsp, ent:entFromAspsp(l.aspsp)}; });
-        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: issues });
+        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: bankIssuesOf(links) });
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
@@ -210,18 +229,43 @@ function App(){
       // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
       const failed=links.filter(function(l){ return l&&l.ok===false; });
-      const expired=failed.filter(function(l){ return l&&l.expired; });
       // Saldo del banco: SOLO cuando lo pides tú (opts.manual). Antes también saltaba en cada sync
       // automático al abrir la app («el dinero de los bancos me sale, no me vale para nada»
       // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
       if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
-      if(expired.length){ showToast("⚠ "+bankLabelOf(expired[0])+": "+t("bank_expired_re")); }
+      // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
+      // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
+      // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de
+      // Cartera existía pero había que dar con él. Ahora, al sincronizar A MANO:
+      //   1) notificación de verdad (queda en la bandeja) que al tocarla abre Cartera + Mis bancos,
+      //   2) y en el momento, la app abre sola el panel de bancos con ese banco resaltado.
+      const issues=bankIssuesOf(links);
+      if(issues.length){
+        const lbl=issues[0].ent?entOf(issues[0].ent).label:(issues[0].aspsp||"🏦");
+        const msg=issues.length>1
+          ? tf("bk_notif_n",{n:issues.length})
+          : tf(issues[0].kind==="noacct"?"bk_notif_noacct":"bk_notif_one",{bank:lbl});
+        showToast("⚠ "+msg);
+        if(opts.manual){
+          const nat=natPlugin();
+          if(nat&&nat.showNotification){
+            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||"")}).catch(function(){}); }catch(e){}
+          }
+          // Y aquí mismo: el panel donde se reconecta, abierto y con el banco señalado.
+          setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:issues[0].aspsp||null}})); }catch(e){} }, 700);
+        }
+      }
       // Fallo NO caducado = hipo transitorio del banco (rate-limit PSD2, 5xx…): el enlace sigue
       // vivo (el servidor ya no lo marca 'expired' por un 403/404), así que no mandamos «reconéctate»
       // — solo un aviso suave y únicamente si lo pediste tú (feedback 2026-07-17: «se caen cada dos
       // por tres» era este falso positivo). En auto-sync nos callamos: se reintenta solo.
       else if(failed.length && opts.manual){ showToast("⚠ "+tf("bank_syncsoft",{bank:bankLabelOf(failed[0])})); }
-      else if(!preview.synced.length && !links.length && opts.manual){ showToast(t("bank_none")); }
+      // Ni un solo banco enlazado: en vez del callejón sin salida («No tienes ningún banco
+      // conectado») le abrimos el panel para que lo conecte ahí mismo.
+      else if(!preview.synced.length && !links.length && opts.manual){
+        showToast(t("bank_none"));
+        setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:null}})); }catch(e){} }, 700);
+      }
     }).catch(function(e){
       if(opts.manual || navigator.onLine!==false) showToast("⚠ "+t("bank_syncfail"));
     }).finally(function(){ bankSyncing.current=false; });
@@ -314,15 +358,18 @@ function App(){
   },[]);
 
   // Empuja el estado a la nube (debounced) cuando cambie y haya sesión. Sin los gastos (ya en su tabla).
+  // OJO con el nombre del timer: se llamaba `t` y TAPABA la función global de i18n `t()` — dentro
+  // del callback `t("st_sync_conflict")` petaba («t is not a function»), el `.catch` se lo tragaba y
+  // el conflicto de dos móviles NUNCA se resolvía (ni aviso ni re-sync). Bug encontrado 2026-07-24.
   useEffect(function(){
     if(!uid) return;
-    const t=setTimeout(function(){
+    const tmr=setTimeout(function(){
       cloud.pushState(uid, slimForCloud(state), cloudUpdatedAtRef.current).then(function(r){
         if(r && r.conflict){ showToast(t("st_sync_conflict")); syncFromCloud(sessionRef.current); return; }
         if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
       }).catch(function(){});
     }, 1200);
-    return function(){ clearTimeout(t); };
+    return function(){ clearTimeout(tmr); };
   },[state,uid]);
 
   // Auto-sincroniza los gastos al volver a primer plano (abrir la app o cambiar de app y volver).
@@ -427,6 +474,16 @@ function App(){
     if(g==="update|ota"||g.indexOf("update|")===0){
       if(window.__mcApplyOta){ window.__mcApplyOta(); return; }
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
+      return;
+    }
+    // Noti «tienes un banco sin conectar» (2026-07-24): abre Cartera (donde está el banner con el
+    // botón) y, encima, el panel de Mis bancos ya desplegado. El padre no sabía DÓNDE se conectaba;
+    // ahora la noti le deja en el sitio exacto, sin buscar nada.
+    if(g==="banks" || g.indexOf("banks|")===0){
+      const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+      if(ci>=0) setTab(ci);
+      const aspsp=g.indexOf("banks|")===0 ? g.slice(6) : "";
+      setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:aspsp||null}})); }catch(e){} }, 250);
       return;
     }
     if(g==="gastos" || g.indexOf("exp|")===0){
@@ -563,8 +620,14 @@ function App(){
   // «Reconectar Trade Republic» desde el banner de Cartera: abre Ajustes YA en Mis bancos
   // (con el teléfono precargado) — sin pasear al usuario por menús (UX padre 2026-07-18).
   const [banksGoto,setBanksGoto]=useState(0);
+  const [banksFocus,setBanksFocus]=useState("");   // aspsp a resaltar al aterrizar en Mis bancos
   useEffect(function(){
-    const h=function(){ setDrawerMounted(true); setDrawerOpen(true); setBanksGoto(Date.now()); };
+    const h=function(e){
+      setDrawerMounted(true); setDrawerOpen(true); setBanksGoto(Date.now());
+      // `focus` lo manda el sync/la noti: el banco que hay que reconectar se resalta y se centra
+      // en pantalla, para que no haya que buscarlo en la lista (petición 2026-07-24).
+      setBanksFocus((e&&e.detail&&e.detail.focus)||"");
+    };
     window.addEventListener("mc-open-banks",h);
     return function(){ window.removeEventListener("mc-open-banks",h); };
   },[]);
@@ -899,8 +962,18 @@ function App(){
     // alarma: el saldo mínimo del mes se va a negativo (cubre tanto el bajón intra-mes como no llegar a fin de mes)
     const bankAlerts=Object.keys(minByBank).filter(b=> minByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
+    /* DEPENDENCIAS: ojo al tocar este bloque — la lista de abajo tiene que incluir TODO
+       `state.loQueSea` que se lea aquí dentro (incluidos los que leen las funciones auxiliares:
+       monthNetForAccount → fixed/debts/oneoffs/flows; toEurAmt/invValueEur → fx y fxRates). */
     return {liquid,invested,investedCost,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
-  },[state]);
+  // Antes esto dependía de `[state]` entero. Como `set()` sella `_savedAt` en CADA cambio, el
+  // objeto de estado es nuevo siempre → el memo NUNCA acertaba y este cálculo (que recorre gastos,
+  // fijos, deudas, flujos y simula el mes día a día) se rehacía al abrir una ficha, al escribir en
+  // el buscador, al salir un toast… Con las porciones reales solo se recalcula cuando cambia el
+  // dinero de verdad (parte gorda del «se ralentiza cuanto más la uso» — 2026-07-24).
+  },[state.accounts,state.expenses,state.investments,state.assets,state.debts,state.fixed,
+     state.flows,state.oneoffs,state.aportaciones,state.obAccounts,state.monthStartNet,
+     state.trRewardsTotal,state.fx,state.fxRates]);
 
   const [pricing,setPricing]=useState(false);
   // Cambio USD→EUR dinámico (tipos de referencia del BCE vía frankfurter.app, gratis y sin key).
@@ -1574,8 +1647,13 @@ function App(){
           return out;
         })())
     : null;
-  return React.createElement("div",{className:"app v4"},
+  return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
     seasonFx,
+    // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
+    // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
+    mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",
+      onClick:function(){ mcExitSandbox(); location.reload(); }},
+      "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
       React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
         React.createElement("div",{className:"track",ref:trackRef},
@@ -1634,7 +1712,7 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{

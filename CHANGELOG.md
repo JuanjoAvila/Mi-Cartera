@@ -2,6 +2,59 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.8.0] — 2026-07-24
+### Revisión completa: rendimiento, concepto de los movimientos, bancos caídos, entorno de pruebas y seguridad
+
+#### Rendimiento — la causa REAL del «cuanto más tiempo la uso, más se ralentiza»
+- **Guardado partido del estado** (`mcLoadRaw`/`mcSaveRaw`, `00-core.js`). El debounce de 400 ms de la 4.5 atacaba la FRECUENCIA de las escrituras, pero el problema era el TAMAÑO: cada `set()` serializaba y escribía el estado entero —histórico incluido— y ese blob crece cada día con lo que entra del banco y del lector de notificaciones. Medido en este entorno (portátil; una WebView de móvil es fácilmente 10-20× más lenta):
+
+  | gastos | tamaño | `JSON.stringify` | `localStorage.setItem` |
+  |--------|--------|------------------|------------------------|
+  | 500    | 64 KB  | 0,1 ms | 0,5 ms |
+  | 2.000  | 254 KB | 1,6 ms | 1,1 ms |
+  | 5.000  | 637 KB | 2,2 ms | 2,9 ms |
+  | 20.000 | 2,5 MB | 8,1 ms | 11,4 ms |
+
+  Ahora `expenses` vive en su propia clave (`micartera_v3_exp`) y solo se reescribe cuando cambia la REFERENCIA del array. Medido A/B contra `main`, 6 vueltas a primer plano: **2.000 gastos → de 477 KB a 1 KB; 8.000 gastos → de 1.912 KB a 1 KB**. Lo importante no es el factor, es que el coste **deja de crecer con el histórico**, que es justo lo que producía la degradación con el tiempo.
+- **`syncCloudExpenses` ya no fabrica un array nuevo cuando no hay nada nuevo.** Construía siempre `keep.concat(add)`, así que CADA vuelta a primer plano cambiaba la referencia de `expenses` → re-render completo + reescritura del histórico. Ahora, si el resultado es idéntico, conserva el mismo array.
+- **`totals` dependía de `[state]`** y `set()` sella `_savedAt` en cada llamada → el memo no acertaba NUNCA y el cálculo gordo (recorre gastos, fijos, deudas y flujos, y simula el mes día a día) se rehacía al abrir una ficha, al teclear en el buscador o al salir un toast. Ahora depende de las 14 porciones que realmente lee.
+- **`parseDate` con caché de marcas de tiempo** + nuevo `dateMs()` sin asignación para comparadores. Era la función más llamada de la app (un `sort` de 2.000 movimientos son ~22.000 llamadas por render). Medido: 3,2× en el parseo de fechas.
+- **Filtrado de Gastos en UNA pasada** (antes cuatro `.filter()` encadenados, cada uno creando un array del tamaño del histórico), con `Set` para categorías/bancos y los límites del período precalculados en ms (`presetBoundsMs`) en vez de construir tres o cuatro `Date` por gasto dentro de `inPreset`.
+- **Filas del histórico en `React.memo`** (`MovRow`) con `onOpen` estable (`useCallback`) y un prop `l10n` para que un cambio de idioma/moneda sí las invalide.
+- **`state.deleted` con tope** (`pushDeleted`, 500): crecía sin fin y viajaba entero a Supabase en cada guardado, porque `slimForCloud` no lo quita.
+
+#### Concepto de los movimientos (petición del padre del creador)
+- El dato ya llegaba y se tiraba: Enable Banking manda `remittance_information` en cada transacción y el lector de notificaciones manda el texto completo de la noti (donde va el mensaje del bizum). Ahora `mapTransaction` devuelve `note`, e `ingest` extrae el concepto con `extraerConcepto()` (etiqueta «concepto:/motivo:», entrecomillado, o lo que sigue a «por» al final — con «por Bizum» excluido a propósito por ser el cómo y no el qué).
+- Migración `0017_expenses_nota.sql`: columnas `nota` + `nota_edit` (blinda lo que escribe el usuario para que un re-sync del banco no se lo pise) e índice GIN para buscar por concepto.
+- `cleanNote()` descarta ruido: referencias internas del banco («REF 000123456789», «MANDATO …») y conceptos que repiten el título («BIZUM DE MARIA» bajo «Bizum de María»). Si no hay nada que decir, hueco — regla de la casa: no inventar.
+- `enrichNotesFromBankTx()` rellena el concepto de los movimientos YA apuntados al sincronizar (solo huecos, nunca lo editado a mano) y devuelve el MISMO array si no hay nada que cambiar, para no provocar un render de más. El buscador de Gastos también busca por concepto.
+
+#### Bancos sin conectar: avisar Y llevar a arreglarlo
+- `bankIssuesOf()` amplía lo que se considera «hay que reconectar»: antes solo `expired`; ahora también los enlaces sin cuentas utilizables (`noacct`). Los fallos PASAJEROS (rate-limit PSD2, 5xx) siguen fuera a propósito, que ya costó un «se cae cada dos por tres» (4.7).
+- Al sincronizar a mano con algún banco caído: notificación de verdad (queda en la bandeja) con deep-link `banks|<aspsp>`, y la app abre sola el panel de bancos con ese banco **resaltado y centrado en pantalla** (`focusAspsp`, clase `.bk-focus`). Sin ningún banco enlazado, en vez del callejón sin salida «No tienes ningún banco conectado», abre el panel para conectarlo.
+- El banner de Cartera distingue los dos casos: «necesita tu permiso otra vez» vs «está conectado a medias» (hablar de permiso caducado cuando no hay ningún permiso que renovar despistaba).
+
+#### Entorno de pruebas propio (petición 2026-07-24)
+- **Banco de pruebas:** el estado vive en `micartera_sandbox` y `cloud` queda blindado — las 20 operaciones de escritura pasan por un envoltorio que las anula (`CLOUD_WRITES`). Las lecturas siguen vivas, que es la gracia de probar con datos de verdad. Banda naranja permanente y, al tocarla, salida.
+- **Bug encontrado por su propio e2e:** salir del modo pruebas hacía `mcExitSandbox()` y luego `location.reload()`, y entre medias el volcado pendiente de `pagehide` preguntaba la clave — ya sin bandera — y escribía **el estado de pruebas encima de la cartera real**. Arreglado fijando el modo al arrancar (`mcSandbox()` pinneado); `mcSandboxFlag()` queda para la UI de Ajustes.
+- **Canal beta:** `mcChannel()`/`mcSetChannel()` + `mcFetchManifest()` con caída a estable si el canal beta está vacío. La beta se publica como assets de una release fija `beta` (workflow `beta.yml`), NO por Pages — Pages sirve una sola versión y es la que usan el padre y la pareja. Ambas cosas solo se ven con `profiles.is_admin`.
+
+#### Seguridad
+- **CSP** en `shell.html` con inventario documentado de cada destino permitido (`object-src 'none'`, `base-uri 'none'`, `form-action 'self'`, `connect-src` como lista cerrada) + `referrer` a `strict-origin-when-cross-origin`. Cubierta por `e2e/csp.spec.mjs`, que falla si la política bloquea algo que la app necesita — un CSP mal puesto rompe en SILENCIO.
+- **Token de ingest con entropía de verdad** (`mcRandomToken`, 256 bits de `crypto.getRandomValues`). El camino de respaldo era `Date.now()+Math.random()`: predecible, y ese token es lo único que protege la función que apunta gastos en tu cuenta. Sin generador seguro ya no se activa la captura — mejor eso que una clave adivinable.
+- **Comparación en tiempo constante** del token legacy en `ingest` y fuera el prefijo del token de la telemetría de errores.
+- `tests/security.test.mjs` fija estos invariantes, incluido que **toda escritura nueva de `cloud` esté en `CLOUD_WRITES`** — si se olvida, el modo pruebas escribiría en producción.
+
+#### Bugs corregidos
+- **Conflicto de sincronización que no se resolvía nunca:** en el push a la nube, el id del `setTimeout` se llamaba `t` y TAPABA la función global de i18n. Dentro del callback, `t("st_sync_conflict")` lanzaba «t is not a function», el `.catch` se lo tragaba y ni salía el aviso ni se re-sincronizaba (`11-app-main.js`).
+- **Textos que salían en clave:** `tb_removed`, `tb_nodel`, `tb_add`, `tb_add_hint` y `tb_trash` estaban en inglés y catalán pero NO en castellano —el idioma de la casa—, así que el toast pintaba literalmente «tb_removed». Faltaban también `fj_fixed` y `g_bank_ob` en los tres idiomas.
+- `</script>` huérfano en `shell.html` y `check-syntax.mjs` mareado por un comentario HTML que mencionaba la etiqueta de script (ahora los comentarios se quitan antes de escanear).
+
+#### Tests
+- `npm test` incorpora **i18n-keys** (obliga a AGENTS.md §4: toda clave usada existe en los tres idiomas y con los mismos placeholders) y **security**.
+- Nuevos unitarios: `expense-note` (concepto, poda de lápidas, `bankIssuesOf`), casos de `extraerConcepto` en el suite Deno.
+- **E2E de 10 a 34**, con `playwright.config.mjs` en viewport de móvil (Pixel 5) y `PLAYWRIGHT_CHROMIUM_PATH` para entornos con Chromium preinstalado. Cubre los huecos que AGENTS.md §8 tenía apuntados (Deudas, Metas, Recibos, «Tus cuentas») más concepto, banner de bancos, modo pruebas, CSP, persistencia/migración y rendimiento con histórico grande.
+
 ## [4.7.1] — 2026-07-23
 ### Quitar la UI de ordenar brókers (petición del usuario 2026-07-23)
 - Fuera la sección «Orden de los brókers» (flechas ↑↓) de la hoja **Herramientas de inversión** (`14-v4-screens.js`), y fuera las claves `v4_broker_order`/`v4_broker_order_h` en es/en/ca. El orden de los brókers en Cartera → Inversiones pasa a ser fijo: Revolut → Trade Republic → MyInvestor (solo los que tienen posiciones).
