@@ -215,13 +215,143 @@ const _mem = {};
 const store = {
   get(k){ try{ const v=localStorage.getItem(k); return v==null?null:JSON.parse(v);}catch(e){ return (k in _mem)?_mem[k]:null; } },
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ _mem[k]=v; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){ delete _mem[k]; } },
 };
+
+/* ---------- Guardado PARTIDO del estado (2026-07-24) ----------
+   ESTA es la causa gorda del «cuanto más tiempo la uso, más se ralentiza, hasta ir lagueadísima».
+
+   Cada `set()` programaba un guardado que serializaba y escribía el estado ENTERO —el histórico de
+   gastos incluido— en localStorage. Y `set()` se llama por todo: abrir una ficha, un toast, un
+   sync, el snapshot diario de inversiones… Mientras tanto, el histórico crece cada día con lo que
+   entra del banco y del lector de notificaciones. Medido en este entorno (un portátil):
+
+       500 gastos →  64 KB →  0,6 ms        5.000 gastos →  637 KB →  5,1 ms
+     2.000 gastos → 254 KB →  2,7 ms       20.000 gastos → 2561 KB → 19,5 ms
+
+   En la WebView de un móvil eso es fácilmente 10-20× más, o sea CENTENARES de milisegundos de hilo
+   principal bloqueado, una y otra vez, mientras tocas la pantalla. Y empeora solo con el tiempo:
+   exactamente el síntoma descrito.
+
+   Arreglo: los gastos van a SU PROPIA clave y solo se reescriben cuando los gastos han cambiado de
+   verdad. Como la inmensa mayoría de los `set()` no los tocan, el guardado frecuente pasa a ser de
+   unos pocos KB y deja de crecer con el histórico.
+
+   Compatibilidad: los estados de antes lo llevan todo en la clave principal; al cargar se detecta
+   y se parte solo. Si algún día se vuelve a una versión anterior, esa versión no vería los gastos
+   en local — pero los recupera del primer sync, porque la tabla `expenses` de la nube es la fuente
+   de verdad. */
+const EXP_SUFFIX="_exp";
+function mcLoadRaw(key){
+  const base=store.get(key);
+  if(!base) return null;
+  const exp=store.get(key+EXP_SUFFIX);
+  if(Array.isArray(exp)) base.expenses=exp;      // formato nuevo (partido)
+  else if(!Array.isArray(base.expenses)) base.expenses=[];
+  return base;
+}
+/* opts.expenses===false → guarda solo la parte ligera (lo normal).
+
+   OJO con la primera vez tras actualizar: el estado viejo lleva los gastos DENTRO de la clave
+   principal y todavía no existe la clave `_exp`. Si en ese primer guardado se hiciera caso a
+   `expenses:false`, se reescribiría la clave principal ya SIN gastos y la de gastos no se
+   crearía nunca → histórico perdido en el móvil hasta el siguiente sync. Por eso, mientras no
+   exista la clave partida, los gastos se escriben SIEMPRE. */
+function mcSaveRaw(key, s, opts){
+  if(!s) return;
+  const rest=Object.assign({},s);
+  delete rest.expenses;
+  const yaPartido=(function(){ try{ return localStorage.getItem(key+EXP_SUFFIX)!=null; }catch(e){ return false; } })();
+  const skipExp = yaPartido && opts && opts.expenses===false;
+  if(!skipExp) store.set(key+EXP_SUFFIX, s.expenses||[]);   // primero los gastos: si algo peta a
+  store.set(key, rest);                                      // medias, nunca queda un estado sin ellos
+}
+
+/* ---------- BANCO DE PRUEBAS (modo sandbox) ----------
+   Petición 2026-07-24: «un entorno de pruebas solamente para mí dentro de mi móvil, para probar
+   las cosas antes de que se suban a prod para el resto» (su padre y su pareja).
+
+   Cómo funciona: el estado de pruebas vive en OTRA clave de localStorage y, mientras estás
+   dentro, la app NO ESCRIBE NADA en la nube. Así puedes borrar cuentas, trastear con deudas o
+   importar movimientos a lo bestia sin que nada de eso llegue a Supabase ni a los móviles de tu
+   padre y tu pareja. Al salir, tu cartera real está exactamente como la dejaste.
+
+   Se ENTRA copiando los datos reales (probar con una cartera vacía no vale para nada), y la copia
+   se queda guardada entre sesiones para poder seguir donde lo dejaste. */
+const STATE_KEY_REAL = "micartera_v3";
+const STATE_KEY_TEST = "micartera_sandbox";
+
+/* La bandera CRUDA de localStorage. Solo la miran Ajustes (para pintar el interruptor) y las
+   funciones de entrar/salir. Para todo lo demás se usa `mcSandbox()`. */
+function mcSandboxFlag(){ try{ return localStorage.getItem("_mcSandbox")==="1"; }catch(e){ return false; } }
+
+/* En qué modo se está EJECUTANDO esta sesión. Se fija en la primera consulta y ya no cambia
+   aunque cambie la bandera, y eso es justo lo que arregla un bug feo que pilló el e2e
+   `modo-pruebas.spec.mjs` (2026-07-24):
+
+     salir del modo pruebas hacía `mcExitSandbox()` y luego `location.reload()`. Entre las dos
+     cosas saltaba el volcado pendiente del estado (el `flushPersist` de `pagehide`), que
+     preguntaba «¿en qué clave guardo?» — y como la bandera ya estaba quitada, escribía el estado
+     DE PRUEBAS encima de la CARTERA REAL. Es decir: el modo pruebas se cargaba los datos de
+     verdad justo al salir, que es exactamente lo contrario de lo que promete.
+
+   Con el valor fijado, una sesión que arrancó en pruebas guarda en la clave de pruebas hasta que
+   se cierra, pase lo que pase con la bandera. Entrar y salir siempre recargan, así que la sesión
+   siguiente ya arranca con el modo nuevo. */
+var _mcSandboxPinned=null;
+function mcSandbox(){
+  if(_mcSandboxPinned===null) _mcSandboxPinned=mcSandboxFlag();
+  return _mcSandboxPinned;
+}
+function mcStateKey(){ return mcSandbox()? STATE_KEY_TEST : STATE_KEY_REAL; }
+/* Entra al banco de pruebas sembrándolo con una copia de lo real (si aún no había copia). Recarga
+   la app para que TODO (incluido el arranque) lea ya la clave de pruebas. */
+function mcEnterSandbox(seedFrom){
+  try{
+    if(!store.get(STATE_KEY_TEST)) store.set(STATE_KEY_TEST, seedFrom||store.get(STATE_KEY_REAL)||{});
+    localStorage.setItem("_mcSandbox","1");
+  }catch(e){}
+}
+/* Entrar y salir NO cambian el modo de la sesión en curso a propósito (ver mcSandbox): quien las
+   llama recarga inmediatamente después, y así lo que quede por volcar se guarda en la clave
+   correcta, la de la sesión que se está cerrando. */
+function mcExitSandbox(){ try{ localStorage.removeItem("_mcSandbox"); }catch(e){} }
+/* Tira la cartera de pruebas y empieza otra desde cero copiando la real otra vez. */
+function mcResetSandbox(){ store.del(STATE_KEY_TEST); }
 
 /* ---------- Supabase: sincronización en la nube (Fase 1) ----------
    Offline-first: si no hay librería/red o no hay sesión, la app funciona igual con localStorage.
    Al iniciar sesión (magic link) se sincroniza el estado entre dispositivos.
    - app_state (JSONB): todo el estado de la app (cuentas, inversiones, gastos…).
    - tabla expenses: buzón donde MacroDroid (y la app) escriben gastos; la app los lee al sincronizar. */
+/* ---------- Red de seguridad: la columna `nota` puede no existir todavía ----------
+   `deploy.yml` (la web) y `supabase.yml` (la base de datos) corren EN PARALELO en el mismo push,
+   y el paso de migraciones lleva `continue-on-error: true` — a este repo ya le pasó que una
+   migración se quedó sin aplicar y el job salió verde igual (la 0015 del Hogar).
+
+   Sin esto, el cliente nuevo mandaría `nota`/`nota_edit` a una tabla que aún no las tiene,
+   PostgREST devolvería «column does not exist» y el upsert fallaría ENTERO: los gastos dejarían
+   de subir a la nube. Y como los llamantes hacen `.catch(function(){})`, fallaría en silencio —
+   que es la peor forma de fallar en una app de dinero.
+
+   Así que si la columna no está, se reintenta sin ella: se pierde el concepto (una comodidad),
+   nunca el gasto (el dato). La bandera vive solo en memoria: al reabrir la app se vuelve a
+   intentar, de modo que en cuanto la migración se aplique esto se cura solo. */
+var _mcNotaCols=true;
+function _isMissingNotaCol(err){
+  const m=String((err&&err.message)||err||"").toLowerCase();
+  return m.indexOf("nota")>=0 && (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
+}
+async function withNotaFallback(run){
+  let r=await run(_mcNotaCols);
+  if(r && r.error && _mcNotaCols && _isMissingNotaCol(r.error)){
+    _mcNotaCols=false;                       // esta sesión ya no lo intenta más
+    r=await run(false);
+  }
+  if(r && r.error) throw r.error;
+  return r;
+}
+
 const cloud = (function(){
   let sb = null;
   try {
@@ -279,11 +409,16 @@ const cloud = (function(){
       if(!session) return;
       // source lleva el banco embebido (ob:caixa…) para filtrar en Gastos tras reinstalación
       // sin columna nueva en Supabase (feedback 2026-07-16).
-      const {error}=await sb.from('expenses').upsert(
-        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard },
-        { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
+      const base={ user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard };
+      const nota={ nota:(e.note?String(e.note).slice(0,160):null), nota_edit:!!e.noteEdited };
+      await withNotaFallback(
+        function(conNota){
+          return sb.from('expenses').upsert(
+            conNota ? Object.assign({},base,nota) : base,
+            { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
+          );
+        }
       );
-      if(error) throw error;
     },
     // Persiste el BANCO elegido de un gasto (va embebido en source: manual:caixabank…) para
     // que sobreviva a reinstalaciones — mismo truco que ob: (2026-07-18).
@@ -304,6 +439,18 @@ const cloud = (function(){
       const {error}=await sb.from('expenses').update({ no_card:!!noCard })
         .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
       if(error) throw error;
+    },
+    // Concepto escrito a mano (o corregido) por el usuario. `nota_edit` lo blinda: el siguiente
+    // sync del banco no lo pisa con la descripción cruda del extracto (2026-07-24).
+    async setExpenseNote(e, note){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      // Si la migración 0017 aún no está aplicada, esto no puede hacer nada útil: se avisa al
+      // llamante en vez de fallar mudo (aquí el concepto ES el dato que el usuario quiere guardar).
+      const {error}=await sb.from('expenses').update({ nota:String(note||"").slice(0,160)||null, nota_edit:true })
+        .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
+      if(error){ if(_isMissingNotaCol(error)) _mcNotaCols=false; throw error; }
     },
     async deleteExpense(e){
       if(!sb) return;
@@ -490,6 +637,26 @@ const cloud = (function(){
       });
       if(error) throw error;
     },
+    // Veredicto de una beta probada EN EL MÓVIL (2026-07-24): «esto lo he probado y va / esto
+    // falla». Va a app_events (kind 'beta'), que ya existe con RLS solo-admin — cero infraestructura
+    // nueva para algo que solo usa el dueño. Como `feedback`, sin dedupe y fallando visible: un
+    // «no subas esto, que está roto» no se puede perder en silencio.
+    async betaReport(payload){
+      if(!sb) throw new Error("sin nube");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      const p=payload||{};
+      const {error}=await sb.from('app_events').insert({
+        user_id:session.user.id,
+        email:session.user.email||null,
+        kind:'beta',
+        message:String(p.summary||"").slice(0,500),
+        detail:JSON.stringify(p).slice(0,2000),
+        app_version:CONFIG.APP_VERSION,
+        platform:(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())?'android':'web'
+      });
+      if(error) throw error;
+    },
     // Panel del admin: últimos eventos de TODOS los usuarios (RLS deja leer solo al admin).
     async adminEvents(limit){
       if(!sb) return [];
@@ -578,6 +745,34 @@ const cloud = (function(){
   };
 })();
 
+/* ---------- Blindaje del banco de pruebas ----------
+   Mientras estás en modo pruebas, TODA operación que ESCRIBA en la nube se anula. Es la garantía
+   que hace que el modo pruebas sirva para algo: puedes romper lo que quieras y no llega nada a
+   Supabase, así que ni tu padre ni tu pareja ven un solo cambio.
+
+   Se hace envolviendo `cloud` por fuera (no método a método) para que no se pueda escapar ninguna
+   por despiste. Las LECTURAS (pullState, bankSync, prices…) siguen funcionando: probar con datos
+   de verdad es justo la gracia. `bankConnect` y compañía también se cortan: mandan al banco a
+   autorizar de verdad, y eso sí toca producción.
+
+   Si añades un método a `cloud` que ESCRIBA algo, añádelo a esta lista. */
+const CLOUD_WRITES=[
+  "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
+  "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
+  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","feedback","betaReport",
+  "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
+];
+(function(){
+  CLOUD_WRITES.forEach(function(name){
+    const real=cloud[name];
+    if(typeof real!=="function") return;   // método renombrado: mejor enterarse en los tests que fallar mudo
+    cloud[name]=function(){
+      if(mcSandbox()) return Promise.resolve(null);   // modo pruebas: no sale nada de este móvil
+      return real.apply(cloud, arguments);
+    };
+  });
+})();
+
 /* Codifica el banco en `source` de la tabla (sin migración SQL): ob:caixa, ob-hist:sabadell,
    macrodroid (= Trade Republic). Así el filtro por banco sobrevive a reinstalaciones. */
 function expenseSourceForCloud(e){
@@ -590,6 +785,72 @@ function expenseSourceForCloud(e){
   // y sobrevive a reinstalaciones sin migración SQL.
   if(ent&&(s==="manual"||String(s).indexOf("manual:")===0)) return "manual:"+ent;
   return s||"manual";
+}
+/* ---------- Token aleatorio de VERDAD (256 bits) ----------
+   Lo usa el token de ingest, que es lo ÚNICO que protege la función que apunta gastos en tu
+   cuenta: quien lo adivine puede meterte movimientos falsos. Antes se generaba con
+   `crypto.randomUUID()` (bien) pero, si no existía, caía a `Date.now()+Math.random()` — que es
+   PREDECIBLE: Math.random no es criptográfico y el instante se puede acotar. Encima se le pegaba
+   otro `Math.random()` que no añadía entropía real, solo daba sensación de token largo.
+
+   Ahora: 32 bytes de crypto.getRandomValues en hexadecimal. Si el navegador no tiene un generador
+   seguro devolvemos null y la función que llama AVISA en vez de generar un token flojo — más vale
+   no activar la captura automática que activarla con un token adivinable (2026-07-24). */
+function mcRandomToken(){
+  try{
+    const c=window.crypto||window.msCrypto;
+    if(c&&c.getRandomValues){
+      const b=new Uint8Array(32); c.getRandomValues(b);
+      let s=""; for(let i=0;i<b.length;i++) s+=("0"+b[i].toString(16)).slice(-2);
+      return s;
+    }
+    if(c&&c.randomUUID) return String(c.randomUUID()).replace(/-/g,"");
+  }catch(e){}
+  return null;
+}
+
+/* ---------- Lápidas de gastos borrados ----------
+   `state.deleted` guarda claves «fecha|importe|comercio» para que el siguiente pull de la nube no
+   resucite un gasto que has borrado. Crecía SIN TOPE y, como `slimForCloud` no lo quita, viajaba
+   ENTERO a Supabase en cada guardado (debounce de 1,2 s): con los meses, cada cambio de estado
+   subía un array cada vez más gordo. Parte del «cuanto más la uso, más lenta va» (2026-07-24).
+
+   Tope de 500: el borrado de verdad ya se hace también en la tabla (`cloud.deleteExpense`), esto
+   es solo la red de seguridad para lo borrado sin conexión, y 500 cubre de sobra la ventana entre
+   dos sincronizaciones. */
+const DELETED_MAX=500;
+function pushDeleted(list, key){
+  const out=(list||[]).concat([key]);
+  return out.length>DELETED_MAX ? out.slice(out.length-DELETED_MAX) : out;
+}
+
+/* ---------- CONCEPTO de un movimiento (mensaje del bizum, descripción del banco) ----------
+   Petición del padre (2026-07-24): «solo salía el título y tenía que ir al banco todo el rato
+   para saber lo que era». El dato SÍ venía — Enable Banking manda `remittance_information` y la
+   noti de TR trae el texto entero — pero se tiraba a la basura al mapear el movimiento.
+
+   `note` es texto libre del banco/la noti; `noteEdited` marca los que ha escrito el usuario a mano
+   para que un re-sync del banco no le pise lo que él escribió. */
+const NOTE_MAX=160;
+/* Limpia el concepto: recorta, quita ruido y NO repite lo que ya se ve en el título del
+   movimiento (si el banco manda «BIZUM DE MARIA» y el título ya es «Bizum de María», no
+   pintamos la misma frase dos veces debajo). */
+function cleanNote(raw, merchant){
+  let s=String(raw==null?"":raw).replace(/\s+/g," ").trim();
+  if(!s) return "";
+  // Referencias internas que no le dicen nada a nadie: "REF 000123456789", "MANDATO ...".
+  s=s.replace(/\b(?:ref(?:erencia)?|mandato|mandate|id)\.?\s*:?\s*[A-Z0-9]{8,}\b/gi,"").replace(/\s+/g," ").trim();
+  if(!s) return "";
+  const norm=function(x){ return String(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim(); };
+  const nm=norm(merchant), ns=norm(s);
+  if(!ns) return "";
+  if(nm && (ns===nm || (nm.length>3 && ns.indexOf(nm)===0 && ns.length-nm.length<3))) return "";
+  return s.slice(0,NOTE_MAX);
+}
+/* Concepto que se PINTA de un gasto (string vacío = no hay nada que enseñar). */
+function expenseNote(e){
+  if(!e) return "";
+  return cleanNote(e.note, e.merchant);
 }
 /* Banco de un gasto (ent) o null si es a mano / desconocido. */
 function expenseBankOf(e){
@@ -621,6 +882,8 @@ function expenseFromRow(r){
     source: source,
     ent: ent||undefined,
     noCard: r.no_card ? true : undefined,   // bizum/transfer: fuera del round-up (columna 0005)
+    note: r.nota || undefined,              // concepto del banco / mensaje del bizum (columna 0017)
+    noteEdited: r.nota_edit ? true : undefined,
   };
 }
 

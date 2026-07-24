@@ -12,6 +12,8 @@ if (build.status !== 0) process.exit(1);
 const steps = [
   ["guard-privacy", ["node", "scripts/guard-privacy.mjs"]],
   ["check-syntax", ["node", "scripts/check-syntax.mjs"]],
+  ["i18n-keys", ["node", "tests/i18n-keys.test.mjs"]],
+  ["security", ["node", "tests/security.test.mjs"]],
   ["finance-core", ["node", "tests/finance-core.test.mjs"]],
   ["fx-multi", ["node", "tests/fx-multi.test.mjs"]],
   ["categories", ["node", "tests/categories.test.mjs"]],
@@ -25,6 +27,7 @@ const steps = [
   ["reconcile-bank", ["node", "tests/reconcile-bank.test.mjs"]],
   ["onboarding", ["node", "tests/onboarding.test.mjs"]],
   ["expense-bank", ["node", "tests/expense-bank.test.mjs"]],
+  ["expense-note", ["node", "tests/expense-note.test.mjs"]],
   ["inv-dashboard", ["node", "tests/inv-dashboard.test.mjs"]],
   ["financing", ["node", "tests/financing.test.mjs"]],
   ["updates", ["node", "tests/updates.test.mjs"]],

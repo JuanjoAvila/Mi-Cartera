@@ -10,22 +10,31 @@ const DATE_PRESETS=[
 // más reciente ≥200 € de los últimos 45 días (los bizums pequeños no cuentan). Sin cobro → mes.
 function lastPaydayOf(expenses){
   const cut=Date.now()-45*86400000;
-  const cands=(expenses||[]).filter(function(e){ return e.amount<=-200 && parseDate(e.date).getTime()>=cut; })
-    .sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
+  const cands=(expenses||[]).filter(function(e){ return e.amount<=-200 && dateMs(e.date)>=cut; })
+    .sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); });
   if(!cands[0]) return null;
   const d=parseDate(cands[0].date);
   return { start:new Date(d.getFullYear(),d.getMonth(),d.getDate()), inc:cands[0] };   // desde las 00:00 del día del cobro
 }
-function inPreset(d,preset,range,cycleStart){
+/* Límites del período EN MILISEGUNDOS, calculados UNA vez. Antes `inPreset` se llamaba por gasto y
+   se construía dentro tres o cuatro `new Date()` (startOfMonth, el mes pasado…): con un histórico
+   de miles de movimientos eran decenas de miles de objetos Date por render, y era buena parte del
+   lag que crecía con el uso (feedback 2026-07-24). Devuelve {from,to} con Infinity de comodín. */
+function presetBoundsMs(preset,range,cycleStart){
   const now=new Date();
-  if(preset==="month") return d>=startOfMonth();
-  if(preset==="cycle") return d>=(cycleStart||startOfMonth());
-  if(preset==="last"){ const s=startOfMonth(new Date(now.getFullYear(),now.getMonth()-1,1)); const e=startOfMonth(); return d>=s&&d<e; }
-  if(preset==="3m"){ return d>=new Date(now.getFullYear(),now.getMonth()-2,1); }
-  if(preset==="all") return true;
-  if(preset==="custom"){ let ok=true; if(range.from) ok=ok&&d>=new Date(range.from); if(range.to){ const tt=new Date(range.to); tt.setHours(23,59,59); ok=ok&&d<=tt; } return ok; }
-  return true;
+  if(preset==="month") return {from:startOfMonth().getTime(), to:Infinity};
+  if(preset==="cycle") return {from:(cycleStart||startOfMonth()).getTime(), to:Infinity};
+  if(preset==="last") return {from:startOfMonth(new Date(now.getFullYear(),now.getMonth()-1,1)).getTime(), to:startOfMonth().getTime()-1};
+  if(preset==="3m") return {from:new Date(now.getFullYear(),now.getMonth()-2,1).getTime(), to:Infinity};
+  if(preset==="custom"){
+    let from=-Infinity, to=Infinity;
+    if(range&&range.from){ const f=new Date(range.from); if(!isNaN(f.getTime())) from=f.getTime(); }
+    if(range&&range.to){ const tt=new Date(range.to); if(!isNaN(tt.getTime())){ tt.setHours(23,59,59,999); to=tt.getTime(); } }
+    return {from:from, to:to};
+  }
+  return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
+function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
 function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
@@ -82,7 +91,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
-    set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:(s.deleted||[]).concat([keyOfE(e)]) }); });
+    set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:pushDeleted(s.deleted, keyOfE(e)) }); });
     if(cloud.enabled()) cloud.deleteExpense(e).catch(function(){});
     showToast(t("g_deleted"));
   };
@@ -115,6 +124,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{ent:b||undefined}):e; })}); });
     if(cloud.enabled()) cloud.setExpenseBank(ex,b).catch(function(){});   // durable (source manual:banco)
   };
+  // Guarda el CONCEPTO escrito a mano (2026-07-24). `noteEdited` blinda el texto: el siguiente
+  // sync del banco rellena conceptos vacíos, pero nunca pisa lo que ha escrito el usuario.
+  // Vacío = se borra la nota, y también queda marcado (si no, el banco la volvería a poner).
+  const saveNote=function(ex, note){
+    const raw=String(note||"").trim().slice(0,160);
+    if(raw===String(ex.note||"").trim()) return;   // sin cambios: ni set ni viaje a la nube
+    set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){
+      return e.id===ex.id ? Object.assign({},e,{note:raw||undefined, noteEdited:true}) : e;
+    })}); });
+    if(cloud.enabled()) cloud.setExpenseNote(ex,raw).catch(function(){});
+  };
   // EDITAR un gasto (comercio / importe / gasto↔ingreso): para corregir lo que la ingesta parsea
   // mal (financiación Cofidis que notifica el TOTAL pero TR solo cobra la cuota, bizums antiguos
   // que entraron como gasto…). En la nube la clave es fecha|importe|comercio → se hace tombstone
@@ -129,7 +149,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       if(Math.abs(Math.abs(e.amount)-focusExp.amount)>0.005) return false;
       if(focusExp.merchant){ const m=(e.merchant||"").toLowerCase(), fm=focusExp.merchant.toLowerCase(); if(m.indexOf(fm.slice(0,Math.min(6,fm.length)))<0 && fm.indexOf(m)<0) return false; }
       return true;
-    }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
+    }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); });
     if(cands[0]){
       setDetailId(cands[0].id); setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0});
       if(clearFocus) clearFocus();
@@ -140,7 +160,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // re-ejecuta) en vez de abrir "el último" a ciegas (abría la ficha EQUIVOCADA — feedback
     // pareja 2026-07-10, punto 8). Si en 12s no aparece, abrimos el más reciente como antes.
     const tm=setTimeout(function(){
-      const e=(state.expenses||[]).slice().sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+      const e=(state.expenses||[]).slice().sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
       if(e){ setDetailId(e.id); setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0}); }
       if(clearFocus) clearFocus();
     }, 12000);
@@ -157,7 +177,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
     set(function(s){ return Object.assign({},s,{
       expenses:s.expenses.map(function(x){ return x.id===orig.id?upd:x; }),
-      deleted:(s.deleted||[]).concat([keyOfE(orig)])
+      deleted:pushDeleted(s.deleted, keyOfE(orig))
     }); });
     if(cloud.enabled()){ cloud.deleteExpense(orig).catch(function(){}); cloud.addExpense(upd).catch(function(){}); }
     setEditExp(null); showToast(t("g_edited"));
@@ -167,6 +187,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Bancos presentes en el período (o configurados como gasto) → chips de filtro.
   // "_manual" = apuntados a mano / sin banco conocido (no mezclar con OB).
   // Chips de banco: baratos y SIEMPRE visibles (no dependen de heavyOk → sin flash).
+  // `todayKey` en las dependencias a propósito: los límites de «Este mes» / «Últimos 3 meses» se
+  // calculan con la fecha de HOY, y la app se queda abierta días en el móvil. Sin esto, cruzar la
+  // medianoche (o el cambio de mes) dejaría el filtro anclado al día en que se abrió y «Este mes»
+  // enseñaría el mes pasado. Antes no pasaba porque el cálculo se rehacía en cada render.
+  const todayKey=new Date().toDateString();
+  const bounds=useMemo(function(){ return presetBoundsMs(preset,range,cycle&&cycle.start); },[preset,range,cycle,todayKey]);
   const bankOpts=useMemo(function(){
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
@@ -174,31 +200,45 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     (state.accounts||[]).forEach(function(a){ if(a&&a.ent) add(a.ent); });
     let hasManual=false;
     (expensesDef||[]).forEach(function(e){
-      if(!inPreset(parseDate(e.date),preset,range,cycle&&cycle.start)) return;
+      if(!inBounds(dateMs(e.date),bounds)) return;
       const b=expenseBankOf(e); if(b) add(b); else hasManual=true;
     });
     if(hasManual) order.push("_manual");
     return order;
-  },[expensesDef,state.accounts,state.settings,preset,range,cycle]);
-  const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return (expensesDef||[])
-    .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
-    .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
-    .filter(function(e){
-      if(bankSel.length===0) return true;
-      const b=expenseBankOf(e)||"_manual";
-      return bankSel.indexOf(b)!==-1;
-    })
-    .filter(e=> !needle || (e.merchant||"").toLowerCase().indexOf(needle)!==-1 || catName(e.category).toLowerCase().indexOf(needle)!==-1)
-    .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
-  },[expensesDef,preset,range,sel,bankSel,q,cycle]);
+  },[expensesDef,state.accounts,state.settings,bounds]);
+  // UNA sola pasada en vez de cuatro `.filter()` encadenados: cada eslabón construía un array
+  // intermedio del tamaño del histórico y volvía a recorrerlo entero (2026-07-24).
+  const filtered=useMemo(()=>{
+    const needle=q.trim().toLowerCase();
+    const catSet=sel.length? new Set(sel) : null;         // indexOf en cada gasto era O(n·m)
+    const bankSet=bankSel.length? new Set(bankSel) : null;
+    const out=[];
+    const src=expensesDef||[];
+    for(let i=0;i<src.length;i++){
+      const e=src[i];
+      if(!inBounds(dateMs(e.date),bounds)) continue;
+      if(catSet && !catSet.has(e.category)) continue;
+      if(bankSet && !bankSet.has(expenseBankOf(e)||"_manual")) continue;
+      if(needle){
+        // El concepto también se busca: si tu padre busca «alquiler» tiene que salir el bizum
+        // cuyo mensaje lo dice, aunque el título sea solo el nombre de la persona (2026-07-24).
+        const hay=(e.merchant||"").toLowerCase().indexOf(needle)!==-1
+          || String(e.note||"").toLowerCase().indexOf(needle)!==-1
+          || catName(e.category).toLowerCase().indexOf(needle)!==-1;
+        if(!hay) continue;
+      }
+      out.push(e);
+    }
+    return out.sort((a,b)=>dateMs(b.date)-dateMs(a.date));
+  },[expensesDef,bounds,sel,bankSel,q]);
 
   // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
   const monthSummary=useMemo(function(){
-    const now=new Date(), start=startOfMonth(now);
+    const now=new Date(), startMs=startOfMonth(now).getTime();
     let spent=0, income=0;
     (state.expenses||[]).forEach(function(e){
-      const d=parseDate(e.date); if(!(d>=start)) return;
+      if(dateMs(e.date)<startMs) return;
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
@@ -233,6 +273,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     io.observe(el); return ()=>io.disconnect();
   },[filtered.length]);
 
+  // Abrir la ficha de un movimiento. useCallback = referencia ESTABLE: si cambiara en cada render,
+  // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
+  const openDetail=useCallback(function(e){
+    setDetailId(e.id);
+    setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, note:e.note||""});
+    setCatEdit(null);
+  },[]);
+  // Invalida las filas memoizadas cuando cambia el idioma o la moneda de visualización (las leen
+  // de globales que React.memo no ve).
+  const l10nKey=CURLANG+"|"+DISP.sym;
+
   const shown=filtered.slice(0,visible);
   const groups=[]; let last=null;
   shown.forEach(function(e){
@@ -265,7 +316,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     let isAlert=false;
     if(!form.income && (state.budget||0)>0){
       const bud=state.budget;
-      const before=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth()).reduce((a,e)=>a+e.amount,0);
+      const monthStartMs=startOfMonth().getTime();
+      const before=(state.expenses||[]).filter(e=>dateMs(e.date)>=monthStartMs).reduce((a,e)=>a+e.amount,0);
       const after=before+amt;
       if(before<=bud && after>bud){ msg=tf("al_over",{x:eur0(after),b:eur0(bud)}); isAlert=true; }
       else if(before<bud*0.8 && after>=bud*0.8 && after<=bud){ msg=tf("al_80",{p:Math.round(after/bud*100)}); isAlert=true; }
@@ -373,7 +425,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title")+" · "+novel.length,sub:tf("sub_sub",{n:novel.length,y:eur0(novel.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:true,storageKey:"g_subs_novel",help:t("h_subs")},
         novel.map(function(sp){ const c=catOf(sp.cat);
           const toFixed=function(){
-            const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+            const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
             const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
             const it={ id:uid(), name:sp.name, amount:sp.amount, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
             const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
@@ -397,28 +449,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : (function(){ const c=catOf(g.e.category); const isIncome=g.e.amount<0;
-                  return React.createElement("button",{type:"button",key:g.e.id||i,className:"v4-mov",
-                    onClick:function(){
-                      setDetailId(g.e.id);
-                      setEditExp({id:g.e.id, merchant:g.e.merchant||"", amount:String(Math.abs(g.e.amount)).replace('.',','), income:g.e.amount<0});
-                      setCatEdit(null);
-                    }},
-                    React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
-                    React.createElement("div",{className:"nm"},
-                      React.createElement("div",{className:"nm-title"}, g.e.merchant||"—"),
-                      React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(g.e.category)),
-                      React.createElement("div",{className:"meta"},
-                        React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
-                        (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement(React.Fragment,null,
-                          React.createElement("span",{className:"sep"},"·"),
-                          React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
-                        ):null; })()
-                      )
-                    ),
-                    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(g.e.amount)))
-                  );
-                })(); }),
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, d:g.d, onOpen:openDetail, l10n:l10nKey}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
       )
     ),
@@ -427,11 +458,46 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
       onClose:function(){ setDetailId(null); setEditExp(null); },
-      setCat:setCat, setCardFlag:setCardFlag, setBank:setBank, delExpense:delExpense, saveEdit:saveEdit,
+      setCat:setCat, setCardFlag:setCardFlag, setBank:setBank, delExpense:delExpense, saveEdit:saveEdit, saveNote:saveNote,
       showToast:showToast, aiBusy:aiBusy, suggestAi:suggestAi, state:state
     })
   );
 }
+
+/* ---------- Fila del histórico ----------
+   Va en React.memo a propósito. Antes se pintaba en línea dentro de Expenses, así que CUALQUIER
+   cambio de estado (un toast, un sync de la nube, teclear en el buscador, el snapshot diario de
+   inversiones…) volvía a construir las cientos de filas que hay en pantalla tras un rato haciendo
+   scroll — y a más histórico, peor. Es la otra mitad del «se ralentiza cuanto más la uso»
+   (feedback 2026-07-24).
+
+   `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
+   no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
+   `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
+const MovRow=React.memo(function MovRow({e, d, onOpen}){
+  const c=catOf(e.category);
+  const isIncome=e.amount<0;
+  const bk=expenseBankOf(e);
+  const note=expenseNote(e);   // concepto del bizum / descripción del banco (2026-07-24)
+  return React.createElement("button",{type:"button",className:"v4-mov",onClick:function(){ onOpen(e); }},
+    React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
+    React.createElement("div",{className:"nm"},
+      React.createElement("div",{className:"nm-title"}, e.merchant||"—"),
+      // El concepto va JUSTO debajo del título, antes que la categoría: es lo que se busca al
+      // repasar el histórico («¿de qué era este bizum de 40 €?»).
+      note && React.createElement("div",{className:"nm-note"}, note),
+      React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(e.category)),
+      React.createElement("div",{className:"meta"},
+        React.createElement("span",null,d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
+        bk?React.createElement(React.Fragment,null,
+          React.createElement("span",{className:"sep"},"·"),
+          React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
+        ):null
+      )
+    ),
+    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
+  );
+});
 
 /* Sheet «Más…» de períodos. Antes era un portal pelado SIN useSheetSwipe/useBackClose: era el
    único sheet que no se podía cerrar tirando hacia abajo («el más de la foto» — feedback
@@ -453,7 +519,7 @@ function PeriodMoreSheet({open, onClose, preset, setPreset}){
 }
 
 /* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */
-function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, setBank, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
+function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, setBank, delExpense, saveEdit, saveNote, showToast, aiBusy, suggestAi, state}){
   useBackClose(!!exp, onClose);
   const swipe=useSheetSwipe(!!exp, onClose);
   if(!exp || !editExp) return null;
@@ -482,6 +548,15 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
           React.createElement("input",{className:"v4-exp-name",value:editExp.merchant,placeholder:t("v4_exp_merchant_ph"),onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
           React.createElement("div",{className:"v4-exp-meta"}, metaBits.join(" · "))
         ),
+        // CONCEPTO (2026-07-24): lo que trae el banco/el bizum, y editable para poder apuntar lo
+        // que sea («comida con los del trabajo»). Se guarda con nota_edit para que el siguiente
+        // sync del banco no pise lo que ha escrito el usuario.
+        React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_note")),
+        React.createElement("input",{className:"v4-exp-note-in",value:editExp.note||"",maxLength:160,
+          placeholder:t("v4_exp_note_ph"),
+          onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{note:v}); }); },
+          onBlur:function(){ saveNote(exp, editExp.note); },"aria-label":t("v4_exp_note")}),
+        (exp.note && !exp.noteEdited) && React.createElement("div",{className:"hint",style:{marginTop:5}}, t("v4_exp_note_bank")),
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
           React.createElement("div",{className:"v4-chips"},

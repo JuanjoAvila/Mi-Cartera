@@ -76,3 +76,43 @@ export function extraerPersona(texto: string, prep: "de" | "a"): string {
   const m = (texto || "").match(re);
   return m ? m[1].trim() : "";
 }
+
+/**
+ * CONCEPTO del movimiento a partir del texto de la notificación (petición 2026-07-24).
+ *
+ * En el histórico solo se veía «Bizum de María» y había que abrir la app del banco para saber de
+ * qué era. El mensaje del bizum SÍ viaja en la noti — normalmente entre comillas o tras un
+ * «concepto:» / «motivo:» — pero se descartaba junto con el resto del texto.
+ *
+ * Devuelve "" cuando no hay nada que valga la pena enseñar (mejor un hueco que ruido: regla de la
+ * casa — si no lo sabes, no te lo inventes).
+ */
+export function extraerConcepto(texto: string, titulo = ""): string {
+  const raw = String(texto || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+
+  // 1) «concepto: X» / «motivo: X» / «mensaje: X» — lo más explícito, gana siempre.
+  const etiqueta = raw.match(/\b(?:concepto|motivo|mensaje|asunto|descripci[oó]n)\s*:\s*(.+?)\s*$/i);
+  if (etiqueta) return limpiarConcepto(etiqueta[1]);
+
+  // 2) Entrecomillado: «cena del sábado», "alquiler julio", 'gasolina'.
+  const comillas = raw.match(/[«"“']([^»"”']{2,120})[»"”']/);
+  if (comillas) return limpiarConcepto(comillas[1]);
+
+  // 3) Bizum sin marca explícita: lo que va detrás de «por» al final de la frase
+  //    («Has recibido 20 € de María por la cena»). Ojo: «por Bizum» NO es un concepto.
+  const porAlFinal = raw.match(/\bpor\s+(?!bizum\b)([^.!?]{3,120})[.!?]?\s*$/i);
+  if (porAlFinal) return limpiarConcepto(porAlFinal[1]);
+
+  return "";
+}
+
+function limpiarConcepto(s: string): string {
+  const out = String(s || "")
+    .replace(/\s+/g, " ")
+    .replace(/^[\s:,;.\-–—]+|[\s:,;.\-–—]+$/g, "")
+    .trim();
+  // Coletillas que no aportan nada (son el «cómo», no el «qué»).
+  if (/^(bizum|transferencia|tarjeta|movimiento)$/i.test(out)) return "";
+  return out.slice(0, 160);
+}

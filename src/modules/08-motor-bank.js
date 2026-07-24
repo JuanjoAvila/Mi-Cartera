@@ -299,7 +299,9 @@ function flattenBankTx(links){
     const ent=entFromAspsp(lk && lk.aspsp);
     if(!ent) return;
     (lk.transactions||[]).forEach(function(t){
-      out.push({ ent:ent, id:t.ext_id||null, date:String(t.date||"").slice(0,10), amount:Number(t.amount)||0, merchant:t.merchant||"", card:!!t.card, status:t.status||"" });
+      // `note` = concepto del extracto (remittance_information): lo que hace que el histórico se
+      // entienda sin abrir la app del banco (2026-07-24).
+      out.push({ ent:ent, id:t.ext_id||null, date:String(t.date||"").slice(0,10), amount:Number(t.amount)||0, merchant:t.merchant||"", note:t.note||"", card:!!t.card, status:t.status||"" });
     });
   });
   out.sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
@@ -327,11 +329,59 @@ function importObExpenses(s, txs){
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(), merchant:tx.merchant||"Compra", amount:tx.amount, category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
+    const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
     keys[kOf(e)]=1;
     add.push(e);
   });
   return add.length? add : null;
+}
+
+/* Bancos que NO están sirviendo datos, con el motivo, para el banner «Reconectar» y la noti.
+
+   Antes solo se listaban los `expired`. Se quedaban fuera los enlaces rotos sin cuentas
+   (`noacct`, típico de un banco que se enlazó a medias) y los que el servidor devuelve como
+   `skipped`: el padre le daba a Sincronizar, no pasaba nada, y no había forma de saber que un
+   banco estaba pidiendo permiso otra vez ni DÓNDE se arreglaba (feedback 2026-07-24).
+
+   `kind`: "expired" (el permiso caducó, se reconecta) · "noacct" (enlace sin cuentas utilizables).
+   Los fallos PASAJEROS (rate-limit, 5xx) NO entran aquí a propósito: se reintentan solos y sacarlos
+   en un banner haría que «se cae cada dos por tres» otra vez (feedback 2026-07-17). */
+function bankIssuesOf(links){
+  return (links||[]).filter(function(l){
+    return l && l.ok===false && (l.expired || l.noacct);
+  }).map(function(l){
+    return { aspsp:l.aspsp, ent:entFromAspsp(l.aspsp), kind: l.expired ? "expired" : "noacct" };
+  });
+}
+
+/* Rellena el CONCEPTO de los gastos que YA estaban apuntados, usando lo que acaba de traer el
+   banco (2026-07-24). Sin esto, el concepto solo saldría en lo nuevo y el histórico de siempre
+   —justo el que hay que consultar— seguiría mudo.
+   Reglas: solo rellena huecos (nunca pisa un concepto que ya hay) y NUNCA toca los que el usuario
+   escribió a mano (noteEdited). Devuelve el MISMO array si no hay nada que cambiar, para no
+   provocar un render de más. */
+function enrichNotesFromBankTx(expenses, txs){
+  if(!expenses || !expenses.length || !txs || !txs.length) return expenses;
+  const byExt={}, byKey={};
+  const kOf=function(d,a,m){ return String(d).slice(0,10)+"|"+Math.abs(Number(a)||0).toFixed(2)+"|"+String(m||"").toLowerCase(); };
+  txs.forEach(function(tx){
+    const n=String(tx&&tx.note||"").trim();
+    if(!n) return;
+    if(tx.id) byExt[tx.id]=n;
+    byKey[kOf(tx.date,tx.amount,tx.merchant)]=n;
+  });
+  let touched=false;
+  const out=expenses.map(function(e){
+    if(!e || e.noteEdited || (e.note&&String(e.note).trim())) return e;
+    const raw=(e.extId&&byExt[e.extId]) || byKey[kOf(e.date,e.amount,e.merchant)];
+    if(!raw) return e;
+    const nt=cleanNote(raw, e.merchant);
+    if(!nt) return e;
+    touched=true;
+    return Object.assign({},e,{note:nt});
+  });
+  return touched? out : expenses;
 }
 
 // Selector compacto de meses (1-12) para gastos no mensuales.

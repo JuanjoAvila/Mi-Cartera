@@ -11,6 +11,47 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <title>Mi Cartera</title>
 
+<!-- ================== Content-Security-Policy (2026-07-24) ==================
+     Red de seguridad: aunque alguien colara HTML/JS en la página, el navegador no dejaría cargar
+     código de un sitio no listado ni mandar los datos de la cartera a ningún lado. Aquí van
+     números de cuentas y patrimonio: merece la pena el cinturón además de los tirantes.
+
+     ⚠ SI AÑADES UNA LLAMADA A UN DOMINIO NUEVO, AÑÁDELO AQUÍ o fallará en silencio.
+     Inventario de lo que hay hoy (todo lo demás está auto-hospedado, regla de AGENTS.md §3):
+       · supabase.co ........... nube: login, estado, gastos y Edge Functions
+       · api.frankfurter.app ... tipos de cambio del BCE
+       · juanjoavila.github.io . manifiestos OTA (version.json / apk.json) desde la app Android
+       · github.com + objects.githubusercontent.com … manifiestos del canal BETA (release `beta`)
+       · google.com / gstatic.com … reCAPTCHA del login de MyInvestor (se carga solo si entras ahí)
+     MyInvestor y Trade Republic NO van aquí: sus peticiones salen por el puente NATIVO, fuera del
+     navegador, y la CSP no las toca.
+
+     (Ojo: en este comentario NO se puede escribir la etiqueta de script literal — el extractor de
+     scripts de check-syntax.mjs la encuentra por regex y se lía, aunque esté dentro de un
+     comentario. Pasó al añadir esta CSP.)
+
+     'unsafe-inline' es inevitable: la app entera va en un único bloque inline sin paso de build,
+     y en hosting estático no hay forma de poner un nonce por petición. Aun así, el resto de la
+     política sigue valiendo: object-src/base-uri a 'none' y connect-src cerrado son justo lo que
+     corta la exfiltración. (frame-ancestors se ignora en <meta>; GitHub Pages ya manda
+     X-Frame-Options: DENY.) -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  base-uri 'none';
+  object-src 'none';
+  form-action 'self';
+  manifest-src 'self';
+  worker-src 'self';
+  script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com;
+  style-src 'self' 'unsafe-inline';
+  font-src 'self' data:;
+  img-src 'self' data: blob: https://www.gstatic.com;
+  frame-src https://www.google.com;
+  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://www.google.com https://www.gstatic.com;
+" />
+<!-- Que no se filtre la URL de la app (ni sus parámetros) al salir hacia el banco. -->
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+
 <!-- Adelanta el TLS de la única conexión externa que queda (la nube) -->
 <link rel="preconnect" href="https://sfyfjagbnhbplrljpbvh.supabase.co" crossorigin>
 <!-- Fuentes AUTO-HOSPEDADAS (public/fonts/, variables, latin+latin-ext): sin CDN de Google,
@@ -19,7 +60,9 @@
 <link rel="preload" href="fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
 
 <!-- Tema ANTES del primer pintado: evita el fogonazo oscuro del splash en temas claros -->
-<script>try{var _s=JSON.parse(localStorage.getItem("micartera_v3"));var _th=_s&&_s.settings&&_s.settings.theme;if(_th)document.documentElement.setAttribute("data-theme",_th);}catch(e){}</script>
+<!-- Tema ANTES del primer pintado (si no, destello blanco). Lee la cartera de pruebas cuando el
+     modo pruebas está activo, para que el tema no baile al entrar y salir de él. -->
+<script>try{var _k=localStorage.getItem("_mcSandbox")==="1"?"micartera_sandbox":"micartera_v3";var _s=JSON.parse(localStorage.getItem(_k));var _th=_s&&_s.settings&&_s.settings.theme;if(_th)document.documentElement.setAttribute("data-theme",_th);}catch(e){}</script>
 
 <!-- Supabase (sincronización en la nube) AUTO-HOSPEDADO y con versión fijada (v2.110.0, public/vendor/).
      Antes venía de cdn.jsdelivr.net con la etiqueta @2 flotante: una versión nueva con breaking change
@@ -592,6 +635,13 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .botnav-fab:active{transform:scale(.92);}
   .botnav-fab:focus-visible{outline:2px solid var(--mint);outline-offset:3px;}
   .app.v4{padding-top:calc(var(--safe-top) + 4px);}
+  /* Banda del banco de pruebas: imposible de confundir con la app de verdad, pero sin robar
+     apenas alto (el móvil ya va justo). Toda la banda es el botón de salir. */
+  .sandbox-bar{flex:0 0 auto;width:100%;border:none;display:block;text-align:center;cursor:pointer;
+    background:repeating-linear-gradient(45deg,#E2A05F,#E2A05F 12px,#C9803F 12px,#C9803F 24px);
+    color:#1A1005;font-weight:800;font-size:11.5px;letter-spacing:.02em;padding:5px 10px;
+    font-family:'Manrope',sans-serif;}
+  .app.sandbox{padding-top:var(--safe-top);}
   .app.v4 .topbar,.app.v4 .tabbar-wrap,.app.v4 .dots{display:none !important;}
   .app.v4 .viewport{flex:1;min-height:0;}
 
@@ -695,6 +745,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-exp-ico{width:48px;height:48px;border-radius:16px;border:1px solid;display:grid;place-items:center;font-size:22px;margin:0 auto 10px;}
   .v4-exp-amt{width:100%;border:none;background:transparent;color:var(--text);font-size:36px;font-weight:550;letter-spacing:-1px;text-align:center;padding:4px 0;outline:none;font-variant-numeric:tabular-nums;}
   .v4-exp-name{width:100%;border:none;background:transparent;color:var(--text);font-size:16px;font-weight:700;text-align:center;padding:2px 8px 6px;outline:none;}
+  .v4-exp-note-in{width:100%;border:1px solid var(--line-soft);background:var(--sur);color:var(--text);
+    font-size:15px;border-radius:14px;padding:12px 14px;outline:none;}
+  .v4-exp-note-in:focus{border-color:var(--mint);}
   .v4-exp-name::placeholder{color:var(--muted-2);font-weight:600;}
   .v4-exp-meta{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;}
   .v4-exp-sec{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted-2);margin:4px 2px 8px;}
@@ -783,6 +836,11 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes wn-in{from{transform:translate3d(0,12%,0);opacity:0;}to{transform:none;opacity:1;}}
   .wn-panel .wn-inner{max-width:480px;margin:0 auto;}
   .v4-mov .nm-title{font-weight:700;font-size:15.5px;line-height:1.25;}
+  /* Concepto del movimiento (mensaje del bizum / descripción del banco). Una sola línea con
+     puntos suspensivos: el detalle completo está en la ficha, aquí solo hay que reconocerlo
+     de un vistazo (petición 2026-07-24). */
+  .v4-mov .nm-note{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.3;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .v4-mov .nm-cat{font-size:12.5px;font-weight:650;margin-top:2px;line-height:1.2;}
   .v4-banks .bk-sec{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);margin:18px 2px 8px;}
   .v4-banks .bk-card .bk-h{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
@@ -790,6 +848,11 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-banks .bk-card .bk-h .sub{font-size:12px;color:var(--muted);font-weight:600;}
   .v4-banks .v4-mov{margin-bottom:8px;}
   .v4-banks .bk-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:0 2px;}
+  /* Banco al que te manda el aviso de «reconéctalo»: un latido corto para que salte a la vista
+     sin marear (respeta «reducir animaciones»). */
+  .bk-focus{border-radius:18px;animation:bkfocus 1.6s ease-out 2;}
+  @keyframes bkfocus{0%,100%{box-shadow:0 0 0 0 rgba(226,112,95,0);}35%{box-shadow:0 0 0 4px rgba(226,112,95,.30);}}
+  html.reduce-motion .bk-focus{animation:none;box-shadow:0 0 0 3px rgba(226,112,95,.28);}
   .v4-banks .bk-actions .btn{flex:1 1 auto;min-width:0;padding:10px 12px;font-size:13px;}
 
   @keyframes sheetup{from{transform:translateY(100%);}to{transform:translateY(0);}}
@@ -1462,13 +1525,143 @@ const _mem = {};
 const store = {
   get(k){ try{ const v=localStorage.getItem(k); return v==null?null:JSON.parse(v);}catch(e){ return (k in _mem)?_mem[k]:null; } },
   set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){ _mem[k]=v; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){ delete _mem[k]; } },
 };
+
+/* ---------- Guardado PARTIDO del estado (2026-07-24) ----------
+   ESTA es la causa gorda del «cuanto más tiempo la uso, más se ralentiza, hasta ir lagueadísima».
+
+   Cada `set()` programaba un guardado que serializaba y escribía el estado ENTERO —el histórico de
+   gastos incluido— en localStorage. Y `set()` se llama por todo: abrir una ficha, un toast, un
+   sync, el snapshot diario de inversiones… Mientras tanto, el histórico crece cada día con lo que
+   entra del banco y del lector de notificaciones. Medido en este entorno (un portátil):
+
+       500 gastos →  64 KB →  0,6 ms        5.000 gastos →  637 KB →  5,1 ms
+     2.000 gastos → 254 KB →  2,7 ms       20.000 gastos → 2561 KB → 19,5 ms
+
+   En la WebView de un móvil eso es fácilmente 10-20× más, o sea CENTENARES de milisegundos de hilo
+   principal bloqueado, una y otra vez, mientras tocas la pantalla. Y empeora solo con el tiempo:
+   exactamente el síntoma descrito.
+
+   Arreglo: los gastos van a SU PROPIA clave y solo se reescriben cuando los gastos han cambiado de
+   verdad. Como la inmensa mayoría de los `set()` no los tocan, el guardado frecuente pasa a ser de
+   unos pocos KB y deja de crecer con el histórico.
+
+   Compatibilidad: los estados de antes lo llevan todo en la clave principal; al cargar se detecta
+   y se parte solo. Si algún día se vuelve a una versión anterior, esa versión no vería los gastos
+   en local — pero los recupera del primer sync, porque la tabla `expenses` de la nube es la fuente
+   de verdad. */
+const EXP_SUFFIX="_exp";
+function mcLoadRaw(key){
+  const base=store.get(key);
+  if(!base) return null;
+  const exp=store.get(key+EXP_SUFFIX);
+  if(Array.isArray(exp)) base.expenses=exp;      // formato nuevo (partido)
+  else if(!Array.isArray(base.expenses)) base.expenses=[];
+  return base;
+}
+/* opts.expenses===false → guarda solo la parte ligera (lo normal).
+
+   OJO con la primera vez tras actualizar: el estado viejo lleva los gastos DENTRO de la clave
+   principal y todavía no existe la clave `_exp`. Si en ese primer guardado se hiciera caso a
+   `expenses:false`, se reescribiría la clave principal ya SIN gastos y la de gastos no se
+   crearía nunca → histórico perdido en el móvil hasta el siguiente sync. Por eso, mientras no
+   exista la clave partida, los gastos se escriben SIEMPRE. */
+function mcSaveRaw(key, s, opts){
+  if(!s) return;
+  const rest=Object.assign({},s);
+  delete rest.expenses;
+  const yaPartido=(function(){ try{ return localStorage.getItem(key+EXP_SUFFIX)!=null; }catch(e){ return false; } })();
+  const skipExp = yaPartido && opts && opts.expenses===false;
+  if(!skipExp) store.set(key+EXP_SUFFIX, s.expenses||[]);   // primero los gastos: si algo peta a
+  store.set(key, rest);                                      // medias, nunca queda un estado sin ellos
+}
+
+/* ---------- BANCO DE PRUEBAS (modo sandbox) ----------
+   Petición 2026-07-24: «un entorno de pruebas solamente para mí dentro de mi móvil, para probar
+   las cosas antes de que se suban a prod para el resto» (su padre y su pareja).
+
+   Cómo funciona: el estado de pruebas vive en OTRA clave de localStorage y, mientras estás
+   dentro, la app NO ESCRIBE NADA en la nube. Así puedes borrar cuentas, trastear con deudas o
+   importar movimientos a lo bestia sin que nada de eso llegue a Supabase ni a los móviles de tu
+   padre y tu pareja. Al salir, tu cartera real está exactamente como la dejaste.
+
+   Se ENTRA copiando los datos reales (probar con una cartera vacía no vale para nada), y la copia
+   se queda guardada entre sesiones para poder seguir donde lo dejaste. */
+const STATE_KEY_REAL = "micartera_v3";
+const STATE_KEY_TEST = "micartera_sandbox";
+
+/* La bandera CRUDA de localStorage. Solo la miran Ajustes (para pintar el interruptor) y las
+   funciones de entrar/salir. Para todo lo demás se usa `mcSandbox()`. */
+function mcSandboxFlag(){ try{ return localStorage.getItem("_mcSandbox")==="1"; }catch(e){ return false; } }
+
+/* En qué modo se está EJECUTANDO esta sesión. Se fija en la primera consulta y ya no cambia
+   aunque cambie la bandera, y eso es justo lo que arregla un bug feo que pilló el e2e
+   `modo-pruebas.spec.mjs` (2026-07-24):
+
+     salir del modo pruebas hacía `mcExitSandbox()` y luego `location.reload()`. Entre las dos
+     cosas saltaba el volcado pendiente del estado (el `flushPersist` de `pagehide`), que
+     preguntaba «¿en qué clave guardo?» — y como la bandera ya estaba quitada, escribía el estado
+     DE PRUEBAS encima de la CARTERA REAL. Es decir: el modo pruebas se cargaba los datos de
+     verdad justo al salir, que es exactamente lo contrario de lo que promete.
+
+   Con el valor fijado, una sesión que arrancó en pruebas guarda en la clave de pruebas hasta que
+   se cierra, pase lo que pase con la bandera. Entrar y salir siempre recargan, así que la sesión
+   siguiente ya arranca con el modo nuevo. */
+var _mcSandboxPinned=null;
+function mcSandbox(){
+  if(_mcSandboxPinned===null) _mcSandboxPinned=mcSandboxFlag();
+  return _mcSandboxPinned;
+}
+function mcStateKey(){ return mcSandbox()? STATE_KEY_TEST : STATE_KEY_REAL; }
+/* Entra al banco de pruebas sembrándolo con una copia de lo real (si aún no había copia). Recarga
+   la app para que TODO (incluido el arranque) lea ya la clave de pruebas. */
+function mcEnterSandbox(seedFrom){
+  try{
+    if(!store.get(STATE_KEY_TEST)) store.set(STATE_KEY_TEST, seedFrom||store.get(STATE_KEY_REAL)||{});
+    localStorage.setItem("_mcSandbox","1");
+  }catch(e){}
+}
+/* Entrar y salir NO cambian el modo de la sesión en curso a propósito (ver mcSandbox): quien las
+   llama recarga inmediatamente después, y así lo que quede por volcar se guarda en la clave
+   correcta, la de la sesión que se está cerrando. */
+function mcExitSandbox(){ try{ localStorage.removeItem("_mcSandbox"); }catch(e){} }
+/* Tira la cartera de pruebas y empieza otra desde cero copiando la real otra vez. */
+function mcResetSandbox(){ store.del(STATE_KEY_TEST); }
 
 /* ---------- Supabase: sincronización en la nube (Fase 1) ----------
    Offline-first: si no hay librería/red o no hay sesión, la app funciona igual con localStorage.
    Al iniciar sesión (magic link) se sincroniza el estado entre dispositivos.
    - app_state (JSONB): todo el estado de la app (cuentas, inversiones, gastos…).
    - tabla expenses: buzón donde MacroDroid (y la app) escriben gastos; la app los lee al sincronizar. */
+/* ---------- Red de seguridad: la columna `nota` puede no existir todavía ----------
+   `deploy.yml` (la web) y `supabase.yml` (la base de datos) corren EN PARALELO en el mismo push,
+   y el paso de migraciones lleva `continue-on-error: true` — a este repo ya le pasó que una
+   migración se quedó sin aplicar y el job salió verde igual (la 0015 del Hogar).
+
+   Sin esto, el cliente nuevo mandaría `nota`/`nota_edit` a una tabla que aún no las tiene,
+   PostgREST devolvería «column does not exist» y el upsert fallaría ENTERO: los gastos dejarían
+   de subir a la nube. Y como los llamantes hacen `.catch(function(){})`, fallaría en silencio —
+   que es la peor forma de fallar en una app de dinero.
+
+   Así que si la columna no está, se reintenta sin ella: se pierde el concepto (una comodidad),
+   nunca el gasto (el dato). La bandera vive solo en memoria: al reabrir la app se vuelve a
+   intentar, de modo que en cuanto la migración se aplique esto se cura solo. */
+var _mcNotaCols=true;
+function _isMissingNotaCol(err){
+  const m=String((err&&err.message)||err||"").toLowerCase();
+  return m.indexOf("nota")>=0 && (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
+}
+async function withNotaFallback(run){
+  let r=await run(_mcNotaCols);
+  if(r && r.error && _mcNotaCols && _isMissingNotaCol(r.error)){
+    _mcNotaCols=false;                       // esta sesión ya no lo intenta más
+    r=await run(false);
+  }
+  if(r && r.error) throw r.error;
+  return r;
+}
+
 const cloud = (function(){
   let sb = null;
   try {
@@ -1526,11 +1719,16 @@ const cloud = (function(){
       if(!session) return;
       // source lleva el banco embebido (ob:caixa…) para filtrar en Gastos tras reinstalación
       // sin columna nueva en Supabase (feedback 2026-07-16).
-      const {error}=await sb.from('expenses').upsert(
-        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard },
-        { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
+      const base={ user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard };
+      const nota={ nota:(e.note?String(e.note).slice(0,160):null), nota_edit:!!e.noteEdited };
+      await withNotaFallback(
+        function(conNota){
+          return sb.from('expenses').upsert(
+            conNota ? Object.assign({},base,nota) : base,
+            { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
+          );
+        }
       );
-      if(error) throw error;
     },
     // Persiste el BANCO elegido de un gasto (va embebido en source: manual:caixabank…) para
     // que sobreviva a reinstalaciones — mismo truco que ob: (2026-07-18).
@@ -1551,6 +1749,18 @@ const cloud = (function(){
       const {error}=await sb.from('expenses').update({ no_card:!!noCard })
         .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
       if(error) throw error;
+    },
+    // Concepto escrito a mano (o corregido) por el usuario. `nota_edit` lo blinda: el siguiente
+    // sync del banco no lo pisa con la descripción cruda del extracto (2026-07-24).
+    async setExpenseNote(e, note){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      // Si la migración 0017 aún no está aplicada, esto no puede hacer nada útil: se avisa al
+      // llamante en vez de fallar mudo (aquí el concepto ES el dato que el usuario quiere guardar).
+      const {error}=await sb.from('expenses').update({ nota:String(note||"").slice(0,160)||null, nota_edit:true })
+        .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
+      if(error){ if(_isMissingNotaCol(error)) _mcNotaCols=false; throw error; }
     },
     async deleteExpense(e){
       if(!sb) return;
@@ -1737,6 +1947,26 @@ const cloud = (function(){
       });
       if(error) throw error;
     },
+    // Veredicto de una beta probada EN EL MÓVIL (2026-07-24): «esto lo he probado y va / esto
+    // falla». Va a app_events (kind 'beta'), que ya existe con RLS solo-admin — cero infraestructura
+    // nueva para algo que solo usa el dueño. Como `feedback`, sin dedupe y fallando visible: un
+    // «no subas esto, que está roto» no se puede perder en silencio.
+    async betaReport(payload){
+      if(!sb) throw new Error("sin nube");
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) throw new Error("sin sesión");
+      const p=payload||{};
+      const {error}=await sb.from('app_events').insert({
+        user_id:session.user.id,
+        email:session.user.email||null,
+        kind:'beta',
+        message:String(p.summary||"").slice(0,500),
+        detail:JSON.stringify(p).slice(0,2000),
+        app_version:CONFIG.APP_VERSION,
+        platform:(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())?'android':'web'
+      });
+      if(error) throw error;
+    },
     // Panel del admin: últimos eventos de TODOS los usuarios (RLS deja leer solo al admin).
     async adminEvents(limit){
       if(!sb) return [];
@@ -1825,6 +2055,34 @@ const cloud = (function(){
   };
 })();
 
+/* ---------- Blindaje del banco de pruebas ----------
+   Mientras estás en modo pruebas, TODA operación que ESCRIBA en la nube se anula. Es la garantía
+   que hace que el modo pruebas sirva para algo: puedes romper lo que quieras y no llega nada a
+   Supabase, así que ni tu padre ni tu pareja ven un solo cambio.
+
+   Se hace envolviendo `cloud` por fuera (no método a método) para que no se pueda escapar ninguna
+   por despiste. Las LECTURAS (pullState, bankSync, prices…) siguen funcionando: probar con datos
+   de verdad es justo la gracia. `bankConnect` y compañía también se cortan: mandan al banco a
+   autorizar de verdad, y eso sí toca producción.
+
+   Si añades un método a `cloud` que ESCRIBA algo, añádelo a esta lista. */
+const CLOUD_WRITES=[
+  "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
+  "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
+  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","feedback","betaReport",
+  "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
+];
+(function(){
+  CLOUD_WRITES.forEach(function(name){
+    const real=cloud[name];
+    if(typeof real!=="function") return;   // método renombrado: mejor enterarse en los tests que fallar mudo
+    cloud[name]=function(){
+      if(mcSandbox()) return Promise.resolve(null);   // modo pruebas: no sale nada de este móvil
+      return real.apply(cloud, arguments);
+    };
+  });
+})();
+
 /* Codifica el banco en `source` de la tabla (sin migración SQL): ob:caixa, ob-hist:sabadell,
    macrodroid (= Trade Republic). Así el filtro por banco sobrevive a reinstalaciones. */
 function expenseSourceForCloud(e){
@@ -1837,6 +2095,72 @@ function expenseSourceForCloud(e){
   // y sobrevive a reinstalaciones sin migración SQL.
   if(ent&&(s==="manual"||String(s).indexOf("manual:")===0)) return "manual:"+ent;
   return s||"manual";
+}
+/* ---------- Token aleatorio de VERDAD (256 bits) ----------
+   Lo usa el token de ingest, que es lo ÚNICO que protege la función que apunta gastos en tu
+   cuenta: quien lo adivine puede meterte movimientos falsos. Antes se generaba con
+   `crypto.randomUUID()` (bien) pero, si no existía, caía a `Date.now()+Math.random()` — que es
+   PREDECIBLE: Math.random no es criptográfico y el instante se puede acotar. Encima se le pegaba
+   otro `Math.random()` que no añadía entropía real, solo daba sensación de token largo.
+
+   Ahora: 32 bytes de crypto.getRandomValues en hexadecimal. Si el navegador no tiene un generador
+   seguro devolvemos null y la función que llama AVISA en vez de generar un token flojo — más vale
+   no activar la captura automática que activarla con un token adivinable (2026-07-24). */
+function mcRandomToken(){
+  try{
+    const c=window.crypto||window.msCrypto;
+    if(c&&c.getRandomValues){
+      const b=new Uint8Array(32); c.getRandomValues(b);
+      let s=""; for(let i=0;i<b.length;i++) s+=("0"+b[i].toString(16)).slice(-2);
+      return s;
+    }
+    if(c&&c.randomUUID) return String(c.randomUUID()).replace(/-/g,"");
+  }catch(e){}
+  return null;
+}
+
+/* ---------- Lápidas de gastos borrados ----------
+   `state.deleted` guarda claves «fecha|importe|comercio» para que el siguiente pull de la nube no
+   resucite un gasto que has borrado. Crecía SIN TOPE y, como `slimForCloud` no lo quita, viajaba
+   ENTERO a Supabase en cada guardado (debounce de 1,2 s): con los meses, cada cambio de estado
+   subía un array cada vez más gordo. Parte del «cuanto más la uso, más lenta va» (2026-07-24).
+
+   Tope de 500: el borrado de verdad ya se hace también en la tabla (`cloud.deleteExpense`), esto
+   es solo la red de seguridad para lo borrado sin conexión, y 500 cubre de sobra la ventana entre
+   dos sincronizaciones. */
+const DELETED_MAX=500;
+function pushDeleted(list, key){
+  const out=(list||[]).concat([key]);
+  return out.length>DELETED_MAX ? out.slice(out.length-DELETED_MAX) : out;
+}
+
+/* ---------- CONCEPTO de un movimiento (mensaje del bizum, descripción del banco) ----------
+   Petición del padre (2026-07-24): «solo salía el título y tenía que ir al banco todo el rato
+   para saber lo que era». El dato SÍ venía — Enable Banking manda `remittance_information` y la
+   noti de TR trae el texto entero — pero se tiraba a la basura al mapear el movimiento.
+
+   `note` es texto libre del banco/la noti; `noteEdited` marca los que ha escrito el usuario a mano
+   para que un re-sync del banco no le pise lo que él escribió. */
+const NOTE_MAX=160;
+/* Limpia el concepto: recorta, quita ruido y NO repite lo que ya se ve en el título del
+   movimiento (si el banco manda «BIZUM DE MARIA» y el título ya es «Bizum de María», no
+   pintamos la misma frase dos veces debajo). */
+function cleanNote(raw, merchant){
+  let s=String(raw==null?"":raw).replace(/\s+/g," ").trim();
+  if(!s) return "";
+  // Referencias internas que no le dicen nada a nadie: "REF 000123456789", "MANDATO ...".
+  s=s.replace(/\b(?:ref(?:erencia)?|mandato|mandate|id)\.?\s*:?\s*[A-Z0-9]{8,}\b/gi,"").replace(/\s+/g," ").trim();
+  if(!s) return "";
+  const norm=function(x){ return String(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim(); };
+  const nm=norm(merchant), ns=norm(s);
+  if(!ns) return "";
+  if(nm && (ns===nm || (nm.length>3 && ns.indexOf(nm)===0 && ns.length-nm.length<3))) return "";
+  return s.slice(0,NOTE_MAX);
+}
+/* Concepto que se PINTA de un gasto (string vacío = no hay nada que enseñar). */
+function expenseNote(e){
+  if(!e) return "";
+  return cleanNote(e.note, e.merchant);
 }
 /* Banco de un gasto (ent) o null si es a mano / desconocido. */
 function expenseBankOf(e){
@@ -1868,6 +2192,8 @@ function expenseFromRow(r){
     source: source,
     ent: ent||undefined,
     noCard: r.no_card ? true : undefined,   // bizum/transfer: fuera del round-up (columna 0005)
+    note: r.nota || undefined,              // concepto del banco / mensaje del bizum (columna 0017)
+    noteEdited: r.nota_edit ? true : undefined,
   };
 }
 
@@ -1991,6 +2317,13 @@ const LANG = {
     ap_bank:"Banco", ap_bank_none:"Sin banco",
     bk_issue:"⚠ {bank} necesita tu permiso otra vez", bk_issue_sub:"El permiso de lectura caducó (obligatorio cada ~3 meses): el saldo puede estar desfasado. Un toque y listo.",
     bk_issue_cta:"🔓 Reconectar {bank}", bk_tr_dead:"⚠ Trade Republic está desconectado",
+    // Aviso al sincronizar con algún banco caído (petición 2026-07-24): sale como notificación de
+    // verdad y al tocarla lleva a Cartera → Mis bancos, que era lo que no se encontraba.
+    bk_notif_title:"Un banco necesita que lo reconectes",
+    bk_notif_one:"{bank} pide permiso otra vez · toca para reconectarlo",
+    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para arreglarlo",
+    bk_notif_n:"{n} bancos necesitan que los reconectes · toca para verlos",
+    bk_issue_noacct:"⚠ {bank} está conectado a medias", bk_issue_noacct_sub:"El enlace existe pero el banco no da ninguna cuenta. Vuelve a conectarlo y elige las cuentas que quieres ver.",
     bk_tr_sub:"Su sesión caducó: las posiciones y el efectivo no se actualizan. Se reconecta aquí, en la app (PIN + código SMS) — no en la app de Trade Republic.",
     bk_tr_cta:"🔓 Reconectar Trade Republic",
     v4_acc_locked:"El saldo de las cuentas conectadas lo trae el banco solo; el nombre y el rol sí puedes cambiarlos.",
@@ -2020,8 +2353,17 @@ const LANG = {
     v4_exp_del:"Borrar", v4_exp_del_q:"¿Borrar «{name}»?", v4_exp_del_sub:"Esto no se puede deshacer.",
     v4_exp_amount:"Importe", v4_exp_merchant_ph:"Comercio o concepto",
     v4_exp_cat:"Categoría", v4_exp_type:"Tipo",
+    // Concepto del movimiento (petición del padre 2026-07-24: «solo salía el título y tenía que
+    // ir al banco todo el rato para saber lo que era»).
+    v4_exp_note:"Concepto", v4_exp_note_ph:"De qué era (ej. cena del sábado)",
+    v4_exp_note_bank:"Lo ha puesto el banco · puedes cambiarlo",
     v4_exp_with_card:"Pagado con tarjeta", v4_exp_not_card:"Bizum o transferencia",
     v4_budget_sheet:"Tu presupuesto del mes", v4_budget_sheet_h:"Solo el día a día: súper, bares, caprichos. Los recibos van aparte.",
+    // Estas tres estaban SOLO en inglés y catalán: en castellano (el idioma de la casa) la app
+    // pintaba la clave pelada «tb_removed» / «tb_nodel» en el toast (bug encontrado 2026-07-24
+    // por el test de claves i18n).
+    tb_add:"Añadir pestaña", tb_add_hint:"Toca la que quieras en la barra. Para quitar una, mantenla pulsada y arrástrala a la papelera.",
+    tb_trash:"Suéltala aquí para quitarla", tb_removed:"Pestaña quitada · recupérala con el +", tb_nodel:"Inicio no se puede quitar",
     st_mode_hint:"Sencillo deja Inicio, Gastos, Plan (solo recibos) y Cartera. Ideal para empezar.",
     brand_sub:"tus finanzas, claras",
     settings:"Ajustes", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualización",
@@ -2056,7 +2398,7 @@ const LANG = {
     wn_fb_ph:"Escribe la sugerencia o el error que has visto…", wn_fb_send:"Enviar", wn_fb_sent:"✓ Apuntado y enviado", wn_fb_offline:"✓ Apuntado en tus notas (no se pudo enviar; se queda guardado)",
     wn_yours:"Tus apuntes", wn_close:"¡Entendido!",
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
-    st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
+    st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado", st_tring_nornd:"✕ Este navegador no puede generar una clave segura · no se activa (mejor eso que una clave adivinable)",
     st_banksync_notif:"Al detectar aviso del banco, sincronizar movimientos", st_banksync_notif_hint:"Si Caixa, Sabadell u otro banco te manda una notificación, la app pide los movimientos por Open Banking (no lee el importe de la noti). Como máximo una sync cada 2 minutos.",
     st_aicat:"Sugerir categoría (IA) en «Otros»", st_aicat_hint:"En Gastos, si un comercio queda en Otros, puedes pedir sugerencia. Primero usa palabras clave; si hay OPENAI_API_KEY en Supabase, la IA solo actúa en esos casos. No se envía el importe.",
     st_sentry:"Sentry (errores en prod)", st_sentry_test:"Enviar error de prueba", st_sentry_sent:"✓ Enviado a Sentry (mira Issues en unos segundos)", st_sentry_hint:"Solo tú ves este bloque (admin). Sirve para comprobar que los crashes llegan a Sentry; el resto de usuarios no lo ve.",
@@ -2115,6 +2457,11 @@ const LANG = {
     ap_bank:"Bank", ap_bank_none:"No bank",
     bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
     bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
+    bk_notif_title:"A bank needs reconnecting",
+    bk_notif_one:"{bank} is asking for permission again · tap to reconnect it",
+    bk_notif_noacct:"{bank} is linked but has no accounts · tap to fix it",
+    bk_notif_n:"{n} banks need reconnecting · tap to see them",
+    bk_issue_noacct:"⚠ {bank} is only half connected", bk_issue_noacct_sub:"The link exists but the bank returns no account. Connect it again and pick the accounts you want to see.",
     bk_tr_sub:"Its session expired: positions and cash aren't updating. Reconnect HERE in the app (PIN + SMS code) — not in the Trade Republic app.",
     bk_tr_cta:"🔓 Reconnect Trade Republic",
     v4_acc_locked:"Connected accounts get their balance from the bank; you can still change the name and role.",
@@ -2144,6 +2491,8 @@ const LANG = {
     v4_exp_del:"Delete", v4_exp_del_q:"Delete “{name}”?", v4_exp_del_sub:"This can't be undone.",
     v4_exp_amount:"Amount", v4_exp_merchant_ph:"Merchant or note",
     v4_exp_cat:"Category", v4_exp_type:"Type",
+    v4_exp_note:"Note", v4_exp_note_ph:"What it was for (e.g. Saturday dinner)",
+    v4_exp_note_bank:"Filled in by the bank · you can change it",
     v4_exp_with_card:"Paid by card", v4_exp_not_card:"Bizum or transfer",
     v4_budget_sheet:"Your monthly budget", v4_budget_sheet_h:"Day-to-day only: groceries, eating out, treats. Bills are separate.",
     tb_add:"Add tab", tb_add_hint:"Tap the one you want on the bar. To remove one, long-press it and drag it to the bin.",
@@ -2182,7 +2531,7 @@ const LANG = {
     wn_fb_ph:"Write your suggestion or the bug you saw…", wn_fb_send:"Send", wn_fb_sent:"✓ Saved and sent", wn_fb_offline:"✓ Saved to your notes (couldn't send; it stays stored)",
     wn_yours:"Your notes", wn_close:"Got it!",
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
-    st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
+    st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off", st_tring_nornd:"✕ This browser can't generate a secure key · not enabling it (better than a guessable one)",
     st_banksync_notif:"When a bank notification arrives, sync movements", st_banksync_notif_hint:"If Caixa, Sabadell or another bank notifies you, the app pulls movements via Open Banking (it does not parse the notification amount). At most one sync every 2 minutes.",
     st_aicat:"Suggest category (AI) for “Other”", st_aicat_hint:"In Spending, if a merchant lands in Other, you can ask for a suggestion. Keywords first; if OPENAI_API_KEY is set in Supabase, AI only runs then. Amount is never sent.",
     st_sentry:"Sentry (prod errors)", st_sentry_test:"Send test error", st_sentry_sent:"✓ Sent to Sentry (check Issues in a few seconds)", st_sentry_hint:"Only you see this block (admin). Use it to verify crashes reach Sentry; other users never see it.",
@@ -2236,6 +2585,11 @@ const LANG = {
     ap_bank:"Banc", ap_bank_none:"Sense banc",
     bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
     bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
+    bk_notif_title:"Un banc necessita que el reconnectis",
+    bk_notif_one:"{bank} demana permís altra vegada · toca per reconnectar-lo",
+    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per arreglar-ho",
+    bk_notif_n:"{n} bancs necessiten que els reconnectis · toca per veure'ls",
+    bk_issue_noacct:"⚠ {bank} està connectat a mitges", bk_issue_noacct_sub:"L'enllaç existeix però el banc no dóna cap compte. Torna a connectar-lo i tria els comptes que vulguis veure.",
     bk_tr_sub:"La sessió ha caducat: posicions i efectiu no s'actualitzen. Es reconnecta AQUÍ, a l'app (PIN + codi SMS) — no a l'app de Trade Republic.",
     bk_tr_cta:"🔓 Reconnecta Trade Republic",
     v4_acc_locked:"El saldo dels comptes connectats el porta el banc sol; el nom i el rol sí que els pots canviar.",
@@ -2265,6 +2619,8 @@ const LANG = {
     v4_exp_del:"Esborra", v4_exp_del_q:"Vols esborrar «{name}»?", v4_exp_del_sub:"Això no es pot desfer.",
     v4_exp_amount:"Import", v4_exp_merchant_ph:"Comerç o concepte",
     v4_exp_cat:"Categoria", v4_exp_type:"Tipus",
+    v4_exp_note:"Concepte", v4_exp_note_ph:"De què era (ex. sopar de dissabte)",
+    v4_exp_note_bank:"Ho ha posat el banc · pots canviar-ho",
     v4_exp_with_card:"Pagat amb targeta", v4_exp_not_card:"Bizum o transferència",
     v4_budget_sheet:"El teu pressupost del mes", v4_budget_sheet_h:"Només el dia a dia: súper, bars, capricis. Els rebuts van a part.",
     tb_add:"Afegeix pestanya", tb_add_hint:"Toca la que vulguis veure a la barra. Per treure'n una, mantén-la premuda i arrossega-la a la paperera.",
@@ -2303,7 +2659,7 @@ const LANG = {
     wn_fb_ph:"Escriu el suggeriment o l'error que has vist…", wn_fb_send:"Envia", wn_fb_sent:"✓ Apuntat i enviat", wn_fb_offline:"✓ Apuntat a les teves notes (no s'ha pogut enviar; queda desat)",
     wn_yours:"Els teus apunts", wn_close:"Entesos!",
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
-    st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
+    st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat", st_tring_nornd:"✕ Aquest navegador no pot generar una clau segura · no s'activa (millor això que una clau endevinable)",
     st_banksync_notif:"En detectar avís del banc, sincronitzar moviments", st_banksync_notif_hint:"Si Caixa, Sabadell o un altre banc et envia una notificació, l'app demana els moviments per Open Banking (no llegeix l'import de la noti). Com a màxim una sync cada 2 minuts.",
     st_aicat:"Suggerir categoria (IA) a «Altres»", st_aicat_hint:"A Despeses, si un comerç queda a Altres, pots demanar suggeriment. Primer paraules clau; si hi ha OPENAI_API_KEY a Supabase, l'IA només actua aleshores. No s'envia l'import.",
     st_sentry:"Sentry (errors en prod)", st_sentry_test:"Envia error de prova", st_sentry_sent:"✓ Enviat a Sentry (mira Issues en uns segons)", st_sentry_hint:"Només tu veus aquest bloc (admin). Serveix per comprovar que els crashes arriben a Sentry; la resta d'usuaris no el veuen.",
@@ -2909,7 +3265,7 @@ Object.assign(LANG.es,{
   w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
-  g_allbanks:"Todos los bancos", g_bank_manual:"A mano",
+  g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
   ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
   g_cycle_from:"Del {d} (cobro de {x}) a hoy",
   g_cycle_none_t:"Sin nómina detectada",
@@ -2952,7 +3308,7 @@ Object.assign(LANG.es,{
   fj_noprog:"⚠ {n} gasto(s) anual(es) sin mes asignado. Pulsa «Editar» abajo y márcale el mes para que entren en el cálculo.",
   fj_paid_tag:"✓ pagado · ", fj_oneoff_tag:"cargo puntual", fj_debt_tag:"cuota de deuda", fj_fixed_tag:"gasto fijo",
   fj_flows_h:"Nómina y transferencias", fj_income_tag:"ingreso (entra)", fj_transfer_tag:"transferencia",
-  fj_serv:"Servicios y suministros", fj_permonth:"{x}/mes", fj_edit:"Editar", fj_save:"Guardar",
+  fj_serv:"Servicios y suministros", fj_permonth:"{x}/mes", fj_edit:"Editar", fj_save:"Guardar", fj_fixed:"Recibo",
   fj_year:"año", fj_time:"vez", fj_custom:" · a medida (≈{x}/año)", fj_percharge:" · {x}/cobro", fj_mensual:"mensual", fj_prorated:"/mes prorrateado", fj_nomonth:"⚠ sin mes",
   fj_chargedin:"Se cobra en", fj_day:"día", fj_whatmonths:"¿Qué mes(es) se cobra?", fj_whatmonths_opt:"¿Qué mes(es) se cobra? (opcional)",
   fj_diffamounts:"Importes/días distintos por cobro", fj_amount:"importe", fj_sched_hint:"Pon el importe y el día reales de cada cobro (p.ej. seguro 172,05 y 166,94; Hacienda 146,14 el 30 y 97,42 el 5).",
@@ -2995,7 +3351,7 @@ Object.assign(LANG.en,{
   et_tabs:"✎ Edit tabs", et_intro:"Tabs used to move by pressing and holding one and dragging it (a hidden gesture, easy to trigger by accident). Now you edit them here: reorder with ▲▼, remove with ✕, or add back with +.", et_fixed:"fixed", et_hidden:"Hidden tabs (tap to add them):",
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
-  g_allbanks:"All banks", g_bank_manual:"Manual",
+  g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
   ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
   g_cycle_from:"From {d} (payday, {x}) to today",
   g_cycle_none_t:"No payday detected",
@@ -3037,7 +3393,7 @@ Object.assign(LANG.en,{
   fj_noprog:"⚠ {n} yearly expense(s) with no month set. Tap «Edit» below and set the month so they're counted.",
   fj_paid_tag:"✓ paid · ", fj_oneoff_tag:"one-off charge", fj_debt_tag:"debt payment", fj_fixed_tag:"fixed cost",
   fj_flows_h:"Income & transfers", fj_income_tag:"income (in)", fj_transfer_tag:"transfer",
-  fj_serv:"Bills & utilities", fj_permonth:"{x}/mo", fj_edit:"Edit", fj_save:"Save",
+  fj_serv:"Bills & utilities", fj_permonth:"{x}/mo", fj_edit:"Edit", fj_save:"Save", fj_fixed:"Bill",
   fj_year:"yr", fj_time:"time", fj_custom:" · custom (≈{x}/yr)", fj_percharge:" · {x}/charge", fj_mensual:"monthly", fj_prorated:"/mo prorated", fj_nomonth:"⚠ no month",
   fj_chargedin:"Charged from", fj_day:"day", fj_whatmonths:"Which month(s)?", fj_whatmonths_opt:"Which month(s)? (optional)",
   fj_diffamounts:"Different amounts/days per charge", fj_amount:"amount", fj_sched_hint:"Set the real amount and day of each charge (e.g. insurance 172.05 and 166.94; tax 146.14 on the 30th and 97.42 on the 5th).",
@@ -3080,7 +3436,7 @@ Object.assign(LANG.ca,{
   et_tabs:"✎ Edita pestanyes", et_intro:"Abans les pestanyes es movien mantenint-ne una premuda i arrossegant-la (un gest ocult, fàcil de tocar sense voler). Ara s'editen aquí: reordena amb ▲▼, treu amb ✕ o torna a afegir amb +.", et_fixed:"fixa", et_hidden:"Pestanyes ocultes (toca per afegir-les):",
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
-  g_allbanks:"Tots els bancs", g_bank_manual:"A mà",
+  g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
   ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
   g_cycle_from:"Del {d} (cobrament de {x}) a avui",
   g_cycle_none_t:"Sense nòmina detectada",
@@ -3122,7 +3478,7 @@ Object.assign(LANG.ca,{
   fj_noprog:"⚠ {n} despesa/es anual(s) sense mes assignat. Prem «Edita» a sota i marca-li el mes perquè entrin al càlcul.",
   fj_paid_tag:"✓ pagat · ", fj_oneoff_tag:"càrrec puntual", fj_debt_tag:"quota de deute", fj_fixed_tag:"despesa fixa",
   fj_flows_h:"Nòmina i transferències", fj_income_tag:"ingrés (entra)", fj_transfer_tag:"transferència",
-  fj_serv:"Serveis i subministraments", fj_permonth:"{x}/mes", fj_edit:"Edita", fj_save:"Desa",
+  fj_serv:"Serveis i subministraments", fj_permonth:"{x}/mes", fj_edit:"Edita", fj_save:"Desa", fj_fixed:"Rebut",
   fj_year:"any", fj_time:"cop", fj_custom:" · a mida (≈{x}/any)", fj_percharge:" · {x}/càrrec", fj_mensual:"mensual", fj_prorated:"/mes prorratejat", fj_nomonth:"⚠ sense mes",
   fj_chargedin:"Es cobra a", fj_day:"dia", fj_whatmonths:"Quin(s) mes(os) es cobra?", fj_whatmonths_opt:"Quin(s) mes(os) es cobra? (opcional)",
   fj_diffamounts:"Imports/dies diferents per càrrec", fj_amount:"import", fj_sched_hint:"Posa l'import i el dia reals de cada càrrec (ex. assegurança 172,05 i 166,94; Hisenda 146,14 el 30 i 97,42 el 5).",
@@ -3684,13 +4040,39 @@ Object.assign(LANG.ca,{
 });
 
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+/* parseDate es LA función más llamada de la app: filtrar y ordenar el histórico la invoca una vez
+   por gasto y comparación (un sort de 2.000 movimientos son ~22.000 llamadas… en CADA render de
+   Gastos). Cada llamada hacía regex + new Date(cadena), que es el parseo más caro que hay.
+   Por eso el móvil iba cada vez más lento cuanto más histórico acumulaba (feedback 2026-07-24).
+
+   Caché por cadena de la MARCA DE TIEMPO (no del objeto Date): la fecha de un movimiento no cambia
+   nunca, y guardando el número en vez del Date nadie puede mutar por accidente una fecha
+   compartida entre gastos. */
+var _pdCache=new Map();
+function _pdMs(s){
+  var hit=_pdCache.get(s);
+  if(hit!==undefined) return hit;
+  var ms;
+  var m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){ var y=+m[3]; if(y<100)y+=2000; ms=new Date(y,(+m[2])-1,+m[1]).getTime(); }
+  else { var d=new Date(s); ms=isNaN(d.getTime())?NaN:d.getTime(); }
+  if(_pdCache.size>5000) _pdCache.clear();   // techo: la caché no puede crecer sin fin
+  _pdCache.set(s,ms);
+  return ms;
+}
 function parseDate(v){
   if(v instanceof Date) return v;
   if(typeof v==="number") return new Date(v);
-  const s=String(v||"").trim();
-  const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-  if(m){ let y=+m[3]; if(y<100)y+=2000; return new Date(y,(+m[2])-1,+m[1]); }
-  const d=new Date(s); return isNaN(d)?new Date():d;
+  const ms=_pdMs(String(v||"").trim());
+  return isNaN(ms)?new Date():new Date(ms);
+}
+/* Igual que parseDate pero devuelve el número directamente: para comparar y ordenar no hace falta
+   crear un Date que se tira al momento. Úsalo en comparadores y filtros de listas largas. */
+function dateMs(v){
+  if(v instanceof Date) return v.getTime();
+  if(typeof v==="number") return v;
+  const ms=_pdMs(String(v||"").trim());
+  return isNaN(ms)?Date.now():ms;
 }
 const dayKey=(d)=> d.toISOString().slice(0,10);
 function relDay(d){
@@ -4124,7 +4506,7 @@ function migrate(s){
     if(!s.trAnchor) s.trAnchor = mkOf(new Date());
   }
   s._dataVer = 6;
-  store.set("micartera_v3", s);
+  mcSaveRaw(mcStateKey(), s);
   return s;
 }
 // Corrección única de posiciones tras ventas parciales en Revolut (datos reales del usuario).
@@ -4164,6 +4546,9 @@ function fixRevoDupes(s){
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
   if(!s) return s;
+  // Poda de arrays que crecían sin tope. Aquí se aplica a los estados que YA venían inflados de
+  // versiones anteriores (el tope nuevo solo actúa al añadir) — 2026-07-24.
+  if(Array.isArray(s.deleted) && s.deleted.length>DELETED_MAX) s.deleted=s.deleted.slice(s.deleted.length-DELETED_MAX);
   // estados existentes = ya en uso → no son onboarding
   if(s.onboarded==null) s.onboarded=true;
   // estados existentes tampoco ven el tour de bienvenida (se puede abrir desde Ajustes)
@@ -4282,20 +4667,20 @@ const SEASON_FX={
   pascua:["🐣","🥚","🐰","🌷","🐣","🥚","🌸","🐰"]
 };
 function loadState(){
-  const saved = store.get("micartera_v3");
+  const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){
     // Capturar ANTES de seedFlows (muta in-place): evita stringify de toda la cartera en cada
     // apertura fría — feedback 2026-07-16.
     var writeBack=!(saved._dataVer>=6) || !saved._dynBalAnchored;
     const s = seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))))));
-    if(writeBack) store.set("micartera_v3", s);
+    if(writeBack) mcSaveRaw(mcStateKey(), s);
     applyTheme(s.settings&&s.settings.theme);
     applyA11y(s);
     return s;
   }
   // Sin estado guardado = usuario nuevo → arranca VACÍO y verá el onboarding (no hereda la cartera de ejemplo).
   const init = buildEmpty();
-  store.set("micartera_v3", init);
+  mcSaveRaw(mcStateKey(), init);
   applyTheme(init.settings&&init.settings.theme);
   applyA11y(init);
   return init;
@@ -5178,22 +5563,31 @@ const DATE_PRESETS=[
 // más reciente ≥200 € de los últimos 45 días (los bizums pequeños no cuentan). Sin cobro → mes.
 function lastPaydayOf(expenses){
   const cut=Date.now()-45*86400000;
-  const cands=(expenses||[]).filter(function(e){ return e.amount<=-200 && parseDate(e.date).getTime()>=cut; })
-    .sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
+  const cands=(expenses||[]).filter(function(e){ return e.amount<=-200 && dateMs(e.date)>=cut; })
+    .sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); });
   if(!cands[0]) return null;
   const d=parseDate(cands[0].date);
   return { start:new Date(d.getFullYear(),d.getMonth(),d.getDate()), inc:cands[0] };   // desde las 00:00 del día del cobro
 }
-function inPreset(d,preset,range,cycleStart){
+/* Límites del período EN MILISEGUNDOS, calculados UNA vez. Antes `inPreset` se llamaba por gasto y
+   se construía dentro tres o cuatro `new Date()` (startOfMonth, el mes pasado…): con un histórico
+   de miles de movimientos eran decenas de miles de objetos Date por render, y era buena parte del
+   lag que crecía con el uso (feedback 2026-07-24). Devuelve {from,to} con Infinity de comodín. */
+function presetBoundsMs(preset,range,cycleStart){
   const now=new Date();
-  if(preset==="month") return d>=startOfMonth();
-  if(preset==="cycle") return d>=(cycleStart||startOfMonth());
-  if(preset==="last"){ const s=startOfMonth(new Date(now.getFullYear(),now.getMonth()-1,1)); const e=startOfMonth(); return d>=s&&d<e; }
-  if(preset==="3m"){ return d>=new Date(now.getFullYear(),now.getMonth()-2,1); }
-  if(preset==="all") return true;
-  if(preset==="custom"){ let ok=true; if(range.from) ok=ok&&d>=new Date(range.from); if(range.to){ const tt=new Date(range.to); tt.setHours(23,59,59); ok=ok&&d<=tt; } return ok; }
-  return true;
+  if(preset==="month") return {from:startOfMonth().getTime(), to:Infinity};
+  if(preset==="cycle") return {from:(cycleStart||startOfMonth()).getTime(), to:Infinity};
+  if(preset==="last") return {from:startOfMonth(new Date(now.getFullYear(),now.getMonth()-1,1)).getTime(), to:startOfMonth().getTime()-1};
+  if(preset==="3m") return {from:new Date(now.getFullYear(),now.getMonth()-2,1).getTime(), to:Infinity};
+  if(preset==="custom"){
+    let from=-Infinity, to=Infinity;
+    if(range&&range.from){ const f=new Date(range.from); if(!isNaN(f.getTime())) from=f.getTime(); }
+    if(range&&range.to){ const tt=new Date(range.to); if(!isNaN(tt.getTime())){ tt.setHours(23,59,59,999); to=tt.getTime(); } }
+    return {from:from, to:to};
+  }
+  return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
+function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
 function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
@@ -5250,7 +5644,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
-    set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:(s.deleted||[]).concat([keyOfE(e)]) }); });
+    set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:pushDeleted(s.deleted, keyOfE(e)) }); });
     if(cloud.enabled()) cloud.deleteExpense(e).catch(function(){});
     showToast(t("g_deleted"));
   };
@@ -5283,6 +5677,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){ return e.id===ex.id?Object.assign({},e,{ent:b||undefined}):e; })}); });
     if(cloud.enabled()) cloud.setExpenseBank(ex,b).catch(function(){});   // durable (source manual:banco)
   };
+  // Guarda el CONCEPTO escrito a mano (2026-07-24). `noteEdited` blinda el texto: el siguiente
+  // sync del banco rellena conceptos vacíos, pero nunca pisa lo que ha escrito el usuario.
+  // Vacío = se borra la nota, y también queda marcado (si no, el banco la volvería a poner).
+  const saveNote=function(ex, note){
+    const raw=String(note||"").trim().slice(0,160);
+    if(raw===String(ex.note||"").trim()) return;   // sin cambios: ni set ni viaje a la nube
+    set(function(s){ return Object.assign({},s,{expenses:s.expenses.map(function(e){
+      return e.id===ex.id ? Object.assign({},e,{note:raw||undefined, noteEdited:true}) : e;
+    })}); });
+    if(cloud.enabled()) cloud.setExpenseNote(ex,raw).catch(function(){});
+  };
   // EDITAR un gasto (comercio / importe / gasto↔ingreso): para corregir lo que la ingesta parsea
   // mal (financiación Cofidis que notifica el TOTAL pero TR solo cobra la cuota, bizums antiguos
   // que entraron como gasto…). En la nube la clave es fecha|importe|comercio → se hace tombstone
@@ -5297,7 +5702,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       if(Math.abs(Math.abs(e.amount)-focusExp.amount)>0.005) return false;
       if(focusExp.merchant){ const m=(e.merchant||"").toLowerCase(), fm=focusExp.merchant.toLowerCase(); if(m.indexOf(fm.slice(0,Math.min(6,fm.length)))<0 && fm.indexOf(m)<0) return false; }
       return true;
-    }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); });
+    }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); });
     if(cands[0]){
       setDetailId(cands[0].id); setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0});
       if(clearFocus) clearFocus();
@@ -5308,7 +5713,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // re-ejecuta) en vez de abrir "el último" a ciegas (abría la ficha EQUIVOCADA — feedback
     // pareja 2026-07-10, punto 8). Si en 12s no aparece, abrimos el más reciente como antes.
     const tm=setTimeout(function(){
-      const e=(state.expenses||[]).slice().sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+      const e=(state.expenses||[]).slice().sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
       if(e){ setDetailId(e.id); setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0}); }
       if(clearFocus) clearFocus();
     }, 12000);
@@ -5325,7 +5730,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
     set(function(s){ return Object.assign({},s,{
       expenses:s.expenses.map(function(x){ return x.id===orig.id?upd:x; }),
-      deleted:(s.deleted||[]).concat([keyOfE(orig)])
+      deleted:pushDeleted(s.deleted, keyOfE(orig))
     }); });
     if(cloud.enabled()){ cloud.deleteExpense(orig).catch(function(){}); cloud.addExpense(upd).catch(function(){}); }
     setEditExp(null); showToast(t("g_edited"));
@@ -5335,6 +5740,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Bancos presentes en el período (o configurados como gasto) → chips de filtro.
   // "_manual" = apuntados a mano / sin banco conocido (no mezclar con OB).
   // Chips de banco: baratos y SIEMPRE visibles (no dependen de heavyOk → sin flash).
+  // `todayKey` en las dependencias a propósito: los límites de «Este mes» / «Últimos 3 meses» se
+  // calculan con la fecha de HOY, y la app se queda abierta días en el móvil. Sin esto, cruzar la
+  // medianoche (o el cambio de mes) dejaría el filtro anclado al día en que se abrió y «Este mes»
+  // enseñaría el mes pasado. Antes no pasaba porque el cálculo se rehacía en cada render.
+  const todayKey=new Date().toDateString();
+  const bounds=useMemo(function(){ return presetBoundsMs(preset,range,cycle&&cycle.start); },[preset,range,cycle,todayKey]);
   const bankOpts=useMemo(function(){
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
@@ -5342,31 +5753,45 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     (state.accounts||[]).forEach(function(a){ if(a&&a.ent) add(a.ent); });
     let hasManual=false;
     (expensesDef||[]).forEach(function(e){
-      if(!inPreset(parseDate(e.date),preset,range,cycle&&cycle.start)) return;
+      if(!inBounds(dateMs(e.date),bounds)) return;
       const b=expenseBankOf(e); if(b) add(b); else hasManual=true;
     });
     if(hasManual) order.push("_manual");
     return order;
-  },[expensesDef,state.accounts,state.settings,preset,range,cycle]);
-  const filtered=useMemo(()=>{ const needle=q.trim().toLowerCase(); return (expensesDef||[])
-    .filter(e=>inPreset(parseDate(e.date),preset,range,cycle&&cycle.start))
-    .filter(e=> sel.length===0 || sel.indexOf(e.category)!==-1)
-    .filter(function(e){
-      if(bankSel.length===0) return true;
-      const b=expenseBankOf(e)||"_manual";
-      return bankSel.indexOf(b)!==-1;
-    })
-    .filter(e=> !needle || (e.merchant||"").toLowerCase().indexOf(needle)!==-1 || catName(e.category).toLowerCase().indexOf(needle)!==-1)
-    .sort((a,b)=>parseDate(b.date)-parseDate(a.date));
-  },[expensesDef,preset,range,sel,bankSel,q,cycle]);
+  },[expensesDef,state.accounts,state.settings,bounds]);
+  // UNA sola pasada en vez de cuatro `.filter()` encadenados: cada eslabón construía un array
+  // intermedio del tamaño del histórico y volvía a recorrerlo entero (2026-07-24).
+  const filtered=useMemo(()=>{
+    const needle=q.trim().toLowerCase();
+    const catSet=sel.length? new Set(sel) : null;         // indexOf en cada gasto era O(n·m)
+    const bankSet=bankSel.length? new Set(bankSel) : null;
+    const out=[];
+    const src=expensesDef||[];
+    for(let i=0;i<src.length;i++){
+      const e=src[i];
+      if(!inBounds(dateMs(e.date),bounds)) continue;
+      if(catSet && !catSet.has(e.category)) continue;
+      if(bankSet && !bankSet.has(expenseBankOf(e)||"_manual")) continue;
+      if(needle){
+        // El concepto también se busca: si tu padre busca «alquiler» tiene que salir el bizum
+        // cuyo mensaje lo dice, aunque el título sea solo el nombre de la persona (2026-07-24).
+        const hay=(e.merchant||"").toLowerCase().indexOf(needle)!==-1
+          || String(e.note||"").toLowerCase().indexOf(needle)!==-1
+          || catName(e.category).toLowerCase().indexOf(needle)!==-1;
+        if(!hay) continue;
+      }
+      out.push(e);
+    }
+    return out.sort((a,b)=>dateMs(b.date)-dateMs(a.date));
+  },[expensesDef,bounds,sel,bankSel,q]);
 
   // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
   const monthSummary=useMemo(function(){
-    const now=new Date(), start=startOfMonth(now);
+    const now=new Date(), startMs=startOfMonth(now).getTime();
     let spent=0, income=0;
     (state.expenses||[]).forEach(function(e){
-      const d=parseDate(e.date); if(!(d>=start)) return;
+      if(dateMs(e.date)<startMs) return;
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
@@ -5401,6 +5826,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     io.observe(el); return ()=>io.disconnect();
   },[filtered.length]);
 
+  // Abrir la ficha de un movimiento. useCallback = referencia ESTABLE: si cambiara en cada render,
+  // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
+  const openDetail=useCallback(function(e){
+    setDetailId(e.id);
+    setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, note:e.note||""});
+    setCatEdit(null);
+  },[]);
+  // Invalida las filas memoizadas cuando cambia el idioma o la moneda de visualización (las leen
+  // de globales que React.memo no ve).
+  const l10nKey=CURLANG+"|"+DISP.sym;
+
   const shown=filtered.slice(0,visible);
   const groups=[]; let last=null;
   shown.forEach(function(e){
@@ -5433,7 +5869,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     let isAlert=false;
     if(!form.income && (state.budget||0)>0){
       const bud=state.budget;
-      const before=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth()).reduce((a,e)=>a+e.amount,0);
+      const monthStartMs=startOfMonth().getTime();
+      const before=(state.expenses||[]).filter(e=>dateMs(e.date)>=monthStartMs).reduce((a,e)=>a+e.amount,0);
       const after=before+amt;
       if(before<=bud && after>bud){ msg=tf("al_over",{x:eur0(after),b:eur0(bud)}); isAlert=true; }
       else if(before<bud*0.8 && after>=bud*0.8 && after<=bud){ msg=tf("al_80",{p:Math.round(after/bud*100)}); isAlert=true; }
@@ -5541,7 +5978,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title")+" · "+novel.length,sub:tf("sub_sub",{n:novel.length,y:eur0(novel.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:true,storageKey:"g_subs_novel",help:t("h_subs")},
         novel.map(function(sp){ const c=catOf(sp.cat);
           const toFixed=function(){
-            const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return parseDate(b.date)-parseDate(a.date); })[0];
+            const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
             const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
             const it={ id:uid(), name:sp.name, amount:sp.amount, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
             const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
@@ -5565,28 +6002,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : (function(){ const c=catOf(g.e.category); const isIncome=g.e.amount<0;
-                  return React.createElement("button",{type:"button",key:g.e.id||i,className:"v4-mov",
-                    onClick:function(){
-                      setDetailId(g.e.id);
-                      setEditExp({id:g.e.id, merchant:g.e.merchant||"", amount:String(Math.abs(g.e.amount)).replace('.',','), income:g.e.amount<0});
-                      setCatEdit(null);
-                    }},
-                    React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
-                    React.createElement("div",{className:"nm"},
-                      React.createElement("div",{className:"nm-title"}, g.e.merchant||"—"),
-                      React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(g.e.category)),
-                      React.createElement("div",{className:"meta"},
-                        React.createElement("span",null,g.d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
-                        (function(){ const bk=expenseBankOf(g.e); return bk?React.createElement(React.Fragment,null,
-                          React.createElement("span",{className:"sep"},"·"),
-                          React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
-                        ):null; })()
-                      )
-                    ),
-                    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(g.e.amount)))
-                  );
-                })(); }),
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, d:g.d, onOpen:openDetail, l10n:l10nKey}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
       )
     ),
@@ -5595,11 +6011,46 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
       onClose:function(){ setDetailId(null); setEditExp(null); },
-      setCat:setCat, setCardFlag:setCardFlag, setBank:setBank, delExpense:delExpense, saveEdit:saveEdit,
+      setCat:setCat, setCardFlag:setCardFlag, setBank:setBank, delExpense:delExpense, saveEdit:saveEdit, saveNote:saveNote,
       showToast:showToast, aiBusy:aiBusy, suggestAi:suggestAi, state:state
     })
   );
 }
+
+/* ---------- Fila del histórico ----------
+   Va en React.memo a propósito. Antes se pintaba en línea dentro de Expenses, así que CUALQUIER
+   cambio de estado (un toast, un sync de la nube, teclear en el buscador, el snapshot diario de
+   inversiones…) volvía a construir las cientos de filas que hay en pantalla tras un rato haciendo
+   scroll — y a más histórico, peor. Es la otra mitad del «se ralentiza cuanto más la uso»
+   (feedback 2026-07-24).
+
+   `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
+   no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
+   `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
+const MovRow=React.memo(function MovRow({e, d, onOpen}){
+  const c=catOf(e.category);
+  const isIncome=e.amount<0;
+  const bk=expenseBankOf(e);
+  const note=expenseNote(e);   // concepto del bizum / descripción del banco (2026-07-24)
+  return React.createElement("button",{type:"button",className:"v4-mov",onClick:function(){ onOpen(e); }},
+    React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
+    React.createElement("div",{className:"nm"},
+      React.createElement("div",{className:"nm-title"}, e.merchant||"—"),
+      // El concepto va JUSTO debajo del título, antes que la categoría: es lo que se busca al
+      // repasar el histórico («¿de qué era este bizum de 40 €?»).
+      note && React.createElement("div",{className:"nm-note"}, note),
+      React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(e.category)),
+      React.createElement("div",{className:"meta"},
+        React.createElement("span",null,d.toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})),
+        bk?React.createElement(React.Fragment,null,
+          React.createElement("span",{className:"sep"},"·"),
+          React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
+        ):null
+      )
+    ),
+    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
+  );
+});
 
 /* Sheet «Más…» de períodos. Antes era un portal pelado SIN useSheetSwipe/useBackClose: era el
    único sheet que no se podía cerrar tirando hacia abajo («el más de la foto» — feedback
@@ -5621,7 +6072,7 @@ function PeriodMoreSheet({open, onClose, preset, setPreset}){
 }
 
 /* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */
-function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, setBank, delExpense, saveEdit, showToast, aiBusy, suggestAi, state}){
+function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, setBank, delExpense, saveEdit, saveNote, showToast, aiBusy, suggestAi, state}){
   useBackClose(!!exp, onClose);
   const swipe=useSheetSwipe(!!exp, onClose);
   if(!exp || !editExp) return null;
@@ -5650,6 +6101,15 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
           React.createElement("input",{className:"v4-exp-name",value:editExp.merchant,placeholder:t("v4_exp_merchant_ph"),onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
           React.createElement("div",{className:"v4-exp-meta"}, metaBits.join(" · "))
         ),
+        // CONCEPTO (2026-07-24): lo que trae el banco/el bizum, y editable para poder apuntar lo
+        // que sea («comida con los del trabajo»). Se guarda con nota_edit para que el siguiente
+        // sync del banco no pise lo que ha escrito el usuario.
+        React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_note")),
+        React.createElement("input",{className:"v4-exp-note-in",value:editExp.note||"",maxLength:160,
+          placeholder:t("v4_exp_note_ph"),
+          onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{note:v}); }); },
+          onBlur:function(){ saveNote(exp, editExp.note); },"aria-label":t("v4_exp_note")}),
+        (exp.note && !exp.noteEdited) && React.createElement("div",{className:"hint",style:{marginTop:5}}, t("v4_exp_note_bank")),
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
           React.createElement("div",{className:"v4-chips"},
@@ -7815,7 +8275,9 @@ function flattenBankTx(links){
     const ent=entFromAspsp(lk && lk.aspsp);
     if(!ent) return;
     (lk.transactions||[]).forEach(function(t){
-      out.push({ ent:ent, id:t.ext_id||null, date:String(t.date||"").slice(0,10), amount:Number(t.amount)||0, merchant:t.merchant||"", card:!!t.card, status:t.status||"" });
+      // `note` = concepto del extracto (remittance_information): lo que hace que el histórico se
+      // entienda sin abrir la app del banco (2026-07-24).
+      out.push({ ent:ent, id:t.ext_id||null, date:String(t.date||"").slice(0,10), amount:Number(t.amount)||0, merchant:t.merchant||"", note:t.note||"", card:!!t.card, status:t.status||"" });
     });
   });
   out.sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
@@ -7843,11 +8305,59 @@ function importObExpenses(s, txs){
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(), merchant:tx.merchant||"Compra", amount:tx.amount, category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
+    const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
     keys[kOf(e)]=1;
     add.push(e);
   });
   return add.length? add : null;
+}
+
+/* Bancos que NO están sirviendo datos, con el motivo, para el banner «Reconectar» y la noti.
+
+   Antes solo se listaban los `expired`. Se quedaban fuera los enlaces rotos sin cuentas
+   (`noacct`, típico de un banco que se enlazó a medias) y los que el servidor devuelve como
+   `skipped`: el padre le daba a Sincronizar, no pasaba nada, y no había forma de saber que un
+   banco estaba pidiendo permiso otra vez ni DÓNDE se arreglaba (feedback 2026-07-24).
+
+   `kind`: "expired" (el permiso caducó, se reconecta) · "noacct" (enlace sin cuentas utilizables).
+   Los fallos PASAJEROS (rate-limit, 5xx) NO entran aquí a propósito: se reintentan solos y sacarlos
+   en un banner haría que «se cae cada dos por tres» otra vez (feedback 2026-07-17). */
+function bankIssuesOf(links){
+  return (links||[]).filter(function(l){
+    return l && l.ok===false && (l.expired || l.noacct);
+  }).map(function(l){
+    return { aspsp:l.aspsp, ent:entFromAspsp(l.aspsp), kind: l.expired ? "expired" : "noacct" };
+  });
+}
+
+/* Rellena el CONCEPTO de los gastos que YA estaban apuntados, usando lo que acaba de traer el
+   banco (2026-07-24). Sin esto, el concepto solo saldría en lo nuevo y el histórico de siempre
+   —justo el que hay que consultar— seguiría mudo.
+   Reglas: solo rellena huecos (nunca pisa un concepto que ya hay) y NUNCA toca los que el usuario
+   escribió a mano (noteEdited). Devuelve el MISMO array si no hay nada que cambiar, para no
+   provocar un render de más. */
+function enrichNotesFromBankTx(expenses, txs){
+  if(!expenses || !expenses.length || !txs || !txs.length) return expenses;
+  const byExt={}, byKey={};
+  const kOf=function(d,a,m){ return String(d).slice(0,10)+"|"+Math.abs(Number(a)||0).toFixed(2)+"|"+String(m||"").toLowerCase(); };
+  txs.forEach(function(tx){
+    const n=String(tx&&tx.note||"").trim();
+    if(!n) return;
+    if(tx.id) byExt[tx.id]=n;
+    byKey[kOf(tx.date,tx.amount,tx.merchant)]=n;
+  });
+  let touched=false;
+  const out=expenses.map(function(e){
+    if(!e || e.noteEdited || (e.note&&String(e.note).trim())) return e;
+    const raw=(e.extId&&byExt[e.extId]) || byKey[kOf(e.date,e.amount,e.merchant)];
+    if(!raw) return e;
+    const nt=cleanNote(raw, e.merchant);
+    if(!nt) return e;
+    touched=true;
+    return Object.assign({},e,{note:nt});
+  });
+  return touched? out : expenses;
 }
 
 // Selector compacto de meses (1-12) para gastos no mensuales.
@@ -9249,7 +9759,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
             if(!isIn && keys[kOf(dt,abs,tx.merchant)]) return;
             if(isIn && keys[kOf(dt,-abs,tx.merchant)]) return;
             const k=(tx.ext_id||"")+"|"+(isIn?"in":"out")+"|"+kOf(dt,abs,tx.merchant); if(uniq[k]) return; uniq[k]=1;
-            out.push({ id:tx.ext_id||null, date:dt, amount:abs, merchant:tx.merchant||(isIn?t("cat_ingreso"):"Compra"), card:!!tx.card, ent:ent, kind:isIn?"in":"out" });
+            out.push({ id:tx.ext_id||null, date:dt, amount:abs, merchant:tx.merchant||(isIn?t("cat_ingreso"):"Compra"), note:tx.note||"", card:!!tx.card, ent:ent, kind:isIn?"in":"out" });
           });
         });
       });
@@ -9286,10 +9796,14 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
       }
       if(d==="ingreso"){
         const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:-Math.abs(x.amount), category:"ingreso", source:"ob-hist", ent:x.ent, noCard:true, income:true };
-        if(x.id) e.extId=x.id; expAdds.push(e); return;
+        if(x.id) e.extId=x.id;
+        const nti=cleanNote(x.note, e.merchant); if(nti) e.note=nti;   // concepto del extracto (2026-07-24)
+        expAdds.push(e); return;
       }
       const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:Math.abs(x.amount), category:autoCategory(x.merchant||""), source:"ob-hist", ent:x.ent };
-      if(x.id) e.extId=x.id; expAdds.push(e);
+      if(x.id) e.extId=x.id;
+      const nt=cleanNote(x.note, e.merchant); if(nt) e.note=nt;
+      expAdds.push(e);
     });
     set(function(s){
       const next=Object.assign({},s);
@@ -9350,7 +9864,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   ));
 }
 
-function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks, fetchPrices}){
+function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks, fetchPrices, focusAspsp}){
   const [histOpen,setHistOpen]=useState(false);
   const [links,setLinks]=useState(null);          // null = cargando
   const [aspsps,setAspsps]=useState(null);        // null = sin cargar
@@ -9359,6 +9873,15 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   const [busy,setBusy]=useState("");              // aspsp en curso / "__sync"
   const [picking,setPicking]=useState(false);
   const [confirming,setConfirming]=useState("");  // aspsp cuyo "¿quitar?" está abierto
+  // Banco a resaltar al entrar (viene del sync o de la noti «reconéctalo»): lo centramos en
+  // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
+  const focusRef=useRef(null);
+  useEffect(function(){
+    if(!focusAspsp || !links || !links.length) return;
+    const el=focusRef.current; if(!el || !el.scrollIntoView) return;
+    const tm=setTimeout(function(){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
+    return function(){ clearTimeout(tm); };
+  },[focusAspsp,links]);
   useBackClose(picking, function(){ setPicking(false); setQ(""); });   // gesto atrás: sale del picker, no de la app
   const loadLinks=function(){ if(!cloud.enabled()){ setLinks([]); return; } cloud.bankLinks().then(function(rows){ setLinks(rows||[]); if(onLinks) onLinks(rows||[]);   // el contador de Ajustes se entera al momento
     if((rows||[]).some(function(r){return r.status==='active'||r.status==='pending';})) set(function(s){ return s.hasBankLink?s:Object.assign({},s,{hasBankLink:true}); });
@@ -9441,12 +9964,14 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
       const noAcct = l.status==='error';
+      // El banco que venías a arreglar (desde el sync o la noti): resaltado y centrado en pantalla.
+      const isFocus = !!focusAspsp && l.aspsp_name===focusAspsp;
       const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
                : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
                : pill(t("bp_st_expired"),"var(--coral)");
-      return React.createElement("div",{key:l.aspsp_name,style:{marginBottom:6}},
-        React.createElement("div",{className:"v4-mov",style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)"}},
+      return React.createElement("div",{key:l.aspsp_name,"data-aspsp":l.aspsp_name,ref:isFocus?focusRef:null,className:isFocus?"bk-focus":undefined,style:{marginBottom:6}},
+        React.createElement("div",{className:"v4-mov",style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+(isFocus?"var(--coral)":"var(--line-soft)"),background:"var(--sur)"}},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"nm"}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--mint)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
@@ -9520,6 +10045,134 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
 /* Página «Actividad» del admin (petición 2026-07-11): antes era un acordeón dentro de Ajustes y
    con los errores acumulándose el cajón se hacía gigante; ahora es una pantalla propia (patrón
    BankPanel) con filtro «solo errores». Sin traducir a propósito: consola privada del admin. */
+/* ============================================================
+   REVISAR LA BETA — «code review» pero probando la app, no leyendo código
+   ============================================================
+   Petición 2026-07-24. El propio usuario decía que un botón de «aprobar» era medio chorrada
+   porque puede pedir el despliegue a mano… y para la parte de DESPLEGAR tiene razón. Lo que NO es
+   redundante, y es el motivo real de que esto exista:
+
+     1. QUÉ hay que probar. Se prueba días después, en el sofá, y para entonces ya no te acuerdas
+        de qué traía la versión. La lista sale de RELEASE_NOTES de la versión que corre, así que
+        no hay nada que mantener aparte: cada release trae su checklist sola.
+     2. QUÉ falla, dicho EN EL MOMENTO. Encuentras el fallo usando la app y lo apuntas ahí mismo,
+        en vez de acordarte a medias tres horas después.
+     3. QUÉ se aprobó. Queda registrado qué versión, desde qué móvil y cuándo — con tres betas
+        seguidas, «sube eso que ya lo probé» es ambiguo.
+
+   El progreso se guarda en localStorage por versión: probar lleva días y cerrar la app no puede
+   borrarlo. Sin traducir, como «Actividad»: es la consola privada del dueño. */
+function betaChecklist(version){
+  // Las notas de la versión en curso SON la checklist. La beta lleva sufijo de compilación
+  // (4.8.0.17) y las notas van por versión base (4.8.0) → se casa por prefijo.
+  var base=String(version||"").split(".").slice(0,3).join(".");
+  var notes=(typeof RELEASE_NOTES!=="undefined"&&RELEASE_NOTES.length)
+    ? (RELEASE_NOTES.filter(function(n){ return n.v===base; })[0] || RELEASE_NOTES[0])
+    : null;
+  return notes ? { v:notes.v, t:notes.t, items:(notes.items||[]) } : { v:base, t:"", items:[] };
+}
+function BetaReviewPanel({onClose, showToast}){
+  useBackClose(true, onClose);
+  const pack=betaChecklist(CONFIG.APP_VERSION);
+  const storeKey="_betaReview_"+pack.v;
+  // {i: "ok" | "ko"} + notas de los que fallan
+  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || {}; });
+  const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
+  const [busy,setBusy]=useState(false);
+  const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
+  const mark=function(i,v){
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); return m; });
+  };
+  const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
+
+  const total=pack.items.length;
+  const ok=pack.items.filter(function(_,i){ return marks[i]==="ok"; }).length;
+  const ko=pack.items.filter(function(_,i){ return marks[i]==="ko"; }).length;
+  const pend=total-ok-ko;
+
+  const enviar=function(verdict){
+    if(busy) return;
+    setBusy(true);
+    const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
+    const payload={
+      verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
+      probados:ok, fallos:ko, sinProbar:pend, detalle:fallos,
+      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
+        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+
+        (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
+    };
+    cloud.betaReport(payload)
+      .then(function(){ setSent(verdict); showToast(verdict==="approved"?"✅ Aprobada · queda registrado":"⛔ Enviado · no se sube"); })
+      .catch(function(e){ showToast("✕ No se pudo enviar: "+((e&&e.message)||e)); })
+      .finally(function(){ setBusy(false); });
+  };
+
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const btn=function(on,color){ return {flex:1,background:on?color:"var(--surface-2)",color:on?"#06120C":"var(--text)",
+    border:on?"none":"1px solid var(--line)",borderRadius:12,padding:"9px 6px",fontSize:13,fontWeight:800,cursor:"pointer"}; };
+
+  return React.createElement("div",{style:wrap,className:"beta-review"}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🧪 Revisar la beta"),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
+      "v"+CONFIG.APP_VERSION+(pack.t?" · "+pack.t:"")),
+    React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
+      "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+
+    // Progreso
+    React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
+      React.createElement("div",{style:{flex:1,height:8,borderRadius:8,background:"var(--surface-2)",overflow:"hidden"}},
+        React.createElement("div",{style:{width:(total?Math.round((ok+ko)/total*100):0)+"%",height:"100%",
+          background:ko?"var(--coral)":"var(--mint)",transition:"width .25s ease"}})),
+      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko)+"/"+total)),
+
+    pack.items.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)"}},
+      "Esta versión no trae notas, así que no hay checklist. Prueba lo que hayas tocado."),
+
+    pack.items.map(function(it,i){
+      const m=marks[i];
+      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":"var(--line-soft)"),
+        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)"}},
+        React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
+          React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
+        m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
+          placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
+          onChange:function(e){ setNote(i,e.target.value); }})
+      );
+    }),
+
+    // Veredicto
+    sent
+      ? React.createElement("div",{style:{marginTop:16,padding:"14px 16px",borderRadius:16,
+          border:"1px solid "+(sent==="approved"?"var(--mint)":"var(--coral)"),background:"var(--sur)"}},
+          React.createElement("div",{style:{fontWeight:800,fontSize:14.5,marginBottom:6}},
+            sent==="approved" ? "✅ Beta aprobada" : "⛔ Beta rechazada"),
+          React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.5}},
+            sent==="approved"
+              ? "Queda registrado (Actividad → filtro «beta»). Para subirla a producción: dile a Claude «sube la beta», o lanza el workflow «Promocionar beta a producción» en GitHub → Actions. La app no puede hacer un merge de git ella sola."
+              : "Queda registrado con lo que falla. No la subas hasta arreglarlo."))
+      : React.createElement(React.Fragment,null,
+          ko>0 && React.createElement("button",{type:"button",className:"v4-danger",style:{marginTop:6},disabled:busy,
+            onClick:function(){ enviar("rejected"); }}, busy?"Enviando…":("⛔ Reportar "+ko+" fallo(s) · no subir")),
+          React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,opacity:(pend>0||ko>0)?0.45:1},
+            disabled:busy||pend>0||ko>0,onClick:function(){ enviar("approved"); }},
+            busy?"Enviando…":"✅ Aprobar esta beta"),
+          (pend>0||ko>0) && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",textAlign:"center",marginTop:8,lineHeight:1.5}},
+            ko>0 ? "Hay algo marcado como que falla: arréglalo antes de aprobar."
+                 : "Te quedan "+pend+" cosa(s) por probar.")
+        ),
+
+    React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:14},
+      onClick:function(){ store.del(storeKey); store.del(storeKey+"_n"); setMarks({}); setNotes({}); setSent(null); }},
+      "↺ Empezar la revisión de cero")
+  ));
+}
+
 function ActivityPanel({events, onReload, onClose}){
   const [flt,setFlt]=useState("all");   // all | error | feedback
   useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
@@ -9529,6 +10182,7 @@ function ActivityPanel({events, onReload, onClose}){
   const chip=function(on){ return {background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)",borderRadius:20,padding:"6px 13px",fontSize:12.5,fontWeight:700,cursor:"pointer"}; };
   const nErr=(events||[]).filter(function(ev){ return ev.kind==="error"; }).length;
   const nFb=(events||[]).filter(function(ev){ return ev.kind==="feedback"; }).length;
+  const nBeta=(events||[]).filter(function(ev){ return ev.kind==="beta"; }).length;   // veredictos de beta probada en el móvil
   const list=(events||[]).filter(function(ev){ return flt==="all" || ev.kind===flt; });
   return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
@@ -9538,9 +10192,10 @@ function ActivityPanel({events, onReload, onClose}){
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}},
       React.createElement("button",{style:chip(flt==="all"),onClick:function(){ setFlt("all"); }},"Todo"),
       React.createElement("button",{style:chip(flt==="error"),onClick:function(){ setFlt("error"); }},"🐞 Solo errores"+(nErr?" ("+nErr+")":"")),
-      React.createElement("button",{style:chip(flt==="feedback"),onClick:function(){ setFlt("feedback"); }},"💬 Sugerencias"+(nFb?" ("+nFb+")":""))),
+      React.createElement("button",{style:chip(flt==="feedback"),onClick:function(){ setFlt("feedback"); }},"💬 Sugerencias"+(nFb?" ("+nFb+")":"")),
+      React.createElement("button",{style:chip(flt==="beta"),onClick:function(){ setFlt("beta"); }},"🧪 Betas"+(nBeta?" ("+nBeta+")":""))),
     events!==null && list.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)",padding:"14px 0"}},
-      flt==="error" ? "Sin errores en los últimos eventos. 🎉" : flt==="feedback" ? "Sin sugerencias todavía (llegan desde el popup de Novedades)." : "Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
+      flt==="error" ? "Sin errores en los últimos eventos. 🎉" : flt==="feedback" ? "Sin sugerencias todavía (llegan desde el popup de Novedades)." : flt==="beta" ? "Ninguna beta revisada todavía (se aprueban desde Ajustes → Dev → Pruebas → Revisar esta beta)." : "Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
     list.map(function(ev,i){
       const d=new Date(ev.created_at);
       const when=d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
@@ -9653,6 +10308,14 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.8.0", d:"24 jul 2026", t:"Ya no se ralentiza, y el histórico se explica solo", items:[
+    "⚡ Se acabó lo de «cuanto más rato la uso, más lenta va». La app guardaba TODO el histórico de gastos en el móvil cada vez que volvías a ella (abrir la app, cambiar de app y volver…), y eso costaba más cada mes según se llenaba: con 2.000 gastos eran 477 KB por vuelta, con 8.000 casi 2 MB. Ahora el histórico solo se reescribe cuando cambia de verdad — 1 KB — y ese número ya NO crece con los años.",
+    "📝 El histórico por fin dice DE QUÉ era cada movimiento (lo pedía mi padre): debajo del título sale el concepto del bizum o la descripción del banco, y se rellena también en los movimientos antiguos al sincronizar. Puedes escribirlo o corregirlo tú desde la ficha del gasto, y lo que escribas no te lo pisa el banco. El buscador también busca por concepto.",
+    "🏦 Si al sincronizar hay un banco que se ha desconectado, ahora te enteras: salta una notificación de verdad y la app te lleva SOLA al sitio donde se reconecta, con ese banco resaltado. Antes salía un aviso de dos segundos que decía «reconéctate» sin decir dónde. Si no tienes ningún banco puesto, también te abre la pantalla para ponerlo.",
+    "🧪 Modo pruebas y canal beta (para el que la desarrolla): probar cosas en el móvil con una copia de los datos, sin tocar la cartera real ni la de nadie más, y recibir las versiones antes que el resto de la familia. Y una pantalla para revisar la beta desde el propio móvil: sale la lista de lo que trae la versión, marcas qué va bien y qué falla, y hasta que no esté todo probado no se puede aprobar.",
+    "🛡 Seguridad: la app ya no deja que se cargue código de sitios que no sean los suyos ni que se manden tus datos fuera (CSP). La clave de la captura automática de gastos ahora es de 256 bits de verdad — antes, en algunos navegadores, salía de un generador predecible.",
+    "🐞 Arreglado: si dos móviles tocaban la cartera a la vez, el aviso de conflicto reventaba por dentro y no se resolvía nunca (fallaba en silencio). Y varios textos salían en clave («tb_removed», «fj_fixed») en vez de en castellano.",
+  ]},
   {v:"4.7.1", d:"23 jul 2026", t:"Herramientas de inversión, más limpias", items:[
     "📈 Fuera el bloque «Orden de los brókers» de Herramientas de inversión: ensuciaba la pantalla sin aportar. Tus brókers salen en Cartera → Inversiones en el orden de siempre: Revolut, Trade Republic y MyInvestor."
   ]},
@@ -10041,7 +10704,7 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks, goBanksFocus}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
@@ -10094,6 +10757,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   };
   const [events,setEvents]=useState(null);
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
+  const [betaOpen,setBetaOpen]=useState(false);  // pantalla «Revisar la beta» (solo en canal beta)
   const loadEvents=function(){
     cloud.adminEvents(200).then(function(rows){
       setEvents(rows||[]);
@@ -10156,7 +10820,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const doExport=function(){
     try{
       // El estado React manda: localStorage puede ir ~400 ms por detrás (persistencia debounced 2026-07-18)
-      const data=JSON.stringify(state||store.get("micartera_v3"),null,2);
+      const data=JSON.stringify(state||mcLoadRaw(mcStateKey()),null,2);
       const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
       const a=document.createElement("a");
       a.href=url; a.download="mi-cartera-"+new Date().toISOString().slice(0,10)+".json"; a.click();
@@ -10178,7 +10842,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       askConfirm({ title:t("st_confirm_import"), sub:t("st_confirm_import_sub"), ok:t("st_confirm_import_ok"), danger:true })
         .then(function(yes){
           if(!yes) return;
-          store.set("micartera_v3",obj); set(function(){ return obj; });
+          mcSaveRaw(mcStateKey(),obj); set(function(){ return obj; });
           showToast(t("st_imported")); onClose();
         });
     };
@@ -10391,7 +11055,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
       );
     })(),
-    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
+    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,focusAspsp:goBanksFocus,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
     // (Hogar y gastos compartidos se movió FUERA de Ajustes 2026-07-18: es una funcionalidad de
     //  la app, no un ajuste. Ahora se abre desde Cartera → «Hogar y gastos compartidos».)
     !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
@@ -10410,8 +11074,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           try{ if(nat.ensureNotifPerm) nat.ensureNotifPerm().catch(function(){}); }catch(e){}
           let tok=(state.settings&&state.settings.ingestToken);
           if(!tok){
-            const rnd=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random();
-            tok=String(rnd).replace(/-/g,"")+Math.random().toString(36).slice(2,10);
+            tok=mcRandomToken();
+            if(!tok){ showToast(t("st_tring_nornd")); return; }
           }
           cloud.setIngestToken(tok).then(function(){
             const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
@@ -10523,19 +11187,91 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
 
     // Admin al FINAL (fuera del flujo diario). Sentry de prueba quitado: no aporta en móvil.
+    // Sin traducir a propósito: es la consola privada del dueño, como «Actividad».
     isAdmin && React.createElement(React.Fragment,null,
       React.createElement("div",{className:"v4-set-sec"}, "Dev"),
       React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
         React.createElement("div",{className:"sc-title"},"👁 Actividad"),
         row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
+      ),
+      /* ── ENTORNO DE PRUEBAS (petición 2026-07-24) ──────────────────────────────────────────
+         Dos cosas distintas, a propósito:
+           · Canal beta  → QUÉ versión recibe ESTE móvil. En beta te llegan las versiones antes de
+             publicarlas en Pages, así puedes probarlas antes de que le lleguen a tu padre y a tu
+             pareja (ellos siguen en estable, que sale de `main` y no se toca).
+           · Banco de pruebas → CON QUÉ DATOS trabajas. Copia de tu cartera en otra clave local y
+             cero escrituras en la nube: rompe lo que quieras, no sale de este móvil.
+         Solo lo ve el dueño (profiles.is_admin), que es lo que pedía: «solamente para mí». */
+      React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
+        React.createElement("div",{className:"sc-title"},"🧪 Pruebas"),
+        (function(){
+          const beta=(typeof mcChannel==="function") && mcChannel()==="beta";
+          return React.createElement(React.Fragment,null,
+            row("chan", beta?"🚧":"📦", beta?"Canal: BETA (pruebas)":"Canal: estable", null, function(){
+              askConfirm({
+                title: beta?"¿Volver al canal estable?":"¿Pasar este móvil al canal beta?",
+                sub: beta
+                  ? "Dejarás de recibir las versiones de prueba. La próxima actualización será la publicada para todos."
+                  : "Solo ESTE móvil recibirá las versiones de prueba (bundle.zip / apk.json de la release «beta»). Tu padre y tu pareja se quedan en la estable. Si aún no hay ninguna beta publicada, se sigue actualizando con la estable.",
+                ok: beta?"Volver a estable":"Activar beta",
+              }).then(function(yes){
+                if(!yes) return;
+                mcSetChannel(beta?"stable":"beta");
+                showToast(beta?"📦 Canal estable":"🚧 Canal beta activado");
+                setS({});   // repinta Ajustes para que la fila refleje el canal nuevo
+              });
+            }, sw(beta)),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},
+              // El canal SOLO manda en la app Android: en el navegador la versión la sirve Pages
+              // (= main = producción) y el OTA de Capgo ni existe. Decirlo aquí evita quedarse
+              // esperando una beta que no puede llegar (confusión real del 2026-07-24).
+              (typeof _mcNative!=="undefined" && !_mcNative)
+                ? "⚠ Estás en el navegador: aquí el canal no hace nada, la beta solo llega a la app Android."
+                : (beta?"Este móvil recibe las versiones antes que nadie.":"Este móvil recibe lo mismo que el resto de la familia.")),
+            // «Code review» pero probando la app: la checklist sale de las notas de esta versión.
+            // Solo tiene sentido estando en beta — en estable no hay nada que aprobar.
+            beta && (function(){
+              const pack=betaChecklist(CONFIG.APP_VERSION);
+              const done=store.get("_betaReview_"+pack.v)||{};
+              const n=Object.keys(done).length, tot=pack.items.length;
+              return row("betarev","🔍","Revisar esta beta", tot?(n+"/"+tot):null, function(){ setBetaOpen(true); });
+            })(),
+            (function(){
+              // La bandera CRUDA: Ajustes pinta el estado que tendrá la PRÓXIMA sesión, que es lo
+              // que el interruptor cambia. El resto de la app usa mcSandbox() (fijado al arrancar).
+              const sandbox=(typeof mcSandboxFlag==="function") && mcSandboxFlag();
+              return React.createElement(React.Fragment,null,
+                row("sbx", sandbox?"🧪":"🏦", sandbox?"Banco de pruebas: DENTRO":"Banco de pruebas", null, function(){
+                  if(sandbox){
+                    askConfirm({ title:"¿Salir del banco de pruebas?", sub:"Vuelves a tu cartera real. La de pruebas se queda guardada por si quieres seguir otro día.", ok:"Salir a mi cartera real" })
+                      .then(function(yes){ if(!yes) return; mcExitSandbox(); location.reload(); });
+                  }else{
+                    askConfirm({ title:"¿Entrar al banco de pruebas?", sub:"Se copia tu cartera actual a un espacio aparte. Dentro NO se escribe nada en la nube: puedes trastear a gusto y tu cartera real (y la de tu padre y tu pareja) no se entera.", ok:"Entrar a probar" })
+                      .then(function(yes){ if(!yes) return; mcEnterSandbox(state); location.reload(); });
+                  }
+                }, sw(sandbox)),
+                sandbox && row("sbxr","♻️","Volver a copiar mi cartera real",null,function(){
+                  askConfirm({ title:"¿Empezar las pruebas de cero?", sub:"Se tira la cartera de pruebas actual y se copia otra vez la real. Tu cartera real no se toca.", ok:"Copiar de nuevo", danger:true })
+                    .then(function(yes){ if(!yes) return; mcExitSandbox(); mcResetSandbox(); location.reload(); });
+                }),
+                React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},
+                  sandbox?"Estás en datos de prueba. Nada de lo que hagas aquí sale de este móvil.":"Copia tu cartera a un espacio aparte para probar sin miedo.")
+              );
+            })()
+          );
+        })()
       )
     ),
+    betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
-    React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
+    // El canal se canta en el pie: si algo va raro, lo primero que hay que saber es si este móvil
+    // está en una beta o en la versión de todos (2026-07-24).
+    React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},
+      "Mi Cartera · v"+CONFIG.APP_VERSION+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
   );
 
 }
@@ -10768,7 +11504,7 @@ class ErrorBoundary extends React.Component{
     const wrap={position:"fixed",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:13,padding:24,textAlign:"center",background:"#0B1410",color:"#E8F0EB",fontFamily:"Manrope,sans-serif",zIndex:9999};
     const btn={padding:"13px 22px",borderRadius:14,border:"none",background:"#5FD08A",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"};
     const btn2=Object.assign({},btn,{background:"transparent",border:"1px solid #2a3a31",color:"#E8F0EB"});
-    const dl=function(){ try{ const data=JSON.stringify(store.get("micartera_v3")||{},null,2); const url=URL.createObjectURL(new Blob([data],{type:"application/json"})); const a=document.createElement("a"); a.href=url; a.download="mi-cartera-backup-"+new Date().toISOString().slice(0,10)+".json"; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000); }catch(e){ alert("Export error: "+e); } };
+    const dl=function(){ try{ const data=JSON.stringify(mcLoadRaw(mcStateKey())||{},null,2); const url=URL.createObjectURL(new Blob([data],{type:"application/json"})); const a=document.createElement("a"); a.href=url; a.download="mi-cartera-backup-"+new Date().toISOString().slice(0,10)+".json"; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000); }catch(e){ alert("Export error: "+e); } };
     return React.createElement("div",{style:wrap},
       React.createElement("div",{style:{fontSize:46}},"🛟"),
       React.createElement("div",{style:{fontWeight:800,fontSize:21,fontFamily:"Fraunces,serif"}}, t("eb_title")),
@@ -11291,9 +12027,12 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
     // Banners de reconexión: el arreglo a UN toque, en la pantalla donde se VE el problema.
     (state.bankIssues||[]).map(function(is){
       const lbl=is.ent?entOf(is.ent).label:(is.aspsp||"🏦");
-      return React.createElement("div",{key:"bi_"+is.aspsp,className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
-        React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, tf("bk_issue",{bank:lbl})),
-        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_issue_sub")),
+      // «noacct» = enlazado pero el banco no devuelve ninguna cuenta: el texto de «permiso
+      // caducado» ahí despistaba, porque no hay ningún permiso que renovar (2026-07-24).
+      const noacct=is.kind==="noacct";
+      return React.createElement("div",{key:"bi_"+is.aspsp,className:"v4-card v4-bank-issue",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+        React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, tf(noacct?"bk_issue_noacct":"bk_issue",{bank:lbl})),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t(noacct?"bk_issue_noacct_sub":"bk_issue_sub")),
         onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
       );
     }),
@@ -11598,11 +12337,22 @@ function App(){
   // («a veces se ralentiza, cuando chuta va hiper fluida»). Ahora se escribe como mucho 1 vez
   // cada 400 ms con el último valor, y SIEMPRE se vuelca al esconder/cerrar la app (pagehide +
   // visibilitychange) para no perder nada si Android mata el proceso.
-  const persistRef=useRef({t:null,val:null});
+  //
+  // Y desde 2026-07-24 el guardado va PARTIDO (ver mcSaveRaw en 00-core): el histórico de gastos
+  // solo se reescribe cuando ha cambiado de verdad. El debounce por sí solo no bastaba, porque lo
+  // que costaba caro era el TAMAÑO de cada escritura, y ese crecía cada día con el histórico: por
+  // eso la app iba poniéndose más lenta cuanto más se usaba. `p.exp` recuerda si en la tanda
+  // pendiente hubo algún cambio de gastos.
+  const persistRef=useRef({t:null,val:null,exp:false});
+  const writeNow=function(p){
+    const v=p.val; const withExp=p.exp;
+    p.val=null; p.exp=false;
+    if(v!=null) mcSaveRaw(mcStateKey(), v, {expenses:withExp});
+  };
   const flushPersist=useCallback(function(){
     const p=persistRef.current;
     if(p.t){ clearTimeout(p.t); p.t=null; }
-    if(p.val!=null){ store.set("micartera_v3",p.val); p.val=null; }
+    writeNow(p);
   },[]);
   const set=useCallback((updater)=>{ setStateRaw(prev=>{
     const next=typeof updater==="function"?updater(prev):updater;
@@ -11610,7 +12360,10 @@ function App(){
     const stamped=Object.assign({},next,{_savedAt:Date.now()});
     const p=persistRef.current;
     p.val=stamped;
-    if(!p.t) p.t=setTimeout(function(){ p.t=null; const v=persistRef.current.val; persistRef.current.val=null; if(v!=null) store.set("micartera_v3",v); },400);
+    // Comparación por REFERENCIA: los updaters siempre construyen un array nuevo cuando tocan
+    // gastos, así que basta con esto y cuesta cero.
+    if(prev.expenses!==stamped.expenses) p.exp=true;
+    if(!p.t) p.t=setTimeout(function(){ const q=persistRef.current; q.t=null; writeNow(q); },400);
     return stamped;
   }); },[]);
   useEffect(function(){
@@ -11673,7 +12426,13 @@ function App(){
         const keepKeys={}; keep.forEach(function(e){ keepKeys[keyOf(e)]=1; });
         const seen={}; const add=[];
         incoming.forEach(function(e){ const k=keyOf(e); if(!keepKeys[k] && !seen[k]){ seen[k]=1; add.push(e); } });
-        return Object.assign({},prev,{expenses:keep.concat(add),lastSync:Date.now()});
+        // Si el resultado es EXACTAMENTE la lista que ya había (el caso normal: sincronizas y no
+        // hay nada nuevo), se conserva el MISMO array. Antes se construía uno nuevo siempre, y eso
+        // repintaba toda la app y reescribía el histórico entero en cada vuelta a primer plano —
+        // varias veces al día, y cada vez más caro según crecía el histórico (2026-07-24).
+        const next=keep.concat(add);
+        const igual = next.length===prev.expenses.length && next.every(function(e,i){ return e===prev.expenses[i]; });
+        return Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()});
       });
       return { total:incoming.length, nuevos:count };
     });
@@ -11748,14 +12507,13 @@ function App(){
         // se re-ancla con el saldo real del banco (que ya incluye esas compras).
         const add=importObExpenses(prev, txs);
         obAdded=add||[];
-        const withExp=add? Object.assign({},prev,{expenses:add.concat(prev.expenses||[])}) : prev;
+        const baseExp=add? add.concat(prev.expenses||[]) : (prev.expenses||[]);
+        // Rellena el CONCEPTO de lo que ya estaba apuntado con lo que acaba de traer el banco
+        // (2026-07-24): si no, el histórico viejo —el que se consulta— seguiría sin explicar nada.
+        const withNotes=enrichNotesFromBankTx(baseExp, txs);
+        const withExp=(withNotes!==(prev.expenses||[])) ? Object.assign({},prev,{expenses:withNotes}) : prev;
         const r=applyBankBalances(withExp, links);
-        // Bancos con permiso CADUCADO → banner «Reconectar» en Cartera (UX padre 2026-07-18:
-        // el saldo no cuadraba, le dio a sincronizar, no pasó nada y acabó en la app de TR).
-        // Se recalcula entero en cada sync: reconectar un banco lo saca solo.
-        const issues=links.filter(function(l){ return l&&l.ok===false&&l.expired; })
-          .map(function(l){ return {aspsp:l.aspsp, ent:entFromAspsp(l.aspsp)}; });
-        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: issues });
+        return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: bankIssuesOf(links) });
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
@@ -11764,18 +12522,43 @@ function App(){
       // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
       const failed=links.filter(function(l){ return l&&l.ok===false; });
-      const expired=failed.filter(function(l){ return l&&l.expired; });
       // Saldo del banco: SOLO cuando lo pides tú (opts.manual). Antes también saltaba en cada sync
       // automático al abrir la app («el dinero de los bancos me sale, no me vale para nada»
       // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
       if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
-      if(expired.length){ showToast("⚠ "+bankLabelOf(expired[0])+": "+t("bank_expired_re")); }
+      // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
+      // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
+      // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de
+      // Cartera existía pero había que dar con él. Ahora, al sincronizar A MANO:
+      //   1) notificación de verdad (queda en la bandeja) que al tocarla abre Cartera + Mis bancos,
+      //   2) y en el momento, la app abre sola el panel de bancos con ese banco resaltado.
+      const issues=bankIssuesOf(links);
+      if(issues.length){
+        const lbl=issues[0].ent?entOf(issues[0].ent).label:(issues[0].aspsp||"🏦");
+        const msg=issues.length>1
+          ? tf("bk_notif_n",{n:issues.length})
+          : tf(issues[0].kind==="noacct"?"bk_notif_noacct":"bk_notif_one",{bank:lbl});
+        showToast("⚠ "+msg);
+        if(opts.manual){
+          const nat=natPlugin();
+          if(nat&&nat.showNotification){
+            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||"")}).catch(function(){}); }catch(e){}
+          }
+          // Y aquí mismo: el panel donde se reconecta, abierto y con el banco señalado.
+          setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:issues[0].aspsp||null}})); }catch(e){} }, 700);
+        }
+      }
       // Fallo NO caducado = hipo transitorio del banco (rate-limit PSD2, 5xx…): el enlace sigue
       // vivo (el servidor ya no lo marca 'expired' por un 403/404), así que no mandamos «reconéctate»
       // — solo un aviso suave y únicamente si lo pediste tú (feedback 2026-07-17: «se caen cada dos
       // por tres» era este falso positivo). En auto-sync nos callamos: se reintenta solo.
       else if(failed.length && opts.manual){ showToast("⚠ "+tf("bank_syncsoft",{bank:bankLabelOf(failed[0])})); }
-      else if(!preview.synced.length && !links.length && opts.manual){ showToast(t("bank_none")); }
+      // Ni un solo banco enlazado: en vez del callejón sin salida («No tienes ningún banco
+      // conectado») le abrimos el panel para que lo conecte ahí mismo.
+      else if(!preview.synced.length && !links.length && opts.manual){
+        showToast(t("bank_none"));
+        setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:null}})); }catch(e){} }, 700);
+      }
     }).catch(function(e){
       if(opts.manual || navigator.onLine!==false) showToast("⚠ "+t("bank_syncfail"));
     }).finally(function(){ bankSyncing.current=false; });
@@ -11868,15 +12651,18 @@ function App(){
   },[]);
 
   // Empuja el estado a la nube (debounced) cuando cambie y haya sesión. Sin los gastos (ya en su tabla).
+  // OJO con el nombre del timer: se llamaba `t` y TAPABA la función global de i18n `t()` — dentro
+  // del callback `t("st_sync_conflict")` petaba («t is not a function»), el `.catch` se lo tragaba y
+  // el conflicto de dos móviles NUNCA se resolvía (ni aviso ni re-sync). Bug encontrado 2026-07-24.
   useEffect(function(){
     if(!uid) return;
-    const t=setTimeout(function(){
+    const tmr=setTimeout(function(){
       cloud.pushState(uid, slimForCloud(state), cloudUpdatedAtRef.current).then(function(r){
         if(r && r.conflict){ showToast(t("st_sync_conflict")); syncFromCloud(sessionRef.current); return; }
         if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
       }).catch(function(){});
     }, 1200);
-    return function(){ clearTimeout(t); };
+    return function(){ clearTimeout(tmr); };
   },[state,uid]);
 
   // Auto-sincroniza los gastos al volver a primer plano (abrir la app o cambiar de app y volver).
@@ -11983,6 +12769,16 @@ function App(){
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
       return;
     }
+    // Noti «tienes un banco sin conectar» (2026-07-24): abre Cartera (donde está el banner con el
+    // botón) y, encima, el panel de Mis bancos ya desplegado. El padre no sabía DÓNDE se conectaba;
+    // ahora la noti le deja en el sitio exacto, sin buscar nada.
+    if(g==="banks" || g.indexOf("banks|")===0){
+      const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+      if(ci>=0) setTab(ci);
+      const aspsp=g.indexOf("banks|")===0 ? g.slice(6) : "";
+      setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:aspsp||null}})); }catch(e){} }, 250);
+      return;
+    }
     if(g==="gastos" || g.indexOf("exp|")===0){
       const gi=tabOrderOf(stateRef.current).indexOf("gastos");
       if(gi>=0) setTab(gi);
@@ -12017,6 +12813,33 @@ function App(){
     }, 4000);
     return function(){ clearTimeout(tm); };
   },[uid,state.lastBackup]);
+
+  /* Activar el canal beta desde una URL: ?canal=beta (y ?canal=estable para volver).
+     Sirve para arrancar el canal en un móvil cuya app todavía no tiene el interruptor de Ajustes.
+
+     ⚠ EL CANAL SOLO SIRVE EN LA APP ANDROID. Las actualizaciones por canal viajan por el OTA de
+     Capgo (`_mcCheckOtaUpdates`), que lo primero que hace es salirse si no existe
+     `Capacitor.Plugins.CapacitorUpdater` — o sea, SIEMPRE en la web. En el navegador la versión la
+     manda el Service Worker, que sirve lo que haya en GitHub Pages, o sea `main`, o sea
+     producción. Por eso aquí se avisa en vez de callar: poner el canal en la web y quedarte
+     esperando una beta que no puede llegar es justo la confusión que hubo el 2026-07-24.
+
+     Sin riesgo de que te la cuelen por un enlace: la URL de la beta está fija en el código y
+     apunta a la release de este mismo repo, así que lo peor que puede pasar es que recibas tu
+     propia beta — y se ve en el pie de Ajustes y se desactiva en un toque. */
+  useEffect(function(){
+    let p=null; try{ p=new URLSearchParams(location.search); }catch(e){}
+    const c=p && p.get("canal");
+    if(!c || typeof mcSetChannel!=="function") return;
+    try{ history.replaceState(null, "", location.pathname + location.hash); }catch(e){}
+    const nativo=(typeof _mcNative!=="undefined") && _mcNative;
+    if(c==="beta"){
+      mcSetChannel("beta");
+      showToast(nativo ? "🚧 Canal beta activado en este dispositivo"
+                       : "🚧 Canal beta guardado · OJO: en el navegador NO llega la beta (solo en la app Android)");
+    }
+    else if(c==="estable"||c==="stable"){ mcSetChannel("stable"); showToast("📦 Canal estable"); }
+  },[]);
 
   // CAPA 2 — vuelta del banco (?bank=ok / ?bank=error tras autorizar). Avisa y limpia la URL.
   useEffect(function(){
@@ -12117,8 +12940,14 @@ function App(){
   // «Reconectar Trade Republic» desde el banner de Cartera: abre Ajustes YA en Mis bancos
   // (con el teléfono precargado) — sin pasear al usuario por menús (UX padre 2026-07-18).
   const [banksGoto,setBanksGoto]=useState(0);
+  const [banksFocus,setBanksFocus]=useState("");   // aspsp a resaltar al aterrizar en Mis bancos
   useEffect(function(){
-    const h=function(){ setDrawerMounted(true); setDrawerOpen(true); setBanksGoto(Date.now()); };
+    const h=function(e){
+      setDrawerMounted(true); setDrawerOpen(true); setBanksGoto(Date.now());
+      // `focus` lo manda el sync/la noti: el banco que hay que reconectar se resalta y se centra
+      // en pantalla, para que no haya que buscarlo en la lista (petición 2026-07-24).
+      setBanksFocus((e&&e.detail&&e.detail.focus)||"");
+    };
     window.addEventListener("mc-open-banks",h);
     return function(){ window.removeEventListener("mc-open-banks",h); };
   },[]);
@@ -12453,8 +13282,18 @@ function App(){
     // alarma: el saldo mínimo del mes se va a negativo (cubre tanto el bajón intra-mes como no llegar a fin de mes)
     const bankAlerts=Object.keys(minByBank).filter(b=> minByBank[b] < -0.005);
     const sinProgramar=state.fixed.filter(needsMonth).length; // anuales sin mes asignado (nudge)
+    /* DEPENDENCIAS: ojo al tocar este bloque — la lista de abajo tiene que incluir TODO
+       `state.loQueSea` que se lea aquí dentro (incluidos los que leen las funciones auxiliares:
+       monthNetForAccount → fixed/debts/oneoffs/flows; toEurAmt/invValueEur → fx y fxRates). */
     return {liquid,invested,investedCost,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
-  },[state]);
+  // Antes esto dependía de `[state]` entero. Como `set()` sella `_savedAt` en CADA cambio, el
+  // objeto de estado es nuevo siempre → el memo NUNCA acertaba y este cálculo (que recorre gastos,
+  // fijos, deudas, flujos y simula el mes día a día) se rehacía al abrir una ficha, al escribir en
+  // el buscador, al salir un toast… Con las porciones reales solo se recalcula cuando cambia el
+  // dinero de verdad (parte gorda del «se ralentiza cuanto más la uso» — 2026-07-24).
+  },[state.accounts,state.expenses,state.investments,state.assets,state.debts,state.fixed,
+     state.flows,state.oneoffs,state.aportaciones,state.obAccounts,state.monthStartNet,
+     state.trRewardsTotal,state.fx,state.fxRates]);
 
   const [pricing,setPricing]=useState(false);
   // Cambio USD→EUR dinámico (tipos de referencia del BCE vía frankfurter.app, gratis y sin key).
@@ -13128,8 +13967,13 @@ function App(){
           return out;
         })())
     : null;
-  return React.createElement("div",{className:"app v4"},
+  return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
     seasonFx,
+    // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
+    // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
+    mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",
+      onClick:function(){ mcExitSandbox(); location.reload(); }},
+      "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
       React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
         React.createElement("div",{className:"track",ref:trackRef},
@@ -13188,7 +14032,7 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     React.createElement("div",{
@@ -13217,6 +14061,44 @@ var _mcNative=false;
 try{ _mcNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); }catch(e){}
 var _mcOtaBASE="https://juanjoavila.github.io/Mi-Cartera/";
 var _mcOtaChecking=false;
+
+/* ---------- CANAL DE ACTUALIZACIONES: estable vs beta ----------
+   Petición 2026-07-24: poder probar una versión EN EL MÓVIL antes de que le llegue al resto de la
+   familia. GitHub Pages solo sirve una versión (la de `main`), así que la beta NO va por Pages:
+   se publica como assets de una Release fija con la etiqueta `beta` (workflow .github/workflows/
+   beta.yml). Así lo estable de Pages —lo que ven el padre y la pareja— no se toca jamás.
+
+   El canal es LOCAL de cada móvil (localStorage): no viaja en el estado ni a la nube, para que
+   activar la beta en un móvil no arrastre a los demás. Se enciende desde Ajustes y solo lo ve el
+   dueño (profiles.is_admin). */
+var _mcBetaBASE="https://github.com/JuanjoAvila/Mi-Cartera/releases/download/beta/";
+function mcChannel(){ try{ return localStorage.getItem("_mcChannel")==="beta" ? "beta" : "stable"; }catch(e){ return "stable"; } }
+function mcSetChannel(c){
+  try{
+    if(c==="beta") localStorage.setItem("_mcChannel","beta");
+    else localStorage.removeItem("_mcChannel");
+    // Al cambiar de canal, olvida lo que había pendiente del canal anterior: si no, una beta a
+    // medio descargar seguiría ofreciéndose después de volver a estable.
+    localStorage.removeItem("_otaPending");
+    localStorage.removeItem("_otaNotifVer");
+    localStorage.removeItem("_apkNotifVer");
+  }catch(e){}
+}
+function mcUpdBase(){ return mcChannel()==="beta" ? _mcBetaBASE : _mcOtaBASE; }
+/* Baja un manifiesto (version.json / apk.json) del canal activo. Si estás en beta y ese fichero
+   no existe todavía, cae a estable: nunca dejamos un móvil sin poder actualizarse por estar en
+   un canal vacío. */
+function mcFetchManifest(name){
+  var url=mcUpdBase()+name+"?ts="+Date.now();
+  return fetch(url,{cache:"no-store"}).then(function(r){
+    if(r.ok) return r;
+    if(mcChannel()!=="beta") throw new Error(name+": "+r.status);
+    return fetch(_mcOtaBASE+name+"?ts="+Date.now(),{cache:"no-store"});
+  }).catch(function(e){
+    if(mcChannel()!=="beta") throw e;
+    return fetch(_mcOtaBASE+name+"?ts="+Date.now(),{cache:"no-store"});
+  });
+}
 
 window._mcNewerVer=function(a,b){
   a=String(a).split("."); b=String(b).split(".");
@@ -13318,7 +14200,7 @@ window._mcDownloadOta=function(up, v, opts){
   // Pill YA mientras descarga (antes solo al terminar → «tarda un montón», 2026-07-16).
   if(!manual) window._mcSignalOtaPending(v.version);
   if(manual&&toast) toast(tf("st_up_applying",{v:v.version}));
-  return up.download({url:(v.url||_mcOtaBASE+"bundle.zip"), version:v.version})
+  return up.download({url:(v.url||mcUpdBase()+"bundle.zip"), version:v.version})
     .then(function(b){
       if(manual){
         try{ localStorage.setItem("_otaPending", v.version); }catch(e){}
@@ -13336,7 +14218,9 @@ window._mcCheckOtaUpdates=function(opts){
   if(!up) return Promise.resolve(false);
   _mcOtaChecking=true;
   var manual=opts&&opts.manual;
-  return fetch(_mcOtaBASE+"version.json?ts="+Date.now(),{cache:"no-store"})
+  // En beta, si el manifiesto no está (aún no hay ninguna beta publicada, o la release se borró),
+  // se cae a estable en vez de dejar el móvil sin actualizaciones.
+  return mcFetchManifest("version.json")
     .then(function(r){ return r.json(); })
     .then(function(v){
       if(!v||!v.version) return false;
@@ -13385,7 +14269,7 @@ window._mcCheckApkUpdate=function(opts){
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
   var autoInstall=opts&&opts.autoInstall!==false;   // al detectar APK nueva, abre el instalador sola
-  return fetch(_mcOtaBASE+"apk.json?ts="+Date.now(),{cache:"no-store"})
+  return mcFetchManifest("apk.json")
     .then(function(r){ return r.json(); })
     .then(function(a){
       if(!a||!a.versionCode||!a.url) return false;
@@ -13464,8 +14348,6 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0 && !_mc
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
 // Tras pintar Resumen: carga Sentry sin pelearse con el arranque (antes bloqueaba ~340 KB).
 mcScheduleIdle(function(){ mcLoadSentryDeferred(); }, 1800);
-</script>
-
 </script>
 
 <script>(function(){

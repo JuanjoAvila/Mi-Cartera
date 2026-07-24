@@ -116,6 +116,31 @@ Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
 - **Updates:** transporte en `12-boot.js`, estado de UI en `useUpdates()` (10-app-components).
   Lógica nueva de updates → al hook, no a efectos sueltos en App.
 
+## 7 bis. Rendimiento: lo que cuesta caro es el TAMAÑO, no la frecuencia
+
+Lección de la 4.8.0, tras el enésimo «cuanto más tiempo uso la app, más lenta va».
+
+- **El estado se guarda PARTIDO.** `expenses` vive en su propia clave (`micartera_v3_exp`) y solo
+  se reescribe cuando cambia la REFERENCIA del array. Antes, cada `set()` serializaba el estado
+  entero, y ese blob crece cada día con lo que entra del banco y del lector de notis: con 2.000
+  gastos son 254 KB por escritura, con 20.000 son 2,5 MB — en la WebView de un móvil, centenares de
+  ms de hilo principal bloqueado, cada vez peor con los meses. **No metas los gastos de vuelta en
+  la clave principal** ni escribas el estado entero «por si acaso»: usa `mcSaveRaw`/`mcLoadRaw`.
+- **Un updater que no toca los gastos NO debe devolver un array de gastos nuevo.** Si construyes
+  `expenses` con `.map`/`.concat` y el resultado es idéntico, devuelve el array de antes (mira
+  `syncCloudExpenses` y `enrichNotesFromBankTx`). Un array nuevo = re-render de todo + reescritura
+  del histórico. Y `syncCloudExpenses` corre en CADA vuelta a primer plano.
+- **`set()` sella `_savedAt`, así que el objeto de estado es nuevo SIEMPRE.** Cualquier
+  `useMemo(..., [state])` no acierta jamás. Depende de las porciones concretas que leas — y si el
+  cálculo usa funciones auxiliares, incluye también lo que lean ellas (ver el comentario de deps
+  en el `totals` de `11-app-main.js`).
+- **Fechas:** `parseDate` cachea; para comparar y ordenar usa `dateMs()`, que no crea objetos.
+  Nunca construyas `Date` dentro de un filtro que recorre el histórico.
+- **Antes de decir que algo va más rápido, MÍDELO A/B** contra `main` (`git archive HEAD` a un
+  temporal, `build-app`, `serve` en otro puerto y dos pasadas del mismo guion en Playwright). En la
+  4.8.0 el primer intento daba 1,1-1,5× y parecía poco; medir los BYTES escritos por vuelta a
+  primer plano fue lo que enseñó dónde estaba el problema de verdad.
+
 ## 8. Cobertura e2e: pendiente ampliar (no solo brókers)
 
 Hoy `e2e/` cubre: arranque/onboarding, el sheet de «Apuntar», borrar cuenta, la animación de
@@ -130,6 +155,37 @@ son render puro y `npm test` no abre pantallas.
 (acepta overrides desde 4.7.1 — no dupliques el objeto de estado entero), navega a la pantalla
 real y asere `toHaveCount`/`toContainText` contra el DOM, no contra el código. No hace falta
 migrar todo de golpe: añade cobertura de la zona que toques, así el hueco se va cerrando solo.
+
+**Estado en 4.8.0: el hueco de §8 está cerrado** (Deudas, Metas, Recibos y «Tus cuentas» tienen
+e2e en `listas-render.spec.mjs`). El suite pasó de 10 a 34 pruebas. Mapa de lo que hay:
+
+| Fichero | Qué protege |
+|---------|-------------|
+| `smoke` · `apuntar-sheet` · `profile-anim` · `delete-account` | arranque, hoja de Apuntar, perfil, borrar cuenta |
+| `cartera-inversiones` | bloques de brókers (regresión de 4.7.1) |
+| `listas-render` | Deudas, Metas, Recibos y cuentas + banner de bancos caídos |
+| `gastos-concepto` | concepto del movimiento en lista, ficha y buscador |
+| `persistencia` | guardado partido, migración del formato viejo y que volver a primer plano no reescriba el histórico |
+| `modo-pruebas` | que el banco de pruebas NO toque la cartera real |
+| `csp` | que la política de seguridad no bloquee nada de la app (rompe en silencio) |
+| `rendimiento` | que el trabajo no se dispare con un histórico grande |
+
+Notas de fontanería para escribir e2e aquí:
+- **Solo hay CUATRO pestañas** (`tabOrderOf`): `inicio`, `gastos`, `plan`, `cartera`. Deudas, Metas
+  y Recibos están DENTRO de Plan, en `.v4-seg-btn` — no hay `data-tour="metas"`.
+- Apuntar va por `.botnav-fab` y **teclado propio** (`.v4-keys button`), no por un `<input>`.
+- `page.addInitScript` se re-ejecuta en CADA carga, también tras un `location.reload()`. Si el test
+  siembra algo que la app va a cambiar, mete un guardo (`_e2eSeeded`) o nunca verás el cambio.
+- Para comprobar si algo se reescribió, **envuelve `localStorage.setItem` y cuenta**. Marcar un
+  array con una propiedad no vale: `JSON.stringify` de un Array tira todo lo que no sea índice.
+- El binario de Chromium se puede fijar con `PLAYWRIGHT_CHROMIUM_PATH` (entornos con uno ya
+  instalado y una versión de Playwright que espera otra build).
+
+`npm test` también corre ahora **`i18n-keys`** (hace cumplir §4: toda clave usada existe en los
+tres idiomas y con los mismos `{placeholders}`) y **`security`** (invariantes que no se ven en un
+diff: que toda escritura nueva de `cloud` esté en `CLOUD_WRITES` —si no, el modo pruebas escribiría
+en producción—, que ninguna credencial salga de `Math.random()` y que la CSP conserve lo que
+importa).
 
 ## 9. Privacidad y dinero
 

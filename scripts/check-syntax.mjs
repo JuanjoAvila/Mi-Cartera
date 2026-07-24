@@ -12,15 +12,19 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const htmlPath = path.join(root, "public", "index.html");
 const html = fs.readFileSync(htmlPath, "utf8");
 
+// Los comentarios HTML se quitan ANTES de buscar bloques: si uno menciona la etiqueta de script
+// (por ejemplo explicando por qué la CSP necesita 'unsafe-inline'), la regex empezaba a capturar
+// ahí y daba un error de sintaxis absurdo sobre una frase en castellano (pasó el 2026-07-24).
+const scanHtml = html.replace(/<!--[\s\S]*?-->/g, "");
 const scriptRe = /<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi;
 let match;
 let idx = 0;
 let failed = false;
 
-while ((match = scriptRe.exec(html)) !== null) {
+while ((match = scriptRe.exec(scanHtml)) !== null) {
   idx++;
   const src = match[1].trim();
-  if (!src || src.startsWith("try{var _s=JSON.parse")) continue; // tema pre-paint
+  if (!src || /^try\{var _[ks]=/.test(src)) continue; // tema pre-paint (lee la clave real o la de pruebas)
   try {
     new vm.Script(src, { filename: `public/index.html:script#${idx}` });
     console.log(`OK  script #${idx} (${src.length} chars)`);

@@ -31,8 +31,28 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  categorizar, clasificar, extraerComercio, extraerImporte, extraerPersona, type Tipo,
+  categorizar, clasificar, extraerComercio, extraerConcepto, extraerImporte, extraerPersona, type Tipo,
 } from "../_shared/ingest_logic.ts";
+
+/**
+ * Comparación en tiempo CONSTANTE del token (2026-07-24).
+ *
+ * `a === b` en JavaScript corta en el primer byte distinto, así que el tiempo de respuesta filtra
+ * cuántos caracteres has acertado. Quien tenga paciencia puede reconstruir el token byte a byte y,
+ * con él, meter gastos falsos en la cuenta de cualquiera. Con el jitter de la red es difícil de
+ * explotar, pero el arreglo cuesta cuatro líneas y quita el problema de raíz.
+ *
+ * Se comparan SIEMPRE los mismos bytes (longitud fija) para que ni siquiera la longitud se filtre.
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  const len = Math.max(ba.length, bb.length);
+  let diff = ba.length ^ bb.length;
+  for (let i = 0; i < len; i++) diff |= (ba[i] ?? 0) ^ (bb[i] ?? 0);
+  return diff === 0;
+}
 
 function parseFecha(t: string): string {
   const n = parseInt(t);
@@ -59,7 +79,7 @@ Deno.serve(async (req) => {
 
   let userId: string | null = null;
   const legacyToken = Deno.env.get("INGEST_TOKEN");
-  if (legacyToken && token === legacyToken) {
+  if (legacyToken && timingSafeEqual(token, legacyToken)) {
     userId = Deno.env.get("INGEST_USER_ID") || null;
     if (!userId) return json({ ok: false, error: "INGEST_USER_ID no configurado" }, 500);
   } else {
@@ -68,7 +88,10 @@ Deno.serve(async (req) => {
     userId = tok?.user_id || null;
   }
   if (!userId) {
-    await logIngestError(supabase, null, "token inválido (lector nativo con token no registrado)", "token=" + token.slice(0, 8) + "…");
+    // NO se apunta ni un trozo del token: es una credencial, y una tabla de diagnóstico no es
+    // sitio para guardar credenciales ni a medias. Con la longitud basta para distinguir «token
+    // viejo/truncado» de «token de otro proyecto» (2026-07-24).
+    await logIngestError(supabase, null, "token inválido (lector nativo con token no registrado)", "len=" + token.length);
     return json({ ok: false, error: "token inválido" }, 403);
   }
 
@@ -110,6 +133,10 @@ Deno.serve(async (req) => {
     cat = categorizar(comercio);
   }
 
+  // CONCEPTO (2026-07-24): el mensaje del bizum / la descripción que venía en la noti. Se guarda
+  // aparte del título para que el histórico se explique solo y no haya que abrir la app del banco.
+  const nota = extraerConcepto(texto, titulo);
+
   // 3) Inserción (service role → salta RLS, cliente creado arriba). Dedup contra expenses_dedup_idx.
   // VENTANA ANTI-DUPLICADO (bug cobro doble 2026-07-10): el índice de dedup exige el MISMO
   // timestamp, pero un pago con confirmación genera dos notis con minutos de diferencia
@@ -128,7 +155,7 @@ Deno.serve(async (req) => {
   const { error } = await supabase
     .from("expenses")
     .upsert(
-      { user_id: userId, fecha, importe, comercio, cat, source: "macrodroid", no_card: noCard },
+      { user_id: userId, fecha, importe, comercio, cat, source: "macrodroid", no_card: noCard, nota: nota || null },
       { onConflict: "user_id,fecha,importe,comercio", ignoreDuplicates: true },
     );
   if (error) {
@@ -167,7 +194,7 @@ Deno.serve(async (req) => {
     }
   } catch (_) { /* opcional; el movimiento ya está guardado */ }
 
-  return json({ ok: true, tipo, fecha, importe, comercio, cat, alert, month });
+  return json({ ok: true, tipo, fecha, importe, comercio, cat, nota: nota || null, alert, month });
 });
 
 function json(obj: unknown, status = 200) {

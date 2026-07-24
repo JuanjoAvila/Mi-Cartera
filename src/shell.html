@@ -11,6 +11,47 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <title>Mi Cartera</title>
 
+<!-- ================== Content-Security-Policy (2026-07-24) ==================
+     Red de seguridad: aunque alguien colara HTML/JS en la página, el navegador no dejaría cargar
+     código de un sitio no listado ni mandar los datos de la cartera a ningún lado. Aquí van
+     números de cuentas y patrimonio: merece la pena el cinturón además de los tirantes.
+
+     ⚠ SI AÑADES UNA LLAMADA A UN DOMINIO NUEVO, AÑÁDELO AQUÍ o fallará en silencio.
+     Inventario de lo que hay hoy (todo lo demás está auto-hospedado, regla de AGENTS.md §3):
+       · supabase.co ........... nube: login, estado, gastos y Edge Functions
+       · api.frankfurter.app ... tipos de cambio del BCE
+       · juanjoavila.github.io . manifiestos OTA (version.json / apk.json) desde la app Android
+       · github.com + objects.githubusercontent.com … manifiestos del canal BETA (release `beta`)
+       · google.com / gstatic.com … reCAPTCHA del login de MyInvestor (se carga solo si entras ahí)
+     MyInvestor y Trade Republic NO van aquí: sus peticiones salen por el puente NATIVO, fuera del
+     navegador, y la CSP no las toca.
+
+     (Ojo: en este comentario NO se puede escribir la etiqueta de script literal — el extractor de
+     scripts de check-syntax.mjs la encuentra por regex y se lía, aunque esté dentro de un
+     comentario. Pasó al añadir esta CSP.)
+
+     'unsafe-inline' es inevitable: la app entera va en un único bloque inline sin paso de build,
+     y en hosting estático no hay forma de poner un nonce por petición. Aun así, el resto de la
+     política sigue valiendo: object-src/base-uri a 'none' y connect-src cerrado son justo lo que
+     corta la exfiltración. (frame-ancestors se ignora en <meta>; GitHub Pages ya manda
+     X-Frame-Options: DENY.) -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  base-uri 'none';
+  object-src 'none';
+  form-action 'self';
+  manifest-src 'self';
+  worker-src 'self';
+  script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com;
+  style-src 'self' 'unsafe-inline';
+  font-src 'self' data:;
+  img-src 'self' data: blob: https://www.gstatic.com;
+  frame-src https://www.google.com;
+  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://www.google.com https://www.gstatic.com;
+" />
+<!-- Que no se filtre la URL de la app (ni sus parámetros) al salir hacia el banco. -->
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+
 <!-- Adelanta el TLS de la única conexión externa que queda (la nube) -->
 <link rel="preconnect" href="https://sfyfjagbnhbplrljpbvh.supabase.co" crossorigin>
 <!-- Fuentes AUTO-HOSPEDADAS (public/fonts/, variables, latin+latin-ext): sin CDN de Google,
@@ -19,7 +60,9 @@
 <link rel="preload" href="fonts/fraunces-latin.woff2" as="font" type="font/woff2" crossorigin>
 
 <!-- Tema ANTES del primer pintado: evita el fogonazo oscuro del splash en temas claros -->
-<script>try{var _s=JSON.parse(localStorage.getItem("micartera_v3"));var _th=_s&&_s.settings&&_s.settings.theme;if(_th)document.documentElement.setAttribute("data-theme",_th);}catch(e){}</script>
+<!-- Tema ANTES del primer pintado (si no, destello blanco). Lee la cartera de pruebas cuando el
+     modo pruebas está activo, para que el tema no baile al entrar y salir de él. -->
+<script>try{var _k=localStorage.getItem("_mcSandbox")==="1"?"micartera_sandbox":"micartera_v3";var _s=JSON.parse(localStorage.getItem(_k));var _th=_s&&_s.settings&&_s.settings.theme;if(_th)document.documentElement.setAttribute("data-theme",_th);}catch(e){}</script>
 
 <!-- Supabase (sincronización en la nube) AUTO-HOSPEDADO y con versión fijada (v2.110.0, public/vendor/).
      Antes venía de cdn.jsdelivr.net con la etiqueta @2 flotante: una versión nueva con breaking change
@@ -592,6 +635,13 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .botnav-fab:active{transform:scale(.92);}
   .botnav-fab:focus-visible{outline:2px solid var(--mint);outline-offset:3px;}
   .app.v4{padding-top:calc(var(--safe-top) + 4px);}
+  /* Banda del banco de pruebas: imposible de confundir con la app de verdad, pero sin robar
+     apenas alto (el móvil ya va justo). Toda la banda es el botón de salir. */
+  .sandbox-bar{flex:0 0 auto;width:100%;border:none;display:block;text-align:center;cursor:pointer;
+    background:repeating-linear-gradient(45deg,#E2A05F,#E2A05F 12px,#C9803F 12px,#C9803F 24px);
+    color:#1A1005;font-weight:800;font-size:11.5px;letter-spacing:.02em;padding:5px 10px;
+    font-family:'Manrope',sans-serif;}
+  .app.sandbox{padding-top:var(--safe-top);}
   .app.v4 .topbar,.app.v4 .tabbar-wrap,.app.v4 .dots{display:none !important;}
   .app.v4 .viewport{flex:1;min-height:0;}
 
@@ -695,6 +745,9 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-exp-ico{width:48px;height:48px;border-radius:16px;border:1px solid;display:grid;place-items:center;font-size:22px;margin:0 auto 10px;}
   .v4-exp-amt{width:100%;border:none;background:transparent;color:var(--text);font-size:36px;font-weight:550;letter-spacing:-1px;text-align:center;padding:4px 0;outline:none;font-variant-numeric:tabular-nums;}
   .v4-exp-name{width:100%;border:none;background:transparent;color:var(--text);font-size:16px;font-weight:700;text-align:center;padding:2px 8px 6px;outline:none;}
+  .v4-exp-note-in{width:100%;border:1px solid var(--line-soft);background:var(--sur);color:var(--text);
+    font-size:15px;border-radius:14px;padding:12px 14px;outline:none;}
+  .v4-exp-note-in:focus{border-color:var(--mint);}
   .v4-exp-name::placeholder{color:var(--muted-2);font-weight:600;}
   .v4-exp-meta{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:2px;}
   .v4-exp-sec{font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted-2);margin:4px 2px 8px;}
@@ -783,6 +836,11 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes wn-in{from{transform:translate3d(0,12%,0);opacity:0;}to{transform:none;opacity:1;}}
   .wn-panel .wn-inner{max-width:480px;margin:0 auto;}
   .v4-mov .nm-title{font-weight:700;font-size:15.5px;line-height:1.25;}
+  /* Concepto del movimiento (mensaje del bizum / descripción del banco). Una sola línea con
+     puntos suspensivos: el detalle completo está en la ficha, aquí solo hay que reconocerlo
+     de un vistazo (petición 2026-07-24). */
+  .v4-mov .nm-note{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.3;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .v4-mov .nm-cat{font-size:12.5px;font-weight:650;margin-top:2px;line-height:1.2;}
   .v4-banks .bk-sec{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted-2);margin:18px 2px 8px;}
   .v4-banks .bk-card .bk-h{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
@@ -790,6 +848,11 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .v4-banks .bk-card .bk-h .sub{font-size:12px;color:var(--muted);font-weight:600;}
   .v4-banks .v4-mov{margin-bottom:8px;}
   .v4-banks .bk-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:0 2px;}
+  /* Banco al que te manda el aviso de «reconéctalo»: un latido corto para que salte a la vista
+     sin marear (respeta «reducir animaciones»). */
+  .bk-focus{border-radius:18px;animation:bkfocus 1.6s ease-out 2;}
+  @keyframes bkfocus{0%,100%{box-shadow:0 0 0 0 rgba(226,112,95,0);}35%{box-shadow:0 0 0 4px rgba(226,112,95,.30);}}
+  html.reduce-motion .bk-focus{animation:none;box-shadow:0 0 0 3px rgba(226,112,95,.28);}
   .v4-banks .bk-actions .btn{flex:1 1 auto;min-width:0;padding:10px 12px;font-size:13px;}
 
   @keyframes sheetup{from{transform:translateY(100%);}to{transform:translateY(0);}}
@@ -1246,8 +1309,6 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 
 <script>
 <!--MC_APP_SCRIPT-->
-</script>
-
 </script>
 
 <script>(function(){

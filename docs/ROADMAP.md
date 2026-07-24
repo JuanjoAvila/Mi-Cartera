@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-22 · **v4.7.0** — notis sin duplicados (gasto tocho y recibo de la víspera, éste además con importe exacto), roles de cuenta excluyentes y en el subtítulo del banco, brókers con animación + orden configurable, deudas con «Quedan n/tot cuotas» y «acabas en» uniformes, badge de reCAPTCHA oculto con errores diagnosticables. El fix del gasto tocho es Java → **APK 31 publicado**. **v4.6.4:** MyInvestor: intento OTA de resolver el reCAPTCHA en la WebView (pegando el site key). **v4.6.3:** «Gasto diario» multi-banco en el chip de siempre (quitado el duplicado). **v4.6.2:** barra inferior pegada abajo con letra pequeña/enorme, widget re-empuja al volver a la app. (4.6.1:) letra pequeña, Hogar movido a Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
+> Estado a 2026-07-24 · **v4.8.0** — **rendimiento**: el estado se guarda PARTIDO (los gastos en su propia clave, solo se reescriben cuando cambian) → volver a primer plano pasa de escribir 477 KB (2.000 gastos) / 1.912 KB (8.000) a **1 KB constante**, que es la causa real del «cuanto más la uso, más lenta va»; `totals` con dependencias reales, `parseDate` cacheado, filtrado de Gastos en una pasada y filas en `React.memo`. **Concepto de los movimientos** (mensaje del bizum / descripción del banco, editable y con relleno retroactivo al sincronizar). **Bancos caídos**: noti + deep-link al panel con el banco resaltado. **Entorno de pruebas** del dueño: banco de pruebas aislado + canal beta por release `beta`. **Seguridad**: CSP, token de ingest de 256 bits, comparación en tiempo constante. E2E de 10 → 34.
+>
+> Anterior: 2026-07-22 · **v4.7.0** — notis sin duplicados (gasto tocho y recibo de la víspera, éste además con importe exacto), roles de cuenta excluyentes y en el subtítulo del banco, brókers con animación + orden configurable, deudas con «Quedan n/tot cuotas» y «acabas en» uniformes, badge de reCAPTCHA oculto con errores diagnosticables. El fix del gasto tocho es Java → **APK 31 publicado**. **v4.6.4:** MyInvestor: intento OTA de resolver el reCAPTCHA en la WebView (pegando el site key). **v4.6.3:** «Gasto diario» multi-banco en el chip de siempre (quitado el duplicado). **v4.6.2:** barra inferior pegada abajo con letra pequeña/enorme, widget re-empuja al volver a la app. (4.6.1:) letra pequeña, Hogar movido a Cartera, animaciones de temporada con profundidad/parallax estilo Revolut. (Base:) **v4.6.0** — temáticas de temporada, accesibilidad (letra grande a nivel body sin descuadres, reducir animaciones, contraste), metas con teclado propio + banco, más monedas + comparativa, varios bancos de gasto diario, selección de Cartera persistida, Ajustes reordenados y encogidos al abrir, widget con «lo que te puedes permitir» (APK 30).
 
 ## Listo para uso diario
 
@@ -10,8 +12,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.7.0** |
-| APK (`versionName` / `versionCode`) | **4.7.0** / **31** publicada (release GitHub `v4.7.0`) |
+| Web / OTA (`VERSION`) | **4.8.0** |
+| APK (`versionName` / `versionCode`) | **4.7.0** / **31** publicada (release GitHub `v4.7.0`) — 4.8.0 es **OTA web**, no necesita APK nueva |
 | `public/apk.json` | **31** / 4.7.0 → `Mi-Cartera-4.7.0.apk` |
 
 ## Pendiente / limitaciones conocidas

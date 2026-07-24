@@ -1,0 +1,75 @@
+name: Promocionar beta a producción
+
+# La otra mitad del flujo de pruebas: cuando la beta ya está probada EN EL MÓVIL y aprobada desde
+# Ajustes → Dev → Pruebas → Revisar esta beta, esto la sube a producción.
+#
+# Se lanza A MANO (Actions → este workflow → «Run workflow») a propósito: subir algo a producción
+# es lo que ven el padre y la pareja, y no debe poder dispararlo nada automático. Mergea `beta` en
+# `main`, y el push a `main` arranca el deploy de Pages de siempre.
+#
+# ¿Por qué no lo lanza la app directamente? Haría falta guardar un token de GitHub con permiso de
+# escritura sobre el repo en Supabase, y eso es una credencial nueva y jugosa a cambio de ahorrar
+# un clic. No compensa (misma lógica que AGENTS.md §9 sobre secretos).
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: 'Escribe SUBIR para confirmar (la verá tu padre y tu pareja)'
+        required: true
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: promote-beta
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar la confirmación
+        if: ${{ inputs.confirmar != 'SUBIR' }}
+        run: |
+          echo "::error::Hay que escribir SUBIR para confirmar. No se ha tocado nada."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: ¿Hay algo que subir?
+        run: |
+          git fetch origin main beta
+          if [ -z "$(git log origin/main..origin/beta --oneline)" ]; then
+            echo "::error::`beta` no tiene nada que `main` no tenga ya. Nada que promocionar."
+            exit 1
+          fi
+          echo "### Se va a subir a producción" >> $GITHUB_STEP_SUMMARY
+          git log origin/main..origin/beta --oneline >> $GITHUB_STEP_SUMMARY
+
+      # Los mismos tests que el deploy: que una beta esté probada a mano no exime de la suite.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Tests
+        run: |
+          git checkout beta
+          npm ci
+          npx playwright install chromium --with-deps
+          node scripts/run-tests.mjs
+
+      - name: Mergear beta → main
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
+          git push origin main
+
+      - name: Resumen
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Subido a \`main\`. El workflow de Pages publica en un par de minutos y la app se lo ofrece sola a todo el mundo." >> $GITHUB_STEP_SUMMARY

@@ -277,7 +277,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
             if(!isIn && keys[kOf(dt,abs,tx.merchant)]) return;
             if(isIn && keys[kOf(dt,-abs,tx.merchant)]) return;
             const k=(tx.ext_id||"")+"|"+(isIn?"in":"out")+"|"+kOf(dt,abs,tx.merchant); if(uniq[k]) return; uniq[k]=1;
-            out.push({ id:tx.ext_id||null, date:dt, amount:abs, merchant:tx.merchant||(isIn?t("cat_ingreso"):"Compra"), card:!!tx.card, ent:ent, kind:isIn?"in":"out" });
+            out.push({ id:tx.ext_id||null, date:dt, amount:abs, merchant:tx.merchant||(isIn?t("cat_ingreso"):"Compra"), note:tx.note||"", card:!!tx.card, ent:ent, kind:isIn?"in":"out" });
           });
         });
       });
@@ -314,10 +314,14 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
       }
       if(d==="ingreso"){
         const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:-Math.abs(x.amount), category:"ingreso", source:"ob-hist", ent:x.ent, noCard:true, income:true };
-        if(x.id) e.extId=x.id; expAdds.push(e); return;
+        if(x.id) e.extId=x.id;
+        const nti=cleanNote(x.note, e.merchant); if(nti) e.note=nti;   // concepto del extracto (2026-07-24)
+        expAdds.push(e); return;
       }
       const e={ id:uid(), date:new Date(x.date+"T12:00:00").toISOString(), merchant:x.merchant, amount:Math.abs(x.amount), category:autoCategory(x.merchant||""), source:"ob-hist", ent:x.ent };
-      if(x.id) e.extId=x.id; expAdds.push(e);
+      if(x.id) e.extId=x.id;
+      const nt=cleanNote(x.note, e.merchant); if(nt) e.note=nt;
+      expAdds.push(e);
     });
     set(function(s){
       const next=Object.assign({},s);
@@ -378,7 +382,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   ));
 }
 
-function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks, fetchPrices}){
+function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks, fetchPrices, focusAspsp}){
   const [histOpen,setHistOpen]=useState(false);
   const [links,setLinks]=useState(null);          // null = cargando
   const [aspsps,setAspsps]=useState(null);        // null = sin cargar
@@ -387,6 +391,15 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   const [busy,setBusy]=useState("");              // aspsp en curso / "__sync"
   const [picking,setPicking]=useState(false);
   const [confirming,setConfirming]=useState("");  // aspsp cuyo "¿quitar?" está abierto
+  // Banco a resaltar al entrar (viene del sync o de la noti «reconéctalo»): lo centramos en
+  // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
+  const focusRef=useRef(null);
+  useEffect(function(){
+    if(!focusAspsp || !links || !links.length) return;
+    const el=focusRef.current; if(!el || !el.scrollIntoView) return;
+    const tm=setTimeout(function(){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
+    return function(){ clearTimeout(tm); };
+  },[focusAspsp,links]);
   useBackClose(picking, function(){ setPicking(false); setQ(""); });   // gesto atrás: sale del picker, no de la app
   const loadLinks=function(){ if(!cloud.enabled()){ setLinks([]); return; } cloud.bankLinks().then(function(rows){ setLinks(rows||[]); if(onLinks) onLinks(rows||[]);   // el contador de Ajustes se entera al momento
     if((rows||[]).some(function(r){return r.status==='active'||r.status==='pending';})) set(function(s){ return s.hasBankLink?s:Object.assign({},s,{hasBankLink:true}); });
@@ -469,12 +482,14 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
       const noAcct = l.status==='error';
+      // El banco que venías a arreglar (desde el sync o la noti): resaltado y centrado en pantalla.
+      const isFocus = !!focusAspsp && l.aspsp_name===focusAspsp;
       const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
                : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
                : pill(t("bp_st_expired"),"var(--coral)");
-      return React.createElement("div",{key:l.aspsp_name,style:{marginBottom:6}},
-        React.createElement("div",{className:"v4-mov",style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)"}},
+      return React.createElement("div",{key:l.aspsp_name,"data-aspsp":l.aspsp_name,ref:isFocus?focusRef:null,className:isFocus?"bk-focus":undefined,style:{marginBottom:6}},
+        React.createElement("div",{className:"v4-mov",style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+(isFocus?"var(--coral)":"var(--line-soft)"),background:"var(--sur)"}},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"nm"}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--mint)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
@@ -548,6 +563,134 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
 /* Página «Actividad» del admin (petición 2026-07-11): antes era un acordeón dentro de Ajustes y
    con los errores acumulándose el cajón se hacía gigante; ahora es una pantalla propia (patrón
    BankPanel) con filtro «solo errores». Sin traducir a propósito: consola privada del admin. */
+/* ============================================================
+   REVISAR LA BETA — «code review» pero probando la app, no leyendo código
+   ============================================================
+   Petición 2026-07-24. El propio usuario decía que un botón de «aprobar» era medio chorrada
+   porque puede pedir el despliegue a mano… y para la parte de DESPLEGAR tiene razón. Lo que NO es
+   redundante, y es el motivo real de que esto exista:
+
+     1. QUÉ hay que probar. Se prueba días después, en el sofá, y para entonces ya no te acuerdas
+        de qué traía la versión. La lista sale de RELEASE_NOTES de la versión que corre, así que
+        no hay nada que mantener aparte: cada release trae su checklist sola.
+     2. QUÉ falla, dicho EN EL MOMENTO. Encuentras el fallo usando la app y lo apuntas ahí mismo,
+        en vez de acordarte a medias tres horas después.
+     3. QUÉ se aprobó. Queda registrado qué versión, desde qué móvil y cuándo — con tres betas
+        seguidas, «sube eso que ya lo probé» es ambiguo.
+
+   El progreso se guarda en localStorage por versión: probar lleva días y cerrar la app no puede
+   borrarlo. Sin traducir, como «Actividad»: es la consola privada del dueño. */
+function betaChecklist(version){
+  // Las notas de la versión en curso SON la checklist. La beta lleva sufijo de compilación
+  // (4.8.0.17) y las notas van por versión base (4.8.0) → se casa por prefijo.
+  var base=String(version||"").split(".").slice(0,3).join(".");
+  var notes=(typeof RELEASE_NOTES!=="undefined"&&RELEASE_NOTES.length)
+    ? (RELEASE_NOTES.filter(function(n){ return n.v===base; })[0] || RELEASE_NOTES[0])
+    : null;
+  return notes ? { v:notes.v, t:notes.t, items:(notes.items||[]) } : { v:base, t:"", items:[] };
+}
+function BetaReviewPanel({onClose, showToast}){
+  useBackClose(true, onClose);
+  const pack=betaChecklist(CONFIG.APP_VERSION);
+  const storeKey="_betaReview_"+pack.v;
+  // {i: "ok" | "ko"} + notas de los que fallan
+  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || {}; });
+  const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
+  const [busy,setBusy]=useState(false);
+  const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
+  const mark=function(i,v){
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); return m; });
+  };
+  const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
+
+  const total=pack.items.length;
+  const ok=pack.items.filter(function(_,i){ return marks[i]==="ok"; }).length;
+  const ko=pack.items.filter(function(_,i){ return marks[i]==="ko"; }).length;
+  const pend=total-ok-ko;
+
+  const enviar=function(verdict){
+    if(busy) return;
+    setBusy(true);
+    const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
+    const payload={
+      verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
+      probados:ok, fallos:ko, sinProbar:pend, detalle:fallos,
+      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
+        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+
+        (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
+    };
+    cloud.betaReport(payload)
+      .then(function(){ setSent(verdict); showToast(verdict==="approved"?"✅ Aprobada · queda registrado":"⛔ Enviado · no se sube"); })
+      .catch(function(e){ showToast("✕ No se pudo enviar: "+((e&&e.message)||e)); })
+      .finally(function(){ setBusy(false); });
+  };
+
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const btn=function(on,color){ return {flex:1,background:on?color:"var(--surface-2)",color:on?"#06120C":"var(--text)",
+    border:on?"none":"1px solid var(--line)",borderRadius:12,padding:"9px 6px",fontSize:13,fontWeight:800,cursor:"pointer"}; };
+
+  return React.createElement("div",{style:wrap,className:"beta-review"}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🧪 Revisar la beta"),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
+      "v"+CONFIG.APP_VERSION+(pack.t?" · "+pack.t:"")),
+    React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
+      "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+
+    // Progreso
+    React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
+      React.createElement("div",{style:{flex:1,height:8,borderRadius:8,background:"var(--surface-2)",overflow:"hidden"}},
+        React.createElement("div",{style:{width:(total?Math.round((ok+ko)/total*100):0)+"%",height:"100%",
+          background:ko?"var(--coral)":"var(--mint)",transition:"width .25s ease"}})),
+      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko)+"/"+total)),
+
+    pack.items.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)"}},
+      "Esta versión no trae notas, así que no hay checklist. Prueba lo que hayas tocado."),
+
+    pack.items.map(function(it,i){
+      const m=marks[i];
+      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":"var(--line-soft)"),
+        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)"}},
+        React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
+          React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
+        m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
+          placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
+          onChange:function(e){ setNote(i,e.target.value); }})
+      );
+    }),
+
+    // Veredicto
+    sent
+      ? React.createElement("div",{style:{marginTop:16,padding:"14px 16px",borderRadius:16,
+          border:"1px solid "+(sent==="approved"?"var(--mint)":"var(--coral)"),background:"var(--sur)"}},
+          React.createElement("div",{style:{fontWeight:800,fontSize:14.5,marginBottom:6}},
+            sent==="approved" ? "✅ Beta aprobada" : "⛔ Beta rechazada"),
+          React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.5}},
+            sent==="approved"
+              ? "Queda registrado (Actividad → filtro «beta»). Para subirla a producción: dile a Claude «sube la beta», o lanza el workflow «Promocionar beta a producción» en GitHub → Actions. La app no puede hacer un merge de git ella sola."
+              : "Queda registrado con lo que falla. No la subas hasta arreglarlo."))
+      : React.createElement(React.Fragment,null,
+          ko>0 && React.createElement("button",{type:"button",className:"v4-danger",style:{marginTop:6},disabled:busy,
+            onClick:function(){ enviar("rejected"); }}, busy?"Enviando…":("⛔ Reportar "+ko+" fallo(s) · no subir")),
+          React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,opacity:(pend>0||ko>0)?0.45:1},
+            disabled:busy||pend>0||ko>0,onClick:function(){ enviar("approved"); }},
+            busy?"Enviando…":"✅ Aprobar esta beta"),
+          (pend>0||ko>0) && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",textAlign:"center",marginTop:8,lineHeight:1.5}},
+            ko>0 ? "Hay algo marcado como que falla: arréglalo antes de aprobar."
+                 : "Te quedan "+pend+" cosa(s) por probar.")
+        ),
+
+    React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:14},
+      onClick:function(){ store.del(storeKey); store.del(storeKey+"_n"); setMarks({}); setNotes({}); setSent(null); }},
+      "↺ Empezar la revisión de cero")
+  ));
+}
+
 function ActivityPanel({events, onReload, onClose}){
   const [flt,setFlt]=useState("all");   // all | error | feedback
   useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
@@ -557,6 +700,7 @@ function ActivityPanel({events, onReload, onClose}){
   const chip=function(on){ return {background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)",borderRadius:20,padding:"6px 13px",fontSize:12.5,fontWeight:700,cursor:"pointer"}; };
   const nErr=(events||[]).filter(function(ev){ return ev.kind==="error"; }).length;
   const nFb=(events||[]).filter(function(ev){ return ev.kind==="feedback"; }).length;
+  const nBeta=(events||[]).filter(function(ev){ return ev.kind==="beta"; }).length;   // veredictos de beta probada en el móvil
   const list=(events||[]).filter(function(ev){ return flt==="all" || ev.kind===flt; });
   return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
@@ -566,9 +710,10 @@ function ActivityPanel({events, onReload, onClose}){
     React.createElement("div",{style:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}},
       React.createElement("button",{style:chip(flt==="all"),onClick:function(){ setFlt("all"); }},"Todo"),
       React.createElement("button",{style:chip(flt==="error"),onClick:function(){ setFlt("error"); }},"🐞 Solo errores"+(nErr?" ("+nErr+")":"")),
-      React.createElement("button",{style:chip(flt==="feedback"),onClick:function(){ setFlt("feedback"); }},"💬 Sugerencias"+(nFb?" ("+nFb+")":""))),
+      React.createElement("button",{style:chip(flt==="feedback"),onClick:function(){ setFlt("feedback"); }},"💬 Sugerencias"+(nFb?" ("+nFb+")":"")),
+      React.createElement("button",{style:chip(flt==="beta"),onClick:function(){ setFlt("beta"); }},"🧪 Betas"+(nBeta?" ("+nBeta+")":""))),
     events!==null && list.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)",padding:"14px 0"}},
-      flt==="error" ? "Sin errores en los últimos eventos. 🎉" : flt==="feedback" ? "Sin sugerencias todavía (llegan desde el popup de Novedades)." : "Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
+      flt==="error" ? "Sin errores en los últimos eventos. 🎉" : flt==="feedback" ? "Sin sugerencias todavía (llegan desde el popup de Novedades)." : flt==="beta" ? "Ninguna beta revisada todavía (se aprueban desde Ajustes → Dev → Pruebas → Revisar esta beta)." : "Sin eventos todavía (los pings/errores de los usuarios aparecerán aquí)."),
     list.map(function(ev,i){
       const d=new Date(ev.created_at);
       const when=d.toLocaleDateString("es-ES",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
@@ -681,6 +826,14 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.8.0", d:"24 jul 2026", t:"Ya no se ralentiza, y el histórico se explica solo", items:[
+    "⚡ Se acabó lo de «cuanto más rato la uso, más lenta va». La app guardaba TODO el histórico de gastos en el móvil cada vez que volvías a ella (abrir la app, cambiar de app y volver…), y eso costaba más cada mes según se llenaba: con 2.000 gastos eran 477 KB por vuelta, con 8.000 casi 2 MB. Ahora el histórico solo se reescribe cuando cambia de verdad — 1 KB — y ese número ya NO crece con los años.",
+    "📝 El histórico por fin dice DE QUÉ era cada movimiento (lo pedía mi padre): debajo del título sale el concepto del bizum o la descripción del banco, y se rellena también en los movimientos antiguos al sincronizar. Puedes escribirlo o corregirlo tú desde la ficha del gasto, y lo que escribas no te lo pisa el banco. El buscador también busca por concepto.",
+    "🏦 Si al sincronizar hay un banco que se ha desconectado, ahora te enteras: salta una notificación de verdad y la app te lleva SOLA al sitio donde se reconecta, con ese banco resaltado. Antes salía un aviso de dos segundos que decía «reconéctate» sin decir dónde. Si no tienes ningún banco puesto, también te abre la pantalla para ponerlo.",
+    "🧪 Modo pruebas y canal beta (para el que la desarrolla): probar cosas en el móvil con una copia de los datos, sin tocar la cartera real ni la de nadie más, y recibir las versiones antes que el resto de la familia. Y una pantalla para revisar la beta desde el propio móvil: sale la lista de lo que trae la versión, marcas qué va bien y qué falla, y hasta que no esté todo probado no se puede aprobar.",
+    "🛡 Seguridad: la app ya no deja que se cargue código de sitios que no sean los suyos ni que se manden tus datos fuera (CSP). La clave de la captura automática de gastos ahora es de 256 bits de verdad — antes, en algunos navegadores, salía de un generador predecible.",
+    "🐞 Arreglado: si dos móviles tocaban la cartera a la vez, el aviso de conflicto reventaba por dentro y no se resolvía nunca (fallaba en silencio). Y varios textos salían en clave («tb_removed», «fj_fixed») en vez de en castellano.",
+  ]},
   {v:"4.7.1", d:"23 jul 2026", t:"Herramientas de inversión, más limpias", items:[
     "📈 Fuera el bloque «Orden de los brókers» de Herramientas de inversión: ensuciaba la pantalla sin aportar. Tus brókers salen en Cartera → Inversiones en el orden de siempre: Revolut, Trade Republic y MyInvestor."
   ]},
@@ -1069,7 +1222,7 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks, goBanksFocus}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
@@ -1122,6 +1275,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   };
   const [events,setEvents]=useState(null);
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
+  const [betaOpen,setBetaOpen]=useState(false);  // pantalla «Revisar la beta» (solo en canal beta)
   const loadEvents=function(){
     cloud.adminEvents(200).then(function(rows){
       setEvents(rows||[]);
@@ -1184,7 +1338,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const doExport=function(){
     try{
       // El estado React manda: localStorage puede ir ~400 ms por detrás (persistencia debounced 2026-07-18)
-      const data=JSON.stringify(state||store.get("micartera_v3"),null,2);
+      const data=JSON.stringify(state||mcLoadRaw(mcStateKey()),null,2);
       const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
       const a=document.createElement("a");
       a.href=url; a.download="mi-cartera-"+new Date().toISOString().slice(0,10)+".json"; a.click();
@@ -1206,7 +1360,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       askConfirm({ title:t("st_confirm_import"), sub:t("st_confirm_import_sub"), ok:t("st_confirm_import_ok"), danger:true })
         .then(function(yes){
           if(!yes) return;
-          store.set("micartera_v3",obj); set(function(){ return obj; });
+          mcSaveRaw(mcStateKey(),obj); set(function(){ return obj; });
           showToast(t("st_imported")); onClose();
         });
     };
@@ -1419,7 +1573,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
       );
     })(),
-    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
+    manageBanks && ReactDOM.createPortal(React.createElement(BankPanel,{state:state,set:set,showToast:showToast,uid:uid,onBankSync:onBankSync,totals:totals,onLinks:setBankLinks,fetchPrices:fetchPrices,focusAspsp:goBanksFocus,onClose:function(){ setManageBanks(false); const b=trBridge(); if(b&&b.status){ Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); } }}), document.body),
     // (Hogar y gastos compartidos se movió FUERA de Ajustes 2026-07-18: es una funcionalidad de
     //  la app, no un ajuste. Ahora se abre desde Cartera → «Hogar y gastos compartidos».)
     !notifOk && React.createElement("div",{className:"alarmbox",style:{marginTop:14}},
@@ -1438,8 +1592,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
           try{ if(nat.ensureNotifPerm) nat.ensureNotifPerm().catch(function(){}); }catch(e){}
           let tok=(state.settings&&state.settings.ingestToken);
           if(!tok){
-            const rnd=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+Math.random();
-            tok=String(rnd).replace(/-/g,"")+Math.random().toString(36).slice(2,10);
+            tok=mcRandomToken();
+            if(!tok){ showToast(t("st_tring_nornd")); return; }
           }
           cloud.setIngestToken(tok).then(function(){
             const url=CONFIG.SUPABASE_URL+"/functions/v1/ingest?token="+encodeURIComponent(tok);
@@ -1551,19 +1705,91 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
 
     // Admin al FINAL (fuera del flujo diario). Sentry de prueba quitado: no aporta en móvil.
+    // Sin traducir a propósito: es la consola privada del dueño, como «Actividad».
     isAdmin && React.createElement(React.Fragment,null,
       React.createElement("div",{className:"v4-set-sec"}, "Dev"),
       React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
         React.createElement("div",{className:"sc-title"},"👁 Actividad"),
         row("act","📡","Quién usa la app y sus errores",events?String(events.length):null,function(){ setActOpen(true); if(events===null) loadEvents(); })
+      ),
+      /* ── ENTORNO DE PRUEBAS (petición 2026-07-24) ──────────────────────────────────────────
+         Dos cosas distintas, a propósito:
+           · Canal beta  → QUÉ versión recibe ESTE móvil. En beta te llegan las versiones antes de
+             publicarlas en Pages, así puedes probarlas antes de que le lleguen a tu padre y a tu
+             pareja (ellos siguen en estable, que sale de `main` y no se toca).
+           · Banco de pruebas → CON QUÉ DATOS trabajas. Copia de tu cartera en otra clave local y
+             cero escrituras en la nube: rompe lo que quieras, no sale de este móvil.
+         Solo lo ve el dueño (profiles.is_admin), que es lo que pedía: «solamente para mí». */
+      React.createElement("div",{className:"set-card",style:{borderColor:"var(--blue)"}},
+        React.createElement("div",{className:"sc-title"},"🧪 Pruebas"),
+        (function(){
+          const beta=(typeof mcChannel==="function") && mcChannel()==="beta";
+          return React.createElement(React.Fragment,null,
+            row("chan", beta?"🚧":"📦", beta?"Canal: BETA (pruebas)":"Canal: estable", null, function(){
+              askConfirm({
+                title: beta?"¿Volver al canal estable?":"¿Pasar este móvil al canal beta?",
+                sub: beta
+                  ? "Dejarás de recibir las versiones de prueba. La próxima actualización será la publicada para todos."
+                  : "Solo ESTE móvil recibirá las versiones de prueba (bundle.zip / apk.json de la release «beta»). Tu padre y tu pareja se quedan en la estable. Si aún no hay ninguna beta publicada, se sigue actualizando con la estable.",
+                ok: beta?"Volver a estable":"Activar beta",
+              }).then(function(yes){
+                if(!yes) return;
+                mcSetChannel(beta?"stable":"beta");
+                showToast(beta?"📦 Canal estable":"🚧 Canal beta activado");
+                setS({});   // repinta Ajustes para que la fila refleje el canal nuevo
+              });
+            }, sw(beta)),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},
+              // El canal SOLO manda en la app Android: en el navegador la versión la sirve Pages
+              // (= main = producción) y el OTA de Capgo ni existe. Decirlo aquí evita quedarse
+              // esperando una beta que no puede llegar (confusión real del 2026-07-24).
+              (typeof _mcNative!=="undefined" && !_mcNative)
+                ? "⚠ Estás en el navegador: aquí el canal no hace nada, la beta solo llega a la app Android."
+                : (beta?"Este móvil recibe las versiones antes que nadie.":"Este móvil recibe lo mismo que el resto de la familia.")),
+            // «Code review» pero probando la app: la checklist sale de las notas de esta versión.
+            // Solo tiene sentido estando en beta — en estable no hay nada que aprobar.
+            beta && (function(){
+              const pack=betaChecklist(CONFIG.APP_VERSION);
+              const done=store.get("_betaReview_"+pack.v)||{};
+              const n=Object.keys(done).length, tot=pack.items.length;
+              return row("betarev","🔍","Revisar esta beta", tot?(n+"/"+tot):null, function(){ setBetaOpen(true); });
+            })(),
+            (function(){
+              // La bandera CRUDA: Ajustes pinta el estado que tendrá la PRÓXIMA sesión, que es lo
+              // que el interruptor cambia. El resto de la app usa mcSandbox() (fijado al arrancar).
+              const sandbox=(typeof mcSandboxFlag==="function") && mcSandboxFlag();
+              return React.createElement(React.Fragment,null,
+                row("sbx", sandbox?"🧪":"🏦", sandbox?"Banco de pruebas: DENTRO":"Banco de pruebas", null, function(){
+                  if(sandbox){
+                    askConfirm({ title:"¿Salir del banco de pruebas?", sub:"Vuelves a tu cartera real. La de pruebas se queda guardada por si quieres seguir otro día.", ok:"Salir a mi cartera real" })
+                      .then(function(yes){ if(!yes) return; mcExitSandbox(); location.reload(); });
+                  }else{
+                    askConfirm({ title:"¿Entrar al banco de pruebas?", sub:"Se copia tu cartera actual a un espacio aparte. Dentro NO se escribe nada en la nube: puedes trastear a gusto y tu cartera real (y la de tu padre y tu pareja) no se entera.", ok:"Entrar a probar" })
+                      .then(function(yes){ if(!yes) return; mcEnterSandbox(state); location.reload(); });
+                  }
+                }, sw(sandbox)),
+                sandbox && row("sbxr","♻️","Volver a copiar mi cartera real",null,function(){
+                  askConfirm({ title:"¿Empezar las pruebas de cero?", sub:"Se tira la cartera de pruebas actual y se copia otra vez la real. Tu cartera real no se toca.", ok:"Copiar de nuevo", danger:true })
+                    .then(function(yes){ if(!yes) return; mcExitSandbox(); mcResetSandbox(); location.reload(); });
+                }),
+                React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},
+                  sandbox?"Estás en datos de prueba. Nada de lo que hagas aquí sale de este móvil.":"Copia tu cartera a un espacio aparte para probar sin miedo.")
+              );
+            })()
+          );
+        })()
       )
     ),
+    betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
-    React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},"Mi Cartera · v"+CONFIG.APP_VERSION)
+    // El canal se canta en el pie: si algo va raro, lo primero que hay que saber es si este móvil
+    // está en una beta o en la versión de todos (2026-07-24).
+    React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},
+      "Mi Cartera · v"+CONFIG.APP_VERSION+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
   );
 
 }
@@ -1796,7 +2022,7 @@ class ErrorBoundary extends React.Component{
     const wrap={position:"fixed",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:13,padding:24,textAlign:"center",background:"#0B1410",color:"#E8F0EB",fontFamily:"Manrope,sans-serif",zIndex:9999};
     const btn={padding:"13px 22px",borderRadius:14,border:"none",background:"#5FD08A",color:"#06120C",fontWeight:800,fontSize:15,cursor:"pointer"};
     const btn2=Object.assign({},btn,{background:"transparent",border:"1px solid #2a3a31",color:"#E8F0EB"});
-    const dl=function(){ try{ const data=JSON.stringify(store.get("micartera_v3")||{},null,2); const url=URL.createObjectURL(new Blob([data],{type:"application/json"})); const a=document.createElement("a"); a.href=url; a.download="mi-cartera-backup-"+new Date().toISOString().slice(0,10)+".json"; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000); }catch(e){ alert("Export error: "+e); } };
+    const dl=function(){ try{ const data=JSON.stringify(mcLoadRaw(mcStateKey())||{},null,2); const url=URL.createObjectURL(new Blob([data],{type:"application/json"})); const a=document.createElement("a"); a.href=url; a.download="mi-cartera-backup-"+new Date().toISOString().slice(0,10)+".json"; a.click(); setTimeout(function(){URL.revokeObjectURL(url);},1000); }catch(e){ alert("Export error: "+e); } };
     return React.createElement("div",{style:wrap},
       React.createElement("div",{style:{fontSize:46}},"🛟"),
       React.createElement("div",{style:{fontWeight:800,fontSize:21,fontFamily:"Fraunces,serif"}}, t("eb_title")),

@@ -11,6 +11,44 @@ try{ _mcNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Ca
 var _mcOtaBASE="https://juanjoavila.github.io/Mi-Cartera/";
 var _mcOtaChecking=false;
 
+/* ---------- CANAL DE ACTUALIZACIONES: estable vs beta ----------
+   Petición 2026-07-24: poder probar una versión EN EL MÓVIL antes de que le llegue al resto de la
+   familia. GitHub Pages solo sirve una versión (la de `main`), así que la beta NO va por Pages:
+   se publica como assets de una Release fija con la etiqueta `beta` (workflow .github/workflows/
+   beta.yml). Así lo estable de Pages —lo que ven el padre y la pareja— no se toca jamás.
+
+   El canal es LOCAL de cada móvil (localStorage): no viaja en el estado ni a la nube, para que
+   activar la beta en un móvil no arrastre a los demás. Se enciende desde Ajustes y solo lo ve el
+   dueño (profiles.is_admin). */
+var _mcBetaBASE="https://github.com/JuanjoAvila/Mi-Cartera/releases/download/beta/";
+function mcChannel(){ try{ return localStorage.getItem("_mcChannel")==="beta" ? "beta" : "stable"; }catch(e){ return "stable"; } }
+function mcSetChannel(c){
+  try{
+    if(c==="beta") localStorage.setItem("_mcChannel","beta");
+    else localStorage.removeItem("_mcChannel");
+    // Al cambiar de canal, olvida lo que había pendiente del canal anterior: si no, una beta a
+    // medio descargar seguiría ofreciéndose después de volver a estable.
+    localStorage.removeItem("_otaPending");
+    localStorage.removeItem("_otaNotifVer");
+    localStorage.removeItem("_apkNotifVer");
+  }catch(e){}
+}
+function mcUpdBase(){ return mcChannel()==="beta" ? _mcBetaBASE : _mcOtaBASE; }
+/* Baja un manifiesto (version.json / apk.json) del canal activo. Si estás en beta y ese fichero
+   no existe todavía, cae a estable: nunca dejamos un móvil sin poder actualizarse por estar en
+   un canal vacío. */
+function mcFetchManifest(name){
+  var url=mcUpdBase()+name+"?ts="+Date.now();
+  return fetch(url,{cache:"no-store"}).then(function(r){
+    if(r.ok) return r;
+    if(mcChannel()!=="beta") throw new Error(name+": "+r.status);
+    return fetch(_mcOtaBASE+name+"?ts="+Date.now(),{cache:"no-store"});
+  }).catch(function(e){
+    if(mcChannel()!=="beta") throw e;
+    return fetch(_mcOtaBASE+name+"?ts="+Date.now(),{cache:"no-store"});
+  });
+}
+
 window._mcNewerVer=function(a,b){
   a=String(a).split("."); b=String(b).split(".");
   for(var i=0;i<Math.max(a.length,b.length);i++){
@@ -111,7 +149,7 @@ window._mcDownloadOta=function(up, v, opts){
   // Pill YA mientras descarga (antes solo al terminar → «tarda un montón», 2026-07-16).
   if(!manual) window._mcSignalOtaPending(v.version);
   if(manual&&toast) toast(tf("st_up_applying",{v:v.version}));
-  return up.download({url:(v.url||_mcOtaBASE+"bundle.zip"), version:v.version})
+  return up.download({url:(v.url||mcUpdBase()+"bundle.zip"), version:v.version})
     .then(function(b){
       if(manual){
         try{ localStorage.setItem("_otaPending", v.version); }catch(e){}
@@ -129,7 +167,9 @@ window._mcCheckOtaUpdates=function(opts){
   if(!up) return Promise.resolve(false);
   _mcOtaChecking=true;
   var manual=opts&&opts.manual;
-  return fetch(_mcOtaBASE+"version.json?ts="+Date.now(),{cache:"no-store"})
+  // En beta, si el manifiesto no está (aún no hay ninguna beta publicada, o la release se borró),
+  // se cae a estable en vez de dejar el móvil sin actualizaciones.
+  return mcFetchManifest("version.json")
     .then(function(r){ return r.json(); })
     .then(function(v){
       if(!v||!v.version) return false;
@@ -178,7 +218,7 @@ window._mcCheckApkUpdate=function(opts){
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
   var autoInstall=opts&&opts.autoInstall!==false;   // al detectar APK nueva, abre el instalador sola
-  return fetch(_mcOtaBASE+"apk.json?ts="+Date.now(),{cache:"no-store"})
+  return mcFetchManifest("apk.json")
     .then(function(r){ return r.json(); })
     .then(function(a){
       if(!a||!a.versionCode||!a.url) return false;

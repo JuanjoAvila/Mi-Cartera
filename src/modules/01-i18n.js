@@ -28,6 +28,13 @@ const LANG = {
     ap_bank:"Banco", ap_bank_none:"Sin banco",
     bk_issue:"⚠ {bank} necesita tu permiso otra vez", bk_issue_sub:"El permiso de lectura caducó (obligatorio cada ~3 meses): el saldo puede estar desfasado. Un toque y listo.",
     bk_issue_cta:"🔓 Reconectar {bank}", bk_tr_dead:"⚠ Trade Republic está desconectado",
+    // Aviso al sincronizar con algún banco caído (petición 2026-07-24): sale como notificación de
+    // verdad y al tocarla lleva a Cartera → Mis bancos, que era lo que no se encontraba.
+    bk_notif_title:"Un banco necesita que lo reconectes",
+    bk_notif_one:"{bank} pide permiso otra vez · toca para reconectarlo",
+    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para arreglarlo",
+    bk_notif_n:"{n} bancos necesitan que los reconectes · toca para verlos",
+    bk_issue_noacct:"⚠ {bank} está conectado a medias", bk_issue_noacct_sub:"El enlace existe pero el banco no da ninguna cuenta. Vuelve a conectarlo y elige las cuentas que quieres ver.",
     bk_tr_sub:"Su sesión caducó: las posiciones y el efectivo no se actualizan. Se reconecta aquí, en la app (PIN + código SMS) — no en la app de Trade Republic.",
     bk_tr_cta:"🔓 Reconectar Trade Republic",
     v4_acc_locked:"El saldo de las cuentas conectadas lo trae el banco solo; el nombre y el rol sí puedes cambiarlos.",
@@ -57,8 +64,17 @@ const LANG = {
     v4_exp_del:"Borrar", v4_exp_del_q:"¿Borrar «{name}»?", v4_exp_del_sub:"Esto no se puede deshacer.",
     v4_exp_amount:"Importe", v4_exp_merchant_ph:"Comercio o concepto",
     v4_exp_cat:"Categoría", v4_exp_type:"Tipo",
+    // Concepto del movimiento (petición del padre 2026-07-24: «solo salía el título y tenía que
+    // ir al banco todo el rato para saber lo que era»).
+    v4_exp_note:"Concepto", v4_exp_note_ph:"De qué era (ej. cena del sábado)",
+    v4_exp_note_bank:"Lo ha puesto el banco · puedes cambiarlo",
     v4_exp_with_card:"Pagado con tarjeta", v4_exp_not_card:"Bizum o transferencia",
     v4_budget_sheet:"Tu presupuesto del mes", v4_budget_sheet_h:"Solo el día a día: súper, bares, caprichos. Los recibos van aparte.",
+    // Estas tres estaban SOLO en inglés y catalán: en castellano (el idioma de la casa) la app
+    // pintaba la clave pelada «tb_removed» / «tb_nodel» en el toast (bug encontrado 2026-07-24
+    // por el test de claves i18n).
+    tb_add:"Añadir pestaña", tb_add_hint:"Toca la que quieras en la barra. Para quitar una, mantenla pulsada y arrástrala a la papelera.",
+    tb_trash:"Suéltala aquí para quitarla", tb_removed:"Pestaña quitada · recupérala con el +", tb_nodel:"Inicio no se puede quitar",
     st_mode_hint:"Sencillo deja Inicio, Gastos, Plan (solo recibos) y Cartera. Ideal para empezar.",
     brand_sub:"tus finanzas, claras",
     settings:"Ajustes", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualización",
@@ -93,7 +109,7 @@ const LANG = {
     wn_fb_ph:"Escribe la sugerencia o el error que has visto…", wn_fb_send:"Enviar", wn_fb_sent:"✓ Apuntado y enviado", wn_fb_offline:"✓ Apuntado en tus notas (no se pudo enviar; se queda guardado)",
     wn_yours:"Tus apuntes", wn_close:"¡Entendido!",
     st_trnotif:"Avisar de cada gasto apuntado (TR)", st_trnotif_hint:"Si lo apagas, Mi Cartera deja de confirmar cada gasto con una notificación (Trade Republic ya te avisa del cargo). Los avisos de presupuesto siguen llegando.",
-    st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado",
+    st_tring:"Apuntar aquí mis gastos de Trade Republic", st_tring_hint:"Al activarlo, esta app lee las notificaciones de gasto de Trade Republic de ESTE móvil y las apunta en TU cuenta (no en la de nadie más). Cada persona lo activa en su propio teléfono. Solo lee la notificación; nunca entra en tu banco. Puedes apagarlo cuando quieras.", st_tring_on:"✓ Listo · tus compras con la tarjeta de Trade Republic entrarán solas en esta cuenta", st_tring_off:"Apuntado de Trade Republic desactivado", st_tring_nornd:"✕ Este navegador no puede generar una clave segura · no se activa (mejor eso que una clave adivinable)",
     st_banksync_notif:"Al detectar aviso del banco, sincronizar movimientos", st_banksync_notif_hint:"Si Caixa, Sabadell u otro banco te manda una notificación, la app pide los movimientos por Open Banking (no lee el importe de la noti). Como máximo una sync cada 2 minutos.",
     st_aicat:"Sugerir categoría (IA) en «Otros»", st_aicat_hint:"En Gastos, si un comercio queda en Otros, puedes pedir sugerencia. Primero usa palabras clave; si hay OPENAI_API_KEY en Supabase, la IA solo actúa en esos casos. No se envía el importe.",
     st_sentry:"Sentry (errores en prod)", st_sentry_test:"Enviar error de prueba", st_sentry_sent:"✓ Enviado a Sentry (mira Issues en unos segundos)", st_sentry_hint:"Solo tú ves este bloque (admin). Sirve para comprobar que los crashes llegan a Sentry; el resto de usuarios no lo ve.",
@@ -152,6 +168,11 @@ const LANG = {
     ap_bank:"Bank", ap_bank_none:"No bank",
     bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
     bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
+    bk_notif_title:"A bank needs reconnecting",
+    bk_notif_one:"{bank} is asking for permission again · tap to reconnect it",
+    bk_notif_noacct:"{bank} is linked but has no accounts · tap to fix it",
+    bk_notif_n:"{n} banks need reconnecting · tap to see them",
+    bk_issue_noacct:"⚠ {bank} is only half connected", bk_issue_noacct_sub:"The link exists but the bank returns no account. Connect it again and pick the accounts you want to see.",
     bk_tr_sub:"Its session expired: positions and cash aren't updating. Reconnect HERE in the app (PIN + SMS code) — not in the Trade Republic app.",
     bk_tr_cta:"🔓 Reconnect Trade Republic",
     v4_acc_locked:"Connected accounts get their balance from the bank; you can still change the name and role.",
@@ -181,6 +202,8 @@ const LANG = {
     v4_exp_del:"Delete", v4_exp_del_q:"Delete “{name}”?", v4_exp_del_sub:"This can't be undone.",
     v4_exp_amount:"Amount", v4_exp_merchant_ph:"Merchant or note",
     v4_exp_cat:"Category", v4_exp_type:"Type",
+    v4_exp_note:"Note", v4_exp_note_ph:"What it was for (e.g. Saturday dinner)",
+    v4_exp_note_bank:"Filled in by the bank · you can change it",
     v4_exp_with_card:"Paid by card", v4_exp_not_card:"Bizum or transfer",
     v4_budget_sheet:"Your monthly budget", v4_budget_sheet_h:"Day-to-day only: groceries, eating out, treats. Bills are separate.",
     tb_add:"Add tab", tb_add_hint:"Tap the one you want on the bar. To remove one, long-press it and drag it to the bin.",
@@ -219,7 +242,7 @@ const LANG = {
     wn_fb_ph:"Write your suggestion or the bug you saw…", wn_fb_send:"Send", wn_fb_sent:"✓ Saved and sent", wn_fb_offline:"✓ Saved to your notes (couldn't send; it stays stored)",
     wn_yours:"Your notes", wn_close:"Got it!",
     st_trnotif:"Notify every logged expense (TR)", st_trnotif_hint:"If you turn it off, Mi Cartera stops confirming each expense with a notification (Trade Republic already notifies the charge). Budget alerts keep coming.",
-    st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off",
+    st_tring:"Log my Trade Republic spending here", st_tring_hint:"When on, this app reads Trade Republic spending notifications on THIS phone and logs them into YOUR account (nobody else's). Each person turns it on on their own phone. It only reads the notification; it never touches your bank. You can turn it off anytime.", st_tring_on:"✓ Done · your Trade Republic card purchases will come in on their own into this account", st_tring_off:"Trade Republic logging turned off", st_tring_nornd:"✕ This browser can't generate a secure key · not enabling it (better than a guessable one)",
     st_banksync_notif:"When a bank notification arrives, sync movements", st_banksync_notif_hint:"If Caixa, Sabadell or another bank notifies you, the app pulls movements via Open Banking (it does not parse the notification amount). At most one sync every 2 minutes.",
     st_aicat:"Suggest category (AI) for “Other”", st_aicat_hint:"In Spending, if a merchant lands in Other, you can ask for a suggestion. Keywords first; if OPENAI_API_KEY is set in Supabase, AI only runs then. Amount is never sent.",
     st_sentry:"Sentry (prod errors)", st_sentry_test:"Send test error", st_sentry_sent:"✓ Sent to Sentry (check Issues in a few seconds)", st_sentry_hint:"Only you see this block (admin). Use it to verify crashes reach Sentry; other users never see it.",
@@ -273,6 +296,11 @@ const LANG = {
     ap_bank:"Banc", ap_bank_none:"Sense banc",
     bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
     bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
+    bk_notif_title:"Un banc necessita que el reconnectis",
+    bk_notif_one:"{bank} demana permís altra vegada · toca per reconnectar-lo",
+    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per arreglar-ho",
+    bk_notif_n:"{n} bancs necessiten que els reconnectis · toca per veure'ls",
+    bk_issue_noacct:"⚠ {bank} està connectat a mitges", bk_issue_noacct_sub:"L'enllaç existeix però el banc no dóna cap compte. Torna a connectar-lo i tria els comptes que vulguis veure.",
     bk_tr_sub:"La sessió ha caducat: posicions i efectiu no s'actualitzen. Es reconnecta AQUÍ, a l'app (PIN + codi SMS) — no a l'app de Trade Republic.",
     bk_tr_cta:"🔓 Reconnecta Trade Republic",
     v4_acc_locked:"El saldo dels comptes connectats el porta el banc sol; el nom i el rol sí que els pots canviar.",
@@ -302,6 +330,8 @@ const LANG = {
     v4_exp_del:"Esborra", v4_exp_del_q:"Vols esborrar «{name}»?", v4_exp_del_sub:"Això no es pot desfer.",
     v4_exp_amount:"Import", v4_exp_merchant_ph:"Comerç o concepte",
     v4_exp_cat:"Categoria", v4_exp_type:"Tipus",
+    v4_exp_note:"Concepte", v4_exp_note_ph:"De què era (ex. sopar de dissabte)",
+    v4_exp_note_bank:"Ho ha posat el banc · pots canviar-ho",
     v4_exp_with_card:"Pagat amb targeta", v4_exp_not_card:"Bizum o transferència",
     v4_budget_sheet:"El teu pressupost del mes", v4_budget_sheet_h:"Només el dia a dia: súper, bars, capricis. Els rebuts van a part.",
     tb_add:"Afegeix pestanya", tb_add_hint:"Toca la que vulguis veure a la barra. Per treure'n una, mantén-la premuda i arrossega-la a la paperera.",
@@ -340,7 +370,7 @@ const LANG = {
     wn_fb_ph:"Escriu el suggeriment o l'error que has vist…", wn_fb_send:"Envia", wn_fb_sent:"✓ Apuntat i enviat", wn_fb_offline:"✓ Apuntat a les teves notes (no s'ha pogut enviar; queda desat)",
     wn_yours:"Els teus apunts", wn_close:"Entesos!",
     st_trnotif:"Avisar de cada despesa apuntada (TR)", st_trnotif_hint:"Si l'apagues, Mi Cartera deixa de confirmar cada despesa amb una notificació (Trade Republic ja t'avisa del càrrec). Els avisos de pressupost segueixen arribant.",
-    st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat",
+    st_tring:"Apuntar aquí les meves despeses de Trade Republic", st_tring_hint:"En activar-ho, aquesta app llegeix les notificacions de despesa de Trade Republic d'AQUEST mòbil i les apunta al TEU compte (no al de ningú més). Cada persona ho activa al seu propi telèfon. Només llegeix la notificació; mai no entra al teu banc. El pots apagar quan vulguis.", st_tring_on:"✓ Fet · les teves compres amb la targeta de Trade Republic entraran soles en aquest compte", st_tring_off:"Apuntat de Trade Republic desactivat", st_tring_nornd:"✕ Aquest navegador no pot generar una clau segura · no s'activa (millor això que una clau endevinable)",
     st_banksync_notif:"En detectar avís del banc, sincronitzar moviments", st_banksync_notif_hint:"Si Caixa, Sabadell o un altre banc et envia una notificació, l'app demana els moviments per Open Banking (no llegeix l'import de la noti). Com a màxim una sync cada 2 minuts.",
     st_aicat:"Suggerir categoria (IA) a «Altres»", st_aicat_hint:"A Despeses, si un comerç queda a Altres, pots demanar suggeriment. Primer paraules clau; si hi ha OPENAI_API_KEY a Supabase, l'IA només actua aleshores. No s'envia l'import.",
     st_sentry:"Sentry (errors en prod)", st_sentry_test:"Envia error de prova", st_sentry_sent:"✓ Enviat a Sentry (mira Issues en uns segons)", st_sentry_hint:"Només tu veus aquest bloc (admin). Serveix per comprovar que els crashes arriben a Sentry; la resta d'usuaris no el veuen.",
@@ -946,7 +976,7 @@ Object.assign(LANG.es,{
   w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
-  g_allbanks:"Todos los bancos", g_bank_manual:"A mano",
+  g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
   ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
   g_cycle_from:"Del {d} (cobro de {x}) a hoy",
   g_cycle_none_t:"Sin nómina detectada",
@@ -989,7 +1019,7 @@ Object.assign(LANG.es,{
   fj_noprog:"⚠ {n} gasto(s) anual(es) sin mes asignado. Pulsa «Editar» abajo y márcale el mes para que entren en el cálculo.",
   fj_paid_tag:"✓ pagado · ", fj_oneoff_tag:"cargo puntual", fj_debt_tag:"cuota de deuda", fj_fixed_tag:"gasto fijo",
   fj_flows_h:"Nómina y transferencias", fj_income_tag:"ingreso (entra)", fj_transfer_tag:"transferencia",
-  fj_serv:"Servicios y suministros", fj_permonth:"{x}/mes", fj_edit:"Editar", fj_save:"Guardar",
+  fj_serv:"Servicios y suministros", fj_permonth:"{x}/mes", fj_edit:"Editar", fj_save:"Guardar", fj_fixed:"Recibo",
   fj_year:"año", fj_time:"vez", fj_custom:" · a medida (≈{x}/año)", fj_percharge:" · {x}/cobro", fj_mensual:"mensual", fj_prorated:"/mes prorrateado", fj_nomonth:"⚠ sin mes",
   fj_chargedin:"Se cobra en", fj_day:"día", fj_whatmonths:"¿Qué mes(es) se cobra?", fj_whatmonths_opt:"¿Qué mes(es) se cobra? (opcional)",
   fj_diffamounts:"Importes/días distintos por cobro", fj_amount:"importe", fj_sched_hint:"Pon el importe y el día reales de cada cobro (p.ej. seguro 172,05 y 166,94; Hacienda 146,14 el 30 y 97,42 el 5).",
@@ -1032,7 +1062,7 @@ Object.assign(LANG.en,{
   et_tabs:"✎ Edit tabs", et_intro:"Tabs used to move by pressing and holding one and dragging it (a hidden gesture, easy to trigger by accident). Now you edit them here: reorder with ▲▼, remove with ✕, or add back with +.", et_fixed:"fixed", et_hidden:"Hidden tabs (tap to add them):",
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
-  g_allbanks:"All banks", g_bank_manual:"Manual",
+  g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
   ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
   g_cycle_from:"From {d} (payday, {x}) to today",
   g_cycle_none_t:"No payday detected",
@@ -1074,7 +1104,7 @@ Object.assign(LANG.en,{
   fj_noprog:"⚠ {n} yearly expense(s) with no month set. Tap «Edit» below and set the month so they're counted.",
   fj_paid_tag:"✓ paid · ", fj_oneoff_tag:"one-off charge", fj_debt_tag:"debt payment", fj_fixed_tag:"fixed cost",
   fj_flows_h:"Income & transfers", fj_income_tag:"income (in)", fj_transfer_tag:"transfer",
-  fj_serv:"Bills & utilities", fj_permonth:"{x}/mo", fj_edit:"Edit", fj_save:"Save",
+  fj_serv:"Bills & utilities", fj_permonth:"{x}/mo", fj_edit:"Edit", fj_save:"Save", fj_fixed:"Bill",
   fj_year:"yr", fj_time:"time", fj_custom:" · custom (≈{x}/yr)", fj_percharge:" · {x}/charge", fj_mensual:"monthly", fj_prorated:"/mo prorated", fj_nomonth:"⚠ no month",
   fj_chargedin:"Charged from", fj_day:"day", fj_whatmonths:"Which month(s)?", fj_whatmonths_opt:"Which month(s)? (optional)",
   fj_diffamounts:"Different amounts/days per charge", fj_amount:"amount", fj_sched_hint:"Set the real amount and day of each charge (e.g. insurance 172.05 and 166.94; tax 146.14 on the 30th and 97.42 on the 5th).",
@@ -1117,7 +1147,7 @@ Object.assign(LANG.ca,{
   et_tabs:"✎ Edita pestanyes", et_intro:"Abans les pestanyes es movien mantenint-ne una premuda i arrossegant-la (un gest ocult, fàcil de tocar sense voler). Ara s'editen aquí: reordena amb ▲▼, treu amb ✕ o torna a afegir amb +.", et_fixed:"fixa", et_hidden:"Pestanyes ocultes (toca per afegir-les):",
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
-  g_allbanks:"Tots els bancs", g_bank_manual:"A mà",
+  g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
   ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
   g_cycle_from:"Del {d} (cobrament de {x}) a avui",
   g_cycle_none_t:"Sense nòmina detectada",
@@ -1159,7 +1189,7 @@ Object.assign(LANG.ca,{
   fj_noprog:"⚠ {n} despesa/es anual(s) sense mes assignat. Prem «Edita» a sota i marca-li el mes perquè entrin al càlcul.",
   fj_paid_tag:"✓ pagat · ", fj_oneoff_tag:"càrrec puntual", fj_debt_tag:"quota de deute", fj_fixed_tag:"despesa fixa",
   fj_flows_h:"Nòmina i transferències", fj_income_tag:"ingrés (entra)", fj_transfer_tag:"transferència",
-  fj_serv:"Serveis i subministraments", fj_permonth:"{x}/mes", fj_edit:"Edita", fj_save:"Desa",
+  fj_serv:"Serveis i subministraments", fj_permonth:"{x}/mes", fj_edit:"Edita", fj_save:"Desa", fj_fixed:"Rebut",
   fj_year:"any", fj_time:"cop", fj_custom:" · a mida (≈{x}/any)", fj_percharge:" · {x}/càrrec", fj_mensual:"mensual", fj_prorated:"/mes prorratejat", fj_nomonth:"⚠ sense mes",
   fj_chargedin:"Es cobra a", fj_day:"dia", fj_whatmonths:"Quin(s) mes(os) es cobra?", fj_whatmonths_opt:"Quin(s) mes(os) es cobra? (opcional)",
   fj_diffamounts:"Imports/dies diferents per càrrec", fj_amount:"import", fj_sched_hint:"Posa l'import i el dia reals de cada càrrec (ex. assegurança 172,05 i 166,94; Hisenda 146,14 el 30 i 97,42 el 5).",
@@ -1721,13 +1751,39 @@ Object.assign(LANG.ca,{
 });
 
 const MONTHS=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+/* parseDate es LA función más llamada de la app: filtrar y ordenar el histórico la invoca una vez
+   por gasto y comparación (un sort de 2.000 movimientos son ~22.000 llamadas… en CADA render de
+   Gastos). Cada llamada hacía regex + new Date(cadena), que es el parseo más caro que hay.
+   Por eso el móvil iba cada vez más lento cuanto más histórico acumulaba (feedback 2026-07-24).
+
+   Caché por cadena de la MARCA DE TIEMPO (no del objeto Date): la fecha de un movimiento no cambia
+   nunca, y guardando el número en vez del Date nadie puede mutar por accidente una fecha
+   compartida entre gastos. */
+var _pdCache=new Map();
+function _pdMs(s){
+  var hit=_pdCache.get(s);
+  if(hit!==undefined) return hit;
+  var ms;
+  var m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if(m){ var y=+m[3]; if(y<100)y+=2000; ms=new Date(y,(+m[2])-1,+m[1]).getTime(); }
+  else { var d=new Date(s); ms=isNaN(d.getTime())?NaN:d.getTime(); }
+  if(_pdCache.size>5000) _pdCache.clear();   // techo: la caché no puede crecer sin fin
+  _pdCache.set(s,ms);
+  return ms;
+}
 function parseDate(v){
   if(v instanceof Date) return v;
   if(typeof v==="number") return new Date(v);
-  const s=String(v||"").trim();
-  const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-  if(m){ let y=+m[3]; if(y<100)y+=2000; return new Date(y,(+m[2])-1,+m[1]); }
-  const d=new Date(s); return isNaN(d)?new Date():d;
+  const ms=_pdMs(String(v||"").trim());
+  return isNaN(ms)?new Date():new Date(ms);
+}
+/* Igual que parseDate pero devuelve el número directamente: para comparar y ordenar no hace falta
+   crear un Date que se tira al momento. Úsalo en comparadores y filtros de listas largas. */
+function dateMs(v){
+  if(v instanceof Date) return v.getTime();
+  if(typeof v==="number") return v;
+  const ms=_pdMs(String(v||"").trim());
+  return isNaN(ms)?Date.now():ms;
 }
 const dayKey=(d)=> d.toISOString().slice(0,10);
 function relDay(d){
@@ -2161,7 +2217,7 @@ function migrate(s){
     if(!s.trAnchor) s.trAnchor = mkOf(new Date());
   }
   s._dataVer = 6;
-  store.set("micartera_v3", s);
+  mcSaveRaw(mcStateKey(), s);
   return s;
 }
 // Corrección única de posiciones tras ventas parciales en Revolut (datos reales del usuario).
@@ -2201,6 +2257,9 @@ function fixRevoDupes(s){
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
   if(!s) return s;
+  // Poda de arrays que crecían sin tope. Aquí se aplica a los estados que YA venían inflados de
+  // versiones anteriores (el tope nuevo solo actúa al añadir) — 2026-07-24.
+  if(Array.isArray(s.deleted) && s.deleted.length>DELETED_MAX) s.deleted=s.deleted.slice(s.deleted.length-DELETED_MAX);
   // estados existentes = ya en uso → no son onboarding
   if(s.onboarded==null) s.onboarded=true;
   // estados existentes tampoco ven el tour de bienvenida (se puede abrir desde Ajustes)
@@ -2319,20 +2378,20 @@ const SEASON_FX={
   pascua:["🐣","🥚","🐰","🌷","🐣","🥚","🌸","🐰"]
 };
 function loadState(){
-  const saved = store.get("micartera_v3");
+  const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){
     // Capturar ANTES de seedFlows (muta in-place): evita stringify de toda la cartera en cada
     // apertura fría — feedback 2026-07-16.
     var writeBack=!(saved._dataVer>=6) || !saved._dynBalAnchored;
     const s = seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))))));
-    if(writeBack) store.set("micartera_v3", s);
+    if(writeBack) mcSaveRaw(mcStateKey(), s);
     applyTheme(s.settings&&s.settings.theme);
     applyA11y(s);
     return s;
   }
   // Sin estado guardado = usuario nuevo → arranca VACÍO y verá el onboarding (no hereda la cartera de ejemplo).
   const init = buildEmpty();
-  store.set("micartera_v3", init);
+  mcSaveRaw(mcStateKey(), init);
   applyTheme(init.settings&&init.settings.theme);
   applyA11y(init);
   return init;
