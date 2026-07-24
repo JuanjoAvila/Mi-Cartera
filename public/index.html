@@ -1634,6 +1634,34 @@ function mcResetSandbox(){ store.del(STATE_KEY_TEST); }
    Al iniciar sesión (magic link) se sincroniza el estado entre dispositivos.
    - app_state (JSONB): todo el estado de la app (cuentas, inversiones, gastos…).
    - tabla expenses: buzón donde MacroDroid (y la app) escriben gastos; la app los lee al sincronizar. */
+/* ---------- Red de seguridad: la columna `nota` puede no existir todavía ----------
+   `deploy.yml` (la web) y `supabase.yml` (la base de datos) corren EN PARALELO en el mismo push,
+   y el paso de migraciones lleva `continue-on-error: true` — a este repo ya le pasó que una
+   migración se quedó sin aplicar y el job salió verde igual (la 0015 del Hogar).
+
+   Sin esto, el cliente nuevo mandaría `nota`/`nota_edit` a una tabla que aún no las tiene,
+   PostgREST devolvería «column does not exist» y el upsert fallaría ENTERO: los gastos dejarían
+   de subir a la nube. Y como los llamantes hacen `.catch(function(){})`, fallaría en silencio —
+   que es la peor forma de fallar en una app de dinero.
+
+   Así que si la columna no está, se reintenta sin ella: se pierde el concepto (una comodidad),
+   nunca el gasto (el dato). La bandera vive solo en memoria: al reabrir la app se vuelve a
+   intentar, de modo que en cuanto la migración se aplique esto se cura solo. */
+var _mcNotaCols=true;
+function _isMissingNotaCol(err){
+  const m=String((err&&err.message)||err||"").toLowerCase();
+  return m.indexOf("nota")>=0 && (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
+}
+async function withNotaFallback(run){
+  let r=await run(_mcNotaCols);
+  if(r && r.error && _mcNotaCols && _isMissingNotaCol(r.error)){
+    _mcNotaCols=false;                       // esta sesión ya no lo intenta más
+    r=await run(false);
+  }
+  if(r && r.error) throw r.error;
+  return r;
+}
+
 const cloud = (function(){
   let sb = null;
   try {
@@ -1691,12 +1719,16 @@ const cloud = (function(){
       if(!session) return;
       // source lleva el banco embebido (ob:caixa…) para filtrar en Gastos tras reinstalación
       // sin columna nueva en Supabase (feedback 2026-07-16).
-      const {error}=await sb.from('expenses').upsert(
-        { user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard,
-          nota:(e.note?String(e.note).slice(0,160):null), nota_edit:!!e.noteEdited },
-        { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
+      const base={ user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard };
+      const nota={ nota:(e.note?String(e.note).slice(0,160):null), nota_edit:!!e.noteEdited };
+      await withNotaFallback(
+        function(conNota){
+          return sb.from('expenses').upsert(
+            conNota ? Object.assign({},base,nota) : base,
+            { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
+          );
+        }
       );
-      if(error) throw error;
     },
     // Persiste el BANCO elegido de un gasto (va embebido en source: manual:caixabank…) para
     // que sobreviva a reinstalaciones — mismo truco que ob: (2026-07-18).
@@ -1724,9 +1756,11 @@ const cloud = (function(){
       if(!sb) return;
       const {data:{session}}=await sb.auth.getSession();
       if(!session) return;
+      // Si la migración 0017 aún no está aplicada, esto no puede hacer nada útil: se avisa al
+      // llamante en vez de fallar mudo (aquí el concepto ES el dato que el usuario quiere guardar).
       const {error}=await sb.from('expenses').update({ nota:String(note||"").slice(0,160)||null, nota_edit:true })
         .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
-      if(error) throw error;
+      if(error){ if(_isMissingNotaCol(error)) _mcNotaCols=false; throw error; }
     },
     async deleteExpense(e){
       if(!sb) return;

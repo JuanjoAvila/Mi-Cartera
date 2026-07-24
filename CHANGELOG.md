@@ -57,6 +57,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
   vez** — el interruptor vive en la versión que quieres probar. Sin riesgo de enlace malicioso: la
   URL de la beta está fija en el código y apunta a la release de este mismo repo.
 
+#### Red de seguridad al desplegar (`withNotaFallback`)
+- `deploy.yml` (la web) y `supabase.yml` (la BD) corren **en paralelo** en el mismo push, y el paso
+  de migraciones lleva `continue-on-error: true` — a este repo ya le pasó que una migración se
+  quedó sin aplicar y el job salió verde igual (la `0015` del Hogar). Sin red, el cliente nuevo
+  mandaría `nota`/`nota_edit` a una tabla que aún no las tiene, PostgREST devolvería «column does
+  not exist» y **el upsert de gastos fallaría entero: los gastos dejarían de subir a la nube**, en
+  silencio, porque los llamantes hacen `.catch(){}`.
+- Ahora `addExpense` reintenta sin esos campos si la columna no está: se pierde el concepto (una
+  comodidad), nunca el gasto (el dato). La bandera vive solo en memoria, así que en cuanto la
+  migración se aplique se cura sola sin tocar nada.
+
 #### Seguridad
 - **CSP** en `shell.html` con inventario documentado de cada destino permitido (`object-src 'none'`, `base-uri 'none'`, `form-action 'self'`, `connect-src` como lista cerrada) + `referrer` a `strict-origin-when-cross-origin`. Cubierta por `e2e/csp.spec.mjs`, que falla si la política bloquea algo que la app necesita — un CSP mal puesto rompe en SILENCIO.
 - **Token de ingest con entropía de verdad** (`mcRandomToken`, 256 bits de `crypto.getRandomValues`). El camino de respaldo era `Date.now()+Math.random()`: predecible, y ese token es lo único que protege la función que apunta gastos en tu cuenta. Sin generador seguro ya no se activa la captura — mejor eso que una clave adivinable.

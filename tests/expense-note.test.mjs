@@ -12,9 +12,14 @@ import { loadPureLogicFromFile } from "../scripts/load-pure-logic.mjs";
 
 const ctx = loadPureLogicFromFile();
 
+// Acepta casos síncronos y async (los de la red de seguridad de `nota` devuelven promesa).
+const pendientes = [];
 function t(name, fn) {
-  try { fn(); console.log(`  ✓ ${name}`); }
-  catch (e) { console.error(`  ✗ ${name}`); throw e; }
+  const run = Promise.resolve().then(fn).then(
+    () => console.log(`  ✓ ${name}`),
+    (e) => { console.error(`  ✗ ${name}`); throw e; },
+  );
+  pendientes.push(run);
 }
 
 console.log("expense-note");
@@ -126,4 +131,39 @@ t("bankIssuesOf: caducados y sin-cuentas sí; hipos pasajeros no", () => {
   assert.equal(out[1].kind, "noacct");
 });
 
+/* RED DE SEGURIDAD de la migración 0017 (2026-07-24).
+   `deploy.yml` y `supabase.yml` corren en paralelo, y el paso de migraciones lleva
+   continue-on-error. Si el cliente nuevo llega antes que la columna, el upsert de gastos fallaría
+   ENTERO y los gastos dejarían de subir a la nube — en silencio, porque los llamantes hacen
+   .catch(){}. Con la red de seguridad se pierde el concepto (comodidad), nunca el gasto (dato). */
+t("withNotaFallback: sin la columna, reintenta sin ella y NO pierde el gasto", async () => {
+  const errCol = { message: 'column "nota" of relation "expenses" does not exist' };
+  const intentos = [];
+  const r = await ctx.withNotaFallback(function (conNota) {
+    intentos.push(conNota);
+    return Promise.resolve(conNota ? { error: errCol } : { data: [{ id: 1 }], error: null });
+  });
+  assert.deepEqual(intentos, [true, false]);   // lo intenta con nota y reintenta sin ella
+  assert.equal(r.error, null);
+});
+
+t("withNotaFallback: con la columna puesta, va a la primera", async () => {
+  const intentos = [];
+  const r = await ctx.withNotaFallback(function (conNota) {
+    intentos.push(conNota);
+    return Promise.resolve({ data: [{ id: 1 }], error: null });
+  });
+  assert.deepEqual(intentos, [true]);
+  assert.equal(r.error, null);
+});
+
+t("withNotaFallback: un error que NO es de la columna se propaga (no se traga)", async () => {
+  const otro = { message: "permission denied for table expenses" };
+  await assert.rejects(
+    ctx.withNotaFallback(function () { return Promise.resolve({ error: otro }); }),
+    (e) => e.message === otro.message,
+  );
+});
+
+await Promise.all(pendientes);
 console.log("\nexpense-note: OK");
