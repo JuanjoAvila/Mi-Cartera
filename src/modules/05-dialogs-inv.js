@@ -245,8 +245,13 @@ function revoParseCommodities(text){
     const amt=ci.amt>=0?revoAmt(f[ci.amt]):null;
     const fee=ci.fee>=0?revoAmt(f[ci.fee]):null;
     const bal=ci.bal>=0?revoAmt(f[ci.bal]):null;
-    const p=by[cur]||(by[cur]={ticker:cur,net:0,ops:0,bal:null,balKey:null});
+    const p=by[cur]||(by[cur]={ticker:cur,net:0,ops:0,bal:null,balKey:null,mov:[]});
     p.ops++; p.net+=(amt||0)-Math.abs(fee||0);
+    // Cada conversión, con su MARCA DE TIEMPO COMPLETA (no solo el día): es la clave con la que
+    // se casa contra el extracto en € para sacar el coste (ver revoMetalCostsFromFiat). El 30/01
+    // hubo dos conversiones el mismo día, así que por fecha sola no bastaría.
+    const ts0=ci.d0>=0?String(f[ci.d0]||"").trim():"";
+    p.mov.push({ ts:ts0, qty:(amt||0)-Math.abs(fee||0) });
     // desempate por nº de línea: varias conversiones el mismo día (pasó el 30/01) y la buena es la última
     const key=date+"#"+String(i).padStart(6,"0");
     if(bal!=null && (p.balKey==null||key>=p.balKey)){ p.bal=bal; p.balKey=key; }
@@ -254,11 +259,80 @@ function revoParseCommodities(text){
   }
   const positions=Object.keys(by).map(function(k){ const p=by[k];
       return { ticker:p.ticker, name:t(REVO_METALS[p.ticker]), shares:+Number(p.bal!=null?p.bal:p.net).toFixed(8),
-               cost:null, cur:"USD", metal:true, buys:0, sells:0, splits:0, divi:0 }; })
+               cost:null, cur:"USD", metal:true, buys:0, sells:0, splits:0, divi:0, mov:p.mov }; })
     .filter(function(p){ return p.shares>0.000001; })     // metal vendido del todo (la plata): fuera
     .sort(function(a,b){ return b.shares-a.shares; });
   if(!positions.length) return null;
   return { positions:positions, dividends:0, fees:0, from:from, to:to, skipped:skipped, metals:true };
+}
+/* COSTE DE LOS METALES — la pata en EUROS, que vive en OTRO fichero (petición 2026-07-25:
+   «lo del puto oro no funciona de saber cuántas ganancias tengo»).
+   Revolut parte cada conversión en dos apuntes, en dos extractos distintos:
+     · Materias primas → «Conversión a XAU», Importe 0,033804, Divisa XAU   (las ONZAS)
+     · Cuenta principal → «Conversión a XAU», Importe −100,00, Divisa EUR   (los EUROS)
+   Comparten la MARCA DE TIEMPO exacta («2025-08-28 15:56:48»), que es la única clave fiable:
+   el 30/01/2026 el usuario hizo dos conversiones el mismo día (oro a las 09:19 y plata a las
+   11:10), así que casar por fecha suelta mezclaría metales.
+   Hasta ahora el coste había que teclearlo a mano metal por metal; con los dos ficheros sale solo.
+   Devuelve { XAU: { "<ts>": eurosPagados } }. La comisión en € se SUMA al coste (es dinero que
+   pusiste); la comisión en onzas no se toca aquí porque ya viene descontada de la cantidad. */
+function revoMetalCostsFromFiat(text){
+  const lines=String(text||"").replace(/\r/g,"").split("\n").filter(function(l){ return l.trim()!==""; });
+  if(!lines.length) return null;
+  let hi=-1, head=null;
+  const hasAny=function(h,names){ return names.some(function(n){ return h.indexOf(n)>=0; }); };
+  for(let i=0;i<Math.min(lines.length,6);i++){
+    const h=csvSplitLine(lines[i]).map(function(x){ return x.trim().toLowerCase(); });
+    if(hasAny(h,['divisa','currency']) && hasAny(h,['importe','amount']) && hasAny(h,['descripción','descripcion','description'])){ hi=i; head=h; break; }
+  }
+  if(hi<0) return null;
+  const col=function(names){ for(let k=0;k<names.length;k++){ const j=head.indexOf(names[k]); if(j>=0) return j; } return -1; };
+  const ci={ cur:col(['divisa','currency']), amt:col(['importe','amount']), fee:col(['comisión','comision','fee']),
+             desc:col(['descripción','descripcion','description']), state:col(['state','estado']),
+             d0:col(['fecha de inicio','started date']) };
+  if(ci.desc<0||ci.amt<0||ci.d0<0) return null;
+  // «Conversión a XAU» / «Exchanged to XAU»: el metal va en la DESCRIPCIÓN, no en la divisa
+  // (la divisa de esta fila es el euro, que es justo lo que venimos a buscar).
+  const re=/(?:conversi[óo]n a|exchanged? to)\s+(XAU|XAG|XPT|XPD)\b/i;
+  const out={}; let n=0;
+  for(let i=hi+1;i<lines.length;i++){
+    const f=csvSplitLine(lines[i]); if(f.length<3) continue;
+    const cur=(f[ci.cur]||"").trim().toUpperCase();
+    if(REVO_METALS[cur]) continue;                       // esta fila ya es la de onzas, no la de euros
+    const m=re.exec(String(f[ci.desc]||"")); if(!m) continue;
+    const st=ci.state>=0?(f[ci.state]||"").trim().toUpperCase():"";
+    if(st && st.indexOf("COMPLET")<0) continue;
+    const amt=revoAmt(f[ci.amt]); if(amt==null) continue;
+    const fee=ci.fee>=0?revoAmt(f[ci.fee]):null;
+    const tk=m[1].toUpperCase();
+    (out[tk]||(out[tk]={}))[String(f[ci.d0]||"").trim()]=Math.abs(amt)+Math.abs(fee||0);
+    n++;
+  }
+  return n?out:null;
+}
+/* Coste de lo que TE QUEDA, a coste medio — la misma convención que ya usa la app con TR
+   (coste = precio medio × participaciones). Cada compra suma euros y onzas; cada venta se lleva
+   su parte proporcional del coste, así que vender la mitad deja la mitad del coste.
+   Si a UNA sola compra le falta su pata en euros, devuelve null: más vale enseñar «—» y que el
+   usuario lo teclee que pintar un coste a medias que haga que el «sube/baja» mienta (AGENTS §1). */
+function revoMetalCost(mov, costs){
+  if(!mov||!mov.length||!costs) return null;
+  const ord=mov.slice().sort(function(a,b){ return a.ts<b.ts?-1:(a.ts>b.ts?1:0); });
+  let qty=0, cost=0, faltan=0;
+  for(let i=0;i<ord.length;i++){
+    const o=ord[i];
+    if(o.qty>0){
+      const eur=costs[o.ts];
+      if(eur==null) faltan++; else cost+=eur;
+      qty+=o.qty;
+    }else if(o.qty<0){
+      const vend=Math.min(-o.qty, qty);
+      if(qty>0) cost-=cost*(vend/qty);
+      qty-=vend;
+    }
+  }
+  if(faltan) return null;
+  return qty>0.000001 ? +cost.toFixed(2) : null;
 }
 /* Emparejar un metal con la posición que ya tengas. brokerSuggest NO vale aquí: el oro se
    llevaba a mano y SIN ticker, así que por ticker no hay nada que casar, y por nombre todas
@@ -311,12 +385,27 @@ function BrokerImport({state, set, fetchPrices}){
     setErr(null); setDoneN(null);
     const acc={ positions:[], dividends:0, fees:0, from:null, to:null, skipped:0 };
     let any=false, allPnl=true;
+    // PRIMERA PASADA: recoger el coste en euros de los metales. Vive en el extracto de la CUENTA
+    // (otro fichero), y el usuario puede soltarlos en cualquier orden — así que se juntan antes
+    // de parsear nada, y da igual cuál venga primero.
+    const mcosts={};
+    txts.forEach(function(src){
+      const c=revoMetalCostsFromFiat(src);
+      if(c) Object.keys(c).forEach(function(tk){ Object.assign(mcosts[tk]||(mcosts[tk]={}), c[tk]); });
+    });
     txts.forEach(function(src){
       let res=null;
       const p=revoParse(src);
       const agg=p?revoAggregate(p):null;
       if(agg && agg.positions.length) res=Object.assign({},agg,{from:p.from,to:p.to,skipped:p.skipped});
-      else res=revoParseCommodities(src);
+      else {
+        res=revoParseCommodities(src);
+        // El coste que antes había que teclear a mano, ahora calculado: casa cada conversión con
+        // su pata en euros por marca de tiempo y aplica coste medio (ver revoMetalCost).
+        if(res) res.positions.forEach(function(po){
+          if(po.metal && po.mov) po.cost=revoMetalCost(po.mov, mcosts[po.ticker]);
+        });
+      }
       if(!res){ if(!revoIsPnl(src)) allPnl=false; return; }
       any=true;
       res.positions.forEach(function(po){
