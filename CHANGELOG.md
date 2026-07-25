@@ -55,8 +55,10 @@ Y la mitad que sí viaja por OTA: `_mcSyncOtaNative` copiaba la marca de «ya av
 - **La beta se sellaba con un número distinto del que anunciaba.** `beta.yml` publica el manifiesto como `VERSION.RUN_NUMBER` (4.11.0.7) pero el bundle se sellaba con la `VERSION` pelada (4.11.0), así que `_mcNewerVer` daba `true` para siempre: **la misma beta ofrecida en bucle** («todo el maldito rato sale para actualizar») y Ajustes marcando un número que no era el que llevabas. El sello sale ahora del mismo sitio que el manifiesto (`MC_STAMP_VERSION`), y el workflow **no publica** si los dos no coinciden. Guarda en `tests/updates.test.mjs`.
 - **Apagar el canal beta no volvía atrás.** El OTA solo va hacia adelante, así que el móvil se quedaba con el bundle de pruebas hasta que producción lo adelantara. `_mcApplyChannelBundle()`: cambiar de canal instala lo que toca en el canal nuevo **en la dirección que sea**, que es lo que uno espera al apagar el interruptor.
 
-#### Proceso
-**Esta versión va al canal `beta`, no a `main`.** La 4.10.0 se publicó directa a producción saltándose el canal de pruebas que existe justo para esto, y lo estrenó el usuario en su móvil. Ver AGENTS §6.
+#### Proceso: el circuito completo, por fin
+**Aprobada en el móvil el 2026-07-26** («aprobado, todo funciona a las mil maravillas») y promocionada con el workflow «Promocionar beta a producción». Cuatro betas hicieron falta —4.11.0.7, .8, .9 y .10—, con **dos rechazos formales** desde el panel de revisión, y esos rechazos son lo que encontró el fallo de verdad del perfil: sin ellos habría subido a producción un gesto que no cerraba. Es la primera versión que recorre el circuito entero como estaba pensado desde la 4.8.0.
+
+**Esta versión iba al canal `beta`, no a `main`.** La 4.10.0 se publicó directa a producción saltándose el canal de pruebas que existe justo para esto, y lo estrenó el usuario en su móvil. Ver AGENTS §6.
 
 Lleva mezclada la **4.10.2** (abajo): sin ella, este bundle no se puede ni descargar.
 
