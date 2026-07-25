@@ -133,9 +133,18 @@ public class TrExpenseListener extends NotificationListenerService {
                         .put("fecha", String.valueOf(System.currentTimeMillis()))
                         .toString();
 
-                HttpURLConnection conn = (HttpURLConnection) new URL(INGEST_URL).openConnection();
+                // EL TOKEN VIAJA EN CABECERA, NO EN LA URL (seguridad, 2026-07-25). Un `?token=…`
+                // acaba en sitios donde no debería: logs de acceso del proxy, historial de
+                // peticiones, trazas de error, cabeceras Referer. Es la única credencial que
+                // protege la función que apunta gastos en tu cuenta, así que fuera del query
+                // string. La Edge Function ya aceptaba `x-ingest-token` desde el principio, de
+                // modo que un APK viejo con el token en la URL SIGUE FUNCIONANDO: se puede
+                // desplegar sin coordinar versiones.
+                String[] parts = splitIngest(INGEST_URL);
+                HttpURLConnection conn = (HttpURLConnection) new URL(parts[0]).openConnection();
                 conn.setRequestMethod("POST");
                 conn.setRequestProperty("Content-Type", "application/json");
+                if (!parts[1].isEmpty()) conn.setRequestProperty("x-ingest-token", parts[1]);
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(15000);
                 conn.setDoOutput(true);
@@ -148,6 +157,30 @@ public class TrExpenseListener extends NotificationListenerService {
                 // v1: se ignora; más adelante, cola de reintentos.
             }
         }).start();
+    }
+
+    /**
+     * Parte la URL de ingest en {URL sin el token, token}. El token se guardó dentro del query
+     * string (`…/ingest?token=abc`) desde el primer día; aquí se saca para mandarlo en cabecera.
+     * Conserva cualquier OTRO parámetro que hubiera, y si no hay token devuelve la URL intacta
+     * (así un ajuste antiguo o una URL escrita a mano siguen valiendo).
+     */
+    static String[] splitIngest(String raw) {
+        if (raw == null) return new String[]{"", ""};
+        int q = raw.indexOf('?');
+        if (q < 0) return new String[]{raw, ""};
+        String token = "";
+        StringBuilder rest = new StringBuilder();
+        for (String kv : raw.substring(q + 1).split("&")) {
+            if (kv.isEmpty()) continue;
+            if (kv.startsWith("token=")) { token = kv.substring(6); continue; }
+            rest.append(rest.length() == 0 ? "?" : "&").append(kv);
+        }
+        // El servidor lee el query con searchParams, que DECODIFICA. Al pasarlo a cabecera hay que
+        // decodificar aquí para mandar el mismo valor. Los tokens por usuario son hex (mcRandomToken)
+        // y decodifican a sí mismos; esto solo importa para un token legacy con caracteres raros.
+        try { token = java.net.URLDecoder.decode(token, "UTF-8"); } catch (Exception ignored) {}
+        return new String[]{raw.substring(0, q) + rest, token};
     }
 
     private static String readAll(InputStream is) {
