@@ -382,6 +382,9 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   ));
 }
 
+/* Los tres brókers con integración propia. El id es el mismo `ent` que llevan las posiciones en
+   `state.investments`, para poder deducir de la cartera cuáles usa el usuario sin preguntarle. */
+var BROKER_CHIPS=[["trade_republic","Trade Republic"],["myinvestor","MyInvestor"],["revolut","Revolut"]];
 function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onLinks, fetchPrices, focusAspsp}){
   const [histOpen,setHistOpen]=useState(false);
   const [links,setLinks]=useState(null);          // null = cargando
@@ -399,6 +402,22 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
      de uno en uno. El ESTADO (la píldora de color) sigue siempre visible: es lo que avisa de que
      algo va mal, y esconderlo sería cambiar ruido por ceguera. */
   const [openBank,setOpenBank]=useState("");
+  // Qué brókers usa este usuario. Sin elección previa se deducen de las posiciones que ya tiene
+  // en cartera: así nadie pierde de vista un bróker que estaba usando, y quien no tiene ninguno
+  // no ve tres formularios de login que no le sirven de nada.
+  const brokersOn=(function(){
+    const pref=(state&&state.settings||{}).brokersOn;
+    if(Array.isArray(pref)) return pref;
+    const ents=[]; (state.investments||[]).forEach(function(i){ if(i.ent&&ents.indexOf(i.ent)<0) ents.push(i.ent); });
+    return BROKER_CHIPS.map(function(b){ return b[0]; }).filter(function(k){ return ents.indexOf(k)>=0; });
+  })();
+  const toggleBroker=function(k){
+    const base=brokersOn.slice();
+    const i=base.indexOf(k); if(i>=0) base.splice(i,1); else base.push(k);
+    // Al apagar un bróker se pliega su tarjeta: si no, quedaba abierta la del siguiente render.
+    if(i>=0) setOpenBank("");
+    set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{brokersOn:base})}); });
+  };
   // Banco a resaltar al entrar (viene del sync o de la noti «reconéctalo»): lo centramos en
   // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
   const focusRef=useRef(null);
@@ -574,9 +593,29 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     }), document.body),
     React.createElement("div",{style:{height:1,background:"var(--line-soft)",margin:"22px 0 8px"}}),
     React.createElement("div",{className:"bk-sec"}, t("bp_brokers")),
-    React.createElement(TRSync,{state:state,set:set,totals:totals}),
-    React.createElement(MyInvestorSync,{state:state,set:set}),
-    React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices}),
+    /* ¿QUÉ BRÓKERS USAS? (feedback 2026-07-25: «que te salgan directamente para loguear sin
+       tenerlo es muy muy raro — ni mi pareja ni mi padre tienen MyInvestor y les sale»).
+       Las tres tarjetas se pintaban SIEMPRE, así que todo el mundo veía formularios de login de
+       brókers que no usa. Ahora las eliges tú.
+       Por defecto se deducen de lo que YA tienes en cartera: quien venía usando un bróker no
+       pierde nada, y quien no tiene ninguno (el padre, la pareja) empieza solo con los chips —
+       que es justo lo que se pedía. La elección vive en settings, así que viaja con la cuenta. */
+    (function(){
+      const chips=BROKER_CHIPS.map(function(b){
+        const on=brokersOn.indexOf(b[0])>=0;
+        return React.createElement("button",{key:b[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBroker(b[0]); }},
+          (on?"✓ ":"")+b[1]);
+      });
+      return React.createElement("div",{style:{marginBottom:12}},
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.45,marginBottom:8}}, t("bp_which")),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8}}, chips));
+    })(),
+    brokersOn.indexOf("trade_republic")>=0 && React.createElement(TRSync,{state:state,set:set,totals:totals,
+      open:openBank==="br:tr", onToggle:function(){ setOpenBank(openBank==="br:tr"?"":"br:tr"); }}),
+    brokersOn.indexOf("myinvestor")>=0 && React.createElement(MyInvestorSync,{state:state,set:set,
+      open:openBank==="br:mi", onToggle:function(){ setOpenBank(openBank==="br:mi"?"":"br:mi"); }}),
+    brokersOn.indexOf("revolut")>=0 && React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices,
+      open:openBank==="br:rev", onToggle:function(){ setOpenBank(openBank==="br:rev"?"":"br:rev"); }}),
     React.createElement("div",{className:"bk-ver"}, "v"+(CONFIG.APP_VERSION||"?")),
     // (bp_apk_hint fuera 2026-07-18: párrafo de circunstancias ya resueltas — menos letra aquí)
     React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:6,lineHeight:1.5}}, t("bp_foot"))
@@ -849,6 +888,11 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.9.1", d:"25 jul 2026", t:"Los brókers los eliges tú, y el perfil se cierra limpio", items:[
+    "🧩 Ya no te salen los tres brókers a la fuerza. Antes la app te enseñaba el login de Trade Republic, MyInvestor y Revolut aunque no tuvieras cuenta en ninguno — raro y confuso. Ahora arriba eliges cuáles usas y solo aparecen esos. Si ya tenías posiciones de un bróker, sigue apareciendo solo: no tienes que tocar nada.",
+    "🗂️ Las tarjetas de bróker también se pliegan, igual que los bancos: tocas la que quieras y se abre solo esa.",
+    "👤 Cerrar el perfil deslizando ya no mezcla las dos pantallas. Al arrastrar hacia abajo se veían el perfil y el resumen a la vez, uno encima del otro, y parecía que la app se volvía loca. Ahora el panel se encoge hacia tu avatar, opaco y limpio, igual que al abrirlo pero al revés.",
+  ]},
   {v:"4.9.0", d:"25 jul 2026", t:"Trade Republic deja de pedirte el código cada vez, y el oro por fin dice si ganas", items:[
     "🔐 Trade Republic ya NO se desconecta al cerrar la app. Llevaba meses pidiéndote el PIN y el código del móvil cada vez que la abrías. La causa: al guardar la sesión, de las dos copias que hay de la misma credencial nos quedábamos con la caducada, y encima la volvíamos a guardar en cada vuelta — una vez estropeada, ya no se recuperaba nunca. Por eso pasaba «siempre, dieras el tiempo que dieras». Probado cerrando la app y volviendo a entrar: entra sin pedir nada.",
     "🥇 El oro de Revolut ya te dice cuánto ganas o pierdes, sin teclear nada. Revolut parte cada compra en dos ficheros: las onzas en el extracto de Materias primas y los euros en el de la cuenta. Ahora la app cruza los dos sola y calcula el coste (incluso si vendiste una parte). Suelta los dos extractos juntos, en el orden que quieras.",

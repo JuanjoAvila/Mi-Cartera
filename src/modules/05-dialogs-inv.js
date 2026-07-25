@@ -364,7 +364,7 @@ function revoIsPnl(text){
    (Revolut es un bróker más). Previsualización obligatoria + mapeo por posición antes
    de aplicar: el usuario cuadra contra su app de Revolut y decide. Re-ancla shares+coste
    a las posiciones mapeadas (o crea nuevas). No pisa un ISIN real con el ticker. */
-function BrokerImport({state, set, fetchPrices}){
+function BrokerImport({state, set, fetchPrices, open, onToggle}){
   const [text,setText]=useState("");
   const [parsed,setParsed]=useState(null);
   const [map,setMap]=useState({});
@@ -478,14 +478,12 @@ function BrokerImport({state, set, fetchPrices}){
     // y nada más re-anclar, precios en vivo en silencio: el valor pasa de «último conocido» a real
     if(fetchPrices) setTimeout(function(){ fetchPrices(true); },50);
   };
+  if(open===false) return React.createElement("div",{className:"bk-card bk-csv"},
+    bkBrand({logo:"CSV", logoStyle:{background:"#9BD0E022",color:"#9BD0E0"}, title:t("bi_rev_title"), sub:t("bi_sub"),
+             badge:null, open:false, onToggle:onToggle}));
   return React.createElement("div",{className:"bk-card bk-csv"},
-    React.createElement("div",{className:"bk-brand"},
-      React.createElement("div",{className:"bk-logo",style:{background:"#9BD0E022",color:"#9BD0E0"}}, "CSV"),
-      React.createElement("div",{style:{flex:1,minWidth:0}},
-        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("bi_rev_title")),
-        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("bi_sub"))
-      )
-    ),
+    bkBrand({logo:"CSV", logoStyle:{background:"#9BD0E022",color:"#9BD0E0"}, title:t("bi_rev_title"), sub:t("bi_sub"),
+             badge:null, open:true, onToggle:onToggle}),
     React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("bi_hint")),
     React.createElement("button",{className:"chip",style:{marginBottom:10},onClick:function(){ setSteps(!steps); }}, (steps?"▾ ":"▸ ")+t("bi_rev_steps_btn")),
     steps && React.createElement("ol",{style:{margin:"0 0 12px",paddingLeft:18,fontSize:12.5,color:"var(--muted)",lineHeight:1.6}},

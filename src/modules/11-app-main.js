@@ -880,7 +880,15 @@ function App(){
     const h=window.innerHeight||700;
     const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.48))),0.88);
     const s0c=profS0(), sc=1-(1-s0c)*resist;
-    profileQueue(sc, 1-resist*0.8);
+    /* EL PANEL NO SE DESVANECE MIENTRAS ARRASTRAS (vídeo del usuario, 2026-07-25). Antes bajaba
+       la opacidad hasta 0,2 (`1-resist*0.8`), y como el panel ocupa la pantalla entera el
+       resultado era ver el PERFIL Y EL RESUMEN A LA VEZ, los dos legibles, superpuestos. Eso es
+       lo que se veía «loquísimo»: no era solo el tirón, era la mezcla de dos pantallas.
+       Al ABRIR nunca pasó porque la apertura no interpola opacidad — el panel va opaco y solo
+       ESCALA desde el avatar, con el velo oscureciendo el fondo. Cerrar hace ahora lo mismo en
+       reversa: escala hacia el avatar, opaco, y el velo se va al soltar. Un fundido de una capa
+       a pantalla completa sobre contenido siempre da papilla, por muy suave que sea. */
+    profileQueue(sc, 1);
     if(e.cancelable) e.preventDefault();
   };
   const profileEnd=function(){

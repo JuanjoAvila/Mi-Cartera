@@ -1,13 +1,13 @@
 /* ============================================================
-   SINCRONIZACIÓN MYINVESTOR (beta) — API no oficial.
+   SINCRONIZACIÃ“N MYINVESTOR (beta) â€” API no oficial.
    ============================================================
-   v4.0.12: el LOGIN se hace DESDE EL MÓVIL cuando se puede (CapacitorHttp, petición nativa
-   sin CORS) — el reCAPTCHA condicional (SECURITY_001) salta casi siempre desde la IP de
+   v4.0.12: el LOGIN se hace DESDE EL MÃ“VIL cuando se puede (CapacitorHttp, peticiÃ³n nativa
+   sin CORS) â€” el reCAPTCHA condicional (SECURITY_001) salta casi siempre desde la IP de
    datacenter de Supabase y casi nunca desde la IP residencial del usuario, que es la misma
-   vía que la app oficial. Los tokens resultantes se suben a la Edge (que los VALIDA contra
+   vÃ­a que la app oficial. Los tokens resultantes se suben a la Edge (que los VALIDA contra
    la API antes de guardar) y sync/keepalive siguen en la nube como siempre. En web (sin
-   nativo) o con APK viejo sin CapacitorHttp se cae a la vía Edge de antes. La contraseña
-   NUNCA se guarda en ningún caso. Trae fondos indexados / fondos / acciones. */
+   nativo) o con APK viejo sin CapacitorHttp se cae a la vÃ­a Edge de antes. La contraseÃ±a
+   NUNCA se guarda en ningÃºn caso. Trae fondos indexados / fondos / acciones. */
 function miNativeHttp(){
   try{
     const cap=window.Capacitor;
@@ -18,12 +18,12 @@ function miNativeHttp(){
 }
 // --- reCAPTCHA de MyInvestor resuelto EN LA WEBVIEW (intento OTA) -----------------------------
 // Cuando MI responde SECURITY_001 (captcha), la app oficial genera un token de reCAPTCHA v3 en la
-// web de MyInvestor y lo manda en la cabecera X-Recaptcha-Token. Aquí intentamos lo mismo desde la
+// web de MyInvestor y lo manda en la cabecera X-Recaptcha-Token. AquÃ­ intentamos lo mismo desde la
 // WebView de la app: cargamos el script de Google reCAPTCHA con EL SITE KEY DE MYINVESTOR (que el
-// usuario pega — no es accesible de otra forma) y ejecutamos la acción. EXCEPCIÓN consciente a la
+// usuario pega â€” no es accesible de otra forma) y ejecutamos la acciÃ³n. EXCEPCIÃ“N consciente a la
 // regla de cero-CDN: solo se carga bajo demanda al conectar MI (nunca en el arranque; la app sigue
-// funcionando offline para todo lo demás). Puede que MI valide el dominio del token y lo rechace
-// (entonces haría falta WebView nativa); esto es el intento barato antes de tocar APK.
+// funcionando offline para todo lo demÃ¡s). Puede que MI valide el dominio del token y lo rechace
+// (entonces harÃ­a falta WebView nativa); esto es el intento barato antes de tocar APK.
 function miRecaptchaKey(){ try{ return (localStorage.getItem("_miRcKey")||"").trim(); }catch(e){ return ""; } }
 function miLoadRecaptcha(key){
   return new Promise(function(resolve){
@@ -39,7 +39,7 @@ function miLoadRecaptcha(key){
       }
       const s=document.createElement("script"); s.id="mi-rc-js"; s.async=true; s.defer=true;
       // enterprise.js cubre las dos variantes (grecaptcha.enterprise); si la clave fuera v3 normal,
-      // grecaptcha (sin enterprise) también queda expuesto por este mismo script.
+      // grecaptcha (sin enterprise) tambiÃ©n queda expuesto por este mismo script.
       s.src="https://www.google.com/recaptcha/enterprise.js?render="+encodeURIComponent(key);
       s.onload=function(){
         let n=0; const iv=setInterval(function(){
@@ -66,16 +66,16 @@ function miSolveCaptcha(action){
 }
 function miDeviceLogin(http, loginBody, devId, captchaToken){
   // Mismas cabeceras que _shared/myinvestor.ts (la API valida x-device-id y x-myinvestor-app).
-  // Origin/Referer aquí SÍ se pueden fijar: la petición sale en nativo, no la limita el navegador.
+  // Origin/Referer aquÃ­ SÃ se pueden fijar: la peticiÃ³n sale en nativo, no la limita el navegador.
   const headers={ "Content-Type":"application/json", "Accept":"application/json",
     "Referer":"https://api.myinvestor.es", "Origin":"https://api.myinvestor.es",
-    // 3.150.0 (2026-07-18): el captcha salía TAMBIÉN desde el móvil («Captcha required», foto).
-    // Subir la versión declarada es la primera palanca documentada: el anti-bot de MI puntúa
-    // peor a clientes con versión vieja. Mantener SIEMPRE igual que _shared/myinvestor.ts.
+    // 3.150.0 (2026-07-18): el captcha salÃ­a TAMBIÃ‰N desde el mÃ³vil (Â«Captcha requiredÂ», foto).
+    // Subir la versiÃ³n declarada es la primera palanca documentada: el anti-bot de MI puntÃºa
+    // peor a clientes con versiÃ³n vieja. Mantener SIEMPRE igual que _shared/myinvestor.ts.
     "x-device-id":devId, "x-myinvestor-app":"version=3.150.0,platform=web" };
   // Cuando podamos resolver el reCAPTCHA en una WebView nativa, el token viaja en estas cabeceras
-  // (mismo contrato que el cliente `finanze`): X-Recaptcha-Token + acción SECURITY_CHECK. Hoy es
-  // opcional y casi siempre va vacío — el plumbing queda listo para cuando exista el site key.
+  // (mismo contrato que el cliente `finanze`): X-Recaptcha-Token + acciÃ³n SECURITY_CHECK. Hoy es
+  // opcional y casi siempre va vacÃ­o â€” el plumbing queda listo para cuando exista el site key.
   if(captchaToken){ headers["X-Recaptcha-Token"]=captchaToken; headers["X-Recaptcha-Action"]="SECURITY_CHECK"; }
   return Promise.resolve(http.request({
     url:"https://api.myinvestor.es/login/api/v2/auth/token",
@@ -96,9 +96,9 @@ function miDeviceLogin(http, loginBody, devId, captchaToken){
     return { ok:false, status:st, error:(j.status&&j.status.message)||d.message||("login HTTP "+st) };
   });
 }
-function MyInvestorSync({state, set}){
+function MyInvestorSync({state, set, open, onToggle}){
   const [step,setStep]=useState("idle");     // idle | otp | connected | preview
-  // usuario recordado (NUNCA la contraseña): reconectar tras una caducidad = solo contraseña+OTP
+  // usuario recordado (NUNCA la contraseÃ±a): reconectar tras una caducidad = solo contraseÃ±a+OTP
   const [cid,setCid]=useState(function(){ try{ return localStorage.getItem("_miCid")||""; }catch(e){ return ""; } });
   const [expired,setExpired]=useState(false);
   const [pass,setPass]=useState("");
@@ -115,7 +115,7 @@ function MyInvestorSync({state, set}){
   const [rcKey,setRcKey]=useState(function(){ try{ return localStorage.getItem("_miRcKey")||""; }catch(e){ return ""; } });
   const devRef=useRef(null);
   const deviceId=function(){
-    // Mismo deviceId siempre (antes UUID nuevo → MyInvestor veía «otro móvil» y pedía captcha).
+    // Mismo deviceId siempre (antes UUID nuevo â†’ MyInvestor veÃ­a Â«otro mÃ³vilÂ» y pedÃ­a captcha).
     if(devRef.current) return devRef.current;
     try{
       let d=localStorage.getItem("_miDeviceId");
@@ -135,7 +135,7 @@ function MyInvestorSync({state, set}){
       cloud.myinvestorStatus().then(function(r){
         if(r&&r.device_id) adoptDeviceId(r.device_id);
         if(r&&r.status==="active"){ setStep("connected"); return; }
-        // «expired» a veces era un falso positivo (403 anti-bot). Probamos sync suave:
+        // Â«expiredÂ» a veces era un falso positivo (403 anti-bot). Probamos sync suave:
         // si el token sigue vivo, reactivamos sin login ni captcha (feedback 2026-07-17).
         if(r&&r.status==="expired"){
           setExpired(true);
@@ -148,7 +148,7 @@ function MyInvestorSync({state, set}){
     }).catch(function(){ setNoSession(true); });
   },[]);
   const fail=function(r){ setBusy(false); const m=(r&&(r.error||r.message))||t("mi_err"); setErr(m); try{ cloud.logEvent('error','MI: '+m); }catch(e){} };
-  // Éxito del login en el móvil → subir tokens (la Edge los valida contra la API antes de guardar).
+  // Ã‰xito del login en el mÃ³vil â†’ subir tokens (la Edge los valida contra la API antes de guardar).
   const storeTokens=function(tk){
     return cloud.myinvestorStore({ deviceId:deviceId(), accessToken:tk.accessToken, refreshToken:tk.refreshToken, refreshExpiresIn:tk.refreshExpiresIn }).then(function(r){
       setBusy(false);
@@ -162,12 +162,12 @@ function MyInvestorSync({state, set}){
       if(!r){ fail(r); return; }
       if(r.recaptcha){
         // No hay WebView para resolver captcha: pedir paciencia y NO spamear reintentos.
-        // Telemetría con la VÍA usada (2026-07-18): si esto sale en Actividad, el login fue por
-        // la Edge (IP datacenter) — o estás en web, o el APK no tiene CapacitorHttp. La vía
-        // móvil casi nunca ve captcha; saber cuál falló es la mitad del diagnóstico.
-        // El texto crudo de la API («Captcha required») no le dice nada al usuario → mensaje propio.
+        // TelemetrÃ­a con la VÃA usada (2026-07-18): si esto sale en Actividad, el login fue por
+        // la Edge (IP datacenter) â€” o estÃ¡s en web, o el APK no tiene CapacitorHttp. La vÃ­a
+        // mÃ³vil casi nunca ve captcha; saber cuÃ¡l fallÃ³ es la mitad del diagnÃ³stico.
+        // El texto crudo de la API (Â«Captcha requiredÂ») no le dice nada al usuario â†’ mensaje propio.
         setErr(t("mi_recaptcha"));
-        try{ cloud.logEvent('error','MI: recaptcha vía Edge'+(miNativeHttp()?' (con nativo disponible)':' (web/APK sin CapacitorHttp)')); }catch(e){}
+        try{ cloud.logEvent('error','MI: recaptcha vÃ­a Edge'+(miNativeHttp()?' (con nativo disponible)':' (web/APK sin CapacitorHttp)')); }catch(e){}
         return;
       }
       if(r.otp){ setOtpInfo({otpId:r.otpId, signatureRequestId:r.signatureRequestId}); setStep("otp"); return; }
@@ -179,7 +179,7 @@ function MyInvestorSync({state, set}){
     if(!cid.trim()||!pass) return; setBusy(true); setErr("");
     const http=miNativeHttp();
     if(http){
-      // Reintenta el login del móvil; si sale captcha y hay site key, lo resuelve en la WebView y
+      // Reintenta el login del mÃ³vil; si sale captcha y hay site key, lo resuelve en la WebView y
       // reintenta UNA vez con el token (retried evita bucle si MI lo rechaza por dominio).
       const attempt=function(captchaToken, retried){
         miDeviceLogin(http,{ customerId:cid.trim(), password:pass },deviceId(),captchaToken).then(function(r){
@@ -190,23 +190,23 @@ function MyInvestorSync({state, set}){
               setErr(t("mi_solving_captcha"));
               miSolveCaptcha("login").then(function(tok){
                 if(tok){ attempt(tok, true); }
-                // Mensajes distintos por causa (2026-07-21: con el genérico era imposible saber si
-                // falló Google o MyInvestor): sin token = Google no lo da fuera de su dominio.
-                else { setBusy(false); setErr(t("mi_rc_fail_gen")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView (¿dominio del site key?)'); }catch(e){} }
+                // Mensajes distintos por causa (2026-07-21: con el genÃ©rico era imposible saber si
+                // fallÃ³ Google o MyInvestor): sin token = Google no lo da fuera de su dominio.
+                else { setBusy(false); setErr(t("mi_rc_fail_gen")); try{ cloud.logEvent('error','MI: no se pudo generar token reCAPTCHA en la WebView (Â¿dominio del site key?)'); }catch(e){} }
               });
               return;
             }
             setBusy(false);
-            // retried = hubo token y aun así MI dijo captcha → lo rechazó él, no Google.
+            // retried = hubo token y aun asÃ­ MI dijo captcha â†’ lo rechazÃ³ Ã©l, no Google.
             setErr(retried?t("mi_rc_rejected"):t("mi_recaptcha"));
-            try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI — ¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
+            try{ cloud.logEvent('error','MI: recaptcha'+(retried?' (token rechazado por MI â€” Â¿dominio?)':(miRecaptchaKey()?'':' sin site key'))); }catch(e){}
             return;
           }
           setBusy(false); fail(r);
         }).catch(function(e){
-          // CapacitorHttp peta → vía Edge de siempre, dejando rastro: sin esto era imposible saber
-          // desde Actividad por qué un móvil con APK nuevo seguía viendo captcha (2026-07-18).
-          try{ cloud.logEvent('error','MI: login nativo falló, caigo a Edge: '+((e&&e.message)||e)); }catch(_){}
+          // CapacitorHttp peta â†’ vÃ­a Edge de siempre, dejando rastro: sin esto era imposible saber
+          // desde Actividad por quÃ© un mÃ³vil con APK nuevo seguÃ­a viendo captcha (2026-07-18).
+          try{ cloud.logEvent('error','MI: login nativo fallÃ³, caigo a Edge: '+((e&&e.message)||e)); }catch(_){}
           connectViaEdge();
         });
       };
@@ -226,7 +226,7 @@ function MyInvestorSync({state, set}){
     if(code.trim().length<4||!otpInfo) return; setBusy(true); setErr("");
     const http=miNativeHttp();
     if(http){
-      // El OTP debe validarse por la MISMA vía que pidió el login (mismo x-device-id e IP).
+      // El OTP debe validarse por la MISMA vÃ­a que pidiÃ³ el login (mismo x-device-id e IP).
       miDeviceLogin(http,{ customerId:cid.trim(), password:pass, otpId:otpInfo.otpId, signatureRequestId:otpInfo.signatureRequestId, code:code.trim() },deviceId()).then(function(r){
         if(r&&r.tokens){ storeTokens(r.tokens); return; }
         setBusy(false); fail(r);
@@ -239,7 +239,7 @@ function MyInvestorSync({state, set}){
     setBusy(true); setErr(""); setDoneN(null);
     cloud.myinvestorSync().then(function(r){
       setBusy(false);
-      // softFail = anti-bot/403: sesión sigue; no pedir OTP/captcha (feedback 2026-07-17).
+      // softFail = anti-bot/403: sesiÃ³n sigue; no pedir OTP/captcha (feedback 2026-07-17).
       if(r&&r.softFail){ fail(r); return; }
       if(r&&r.authExpired){ setStep("idle"); setExpired(true); fail(r); return; }
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
@@ -258,7 +258,7 @@ function MyInvestorSync({state, set}){
         if(!po) return i;
         const patch={ shares:po.shares };
         if(po.cost!=null) patch.cost=po.cost;
-        if(po.value!=null) patch.value=po.value;      // MI da valor en la divisa del fondo (normalmente €)
+        if(po.value!=null) patch.value=po.value;      // MI da valor en la divisa del fondo (normalmente â‚¬)
         if(po.isin&&!i.isin) patch.isin=po.isin;
         return Object.assign({},i,patch);
       });
@@ -272,7 +272,7 @@ function MyInvestorSync({state, set}){
   };
   const disconnect=function(){ cloud.myinvestorDisconnect(); try{ localStorage.removeItem("_miCid"); }catch(e){} setExpired(false); setStep("idle"); setPositions(null); setCid(""); setPass(""); setOtpInfo(null); };
   const inpStyle={marginTop:8};
-  // UI plana v4 (sin CollapsibleCard pesada) — feedback 2026-07-17 redesing bancos.
+  // UI plana v4 (sin CollapsibleCard pesada) â€” feedback 2026-07-17 redesing bancos.
   const body=noSession
     ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("mi_need_login"))
     : React.createElement(React.Fragment,null,
@@ -282,13 +282,13 @@ function MyInvestorSync({state, set}){
           React.createElement("input",{className:"af-in",style:inpStyle,type:"password",placeholder:t("mi_pass_ph"),autoComplete:"off",value:pass,onChange:function(e){ setPass(e.target.value); }}),
           React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:busy||!cid.trim()||!pass,onClick:doConnect}, busy?t("mi_connecting"):t("mi_connect")),
           // Campo avanzado del site key de reCAPTCHA: aparece al saltar el captcha (o si ya hay uno
-          // guardado). Con él la app intenta resolver el captcha sola en la WebView (2026-07-20).
+          // guardado). Con Ã©l la app intenta resolver el captcha sola en la WebView (2026-07-20).
           (err===t("mi_recaptcha") || err===t("mi_rc_fail_gen") || err===t("mi_rc_rejected") || rcKey) && React.createElement("div",{style:{marginTop:12,paddingTop:10,borderTop:"1px solid var(--line-soft)"}},
             React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.5,marginBottom:6}}, t("mi_rc_key_hint")),
-            React.createElement("input",{className:"af-in",style:Object.assign({},inpStyle,{fontFamily:"monospace",fontSize:13}),placeholder:"6L…",autoComplete:"off",value:rcKey,onChange:function(e){ const v=e.target.value.trim(); setRcKey(v); try{ if(v) localStorage.setItem("_miRcKey",v); else localStorage.removeItem("_miRcKey"); }catch(_){} }}),
+            React.createElement("input",{className:"af-in",style:Object.assign({},inpStyle,{fontFamily:"monospace",fontSize:13}),placeholder:"6Lâ€¦",autoComplete:"off",value:rcKey,onChange:function(e){ const v=e.target.value.trim(); setRcKey(v); try{ if(v) localStorage.setItem("_miRcKey",v); else localStorage.removeItem("_miRcKey"); }catch(_){} }}),
             rcKey && React.createElement("div",{style:{fontSize:11.5,color:"var(--mint)",marginTop:6}}, t("mi_rc_key_saved")),
-            // Atribución obligatoria: el badge flotante de Google se oculta por CSS (salía FIJO en
-            // toda la app, no solo aquí — feedback 2026-07-21) y sus términos piden citarlo en el flujo.
+            // AtribuciÃ³n obligatoria: el badge flotante de Google se oculta por CSS (salÃ­a FIJO en
+            // toda la app, no solo aquÃ­ â€” feedback 2026-07-21) y sus tÃ©rminos piden citarlo en el flujo.
             rcKey && React.createElement("div",{style:{fontSize:10.5,color:"var(--muted-2)",marginTop:4}}, t("mi_rc_badge_note")))
         ),
         step==="otp" && React.createElement(React.Fragment,null,
@@ -308,7 +308,7 @@ function MyInvestorSync({state, set}){
               React.createElement("div",{style:{display:"flex",justifyContent:"space-between",width:"100%",gap:10}},
                 React.createElement("div",{style:{minWidth:0}},
                   React.createElement("div",{className:"rname"},po.name),
-                  React.createElement("div",{className:"rsub"},(po.isin||"")+(po.cur&&po.cur!=="EUR"?(" · "+po.cur):""))),
+                  React.createElement("div",{className:"rsub"},(po.isin||"")+(po.cur&&po.cur!=="EUR"?(" Â· "+po.cur):""))),
                 React.createElement("div",{className:"rval num"}, (po.shares!=null?po.shares:"")+" "+t("bi_shares"),
                   React.createElement("div",{className:"rsub"},eur(po.value!=null?po.value:0)))),
               React.createElement("select",{className:"af-in",value:map[keyOf(po)]||"",onChange:function(e){ const v=e.target.value; setMap(function(m){ const n=Object.assign({},m); n[keyOf(po)]=v; return n; }); }},
@@ -325,23 +325,17 @@ function MyInvestorSync({state, set}){
         err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err)
       );
   return React.createElement("div",{className:"bk-card bk-mi"},
-    React.createElement("div",{className:"bk-brand"},
-      React.createElement("div",{className:"bk-logo",style:{background:"#C9A0E022",color:"#C9A0E0"}}, "MI"),
-      React.createElement("div",{style:{flex:1,minWidth:0}},
-        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("mi_title")),
-        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("mi_sub"))
-      ),
-      step==="connected" ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
-    ),
-    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("mi_hint")),
-    body
+    bkBrand({logo:"MI", logoStyle:{background:"#C9A0E022",color:"#C9A0E0"}, title:t("mi_title"), sub:t("mi_sub"),
+             badge:step==="connected"?"âœ“":null, open:open, onToggle:onToggle}),
+    open && React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("mi_hint")),
+    open && body
   );
 }
 
 /* ============================================================
-   SINCRONIZACIÓN TRADE REPUBLIC (beta) — un botón, sin exportar nada.
-   La conexión REAL la implementa la capa NATIVA de Android (necesita un
-   navegador de verdad para el token de AWS WAF del login de TR; una función
+   SINCRONIZACIÃ“N TRADE REPUBLIC (beta) â€” un botÃ³n, sin exportar nada.
+   La conexiÃ³n REAL la implementa la capa NATIVA de Android (necesita un
+   navegador de verdad para el token de AWS WAF del login de TR; una funciÃ³n
    de servidor "pelada" recibe 403). En la web pura el puente no existe y la
    tarjeta muestra el aviso "solo en la app". El re-anclaje reutiliza el
    mapeo por ISIN del importador CSV (brokerSuggest).
@@ -349,11 +343,11 @@ function MyInvestorSync({state, set}){
    CONTRATO que la capa nativa DEBE cumplir (todo devuelve Promises):
      trBridge().status()                 -> { connected:bool }
      trBridge().login({phone,pin})       -> { ok:bool, processId?, error? }   (dispara el 2FA)
-     trBridge().verify({processId,code}) -> { ok:bool, error? }               (guarda la sesión EN EL DISPOSITIVO)
+     trBridge().verify({processId,code}) -> { ok:bool, error? }               (guarda la sesiÃ³n EN EL DISPOSITIVO)
      trBridge().sync()                   -> { ok:bool, positions:[{isin,name,shares,value,cost?}], cash?:number, error? }
      trBridge().logout()                 -> { ok:bool }
-   `value`/`cost` en EUR (TR liquida en €). NADA de esto toca la nube de Mi Cartera:
-   credenciales y sesión viven solo en el móvil.
+   `value`/`cost` en EUR (TR liquida en â‚¬). NADA de esto toca la nube de Mi Cartera:
+   credenciales y sesiÃ³n viven solo en el mÃ³vil.
    ============================================================ */
 function trBridge(){
   try{
@@ -364,17 +358,17 @@ function trBridge(){
   }catch(e){}
   return null;
 }
-// Teléfono del último login OK (solo el teléfono, NUNCA el PIN): tras un 401 real el formulario
-// sale ya rellenado y reconectar queda en PIN + código (feedback 2026-07-17).
+// TelÃ©fono del Ãºltimo login OK (solo el telÃ©fono, NUNCA el PIN): tras un 401 real el formulario
+// sale ya rellenado y reconectar queda en PIN + cÃ³digo (feedback 2026-07-17).
 function trPhoneSaved(){ try{ return localStorage.getItem("mc_tr_phone")||""; }catch(e){ return ""; } }
-function TRSync({state, set, totals}){
+function TRSync({state, set, totals, open, onToggle}){
   const bridge=trBridge();
   const [step,setStep]=useState("idle");      // idle | code | preview | done
   const [phone,setPhone]=useState(trPhoneSaved());
   const [pin,setPin]=useState("");
   const [code,setCode]=useState("");
   const [busy,setBusy]=useState(false);
-  const [expired,setExpired]=useState(false);   // 401 REAL: enseña el formulario con aviso propio
+  const [expired,setExpired]=useState(false);   // 401 REAL: enseÃ±a el formulario con aviso propio
   const [err,setErr]=useState(false);
   const [errMsg,setErrMsg]=useState("");   // mensaje REAL que devuelve TR (para no depurar a ciegas)
   const [processId,setProcessId]=useState(null);
@@ -387,16 +381,16 @@ function TRSync({state, set, totals}){
     if(!bridge||!bridge.status) return;
     Promise.resolve(bridge.status()).then(function(r){ if(r&&r.connected) setConnected(true); }).catch(function(){});
   },[]);
-  // fail(e): muestra el error REAL de TR si lo hay (r.error), o el genérico. También viaja a
-  // app_events: la saga del TR-en-frío se depuraba a ciegas sin ver el error del móvil del otro.
+  // fail(e): muestra el error REAL de TR si lo hay (r.error), o el genÃ©rico. TambiÃ©n viaja a
+  // app_events: la saga del TR-en-frÃ­o se depuraba a ciegas sin ver el error del mÃ³vil del otro.
   const fail=function(e){ setBusy(false); setErr(true); const m=(e&&(e.error||e.message))||(typeof e==="string"?e:""); setErrMsg(m);
     try{ cloud.logEvent('error','TR sync: '+(m||'error desconocido')); }catch(x){} };
-  // Normaliza el teléfono a formato internacional (TR exige +CC…). Sin prefijo → asume España (+34).
+  // Normaliza el telÃ©fono a formato internacional (TR exige +CCâ€¦). Sin prefijo â†’ asume EspaÃ±a (+34).
   const normPhone=function(p){
     let s=(p||"").replace(/[\s().-]/g,"");
     if(s.indexOf("+")===0) return s;
     if(s.indexOf("00")===0) return "+"+s.slice(2);
-    if(s.length===9) return "+34"+s;            // móvil español típico
+    if(s.length===9) return "+34"+s;            // mÃ³vil espaÃ±ol tÃ­pico
     return s.indexOf("+")===0?s:"+"+s;
   };
   const doSync=function(){
@@ -404,19 +398,19 @@ function TRSync({state, set, totals}){
     return Promise.resolve(bridge.sync()).then(function(r){
       setBusy(false);
       if(r&&r.authExpired && !r.softFail && !r.wafBlocked){
-        // 401 REAL (no anti-bot): al formulario directamente, con el teléfono ya puesto. Antes se
-        // pedía pulsar «Desconectar» — que además borra el snapshot bueno (feedback 2026-07-17).
+        // 401 REAL (no anti-bot): al formulario directamente, con el telÃ©fono ya puesto. Antes se
+        // pedÃ­a pulsar Â«DesconectarÂ» â€” que ademÃ¡s borra el snapshot bueno (feedback 2026-07-17).
         setConnected(false); setExpired(true); setStep("idle");
-        try{ cloud.logEvent('error','TR sync: sesión caducada de verdad (401 real)'); }catch(x){}
+        try{ cloud.logEvent('error','TR sync: sesiÃ³n caducada de verdad (401 real)'); }catch(x){}
         return;
       }
-      if(r&&(r.softFail||r.wafBlocked)){ fail(r); return; }   // anti-bot: sesión sigue, no pedir 2FA
+      if(r&&(r.softFail||r.wafBlocked)){ fail(r); return; }   // anti-bot: sesiÃ³n sigue, no pedir 2FA
       if(!r||!r.ok||!Array.isArray(r.positions)){ fail(r); return; }
       const m={};
       r.positions.forEach(function(po){
         const sug=brokerSuggest(po, state.investments);
         // Sin cartera previa (usuario nuevo, p.ej. la pareja) el mapeo por defecto es CREAR la
-        // posición: antes todo quedaba en "no tocar" y el botón se moría en "Aplicar a 0".
+        // posiciÃ³n: antes todo quedaba en "no tocar" y el botÃ³n se morÃ­a en "Aplicar a 0".
         if(sug) m[po.isin]=sug;
         else if(state.investments.length===0) m[po.isin]="__new";
       });
@@ -449,20 +443,20 @@ function TRSync({state, set, totals}){
         const po=pos.find(function(p){ return map[p.isin]===i.id; });
         if(!po) return i;
         const patch={shares:po.shares, isin:po.isin};
-        // dato EN VIVO de TR (€). Si la posición se muestra en $, se convierte con el cambio del BCE.
+        // dato EN VIVO de TR (â‚¬). Si la posiciÃ³n se muestra en $, se convierte con el cambio del BCE.
         if(po.value!=null) patch.value = i.cur==="EUR" ? po.value : fromEurAmt(po.value, i.cur, state);
         if(po.cost!=null)  patch.cost  = i.cur==="EUR" ? po.cost  : fromEurAmt(po.cost,  i.cur, state);
         return Object.assign({},i,patch);
       })});
-      // Posiciones mapeadas a "__new" → se CREAN en Inversiones (usuario sin cartera previa).
+      // Posiciones mapeadas a "__new" â†’ se CREAN en Inversiones (usuario sin cartera previa).
       const created=pos.filter(function(p){ return map[p.isin]==="__new"; }).map(function(po){
         return { id:uid(), ent:"trade_republic", name:po.name||po.isin, isin:po.isin,
                  shares:po.shares, value:po.value!=null?po.value:0,
                  cost:po.cost!=null?po.cost:(po.value!=null?po.value:0), cur:"EUR" };
       });
       if(created.length) next.investments=next.investments.concat(created);
-      // EFECTIVO de TR (availableCash) → re-ancla la cuenta TR para que HOY muestre exactamente
-      // ese saldo (misma fórmula que la edición manual de Patrimonio: se despeja la base del mes).
+      // EFECTIVO de TR (availableCash) â†’ re-ancla la cuenta TR para que HOY muestre exactamente
+      // ese saldo (misma fÃ³rmula que la ediciÃ³n manual de Patrimonio: se despeja la base del mes).
       // Si no existe cuenta TR (usuario nuevo), se crea con ese saldo.
       if(trCash!=null && totals){
         const hasTR=s.accounts.some(function(a){ return a.ent==="trade_republic"; });
@@ -489,8 +483,8 @@ function TRSync({state, set, totals}){
   const body=!bridge
     ? React.createElement("div",{className:"alarmbox",style:{marginTop:0}},t("tr_web_only"))
     : React.createElement(React.Fragment,null,
-        // (El párrafo tr_tos se fusionó en tr_hint el 2026-07-18: tres textos apilados en la
-        //  tarjeta «quedaban raros» — feedback del rediseño de bancos.)
+        // (El pÃ¡rrafo tr_tos se fusionÃ³ en tr_hint el 2026-07-18: tres textos apilados en la
+        //  tarjeta Â«quedaban rarosÂ» â€” feedback del rediseÃ±o de bancos.)
         !connected && step!=="code" && React.createElement(React.Fragment,null,
           expired && React.createElement("div",{className:"alarmbox",style:{marginTop:0,marginBottom:10}},t("tr_expired_re")),
           React.createElement("input",{className:"af-in",style:inpStyle,type:"tel",inputMode:"tel",placeholder:t("tr_phone_ph"),value:phone,onChange:function(e){ setPhone(e.target.value); }}),
@@ -536,22 +530,16 @@ function TRSync({state, set, totals}){
         err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, errMsg? (t("tr_err")+" ("+errMsg+")") : t("tr_err"))
       );
   return React.createElement("div",{className:"bk-card bk-tr"},
-    React.createElement("div",{className:"bk-brand"},
-      React.createElement("div",{className:"bk-logo",style:{background:"#111",color:"#fff"}}, "TR"),
-      React.createElement("div",{style:{flex:1,minWidth:0}},
-        React.createElement("div",{className:"ttl",style:{fontWeight:800,fontSize:16}}, t("tr_title")),
-        React.createElement("div",{className:"sub",style:{fontSize:12.5,color:"var(--muted)",fontWeight:600}}, t("tr_sub"))
-      ),
-      connected ? React.createElement("span",{style:{fontSize:11,fontWeight:800,color:"var(--mint)"}}, "✓") : null
-    ),
-    React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("tr_hint")),
-    body
+    bkBrand({logo:"TR", logoStyle:{background:"#111",color:"#fff"}, title:t("tr_title"), sub:t("tr_sub"),
+             badge:connected?"âœ“":null, open:open, onToggle:onToggle}),
+    open && React.createElement("div",{className:"hint",style:{marginTop:0,marginBottom:8}},t("tr_hint")),
+    open && body
   );
 }
 
 function InvRows({items, st, fmt, editing, showCost, draft, setF, onSell, onDelete}){
   const eurVal=(it)=> invValueEur(it, st);
-  const show=fmt||eur;   // moneda local de la tab (fallback a €)
+  const show=fmt||eur;   // moneda local de la tab (fallback a â‚¬)
   return items.map(function(it){
     return React.createElement("div",{className:"row",key:it.id},
       React.createElement("div",{className:"rl"},
@@ -560,7 +548,7 @@ function InvRows({items, st, fmt, editing, showCost, draft, setF, onSell, onDele
           React.createElement("div",{className:"rname"},it.name),
           React.createElement("div",{className:"rsub"}, entOf(it.ent).label + (it.cur==="USD"?" \u00b7 USD":"")),
           editing && React.createElement("button",{style:{background:"none",border:"none",color:"#9BD0E0",cursor:"pointer",fontSize:11,fontWeight:700,padding:"4px 0 0"},onClick:function(){ onSell(it); }},t("inv_sold_part")),
-          editing && React.createElement("button",{style:{background:"none",border:"none",color:"var(--coral)",cursor:"pointer",fontSize:11,fontWeight:700,padding:"4px 0 0",marginLeft:12},onClick:function(){ onDelete(it); }},"🗑 "+t("inv_delete"))
+          editing && React.createElement("button",{style:{background:"none",border:"none",color:"var(--coral)",cursor:"pointer",fontSize:11,fontWeight:700,padding:"4px 0 0",marginLeft:12},onClick:function(){ onDelete(it); }},"ðŸ—‘ "+t("inv_delete"))
         )
       ),
       editing
@@ -576,7 +564,7 @@ function InvRows({items, st, fmt, editing, showCost, draft, setF, onSell, onDele
   });
 }
 
-/* Calculadora de proyección estilo TR/Revolut: slider de aporte + banda de rango. */
+/* Calculadora de proyecciÃ³n estilo TR/Revolut: slider de aporte + banda de rango. */
 function Projection({invested, defMonthly}){
   const [monthly,setMonthly]=useState(Math.max(0,Math.min(3000,Math.round((defMonthly||500)/50)*50)));
   const [rate,setRate]=useState("7");
@@ -601,7 +589,7 @@ function Projection({invested, defMonthly}){
   let bandBot=[]; for(let i=N-1;i>=0;i--) bandBot.push(X(i)+","+Yc(calc.pes[i]));
   const band="M "+bandTop+" L "+bandBot.join(" L ")+" Z";
   const startYear=new Date().getFullYear();
-  const kfmt=function(v){ return v>=1000?(Math.round(v/1000)+"K €"):(Math.round(v)+" €"); };
+  const kfmt=function(v){ return v>=1000?(Math.round(v/1000)+"K â‚¬"):(Math.round(v)+" â‚¬"); };
   const ticks=[]; for(let i=1;i<=5;i++) ticks.push(max*i/5);
   const xl=[]; const st=4; for(let i=0;i<=st;i++){ const yi=Math.round(calc.Y/st*i); xl.push({i:yi,t:String(startYear+yi)}); }
   const inp={width:"100%",padding:"9px 8px",borderRadius:"10px",border:"1px solid var(--line-soft)",background:"var(--bg)",color:"var(--text)",fontSize:"15px",boxSizing:"border-box",textAlign:"center"};
@@ -631,7 +619,7 @@ function Projection({invested, defMonthly}){
     React.createElement("div",{style:{marginTop:14}},
       React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:5}},
         React.createElement("span",{style:{fontSize:13,color:"var(--muted)",fontWeight:600}},t("pj_monthly")),
-        React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:17}}, monthly+" €")),
+        React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:17}}, monthly+" â‚¬")),
       React.createElement("input",{type:"range",min:"0",max:"3000",step:"50",value:monthly,onChange:function(e){ setMonthly(parseInt(e.target.value)); },onTouchStart:function(e){e.stopPropagation();},onTouchMove:function(e){e.stopPropagation();},style:{width:"100%",accentColor:"#5FD08A"}})
     ),
     React.createElement("div",{style:{display:"flex",gap:8,marginTop:12}},
@@ -646,28 +634,28 @@ function Projection({invested, defMonthly}){
 }
 
 function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
-  const fx=state.fx;   // USD→EUR (legacy + display toggle); GBP/CHF van en state.fxRates
+  const fx=state.fx;   // USDâ†’EUR (legacy + display toggle); GBP/CHF van en state.fxRates
   const [editing,setEditing]=useState(false);
   const [showCost,setShowCost]=useState(false);
   const [draft,setDraft]=useState({});
-  const [brokerOpen,setBrokerOpen]=useState({});   // qué bróker tiene las posiciones desplegadas (solo v4Embed)
+  const [brokerOpen,setBrokerOpen]=useState({});   // quÃ© brÃ³ker tiene las posiciones desplegadas (solo v4Embed)
   const didAuto=useRef(false);
   const hasTickers=state.investments.some(function(i){ return i.ticker; });
   const autoOn=state.settings && state.settings.autoPrices;
-  // Herramientas: sin lista de brókers duplicada, sin editar a mano / USD / auto-precios / líquido vendido
-  // (feedback 2026-07-17). Las acciones solo entran por integración.
+  // Herramientas: sin lista de brÃ³kers duplicada, sin editar a mano / USD / auto-precios / lÃ­quido vendido
+  // (feedback 2026-07-17). Las acciones solo entran por integraciÃ³n.
   const toolsOnly=!!toolsMode;
   useEffect(function(){
     if(autoOn && hasTickers && !didAuto.current && !toolsOnly && !v4Embed){ didAuto.current=true; fetchPrices(true); }
   },[]);
   const toggleAuto=()=> set(s=>Object.assign({},s,{settings:Object.assign({},s.settings,{autoPrices:!(s.settings&&s.settings.autoPrices)})}));
-  // Solo los brókers donde el usuario TIENE posiciones (antes salían los 3 fijos — a un usuario
-  // nuevo le aparecía "MyInvestor" sin haberlo conectado nunca; feedback pareja 2026-07-10).
+  // Solo los brÃ³kers donde el usuario TIENE posiciones (antes salÃ­an los 3 fijos â€” a un usuario
+  // nuevo le aparecÃ­a "MyInvestor" sin haberlo conectado nunca; feedback pareja 2026-07-10).
   const groupsBase=[["revolut","Revolut","Trading activo (USD)"],["trade_republic","Trade Republic","ETF + acciones"],["myinvestor","MyInvestor","Indexado largo plazo"]]
     .filter(function(g){ return state.investments.some(function(i){ return i.ent===g[0]; }); });
-  // Orden fijo de los brókers (2026-07-23: se borró la UI de ordenación en Herramientas;
+  // Orden fijo de los brÃ³kers (2026-07-23: se borrÃ³ la UI de ordenaciÃ³n en Herramientas;
   // mantengo el orden por defecto de groupsBase). OJO: `groups` son las TERNAS
-  // [id, nombre, subtítulo] — abajo se leen g[0]/g[1]/g[2]. No mapear a solo el id.
+  // [id, nombre, subtÃ­tulo] â€” abajo se leen g[0]/g[1]/g[2]. No mapear a solo el id.
   const groups=groupsBase;
   const start=()=>{ const d={}; state.investments.forEach(i=>d[i.id]={value:i.value,cost:i.cost}); setDraft(d); setEditing(true); };
   const cancel=()=>{ setEditing(false); setShowCost(false); };
@@ -677,7 +665,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
       const value=(dd.value!=null&&dd.value!=="")?(parseFloat(String(dd.value).replace(',','.'))||0):i.value;
       const cost=(showCost&&dd.cost!=null&&dd.cost!=="")?(parseFloat(String(dd.cost).replace(',','.'))||i.cost):i.cost;
       const patch={value:value,cost:cost};
-      // Al editar el coste, anclamos el € contable al tipo de hoy (no se recalcula al cambiar FX).
+      // Al editar el coste, anclamos el â‚¬ contable al tipo de hoy (no se recalcula al cambiar FX).
       if(showCost&&dd.cost!=null&&dd.cost!==""){
         const newCost=parseFloat(String(dd.cost).replace(',','.'));
         if(isFinite(newCost)&&newCost!==i.cost) patch.costEur=toEurAmt(newCost, i.cur||"EUR", s);
@@ -687,8 +675,8 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
     setEditing(false); setShowCost(false);
   };
   const setF=(id,field,v)=> setDraft(d=>Object.assign({},d,{[id]:Object.assign({},d[id],{[field]:v})}));
-  // Borrar una posición del todo (duplicados de un import, valores liquidados…). Antes NO se
-  // podía desde la UI y los cadáveres se quedaban para siempre (feedback 2026-07-13).
+  // Borrar una posiciÃ³n del todo (duplicados de un import, valores liquidadosâ€¦). Antes NO se
+  // podÃ­a desde la UI y los cadÃ¡veres se quedaban para siempre (feedback 2026-07-13).
   const onDelete=function(it){
     askConfirm({ title:tf("inv_delete_confirm",{name:it.name}), sub:t("inv_delete_sub"),
       ok:t("inv_delete"), danger:true }).then(function(yes){
@@ -696,7 +684,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
       set(function(s){ return Object.assign({},s,{investments:s.investments.filter(function(i){ return i.id!==it.id; })}); });
     });
   };
-  // Venta parcial: reduce valor, coste y participaciones proporcionalmente y registra el líquido vendido.
+  // Venta parcial: reduce valor, coste y participaciones proporcionalmente y registra el lÃ­quido vendido.
   const onSell=function(it){
     askText({ title:tf("inv_sell_prompt",{name:it.name}), sub:t("inv_sell_sub"), ph:"%",
       chips:[25,50,75,100].map(function(v){ return {v:v,label:v+" %"}; })
@@ -705,7 +693,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   const sellPct=function(it,pct){
     if(!(pct>0 && pct<=100)){ return; }
     const f=pct/100;
-    const realizado=invValueEur(it, state)*f;   // líquido sacado, en €
+    const realizado=invValueEur(it, state)*f;   // lÃ­quido sacado, en â‚¬
     set(function(s){
       return Object.assign({},s,{
         investments:s.investments.map(function(i){
@@ -722,29 +710,29 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
   const total=state.investments.reduce((a,i)=>a+invValueEur(i, state),0);
   const costTotal=state.investments.reduce((a,i)=>a+invCostEur(i, state),0);
   const plTotal=costTotal>0?(total-costTotal)/costTotal*100:0;
-  // Moneda LOCAL de la pestaña Inversiones (no toca el resto de la app). Todo se calcula en €
-  // internamente y se convierte a la moneda elegida para mostrar (€ ↔ $ con el cambio del BCE).
+  // Moneda LOCAL de la pestaÃ±a Inversiones (no toca el resto de la app). Todo se calcula en â‚¬
+  // internamente y se convierte a la moneda elegida para mostrar (â‚¬ â†” $ con el cambio del BCE).
   const [invCur,setInvCur]=useState(function(){ return (state.settings&&state.settings.currency)||"EUR"; });
   const dk = invCur==="USD" ? (fx>0?1/fx:1) : 1;
-  const dsym = invCur==="USD" ? "$" : "€";
+  const dsym = invCur==="USD" ? "$" : "â‚¬";
   const f2  = (eurVal)=> NF.format((eurVal||0)*dk)+" "+dsym;
   const f0  = (eurVal)=> NF0.format(Math.round((eurVal||0)*dk))+" "+dsym;
-  // valor y coste por bróker (en €) para el desglose de contribuciones
+  // valor y coste por brÃ³ker (en â‚¬) para el desglose de contribuciones
   const byBroker={};
   state.investments.forEach(function(i){ const v=invValueEur(i, state); const c=invCostEur(i, state); const o=byBroker[i.ent]||(byBroker[i.ent]={c:0,v:0}); o.c+=c; o.v+=v; });
-  // rendimiento por posición (en €), ordenado de mejor a peor
+  // rendimiento por posiciÃ³n (en â‚¬), ordenado de mejor a peor
   const posList=state.investments.map(function(i){ const v=invValueEur(i, state); const c=invCostEur(i, state); return {id:i.id,name:i.name,ent:i.ent,v:v,c:c,gain:v-c,pl:c>0?(v-c)/c*100:0}; }).sort(function(a,b){ return b.gain-a.gain; });
   const maxAbsGain=Math.max.apply(null,posList.map(function(p){return Math.abs(p.gain);}).concat([1]));
   const best=posList[0], worst=posList[posList.length-1];
   const invHist=(state.invHistory||[]);
   const evoChg=invPeriodChange(invHist);
-  // Desglose por tipo de activo (clasificación por id conocido, con respaldo por nombre)
+  // Desglose por tipo de activo (clasificaciÃ³n por id conocido, con respaldo por nombre)
   const TYPE_BY_ID={ "0mrszi5":"materias", "7zjaw0y":"etf", "0itlr5k":"fondo" };
   const invType=function(it){ if(TYPE_BY_ID[it.id]) return TYPE_BY_ID[it.id]; if(/oro|xau|materia|plata/i.test(it.name)) return "materias"; if(/etf|all.?world|s&p|amundi/i.test(it.name)) return "etf"; if(/fondo|indexad|fidelity|msci world/i.test(it.name)) return "fondo"; return "acciones"; };
   const byType={acciones:0,etf:0,fondo:0,materias:0};
   state.investments.forEach(function(i){ byType[invType(i)]+=invValueEur(i, state); });
   const typeMeta=[["acciones","var(--mint)"],["etf","var(--blue)"],["fondo","#C9A0E0"],["materias","#E6C36A"]];
-  const typeSegs=typeMeta.filter(function(ty){ return byType[ty[0]]>0; }).map(function(ty){ return {label:t("type_"+ty[0])+" · "+(total>0?Math.round(byType[ty[0]]/total*100):0)+"%", value:byType[ty[0]], color:ty[1]}; });
+  const typeSegs=typeMeta.filter(function(ty){ return byType[ty[0]]>0; }).map(function(ty){ return {label:t("type_"+ty[0])+" Â· "+(total>0?Math.round(byType[ty[0]]/total*100):0)+"%", value:byType[ty[0]], color:ty[1]}; });
 
   return React.createElement("div",null,
     !v4Embed && !toolsOnly && React.createElement("div",{className:"total-bar"},
@@ -753,7 +741,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
         React.createElement("div",{className:"tn num"},f2(total)),
         React.createElement("div",{style:{fontSize:12,fontWeight:700,marginTop:2,color:plTotal>=0?"var(--mint)":"var(--coral)"}},(plTotal>=0?"+":"")+plTotal.toFixed(2)+"% global"),
         React.createElement("div",{className:"curtoggle",style:{marginTop:8}},
-          React.createElement("button",{type:"button",className:"curbtn"+(invCur==="EUR"?" on":""),onClick:()=>setInvCur("EUR")},"€"),
+          React.createElement("button",{type:"button",className:"curbtn"+(invCur==="EUR"?" on":""),onClick:()=>setInvCur("EUR")},"â‚¬"),
           React.createElement("button",{type:"button",className:"curbtn"+(invCur==="USD"?" on":""),onClick:()=>setInvCur("USD")},"$")
         ),
         React.createElement("div",{className:"hint",style:{marginTop:8,maxWidth:260}}, t("fx_multi_hint"))
@@ -768,23 +756,23 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
             React.createElement("button",{className:"btn btn-ghost",style:{padding:"8px 12px"},onClick:start},t("inv_editmanual"))
           )
     ),
-    // (El hint «toca un bróker…» se retiró el 2026-07-18: ya estaba anticuado y ocupaba sitio.)
+    // (El hint Â«toca un brÃ³kerâ€¦Â» se retirÃ³ el 2026-07-18: ya estaba anticuado y ocupaba sitio.)
     !editing && hasTickers && !v4Embed && !toolsOnly && React.createElement("div",{className:"costtoggle",onClick:toggleAuto},
-      React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"✓":""),
+      React.createElement("span",{className:"cbx"+(autoOn?" on":"")}, autoOn?"âœ“":""),
       React.createElement("span",null,t("inv_autoprices")+(state.lastPriceSync?tf("inv_lastprice",{d:new Date(state.lastPriceSync).toLocaleString(loc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}):""))
     ),
     editing && !toolsOnly && React.createElement("div",{className:"costtoggle",onClick:()=>setShowCost(!showCost)},
       React.createElement("span",{className:"cbx"+(showCost?" on":"")}, showCost?"\u2713":""),
       React.createElement("span",null,t("inv_alsoinvested"))
     ),
-    // En Cartera (v4Embed): mismas fichas que «Tus cuentas» (v4-mov). El resto (precios,
-    // redondeo, proyección…) vive en la hoja «Herramientas» (feedback 2026-07-17).
+    // En Cartera (v4Embed): mismas fichas que Â«Tus cuentasÂ» (v4-mov). El resto (precios,
+    // redondeo, proyecciÃ³nâ€¦) vive en la hoja Â«HerramientasÂ» (feedback 2026-07-17).
     v4Embed && React.createElement("div",{className:"v4-card-list"},
       groups.map(function(g){
         const items=state.investments.filter(function(i){ return i.ent===g[0]; });
         if(items.length===0) return null;
         const sub=items.reduce(function(a,i){ return a+invValueEur(i,state); },0);
-        // Editando: todos los brókers desplegados con sus inputs (si no, había que ir uno a uno).
+        // Editando: todos los brÃ³kers desplegados con sus inputs (si no, habÃ­a que ir uno a uno).
         const open=editing||!!brokerOpen[g[0]];
         return React.createElement(React.Fragment,{key:g[0]},
           React.createElement("button",{type:"button",className:"v4-mov",
@@ -799,16 +787,16 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
               React.createElement(I.chev,{className:"chev"+(open?" open":"")})
             )
           ),
-          // .v4-inv-drop: el mismo «rise» suave del resto de la app — antes las posiciones
-          // aparecían de golpe al desplegar el bróker (feedback 2026-07-21).
+          // .v4-inv-drop: el mismo Â«riseÂ» suave del resto de la app â€” antes las posiciones
+          // aparecÃ­an de golpe al desplegar el brÃ³ker (feedback 2026-07-21).
           open && React.createElement("div",{className:"v4-inv-drop",style:{padding:"0 2px 8px"}},
             React.createElement(InvRows,{items:items,st:state,fmt:f2,editing:editing,showCost:editing&&showCost,draft:draft,setF:setF,onSell:onSell,onDelete:onDelete}))
         );
       }),
       // Editar a mano en discreto, al pie de la lista (feedback 2026-07-18): normalmente los
-      // números entran solos por los brókers; esto es el plan B para cuadrar algo puntual.
+      // nÃºmeros entran solos por los brÃ³kers; esto es el plan B para cuadrar algo puntual.
       state.investments.length>0 && React.createElement("div",{style:{display:"flex",gap:8,margin:"8px 4px 0"}},
-        React.createElement("button",{type:"button",className:"edit-link"+(editing?" save":""),onClick:function(){ editing?save():start(); }}, editing?t("inv_save"):("✎ "+t("inv_editmanual"))),
+        React.createElement("button",{type:"button",className:"edit-link"+(editing?" save":""),onClick:function(){ editing?save():start(); }}, editing?t("inv_save"):("âœŽ "+t("inv_editmanual"))),
         editing && React.createElement("button",{type:"button",className:"edit-link",style:{background:"transparent",color:"var(--muted)"},onClick:cancel}, t("inv_cancel"))
       )
     ),
@@ -829,21 +817,21 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
       return React.createElement(CollapsibleCard,{key:"ru",title:SIMPLEMODE?t("ru_title_simple"):t("ru_title"),sub:SIMPLEMODE?t("ru_sub_simple"):(mult>0?tf("ru_sub_on",{m:mult}):t("ru_sub_off")),dot:"#E6C36A",defaultOpen:false,storageKey:"inv_ru",help:t("h_ru")},
         React.createElement("div",{className:"mlabel",style:{textAlign:"left",marginBottom:6}},t("ru_mult")),
         React.createElement("div",{className:"curtoggle",style:{flexWrap:"wrap",justifyContent:"flex-start"}},
-          RU_MULTS.map(function(m){ return React.createElement("button",{key:m,type:"button",className:"curbtn"+(mult===m?" on":""),onClick:function(){ setTr({roundup:m}); }}, m===0?t("ru_off"):"×"+m); })),
+          RU_MULTS.map(function(m){ return React.createElement("button",{key:m,type:"button",className:"curbtn"+(mult===m?" on":""),onClick:function(){ setTr({roundup:m}); }}, m===0?t("ru_off"):"Ã—"+m); })),
         React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"12px 0 6px"}},t("ru_dest")),
         React.createElement("select",{className:"af-in",value:trAcc.rewardInv||"",onChange:function(e){ setTr({rewardInv:e.target.value}); }},
           React.createElement("option",{value:""},t("ru_pick")),
           state.investments.map(function(i){ return React.createElement("option",{key:i.id,value:i.id}, i.name); })),
         React.createElement("div",{className:"costtoggle",style:{marginTop:12},onClick:function(){ setTr({saveback:!trAcc.saveback}); }},
-          React.createElement("span",{className:"cbx"+(trAcc.saveback?" on":"")}, trAcc.saveback?"✓":""),
+          React.createElement("span",{className:"cbx"+(trAcc.saveback?" on":"")}, trAcc.saveback?"âœ“":""),
           React.createElement("span",null,t("ru_saveback"))),
-        // Aporte periódico a inversión (plan de ahorro): p.ej. 50€/mes al FTSE. Baja del efectivo TR.
+        // Aporte periÃ³dico a inversiÃ³n (plan de ahorro): p.ej. 50â‚¬/mes al FTSE. Baja del efectivo TR.
         React.createElement("div",{className:"mlabel",style:{textAlign:"left",margin:"14px 0 6px"}},t("ru_plan")),
         React.createElement("div",{className:"ru-edit"},
           React.createElement("span",{className:"muted"},t("ru_plan_amt")),
           React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:trAcc.monthlyInvest!=null?trAcc.monthlyInvest:"",onChange:function(e){ setTr({monthlyInvest:numOrNull(e.target.value)}); }})),
         (trAcc.monthlyInvest>0) && React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("ru_plan_hint",{x:eur0(trAcc.monthlyInvest),inv:invName})),
-        // Interés del efectivo (TR lo abona el día 1): sin esto el saldo se descuadra unos € cada mes
+        // InterÃ©s del efectivo (TR lo abona el dÃ­a 1): sin esto el saldo se descuadra unos â‚¬ cada mes
         React.createElement("div",{className:"ru-edit",style:{marginTop:12}},
           React.createElement("span",{className:"muted"},t("ru_interest")),
           React.createElement("input",{className:"af-in num",style:{width:96,textAlign:"right",padding:"7px 9px"},inputMode:"decimal",placeholder:"0",value:trAcc.interestApr!=null?trAcc.interestApr:"",onChange:function(e){ setTr({interestApr:numOrNull(e.target.value)}); }})),
@@ -862,7 +850,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
     })()},
       {id:"cvg",label:t("inv_cvg"),el:
     React.createElement(CollapsibleCard,{title:t("inv_cvg"),sub:(plTotal>=0?"+":"")+plTotal.toFixed(1)+"%",dot:"#5FD08A",defaultOpen:false,storageKey:"inv_cvg",help:t("h_cvg")},
-      // desglose por bróker, para poder comparar cada uno con su app (p.ej. Revolut en $)
+      // desglose por brÃ³ker, para poder comparar cada uno con su app (p.ej. Revolut en $)
       groups.map(function(g){ const o=byBroker[g[0]]; if(!o||o.v===0) return null; const gain=o.v-o.c; const pl=o.c>0?gain/o.c*100:0;
         return React.createElement("div",{className:"row",key:g[0]},
           React.createElement("div",{className:"rl"},React.createElement(Mono,{ent:g[0],size:34}),
@@ -927,7 +915,7 @@ function Investments({state, set, fetchPrices, pricing, v4Embed, toolsMode}){
       React.createElement("div",{className:"hint",style:{lineHeight:1.55}},t("inv_manual_body"))
     )}
     ].filter(function(it){
-      // Herramientas: sin brókers duplicados ni «editar a mano» (feedback 2026-07-17).
+      // Herramientas: sin brÃ³kers duplicados ni Â«editar a manoÂ» (feedback 2026-07-17).
       if(!toolsOnly) return true;
       return it.id!=="brokers" && it.id!=="manual";
     })}),

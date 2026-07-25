@@ -2,6 +2,25 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.9.1] — 2026-07-25
+### Los brókers se eligen y se pliegan; el cierre del perfil deja de mezclar dos pantallas
+
+#### Brókers: se acabó el login de un banco que no tienes
+- Las tres tarjetas (TR / MyInvestor / CSV de Revolut) se pintaban **siempre**. Feedback del usuario: «que te salgan directamente para loguear sin tenerlo es muy muy raro — ni mi pareja ni mi padre tienen MyInvestor y les sale».
+- Chips «¿Qué brókers usas?» (`bp_which`, es/en/ca). La elección vive en `settings.brokersOn`, así que viaja con la cuenta.
+- **Por defecto se deduce de la cartera**: los `ent` que ya tienen posiciones aparecen solos, de modo que quien venía usando un bróker no pierde nada sin tocar un ajuste; y quien no tiene ninguno (el padre, la pareja) ve solo los chips.
+- **Acordeón también en brókers** («el colapsable de los brókers tampoco está»): el de la 4.9.0 solo llegó a los bancos de Open Banking. Ahora las tres tarjetas comparten `bkBrand()` en `02-ui-shared.js` — eran el mismo bloque copiado tres veces y mantener el plegado por triplicado era pedirlo. Sin `onToggle` la cabecera se comporta como antes, para no imponer plegado a otros usos.
+
+#### El cierre del perfil ya no superpone dos pantallas
+- Diagnóstico a partir del **vídeo del usuario** (fotogramas extraídos con ffmpeg): durante el arrastre el panel bajaba su opacidad hasta 0,2 (`1-resist*0.8`) y, como ocupa la pantalla entera, se veían **el perfil y el resumen a la vez, los dos legibles**. Eso era la «animación loquísima»: no solo el tirón de la 4.9.0, también la mezcla.
+- Abrir nunca lo tuvo porque la apertura **no interpola opacidad**: el panel va opaco y solo escala desde el avatar, con el velo oscureciendo el fondo. Cerrar hace ahora lo mismo en reversa. Un fundido de una capa a pantalla completa sobre contenido siempre da papilla.
+
+#### Que no vuelva a pasar lo de hoy
+- `docs-frescura` comprueba ahora que **no queden cambios en `src/`, `supabase/functions/`, `android/app/src/` o los estáticos servidos después del último bump de `VERSION`**. El fallo real: se arreglaron TR, el oro, el gesto y los bancos, todo desplegado en Pages, con `VERSION` intacta — y como el OTA compara NÚMEROS, el móvil veía «4.8.0 = 4.8.0 → nada nuevo». El usuario se pasó la mañana esperando una actualización que no podía llegar. Doc y tests no cuentan: cambiar un comentario no obliga a publicar. Sin historia de git (checkout superficial) se salta en vez de fallar.
+
+#### Tests
+- `e2e/brokers-selector.spec.mjs` (4): sin brókers en cartera no sale ninguna tarjeta; un bróker ya usado aparece solo; marcar/desmarcar chip trae y quita su tarjeta; las tarjetas nacen plegadas y el acordeón cierra la anterior. **E2E de 49 a 53.**
+
 ## [4.9.0] — 2026-07-25
 ### Trade Republic en frío (capítulo 3, esta vez verificado), coste real del oro y la pestaña de bancos habitable
 

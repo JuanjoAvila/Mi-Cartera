@@ -1,5 +1,51 @@
 # Testing — Mi Cartera
 
+## Para el dueño: los dos interruptores de Ajustes → Dev → Pruebas
+
+Son **dos cosas independientes** y se confunden constantemente. Esta tabla es la respuesta corta:
+
+| Interruptor | Qué hace | ¿Lo enciendo? |
+|---|---|---|
+| **Canal** (`📦 estable` ↔ `🚧 BETA`) | De dónde baja las actualizaciones este móvil. **Estable** = lo mismo que el padre y la pareja (GitHub Pages). **Beta** = la release fija `beta` del repo, que solo se publica cuando alguien empuja a la rama `beta`. | **Solo cuando haya una beta esperándote.** Si no hay ninguna, cae a estable y no pasa nada — pero tampoco ganas nada. |
+| **Banco de pruebas** (`🏦` ↔ `🧪 DENTRO`) | Cartera FALSA y aislada (`micartera_sandbox`). Dentro, **la app no escribe NADA en la nube**. Banda naranja permanente. | **Solo el rato que vayas a trastear** algo destructivo (borrar cuentas, importar a lo bruto). Y sales al terminar. |
+
+**⚠ El banco de pruebas también corta la telemetría.** `logEvent` está en `CLOUD_WRITES`, así que dentro del
+sandbox **los errores de tu móvil no llegan a `app_events`** y quien te ayude a depurar se queda ciego.
+Si estás reportando un fallo, tiene que estar APAGADO.
+
+**⚠ El canal beta puede dejarte atrás.** El OTA compara NÚMEROS de versión. Si la release `beta` anuncia una
+versión más alta que la estable pero con código más viejo (pasó el 2026-07-25: `beta` anunciaba `4.8.0.3`
+mientras `main` iba por `4.8.0` con arreglos nuevos), activarla te instala lo viejo y te deja encallado hasta
+el siguiente bump. **Antes de activar el canal beta, comprueba que la release `beta` sea más nueva que `main`.**
+
+### Cómo se prueba una versión antes que nadie (el flujo completo)
+
+1. El cambio se empuja a la rama **`beta`** (no a `main`). `beta.yml` publica `bundle.zip` + `version.json`
+   en la release fija `beta`.
+2. En el móvil: **Ajustes → Dev → Pruebas → Canal → Activar beta**. Solo ESE móvil la recibe.
+3. Aparece **«🔍 Revisar esta beta»**: la checklist sale sola de las `RELEASE_NOTES` de esa versión. Cada
+   punto se marca ✓ o ✗ (con ✗ te pide decir qué pasa). **No se puede aprobar con cosas sin probar ni con
+   fallos marcados** — si esa puerta se abre, el botón no significa nada. El progreso se guarda por versión,
+   porque probar lleva días.
+4. Cuando esté aprobado, desde el PC: **Actions → «Promote beta» → Run workflow**, escribiendo `SUBIR`.
+   Vuelve a pasar la suite y mergea `beta` → `main`, que es lo que ven todos.
+
+**El panel NO despliega a propósito.** La app no puede hacer un merge de git, y meter un token de GitHub con
+permiso de escritura en Supabase sería una credencial nueva y jugosa a cambio de ahorrar un clic.
+
+### Si no te llega una actualización
+
+Lo primero que hay que mirar **no es el canal, es el número de versión**: el OTA solo ofrece algo si
+`version.json` del servidor trae una versión MAYOR que la del móvil. Un arreglo desplegado sin subir
+`VERSION` es invisible para la app (pasó el 2026-07-25). Comprobación de 5 segundos:
+
+```bash
+curl -s "https://juanjoavila.github.io/Mi-Cartera/version.json"
+```
+
+Desde la 4.9.1 esto lo vigila `tests/docs-frescura.test.mjs`: si quedan cambios en `src/`,
+`supabase/functions/` o `android/app/src/` después del último bump de `VERSION`, `npm test` falla.
+
 ## Flujo local (CMD o PowerShell)
 
 Abre **CMD** o **PowerShell**, ve a la carpeta del proyecto y ejecuta:

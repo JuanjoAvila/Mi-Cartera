@@ -18,6 +18,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -113,6 +114,39 @@ ok(`VERSION = ${VERSION}`);
     // un release inexistente y que el botón de actualizar se muriera en un 404.
     if (String(apk.url || "").includes(gName)) ok("apk.json url nombra esa versión");
     else bad("apk.json url nombra esa versión", `url «${apk.url}» no contiene «${gName}»`);
+  }
+}
+
+/* ---- 6. ¿Código nuevo SIN subir la versión? ----
+   Fallo real 2026-07-25: se arreglaron TR, el oro, el gesto del perfil y los bancos, todo
+   commiteado y desplegado en Pages... con `VERSION` intacta. El OTA compara NÚMEROS de versión,
+   así que el móvil veía «4.8.0 = 4.8.0 → nada nuevo» y el usuario se pasó la mañana esperando
+   una actualización que nunca podía llegar. No fue un bug: fue saltarse la checklist de §6.
+   AGENTS §6 ya decía «solo se pushea trabajo TERMINADO»; esto lo hace cumplir.
+   Si no hay historia de git (checkout superficial del CI, tarball), se salta en vez de fallar:
+   un test que no puede comprobar algo no debe inventarse un veredicto. */
+{
+  const git = (args) => {
+    const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+    return r.status === 0 ? r.stdout.trim() : null;
+  };
+  const lastBump = git(["log", "-1", "--format=%H", "--", "VERSION"]);
+  if (!lastBump) {
+    console.log("  ⊘ sin historia de git: no se comprueba el bump");
+  } else {
+    // Lo que el usuario NOTA y viaja por OTA. La doc, los tests y el tooling no cuentan: cambiar
+    // un comentario o añadir un test no obliga a publicar una versión.
+    const zonas = ["src/", "supabase/functions/", "android/app/src/", "public/vendor/", "public/sw.js"];
+    const sueltos = git(["log", `${lastBump}..HEAD`, "--name-only", "--format=", "--"].concat(zonas));
+    if (sueltos) {
+      const ficheros = [...new Set(sueltos.split("\n").filter(Boolean))];
+      bad("no hay código publicable sin subir VERSION",
+        `${ficheros.length} fichero(s) cambiados después del último bump (${lastBump.slice(0, 7)}): ` +
+        ficheros.slice(0, 4).join(", ") + (ficheros.length > 4 ? "…" : "") +
+        "\n      → sube VERSION y añade RELEASE_NOTES + CHANGELOG (AGENTS §6), o el móvil NO se enterará");
+    } else {
+      ok("no queda código publicable sin subir de versión");
+    }
   }
 }
 

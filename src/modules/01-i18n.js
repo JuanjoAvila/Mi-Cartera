@@ -1627,6 +1627,7 @@ Object.assign(LANG.es,{
   bp_removing:"Quitando…", bp_removed:"{bank} quitado · puedes reconectarlo cuando quieras",
   bp_foot:"Trade Republic no está en Open Banking: su gasto entra por notificaciones.",
   bp_brokers:"Brókers",
+  bp_which:"¿Qué brókers usas? Toca para añadir o quitar — solo verás los que marques.",
   bp_apk_hint:"Si Trade Republic se desconecta solo: hace falta el APK nuevo (el arreglo es nativo). MyInvestor pide captcha por su anti-bot — espera un rato y reintenta.",
 });
 Object.assign(LANG.en,{
@@ -1649,6 +1650,7 @@ Object.assign(LANG.en,{
   bp_removing:"Removing…", bp_removed:"{bank} removed · you can reconnect it whenever you want",
   bp_foot:"Trade Republic isn't in Open Banking: its spending arrives via notifications.",
   bp_brokers:"Brokers",
+  bp_which:"Which brokers do you use? Tap to add or remove — you'll only see the ones you pick.",
   bp_apk_hint:"If Trade Republic keeps logging you out: install the new APK (native fix). MyInvestor captcha is their anti-bot — wait and retry.",
 });
 Object.assign(LANG.ca,{
@@ -1671,6 +1673,7 @@ Object.assign(LANG.ca,{
   bp_removing:"Traient…", bp_removed:"{bank} tret · pots reconnectar-lo quan vulguis",
   bp_foot:"Trade Republic no és a Open Banking: la seva despesa entra per notificacions.",
   bp_brokers:"Brókers",
+  bp_which:"Quins bròkers fas servir? Toca per afegir o treure — només veuràs els que marquis.",
   bp_apk_hint:"Si Trade Republic es desconnecta sol: cal l'APK nou (l'arreglo és natiu). MyInvestor demana captcha pel seu anti-bot — espera i torna-ho a provar.",
 });
 Object.assign(LANG.en,{
