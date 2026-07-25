@@ -391,11 +391,23 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   const [busy,setBusy]=useState("");              // aspsp en curso / "__sync"
   const [picking,setPicking]=useState(false);
   const [confirming,setConfirming]=useState("");  // aspsp cuyo "¿quitar?" está abierto
+  /* ACORDEÓN (feedback 2026-07-25: «no todo apilotonado con 198349123 funciones, es un coñazo
+     esa pestaña comparado con el resto de la app»). Cada banco pintaba SIEMPRE sus tres botones
+     (Actualizar / Reconectar / Quitar), así que con tres bancos enlazados eran nueve botones a la
+     vez y la pantalla no dejaba ver lo único que se mira el 99% de las veces: si el banco está
+     bien y cuándo se sincronizó. Ahora las acciones viven dentro del banco y se abren al tocarlo,
+     de uno en uno. El ESTADO (la píldora de color) sigue siempre visible: es lo que avisa de que
+     algo va mal, y esconderlo sería cambiar ruido por ceguera. */
+  const [openBank,setOpenBank]=useState("");
   // Banco a resaltar al entrar (viene del sync o de la noti «reconéctalo»): lo centramos en
   // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
   const focusRef=useRef(null);
   useEffect(function(){
     if(!focusAspsp || !links || !links.length) return;
+    // El banco al que venías a arreglar llega ABIERTO: si el acordeón lo dejara plegado, el
+    // deep-link te dejaría mirando la tarjeta del banco roto sin el botón de reconectar delante,
+    // que es justo lo que la noti prometía. Resaltar y esconder la acción a la vez no tiene sentido.
+    setOpenBank(focusAspsp);
     const el=focusRef.current; if(!el || !el.scrollIntoView) return;
     const tm=setTimeout(function(){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
     return function(){ clearTimeout(tm); };
@@ -488,15 +500,26 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
                : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
                : pill(t("bp_st_expired"),"var(--coral)");
+      const abierto = openBank===l.aspsp_name;
+      // Abrir uno CIERRA el anterior (acordeón): con varios bancos desplegados volvíamos al muro
+      // de botones que veníamos a quitar. Al plegar se cancela un «¿quitar?» a medias, que si no
+      // quedaría armado y saltaría al volver a abrir.
+      const toggle=function(){ setConfirming(""); setOpenBank(abierto?"":l.aspsp_name); };
       return React.createElement("div",{key:l.aspsp_name,"data-aspsp":l.aspsp_name,ref:isFocus?focusRef:null,className:isFocus?"bk-focus":undefined,style:{marginBottom:6}},
-        React.createElement("div",{className:"v4-mov",style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+(isFocus?"var(--coral)":"var(--line-soft)"),background:"var(--sur)"}},
+        React.createElement("div",{className:"v4-mov",role:"button",tabIndex:0,"aria-expanded":abierto?"true":"false",
+          onClick:toggle,
+          onKeyDown:function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); } },
+          style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+(isFocus?"var(--coral)":"var(--line-soft)"),background:"var(--sur)",cursor:"pointer"}},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"nm"}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--mint)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
             React.createElement("div",{className:"meta"}, l.last_sync?tf("bank_updated",{x:fmtDT(l.last_sync)}):t("bank_neversync")),
             l.valid_until?React.createElement("div",{className:"meta",style:{color:soon?"var(--coral)":undefined}}, tf("bank_consent",{x:fmtD(l.valid_until)})):null),
-          sp),
-        noAcct && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",margin:"8px 2px 4px"}}, "⚠ "+t("bp_noacct_help")),
+          sp,
+          // Flecha: sin ella la tarjeta no se ve pulsable y el usuario no descubre las acciones.
+          React.createElement("span",{"aria-hidden":"true",style:{marginLeft:2,color:"var(--muted)",fontSize:12,transition:"transform .18s ease",transform:abierto?"rotate(180deg)":"none"}}, "▾")),
+        (abierto && noAcct) && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,color:"#E2A05F",margin:"8px 2px 4px"}}, "⚠ "+t("bp_noacct_help")),
+        !abierto ? null :
         (confirming===l.aspsp_name
           ? React.createElement("div",{className:"bk-actions",style:{marginTop:8}},
               React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",flex:"1 1 100%"}}, tf("bp_remove_q",{bank:bankLabel(l.aspsp_name)})),

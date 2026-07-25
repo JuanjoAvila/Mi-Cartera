@@ -4,7 +4,13 @@
 export async function seedLoggedInDashboard(page, overrides = {}) {
   await page.addInitScript((overrides) => {
     const session = { user: { id: "e2e-user", email: "e2e@test.local" } };
+    // Filas por tabla para los tests que necesitan datos de la nube (p.ej. `bank_links` para
+    // «Mis bancos»). Viaja dentro de `overrides` con un nombre que no choca con el estado real,
+    // y se saca antes de mezclarlo para no sembrarlo como si fuera un campo de la cartera.
+    const cloudRows = overrides.__cloudRows || {};
+    delete overrides.__cloudRows;
     const mockClient = () => {
+      let tabla = "";
       const chain = {
         select: () => chain,
         order: () => chain,
@@ -17,7 +23,7 @@ export async function seedLoggedInDashboard(page, overrides = {}) {
         maybeSingle: async () => ({ data: null, error: null }),
         single: async () => ({ data: null, error: null }),
       };
-      chain.then = (resolve) => resolve({ data: [], error: null });
+      chain.then = (resolve) => resolve({ data: cloudRows[tabla] || [], error: null });
       return {
         auth: {
           getSession: async () => ({ data: { session } }),
@@ -27,7 +33,7 @@ export async function seedLoggedInDashboard(page, overrides = {}) {
           },
           signOut: async () => {},
         },
-        from: () => chain,
+        from: (t) => { tabla = t; return chain; },
         functions: { invoke: async () => ({ data: {}, error: null }) },
       };
     };
