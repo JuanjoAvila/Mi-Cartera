@@ -552,6 +552,8 @@ function App(){
                        : "🚧 Canal beta guardado · OJO: en el navegador NO llega la beta (solo en la app Android)");
     }
     else if(c==="estable"||c==="stable"){ mcSetChannel("stable"); showToast("📦 Canal estable"); }
+    // Igual que el interruptor de Ajustes: el canal nuevo se instala en el acto, suba o baje.
+    if(window._mcApplyChannelBundle) window._mcApplyChannelBundle({showToast:showToast});
   },[]);
 
   // CAPA 2 — vuelta del banco (?bank=ok / ?bank=error tras autorizar). Avisa y limpia la URL.
@@ -787,20 +789,30 @@ function App(){
     const v=el?parseFloat(el.style.getPropertyValue("--pp-s0")):NaN;
     return isNaN(v)?0.12:v;
   };
-  /* CERRAR = ABRIR AL REVÉS, con los MISMOS números (petición 2026-07-25: «es hacer exactamente
-     lo mismo que cuando se abre pero al cerrarse»). Estaban a ojo y distintos —abrir dividía por
-     0,55 y elevaba a 0,85; cerrar por 0,48 y a 0,88; y el umbral de abrir pedía el doble de
-     recorrido que el de cerrar—, así que el mismo dedo daba dos sensaciones diferentes. Una sola
-     definición para los dos sentidos. */
-  const PROF_DIV=0.52, PROF_POW=0.86, PROF_TH=0.11;
+  /* CERRAR = ABRIR AL REVÉS (petición 2026-07-25: «es hacer exactamente lo mismo que cuando se
+     abre pero al cerrarse»). Eso vale para la CURVA —lo que se siente mientras el dedo va— y por
+     eso hay una sola: antes abrir dividía por 0,55 y elevaba a 0,85, y cerrar por 0,48 y a 0,88.
+
+     ⚠ EL UMBRAL NO PUEDE SER EL MISMO, y unificarlo fue el error de la 4.11.0: cerrar pasó de
+     pedir ~0,062 de la pantalla (52 px) a pedir 0,11 (94 px), **casi el doble**, y él lo cazó a la
+     primera al probar la beta: «al mantener el dedo y deslizar, a la mínima vuelve a la posición
+     inicial con la pantalla del perfil abierta» (veredicto de beta, 2026-07-26). El tirón de
+     siempre dejó de llegar, así que el panel rebotaba a abierto una y otra vez.
+
+     Los dos gestos no compiten contra lo mismo: ABRIR sale de Inicio, donde pelea con el scroll de
+     la página y con el deslizamiento entre pestañas, así que tiene que ser deliberado; CERRAR pasa
+     DENTRO del panel, donde lo único que compite es su propio scroll y eso ya se resuelve antes
+     (`scrollTop`). Mismo tacto, distinto peaje — y quien venga detrás que no los vuelva a igualar. */
+  const PROF_DIV=0.52, PROF_POW=0.86;
+  const PROF_TH_OPEN=0.11, PROF_TH_CLOSE=0.062;
   const profResist=function(ddy){
     const h=window.innerHeight||700;
     return Math.pow(Math.min(1,Math.max(0,ddy/(h*PROF_DIV))),PROF_POW);
   };
-  // ¿Ese tirón basta para cambiar de estado? Mismo criterio abriendo y cerrando.
-  const profPasa=function(dist, dt){
+  // ¿Ese tirón basta para cambiar de estado? Mismo criterio de velocidad, umbral por sentido.
+  const profPasa=function(dist, dt, th){
     const h=window.innerHeight||700;
-    return dist>h*PROF_TH || ((dist/Math.max(1,dt))>0.35 && dist>28);
+    return dist>h*th || ((dist/Math.max(1,dt))>0.35 && dist>28);
   };
   /* NO ACEPTAR UN GESTO NUEVO MIENTRAS EL PANEL SE ESTÁ YENDO (misma petición: «si alguien le da
      por mantener el dedo mientras se va con la animación, que no se vuelva loco»).
@@ -969,15 +981,19 @@ function App(){
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
     profileRelease();
-    /* Marcar «ocupado» AQUÍ y no solo en el efecto: si el tirón no llega al umbral, el estado no
-       cambia (`setProfileOpen(true)` con profileOpen ya en true no re-renderiza), así que el
-       efecto no corre — y el rebote de vuelta a su sitio, que también es una animación de 0,48 s,
-       se quedaba sin proteger. Es justo el caso de «lo intento, no llega, y vuelvo a intentarlo». */
-    profMarkBusy();
     if(pAx.current!=="y"){ pAx.current=null; return; }
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
-    const stay=!profPasa(dist, dt);   // mismo umbral que para abrir
+    const stay=!profPasa(dist, dt, PROF_TH_CLOSE);
+    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose. Lo pone el
+       efecto de `profileOpen`, así que aquí basta con no estorbar.
+       La 4.11.0 lo ponía en CUALQUIER final de gesto: también en el rebote de «he tirado y no ha
+       llegado», y también en un simple toque. Como en esos casos no hay `transitionend` que lo
+       levante (o llega tarde), el candado se comía sus 560 ms y el SIGUIENTE intento de cerrar no
+       llegaba ni a empezar. Sumado al umbral doblado, esa era la otra mitad de «a la mínima vuelve
+       a la posición inicial» (veredicto de beta 2026-07-26): tiras, no llega, vuelves a tirar en
+       el acto y la app está sorda. Cortar un rebote es inofensivo —el panel vuelve a donde ya
+       estaba—; cortar el cierre es lo que se veía «loco», y eso lo sigue cubriendo el efecto. */
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
@@ -1572,14 +1588,16 @@ function App(){
     if(!dragging.current) return; dragging.current=false;
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
-      profMarkBusy();   // también el rebote cuando el tirón no llega (ver profileEnd)
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
-      /* UMBRAL, el mismo que para cerrar. Antes pedía 0,16 de la pantalla —unos 136 px en su
-         móvil, el DOBLE que el de cerrar— y en el vídeo se ve el panel asomar en miniatura y
-         volverse a cerrar una y otra vez: el tirón no llegaba, y desde fuera parece que la app
-         parpadea sola. 0,11 (~95 px) sigue muy por encima de un roce sin querer. */
-      const open=profPasa(dist, dt);
+      // El candado lo pone el efecto cuando el estado cambia de verdad; el rebote no lo necesita
+      // y bloquearlo deja la app sorda al segundo intento (ver profileEnd).
+      /* UMBRAL DE ABRIR. Antes pedía 0,16 de la pantalla —unos 136 px en su móvil— y en el vídeo
+         se ve el panel asomar en miniatura y volverse a cerrar una y otra vez: el tirón no
+         llegaba, y desde fuera parece que la app parpadea sola. 0,11 (~95 px) sigue muy por encima
+         de un roce sin querer, y aquí SÍ hace falta ser exigente: este gesto compite con el scroll
+         de Inicio y con el cambio de pestaña. Cerrar va por su propio umbral, ver PROF_TH_CLOSE. */
+      const open=profPasa(dist, dt, PROF_TH_OPEN);
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;

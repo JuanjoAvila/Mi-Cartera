@@ -25,11 +25,18 @@ async function app(page) {
 const escala = (page) =>
   page.locator(".profile-pull").evaluate((el) => +getComputedStyle(el).transform.split("(")[1].split(",")[0]);
 
+/* El panel se pinta dentro de un `requestAnimationFrame` (uno como mucho por frame, 4.10.0). Si se
+   lee la escala nada más despachar el `touchMove`, a veces se lee el frame ANTERIOR y la
+   comparación de curvas sale desplazada un paso: falso negativo intermitente que ya tumbó un
+   `npm test` entero. Esperar dos frames deja el pintado hecho antes de medir. */
+const frame = (page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+
 async function arrastrar(cdp, page, y0, pasos, dy) {
   const out = [];
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 190, y: y0 }] });
   for (let i = 1; i <= pasos; i++) {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 190, y: y0 + i * dy }] });
+    await frame(page);
     out.push(await escala(page));
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
@@ -64,6 +71,54 @@ test("la curva de cerrar es la misma que la de abrir, en espejo", async ({ page 
     expect(Math.abs((subida + bajada) - (1 + s0)), `paso ${i}: abrir ${subida.toFixed(3)} · cerrar ${bajada.toFixed(3)} · s0 ${s0.toFixed(3)}`).toBeLessThan(0.02);
   }
   await expect(panel).not.toHaveClass(/open/, { timeout: 3_000 });
+});
+
+/* Los DOS fallos con los que rechazó la beta 4.11.0 (veredicto en app_events, 2026-07-26):
+ * «al mantener el dedo y deslizar, a la mínima vuelve a la posición inicial con la pantalla del
+ * perfil abierta». Eran dos cosas distintas con el mismo síntoma, y ninguna de las dos pruebas de
+ * arriba las veía porque las dos arrastran 240-320 px de golpe: mucho más de lo que hace un pulgar
+ * y lo bastante rápido como para colar por velocidad. Se prueba DESPACIO y CORTO a propósito. */
+async function arrastrarDespacio(cdp, page, y0, pasos, dy, ms) {
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 190, y: y0 }] });
+  for (let i = 1; i <= pasos; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 190, y: y0 + i * dy }] });
+    await page.waitForTimeout(ms);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+test("cerrar despacio 70 px CIERRA (unificar el umbral lo dejó pidiendo casi el doble)", async ({ page }) => {
+  const cdp = await app(page);
+  const panel = page.locator(".profile-pull");
+  await page.locator(".v4-avatar").click();
+  await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+  await page.waitForTimeout(700);
+
+  /* 70 px en ~350 ms: por debajo del umbral de VELOCIDAD (0,35 px/ms), así que lo único que
+     decide es el recorrido. Con el umbral de cerrar de siempre (0,062 · 851 = 53 px) cierra; con
+     el que trajo la 4.11.0 al igualarlo al de abrir (0,11 · 851 = 94 px) rebota a abierto, que es
+     justo lo que él veía. */
+  await arrastrarDespacio(cdp, page, 200, 7, 10, 50);
+  await expect(panel, "70 px de arrastre lento tienen que cerrar el perfil").not.toHaveClass(/open/, { timeout: 3_000 });
+});
+
+test("tiro, no llega, y vuelvo a tirar: el segundo intento NO se ignora", async ({ page }) => {
+  const cdp = await app(page);
+  const panel = page.locator(".profile-pull");
+  await page.locator(".v4-avatar").click();
+  await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+  await page.waitForTimeout(700);
+
+  /* Un tirón corto que no llega al umbral: el panel rebota a abierto. La 4.11.0 echaba el candado
+     también para ese rebote, así que durante 560 ms la app se quedaba sorda — y el segundo intento,
+     que es lo que uno hace INMEDIATAMENTE, no llegaba ni a empezar. Cortar un rebote es inofensivo
+     (el panel vuelve a donde ya estaba); lo que hay que proteger es el cierre, y de eso se sigue
+     encargando el efecto. */
+  await arrastrarDespacio(cdp, page, 200, 3, 10, 40);
+  await expect(panel, "30 px no deben cerrar").toHaveClass(/open/);
+
+  await arrastrar(cdp, page, 200, 6, 45);
+  await expect(panel, "el segundo intento, justo después, tiene que cerrar").not.toHaveClass(/open/, { timeout: 3_000 });
 });
 
 test("tocar mientras la animación se va NO la corta a medias", async ({ page }) => {

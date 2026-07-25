@@ -82,6 +82,34 @@ function mcFetchManifest(name){
   });
 }
 
+/* CAMBIAR DE CANAL NO ES «ACTUALIZAR»: ES INSTALAR LO QUE TOCA EN EL CANAL NUEVO.
+   El OTA solo va hacia ADELANTE (`_mcNewerVer`), así que apagar la beta dejaba el móvil con el
+   bundle de pruebas puesto para siempre: la única salida era esperar a que producción pasara ese
+   número. Feedback 2026-07-26: «si quito el canal beta no vuelve a la versión inferior, se queda
+   con la actual». Aquí se instala la versión del canal destino EN LA DIRECCIÓN QUE SEA — que es lo
+   que uno espera al apagar el interruptor: volver a lo que tiene el resto de la familia. */
+window._mcApplyChannelBundle=function(opts){
+  var toast=opts&&opts.showToast;
+  var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+  if(!up||!up.download) return Promise.resolve(false);
+  return mcFetchManifest("version.json")
+    .then(function(r){ return r.json(); })
+    .then(function(v){
+      if(!v||!v.version||v.version===CONFIG.APP_VERSION) return false;
+      if(toast) toast(tf("st_up_applying",{v:v.version}));
+      return up.download({url:(v.url||mcUpdBase()+"bundle.zip"), version:v.version})
+        .then(function(b){
+          try{ localStorage.setItem("_otaPending", v.version); }catch(e){}
+          return up.set({id:b.id}).then(function(){ return true; });
+        });
+    }).catch(function(e){
+      var m=(e&&e.message)||String(e);
+      if(toast) toast("⚠ "+m);
+      try{ cloud.logEvent('error','canal '+mcChannel()+': '+m.slice(0,200)); }catch(_){}
+      return false;
+    });
+};
+
 window._mcNewerVer=function(a,b){
   a=String(a).split("."); b=String(b).split(".");
   for(var i=0;i<Math.max(a.length,b.length);i++){

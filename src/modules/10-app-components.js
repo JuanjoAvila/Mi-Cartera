@@ -892,8 +892,10 @@ var RELEASE_NOTES=[
     "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
     "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
     "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 Cerrar el perfil es ahora EXACTAMENTE lo mismo que abrirlo, pero al revés. Iban con números distintos —abrir pedía casi el doble de arrastre que cerrar— así que el mismo dedo daba dos sensaciones. Ahora comparten curva y umbral.",
-    "🖐️ Y si dejas el dedo puesto (o vuelves a tocar) mientras el panel se está yendo, ya no se vuelve loco: se espera a que termine en vez de cortar la animación a medias y pegar un salto.",
+    "👤 Cerrar el perfil: corregido lo que rechazaste. Al igualar abrir y cerrar «con los mismos números», cerrar pasó a pedir casi el DOBLE de arrastre que antes (94 px en vez de 52), y por eso a la mínima volvía a su sitio con el perfil abierto. La sensación al arrastrar sigue siendo la misma en los dos sentidos —eso era lo que pedías— pero cerrar vuelve a bastar con un gesto corto.",
+    "🖐️ Y si tiras, no llega y vuelves a tirar en el acto, ya te hace caso. El freno que evita cortar la animación a medias se estaba activando también cuando el panel solo rebotaba a su sitio (o cuando tocabas cualquier cosa dentro del perfil), y durante medio segundo la app se quedaba sorda. Ahora solo frena mientras el panel se va de verdad.",
+    "🚧 Canal de pruebas: la versión que ves ya dice cuál llevas (4.11.0.8 y no «4.11.0»), y se acabó el aviso de actualizar cada dos minutos — el paquete se sellaba con un número distinto del que anunciaba, así que la app creía que siempre le faltaba algo.",
+    "📦 Y apagar el canal de pruebas ahora te devuelve de verdad a la versión de todos. Antes se quedaba con la de pruebas puesta hasta que la normal la adelantara.",
   ]},
   {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
     "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
@@ -1841,6 +1843,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
                 mcSetChannel(beta?"stable":"beta");
                 showToast(beta?"📦 Canal estable":"🚧 Canal beta activado");
                 setS({});   // repinta Ajustes para que la fila refleje el canal nuevo
+                // Y se instala YA lo que toque en el canal nuevo, arriba o abajo: apagar la beta
+                // tiene que devolver el móvil a lo que usa el resto (feedback 2026-07-26).
+                if(window._mcApplyChannelBundle) window._mcApplyChannelBundle({showToast:showToast});
               });
             }, sw(beta)),
             React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},

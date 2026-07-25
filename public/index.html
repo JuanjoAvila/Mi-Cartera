@@ -10572,8 +10572,10 @@ var RELEASE_NOTES=[
     "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
     "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
     "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 Cerrar el perfil es ahora EXACTAMENTE lo mismo que abrirlo, pero al revés. Iban con números distintos —abrir pedía casi el doble de arrastre que cerrar— así que el mismo dedo daba dos sensaciones. Ahora comparten curva y umbral.",
-    "🖐️ Y si dejas el dedo puesto (o vuelves a tocar) mientras el panel se está yendo, ya no se vuelve loco: se espera a que termine en vez de cortar la animación a medias y pegar un salto.",
+    "👤 Cerrar el perfil: corregido lo que rechazaste. Al igualar abrir y cerrar «con los mismos números», cerrar pasó a pedir casi el DOBLE de arrastre que antes (94 px en vez de 52), y por eso a la mínima volvía a su sitio con el perfil abierto. La sensación al arrastrar sigue siendo la misma en los dos sentidos —eso era lo que pedías— pero cerrar vuelve a bastar con un gesto corto.",
+    "🖐️ Y si tiras, no llega y vuelves a tirar en el acto, ya te hace caso. El freno que evita cortar la animación a medias se estaba activando también cuando el panel solo rebotaba a su sitio (o cuando tocabas cualquier cosa dentro del perfil), y durante medio segundo la app se quedaba sorda. Ahora solo frena mientras el panel se va de verdad.",
+    "🚧 Canal de pruebas: la versión que ves ya dice cuál llevas (4.11.0.8 y no «4.11.0»), y se acabó el aviso de actualizar cada dos minutos — el paquete se sellaba con un número distinto del que anunciaba, así que la app creía que siempre le faltaba algo.",
+    "📦 Y apagar el canal de pruebas ahora te devuelve de verdad a la versión de todos. Antes se quedaba con la de pruebas puesta hasta que la normal la adelantara.",
   ]},
   {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
     "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
@@ -11521,6 +11523,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
                 mcSetChannel(beta?"stable":"beta");
                 showToast(beta?"📦 Canal estable":"🚧 Canal beta activado");
                 setS({});   // repinta Ajustes para que la fila refleje el canal nuevo
+                // Y se instala YA lo que toque en el canal nuevo, arriba o abajo: apagar la beta
+                // tiene que devolver el móvil a lo que usa el resto (feedback 2026-07-26).
+                if(window._mcApplyChannelBundle) window._mcApplyChannelBundle({showToast:showToast});
               });
             }, sw(beta)),
             React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},
@@ -13173,6 +13178,8 @@ function App(){
                        : "🚧 Canal beta guardado · OJO: en el navegador NO llega la beta (solo en la app Android)");
     }
     else if(c==="estable"||c==="stable"){ mcSetChannel("stable"); showToast("📦 Canal estable"); }
+    // Igual que el interruptor de Ajustes: el canal nuevo se instala en el acto, suba o baje.
+    if(window._mcApplyChannelBundle) window._mcApplyChannelBundle({showToast:showToast});
   },[]);
 
   // CAPA 2 — vuelta del banco (?bank=ok / ?bank=error tras autorizar). Avisa y limpia la URL.
@@ -13408,20 +13415,30 @@ function App(){
     const v=el?parseFloat(el.style.getPropertyValue("--pp-s0")):NaN;
     return isNaN(v)?0.12:v;
   };
-  /* CERRAR = ABRIR AL REVÉS, con los MISMOS números (petición 2026-07-25: «es hacer exactamente
-     lo mismo que cuando se abre pero al cerrarse»). Estaban a ojo y distintos —abrir dividía por
-     0,55 y elevaba a 0,85; cerrar por 0,48 y a 0,88; y el umbral de abrir pedía el doble de
-     recorrido que el de cerrar—, así que el mismo dedo daba dos sensaciones diferentes. Una sola
-     definición para los dos sentidos. */
-  const PROF_DIV=0.52, PROF_POW=0.86, PROF_TH=0.11;
+  /* CERRAR = ABRIR AL REVÉS (petición 2026-07-25: «es hacer exactamente lo mismo que cuando se
+     abre pero al cerrarse»). Eso vale para la CURVA —lo que se siente mientras el dedo va— y por
+     eso hay una sola: antes abrir dividía por 0,55 y elevaba a 0,85, y cerrar por 0,48 y a 0,88.
+
+     ⚠ EL UMBRAL NO PUEDE SER EL MISMO, y unificarlo fue el error de la 4.11.0: cerrar pasó de
+     pedir ~0,062 de la pantalla (52 px) a pedir 0,11 (94 px), **casi el doble**, y él lo cazó a la
+     primera al probar la beta: «al mantener el dedo y deslizar, a la mínima vuelve a la posición
+     inicial con la pantalla del perfil abierta» (veredicto de beta, 2026-07-26). El tirón de
+     siempre dejó de llegar, así que el panel rebotaba a abierto una y otra vez.
+
+     Los dos gestos no compiten contra lo mismo: ABRIR sale de Inicio, donde pelea con el scroll de
+     la página y con el deslizamiento entre pestañas, así que tiene que ser deliberado; CERRAR pasa
+     DENTRO del panel, donde lo único que compite es su propio scroll y eso ya se resuelve antes
+     (`scrollTop`). Mismo tacto, distinto peaje — y quien venga detrás que no los vuelva a igualar. */
+  const PROF_DIV=0.52, PROF_POW=0.86;
+  const PROF_TH_OPEN=0.11, PROF_TH_CLOSE=0.062;
   const profResist=function(ddy){
     const h=window.innerHeight||700;
     return Math.pow(Math.min(1,Math.max(0,ddy/(h*PROF_DIV))),PROF_POW);
   };
-  // ¿Ese tirón basta para cambiar de estado? Mismo criterio abriendo y cerrando.
-  const profPasa=function(dist, dt){
+  // ¿Ese tirón basta para cambiar de estado? Mismo criterio de velocidad, umbral por sentido.
+  const profPasa=function(dist, dt, th){
     const h=window.innerHeight||700;
-    return dist>h*PROF_TH || ((dist/Math.max(1,dt))>0.35 && dist>28);
+    return dist>h*th || ((dist/Math.max(1,dt))>0.35 && dist>28);
   };
   /* NO ACEPTAR UN GESTO NUEVO MIENTRAS EL PANEL SE ESTÁ YENDO (misma petición: «si alguien le da
      por mantener el dedo mientras se va con la animación, que no se vuelva loco»).
@@ -13590,15 +13607,19 @@ function App(){
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
     profileRelease();
-    /* Marcar «ocupado» AQUÍ y no solo en el efecto: si el tirón no llega al umbral, el estado no
-       cambia (`setProfileOpen(true)` con profileOpen ya en true no re-renderiza), así que el
-       efecto no corre — y el rebote de vuelta a su sitio, que también es una animación de 0,48 s,
-       se quedaba sin proteger. Es justo el caso de «lo intento, no llega, y vuelvo a intentarlo». */
-    profMarkBusy();
     if(pAx.current!=="y"){ pAx.current=null; return; }
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
-    const stay=!profPasa(dist, dt);   // mismo umbral que para abrir
+    const stay=!profPasa(dist, dt, PROF_TH_CLOSE);
+    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose. Lo pone el
+       efecto de `profileOpen`, así que aquí basta con no estorbar.
+       La 4.11.0 lo ponía en CUALQUIER final de gesto: también en el rebote de «he tirado y no ha
+       llegado», y también en un simple toque. Como en esos casos no hay `transitionend` que lo
+       levante (o llega tarde), el candado se comía sus 560 ms y el SIGUIENTE intento de cerrar no
+       llegaba ni a empezar. Sumado al umbral doblado, esa era la otra mitad de «a la mínima vuelve
+       a la posición inicial» (veredicto de beta 2026-07-26): tiras, no llega, vuelves a tirar en
+       el acto y la app está sorda. Cortar un rebote es inofensivo —el panel vuelve a donde ya
+       estaba—; cortar el cierre es lo que se veía «loco», y eso lo sigue cubriendo el efecto. */
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
@@ -14193,14 +14214,16 @@ function App(){
     if(!dragging.current) return; dragging.current=false;
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
-      profMarkBusy();   // también el rebote cuando el tirón no llega (ver profileEnd)
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
-      /* UMBRAL, el mismo que para cerrar. Antes pedía 0,16 de la pantalla —unos 136 px en su
-         móvil, el DOBLE que el de cerrar— y en el vídeo se ve el panel asomar en miniatura y
-         volverse a cerrar una y otra vez: el tirón no llegaba, y desde fuera parece que la app
-         parpadea sola. 0,11 (~95 px) sigue muy por encima de un roce sin querer. */
-      const open=profPasa(dist, dt);
+      // El candado lo pone el efecto cuando el estado cambia de verdad; el rebote no lo necesita
+      // y bloquearlo deja la app sorda al segundo intento (ver profileEnd).
+      /* UMBRAL DE ABRIR. Antes pedía 0,16 de la pantalla —unos 136 px en su móvil— y en el vídeo
+         se ve el panel asomar en miniatura y volverse a cerrar una y otra vez: el tirón no
+         llegaba, y desde fuera parece que la app parpadea sola. 0,11 (~95 px) sigue muy por encima
+         de un roce sin querer, y aquí SÍ hace falta ser exigente: este gesto compite con el scroll
+         de Inicio y con el cambio de pestaña. Cerrar va por su propio umbral, ver PROF_TH_CLOSE. */
+      const open=profPasa(dist, dt, PROF_TH_OPEN);
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;
@@ -14566,6 +14589,34 @@ function mcFetchManifest(name){
     throw new Error("beta/"+name+": "+((e&&e.message)||e));
   });
 }
+
+/* CAMBIAR DE CANAL NO ES «ACTUALIZAR»: ES INSTALAR LO QUE TOCA EN EL CANAL NUEVO.
+   El OTA solo va hacia ADELANTE (`_mcNewerVer`), así que apagar la beta dejaba el móvil con el
+   bundle de pruebas puesto para siempre: la única salida era esperar a que producción pasara ese
+   número. Feedback 2026-07-26: «si quito el canal beta no vuelve a la versión inferior, se queda
+   con la actual». Aquí se instala la versión del canal destino EN LA DIRECCIÓN QUE SEA — que es lo
+   que uno espera al apagar el interruptor: volver a lo que tiene el resto de la familia. */
+window._mcApplyChannelBundle=function(opts){
+  var toast=opts&&opts.showToast;
+  var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+  if(!up||!up.download) return Promise.resolve(false);
+  return mcFetchManifest("version.json")
+    .then(function(r){ return r.json(); })
+    .then(function(v){
+      if(!v||!v.version||v.version===CONFIG.APP_VERSION) return false;
+      if(toast) toast(tf("st_up_applying",{v:v.version}));
+      return up.download({url:(v.url||mcUpdBase()+"bundle.zip"), version:v.version})
+        .then(function(b){
+          try{ localStorage.setItem("_otaPending", v.version); }catch(e){}
+          return up.set({id:b.id}).then(function(){ return true; });
+        });
+    }).catch(function(e){
+      var m=(e&&e.message)||String(e);
+      if(toast) toast("⚠ "+m);
+      try{ cloud.logEvent('error','canal '+mcChannel()+': '+m.slice(0,200)); }catch(_){}
+      return false;
+    });
+};
 
 window._mcNewerVer=function(a,b){
   a=String(a).split("."); b=String(b).split(".");
