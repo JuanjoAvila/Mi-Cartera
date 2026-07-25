@@ -2,6 +2,48 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.9.0] — 2026-07-25
+### Trade Republic en frío (capítulo 3, esta vez verificado), coste real del oro y la pestaña de bancos habitable
+
+#### Trade Republic: la sesión ya no se pierde al cerrar la app
+- **El capítulo 2 (`d404d8e`, v4.0.11) NUNCA funcionó y se dio por cerrado sin probarlo.** Comprobado el 25/07: el plugin no se había tocado desde entonces y el APK 31 que usa el usuario ya lo llevaba. El síntoma seguía intacto: «se desloguea siempre, da igual que pase un segundo».
+- **Causa raíz: la cookie envenenada.** `snapshotCookies()` deduplicaba por nombre con `keep.put(name,p)`, quedándose con la ÚLTIMA aparición. Pero `tr_refresh` sale DOS VECES en la cabecera: la que restauramos nosotros con `Path=/` y la que TR sirve path-scoped a `/api/v1/auth`. RFC 6265 §5.4 las ordena de path más específico a menos → la primera es la recién rotada (buena) y la última la nuestra (ya consumida). Guardábamos la muerta, **y la volvíamos a guardar en cada snapshot**: una vez estropeada no se recuperaba jamás. Eso explica el «siempre». `put` → `putIfAbsent`.
+- **Segunda causa tapada:** la WebView oculta se quedaba cargada en `app.traderepublic.com` toda la vida del proceso y la SPA de TR renueva sesión sola cada ~290 s, incluso en segundo plano y después de nuestro último snapshot. `handleOnPause` ahora aparca la página en `about:blank` tras snapshotear (salvo con llamada en vuelo); `onPageFinished` ignora `about:` para no dar por «cargada» una página sin contexto TR.
+- **Diagnóstico sin cable:** al fallar, el error se lleva pegado `jarDiag()` — nombres de cookie del jar (NUNCA valores), nombres del snapshot, su edad y qué hizo el restore. Como la capa web ya manda `r.error` a `app_events`, la observación llega sola desde el móvil. Un `tr_refresh` repetido en `jar[...]` es la prueba directa de la causa 1.
+- **VERIFICADO EN FRÍO** por el usuario: APK compilada e instalada por `adb`, desconectar → 2FA → matar la app → sincronizar. Entra sin pedir nada.
+
+#### El coste del oro de Revolut se calcula solo
+- Revolut parte cada conversión en dos apuntes, en dos extractos distintos: las ONZAS en Materias primas (`Conversión a XAU`, divisa XAU) y los EUROS en la cuenta principal (`Conversión a XAU`, divisa EUR). Comparten la marca de tiempo exacta, que es la única clave fiable — el 30/01/2026 hubo dos conversiones el mismo día (oro 09:19, plata 11:10), así que casar por fecha suelta mezclaría metales.
+- `revoMetalCostsFromFiat()` saca `{metal → {marca de tiempo → €}}` del extracto de la cuenta. `revoMetalCost()` aplica **coste medio**: cada compra suma euros y onzas, cada venta se lleva su parte proporcional (misma convención que ya se usa con TR). `revoParseCommodities` devuelve `mov[{ts,qty}]` para poder hacerlo.
+- Los costes se recogen en una PRIMERA PASADA sobre todos los ficheros: da igual el orden en que se suelten.
+- Si a una sola compra le falta su pata en €, devuelve `null` en vez de un coste a medias: mejor «—» que un «sube/baja» que miente (AGENTS §1).
+- Verificado contra los dos extractos reales del usuario y por dos vías independientes: **0,258218 oz, 1.000,00 €, 3.872,70 €/oz**.
+
+#### «Mis bancos» en acordeón
+- Cada banco pintaba SIEMPRE sus tres botones (Actualizar/Reconectar/Quitar): con tres bancos, nueve botones tapando lo único que se mira el 99% de las veces. Ahora se abren al tocar el banco, de uno en uno.
+- El **estado** (píldora de color) sigue siempre visible aunque esté plegado: esconder que un banco está caído sería cambiar ruido por ceguera. El banco que llega por deep-link se abre solo — resaltarlo y esconderle el botón de reconectar a la vez habría sido peor que el problema.
+- Teclado y lectores: `role=button`, `aria-expanded`, Enter/Espacio. Plegar cancela un «¿quitar?» a medias.
+
+#### Rendimiento del gesto de cerrar el perfil
+- `profileMove` escribía `borderRadius` en CADA `touchmove`, y border-radius **obliga a repintar el panel entero**: hasta 120 repintados de pantalla completa por segundo. El drawer de Ajustes va fino porque escribe solo `transform`. La lección estaba escrita tres líneas más arriba (para el velo) pero al radio no se le aplicó. Radio fijo + `transform`/`opacity` dentro de un `requestAnimationFrame`.
+
+#### Seguridad y observabilidad
+- **El token de ingest viaja en cabecera** (`x-ingest-token`), no en el query string: las URLs acaban en logs de proxy, trazas y Referer, y ese token es la única credencial que protege la función que apunta gastos. La Edge Function ya aceptaba la cabecera, así que no hay que coordinar despliegues y un APK viejo sigue funcionando.
+- **`0018_app_events_service_role.sql`:** la tabla nunca dio privilegios a `service_role`. Consecuencia silenciosa: `logIngestError()` en `ingest` escribe con ese rol, así que **desde el 2026-07-11 no guardó ni una fila** — y como va en un `catch` vacío a propósito, nadie se enteró. La telemetría puesta para que los fallos del ingest dejaran de ser invisibles llevaba dos semanas siendo invisible ella misma.
+- **`scripts/errores.mjs`:** leer `app_events` desde la consola con filtros (`--kind`, `--since`, `--grep`). Solo lectura; la clave se lee de `.env.local` (gitignored), nunca del repo. Antes cada vuelta de diagnóstico era una captura de pantalla pegada a mano.
+- **MyInvestor, diagnóstico cerrado:** con el lector nuevo salieron los dos intentos (4.6.4 el 22/07 y 4.8.0 el 25/07) con el mismo error, `MI: recaptcha (token rechazado por MI — ¿dominio?)`. Confirma el riesgo anotado en la 4.6.4: reCAPTCHA v3 ata el token al dominio registrado. **La vía OTA está muerta**; queda la WebView nativa cargando la web de MI, como el puente de TR.
+
+#### Bugs corregidos
+- **La noti web de «hay versión nueva» nunca funcionó fuera del APK.** En una página con Service Worker, Chrome prohíbe `new Notification(...)` («Illegal constructor»). Y escapaba de su `try/catch` porque petaba dentro del `.then` de `requestPermission` → promesa sin capturar en la telemetría. Ahora va por `registration.showNotification()`, con el constructor como último recurso.
+
+#### Documentación que deja de quedarse rancia
+- El README anunciaba **v4.1.0 con la app en la 4.8.0** (siete versiones), y decía que Hogar estaba en Ajustes cuando se movió a Cartera en la 4.6.1. La regla de AGENTS §6 ya lo obligaba: una regla que solo vive en un `.md` se salta sin que salte nada.
+- **`tests/docs-frescura.test.mjs`** (en `npm test`): falla si `VERSION` no cuadra con `package.json`, `package-lock.json`, la primera entrada del `CHANGELOG`, la primera de `RELEASE_NOTES`, el «Estado actual» del README y la cabecera + tabla del ROADMAP; y si `apk.json` no cuadra con `build.gradle`. **AGENTS §6 bis** con tabla de «si tocas X, actualiza Y» para lo que un test no puede comprobar.
+
+#### Tests
+- Nuevos: `docs-frescura`, `revo-metales-coste` (6 casos: venta parcial, venta total, pata en € ausente, dos metales el mismo día).
+- **E2E de 46 a 49** con `bancos-acordeon.spec.mjs`. `e2e/fixtures.mjs` acepta `__cloudRows` para sembrar filas por tabla — antes el cliente mock devolvía `[]` para todo y no había forma de probar una pantalla que vive de la nube.
+
 ## [4.8.0] — 2026-07-24
 ### Revisión completa: rendimiento, concepto de los movimientos, bancos caídos, entorno de pruebas y seguridad
 

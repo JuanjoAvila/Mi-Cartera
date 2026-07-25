@@ -21,7 +21,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
+// Se quita el BOM: en Windows, `Set-Content -Encoding utf8` (PowerShell 5.1) lo mete SIEMPRE, y
+// un BOM al principio de package.json revienta JSON.parse con un error que no dice nada útil
+// («Unexpected token '﻿'»). Pasó al bumpear la 4.9.0 desde la consola. El fichero se arregla
+// aparte, pero el test no debe volverse ilegible por un byte invisible.
+const read = (p) => fs.readFileSync(path.join(root, p), "utf8").replace(/^﻿/, "");
 
 let failed = 0;
 const ok = (name) => console.log(`  ✓ ${name}`);

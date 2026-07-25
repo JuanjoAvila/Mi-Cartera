@@ -849,6 +849,14 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.9.0", d:"25 jul 2026", t:"Trade Republic deja de pedirte el código cada vez, y el oro por fin dice si ganas", items:[
+    "🔐 Trade Republic ya NO se desconecta al cerrar la app. Llevaba meses pidiéndote el PIN y el código del móvil cada vez que la abrías. La causa: al guardar la sesión, de las dos copias que hay de la misma credencial nos quedábamos con la caducada, y encima la volvíamos a guardar en cada vuelta — una vez estropeada, ya no se recuperaba nunca. Por eso pasaba «siempre, dieras el tiempo que dieras». Probado cerrando la app y volviendo a entrar: entra sin pedir nada.",
+    "🥇 El oro de Revolut ya te dice cuánto ganas o pierdes, sin teclear nada. Revolut parte cada compra en dos ficheros: las onzas en el extracto de Materias primas y los euros en el de la cuenta. Ahora la app cruza los dos sola y calcula el coste (incluso si vendiste una parte). Suelta los dos extractos juntos, en el orden que quieras.",
+    "👤 Cerrar el perfil deslizando ya va suave. Al arrastrar hacia abajo, la app repintaba la pantalla entera hasta 120 veces por segundo y se atascaba. Abrir siempre fue fino; ahora cerrar también.",
+    "🏦 «Mis bancos» deja de ser un muro de botones. Cada banco enseñaba sus tres botones a la vez (con tres bancos, nueve). Ahora tocas el banco y salen los suyos. El estado sigue siempre a la vista, y si vienes del aviso de «reconecta este banco», ese llega ya abierto.",
+    "🔔 El aviso de «hay versión nueva» en el navegador no salía nunca (fallaba por dentro, en silencio). Arreglado.",
+    "🛡️ Por dentro: la clave que usa el lector de notificaciones ya no viaja en la dirección web sino en una cabecera, que es donde no queda registrada. Y los fallos del servidor vuelven a quedar apuntados — llevaban dos semanas perdiéndose sin que nadie lo supiera.",
+  ]},
   {v:"4.8.0", d:"24 jul 2026", t:"Ya no se ralentiza, y el histórico se explica solo", items:[
     "⚡ Se acabó lo de «cuanto más rato la uso, más lenta va». La app guardaba TODO el histórico de gastos en el móvil cada vez que volvías a ella (abrir la app, cambiar de app y volver…), y eso costaba más cada mes según se llenaba: con 2.000 gastos eran 477 KB por vuelta, con 8.000 casi 2 MB. Ahora el histórico solo se reescribe cuando cambia de verdad — 1 KB — y ese número ya NO crece con los años.",
     "📝 El histórico por fin dice DE QUÉ era cada movimiento (lo pedía mi padre): debajo del título sale el concepto del bizum o la descripción del banco, y se rellena también en los movimientos antiguos al sincronizar. Puedes escribirlo o corregirlo tú desde la ficha del gasto, y lo que escribas no te lo pisa el banco. El buscador también busca por concepto.",
