@@ -14219,14 +14219,37 @@ window._mcNotifyUpdate=function(version, kind){
       return;
     }
   }catch(e){}
+  /* Camino WEB (sin plugin nativo). `new Notification(...)` NO vale en una página controlada por
+     un Service Worker: Chrome —y por tanto Android entero— lanza «Illegal constructor. Use
+     ServiceWorkerRegistration.showNotification() instead». Esta app SIEMPRE tiene SW, así que ese
+     camino estaba roto desde el principio; se veía en la telemetría (app_events 24/07, canal beta)
+     como promesa sin capturar, porque el `new Notification` de dentro del `.then` escapaba del
+     try/catch de fuera — un try SÍNCRONO no atrapa lo que peta dentro de una promesa.
+     Ahora se pide la notificación al registro del SW, con el constructor como último recurso
+     (navegadores de escritorio antiguos sin SW). Detectado 2026-07-25. */
+  var tag="mc-update-"+(version||"web");
+  var pintar=function(){
+    try{
+      if(navigator.serviceWorker && navigator.serviceWorker.ready){
+        navigator.serviceWorker.ready.then(function(reg){
+          if(reg && reg.showNotification) reg.showNotification(title,{body:body, tag:tag});
+          else new Notification(title,{body:body, tag:tag});
+        }).catch(function(){});
+        return;
+      }
+      new Notification(title,{body:body, tag:tag});
+    }catch(e){}
+  };
   try{
     if(typeof Notification!=="undefined"){
       if(Notification.permission==="granted"){
-        new Notification(title,{body:body, tag:"mc-update-"+(version||"web")});
+        pintar();
       }else if(Notification.permission==="default"){
+        // .catch además del .then: si el usuario deniega o el navegador rechaza la promesa,
+        // antes quedaba otra promesa sin capturar que ensuciaba la telemetría de errores.
         Notification.requestPermission().then(function(p){
-          if(p==="granted") new Notification(title,{body:body, tag:"mc-update-"+(version||"web")});
-        });
+          if(p==="granted") pintar();
+        }).catch(function(){});
       }
     }
   }catch(e){}
