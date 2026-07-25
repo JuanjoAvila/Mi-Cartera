@@ -112,6 +112,28 @@ console.log("security");
     if (!connect) bad("la CSP declara connect-src");
     else if (/\*/.test(connect[1])) bad("connect-src sin comodines", "un comodín deja salir los datos a cualquier sitio");
     else ok("connect-src es una lista cerrada");
+
+    /* Y que la lista cerrada deje pasar lo que la app SÍ tiene que descargar. Una CSP demasiado
+       estrecha no da error visible: `fetch` rechaza y el `catch` de turno se lo traga.
+       Caso real 2026-07-25: los assets de las releases de GitHub redirigen a
+       `release-assets.githubusercontent.com` (antes `objects.githubusercontent.com`) y ese
+       dominio no estaba en la lista. La descarga del canal beta moría, caía al manifiesto de
+       producción por su fallback, y el móvil contestaba «✓ estás a la última». El canal beta
+       llevaba roto en silencio desde que GitHub cambió de dominio. */
+    if (connect) {
+      const hosts = connect[1];
+      const necesarios = [
+        ["https://sfyfjagbnhbplrljpbvh.supabase.co", "la nube: estado, gastos y Edge Functions"],
+        ["https://api.frankfurter.app", "tipos de cambio"],
+        ["https://github.com", "manifiestos y assets de las releases (canal beta, APK)"],
+        ["https://release-assets.githubusercontent.com", "a donde REDIRIGE github.com al bajar un asset"],
+      ];
+      const faltan = necesarios.filter(([h]) => !hosts.includes(h));
+      if (faltan.length) {
+        bad("connect-src deja pasar lo que la app descarga",
+          faltan.map(([h, p]) => `${h} (${p})`).join(" · ") + " — sin esto el fetch muere y el catch se lo traga");
+      } else ok("connect-src deja pasar lo que la app descarga");
+    }
   }
 }
 

@@ -54,7 +54,11 @@ test("la curva de cerrar es la misma que la de abrir, en espejo", async ({ page 
      Es la forma de comprobar que comparten curva sin tener que copiar aquí sus constantes. */
   const s0 = await panel.evaluate((el) => parseFloat(el.style.getPropertyValue("--pp-s0")));
   expect(s0).toBeGreaterThan(0);
-  for (let i = 0; i < abriendo.length; i++) {
+  /* Solo los primeros pasos: más adelante el panel ya tiene scroll propio y el gesto de cerrar
+     se re-ancla al dedo cuando lo detecta (4.10.0), así que a partir de ahí los dos recorridos
+     dejan de ser comparables A PROPÓSITO. Con los primeros basta: cuando las curvas eran
+     distintas, la diferencia salía ya en el paso 0 (abrir 0,233 · cerrar 0,891). */
+  for (let i = 0; i < 4; i++) {
     const subida = abriendo[i];        // va de s0 → 1
     const bajada = cerrando[i];        // va de 1 → s0
     expect(Math.abs((subida + bajada) - (1 + s0)), `paso ${i}: abrir ${subida.toFixed(3)} · cerrar ${bajada.toFixed(3)} · s0 ${s0.toFixed(3)}`).toBeLessThan(0.02);
