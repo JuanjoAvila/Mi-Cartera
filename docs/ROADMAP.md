@@ -41,6 +41,13 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
 
+## Lo primero de la próxima sesión (apuntado por él, 2026-07-26)
+
+| Tema | Qué se sabe |
+|------|-------------|
+| **`RELEASE_NOTES` en cristiano** | Petición suya: **genéricas, que las entienda cualquiera, ni dirigidas a él ni técnicas** — las lee su padre y su pareja. Las de la 4.11.0, ahora mismo en producción, son el contraejemplo («lo que rechazaste», canal de pruebas, px). Reescribirlas. Regla completa y ejemplos en `AGENTS.md` §4. |
+| **Tirón al deslizar entre pestañas** | Lo vio **en directo en el móvil de su pareja**: las primeras veces que deslizas lateralmente entre pestañas va a tirones, y luego se suaviza. Sospechas a comprobar (no dar ninguna por buena sin medir, §7 bis): el montaje perezoso de pestañas (`prepMountTab`) cayendo dentro del gesto, o el primer render de una lista grande. El gesto vive en `11-app-main.js` (`onMove`/`onEnd` del track). **Pista cara de la 4.11.0: los `onTouch*` de React son PASIVOS**, así que `preventDefault` ahí no hace nada. |
+
 ## Review externa (ChatGPT, 2026-07-25) — qué falta de verdad
 
 El usuario pidió una review del repo a ChatGPT y trajo el veredicto (arquitectura 9, organización

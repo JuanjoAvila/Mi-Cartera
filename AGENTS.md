@@ -46,6 +46,22 @@ Se usan con `t("clave")` y `tf("clave",{x:…})` para interpolar.
 
 Las notas de versión (`RELEASE_NOTES`) son la excepción: **solo castellano**, a propósito.
 
+### Y el TONO de `RELEASE_NOTES` no es negociable (feedback 2026-07-26)
+
+**Las lee toda la familia, no quien las escribió.** Genéricas, en cristiano, impersonales:
+
+- **Nada dirigido al dueño**: ni «lo que rechazaste», ni «como pediste», ni «tu móvil».
+- **Nada de la cocina**: ni canal de pruebas, ni rondas de beta, ni números internos.
+- **Nada técnico**: ni identificadores, ni manifiestos, ni listeners, ni umbrales en px.
+- Se cuenta **qué se nota y qué se puede hacer ahora**, como la nota de cualquier app.
+
+| ✗ | ✓ |
+|---|---|
+| «Cerrar el perfil: corregido lo que rechazaste… el umbral pasó de 52 a 94 px.» | «Cerrar el perfil vuelve a ir a la primera, también si habías bajado dentro.» |
+| «El aviso llevaba un identificador sacado del reloj, así que se apilaba.» | «Se acabaron los avisos de actualización repetidos.» |
+
+El porqué técnico va al `CHANGELOG.md`, que es justo donde sí se quiere con todo el detalle.
+
 ## 5. Diálogos: NO uses `window.prompt` / `confirm` / `alert`
 
 Pintan el cuadro **nativo** de Android (gris, tipografía ajena, botones «CANCEL/OK» en inglés con
