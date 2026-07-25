@@ -48,6 +48,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TradeRepublicPlugin extends Plugin {
 
     private static final String TR_APP = "https://app.traderepublic.com/";
+    /** Página aparcada: sin SPA de TR viva no hay rotaciones de sesión que nadie vigile (ver handleOnPause). */
+    private static final String BLANK = "about:blank";
 
     /**
      * Helper JS inyectado en TODA petición contra api.traderepublic.com.
@@ -114,6 +116,18 @@ public class TradeRepublicPlugin extends Plugin {
             if (call == null) return;
             try {
                 JSObject res = new JSObject(json);
+                // DIAGNÓSTICO SIN CABLE (2026-07-25). El capítulo 1 de esta saga costó 7 intentos a
+                // ciegas y se resolvió en 15 min el día que se miró el jar de cookies de verdad; el
+                // capítulo 2 se dio por cerrado sin verificar y tampoco valía. Así que cuando algo
+                // falla, el error se lleva pegado el estado del jar: la capa web ya manda el texto
+                // del error a `app_events`, o sea que la observación llega sola desde el móvil.
+                // SOLO NOMBRES DE COOKIE, jamás valores: son la credencial de su banco.
+                // Si aquí sale `tr_refresh` DOS VECES, es la prueba de la hipótesis de la cookie
+                // duplicada en dos paths (ver snapshotCookies).
+                if (!res.optBoolean("ok", false)) {
+                    String base = res.getString("error", "");
+                    res.put("error", (base == null || base.isEmpty() ? "TR falló" : base) + " · " + jarDiag());
+                }
                 if (wasVerify && res.optBoolean("ok", false)) {
                     prefs().edit().putBoolean("connected", true).apply();   // sesión TR establecida
                 }
@@ -184,6 +198,10 @@ public class TradeRepublicPlugin extends Plugin {
                 clearWafToken();
                 web.setWebViewClient(new WebViewClient() {
                     @Override public void onPageFinished(WebView v, String url) {
+                        // La página APARCADA (about:blank) no es TR: no hay contexto donde inyectar
+                        // nada ni sesión que snapshotear. Marcarla como "cargada" haría que la
+                        // siguiente llamada ejecutara su fetch contra about:blank y fallara.
+                        if (url != null && url.startsWith("about:")) { loaded = false; loading = false; return; }
                         loaded = true; loading = false;
                         drainReady();
                         // La SPA de TR puede rotar tr_session/tr_refresh nada más arrancar (llama a
@@ -221,7 +239,15 @@ public class TradeRepublicPlugin extends Plugin {
                 String p = part.trim(); int eq = p.indexOf('=');
                 if (eq <= 0) continue;
                 String name = p.substring(0, eq);
-                if (name.startsWith("tr_")) keep.put(name, p);   // tr_session / tr_refresh / tr_device
+                // ¡putIfAbsent, NO put! (capítulo 3 de la saga, 2026-07-25). El mismo nombre puede
+                // aparecer DOS VECES en la cabecera: la que restauramos nosotros con `Path=/` y la
+                // que TR sirve luego path-scoped a /api/v1/auth. Son cookies distintas para el jar.
+                // RFC 6265 §5.4 las ordena de path MÁS específico a menos, así que la PRIMERA es la
+                // de TR (la recién rotada, la buena) y la última la nuestra (ya consumida). Con
+                // `put` ganaba la última → guardábamos el refresh muerto, y lo volvíamos a guardar
+                // en cada snapshot: la sesión quedaba envenenada PARA SIEMPRE. Encaja exactamente
+                // con el «se desloguea siempre, da igual que pase un segundo» del usuario.
+                if (name.startsWith("tr_")) keep.putIfAbsent(name, p);   // tr_session / tr_refresh / tr_device
             }
         }
         // Solo guardamos si hay sesión DE VERDAD: así un frío fallido no machaca un snapshot bueno.
@@ -237,24 +263,58 @@ public class TradeRepublicPlugin extends Plugin {
         cm.flush();
     }
 
+    /** Qué hizo el último restore. Solo diagnóstico (viaja pegado a los errores, ver jarDiag). */
+    private volatile String lastRestore = "aún-no";
+
+    /**
+     * Foto del estado de la sesión para pegarla a un error. **Solo nombres, nunca valores.**
+     * Un nombre repetido en `jar[...]` significa la MISMA cookie en dos paths distintos, que es
+     * justo lo que envenenaba el snapshot (ver snapshotCookies).
+     */
+    private String jarDiag() {
+        StringBuilder sb = new StringBuilder("jar[");
+        try {
+            String raw = CookieManager.getInstance().getCookie(SESSION_URL);
+            boolean first = true;
+            if (raw != null) {
+                for (String part : raw.split(";")) {
+                    String p = part.trim(); int eq = p.indexOf('=');
+                    if (eq <= 0) continue;
+                    String name = p.substring(0, eq);
+                    if (!name.startsWith("tr_")) continue;
+                    if (!first) sb.append(",");
+                    sb.append(name); first = false;
+                }
+            }
+        } catch (Exception ignored) { sb.append("?"); }
+        sb.append("] snap[").append(prefs().getString("cookieSnapNames", "—")).append("]");
+        long at = prefs().getLong("cookieSnapAt", 0);
+        sb.append(" edad=").append(at > 0 ? ((System.currentTimeMillis() - at) / 60000) + "min" : "—");
+        sb.append(" restore=").append(lastRestore);
+        return sb.toString();
+    }
+
     private void restoreCookies() {
         String snap = prefs().getString("cookieSnap", null);
-        if (snap == null || snap.isEmpty()) return;
+        if (snap == null || snap.isEmpty()) { lastRestore = "sin-snapshot"; return; }
         CookieManager cm = CookieManager.getInstance();
         // Jar CALIENTE (ya hay tr_refresh vivo) → NO pisar: TR ROTA tr_refresh en cada /session y
         // el snapshot puede ir por detrás de la rotación; re-inyectarlo «resucita» un refresh ya
         // consumido → 401 real y 2FA sin motivo (feedback 2026-07-17: «caduca cada dos por tres»).
         // El restore es SOLO para el arranque en frío, cuando Android tiró las cookies de sesión.
         String cur = cm.getCookie(SESSION_URL);
-        if (cur != null && cur.contains("tr_refresh=")) return;
+        if (cur != null && cur.contains("tr_refresh=")) { lastRestore = "no(jar-caliente)"; return; }
         cm.setAcceptCookie(true);
+        int n = 0;
         for (String part : snap.split(";")) {
             String p = part.trim(); if (p.isEmpty()) continue;
+            n++;
             // host-only en api.traderepublic.com, Path=/ (llega a /api/v1/auth/*), Secure + SameSite=None
             // (la web va cross-site app→api). Se pierde el flag httpOnly: irrelevante para que viaje.
             cm.setCookie("https://api.traderepublic.com", p + "; Path=/; Secure; SameSite=None");
         }
         cm.flush();
+        lastRestore = "sí(" + n + ")";
     }
 
     /** Recarga app.traderepublic.com y ejecuta `then` cuando termine (challenge WAF fresco). */
@@ -290,9 +350,25 @@ public class TradeRepublicPlugin extends Plugin {
     // Al irse la app al fondo (el último aviso antes de que Android pueda matar el proceso)
     // guardamos la ÚLTIMA rotación de tr_refresh: los snapshots por-llamada no cubren una
     // muerte a mitad de sync, y un snapshot por detrás de la rotación = 401 en el próximo frío.
+    //
+    // Y ADEMÁS APARCAMOS LA PÁGINA (capítulo 3 de la saga, 2026-07-25). La WebView oculta se
+    // quedaba cargada en app.traderepublic.com toda la vida del proceso, y la SPA de TR renueva
+    // su sesión SOLA cada ~290 s. Secuencia mortal: snapshot al pausar (valor A) → la app sigue en
+    // segundo plano → la SPA rota a B → Android mata el proceso → en frío restauramos A, ya
+    // consumido → 401 real y 2FA otra vez. Nadie vigilaba esa rotación porque ocurría después de
+    // nuestro último aviso. Dejando la página en blanco no queda SPA que pueda rotar nada: el
+    // snapshot que acabamos de tomar es, por construcción, el último estado válido.
+    // Coste: la siguiente sincronización recarga la página (2-3 s), lo mismo que ya hacía en frío.
     @Override
     protected void handleOnPause() {
-        try { if (web != null) snapshotCookies(); } catch (Exception ignored) {}
+        try {
+            if (web != null) {
+                snapshotCookies();
+                // Con una llamada en vuelo NO se aparca: le quitaríamos la página de debajo a un
+                // sync que el usuario dejó corriendo al cambiar de app.
+                if (pending.isEmpty()) { loaded = false; loading = false; web.loadUrl(BLANK); }
+            }
+        } catch (Exception ignored) {}
         super.handleOnPause();
     }
 
