@@ -895,6 +895,15 @@ var RELEASE_NOTES=[
     "👤 Cerrar el perfil es ahora EXACTAMENTE lo mismo que abrirlo, pero al revés. Iban con números distintos —abrir pedía casi el doble de arrastre que cerrar— así que el mismo dedo daba dos sensaciones. Ahora comparten curva y umbral.",
     "🖐️ Y si dejas el dedo puesto (o vuelves a tocar) mientras el panel se está yendo, ya no se vuelve loco: se espera a que termine en vez de cortar la animación a medias y pegar un salto.",
   ]},
+  {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
+    "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
+    "🔔 Y si el canal de pruebas falla, te lo dice. Antes, cualquier problema al mirar si había versión nueva se disfrazaba de «no hay nada nuevo» — que es justo lo que hizo que esto pasara desapercibido tanto tiempo. Ahora sale el error y queda anotado.",
+    "🙈 Sigue afectando solo al canal de pruebas: si nunca lo has activado, no te ha faltado ninguna actualización.",
+  ]},
+  {v:"4.10.1", d:"25 jul 2026", t:"El canal de pruebas vuelve a funcionar", items:[
+    "🚧 Si activabas el canal de pruebas, la app te decía «✓ estás a la última» aunque hubiera una versión de prueba esperándote. GitHub cambió el sitio de donde se bajan esos ficheros y la app tenía apuntado el antiguo, así que la descarga moría — y como hay una red de seguridad que en ese caso mira el canal normal, no se veía ningún error: simplemente te contestaba que no había nada nuevo. Corregido.",
+    "🙈 Solo afecta al canal de pruebas: si nunca lo has activado, no te ha faltado ninguna actualización.",
+  ]},
   {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
     "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",
     "🥇 El CSV de Revolut ya no te dice «no he podido leer el CSV». Subiste el extracto de tu cuenta en euros —justo el que hace falta para saber cuánto ganas con el oro— y la app lo rechazaba, aunque lo había leído perfectamente. Ahora te lo confirma, se guarda los euros de tus conversiones y te dice qué fichero falta. Puedes soltarlos de uno en uno y en el orden que quieras: los va juntando.",
