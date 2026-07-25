@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.9.2] — 2026-07-25
+### Incidente: el APK 32 salió con texto corrompido y SIN sellar la versión
+
+Dos fallos de proceso míos, los dos detectados por el usuario en su móvil, y los dos con guardián.
+
+#### `APP_VERSION: "dev"` — el APK que no podía actualizarse nunca
+- El APK 32 se empaquetó copiando `public/` → `www/` **a mano con `Copy-Item`** en vez de con `scripts/build-www.mjs`, que es quien SELLA `APP_VERSION` desde el fichero `VERSION`. El bundle salió con el placeholder `"dev"`.
+- No es cosmético: `_mcNewerVer` hace `parseInt("dev")` → `NaN`, y `4 !== NaN` entra en el `if` devolviendo `4 > NaN` = **`false`**. La comparación de versiones falla SIEMPRE → **ese móvil no vuelve a recibir una actualización jamás**, sin un solo error visible; solo un discreto «vdev» en Ajustes. Por eso el usuario no recibió nada de la 4.9.0 ni de la 4.9.1 y creía que el fix del perfil no funcionaba: nunca le llegó.
+- `build-www.mjs` **aborta** ahora si el sellado no cuaja, `npm run apk:prep` encadena build → sellado → `cap sync` para que nadie lo haga a mano, y AGENTS §6.5 lo deja escrito.
+
+#### Mojibake: el «✓» pintado como tres símbolos sin sentido
+- `(Get-Content -Raw) | Set-Content -Encoding utf8` en PowerShell 5.1 **lee el fichero como Windows-1252** y lo reescribe como UTF-8: cada acento y cada símbolo se dobla. Así se corrompieron 95 líneas de `06-sync-brokers.js` y la descripción de `package.json`, y de ahí los caracteres raros que el usuario vio en la tarjeta de Trade Republic (y 171 apariciones en los assets del APK 32).
+- Fichero restaurado desde git y los cambios rehechos con herramientas UTF-8. `docs-frescura` comprueba ahora que no haya mojibake en los módulos ni en la doc — es invisible en un diff y el resto de tests pasan tan contentos.
+
+#### APK 33 / 4.9.2
+- Reempaquetada con `apk:prep` (sellada y sin corrupción), publicada y `apk.json` actualizado. **Sustituye a la 32, que no debe usarse.**
+
 ## [4.9.1] — 2026-07-25
 ### Los brókers se eligen y se pliegan; el cierre del perfil deja de mezclar dos pantallas
 

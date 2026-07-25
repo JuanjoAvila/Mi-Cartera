@@ -117,6 +117,25 @@ ok(`VERSION = ${VERSION}`);
   }
 }
 
+/* ---- 5 bis. Texto corrompido (mojibake) ----
+   Incidente 2026-07-25: reescribir un fichero con `(Get-Content -Raw) | Set-Content -Encoding utf8`
+   en PowerShell 5.1 lo LEE como Windows-1252 y lo reescribe como UTF-8 → cada acento y cada «✓» se
+   convierten en «Ã©», «âœ“»… 95 líneas de `06-sync-brokers.js` y la descripción de `package.json`
+   salieron así, y el usuario lo vio en su móvil: «✓» pintado como `âœ"` en la tarjeta de Trade
+   Republic. Es invisible en un diff si no lo buscas, y el resto de tests pasan tan contentos.
+   Regla práctica: en este repo los ficheros se editan con herramientas UTF-8, nunca con un
+   round-trip de PowerShell. Esto lo caza si alguien lo intenta igual. */
+{
+  const sospechosos = /Ã[©³¡­º±‰]|â€"|â€œ|âœ|Â«|Â»/;
+  const mirar = ["package.json", "README.md", "AGENTS.md", "CHANGELOG.md", "docs/ROADMAP.md", "docs/TESTING.md"];
+  for (const f of fs.readdirSync(path.join(root, "src/modules"))) mirar.push("src/modules/" + f);
+  const sucios = mirar.filter((f) => {
+    try { return sospechosos.test(read(f)); } catch { return false; }
+  });
+  if (sucios.length) bad("sin texto corrompido (mojibake)", sucios.join(", ") + " — ¿editado con PowerShell?");
+  else ok("sin texto corrompido (mojibake)");
+}
+
 /* ---- 6. ¿Código nuevo SIN subir la versión? ----
    Fallo real 2026-07-25: se arreglaron TR, el oro, el gesto del perfil y los bancos, todo
    commiteado y desplegado en Pages... con `VERSION` intacta. El OTA compara NÚMEROS de versión,

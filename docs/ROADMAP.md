@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-25 · **v4.9.1** — **los brókers los elige el usuario** (chips «¿Qué brókers usas?»; antes se pintaba el login de TR/MyInvestor/Revolut aunque no tuvieras cuenta) y **sus tarjetas se pliegan** con el mismo acordeón que los bancos (`bkBrand()` compartido). **Cierre del perfil sin superponer dos pantallas**: se quitó el fundido de opacidad del arrastre —el panel ocupa la pantalla entera, así que fundirlo dejaba ver perfil y resumen a la vez— y ahora escala hacia el avatar, opaco, como la apertura en reversa. **`docs-frescura` vigila que no quede código publicable sin subir `VERSION`**, que fue el fallo del día: todo desplegado en Pages con la versión intacta y el móvil sin enterarse. **APK 32 / 4.9.0 publicada** (fix de sesión de TR + token de ingest en cabecera). E2E 49 → 53.
+> Estado a 2026-07-25 · **v4.9.2** — **incidente del APK 32, corregido**: se empaquetó copiando `public/`→`www/` a mano en vez de con `build-www.mjs`, así que salió con `APP_VERSION: "dev"` — y como `_mcNewerVer` hace `parseInt("dev")`→`NaN`, la comparación de versiones daba `false` siempre y **ese móvil no volvía a actualizarse nunca**, sin error visible. Además, reescribir un módulo con `Get-Content|Set-Content` de PowerShell lo leyó como Windows-1252 y corrompió 95 líneas (el «✓» de TR salía como tres símbolos sin sentido). **APK 33 / 4.9.2 la sustituye.** Guardianes: `build-www.mjs` aborta si no sella, `npm run apk:prep` encadena el proceso entero, y `docs-frescura` caza el mojibake.
+>
+> Anterior: 2026-07-25 · **v4.9.1** — **los brókers los elige el usuario** (chips «¿Qué brókers usas?»; antes se pintaba el login de TR/MyInvestor/Revolut aunque no tuvieras cuenta) y **sus tarjetas se pliegan** con el mismo acordeón que los bancos (`bkBrand()` compartido). **Cierre del perfil sin superponer dos pantallas**: se quitó el fundido de opacidad del arrastre —el panel ocupa la pantalla entera, así que fundirlo dejaba ver perfil y resumen a la vez— y ahora escala hacia el avatar, opaco, como la apertura en reversa. **`docs-frescura` vigila que no quede código publicable sin subir `VERSION`**, que fue el fallo del día: todo desplegado en Pages con la versión intacta y el móvil sin enterarse. **APK 32 / 4.9.0 publicada** (fix de sesión de TR + token de ingest en cabecera). E2E 49 → 53.
 >
 > Anterior: 2026-07-25 · **v4.9.0** — **Trade Republic en frío CERRADO de verdad** (capítulo 3, verificado por el usuario matando la app): la causa era `snapshotCookies` quedándose con la copia CADUCADA de `tr_refresh` —sale dos veces en la cabecera, con dos paths— y re-guardándola en cada vuelta, así que una vez estropeada no se recuperaba nunca (`put` → `putIfAbsent`); además la WebView se aparca en `about:blank` al pasar a segundo plano para que la SPA de TR no rote la sesión a nuestras espaldas, y los errores llevan pegado el estado del jar para diagnosticar sin cable. **Coste del oro de Revolut automático** cruzando el extracto de metales con el de la cuenta en € por marca de tiempo (verificado: 0,258218 oz / 1.000 € / 3.872,70 €/oz). **«Mis bancos» en acordeón**. **Gesto de cerrar el perfil** sin repintar la pantalla entera por frame. **Seguridad**: token de ingest en cabecera; `app_events` recupera los grants de `service_role` (la telemetría del ingest llevaba dos semanas muerta en silencio). **`scripts/errores.mjs`** para leer los errores del móvil desde la consola. **MyInvestor**: diagnóstico cerrado, el reCAPTCHA rechaza el token por dominio → hace falta WebView nativa. E2E 46 → 49.
 >
@@ -16,9 +18,9 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.9.1** |
-| APK (`versionName` / `versionCode`) | **4.9.0** / **32** publicada (release GitHub `v4.9.0`) — trae el fix de sesión de TR y el token de ingest en cabecera, que NO viajan por OTA. La 4.9.1 es solo web. |
-| `public/apk.json` | **32** / 4.9.0 → `Mi-Cartera-4.9.0.apk` |
+| Web / OTA (`VERSION`) | **4.9.2** |
+| APK (`versionName` / `versionCode`) | **4.9.2** / **33** publicada (release GitHub `v4.9.2`). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
+| `public/apk.json` | **33** / 4.9.2 → `Mi-Cartera-4.9.2.apk` |
 
 ## Pendiente / limitaciones conocidas
 

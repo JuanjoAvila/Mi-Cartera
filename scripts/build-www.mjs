@@ -28,6 +28,19 @@ let idx = readFileSync(idxPath, "utf8");
 idx = idx.replace(/APP_VERSION: ".*?"/, `APP_VERSION: "${version}"`);
 writeFileSync(idxPath, idx);
 
+/* EL SELLADO NO ES OPCIONAL — si no cuaja, se para aquí (incidente 2026-07-25).
+   Se publicó una APK copiando `public/` a `www/` a mano en vez de con este script, así que el
+   bundle salió con `APP_VERSION: "dev"`. Eso no es un detalle cosmético: `_mcNewerVer` hace
+   `parseInt("dev")` → NaN, la comparación de versiones devuelve `false` SIEMPRE, y el móvil
+   **deja de recibir actualizaciones para siempre** — sin ningún error, solo un «vdev» discreto en
+   Ajustes. Se instaló en el móvil del usuario y se publicó a su padre y su pareja.
+   Mejor reventar el build que volver a mandar un APK que no puede actualizarse nunca. */
+if (/APP_VERSION: "dev"/.test(idx) || !idx.includes(`APP_VERSION: "${version}"`)) {
+  console.error(`❌ www/index.html NO quedó sellado con la versión ${version}.`);
+  console.error("   Un bundle con APP_VERSION \"dev\" deja el móvil sin actualizaciones PARA SIEMPRE.");
+  process.exit(1);
+}
+
 // El SW no se registra en la app nativa, pero sellamos por coherencia.
 const swPath = join(dst, "sw.js");
 if (existsSync(swPath)) {

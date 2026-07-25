@@ -1,6 +1,6 @@
 {
-  "versionCode": 32,
-  "versionName": "4.9.0",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.9.0/Mi-Cartera-4.9.0.apk",
-  "notes": "APK 4.9.0 (32): Trade Republic ya no se desconecta al cerrar la app, y la clave del lector de notis viaja en cabecera (no en la URL). El resto — oro de Revolut con coste automático, perfil suave, bancos y brókers plegables — ya llegó por OTA."
+  "versionCode": 33,
+  "versionName": "4.9.2",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.9.2/Mi-Cartera-4.9.2.apk",
+  "notes": "APK 4.9.2 (33): sustituye a la 32, que salió sin sellar la versión y por eso no se actualizaba nunca. Trae Trade Republic sin desconexiones al cerrar la app, la clave del lector de notis en cabecera, y arregla los caracteres raros."
 }

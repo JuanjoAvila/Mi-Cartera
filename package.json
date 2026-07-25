@@ -1,8 +1,8 @@
 {
   "name": "mi-cartera",
-  "version": "4.9.1",
+  "version": "4.9.2",
   "private": true,
-  "description": "Mi Cartera â€” PWA de finanzas personales (+ envoltorio Android con Capacitor)",
+  "description": "Mi Cartera — PWA de finanzas personales (+ envoltorio Android con Capacitor)",
   "scripts": {
     "build": "node scripts/build-app.mjs",
     "build:sentry": "node scripts/bundle-sentry.mjs",
@@ -11,6 +11,7 @@
     "test:privacy": "node scripts/guard-privacy.mjs",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
     "stamp": "node scripts/stamp-version.mjs",
+    "apk:prep": "node scripts/build-app.mjs && node scripts/build-www.mjs && npx cap sync android",
     "android:add": "cap add android",
     "android:sync": "cap sync android",
     "android:open": "cap open android"

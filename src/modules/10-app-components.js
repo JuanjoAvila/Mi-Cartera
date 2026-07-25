@@ -888,6 +888,11 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.9.2", d:"25 jul 2026", t:"Arreglado el APK roto: caracteres raros y la app que no se actualizaba", items:[
+    "🔤 Los símbolos raros que salían en la tarjeta de Trade Republic (donde debía ir un ✓) eran texto que se estropeó al preparar la versión anterior. Corregido, y ahora hay una comprobación que no deja publicar con texto roto.",
+    "⬇️ La app decía «vdev» y no se actualizaba nunca. El APK anterior se empaquetó sin ponerle el número de versión, y la app compara números para saber si hay algo nuevo: sin número, la respuesta era siempre «no hay nada». Por eso no te llegó ninguna de las mejoras del día. Arreglado, y el proceso de empaquetado ahora se para en seco si la versión no queda puesta.",
+    "🙌 Con esto sí te llegan de verdad: los brókers que eliges tú, las tarjetas plegables, el oro de Revolut con su coste y el perfil que cierra limpio.",
+  ]},
   {v:"4.9.1", d:"25 jul 2026", t:"Los brókers los eliges tú, y el perfil se cierra limpio", items:[
     "🧩 Ya no te salen los tres brókers a la fuerza. Antes la app te enseñaba el login de Trade Republic, MyInvestor y Revolut aunque no tuvieras cuenta en ninguno — raro y confuso. Ahora arriba eliges cuáles usas y solo aparecen esos. Si ya tenías posiciones de un bróker, sigue apareciendo solo: no tienes que tocar nada.",
     "🗂️ Las tarjetas de bróker también se pliegan, igual que los bancos: tocas la que quieras y se abre solo esa.",

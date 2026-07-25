@@ -74,7 +74,12 @@ Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
 4. **`docs/ROADMAP.md`**: línea de estado + versión actual.
 5. Si tocas nativo Android **o** quieres APK alineado con la web:
    - `android/app/build.gradle` → `versionName` = `VERSION`, `versionCode` += 1
-   - `npm run build` → `npx cap sync android` → `assembleRelease`
+   - **`npm run apk:prep`** → `assembleRelease`. **NUNCA copies `public/` a `www/` a mano.**
+     `apk:prep` encadena build → `build-www.mjs` (que **sella** `APP_VERSION`) → `cap sync`.
+     Incidente 2026-07-25: se copió a mano, el bundle salió con `APP_VERSION: "dev"`, y como
+     `_mcNewerVer` hace `parseInt("dev")` → `NaN` la comparación da `false` siempre → **ese móvil
+     no vuelve a recibir una actualización jamás**, sin error visible (solo un «vdev» en Ajustes).
+     Se publicó al padre y a la pareja. `build-www.mjs` ahora aborta si el sellado no cuaja.
    - Subir asset a un **GitHub Release** y actualizar **`public/apk.json`** (versionCode, versionName, url, notes) al APK **realmente** publicado (nunca apuntar a un release inexistente).
 6. `npm run build` + `npm test` → push a `main` → verificar workflow Pages (y Supabase si tocaste `supabase/**`).
 
