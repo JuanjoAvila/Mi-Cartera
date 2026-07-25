@@ -5,7 +5,8 @@ name: Promocionar beta a producción
 #
 # Se lanza A MANO (Actions → este workflow → «Run workflow») a propósito: subir algo a producción
 # es lo que ven el padre y la pareja, y no debe poder dispararlo nada automático. Mergea `beta` en
-# `main`, y el push a `main` arranca el deploy de Pages de siempre.
+# `main` y **arranca el deploy de Pages a mano** (ver el paso del final: el push de aquí no lo
+# dispara solo), y no se da por bueno hasta comprobar que producción sirve la versión nueva.
 #
 # ¿Por qué no lo lanza la app directamente? Haría falta guardar un token de GitHub con permiso de
 # escritura sobre el repo en Supabase, y eso es una credencial nueva y jugosa a cambio de ahorrar
@@ -69,7 +70,36 @@ jobs:
           git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
           git push origin main
 
+      # ⚠ ESTE PASO NO SOBRA: un push hecho con el GITHUB_TOKEN del propio workflow **NO dispara
+      # otros workflows** (protección de GitHub contra bucles infinitos). O sea que el `push` de
+      # arriba NO arranca el deploy de Pages, y la promoción se quedaba a medias EN SILENCIO:
+      # `main` con la versión nueva y producción sirviendo la vieja. Pasó la primera vez que esto
+      # se usó de verdad (2026-07-26, promoción de la 4.11.0): los tres runs en verde y Pages
+      # todavía en la 4.10.2. Un `workflow_dispatch` por API sí arranca, aun con el mismo token.
+      - name: Arrancar el deploy de Pages (el push no lo hace)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
+
+      # Y no nos fiamos de que haya arrancado: se comprueba que producción sirve de verdad la
+      # versión nueva. Una promoción que no llega a Pages no es una promoción.
+      - name: Comprobar que producción ya sirve la versión nueva
+        run: |
+          VERSION=$(git show origin/beta:VERSION | tr -d '[:space:]')
+          echo "Esperando a que Pages sirva $VERSION…"
+          LIVE=""
+          for i in $(seq 1 40); do
+            LIVE=$(curl -sL "https://juanjoavila.github.io/Mi-Cartera/version.json" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p')
+            if [ "$LIVE" = "$VERSION" ]; then
+              echo "✅ Producción sirve $LIVE" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::Pages sigue sirviendo «$LIVE» y esperábamos «$VERSION». Mira el run de «Deploy a GitHub Pages»."
+          exit 1
+
       - name: Resumen
         run: |
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Subido a \`main\`. El workflow de Pages publica en un par de minutos y la app se lo ofrece sola a todo el mundo." >> $GITHUB_STEP_SUMMARY
+          echo "✅ Subido a \`main\` y publicado. La app se lo ofrece sola a todo el mundo." >> $GITHUB_STEP_SUMMARY
