@@ -27,8 +27,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | Qué | Valor |
 |-----|--------|
 | Web / OTA (`VERSION`) | **4.11.0** (en `beta`, pendiente de aprobación; producción va por la 4.10.2) |
-| APK (`versionName` / `versionCode`) | **4.9.2** / **33** publicada (release GitHub `v4.9.2`). La 4.10.0 **no toca nativo**, así que llega por OTA y el APK 33 se queda como está — es lo normal, no un descuadre. ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
-| `public/apk.json` | **33** / 4.9.2 → `Mi-Cartera-4.9.2.apk` |
+| APK (`versionName` / `versionCode`) | **4.11.0** / **34** compilada y firmada (prerelease `v4.11.0-beta34`, verificada: `CN=Mi Cartera`, bundle sellado 4.11.0). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker respeta el canal). **Solo para su móvil hasta que apruebe la 4.11.0**: en producción `apk.json` sigue sirviendo la 33/4.9.2 porque `public/apk.json` vive en `main`, y esta rama aún no está promocionada. ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
+| `public/apk.json` (en `beta`) | **34** / 4.11.0 → `Mi-Cartera-4.11.0.apk`. Al promocionar a `main`, la familia recibe la 34. |
 
 ## Pendiente / limitaciones conocidas
 

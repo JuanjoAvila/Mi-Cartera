@@ -289,6 +289,10 @@ public class MiCarteraPlugin extends Plugin {
         SharedPreferences.Editor ed = sp.edit();
         String ver = call.getString("version");
         if (ver != null && !ver.isEmpty()) ed.putString(OtaCheckWorker.KEY_CURRENT, ver);
+        // El canal (estable/beta) lo sabe la web; sin él, el worker miraba siempre producción y en
+        // un móvil en beta avisaba de una versión que no le tocaba, además de la de la propia app.
+        String chan = call.getString("channel");
+        if (chan != null && !chan.isEmpty()) ed.putString(OtaCheckWorker.KEY_CHANNEL, chan);
         String mark = call.getString("markNotifiedVer");
         if (mark != null && !mark.isEmpty()) ed.putString(OtaCheckWorker.KEY_BG_NOTIFIED, mark);
         String markApk = call.getString("markNotifiedApk");

@@ -184,10 +184,19 @@ window._mcSyncOtaNative=function(){
   try{
     var nat=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
     if(!nat||!nat.syncOtaState) return;
-    nat.syncOtaState({version:CONFIG.APP_VERSION}).then(function(r){
+    nat.syncOtaState({version:CONFIG.APP_VERSION, channel:mcChannel()}).then(function(r){
       try{
-        if(r&&r.bgNotifiedVer) localStorage.setItem("_otaNotifVer", r.bgNotifiedVer);
-        if(r&&r.bgNotifiedApk) localStorage.setItem("_apkNotifVer", r.bgNotifiedApk);
+        /* Estas marcas dicen «de esta versión YA se avisó». Antes se copiaba lo que dijera el
+           nativo tal cual, así que una marca VIEJA del worker de fondo pisaba la buena y el aviso
+           volvía a salir — sumándose al que ya había puesto la app. Ese era el «las notis se
+           duplican» que se ve desde la web (2026-07-26). Una marca solo puede ir hacia adelante. */
+        var mayor=function(k, v){
+          if(!v) return;
+          var cur=localStorage.getItem(k);
+          if(!cur || window._mcNewerVer(v, cur)) localStorage.setItem(k, v);
+        };
+        if(r) mayor("_otaNotifVer", r.bgNotifiedVer);
+        if(r) mayor("_apkNotifVer", r.bgNotifiedApk);
       }catch(e){}
     }).catch(function(){});
   }catch(e){}
