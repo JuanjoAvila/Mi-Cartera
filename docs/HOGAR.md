@@ -1,6 +1,7 @@
 # Hogar compartido (Fase 1 + 2)
 
-> **Dónde está (desde v4.1.0):** **Ajustes → Conexiones → «Hogar y gastos compartidos»**.
+> **Dónde está (desde v4.10.0):** toca tu **avatar en Inicio** → Perfil → sección **«Tu gente»**.
+> (Antes: al final de Cartera en 4.6.1 —donde no lo veía nadie— y en Ajustes → Conexiones en 4.1.0.)
 > Con la nav v4 (4 tabs + FAB) la pestaña «Compartido» desapareció y esta pantalla quedó
 > huérfana hasta la 4.1.0. Ahí viven el Hogar (esta doc) Y los grupos de gastos compartidos
 > (crucero, cenas…). Toda mención antigua a «Compartido → …» = esa pantalla de Ajustes.

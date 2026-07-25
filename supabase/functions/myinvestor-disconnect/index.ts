@@ -4,10 +4,10 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CORS, jsonResp } from "../_shared/myinvestor.ts";
+import { jsonResp } from "../_shared/myinvestor.ts";
+import { withCors } from "../_shared/cors.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+Deno.serve(withCors(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const supa = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -21,4 +21,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return jsonResp({ ok: false, error: String((e as Error)?.message || e) }, 500);
   }
-});
+}));

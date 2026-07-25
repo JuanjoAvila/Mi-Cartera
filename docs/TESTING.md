@@ -46,6 +46,19 @@ curl -s "https://juanjoavila.github.io/Mi-Cartera/version.json"
 Desde la 4.9.1 esto lo vigila `tests/docs-frescura.test.mjs`: si quedan cambios en `src/`,
 `supabase/functions/` o `android/app/src/` después del último bump de `VERSION`, `npm test` falla.
 
+### Dos guardas más, de la 4.10.0
+
+- **`tests/edge-sintaxis.test.mjs`** — las Edge Functions se despliegan solas al pushear, en un
+  workflow DISTINTO al de Pages: un paréntesis de más no lo ve nadie hasta que el usuario ya cree
+  que está publicado. Y `deno check` se omite en silencio si Deno no está instalado. Esto las pasa
+  por el parser de esbuild (que ya es dependencia del repo) y además falla si alguna vuelve a poner
+  `Access-Control-Allow-Origin: "*"` en vez de usar `withCors` (`_shared/cors.ts`).
+- **`tests/presupuesto-rendimiento.test.mjs`** — presupuesto de TAMAÑO: `index.html` minificado y
+  gzip (lo que baja el móvil de verdad) y cuántos ficheros bloquean el primer pintado. Los topes
+  están escritos en el propio fichero con lo medido el día que se pusieron; subirlos vale, pero se
+  hace a propósito y explicando por qué. El tamaño crece de uno en uno y nadie lo mira hasta que la
+  app tarda cinco segundos en abrir y no hay un commit al que señalar.
+
 ## Flujo local (CMD o PowerShell)
 
 Abre **CMD** o **PowerShell**, ve a la carpeta del proyecto y ejecuta:
@@ -81,6 +94,9 @@ npx playwright install chromium
 npm test          # build + unit + E2E
 npm run test:e2e  # solo Playwright (más rápido)
 npm run build     # solo ensamblar src → public/index.html
+# Sueltos, cuando solo tocas una zona:
+node tests/edge-sintaxis.test.mjs             # Edge Functions: sintaxis + nadie pone CORS "*"
+node tests/presupuesto-rendimiento.test.mjs   # cuánto pesa lo que se envía al móvil
 ```
 
 ## Capas

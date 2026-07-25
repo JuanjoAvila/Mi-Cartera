@@ -179,7 +179,10 @@ function App(){
           if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
         }); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
-      .catch(function(e){ if(navigator.onLine!==false) showToast("✕ Nube: "+((e&&e.message)||e)); });   // si estás sin conexión, ni avisamos (es normal)
+      .catch(function(e){ if(navigator.onLine!==false) showToast("✕ Nube: "+((e&&e.message)||e)); })   // si estás sin conexión, ni avisamos (es normal)
+      // Pase lo que pase, el splash se va: lo que se vea a partir de aquí ya es lo definitivo
+      // (o lo mejor que hay). Ver el porqué en el script del final de shell.html.
+      .then(mcBootReady, mcBootReady);
   };
 
   // CAPA 2 — Open Banking: lee el saldo del banco y re-ancla el motor (= editar el saldo a mano,
@@ -344,8 +347,11 @@ function App(){
 
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
   useEffect(function(){
-    if(!cloud.enabled()) return;
-    cloud.session().then(function(s){ sessionRef.current=s; setSession(s); if(s) mcScheduleIdle(function(){ syncFromCloud(s); }); });
+    if(!cloud.enabled()){ mcBootReady(); return; }   // sin nube no hay nada que esperar detrás del splash
+    cloud.session().then(function(s){
+      sessionRef.current=s; setSession(s);
+      if(s) mcScheduleIdle(function(){ syncFromCloud(s); }); else mcBootReady();
+    }, mcBootReady);
     cloud.onAuth(function(s, ev){
       const prev=sessionRef.current;
       const changed=(!prev&&s)||(prev&&!s)||(prev&&s&&prev.user.id!==s.user.id);
@@ -617,6 +623,9 @@ function App(){
     return function(){ try{ Promise.resolve(h).then(function(x){ x&&x.remove&&x.remove(); }); }catch(e){} };
   },[]);
   const [locked,setLocked]=useState(function(){ return bio.enabled(); });
+  // Con el candado puesto o en pleno alta no hay ninguna cifra que pueda cambiar debajo, así que
+  // el splash sobra: se retira ya en vez de robarle al usuario el segundo de espera de la nube.
+  useEffect(function(){ if(locked || state.onboarded===false) mcBootReady(); },[locked, state.onboarded]);
   // Premonta Settings/Perfil en idle: la 1ª vez que arrastras salía el panel negro vacío
   // (contenido solo al soltar — feedback 2026-07-18). El shell cerrado no se ve.
   useEffect(function(){
@@ -851,30 +860,58 @@ function App(){
     if(pRaf.current){ cancelAnimationFrame(pRaf.current); pRaf.current=0; }
     pNext.current=null;
   };
+  /* ENGANCHAR / SOLTAR el panel. Lo comparten los DOS gestos: la apertura (pull-down en Inicio,
+     dentro de onMove) y el cierre (tirar abajo dentro del perfil, profileMove). Estaban escritos
+     por duplicado y por eso la apertura se quedó sin los dos arreglos que sí recibió el cierre
+     —el radio fijo de la 4.9.0 y el no-interpolar opacidad de la 4.9.1—: el usuario seguía viendo
+     al ABRIR el perfil y el Resumen mezclados, y a tirones (vídeo 2026-07-25). Un solo sitio. */
+  const profileGrab=function(){
+    const el=profileRef.current; if(!el) return;
+    profSetOrigin();                       // re-ancla al avatar REAL antes de mover nada
+    el.classList.add("dragging");
+    freezeShell(true,"profile");
+    // Velo y radio FIJOS, una sola vez. Interpolarlos obliga a repintar la pantalla entera en
+    // cada touchmove (hasta 120 veces por segundo en un móvil de 120 Hz).
+    const dim=dimLayerRef.current;
+    if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
+    el.style.borderRadius="24px";
+    // OPACO desde el primer píxel: el panel ocupa la pantalla entera, así que fundirlo deja ver
+    // el perfil y el Resumen a la vez, los dos legibles. Lo que se mueve es la ESCALA, nunca el alfa.
+    el.style.opacity="1";
+    // Y el avatar se aparta: si sigue ahí mientras la tarjeta sale de él, se ven los dos.
+    try{ const av=document.querySelector(".v4-avatar"); if(av) av.classList.add("pulling"); }catch(e){}
+  };
+  const profileRelease=function(){
+    const el=profileRef.current; if(!el) return;
+    profileCancelPaint();   // un frame en cola pintaría DESPUÉS de limpiar y dejaría el panel a medias
+    el.classList.remove("dragging");
+    el.style.transform=""; el.style.opacity=""; el.style.borderRadius="";
+    freezeShell(false);
+  };
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
     if(!pDrag.current) return;
-    const t=e.touches[0], ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
+    const t=e.touches[0];
+    /* EL PERFIL SCROLLEA: su contenido mide ~1.680 px y en un móvil de verdad no cabe. Mientras
+       quede scroll por recoger, el dedo es del scroll y NO del cierre — y el gesto se re-ancla al
+       dedo en cada frame.
+       Sin el re-anclaje, `ddy` seguía contando desde donde empezaste a scrollear, así que en
+       cuanto scrollTop tocaba 0 el panel PEGABA UN SALTO a miniatura; y como el scroll rebota y
+       vuelve a scrollTop>0, los estilos se limpiaban y volvía a pantalla completa. Ida y vuelta
+       varias veces por segundo: es el parpadeo del vídeo del usuario, en el que el perfil y el
+       Resumen se turnaban y el gesto no cerraba nunca (2026-07-25, «al volver aún no va bien»). */
+    if(profileRef.current && profileRef.current.scrollTop>0){
+      if(pAx.current==="y") profileRelease();
+      pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDY.current=0; pT.current=Date.now();
+      return;
+    }
+    const ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
     if(pAx.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
       pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
-      if(pAx.current==="y"&&profileRef.current){
-        profSetOrigin();
-        profileRef.current.classList.add("dragging");
-        freezeShell(true,"profile");
-        // Velo fijo una sola vez — sin interpolar opacidad por frame.
-        const dim=dimLayerRef.current;
-        if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
-        // Radio fijo, por la MISMA razón que el velo: interpolarlo repintaba en cada frame.
-        profileRef.current.style.borderRadius="24px";
-      }
+      if(pAx.current==="y") profileGrab();
     }
     if(pAx.current!=="y") return;
-    if(profileRef.current && profileRef.current.scrollTop>0){
-      pDY.current=0; profileCancelPaint();
-      profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius="";
-      return;
-    }
     if(ddy<=0){ pDY.current=0; profileQueue(1,1); return; }
     pDY.current=ddy;
     const h=window.innerHeight||700;
@@ -884,26 +921,23 @@ function App(){
        la opacidad hasta 0,2 (`1-resist*0.8`), y como el panel ocupa la pantalla entera el
        resultado era ver el PERFIL Y EL RESUMEN A LA VEZ, los dos legibles, superpuestos. Eso es
        lo que se veía «loquísimo»: no era solo el tirón, era la mezcla de dos pantallas.
-       Al ABRIR nunca pasó porque la apertura no interpola opacidad — el panel va opaco y solo
-       ESCALA desde el avatar, con el velo oscureciendo el fondo. Cerrar hace ahora lo mismo en
-       reversa: escala hacia el avatar, opaco, y el velo se va al soltar. Un fundido de una capa
-       a pantalla completa sobre contenido siempre da papilla, por muy suave que sea. */
+       Lo mismo vale para ABRIR: se creyó que la apertura no interpolaba opacidad y sí lo hacía
+       (`opacity: resist*3`), así que el primer tercio del tirón enseñaba las dos pantallas
+       superpuestas. Los dos gestos van ahora por profileGrab(): opacos, escalando desde el
+       avatar y con el velo oscureciendo el fondo. Un fundido de una capa a pantalla completa
+       sobre contenido siempre da papilla, por muy suave que sea. */
     profileQueue(sc, 1);
     if(e.cancelable) e.preventDefault();
   };
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
-    // Un frame en cola pintaría DESPUÉS de limpiar los estilos y dejaría el panel a medio escalar.
-    profileCancelPaint();
-    if(profileRef.current) profileRef.current.classList.remove("dragging");
-    freezeShell(false);
+    profileRelease();
     if(pAx.current!=="y"){ pAx.current=null; return; }
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
     const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
     const flick=(dist/dt)>0.45 && dist>24;
-    if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
     const stay=!(closeProg>0.22 || flick);
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
@@ -1463,11 +1497,7 @@ function App(){
         if(atTop||fromAv){
           gestureMode.current="profile";
           setProfileMounted(true);
-          profSetOrigin();
-          if(profileRef.current) profileRef.current.classList.add("dragging");
-          freezeShell(true,"profile");
-          const dim=dimLayerRef.current;
-          if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
+          profileGrab();   // mismo enganche que el cierre: velo y radio fijos, panel opaco
         }
       }
     }
@@ -1476,11 +1506,9 @@ function App(){
       const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.55))),0.85);
       pDY.current=ddy;
       const s0o=profS0(), so=s0o+(1-s0o)*resist;
-      if(profileRef.current){
-        profileRef.current.style.transform="scale("+so+")";
-        profileRef.current.style.opacity=String(Math.min(1,resist*3));
-        profileRef.current.style.borderRadius=Math.round((1-resist)*24)+"px";
-      }
+      // Por rAF, como el cierre: touchmove dispara más veces que frames pinta la pantalla, y
+      // todas las escrituras menos la última se tiran a la basura habiendo forzado su recálculo.
+      profileQueue(so, 1);
       if(e.cancelable) e.preventDefault();
       return;
     }
@@ -1504,13 +1532,11 @@ function App(){
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
     if(axis.current==="y" && gestureMode.current==="profile"){
-      if(profileRef.current) profileRef.current.classList.remove("dragging");
-      freezeShell(false);
+      profileRelease();
       const h=window.innerHeight||700;
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
       const open=dist>h*0.16 || ((dist/dt)>0.5 && dist>36);
-      if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;

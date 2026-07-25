@@ -5,10 +5,10 @@
 // Solo lectura: no escribe nada en la BD.
 // ============================================================
 
-import { CORS, ebApi, ebConfig, jsonResp, makeJWT } from "../_shared/enablebanking.ts";
+import { ebApi, ebConfig, jsonResp, makeJWT } from "../_shared/enablebanking.ts";
+import { withCors } from "../_shared/cors.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+Deno.serve(withCors(async (req: Request) => {
   try {
     // país desde el body (POST, como invoca supabase-js) o desde la query (?country=)
     const body = await req.json().catch(() => ({}));
@@ -34,4 +34,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return jsonResp({ ok: false, error: String((e as Error)?.message || e) }, 500);
   }
-});
+}));

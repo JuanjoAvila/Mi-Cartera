@@ -15,6 +15,8 @@ const steps = [
   ["i18n-keys", ["node", "tests/i18n-keys.test.mjs"]],
   ["docs-frescura", ["node", "tests/docs-frescura.test.mjs"]],
   ["security", ["node", "tests/security.test.mjs"]],
+  ["edge-sintaxis", ["node", "tests/edge-sintaxis.test.mjs"]],
+  ["presupuesto-rendimiento", ["node", "tests/presupuesto-rendimiento.test.mjs"]],
   ["finance-core", ["node", "tests/finance-core.test.mjs"]],
   ["fx-multi", ["node", "tests/fx-multi.test.mjs"]],
   ["categories", ["node", "tests/categories.test.mjs"]],

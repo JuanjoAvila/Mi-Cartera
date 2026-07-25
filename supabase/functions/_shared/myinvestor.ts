@@ -10,8 +10,9 @@
 
 export const MI_BASE = "https://api.myinvestor.es";
 
+// SIN "Access-Control-Allow-Origin": lo pone `withCors` (./cors.ts) según la lista blanca de
+// orígenes. Dejarlo aquí en "*" era regalar la llamada a cualquier web del mundo (2026-07-25).
 export const CORS = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 

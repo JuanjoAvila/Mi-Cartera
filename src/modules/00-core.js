@@ -23,6 +23,13 @@ function mcScheduleIdle(fn, timeoutMs){
   setTimeout(fn, 16);
 }
 
+/* Le dice al SPLASH de entrada que ya puede irse: lo que se vea a partir de ahora es lo bueno.
+   El vigilante vive al final de shell.html y no depende de esto para retirarse (tiene un tope de
+   1,8 s), así que llamar de más es gratis y no llamar nunca solo devuelve el comportamiento viejo.
+   Idempotente a propósito: lo llaman varios caminos (sin nube, sin sesión, candado, alta, y el
+   final del primer pull de la nube) y ninguno sabe de los demás. */
+function mcBootReady(){ try{ window.__mcBootReady=true; }catch(e){} }
+
 var _mcSentryReady=false;
 var _mcSentryQueue=[];
 function mcInitSentry(){

@@ -30,8 +30,9 @@ mi-cartera/
 │   ├── index.html          #     Generado por `npm run build` — no editar a mano
 │   ├── manifest.json · sw.js · vendor/ · fonts/
 │   └── privacy.html
-├── e2e/                    # Playwright (53 specs: arranque, listas, bancos, brókers, CSP, rendimiento, beta…)
-├── tests/                  # Unitarios en Node (lógica, parsers, i18n, seguridad, frescura de doc)
+├── e2e/                    # Playwright (62 specs: arranque, listas, bancos, brókers, perfil, CSV, CSP, rendimiento, beta…)
+├── tests/                  # Unitarios en Node (lógica, parsers, i18n, seguridad, frescura de doc,
+│                           #  sintaxis de las Edge Functions y presupuesto de rendimiento)
 ├── supabase/               # Postgres, Auth, Edge Functions
 ├── scripts/
 │   ├── build-app.mjs       # Ensambla src/ → public/index.html
@@ -79,13 +80,14 @@ Push a `main` → GitHub Actions sella la versión del SW y publica `public/` en
 
 ## 🗺️ Roadmap
 
-Estado actual: **v4.9.2** — detalle en [docs/ROADMAP.md](docs/ROADMAP.md), [CHANGELOG.md](CHANGELOG.md) y [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
+Estado actual: **v4.10.0** — detalle en [docs/ROADMAP.md](docs/ROADMAP.md), [CHANGELOG.md](CHANGELOG.md) y [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 
 > Esta línea la vigila `tests/docs-frescura.test.mjs`: si no coincide con `VERSION`, `npm test` falla. Se puso porque el README se quedó siete versiones atrás (v4.1.0 con la app en la 4.8.0) sin que saltara nada.
 
 Notas rápidas del rediseño v4 (para no perderse):
 - **Rol de cuenta** (Recibos / Gasto diario / Todo): Cartera → Editar.
-- **Hogar y gastos compartidos:** Cartera → «🏠 Hogar y gastos compartidos» (movido ahí en 4.6.1) — [docs/HOGAR.md](docs/HOGAR.md).
+- **Hogar y gastos compartidos:** toca tu avatar en Inicio → Perfil → **«Tu gente»** (movido ahí en 4.10.0; antes al final de Cartera, donde no lo veía nadie) — [docs/HOGAR.md](docs/HOGAR.md).
+- **Ordenar los bloques de Cartera:** Cartera → «⇅ Ordenar secciones» al pie (4.10.0).
 - **Open Banking se sincroniza a demanda** (botón en Cartera), no al abrir la app.
 - **Updates:** transporte en `12-boot.js`, estado de UI en `useUpdates()` (`10-app-components.js`).
 - **Canal beta y banco de pruebas** (solo `is_admin`): Ajustes → Dev → Pruebas — [docs/TESTING.md](docs/TESTING.md).

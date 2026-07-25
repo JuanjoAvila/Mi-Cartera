@@ -6,10 +6,10 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CORS, ebApi, ebConfig, jsonResp, makeJWT } from "../_shared/enablebanking.ts";
+import { ebApi, ebConfig, jsonResp, makeJWT } from "../_shared/enablebanking.ts";
+import { withCors } from "../_shared/cors.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+Deno.serve(withCors(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     // Usuario a partir del JWT de la petición.
@@ -50,6 +50,10 @@ Deno.serve(async (req) => {
       aspsp_name,
       aspsp_country,
       state,
+      // Marca de emisión: bank-callback rechaza los `state` viejos. El `state` viaja en la URL
+      // de vuelta del banco, así que acaba en el historial del navegador y en logs por el
+      // camino; sin caducidad seguiría valiendo meses después (migración 0019).
+      state_issued_at: new Date().toISOString(),
       status: "pending",
       valid_until: validUntil,
       updated_at: new Date().toISOString(),
@@ -60,4 +64,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return jsonResp({ ok: false, error: String((e as Error)?.message || e) }, 500);
   }
-});
+}));

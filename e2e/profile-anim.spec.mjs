@@ -75,3 +75,88 @@ test("Perfil: pull-down con el dedo abre; tirar abajo cierra", async ({ page }) 
   await expect(panel).not.toHaveClass(/open/, { timeout: 3_000 });
   await expect(panel).toHaveCSS("visibility", "hidden", { timeout: 3_000 });
 });
+
+/* A TAMAÑO DE MÓVIL DE VERDAD (Pixel 5, 393x851) el contenido del perfil (~1.680 px) NO cabe:
+   el panel scrollea. Y ahí es donde el gesto se rompía, que es lo que el usuario grabó el
+   2026-07-25 («las settings de perfil al volver aún no funciona bien»): el perfil y el Resumen
+   turnándose a toda velocidad, sin llegar a cerrar. Los dos tests de arriba nunca lo vieron
+   porque usan un viewport de 1.800 px de alto justo para que quepa sin scroll. */
+test.describe("Perfil en un móvil de verdad (el panel scrollea)", () => {
+  test.use({ viewport: { width: 393, height: 851 }, hasTouch: true });
+
+  async function abrirPerfil(page) {
+    await seedLoggedInDashboard(page);
+    await page.goto("/");
+    await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+    const dn = page.getByRole("button", { name: /Entendido|Got it/i });
+    if (await dn.count()) await dn.first().click();
+    await page.locator(".v4-avatar").click();
+    const panel = page.locator(".profile-pull");
+    await expect(panel).toHaveClass(/open/, { timeout: 5_000 });
+    await expect(panel).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 0)", { timeout: 3_000 });
+    return panel;
+  }
+
+  test("cerrar con el perfil scrolleado: el scroll primero, y luego encoge SIN saltar", async ({ page }) => {
+    const panel = await abrirPerfil(page);
+    await expect(panel).toHaveJSProperty("scrollTop", 0);
+    await panel.evaluate((el) => { el.scrollTop = 420; });
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 190, y: 300 }] });
+    const escalas = [];
+    for (let i = 1; i <= 20; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 190, y: 300 + i * 30 }] });
+      escalas.push(await panel.evaluate((el) => ({
+        sc: +getComputedStyle(el).transform.split("(")[1].split(",")[0],
+        st: el.scrollTop,
+      })));
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    // Mientras quede scroll, el dedo es del scroll: el panel no se encoge ni un poco.
+    for (const p of escalas) if (p.st > 0) expect(p.sc).toBeGreaterThan(0.999);
+
+    /* Y al llegar arriba el cierre arranca DESDE el tamaño real, no de un salto. Antes, `ddy`
+       seguía contando desde donde empezaste a scrollear, así que el primer frame con
+       scrollTop=0 clavaba el panel en la miniatura (medido: 1,000 → 0,122 de golpe); con el
+       rebote del scroll volvía a pantalla completa, y así una y otra vez. */
+    const trasScroll = escalas.filter((p) => p.st === 0 && p.sc < 0.999);
+    expect(trasScroll.length).toBeGreaterThan(0);
+    expect(trasScroll[0].sc).toBeGreaterThan(0.6);
+    await expect(panel).not.toHaveClass(/open/, { timeout: 3_000 });
+  });
+
+  test("abrir tirando: el panel va OPACO, sin mezclar las dos pantallas", async ({ page }) => {
+    await seedLoggedInDashboard(page);
+    await page.goto("/");
+    await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+    const dn = page.getByRole("button", { name: /Entendido|Got it/i });
+    if (await dn.count()) await dn.first().click();
+
+    const panel = page.locator(".profile-pull");
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 190, y: 200 }] });
+    const frames = [];
+    for (let i = 1; i <= 10; i++) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 190, y: 200 + i * 30 }] });
+      frames.push(await panel.evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { op: +cs.opacity, br: cs.borderRadius, sc: +cs.transform.split("(")[1].split(",")[0] };
+      }));
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+    /* La 4.9.1 quitó el fundido AL CERRAR y dio por hecho que abrir no lo tenía. Sí lo tenía
+       (`opacity: resist*3`): el primer tercio del tirón enseñaba el perfil y el Resumen a la
+       vez, los dos legibles. Y el radio se interpolaba por frame, que obliga a repintar la
+       pantalla entera en cada touchmove — el «va a tirones» del vídeo. */
+    for (const f of frames) {
+      expect(f.op).toBe(1);
+      expect(f.br).toBe("24px");
+    }
+    // Y lo que sí se mueve, la escala, crece con el dedo.
+    expect(frames[frames.length - 1].sc).toBeGreaterThan(frames[0].sc);
+    await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+  });
+});

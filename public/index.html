@@ -820,7 +820,12 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .profile-row .pr-edit{color:var(--mint);font-size:13px;flex:0 0 auto;padding-top:2px;opacity:.9;}
   /* Sin scale/filter en shell (huecos negros + WebView). El dim es la capa aparte. */
   .app-shell.profile-dim{pointer-events:none;}
-  .v4-avatar.pulling{transform:scale(calc(1 + var(--prof-p,0)*0.18));opacity:calc(1 - var(--prof-p,0)*0.75);}
+  /* El avatar se aparta mientras la tarjeta del perfil sale de él: si se queda, se ven los dos
+     a la vez y el truco («el avatar SE CONVIERTE en la pantalla») no se lee. Antes esto se
+     interpolaba con --prof-p frame a frame; al quitar esa variable (4.9.0/4.9.1) la regla se
+     quedó calculando scale(1)/opacity(1), o sea NADA, sin que saltara nada. Ahora es una
+     transición de CSS: el compositor la resuelve sola y no cuesta un repintado por frame. */
+  .v4-avatar.pulling{transform:scale(1.12);opacity:0;transition:opacity .18s ease,transform .3s cubic-bezier(.32,.72,0,1);}
   .v4-banks .bk-brand{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
   .v4-banks .bk-brand .bk-logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:13px;flex:0 0 auto;border:1px solid var(--line-soft);}
   .v4-banks .bk-card{background:var(--sur);border:1px solid var(--line-soft);border-radius:18px;padding:16px;margin-bottom:12px;
@@ -861,7 +866,7 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.v4-avatar.pulling,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
   }
 
   /* «Gestionar recibos» y «Herramientas de inversión» viven en un sheet v4 pero por dentro
@@ -1302,10 +1307,34 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
   .drawer-panel.open{transform:translateX(0);}
   .drawer-panel.dragging{transition:none;}
   @keyframes toastin{from{opacity:0;transform:translate(-50%,10px);}to{opacity:1;transform:translate(-50%,0);}}
+
+  /* SPLASH DE ENTRADA (#mc-load). Vive en el HTML, fuera de React: es LO ÚNICO que se ve
+     mientras arranca el bundle, y hasta ahora era un emoji con «Cargando…» en la tipografía del
+     sistema — la única pantalla de la app que no parecía la app. Ahora lleva su marca, su
+     tipografía y sus colores, y respeta el tema (el script del <head> pone data-theme antes del
+     primer pintado, así que en tema claro no hay fogonazo). */
+  #mc-load{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:var(--bg,#0C1712);}
+  #mc-load .mcl-mark{width:94px;height:94px;border-radius:26px;background:var(--sur,#14261E);border:1px solid var(--line-soft,#1A3228);
+    display:grid;place-items:center;color:var(--mint,#5FD08A);box-shadow:0 26px 60px -30px var(--mint,#5FD08A);
+    animation:mclpop .5s cubic-bezier(.32,.72,0,1) both;}
+  #mc-load .mcl-mark svg{width:52px;height:52px;display:block;}
+  #mc-load .mcl-name{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:560;letter-spacing:-.3px;color:var(--text,#EAF2EC);
+    animation:mclpop .5s .07s cubic-bezier(.32,.72,0,1) both;}
+  /* Barra indeterminada en vez de ruleta: ocupa poco, no gira y no promete un porcentaje que no sabemos. */
+  #mc-load .mcl-bar{width:116px;height:3px;border-radius:3px;background:var(--line-soft,#1A3228);overflow:hidden;}
+  #mc-load .mcl-bar i{display:block;width:38%;height:100%;border-radius:3px;background:var(--mint,#5FD08A);animation:mclbar 1.15s ease-in-out infinite;}
+  #mc-load .mcl-retry{display:none;margin-top:2px;background:none;border:none;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;
+    color:var(--mint,#5FD08A);text-decoration:underline;padding:8px 12px;cursor:pointer;}
+  @keyframes mclpop{from{opacity:0;transform:translateY(9px) scale(.94);}to{opacity:1;transform:none;}}
+  @keyframes mclbar{0%{transform:translateX(-110%);}100%{transform:translateX(310%);}}
+  @media (prefers-reduced-motion:reduce){
+    #mc-load .mcl-mark,#mc-load .mcl-name{animation:none !important;}
+    #mc-load .mcl-bar i{animation:none !important;width:100%;}
+  }
 </style>
 </head>
 <body>
-<div id="root"><div id="mc-load" style="background:var(--bg,#0B1410);height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui;text-align:center;gap:10px;"><div style="font-size:38px">💼</div><div style="font-weight:700;color:var(--text,#F4EFE2);font-size:19px">Mi cartera</div><div style="color:var(--muted,#8FA89A);font-size:13px">Cargando…</div></div></div>
+<div id="root"><div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><div class="mcl-bar"><i></i></div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div></div>
 
 <script>
 /* ============================================================
@@ -1332,6 +1361,13 @@ function mcScheduleIdle(fn, timeoutMs){
   }catch(e){}
   setTimeout(fn, 16);
 }
+
+/* Le dice al SPLASH de entrada que ya puede irse: lo que se vea a partir de ahora es lo bueno.
+   El vigilante vive al final de shell.html y no depende de esto para retirarse (tiene un tope de
+   1,8 s), así que llamar de más es gratis y no llamar nunca solo devuelve el comportamiento viejo.
+   Idempotente a propósito: lo llaman varios caminos (sin nube, sin sesión, candado, alta, y el
+   final del primer pull de la nube) y ninguno sabe de los demás. */
+function mcBootReady(){ try{ window.__mcBootReady=true; }catch(e){} }
 
 var _mcSentryReady=false;
 var _mcSentryQueue=[];
@@ -2952,8 +2988,10 @@ Object.assign(LANG.es,{
   bi_file:"📄 Elegir CSV (puedes marcar varios)", bi_paste_ph:"…o pega aquí el contenido del CSV", bi_analyze:"Analizar",
   bi_err:"No he podido leer el CSV (¿formato raro?). Pega unas líneas y dime qué columnas tiene.",
   bi_err_pnl:"Ese es el «Extracto de Pérdidas y Ganancias»: solo trae lo que YA vendiste, no lo que tienes. Necesito el «Extracto de cuenta» (el de arriba del todo en Documentos). Ojo: alguno se llama «trading-account-statement» pero por dentro es el de P&G.",
+  bi_err_fiat:"✓ Este es el extracto de tu cuenta normal en €, y lo he leído bien: de aquí saco lo que te costaron el oro y la plata, y ya me lo he guardado. Lo que falta son las ONZAS: sube ahora el de Invest → Documentos → «Materias primas» → «Extracto de cuenta» y te lo junto con esto (si ya lo habías subido antes, vuelve a subirlo: esta vez sí saldrá el coste).",
   met_xau:"Oro (XAU)", met_xag:"Plata (XAG)", met_xpt:"Platino (XPT)", met_xpd:"Paladio (XPD)", bi_oz:"onzas",
-  bi_metal_hint:"🥇 Materias primas: Revolut no dice en este extracto cuánto te costaron (esa parte va en el extracto de tu cuenta en €). Re-anclo las ONZAS y el precio del metal se actualiza en vivo. ¿Quieres ver si sube o baja? Escribe abajo lo que te costó en € (lo ves en tu app de Revolut) y ya te pinto el %.",
+  bi_metal_hint:"🥇 Materias primas: este extracto solo trae ONZAS. Lo que pagaste en € está en el extracto de tu cuenta NORMAL de Revolut (la de euros, fuera de Invest): súbelo también y te calculo el «sube/baja» solo. Si lo prefieres, escribe abajo el coste total en € y con eso me vale.",
+  bi_metal_auto:"🥇 El coste sale de tu extracto de la cuenta en €: cada conversión a metal se casa con los euros que pusiste ese mismo momento. Si no te cuadra con tu app de Revolut, escribe abajo el coste total y manda el tuyo.",
   bi_metal_cost_ph:"Coste en € (opcional, para ver el %)",
   bi_summary:"{n} posiciones detectadas · {from} → {to}", bi_skipped:"{n} filas no reconocidas (ignoradas)",
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operaciones",
@@ -2964,7 +3002,7 @@ Object.assign(LANG.es,{
   bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker) y el valor se recalcula con el último precio conocido. Justo después, los precios en vivo se actualizan solos por ticker.",
   bi_done:"✓ {n} posiciones re-ancladas con el extracto",
   bi_rev_title:"Importar de Revolut (CSV)", bi_rev_steps_btn:"Cómo exportar el CSV de Revolut",
-  bi_rev_steps:["Abre la app de Revolut → pestaña «Invest».","«More» (Más) → «Documents» (Documentos).","«Cuenta de corretaje» → «Extracto de cuenta». NO cojas el de «Pérdidas y Ganancias»: ese solo trae lo que ya vendiste.","¿Tienes oro o plata? Vuelve atrás y repite con «Materias primas» → «Extracto de cuenta». Van en un extracto APARTE: sin él, tus metales no entran.","Formato «Excel», desde la apertura de la cuenta hasta hoy → «Get statement».","En el móvil ábrelo con Google Sheets → «Hacer una copia» y descárgalo como CSV (o guárdalo/compártelo y súbelo aquí).","Sube abajo los dos ficheros a la vez (o pega uno). Se procesa en tu móvil, no se sube a ningún sitio."],
+  bi_rev_steps:["Abre la app de Revolut → pestaña «Invest».","«More» (Más) → «Documents» (Documentos).","«Cuenta de corretaje» → «Extracto de cuenta». NO cojas el de «Pérdidas y Ganancias»: ese solo trae lo que ya vendiste.","¿Tienes oro o plata? Vuelve atrás y repite con «Materias primas» → «Extracto de cuenta». Van en un extracto APARTE: sin él, tus metales no entran.","¿Y saber cuánto ganas con ellos? Hace falta un TERCERO: el extracto de tu cuenta NORMAL de Revolut (la de euros, fuera de Invest). Ahí están los € que pusiste en cada conversión; el de Materias primas solo trae onzas.","Formato «Excel», desde la apertura de la cuenta hasta hoy → «Get statement».","En el móvil ábrelo con Google Sheets → «Hacer una copia» y descárgalo como CSV (o guárdalo/compártelo y súbelo aquí).","Súbelos abajo todos a la vez, o de uno en uno: los voy juntando. Se procesa en tu móvil, no se sube a ningún sitio."],
 });
 Object.assign(LANG.en,{
   bi_title:"Import from broker (CSV)", bi_sub:"re-anchor positions with your statement",
@@ -2972,8 +3010,10 @@ Object.assign(LANG.en,{
   bi_file:"📄 Choose CSV (you can pick several)", bi_paste_ph:"…or paste the CSV content here", bi_analyze:"Analyse",
   bi_err:"Couldn't read the CSV (odd format?). Paste a few lines and tell me its columns.",
   bi_err_pnl:"That's the «Profit and Loss statement»: it only lists what you ALREADY sold, not what you hold. I need the «Account statement» (the top one under Documents). Careful: one of them is named «trading-account-statement» but is a P&L inside.",
+  bi_err_fiat:"✓ This is your normal € account statement, and I read it fine: it's where I get what your gold and silver cost you, and I've kept it. What's missing are the OUNCES: now upload Invest → Documents → «Commodities» → «Account statement» and I'll put the two together (if you'd uploaded it before, upload it again: this time the cost will show).",
   met_xau:"Gold (XAU)", met_xag:"Silver (XAG)", met_xpt:"Platinum (XPT)", met_xpd:"Palladium (XPD)", bi_oz:"oz",
-  bi_metal_hint:"🥇 Commodities: this statement doesn't say what they cost you (that part lives in your € account statement). I re-anchor the OUNCES and the metal price updates live. Want to see if it's up or down? Type below what it cost you in € (you'll find it in your Revolut app) and I'll show the %.",
+  bi_metal_hint:"🥇 Commodities: this statement only carries OUNCES. What you paid in € lives in your NORMAL Revolut account statement (the euro one, outside Invest): upload that too and I'll work out the up/down myself. If you'd rather, type the total cost in € below and that'll do.",
+  bi_metal_auto:"🥇 The cost comes from your € account statement: each conversion to metal is matched with the euros you put in at that exact moment. If it doesn't square with your Revolut app, type the total cost below and yours wins.",
   bi_metal_cost_ph:"Cost in € (optional, to see the %)",
   bi_summary:"{n} positions detected · {from} → {to}", bi_skipped:"{n} unrecognised rows (ignored)",
   bi_notouch:"— don't touch —", bi_shares:"shares", bi_ops:"{n} trades",
@@ -2984,7 +3024,7 @@ Object.assign(LANG.en,{
   bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth) and value is rescaled to the last known price. Right after, live prices refresh automatically by ticker.",
   bi_done:"✓ {n} positions re-anchored to the statement",
   bi_rev_title:"Import from Revolut (CSV)", bi_rev_steps_btn:"How to export the Revolut CSV",
-  bi_rev_steps:["Open the Revolut app → «Invest» tab.","«More» → «Documents».","«Brokerage account» → «Account statement». Do NOT take the «Profit and Loss» one: it only lists what you already sold.","Got gold or silver? Go back and repeat with «Commodities» → «Account statement». They live in a SEPARATE statement: without it your metals don't come in.","Format «Excel», from account opening to today → «Get statement».","On the phone open it with Google Sheets → «Make a copy» and download as CSV (or save/share it and upload here).","Upload both files at once below (or paste one). Processed on your phone, never uploaded."],
+  bi_rev_steps:["Open the Revolut app → «Invest» tab.","«More» → «Documents».","«Brokerage account» → «Account statement». Do NOT take the «Profit and Loss» one: it only lists what you already sold.","Got gold or silver? Go back and repeat with «Commodities» → «Account statement». They live in a SEPARATE statement: without it your metals don't come in.","And to know how much you're making on them? A THIRD one is needed: the statement of your NORMAL Revolut account (the euro one, outside Invest). That's where the € you put into each conversion live; the Commodities one only carries ounces.","Format «Excel», from account opening to today → «Get statement».","On the phone open it with Google Sheets → «Make a copy» and download as CSV (or save/share it and upload here).","Upload them all at once below, or one at a time: I keep merging them. Processed on your phone, never uploaded."],
 });
 Object.assign(LANG.ca,{
   bi_title:"Importa del bròker (CSV)", bi_sub:"re-ancora posicions amb el teu extracte",
@@ -2992,8 +3032,10 @@ Object.assign(LANG.ca,{
   bi_file:"📄 Tria CSV (en pots marcar diversos)", bi_paste_ph:"…o enganxa aquí el contingut del CSV", bi_analyze:"Analitza",
   bi_err:"No he pogut llegir el CSV (format estrany?). Enganxa unes línies i digue'm quines columnes té.",
   bi_err_pnl:"Aquest és l'«Extracte de Pèrdues i Guanys»: només porta el que JA has venut, no el que tens. Necessito l'«Extracte de compte» (el de dalt de tot a Documents). Compte: algun es diu «trading-account-statement» però per dins és el de P&G.",
+  bi_err_fiat:"✓ Aquest és l'extracte del teu compte normal en €, i l'he llegit bé: d'aquí en trec el que et van costar l'or i la plata, i ja m'ho he desat. El que falta són les UNCES: puja ara el d'Invest → Documents → «Matèries primeres» → «Extracte de compte» i t'ho ajunto amb això (si ja l'havies pujat abans, torna'l a pujar: aquesta vegada sí que sortirà el cost).",
   met_xau:"Or (XAU)", met_xag:"Plata (XAG)", met_xpt:"Platí (XPT)", met_xpd:"Pal·ladi (XPD)", bi_oz:"unces",
-  bi_metal_hint:"🥇 Matèries primeres: en aquest extracte Revolut no diu quant et van costar (aquesta part va a l'extracte del teu compte en €). Re-ancoro les UNCES i el preu del metall s'actualitza en viu. Vols veure si puja o baixa? Escriu a sota el que et va costar en € (ho veus a la teva app de Revolut) i et pinto el %.",
+  bi_metal_hint:"🥇 Matèries primeres: aquest extracte només porta UNCES. El que vas pagar en € és a l'extracte del teu compte NORMAL de Revolut (el d'euros, fora d'Invest): puja'l també i et calculo el «puja/baixa» sol. Si ho prefereixes, escriu a sota el cost total en € i amb això ja em val.",
+  bi_metal_auto:"🥇 El cost surt del teu extracte del compte en €: cada conversió a metall es casa amb els euros que hi vas posar en aquell mateix moment. Si no et quadra amb la teva app de Revolut, escriu a sota el cost total i mana el teu.",
   bi_metal_cost_ph:"Cost en € (opcional, per veure el %)",
   bi_summary:"{n} posicions detectades · {from} → {to}", bi_skipped:"{n} files no reconegudes (ignorades)",
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operacions",
@@ -3004,7 +3046,7 @@ Object.assign(LANG.ca,{
   bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker) i el valor es recalcula amb l'últim preu conegut. Just després, els preus en viu s'actualitzen sols per ticker.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
   bi_rev_title:"Importa de Revolut (CSV)", bi_rev_steps_btn:"Com exportar el CSV de Revolut",
-  bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","«Compte de corretatge» → «Extracte de compte». NO agafis el de «Pèrdues i Guanys»: aquell només porta el que ja has venut.","Tens or o plata? Torna enrere i repeteix amb «Matèries primeres» → «Extracte de compte». Van en un extracte A PART: sense ell, els teus metalls no entren.","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja a sota els dos fitxers alhora (o enganxa'n un). Es processa al teu mòbil, no es puja enlloc."],
+  bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","«Compte de corretatge» → «Extracte de compte». NO agafis el de «Pèrdues i Guanys»: aquell només porta el que ja has venut.","Tens or o plata? Torna enrere i repeteix amb «Matèries primeres» → «Extracte de compte». Van en un extracte A PART: sense ell, els teus metalls no entren.","I saber quant hi guanyes? Cal un TERCER: l'extracte del teu compte NORMAL de Revolut (el d'euros, fora d'Invest). Allà hi ha els € que vas posar a cada conversió; el de Matèries primeres només porta unces.","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja'ls a sota tots alhora, o d'un en un: els vaig ajuntant. Es processa al teu mòbil, no es puja enlloc."],
 });
 /* Mini-tutoriales por pestaña (backlog 2026-07: «tu pareja no encontraba el lápiz de editar gastos») */
 Object.assign(LANG.es,{
@@ -3994,7 +4036,7 @@ Object.assign(LANG.ca,{
 
 // --- Perfil personal (pull-down Inicio) ---
 Object.assign(LANG.es,{
-  pf_title:"Tu perfil", pf_personal:"Personal", pf_wealth:"Patrimonio", pf_investor:"Perfil inversor",
+  pf_title:"Tu perfil", pf_people:"Tu gente", pf_personal:"Personal", pf_wealth:"Patrimonio", pf_investor:"Perfil inversor",
   pf_add:"Añadir", pf_handle:"Usuario", pf_basic:"Información básica", pf_name:"Nombre", pf_name_ph:"Tu nombre",
   pf_birth:"Fecha de nacimiento", pf_birth_ph:"p. ej. 13 mayo 1998", pf_nationality:"Nacionalidad",
   pf_country_ph:"España", pf_address:"Dirección", pf_address_ph:"Calle, CP, ciudad",
@@ -4010,7 +4052,7 @@ Object.assign(LANG.es,{
   pf_to_settings:"Ir a Ajustes",
 });
 Object.assign(LANG.en,{
-  pf_title:"Your profile", pf_personal:"Personal", pf_wealth:"Wealth", pf_investor:"Investor profile",
+  pf_title:"Your profile", pf_people:"Your people", pf_personal:"Personal", pf_wealth:"Wealth", pf_investor:"Investor profile",
   pf_add:"Add", pf_handle:"Username", pf_basic:"Basic info", pf_name:"Name", pf_name_ph:"Your name",
   pf_birth:"Date of birth", pf_birth_ph:"e.g. 13 May 1998", pf_nationality:"Nationality",
   pf_country_ph:"Spain", pf_address:"Address", pf_address_ph:"Street, postcode, city",
@@ -4026,7 +4068,7 @@ Object.assign(LANG.en,{
   pf_to_settings:"Go to Settings",
 });
 Object.assign(LANG.ca,{
-  pf_title:"El teu perfil", pf_personal:"Personal", pf_wealth:"Patrimoni", pf_investor:"Perfil inversor",
+  pf_title:"El teu perfil", pf_people:"La teva gent", pf_personal:"Personal", pf_wealth:"Patrimoni", pf_investor:"Perfil inversor",
   pf_add:"Afegeix", pf_handle:"Usuari", pf_basic:"Informació bàsica", pf_name:"Nom", pf_name_ph:"El teu nom",
   pf_birth:"Data de naixement", pf_birth_ph:"p. ex. 13 maig 1998", pf_nationality:"Nacionalitat",
   pf_country_ph:"Espanya", pf_address:"Adreça", pf_address_ph:"Carrer, CP, ciutat",
@@ -6566,7 +6608,15 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
   const [parsed,setParsed]=useState(null);
   const [map,setMap]=useState({});
   const [mcost,setMcost]=useState({});      // coste € que TÚ tecleas para un metal (Revolut no lo trae)
-  const [err,setErr]=useState(null);        // null | "bad" | "pnl"
+  const [err,setErr]=useState(null);        // null | "bad" | "pnl" | "fiat"
+  /* La pata en EUROS de las conversiones a metal vive en el extracto de la cuenta NORMAL de
+     Revolut, que no trae ni una posición. Se RECUERDA entre análisis para que los ficheros se
+     puedan soltar de uno en uno y en cualquier orden.
+     Feedback 2026-07-25: el usuario subió justo ese fichero —el que le hacía falta para que el
+     oro dijera cuánto gana— y le saltó «No he podido leer el CSV», cuando se había leído
+     perfectamente: los 1.000 € de sus seis conversiones a XAU estaban ahí. El error era del
+     importador, que solo daba por «entendido» un fichero si sacaba POSICIONES. */
+  const fiatRef=useRef({});
   const [doneN,setDoneN]=useState(null);
   const [steps,setSteps]=useState(false);
   // Coste efectivo de una posición: el del CSV si viniera, y para los metales el que teclees tú
@@ -6584,11 +6634,13 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
     let any=false, allPnl=true;
     // PRIMERA PASADA: recoger el coste en euros de los metales. Vive en el extracto de la CUENTA
     // (otro fichero), y el usuario puede soltarlos en cualquier orden — así que se juntan antes
-    // de parsear nada, y da igual cuál venga primero.
-    const mcosts={};
+    // de parsear nada, y da igual cuál venga primero. Se acumulan en fiatRef: soltar el extracto
+    // en € en una tanda y el de metales en la siguiente tiene que funcionar igual.
+    const mcosts=fiatRef.current;
+    let fiatN=0;
     txts.forEach(function(src){
       const c=revoMetalCostsFromFiat(src);
-      if(c) Object.keys(c).forEach(function(tk){ Object.assign(mcosts[tk]||(mcosts[tk]={}), c[tk]); });
+      if(c){ fiatN++; Object.keys(c).forEach(function(tk){ Object.assign(mcosts[tk]||(mcosts[tk]={}), c[tk]); }); }
     });
     txts.forEach(function(src){
       let res=null;
@@ -6613,7 +6665,10 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
       if(res.from && (!acc.from||res.from<acc.from)) acc.from=res.from;
       if(res.to && (!acc.to||res.to>acc.to)) acc.to=res.to;
     });
-    if(!any){ setErr(allPnl?"pnl":"bad"); setParsed(null); return; }
+    // Un fichero que SOLO aporta los euros de los metales está perfectamente entendido: lo que
+    // falta es el de Materias primas (las onzas). Decirlo así, en vez de «formato raro», es la
+    // diferencia entre saber qué subir y probar ficheros a ciegas.
+    if(!any){ setErr(fiatN?"fiat":(allPnl?"pnl":"bad")); setParsed(null); return; }
     const m={};
     acc.positions.forEach(function(po){
       // el metal primero por su vía (más específica que el matcher por palabras del nombre)
@@ -6692,7 +6747,10 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
       React.createElement("textarea",{className:"af-in",style:{width:"100%",minHeight:70,fontFamily:"monospace",fontSize:11,boxSizing:"border-box"},placeholder:t("bi_paste_ph"),value:text,onChange:function(e){ setText(e.target.value); }}),
       React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:8},disabled:!text.trim(),onClick:function(){ analyze(); }}, t("bi_analyze"))
     ),
-    err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err==="pnl"?t("bi_err_pnl"):t("bi_err")),
+    // «fiat» no es un fallo: el fichero se leyó bien y sus datos están guardados. Va en caja
+    // neutra (no de alarma) para no dar por roto lo que ha funcionado.
+    err && React.createElement("div",{className:err==="fiat"?"hint":"alarmbox",style:{marginTop:10}},
+      err==="fiat"?t("bi_err_fiat"):(err==="pnl"?t("bi_err_pnl"):t("bi_err"))),
     parsed && React.createElement(React.Fragment,null,
       React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("bi_summary",{n:parsed.positions.length, from:parsed.from||"—", to:parsed.to||"—"})),
       parsed.skipped>0 && React.createElement("div",{className:"hint",style:{marginTop:0}}, tf("bi_skipped",{n:parsed.skipped})),
@@ -6721,7 +6779,10 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
             onChange:function(e){ const v=e.target.value; setMcost(function(m){ const n=Object.assign({},m); n[po.ticker]=v; return n; }); }})
         );
       }),
-      parsed.positions.some(function(p){ return p.metal; }) && React.createElement("div",{className:"hint",style:{marginTop:4}}, t("bi_metal_hint")),
+      // Si el coste ha salido solo (extracto en € cruzado) hay que DECIRLO: si no, el usuario ve
+      // un número que no ha tecleado y no sabe de dónde sale ni si puede fiarse.
+      parsed.positions.some(function(p){ return p.metal; }) && React.createElement("div",{className:"hint",style:{marginTop:4}},
+        t(parsed.positions.some(function(p){ return p.metal && p.cost!=null; })?"bi_metal_auto":"bi_metal_hint")),
       (parsed.dividends>0) && React.createElement("div",{className:"hint",style:{marginTop:2}}, tf("bi_cash_info",{int:eur(0), div:eur(parsed.dividends)})),
       React.createElement("div",{className:"hint",style:{marginTop:2}}, t("bi_usd_hint")),
       React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply}, tf("bi_apply",{n:mappedN})),
@@ -10472,6 +10533,14 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
+    "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",
+    "🥇 El CSV de Revolut ya no te dice «no he podido leer el CSV». Subiste el extracto de tu cuenta en euros —justo el que hace falta para saber cuánto ganas con el oro— y la app lo rechazaba, aunque lo había leído perfectamente. Ahora te lo confirma, se guarda los euros de tus conversiones y te dice qué fichero falta. Puedes soltarlos de uno en uno y en el orden que quieras: los va juntando.",
+    "🚪 Pantalla de entrada nueva. Antes veías un emoji con «Cargando…» y, al entrar, el patrimonio viejo un segundo antes que el bueno. Ahora la app se presenta con su marca y espera a tener el dato bueno para dar paso — como mucho un instante, nunca se queda colgada.",
+    "🏠 «Hogar y gastos compartidos» se muda al perfil (el avatar de Inicio, arriba del todo). Estaba enterrado al final de Cartera, que es donde no mira nadie.",
+    "⇅ Cartera se ordena a tu gusto. «Tus cuentas» e «Inversiones» se suben y se bajan con el mismo «⇅ Ordenar secciones» que ya tenían Recibos, Deudas y Metas. Tu orden se guarda y viaja con tu cuenta.",
+    "🔒 Y por detrás: el servidor solo acepta llamadas desde la app (antes desde cualquier web), freno a los intentos repetidos —para que tu banco no te bloquee la cuenta si algo se pone pesado— y los permisos de conectar un banco caducan a la media hora y solo valen una vez.",
+  ]},
   {v:"4.9.2", d:"25 jul 2026", t:"Arreglado el APK roto: caracteres raros y la app que no se actualizaba", items:[
     "🔤 Los símbolos raros que salían en la tarjeta de Trade Republic (donde debía ir un ✓) eran texto que se estropeó al preparar la versión anterior. Corregido, y ahora hay una comprobación que no deja publicar con texto roto.",
     "⬇️ La app decía «vdev» y no se actualizaba nunca. El APK anterior se empaquetó sin ponerle el número de versión, y la app compara números para saber si hay algo nuevo: sin número, la respuesta era siempre «no hay nada». Por eso no te llegó ninguna de las mejoras del día. Arreglado, y el proceso de empaquetado ahora se para en seco si la versión no queda puesta.",
@@ -12223,31 +12292,31 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
       React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
       React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
     ),
-    React.createElement("div",{className:"v4-sec-h",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
-      React.createElement("span",null, t("v4_cuentas")),
-      // Sync a demanda: el auto-sync al abrir la app se retiró (los bancos veían «bot» y
-      // caducaban la conexión cada dos por tres — feedback 2026-07-18).
-      state.hasBankLink && onBankSync && React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:0},
-        disabled:bankBusy,onClick:doBankSync}, bankBusy?t("bp_syncing"):("↻ "+t("v4_sync_banks")))
-    ),
-    React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true}),
-    !simple && React.createElement("div",{className:"rise",style:{animationDelay:".12s"}},
-      React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),
-      React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
-      React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›"),
-      React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})
-    ),
-    // Hogar y gastos compartidos: se mudó aquí desde Ajustes (es una funcionalidad, no un ajuste;
-    // y en Cartera encaja porque va de dinero compartido). Abre el panel a nivel de App por evento.
-    React.createElement("button",{type:"button",className:"v4-mov",style:{width:"100%",marginTop:18,cursor:"pointer",textAlign:"left"},
-      onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-shared")); }catch(e){} }},
-      React.createElement("div",{className:"tile",style:{fontSize:22}}, "🏠"),
-      React.createElement("div",{className:"nm"},
-        React.createElement("div",null, t("st_shared")),
-        React.createElement("div",{className:"meta"}, t("v4_shared_sub"))
-      ),
-      React.createElement("div",{style:{color:"var(--muted-2)",fontSize:20}}, "›")
-    )
+    /* BLOQUES ORDENABLES (petición 2026-07-25: «poder ordenar las cosas de la tab de cartera»).
+       Mismo mecanismo que ya usan Fijos/Patrimonio/Deudas/Inversiones/Metas desde la 3.94:
+       `OrderableSections` guarda el orden en settings.secOrder.cartera, así que viaja con la
+       cuenta y está en el sitio donde el usuario ya sabe buscarlo («⇅ Ordenar secciones» al pie).
+       Se inventó un mecanismo nuevo cero: el que había ya hacía justo esto. */
+    React.createElement(OrderableSections,{tab:"cartera",state:state,set:set,items:[
+      { id:"cuentas", label:t("v4_cuentas"), el:React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"v4-sec-h",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+          React.createElement("span",null, t("v4_cuentas")),
+          // Sync a demanda: el auto-sync al abrir la app se retiró (los bancos veían «bot» y
+          // caducaban la conexión cada dos por tres — feedback 2026-07-18).
+          state.hasBankLink && onBankSync && React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:0},
+            disabled:bankBusy,onClick:doBankSync}, bankBusy?t("bp_syncing"):("↻ "+t("v4_sync_banks")))
+        ),
+        React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true})
+      ) },
+      !simple && { id:"inversiones", label:t("v4_inversiones"), el:React.createElement("div",{className:"rise",style:{animationDelay:".12s"}},
+        React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),
+        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
+        React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›")
+      ) }
+    ]}),
+    // El sheet vive FUERA de los bloques ordenables: es un portal, no una sección, y meterlo
+    // dentro lo desmontaría al reordenar (cerrándose solo a media consulta).
+    !simple && React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})
   );
 }
 
@@ -12415,6 +12484,26 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
           handleShow, React.createElement("span",{"aria-hidden":"true"},"✎"))
       ),
       React.createElement("div",{className:"profile-av","aria-hidden":"true"}, initials)
+    ),
+    /* HOGAR Y GASTOS COMPARTIDOS — se muda aquí desde el final de Cartera (2026-07-25: «lo de
+       hogar y gastos compartidos se debería mover a otro lugar… ahí abajo del todo de Cartera
+       no»). El perfil es la pantalla de TI y LOS TUYOS y está a un toque desde el avatar de
+       Inicio; Cartera se queda solo con dinero. Y va ARRIBA del todo a propósito: el panel mide
+       ~1.700 px, así que lo que se pone al final es exactamente lo que nadie ve. */
+    React.createElement("div",{className:"profile-sec"}, t("pf_people")),
+    React.createElement("div",{className:"profile-card"},
+      React.createElement("button",{type:"button",className:"profile-row",onClick:function(){
+        // El panel de Hogar va a z-index 96 (el perfil, a 72): puede abrirse mientras el perfil
+        // se encoge por detrás, sin esperas ni parpadeo entre pantallas.
+        if(onClose) onClose();
+        try{ window.dispatchEvent(new CustomEvent("mc-open-shared")); }catch(e){}
+      }},
+        React.createElement("div",{className:"pr-body"},
+          React.createElement("div",{className:"pr-lab"}, t("st_shared")),
+          React.createElement("div",{className:"pr-val"}, t("v4_shared_sub"))
+        ),
+        React.createElement("span",{className:"pr-edit","aria-hidden":"true"}, "›")
+      )
     ),
     React.createElement("div",{className:"profile-sec"}, t("pf_personal")),
     React.createElement("div",{className:"profile-card"},
@@ -12654,7 +12743,10 @@ function App(){
           if(r && r.updated_at) cloudUpdatedAtRef.current=r.updated_at;
         }); }   // primera vez: sube lo que ya tienes
     }).then(function(){ return syncCloudExpenses(); })
-      .catch(function(e){ if(navigator.onLine!==false) showToast("✕ Nube: "+((e&&e.message)||e)); });   // si estás sin conexión, ni avisamos (es normal)
+      .catch(function(e){ if(navigator.onLine!==false) showToast("✕ Nube: "+((e&&e.message)||e)); })   // si estás sin conexión, ni avisamos (es normal)
+      // Pase lo que pase, el splash se va: lo que se vea a partir de aquí ya es lo definitivo
+      // (o lo mejor que hay). Ver el porqué en el script del final de shell.html.
+      .then(mcBootReady, mcBootReady);
   };
 
   // CAPA 2 — Open Banking: lee el saldo del banco y re-ancla el motor (= editar el saldo a mano,
@@ -12819,8 +12911,11 @@ function App(){
 
   // Detecta sesión al cargar y escucha cambios (incluida la vuelta del magic link).
   useEffect(function(){
-    if(!cloud.enabled()) return;
-    cloud.session().then(function(s){ sessionRef.current=s; setSession(s); if(s) mcScheduleIdle(function(){ syncFromCloud(s); }); });
+    if(!cloud.enabled()){ mcBootReady(); return; }   // sin nube no hay nada que esperar detrás del splash
+    cloud.session().then(function(s){
+      sessionRef.current=s; setSession(s);
+      if(s) mcScheduleIdle(function(){ syncFromCloud(s); }); else mcBootReady();
+    }, mcBootReady);
     cloud.onAuth(function(s, ev){
       const prev=sessionRef.current;
       const changed=(!prev&&s)||(prev&&!s)||(prev&&s&&prev.user.id!==s.user.id);
@@ -13092,6 +13187,9 @@ function App(){
     return function(){ try{ Promise.resolve(h).then(function(x){ x&&x.remove&&x.remove(); }); }catch(e){} };
   },[]);
   const [locked,setLocked]=useState(function(){ return bio.enabled(); });
+  // Con el candado puesto o en pleno alta no hay ninguna cifra que pueda cambiar debajo, así que
+  // el splash sobra: se retira ya en vez de robarle al usuario el segundo de espera de la nube.
+  useEffect(function(){ if(locked || state.onboarded===false) mcBootReady(); },[locked, state.onboarded]);
   // Premonta Settings/Perfil en idle: la 1ª vez que arrastras salía el panel negro vacío
   // (contenido solo al soltar — feedback 2026-07-18). El shell cerrado no se ve.
   useEffect(function(){
@@ -13326,30 +13424,58 @@ function App(){
     if(pRaf.current){ cancelAnimationFrame(pRaf.current); pRaf.current=0; }
     pNext.current=null;
   };
+  /* ENGANCHAR / SOLTAR el panel. Lo comparten los DOS gestos: la apertura (pull-down en Inicio,
+     dentro de onMove) y el cierre (tirar abajo dentro del perfil, profileMove). Estaban escritos
+     por duplicado y por eso la apertura se quedó sin los dos arreglos que sí recibió el cierre
+     —el radio fijo de la 4.9.0 y el no-interpolar opacidad de la 4.9.1—: el usuario seguía viendo
+     al ABRIR el perfil y el Resumen mezclados, y a tirones (vídeo 2026-07-25). Un solo sitio. */
+  const profileGrab=function(){
+    const el=profileRef.current; if(!el) return;
+    profSetOrigin();                       // re-ancla al avatar REAL antes de mover nada
+    el.classList.add("dragging");
+    freezeShell(true,"profile");
+    // Velo y radio FIJOS, una sola vez. Interpolarlos obliga a repintar la pantalla entera en
+    // cada touchmove (hasta 120 veces por segundo en un móvil de 120 Hz).
+    const dim=dimLayerRef.current;
+    if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
+    el.style.borderRadius="24px";
+    // OPACO desde el primer píxel: el panel ocupa la pantalla entera, así que fundirlo deja ver
+    // el perfil y el Resumen a la vez, los dos legibles. Lo que se mueve es la ESCALA, nunca el alfa.
+    el.style.opacity="1";
+    // Y el avatar se aparta: si sigue ahí mientras la tarjeta sale de él, se ven los dos.
+    try{ const av=document.querySelector(".v4-avatar"); if(av) av.classList.add("pulling"); }catch(e){}
+  };
+  const profileRelease=function(){
+    const el=profileRef.current; if(!el) return;
+    profileCancelPaint();   // un frame en cola pintaría DESPUÉS de limpiar y dejaría el panel a medias
+    el.classList.remove("dragging");
+    el.style.transform=""; el.style.opacity=""; el.style.borderRadius="";
+    freezeShell(false);
+  };
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
     if(!pDrag.current) return;
-    const t=e.touches[0], ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
+    const t=e.touches[0];
+    /* EL PERFIL SCROLLEA: su contenido mide ~1.680 px y en un móvil de verdad no cabe. Mientras
+       quede scroll por recoger, el dedo es del scroll y NO del cierre — y el gesto se re-ancla al
+       dedo en cada frame.
+       Sin el re-anclaje, `ddy` seguía contando desde donde empezaste a scrollear, así que en
+       cuanto scrollTop tocaba 0 el panel PEGABA UN SALTO a miniatura; y como el scroll rebota y
+       vuelve a scrollTop>0, los estilos se limpiaban y volvía a pantalla completa. Ida y vuelta
+       varias veces por segundo: es el parpadeo del vídeo del usuario, en el que el perfil y el
+       Resumen se turnaban y el gesto no cerraba nunca (2026-07-25, «al volver aún no va bien»). */
+    if(profileRef.current && profileRef.current.scrollTop>0){
+      if(pAx.current==="y") profileRelease();
+      pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDY.current=0; pT.current=Date.now();
+      return;
+    }
+    const ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
     if(pAx.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
       pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
-      if(pAx.current==="y"&&profileRef.current){
-        profSetOrigin();
-        profileRef.current.classList.add("dragging");
-        freezeShell(true,"profile");
-        // Velo fijo una sola vez — sin interpolar opacidad por frame.
-        const dim=dimLayerRef.current;
-        if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
-        // Radio fijo, por la MISMA razón que el velo: interpolarlo repintaba en cada frame.
-        profileRef.current.style.borderRadius="24px";
-      }
+      if(pAx.current==="y") profileGrab();
     }
     if(pAx.current!=="y") return;
-    if(profileRef.current && profileRef.current.scrollTop>0){
-      pDY.current=0; profileCancelPaint();
-      profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius="";
-      return;
-    }
     if(ddy<=0){ pDY.current=0; profileQueue(1,1); return; }
     pDY.current=ddy;
     const h=window.innerHeight||700;
@@ -13359,26 +13485,23 @@ function App(){
        la opacidad hasta 0,2 (`1-resist*0.8`), y como el panel ocupa la pantalla entera el
        resultado era ver el PERFIL Y EL RESUMEN A LA VEZ, los dos legibles, superpuestos. Eso es
        lo que se veía «loquísimo»: no era solo el tirón, era la mezcla de dos pantallas.
-       Al ABRIR nunca pasó porque la apertura no interpola opacidad — el panel va opaco y solo
-       ESCALA desde el avatar, con el velo oscureciendo el fondo. Cerrar hace ahora lo mismo en
-       reversa: escala hacia el avatar, opaco, y el velo se va al soltar. Un fundido de una capa
-       a pantalla completa sobre contenido siempre da papilla, por muy suave que sea. */
+       Lo mismo vale para ABRIR: se creyó que la apertura no interpolaba opacidad y sí lo hacía
+       (`opacity: resist*3`), así que el primer tercio del tirón enseñaba las dos pantallas
+       superpuestas. Los dos gestos van ahora por profileGrab(): opacos, escalando desde el
+       avatar y con el velo oscureciendo el fondo. Un fundido de una capa a pantalla completa
+       sobre contenido siempre da papilla, por muy suave que sea. */
     profileQueue(sc, 1);
     if(e.cancelable) e.preventDefault();
   };
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
-    // Un frame en cola pintaría DESPUÉS de limpiar los estilos y dejaría el panel a medio escalar.
-    profileCancelPaint();
-    if(profileRef.current) profileRef.current.classList.remove("dragging");
-    freezeShell(false);
+    profileRelease();
     if(pAx.current!=="y"){ pAx.current=null; return; }
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const h=window.innerHeight||700;
     const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
     const flick=(dist/dt)>0.45 && dist>24;
-    if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
     const stay=!(closeProg>0.22 || flick);
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
@@ -13938,11 +14061,7 @@ function App(){
         if(atTop||fromAv){
           gestureMode.current="profile";
           setProfileMounted(true);
-          profSetOrigin();
-          if(profileRef.current) profileRef.current.classList.add("dragging");
-          freezeShell(true,"profile");
-          const dim=dimLayerRef.current;
-          if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
+          profileGrab();   // mismo enganche que el cierre: velo y radio fijos, panel opaco
         }
       }
     }
@@ -13951,11 +14070,9 @@ function App(){
       const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.55))),0.85);
       pDY.current=ddy;
       const s0o=profS0(), so=s0o+(1-s0o)*resist;
-      if(profileRef.current){
-        profileRef.current.style.transform="scale("+so+")";
-        profileRef.current.style.opacity=String(Math.min(1,resist*3));
-        profileRef.current.style.borderRadius=Math.round((1-resist)*24)+"px";
-      }
+      // Por rAF, como el cierre: touchmove dispara más veces que frames pinta la pantalla, y
+      // todas las escrituras menos la última se tiran a la basura habiendo forzado su recálculo.
+      profileQueue(so, 1);
       if(e.cancelable) e.preventDefault();
       return;
     }
@@ -13979,13 +14096,11 @@ function App(){
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
     if(axis.current==="y" && gestureMode.current==="profile"){
-      if(profileRef.current) profileRef.current.classList.remove("dragging");
-      freezeShell(false);
+      profileRelease();
       const h=window.innerHeight||700;
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
       const open=dist>h*0.16 || ((dist/dt)>0.5 && dist>36);
-      if(profileRef.current){ profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius=""; }
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;
@@ -14593,20 +14708,40 @@ mcScheduleIdle(function(){ mcLoadSentryDeferred(); }, 1800);
 </script>
 
 <script>(function(){
-  /* No quitar el splash en el mismo tick que el 1er commit de React: se siente tirón
-     (cold-start 2026-07-16). Dos rAF + fade corto = «cargando» en vez de pantalla a medias. */
-  var t=setInterval(function(){
-    var r=document.getElementById("root"),l=document.getElementById("mc-load");
-    if(!(r&&l&&r.childElementCount>1)) return;
-    clearInterval(t);
+  /* CUÁNDO SE QUITA EL SPLASH.
+     No en el mismo tick que el 1er commit de React: se siente tirón (cold-start 2026-07-16).
+     Y tampoco en cuanto React pinta: el estado local se pinta al instante pero la nube tarda,
+     así que el usuario veía su patrimonio VIEJO y un segundo después el bueno — en su vídeo del
+     2026-07-25 la app abre con 125.899 € y salta a 189.371 €. Un salto en LA cifra de la app es
+     lo que más la hace parecer poco de fiar, y esconderlo cuesta menos de un segundo.
+     Así que se espera a `window.__mcBootReady` (lo pone la app cuando el primer pull de la nube
+     ha terminado, o enseguida si no hay nada que esperar: sin sesión, sin nube, con el candado o
+     en el alta). Con TOPE, porque una red mala no puede dejar la app detrás de la cortina. */
+  var t0=Date.now(), ESPERA_NUBE=1800, TOPE_DURO=8000, fuera=false;
+  function quitar(){
+    if(fuera) return; fuera=true;
+    var l=document.getElementById("mc-load"); if(!l) return;
     requestAnimationFrame(function(){ requestAnimationFrame(function(){
-      l.style.transition="opacity .2s ease";
+      l.style.transition="opacity .22s ease";
       l.style.opacity="0";
       l.style.pointerEvents="none";
-      setTimeout(function(){ try{ l.remove(); }catch(e){} },220);
+      setTimeout(function(){ try{ l.remove(); }catch(e){} },240);
     }); });
+  }
+  var t=setInterval(function(){
+    var r=document.getElementById("root");
+    var pintado=!!(r && r.childElementCount>1), pasado=Date.now()-t0;
+    if(pintado && (window.__mcBootReady===true || pasado>ESPERA_NUBE)){ clearInterval(t); quitar(); return; }
+    /* Si a los 8 s React NI SIQUIERA ha pintado, algo va mal de verdad. Antes se paraba el
+       vigilante y el splash se quedaba puesto para siempre, sin decir nada ni dejar salida:
+       una app «colgada en Cargando…» de la que no se puede ni salir. Ahora se ofrece recargar. */
+    if(!pintado && pasado>TOPE_DURO){
+      var b=document.getElementById("mcl-retry");
+      if(b) b.style.display="block";
+    }
   },60);
-  setTimeout(function(){ clearInterval(t); },10000);
+  var b=document.getElementById("mcl-retry");
+  if(b) b.addEventListener("click",function(){ try{ location.reload(); }catch(e){} });
 })();</script>
 </body>
 </html>

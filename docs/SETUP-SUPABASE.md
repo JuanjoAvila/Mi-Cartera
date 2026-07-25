@@ -39,6 +39,35 @@ Opción rápida (recomendada la primera vez): **SQL Editor → New query**, pega
 
 (Más adelante, si configuras `SUPABASE_DB_PASSWORD` en CI, las migraciones se aplican solas con `supabase db push`.)
 
+### Migración 0019 — límite de peticiones y caducidad del `state` (4.10.0)
+
+`0019_rate_limit.sql` añade la tabla `rate_limits` (sin políticas RLS a propósito: NADIE llega desde
+el cliente, solo la service_role a través de `check_rate_limit`) y la columna
+`bank_links.state_issued_at`.
+
+Qué frena y por qué:
+
+| Función | Límite | Motivo |
+|---|---|---|
+| `ingest` | 60/min **por IP** | No pide sesión; su única credencial es un token. Sin freno se prueban tokens a la velocidad de la red. Por IP y no por token: contar por token no frena a quien va probando tokens distintos, que es justo el ataque. |
+| `myinvestor-connect` | 10 cada 10 min **por usuario** | Por ahí van el usuario y la CONTRASEÑA reales del banco. Un bucle de reintentos puede dejar al usuario **bloqueado en su propio banco**. |
+
+**Si la migración no está aplicada, no se rompe nada**: `rateLimit()` deja pasar y lo apunta en la
+consola de la función. Un freno de seguridad que tumba la app cuando se rompe convierte un incidente
+pequeño en uno grande.
+
+`state_issued_at` la escribe `bank-connect` y la lee `bank-callback`: la autorización del banco
+caduca a los 30 minutos y el `state` se **gasta** al usarlo. Los enlaces creados antes de esta
+migración no tienen marca y se dan por buenos, para no romper una reconexión a medias.
+
+### CORS: lista blanca, no `*` (4.10.0)
+
+Las Edge Functions ya no responden `Access-Control-Allow-Origin: *`. El origen permitido lo pone
+`withCors` (`supabase/functions/_shared/cors.ts`) y sale de **`APP_URL`** más `https://localhost`
+(la WebView de la APK) y localhost con puerto (desarrollo y e2e). **Si mudas la app de dominio,
+cambia `APP_URL`** o el navegador bloqueará las respuestas. `tests/edge-sintaxis.test.mjs` falla si
+alguien vuelve a poner el `*`.
+
 ## Paso 3 — Crear tu usuario y obtener tu UUID 👤
 
 1. **Authentication → Providers → Email**: deja activado *Email*. Para magic link, activa *Enable email confirmations* (o magic link).

@@ -228,31 +228,31 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
       React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
       React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
     ),
-    React.createElement("div",{className:"v4-sec-h",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
-      React.createElement("span",null, t("v4_cuentas")),
-      // Sync a demanda: el auto-sync al abrir la app se retiró (los bancos veían «bot» y
-      // caducaban la conexión cada dos por tres — feedback 2026-07-18).
-      state.hasBankLink && onBankSync && React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:0},
-        disabled:bankBusy,onClick:doBankSync}, bankBusy?t("bp_syncing"):("↻ "+t("v4_sync_banks")))
-    ),
-    React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true}),
-    !simple && React.createElement("div",{className:"rise",style:{animationDelay:".12s"}},
-      React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),
-      React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
-      React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›"),
-      React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})
-    ),
-    // Hogar y gastos compartidos: se mudó aquí desde Ajustes (es una funcionalidad, no un ajuste;
-    // y en Cartera encaja porque va de dinero compartido). Abre el panel a nivel de App por evento.
-    React.createElement("button",{type:"button",className:"v4-mov",style:{width:"100%",marginTop:18,cursor:"pointer",textAlign:"left"},
-      onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-shared")); }catch(e){} }},
-      React.createElement("div",{className:"tile",style:{fontSize:22}}, "🏠"),
-      React.createElement("div",{className:"nm"},
-        React.createElement("div",null, t("st_shared")),
-        React.createElement("div",{className:"meta"}, t("v4_shared_sub"))
-      ),
-      React.createElement("div",{style:{color:"var(--muted-2)",fontSize:20}}, "›")
-    )
+    /* BLOQUES ORDENABLES (petición 2026-07-25: «poder ordenar las cosas de la tab de cartera»).
+       Mismo mecanismo que ya usan Fijos/Patrimonio/Deudas/Inversiones/Metas desde la 3.94:
+       `OrderableSections` guarda el orden en settings.secOrder.cartera, así que viaja con la
+       cuenta y está en el sitio donde el usuario ya sabe buscarlo («⇅ Ordenar secciones» al pie).
+       Se inventó un mecanismo nuevo cero: el que había ya hacía justo esto. */
+    React.createElement(OrderableSections,{tab:"cartera",state:state,set:set,items:[
+      { id:"cuentas", label:t("v4_cuentas"), el:React.createElement(React.Fragment,null,
+        React.createElement("div",{className:"v4-sec-h",style:{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}},
+          React.createElement("span",null, t("v4_cuentas")),
+          // Sync a demanda: el auto-sync al abrir la app se retiró (los bancos veían «bot» y
+          // caducaban la conexión cada dos por tres — feedback 2026-07-18).
+          state.hasBankLink && onBankSync && React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:0},
+            disabled:bankBusy,onClick:doBankSync}, bankBusy?t("bp_syncing"):("↻ "+t("v4_sync_banks")))
+        ),
+        React.createElement(Wealth,{state:state,set:set,totals:totals,v4Embed:true})
+      ) },
+      !simple && { id:"inversiones", label:t("v4_inversiones"), el:React.createElement("div",{className:"rise",style:{animationDelay:".12s"}},
+        React.createElement("div",{className:"v4-sec-h"}, t("v4_inversiones")),
+        React.createElement(Investments,{state:state,set:set,fetchPrices:fetchPrices,pricing:pricing,v4Embed:true}),
+        React.createElement("button",{type:"button",className:"v4-link-mini",style:{marginTop:10},onClick:function(){ setInvTools(true); }}, t("v4_inv_tools")+" ›")
+      ) }
+    ]}),
+    // El sheet vive FUERA de los bloques ordenables: es un portal, no una sección, y meterlo
+    // dentro lo desmontaría al reordenar (cerrándose solo a media consulta).
+    !simple && React.createElement(InvToolsSheet,{open:invTools,onClose:function(){ setInvTools(false); },state:state,set:set,fetchPrices:fetchPrices,pricing:pricing})
   );
 }
 
@@ -420,6 +420,26 @@ function ProfilePanel({state, set, onClose, onOpenSettings}){
           handleShow, React.createElement("span",{"aria-hidden":"true"},"✎"))
       ),
       React.createElement("div",{className:"profile-av","aria-hidden":"true"}, initials)
+    ),
+    /* HOGAR Y GASTOS COMPARTIDOS — se muda aquí desde el final de Cartera (2026-07-25: «lo de
+       hogar y gastos compartidos se debería mover a otro lugar… ahí abajo del todo de Cartera
+       no»). El perfil es la pantalla de TI y LOS TUYOS y está a un toque desde el avatar de
+       Inicio; Cartera se queda solo con dinero. Y va ARRIBA del todo a propósito: el panel mide
+       ~1.700 px, así que lo que se pone al final es exactamente lo que nadie ve. */
+    React.createElement("div",{className:"profile-sec"}, t("pf_people")),
+    React.createElement("div",{className:"profile-card"},
+      React.createElement("button",{type:"button",className:"profile-row",onClick:function(){
+        // El panel de Hogar va a z-index 96 (el perfil, a 72): puede abrirse mientras el perfil
+        // se encoge por detrás, sin esperas ni parpadeo entre pantallas.
+        if(onClose) onClose();
+        try{ window.dispatchEvent(new CustomEvent("mc-open-shared")); }catch(e){}
+      }},
+        React.createElement("div",{className:"pr-body"},
+          React.createElement("div",{className:"pr-lab"}, t("st_shared")),
+          React.createElement("div",{className:"pr-val"}, t("v4_shared_sub"))
+        ),
+        React.createElement("span",{className:"pr-edit","aria-hidden":"true"}, "›")
+      )
     ),
     React.createElement("div",{className:"profile-sec"}, t("pf_personal")),
     React.createElement("div",{className:"profile-card"},

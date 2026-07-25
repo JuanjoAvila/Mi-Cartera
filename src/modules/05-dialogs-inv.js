@@ -369,7 +369,15 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
   const [parsed,setParsed]=useState(null);
   const [map,setMap]=useState({});
   const [mcost,setMcost]=useState({});      // coste € que TÚ tecleas para un metal (Revolut no lo trae)
-  const [err,setErr]=useState(null);        // null | "bad" | "pnl"
+  const [err,setErr]=useState(null);        // null | "bad" | "pnl" | "fiat"
+  /* La pata en EUROS de las conversiones a metal vive en el extracto de la cuenta NORMAL de
+     Revolut, que no trae ni una posición. Se RECUERDA entre análisis para que los ficheros se
+     puedan soltar de uno en uno y en cualquier orden.
+     Feedback 2026-07-25: el usuario subió justo ese fichero —el que le hacía falta para que el
+     oro dijera cuánto gana— y le saltó «No he podido leer el CSV», cuando se había leído
+     perfectamente: los 1.000 € de sus seis conversiones a XAU estaban ahí. El error era del
+     importador, que solo daba por «entendido» un fichero si sacaba POSICIONES. */
+  const fiatRef=useRef({});
   const [doneN,setDoneN]=useState(null);
   const [steps,setSteps]=useState(false);
   // Coste efectivo de una posición: el del CSV si viniera, y para los metales el que teclees tú
@@ -387,11 +395,13 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
     let any=false, allPnl=true;
     // PRIMERA PASADA: recoger el coste en euros de los metales. Vive en el extracto de la CUENTA
     // (otro fichero), y el usuario puede soltarlos en cualquier orden — así que se juntan antes
-    // de parsear nada, y da igual cuál venga primero.
-    const mcosts={};
+    // de parsear nada, y da igual cuál venga primero. Se acumulan en fiatRef: soltar el extracto
+    // en € en una tanda y el de metales en la siguiente tiene que funcionar igual.
+    const mcosts=fiatRef.current;
+    let fiatN=0;
     txts.forEach(function(src){
       const c=revoMetalCostsFromFiat(src);
-      if(c) Object.keys(c).forEach(function(tk){ Object.assign(mcosts[tk]||(mcosts[tk]={}), c[tk]); });
+      if(c){ fiatN++; Object.keys(c).forEach(function(tk){ Object.assign(mcosts[tk]||(mcosts[tk]={}), c[tk]); }); }
     });
     txts.forEach(function(src){
       let res=null;
@@ -416,7 +426,10 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
       if(res.from && (!acc.from||res.from<acc.from)) acc.from=res.from;
       if(res.to && (!acc.to||res.to>acc.to)) acc.to=res.to;
     });
-    if(!any){ setErr(allPnl?"pnl":"bad"); setParsed(null); return; }
+    // Un fichero que SOLO aporta los euros de los metales está perfectamente entendido: lo que
+    // falta es el de Materias primas (las onzas). Decirlo así, en vez de «formato raro», es la
+    // diferencia entre saber qué subir y probar ficheros a ciegas.
+    if(!any){ setErr(fiatN?"fiat":(allPnl?"pnl":"bad")); setParsed(null); return; }
     const m={};
     acc.positions.forEach(function(po){
       // el metal primero por su vía (más específica que el matcher por palabras del nombre)
@@ -495,7 +508,10 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
       React.createElement("textarea",{className:"af-in",style:{width:"100%",minHeight:70,fontFamily:"monospace",fontSize:11,boxSizing:"border-box"},placeholder:t("bi_paste_ph"),value:text,onChange:function(e){ setText(e.target.value); }}),
       React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:8},disabled:!text.trim(),onClick:function(){ analyze(); }}, t("bi_analyze"))
     ),
-    err && React.createElement("div",{className:"alarmbox",style:{marginTop:10}}, err==="pnl"?t("bi_err_pnl"):t("bi_err")),
+    // «fiat» no es un fallo: el fichero se leyó bien y sus datos están guardados. Va en caja
+    // neutra (no de alarma) para no dar por roto lo que ha funcionado.
+    err && React.createElement("div",{className:err==="fiat"?"hint":"alarmbox",style:{marginTop:10}},
+      err==="fiat"?t("bi_err_fiat"):(err==="pnl"?t("bi_err_pnl"):t("bi_err"))),
     parsed && React.createElement(React.Fragment,null,
       React.createElement("div",{className:"hint",style:{marginTop:6}}, tf("bi_summary",{n:parsed.positions.length, from:parsed.from||"—", to:parsed.to||"—"})),
       parsed.skipped>0 && React.createElement("div",{className:"hint",style:{marginTop:0}}, tf("bi_skipped",{n:parsed.skipped})),
@@ -524,7 +540,10 @@ function BrokerImport({state, set, fetchPrices, open, onToggle}){
             onChange:function(e){ const v=e.target.value; setMcost(function(m){ const n=Object.assign({},m); n[po.ticker]=v; return n; }); }})
         );
       }),
-      parsed.positions.some(function(p){ return p.metal; }) && React.createElement("div",{className:"hint",style:{marginTop:4}}, t("bi_metal_hint")),
+      // Si el coste ha salido solo (extracto en € cruzado) hay que DECIRLO: si no, el usuario ve
+      // un número que no ha tecleado y no sabe de dónde sale ni si puede fiarse.
+      parsed.positions.some(function(p){ return p.metal; }) && React.createElement("div",{className:"hint",style:{marginTop:4}},
+        t(parsed.positions.some(function(p){ return p.metal && p.cost!=null; })?"bi_metal_auto":"bi_metal_hint")),
       (parsed.dividends>0) && React.createElement("div",{className:"hint",style:{marginTop:2}}, tf("bi_cash_info",{int:eur(0), div:eur(parsed.dividends)})),
       React.createElement("div",{className:"hint",style:{marginTop:2}}, t("bi_usd_hint")),
       React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},disabled:mappedN===0,onClick:apply}, tf("bi_apply",{n:mappedN})),

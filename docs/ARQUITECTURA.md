@@ -42,6 +42,19 @@ Caché al instante + revalidación en segundo plano. Cadena de versión sellada 
 
 **Cold start (3.113.3):** Sentry se inyecta tras el primer pintado (no bloquea ~340 KB); Ajustes se monta al abrir el cajón; el swipe pre-monta la pestaña destino durante el gesto. El coste duro restante es parse del monolito + `loadState` — sin code-split no desaparece del todo.
 
+**Splash de entrada (v4.10.0).** `#mc-load` vive en `src/shell.html`, fuera de React (es lo único que
+se ve mientras arranca el bundle). Ya no se retira en cuanto React pinta: espera a
+**`window.__mcBootReady`**, que pone `mcBootReady()` (`00-core.js`, idempotente) desde cuatro sitios
+—sin nube, sin sesión, con el candado o en el alta, y al terminar el primer `syncFromCloud`—.
+Motivo: el estado local se pinta al instante y la nube tarda, así que se veía el patrimonio VIEJO y
+un segundo después el bueno (vídeo del usuario: 125.899 € → 189.371 €). Topes en el vigilante:
+1,8 s de espera y, si React ni siquiera ha pintado a los 8 s, un botón de reintentar — antes el
+`clearInterval` de emergencia dejaba el splash puesto para siempre y sin salida.
+
+**Presupuesto de tamaño (v4.10.0):** `tests/presupuesto-rendimiento.test.mjs` mide el artefacto
+minificado y su gzip contra topes escritos a mano. Es la otra mitad del rendimiento: `e2e/rendimiento`
+vigila que el trabajo no crezca con el histórico; esto vigila lo que hay que bajar y parsear.
+
 ### 4. Migraciones de datos versionadas
 `_dataVer` en `localStorage` permite cambiar la forma de los datos sembrados sin borrar los del usuario.
 
@@ -85,6 +98,24 @@ caducaran «cada dos por tres» (feedback 2026-07-18). Syncs que siguen vivos, t
 
 **No reintroducir** un sync por apertura/foreground sin repensar esto: el histórico está en el
 CHANGELOG 4.1.0 y en el comentario del propio código.
+
+**El `state` del OAuth (v4.10.0).** `bank-connect` genera un `state` (uuid, con sufijo `.app` si la
+petición viene de la APK) y lo guarda en `bank_links` junto a `state_issued_at`. `bank-callback`
+—que no tiene sesión— localiza al usuario por ese `state`, y es lo ÚNICO que ata la vuelta del banco
+con una cuenta. Como viaja en la URL de vuelta (historial del navegador, Referer, logs por el
+camino), ahora **caduca a los 30 minutos** y **se gasta**: se pone a `null` ANTES de canjear el
+`code`, así que un fallo a mitad tampoco lo deja vivo.
+
+### Seguridad de las Edge Functions (v4.10.0)
+
+| Qué | Dónde | Nota |
+|---|---|---|
+| CORS con lista blanca | `_shared/cors.ts` → `withCors(handler)` | Envuelve el handler entero: pasan por ahí TODAS las respuestas, incluidas las de los `catch`. El origen sale de `APP_URL` + `https://localhost` (WebView APK) + localhost con puerto. |
+| Límite de peticiones | `_shared/ratelimit.ts` + migración `0019` | En Postgres (una sentencia atómica), no en memoria: los isolates van y vienen. **Si falla, deja pasar.** |
+| Token de ingest | cabecera `x-ingest-token`, comparación en tiempo constante | Desde 4.9.0; en query string aún se acepta por compatibilidad con APKs viejos. |
+
+`tests/edge-sintaxis.test.mjs` hace cumplir la primera fila: falla si alguna función vuelve a
+escribir `Access-Control-Allow-Origin: "*"`.
 
 ### Cartera v4: quién edita qué (v4.1.0)
 

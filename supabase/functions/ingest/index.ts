@@ -33,6 +33,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   categorizar, clasificar, extraerComercio, extraerConcepto, extraerImporte, extraerPersona, type Tipo,
 } from "../_shared/ingest_logic.ts";
+import { bucketKey, callerIp, rateLimit } from "../_shared/ratelimit.ts";
 
 /**
  * Comparación en tiempo CONSTANTE del token (2026-07-24).
@@ -76,6 +77,16 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token") || req.headers.get("x-ingest-token") || "";
   if (!token) return json({ ok: false, error: "sin token" }, 403);
+
+  /* FRENO ANTES DE MIRAR EL TOKEN (2026-07-25). Esta función no pide sesión: su única
+     credencial es este token, y sin freno se puede probar uno detrás de otro a la velocidad de
+     la red. Se cuenta por IP —no por token— justo por eso: contar por token no frena a quien
+     va probando tokens distintos, que es el ataque que importa.
+     60 por minuto es holgadísimo para lo que hace de verdad (una notificación de Trade Republic
+     cada vez que compras algo) y ridículo para fuerza bruta. Ver 0019_rate_limit.sql. */
+  const ipBucket = await bucketKey("ingest-ip", callerIp(req));
+  const gate = await rateLimit(supabase, ipBucket, 60, 60);
+  if (!gate.ok) return json({ ok: false, error: "demasiadas peticiones" }, 429);
 
   let userId: string | null = null;
   const legacyToken = Deno.env.get("INGEST_TOKEN");

@@ -663,8 +663,10 @@ Object.assign(LANG.es,{
   bi_file:"📄 Elegir CSV (puedes marcar varios)", bi_paste_ph:"…o pega aquí el contenido del CSV", bi_analyze:"Analizar",
   bi_err:"No he podido leer el CSV (¿formato raro?). Pega unas líneas y dime qué columnas tiene.",
   bi_err_pnl:"Ese es el «Extracto de Pérdidas y Ganancias»: solo trae lo que YA vendiste, no lo que tienes. Necesito el «Extracto de cuenta» (el de arriba del todo en Documentos). Ojo: alguno se llama «trading-account-statement» pero por dentro es el de P&G.",
+  bi_err_fiat:"✓ Este es el extracto de tu cuenta normal en €, y lo he leído bien: de aquí saco lo que te costaron el oro y la plata, y ya me lo he guardado. Lo que falta son las ONZAS: sube ahora el de Invest → Documentos → «Materias primas» → «Extracto de cuenta» y te lo junto con esto (si ya lo habías subido antes, vuelve a subirlo: esta vez sí saldrá el coste).",
   met_xau:"Oro (XAU)", met_xag:"Plata (XAG)", met_xpt:"Platino (XPT)", met_xpd:"Paladio (XPD)", bi_oz:"onzas",
-  bi_metal_hint:"🥇 Materias primas: Revolut no dice en este extracto cuánto te costaron (esa parte va en el extracto de tu cuenta en €). Re-anclo las ONZAS y el precio del metal se actualiza en vivo. ¿Quieres ver si sube o baja? Escribe abajo lo que te costó en € (lo ves en tu app de Revolut) y ya te pinto el %.",
+  bi_metal_hint:"🥇 Materias primas: este extracto solo trae ONZAS. Lo que pagaste en € está en el extracto de tu cuenta NORMAL de Revolut (la de euros, fuera de Invest): súbelo también y te calculo el «sube/baja» solo. Si lo prefieres, escribe abajo el coste total en € y con eso me vale.",
+  bi_metal_auto:"🥇 El coste sale de tu extracto de la cuenta en €: cada conversión a metal se casa con los euros que pusiste ese mismo momento. Si no te cuadra con tu app de Revolut, escribe abajo el coste total y manda el tuyo.",
   bi_metal_cost_ph:"Coste en € (opcional, para ver el %)",
   bi_summary:"{n} posiciones detectadas · {from} → {to}", bi_skipped:"{n} filas no reconocidas (ignoradas)",
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operaciones",
@@ -675,7 +677,7 @@ Object.assign(LANG.es,{
   bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker) y el valor se recalcula con el último precio conocido. Justo después, los precios en vivo se actualizan solos por ticker.",
   bi_done:"✓ {n} posiciones re-ancladas con el extracto",
   bi_rev_title:"Importar de Revolut (CSV)", bi_rev_steps_btn:"Cómo exportar el CSV de Revolut",
-  bi_rev_steps:["Abre la app de Revolut → pestaña «Invest».","«More» (Más) → «Documents» (Documentos).","«Cuenta de corretaje» → «Extracto de cuenta». NO cojas el de «Pérdidas y Ganancias»: ese solo trae lo que ya vendiste.","¿Tienes oro o plata? Vuelve atrás y repite con «Materias primas» → «Extracto de cuenta». Van en un extracto APARTE: sin él, tus metales no entran.","Formato «Excel», desde la apertura de la cuenta hasta hoy → «Get statement».","En el móvil ábrelo con Google Sheets → «Hacer una copia» y descárgalo como CSV (o guárdalo/compártelo y súbelo aquí).","Sube abajo los dos ficheros a la vez (o pega uno). Se procesa en tu móvil, no se sube a ningún sitio."],
+  bi_rev_steps:["Abre la app de Revolut → pestaña «Invest».","«More» (Más) → «Documents» (Documentos).","«Cuenta de corretaje» → «Extracto de cuenta». NO cojas el de «Pérdidas y Ganancias»: ese solo trae lo que ya vendiste.","¿Tienes oro o plata? Vuelve atrás y repite con «Materias primas» → «Extracto de cuenta». Van en un extracto APARTE: sin él, tus metales no entran.","¿Y saber cuánto ganas con ellos? Hace falta un TERCERO: el extracto de tu cuenta NORMAL de Revolut (la de euros, fuera de Invest). Ahí están los € que pusiste en cada conversión; el de Materias primas solo trae onzas.","Formato «Excel», desde la apertura de la cuenta hasta hoy → «Get statement».","En el móvil ábrelo con Google Sheets → «Hacer una copia» y descárgalo como CSV (o guárdalo/compártelo y súbelo aquí).","Súbelos abajo todos a la vez, o de uno en uno: los voy juntando. Se procesa en tu móvil, no se sube a ningún sitio."],
 });
 Object.assign(LANG.en,{
   bi_title:"Import from broker (CSV)", bi_sub:"re-anchor positions with your statement",
@@ -683,8 +685,10 @@ Object.assign(LANG.en,{
   bi_file:"📄 Choose CSV (you can pick several)", bi_paste_ph:"…or paste the CSV content here", bi_analyze:"Analyse",
   bi_err:"Couldn't read the CSV (odd format?). Paste a few lines and tell me its columns.",
   bi_err_pnl:"That's the «Profit and Loss statement»: it only lists what you ALREADY sold, not what you hold. I need the «Account statement» (the top one under Documents). Careful: one of them is named «trading-account-statement» but is a P&L inside.",
+  bi_err_fiat:"✓ This is your normal € account statement, and I read it fine: it's where I get what your gold and silver cost you, and I've kept it. What's missing are the OUNCES: now upload Invest → Documents → «Commodities» → «Account statement» and I'll put the two together (if you'd uploaded it before, upload it again: this time the cost will show).",
   met_xau:"Gold (XAU)", met_xag:"Silver (XAG)", met_xpt:"Platinum (XPT)", met_xpd:"Palladium (XPD)", bi_oz:"oz",
-  bi_metal_hint:"🥇 Commodities: this statement doesn't say what they cost you (that part lives in your € account statement). I re-anchor the OUNCES and the metal price updates live. Want to see if it's up or down? Type below what it cost you in € (you'll find it in your Revolut app) and I'll show the %.",
+  bi_metal_hint:"🥇 Commodities: this statement only carries OUNCES. What you paid in € lives in your NORMAL Revolut account statement (the euro one, outside Invest): upload that too and I'll work out the up/down myself. If you'd rather, type the total cost in € below and that'll do.",
+  bi_metal_auto:"🥇 The cost comes from your € account statement: each conversion to metal is matched with the euros you put in at that exact moment. If it doesn't square with your Revolut app, type the total cost below and yours wins.",
   bi_metal_cost_ph:"Cost in € (optional, to see the %)",
   bi_summary:"{n} positions detected · {from} → {to}", bi_skipped:"{n} unrecognised rows (ignored)",
   bi_notouch:"— don't touch —", bi_shares:"shares", bi_ops:"{n} trades",
@@ -695,7 +699,7 @@ Object.assign(LANG.en,{
   bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth) and value is rescaled to the last known price. Right after, live prices refresh automatically by ticker.",
   bi_done:"✓ {n} positions re-anchored to the statement",
   bi_rev_title:"Import from Revolut (CSV)", bi_rev_steps_btn:"How to export the Revolut CSV",
-  bi_rev_steps:["Open the Revolut app → «Invest» tab.","«More» → «Documents».","«Brokerage account» → «Account statement». Do NOT take the «Profit and Loss» one: it only lists what you already sold.","Got gold or silver? Go back and repeat with «Commodities» → «Account statement». They live in a SEPARATE statement: without it your metals don't come in.","Format «Excel», from account opening to today → «Get statement».","On the phone open it with Google Sheets → «Make a copy» and download as CSV (or save/share it and upload here).","Upload both files at once below (or paste one). Processed on your phone, never uploaded."],
+  bi_rev_steps:["Open the Revolut app → «Invest» tab.","«More» → «Documents».","«Brokerage account» → «Account statement». Do NOT take the «Profit and Loss» one: it only lists what you already sold.","Got gold or silver? Go back and repeat with «Commodities» → «Account statement». They live in a SEPARATE statement: without it your metals don't come in.","And to know how much you're making on them? A THIRD one is needed: the statement of your NORMAL Revolut account (the euro one, outside Invest). That's where the € you put into each conversion live; the Commodities one only carries ounces.","Format «Excel», from account opening to today → «Get statement».","On the phone open it with Google Sheets → «Make a copy» and download as CSV (or save/share it and upload here).","Upload them all at once below, or one at a time: I keep merging them. Processed on your phone, never uploaded."],
 });
 Object.assign(LANG.ca,{
   bi_title:"Importa del bròker (CSV)", bi_sub:"re-ancora posicions amb el teu extracte",
@@ -703,8 +707,10 @@ Object.assign(LANG.ca,{
   bi_file:"📄 Tria CSV (en pots marcar diversos)", bi_paste_ph:"…o enganxa aquí el contingut del CSV", bi_analyze:"Analitza",
   bi_err:"No he pogut llegir el CSV (format estrany?). Enganxa unes línies i digue'm quines columnes té.",
   bi_err_pnl:"Aquest és l'«Extracte de Pèrdues i Guanys»: només porta el que JA has venut, no el que tens. Necessito l'«Extracte de compte» (el de dalt de tot a Documents). Compte: algun es diu «trading-account-statement» però per dins és el de P&G.",
+  bi_err_fiat:"✓ Aquest és l'extracte del teu compte normal en €, i l'he llegit bé: d'aquí en trec el que et van costar l'or i la plata, i ja m'ho he desat. El que falta són les UNCES: puja ara el d'Invest → Documents → «Matèries primeres» → «Extracte de compte» i t'ho ajunto amb això (si ja l'havies pujat abans, torna'l a pujar: aquesta vegada sí que sortirà el cost).",
   met_xau:"Or (XAU)", met_xag:"Plata (XAG)", met_xpt:"Platí (XPT)", met_xpd:"Pal·ladi (XPD)", bi_oz:"unces",
-  bi_metal_hint:"🥇 Matèries primeres: en aquest extracte Revolut no diu quant et van costar (aquesta part va a l'extracte del teu compte en €). Re-ancoro les UNCES i el preu del metall s'actualitza en viu. Vols veure si puja o baixa? Escriu a sota el que et va costar en € (ho veus a la teva app de Revolut) i et pinto el %.",
+  bi_metal_hint:"🥇 Matèries primeres: aquest extracte només porta UNCES. El que vas pagar en € és a l'extracte del teu compte NORMAL de Revolut (el d'euros, fora d'Invest): puja'l també i et calculo el «puja/baixa» sol. Si ho prefereixes, escriu a sota el cost total en € i amb això ja em val.",
+  bi_metal_auto:"🥇 El cost surt del teu extracte del compte en €: cada conversió a metall es casa amb els euros que hi vas posar en aquell mateix moment. Si no et quadra amb la teva app de Revolut, escriu a sota el cost total i mana el teu.",
   bi_metal_cost_ph:"Cost en € (opcional, per veure el %)",
   bi_summary:"{n} posicions detectades · {from} → {to}", bi_skipped:"{n} files no reconegudes (ignorades)",
   bi_notouch:"— no tocar —", bi_shares:"particip.", bi_ops:"{n} operacions",
@@ -715,7 +721,7 @@ Object.assign(LANG.ca,{
   bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker) i el valor es recalcula amb l'últim preu conegut. Just després, els preus en viu s'actualitzen sols per ticker.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
   bi_rev_title:"Importa de Revolut (CSV)", bi_rev_steps_btn:"Com exportar el CSV de Revolut",
-  bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","«Compte de corretatge» → «Extracte de compte». NO agafis el de «Pèrdues i Guanys»: aquell només porta el que ja has venut.","Tens or o plata? Torna enrere i repeteix amb «Matèries primeres» → «Extracte de compte». Van en un extracte A PART: sense ell, els teus metalls no entren.","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja a sota els dos fitxers alhora (o enganxa'n un). Es processa al teu mòbil, no es puja enlloc."],
+  bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","«Compte de corretatge» → «Extracte de compte». NO agafis el de «Pèrdues i Guanys»: aquell només porta el que ja has venut.","Tens or o plata? Torna enrere i repeteix amb «Matèries primeres» → «Extracte de compte». Van en un extracte A PART: sense ell, els teus metalls no entren.","I saber quant hi guanyes? Cal un TERCER: l'extracte del teu compte NORMAL de Revolut (el d'euros, fora d'Invest). Allà hi ha els € que vas posar a cada conversió; el de Matèries primeres només porta unces.","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja'ls a sota tots alhora, o d'un en un: els vaig ajuntant. Es processa al teu mòbil, no es puja enlloc."],
 });
 /* Mini-tutoriales por pestaña (backlog 2026-07: «tu pareja no encontraba el lápiz de editar gastos») */
 Object.assign(LANG.es,{
@@ -1705,7 +1711,7 @@ Object.assign(LANG.ca,{
 
 // --- Perfil personal (pull-down Inicio) ---
 Object.assign(LANG.es,{
-  pf_title:"Tu perfil", pf_personal:"Personal", pf_wealth:"Patrimonio", pf_investor:"Perfil inversor",
+  pf_title:"Tu perfil", pf_people:"Tu gente", pf_personal:"Personal", pf_wealth:"Patrimonio", pf_investor:"Perfil inversor",
   pf_add:"Añadir", pf_handle:"Usuario", pf_basic:"Información básica", pf_name:"Nombre", pf_name_ph:"Tu nombre",
   pf_birth:"Fecha de nacimiento", pf_birth_ph:"p. ej. 13 mayo 1998", pf_nationality:"Nacionalidad",
   pf_country_ph:"España", pf_address:"Dirección", pf_address_ph:"Calle, CP, ciudad",
@@ -1721,7 +1727,7 @@ Object.assign(LANG.es,{
   pf_to_settings:"Ir a Ajustes",
 });
 Object.assign(LANG.en,{
-  pf_title:"Your profile", pf_personal:"Personal", pf_wealth:"Wealth", pf_investor:"Investor profile",
+  pf_title:"Your profile", pf_people:"Your people", pf_personal:"Personal", pf_wealth:"Wealth", pf_investor:"Investor profile",
   pf_add:"Add", pf_handle:"Username", pf_basic:"Basic info", pf_name:"Name", pf_name_ph:"Your name",
   pf_birth:"Date of birth", pf_birth_ph:"e.g. 13 May 1998", pf_nationality:"Nationality",
   pf_country_ph:"Spain", pf_address:"Address", pf_address_ph:"Street, postcode, city",
@@ -1737,7 +1743,7 @@ Object.assign(LANG.en,{
   pf_to_settings:"Go to Settings",
 });
 Object.assign(LANG.ca,{
-  pf_title:"El teu perfil", pf_personal:"Personal", pf_wealth:"Patrimoni", pf_investor:"Perfil inversor",
+  pf_title:"El teu perfil", pf_people:"La teva gent", pf_personal:"Personal", pf_wealth:"Patrimoni", pf_investor:"Perfil inversor",
   pf_add:"Afegeix", pf_handle:"Usuari", pf_basic:"Informació bàsica", pf_name:"Nom", pf_name_ph:"El teu nom",
   pf_birth:"Data de naixement", pf_birth_ph:"p. ex. 13 maig 1998", pf_nationality:"Nacionalitat",
   pf_country_ph:"Espanya", pf_address:"Adreça", pf_address_ph:"Carrer, CP, ciutat",

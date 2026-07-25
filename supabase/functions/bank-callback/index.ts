@@ -40,6 +40,22 @@ Deno.serve(async (req) => {
     const { data: link } = await admin.from("bank_links").select("*").eq("state", state).maybeSingle();
     if (!link) throw new Error("state desconocido");
 
+    /* EL `state` CADUCA Y SE GASTA (2026-07-25).
+       Este `state` es lo ÚNICO que ata la vuelta del banco con un usuario, y viaja en la URL:
+       queda en el historial del navegador, en el Referer y en los logs de quien haya por el
+       camino. Antes valía para siempre y se podía reutilizar. Con eso, quien lo consiguiera
+       podía volver aquí con SU código de autorización y dejar SU cuenta bancaria colgando del
+       usuario del `state` — o al revés, según el banco. Es rebuscado, pero el arreglo son diez
+       líneas: caduca a los 30 minutos (una autorización PSD2 se hace de una sentada) y se borra
+       al usarlo, así que solo sirve una vez. Los enlaces de antes de la migración 0019 no tienen
+       marca de emisión: se les da por buenos para no romper una reconexión a medias. */
+    const issued = link.state_issued_at ? Date.parse(link.state_issued_at) : NaN;
+    if (!isNaN(issued) && Date.now() - issued > 30 * 60 * 1000) {
+      throw new Error("la autorización ha caducado — vuelve a darle a «Conectar banco»");
+    }
+    // Se gasta ANTES de canjear el code: si el canje falla a mitad, el state ya no vale igual.
+    await admin.from("bank_links").update({ state: null }).eq("id", link.id);
+
     const { appId, pem } = ebConfig();
     const jwt = await makeJWT(appId, pem);
     const session = await ebApi(jwt, "/sessions", { method: "POST", body: { code } });

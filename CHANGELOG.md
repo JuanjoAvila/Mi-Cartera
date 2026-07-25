@@ -2,6 +2,44 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.10.0] — 2026-07-25
+### El gesto del perfil (esta vez con el caso real), el CSV que se rechazaba a sí mismo, splash, Cartera ordenable y seguridad del servidor
+
+#### Perfil: el parpadeo era el scroll, y abrir nunca recibió los arreglos del cierre
+- **El caso que faltaba: el panel SCROLLEA.** Su contenido mide ~1.680 px y en un móvil de verdad (393×851) no cabe. `profileMove` medía `ddy` desde el `touchstart`, así que si el usuario había bajado dentro del perfil y luego tiraba para cerrar, en cuanto `scrollTop` llegaba a 0 el panel **saltaba de golpe a la miniatura** — medido con CDP: `1,000 → 0,122` en un frame. Y como el scroll rebota y devuelve `scrollTop>0`, la rama de guarda limpiaba los estilos y volvía a pantalla completa. Ida y vuelta varias veces por segundo: **eso es el parpadeo entre perfil y resumen del vídeo del usuario**, y por eso el gesto no cerraba nunca. Ahora, mientras quede scroll el gesto se **re-ancla al dedo** en cada frame, así que el cierre arranca desde el tamaño real (medido: `1,000 → 0,817 → 0,738 → 0,518`).
+- **Los dos e2e de perfil no lo veían** porque usan un viewport de 1.800 px de alto justo para que el contenido quepa sin scroll. Añadidos dos a tamaño de móvil real.
+- **Abrir seguía roto.** La 4.9.1 quitó el fundido de opacidad AL CERRAR y dejó escrito que «abrir nunca lo tuvo». Lo tenía: `onMove` hacía `opacity: min(1, resist*3)` y `borderRadius` por frame, o sea las dos cosas que se arreglaron para el cierre en la 4.9.0 y la 4.9.1. Por eso al abrir seguía viéndose el perfil mezclado con el resumen y a tirones. **Causa de fondo: los dos gestos estaban escritos por duplicado**, así que un arreglo en uno no llegaba al otro. Ahora comparten `profileGrab()`/`profileRelease()`.
+- `.v4-avatar.pulling` llevaba desde la 4.9.0 sin hacer nada: interpolaba con `--prof-p`, variable que se retiró al dejar de pintar por frame, así que la regla calculaba `scale(1)`/`opacity(1)`. Ahora es una transición de CSS y el avatar se aparta mientras la tarjeta sale de él.
+
+#### El importador de Revolut rechazaba el fichero que él mismo necesita
+- Desde la 4.9.0 el coste del oro se calcula cruzando el extracto de **Materias primas** (onzas) con el de la **cuenta en €** (euros). El usuario subió el segundo y recibió «No he podido leer el CSV (¿formato raro?)» — **habiéndolo leído perfectamente**: reproducido con sus ficheros reales, `revoMetalCostsFromFiat` sacaba `{XAU, XAG}` y los 1.000 € de sus seis conversiones. `analyzeAll` solo daba un fichero por «entendido» si sacaba POSICIONES, y ese no trae ninguna.
+- Ahora ese caso tiene su propio estado (`err="fiat"`, caja neutra y no de alarma): confirma que se ha leído, **guarda los costes en `fiatRef`** y dice qué fichero falta. Como los costes se acumulan entre análisis, los extractos se pueden soltar **de uno en uno y en cualquier orden**.
+- Cuando el coste sale solo se **dice de dónde sale** (`bi_metal_auto`): un número que el usuario no ha tecleado y no puede explicar no vale de nada. Y los pasos de exportación mencionan por fin el **tercer** fichero (la cuenta normal en €), que es lo que nadie podía adivinar.
+- `e2e/revolut-csv-import.spec.mjs` (4). Va con e2e y no con un unitario porque los tres parsers funcionaban: lo que fallaba era lo que se PINTA a partir de ellos (AGENTS §7).
+
+#### Splash de entrada
+- Era un emoji y «Cargando…» en la tipografía del sistema — la única pantalla que no parecía la app — y se retiraba **en cuanto React pintaba**, así que se veía el patrimonio local y un segundo después el de la nube (en el vídeo: 125.899 € → 189.371 €). Un salto en LA cifra de la app es lo que más la hace parecer poco de fiar.
+- Ahora lleva la marca, Fraunces y los colores del tema (que ya se aplica antes del primer pintado), y **espera a `window.__mcBootReady`**: lo pone `mcBootReady()` al terminar el primer pull de la nube, o enseguida si no hay nada que esperar (sin nube, sin sesión, con el candado o en el alta). Tope de 1,8 s para que una red mala no deje la app detrás de la cortina.
+- De paso: si a los 8 s React ni siquiera ha pintado, aparece un «reintentar». Antes el vigilante se paraba y el splash se quedaba puesto **para siempre**, sin decir nada ni dejar salida.
+
+#### Cartera ordenable · Hogar al perfil
+- «Poder ordenar las cosas de la tab de cartera»: `OrderableSections` (que ya usaban Fijos/Patrimonio/Deudas/Inversiones/Metas desde la 3.94) envuelve ahora «Tus cuentas» e «Inversiones». Orden en `settings.secOrder.cartera`, o sea que sincroniza. Mecanismo nuevo: ninguno.
+- «Hogar y gastos compartidos» sale del final de Cartera —donde no mira nadie— y entra **arriba del perfil**, en una sección «Tu gente» (elección del usuario entre cuatro opciones). El `InvToolsSheet` se queda FUERA de los bloques ordenables: es un portal, y dentro se desmontaría al reordenar.
+- `e2e/cartera-orden-hogar.spec.mjs` (3), incluida la puerta de entrada: no basta con que el botón esté, tiene que ABRIR la pantalla (AGENTS §7, la lección de los huérfanos del rediseño v4).
+
+#### Seguridad del servidor
+- **CORS con lista blanca** (`supabase/functions/_shared/cors.ts`). Las diez funciones respondían `Access-Control-Allow-Origin: *`, o sea que cualquier web del mundo podía llamarlas desde el navegador de quien la visitara. Con `verify_jwt` hace falta además el token del usuario, pero el `*` regala una capa gratis. Se aplica envolviendo el handler (`withCors`) y no tocando cada `jsonResp`: hay decenas de puntos de retorno y una lista blanca que se aplica «en casi todos» los sitios no es una lista blanca — así pasan por el mismo sitio hasta las respuestas de los `catch`. El origen de producción sale de `APP_URL`; también valen `https://localhost` (WebView de la APK) y localhost con puerto (dev/e2e).
+- **Límite de peticiones** (`0019_rate_limit.sql` + `_shared/ratelimit.ts`), contado en Postgres con una sentencia atómica porque los isolates van y vienen. `ingest` (60/min **por IP**, no por token: contar por token no frena a quien va probando tokens, que es el ataque) y `myinvestor-connect` (10 cada 10 min por usuario). Este segundo protege al usuario de nosotros: por ahí van su usuario y su contraseña reales, y un bucle de reintentos puede dejarle **la cuenta bloqueada en su banco**. Si el limitador falla, **deja pasar**: un freno que tumba la app al romperse convierte un incidente pequeño en uno grande.
+- **El `state` del OAuth caduca (30 min) y se gasta.** Es lo único que ata la vuelta del banco con un usuario y viaja en la URL, así que acaba en el historial y en logs por el camino; antes valía para siempre y se podía reutilizar. Se consume ANTES de canjear el `code`, para que un fallo a mitad tampoco lo deje vivo. Los enlaces anteriores a la migración no tienen marca de emisión y se dan por buenos, para no romper una reconexión en curso.
+
+#### Presupuesto de rendimiento
+- `tests/presupuesto-rendimiento.test.mjs`: mide `index.html` **minificado** (lo que se sirve) y **gzip** (lo que baja el móvil), más los ficheros bloqueantes antes del primer pintado. Topes con ~12 % de aire sobre lo medido hoy: **985 KB / 277 KB / 3**. El tamaño es lo que crece de uno en uno sin que nadie lo mire, hasta que un día la app tarda cinco segundos en abrir y no hay un commit al que señalar.
+- `tests/edge-sintaxis.test.mjs`: pasa las Edge Functions por el parser de esbuild (Deno no está instalado y `deno check` se omite en silencio) y falla si alguna vuelve a poner el origen en `*`. Nace de esta misma tanda: envolver diez handlers son diez paréntesis que cerrar a mano, y ese fallo aparecería en otro workflow, después de creer que ya estaba publicado.
+
+#### Tests
+- Nuevos e2e: `revolut-csv-import` (4), `cartera-orden-hogar` (3) y dos más en `profile-anim` a tamaño de móvil real. **E2E de 53 a 62.** Nuevos unitarios: `edge-sintaxis`, `presupuesto-rendimiento`.
+- **Sin APK nueva**: no se toca nativo, así que la 4.10.0 va entera por OTA y el APK 33 se queda como está.
+
 ## [4.9.2] — 2026-07-25
 ### Incidente: el APK 32 salió con texto corrompido y SIN sellar la versión
 

@@ -888,6 +888,14 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
+    "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",
+    "🥇 El CSV de Revolut ya no te dice «no he podido leer el CSV». Subiste el extracto de tu cuenta en euros —justo el que hace falta para saber cuánto ganas con el oro— y la app lo rechazaba, aunque lo había leído perfectamente. Ahora te lo confirma, se guarda los euros de tus conversiones y te dice qué fichero falta. Puedes soltarlos de uno en uno y en el orden que quieras: los va juntando.",
+    "🚪 Pantalla de entrada nueva. Antes veías un emoji con «Cargando…» y, al entrar, el patrimonio viejo un segundo antes que el bueno. Ahora la app se presenta con su marca y espera a tener el dato bueno para dar paso — como mucho un instante, nunca se queda colgada.",
+    "🏠 «Hogar y gastos compartidos» se muda al perfil (el avatar de Inicio, arriba del todo). Estaba enterrado al final de Cartera, que es donde no mira nadie.",
+    "⇅ Cartera se ordena a tu gusto. «Tus cuentas» e «Inversiones» se suben y se bajan con el mismo «⇅ Ordenar secciones» que ya tenían Recibos, Deudas y Metas. Tu orden se guarda y viaja con tu cuenta.",
+    "🔒 Y por detrás: el servidor solo acepta llamadas desde la app (antes desde cualquier web), freno a los intentos repetidos —para que tu banco no te bloquee la cuenta si algo se pone pesado— y los permisos de conectar un banco caducan a la media hora y solo valen una vez.",
+  ]},
   {v:"4.9.2", d:"25 jul 2026", t:"Arreglado el APK roto: caracteres raros y la app que no se actualizaba", items:[
     "🔤 Los símbolos raros que salían en la tarjeta de Trade Republic (donde debía ir un ✓) eran texto que se estropeó al preparar la versión anterior. Corregido, y ahora hay una comprobación que no deja publicar con texto roto.",
     "⬇️ La app decía «vdev» y no se actualizaba nunca. El APK anterior se empaquetó sin ponerle el número de versión, y la app compara números para saber si hay algo nuevo: sin número, la respuesta era siempre «no hay nada». Por eso no te llegó ninguna de las mejoras del día. Arreglado, y el proceso de empaquetado ahora se para en seco si la versión no queda puesta.",

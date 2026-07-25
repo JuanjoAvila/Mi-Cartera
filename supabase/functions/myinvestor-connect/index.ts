@@ -16,11 +16,12 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { CORS, jsonResp, MI_BASE, miHeaders } from "../_shared/myinvestor.ts";
+import { jsonResp, MI_BASE, miHeaders } from "../_shared/myinvestor.ts";
 import { miTokensToRow } from "../_shared/token_store.ts";
+import { withCors } from "../_shared/cors.ts";
+import { rateLimit } from "../_shared/ratelimit.ts";
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+Deno.serve(withCors(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const supa = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -28,6 +29,16 @@ Deno.serve(async (req) => {
     });
     const { data: { user } } = await supa.auth.getUser();
     if (!user) return jsonResp({ ok: false, error: "sin sesión" }, 401);
+
+    /* FRENO POR USUARIO (2026-07-25). Aquí van usuario y CONTRASEÑA reales hacia MyInvestor:
+       si algo entra en bucle —un reintento del cliente, un dedo nervioso con el OTP— el banco
+       puede BLOQUEAR la cuenta del usuario por intentos fallidos. Así que el límite no está
+       solo para frenar a un atacante: está para que la app no pueda dejar a nadie fuera de su
+       propio banco. 10 intentos cada 10 minutos da de sobra para equivocarse un par de veces
+       con la contraseña y el OTP. Ver 0019_rate_limit.sql. */
+    const admin0 = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const gate = await rateLimit(admin0, "mi-login:" + user.id, 10, 600);
+    if (!gate.ok) return jsonResp({ ok: false, error: "Demasiados intentos seguidos. Espera unos minutos antes de volver a probar (tu banco bloquea la cuenta si insistes)." }, 429);
 
     const body = await req.json().catch(() => ({}));
 
@@ -123,4 +134,4 @@ Deno.serve(async (req) => {
   } catch (e) {
     return jsonResp({ ok: false, error: String((e as Error)?.message || e) }, 500);
   }
-});
+}));

@@ -9,16 +9,15 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { categorizar } from "../_shared/ingest_logic.ts";
+import { withCors } from "../_shared/cors.ts";
 
 const ALLOWED = [
   "super", "pan", "bares", "ocio", "transporte", "parking",
   "compras", "salud", "pelu", "hogar", "regalos", "otros",
 ] as const;
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// El origen permitido lo pone `withCors` en la respuesta (lista blanca, ../_shared/cors.ts).
+const cors = { "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -27,8 +26,7 @@ function json(obj: unknown, status = 200) {
   });
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+Deno.serve(withCors(async (req: Request) => {
   if (req.method !== "POST") return json({ ok: false, error: "method" }, 405);
 
   const auth = req.headers.get("Authorization") || "";
@@ -100,4 +98,4 @@ Deno.serve(async (req) => {
   } catch (_) {
     return json({ ok: true, category: "otros", source: "kw", ai: "error" });
   }
-});
+}));

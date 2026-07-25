@@ -9,6 +9,8 @@
 // Devuelve un mapa { TICKER_APP: precio }.
 // ============================================================
 
+import { withCors } from "../_shared/cors.ts";
+
 // compat: clientes viejos que llaman sin body reciben lo de siempre
 const DEFAULT_SYMS = ["NVDA", "GOOG", "TSM", "AVGO", "MU", "AMD", "VWCE", "GOLD"];
 // clave usada en la app -> símbolo en Yahoo Finance (GC=F ≈ oro spot USD/onza; Revolut
@@ -19,10 +21,8 @@ const YAHOO: Record<string, string> = {
   VWCE: "VWCE.DE", GOLD: "GC=F", XAU: "GC=F", XAG: "SI=F", XPT: "PL=F", XPD: "PA=F",
 };
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// El origen permitido lo pone `withCors` en la respuesta (lista blanca, ../_shared/cors.ts).
+const cors = { "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
 
 async function fromFinnhub(sym: string, key: string): Promise<number | null> {
   const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(sym)}&token=${key}`);
@@ -40,9 +40,7 @@ async function fromYahoo(ySym: string): Promise<number | null> {
   return (typeof p === "number" && p > 0) ? p : null;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-
+Deno.serve(withCors(async (req: Request) => {
   let syms: string[] = [];
   try {
     if (req.method === "POST") {
@@ -84,7 +82,7 @@ Deno.serve(async (req) => {
   const out: Record<string, unknown> = { ok: true, prices: prices, ts: Date.now() };
   if (errors.length) out.errors = errors;
   return json(out, 200);
-});
+}));
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
