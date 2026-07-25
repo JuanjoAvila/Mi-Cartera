@@ -13204,6 +13204,35 @@ function App(){
   // Cerrar perfil tirando ABAJO (arriba→abajo): misma escala al avatar en reversa.
   // Abrir ya es pull-down desde Inicio; cerrar «tira hacia atrás» el mismo gesto (feedback 2026-07-17).
   const pSX=useRef(0), pSY=useRef(0), pAx=useRef(null), pDrag=useRef(false);
+  /* RENDIMIENTO DEL GESTO DE CERRAR (feedback 2026-07-25: «la animación se vuelve loquísima y
+     ralentiza la app»). Dos causas, las dos de libro, y la comparación con el drawer de Ajustes
+     —que va fino— las canta:
+       · El drawer escribe SOLO `transform: translate3d(...)`, que el compositor resuelve sin
+         repintar. El perfil escribía además `borderRadius` EN CADA touchmove, y border-radius
+         obliga a REPINTAR el panel entero: en un móvil de 120 Hz, hasta 120 repintados por
+         segundo de una pantalla completa. La lección ya estaba escrita tres líneas más arriba
+         para el velo («opacidad fija, nunca interpolar por frame») pero al radio no se le aplicó.
+       · `touchmove` dispara más veces que frames pinta la pantalla, así que se hacían varias
+         escrituras de estilo por frame; todas menos la última se tiran a la basura, pero cada
+         una fuerza su recálculo.
+     Arreglo: el radio se pone UNA vez al enganchar el gesto, y transform/opacity (las dos que sí
+     son de compositor) se pintan dentro de un requestAnimationFrame, como mucho una vez por frame. */
+  const pRaf=useRef(0), pNext=useRef(null);
+  const profilePaint=function(){
+    pRaf.current=0;
+    const v=pNext.current, el=profileRef.current;
+    if(!v||!el) return;
+    el.style.transform="scale("+v.sc+")";
+    el.style.opacity=String(v.op);
+  };
+  const profileQueue=function(sc,op){
+    pNext.current={sc:sc,op:op};
+    if(!pRaf.current) pRaf.current=requestAnimationFrame(profilePaint);
+  };
+  const profileCancelPaint=function(){
+    if(pRaf.current){ cancelAnimationFrame(pRaf.current); pRaf.current=0; }
+    pNext.current=null;
+  };
   const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
   const profileMove=function(e){
     if(!pDrag.current) return;
@@ -13218,28 +13247,28 @@ function App(){
         // Velo fijo una sola vez — sin interpolar opacidad por frame.
         const dim=dimLayerRef.current;
         if(dim){ dim.style.opacity="1"; dim.classList.add("on"); dim.classList.remove("blurred"); }
+        // Radio fijo, por la MISMA razón que el velo: interpolarlo repintaba en cada frame.
+        profileRef.current.style.borderRadius="24px";
       }
     }
     if(pAx.current!=="y") return;
     if(profileRef.current && profileRef.current.scrollTop>0){
-      pDY.current=0;
+      pDY.current=0; profileCancelPaint();
       profileRef.current.style.transform=""; profileRef.current.style.opacity=""; profileRef.current.style.borderRadius="";
       return;
     }
-    if(ddy<=0){ pDY.current=0; if(profileRef.current){ profileRef.current.style.transform="scale(1)"; profileRef.current.style.opacity="1"; } return; }
+    if(ddy<=0){ pDY.current=0; profileQueue(1,1); return; }
     pDY.current=ddy;
     const h=window.innerHeight||700;
     const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.48))),0.88);
     const s0c=profS0(), sc=1-(1-s0c)*resist;
-    if(profileRef.current){
-      profileRef.current.style.transform="scale("+sc+")";
-      profileRef.current.style.opacity=String(1-resist*0.8);
-      profileRef.current.style.borderRadius=Math.round(resist*24)+"px";
-    }
+    profileQueue(sc, 1-resist*0.8);
     if(e.cancelable) e.preventDefault();
   };
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
+    // Un frame en cola pintaría DESPUÉS de limpiar los estilos y dejaría el panel a medio escalar.
+    profileCancelPaint();
     if(profileRef.current) profileRef.current.classList.remove("dragging");
     freezeShell(false);
     if(pAx.current!=="y"){ pAx.current=null; return; }
