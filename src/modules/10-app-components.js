@@ -892,7 +892,8 @@ var RELEASE_NOTES=[
     "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
     "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
     "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 El perfil se abre con menos tirón: hacía falta arrastrar demasiado y se cerraba solo a mitad.",
+    "👤 Cerrar el perfil es ahora EXACTAMENTE lo mismo que abrirlo, pero al revés. Iban con números distintos —abrir pedía casi el doble de arrastre que cerrar— así que el mismo dedo daba dos sensaciones. Ahora comparten curva y umbral.",
+    "🖐️ Y si dejas el dedo puesto (o vuelves a tocar) mientras el panel se está yendo, ya no se vuelve loco: se espera a que termine en vez de cortar la animación a medias y pegar un salto.",
   ]},
   {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
     "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",

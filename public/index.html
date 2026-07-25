@@ -10561,7 +10561,8 @@ var RELEASE_NOTES=[
     "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
     "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
     "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 El perfil se abre con menos tirón: hacía falta arrastrar demasiado y se cerraba solo a mitad.",
+    "👤 Cerrar el perfil es ahora EXACTAMENTE lo mismo que abrirlo, pero al revés. Iban con números distintos —abrir pedía casi el doble de arrastre que cerrar— así que el mismo dedo daba dos sensaciones. Ahora comparten curva y umbral.",
+    "🖐️ Y si dejas el dedo puesto (o vuelves a tocar) mientras el panel se está yendo, ya no se vuelve loco: se espera a que termine en vez de cortar la animación a medias y pegar un salto.",
   ]},
   {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
     "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",
@@ -13387,9 +13388,45 @@ function App(){
     const v=el?parseFloat(el.style.getPropertyValue("--pp-s0")):NaN;
     return isNaN(v)?0.12:v;
   };
+  /* CERRAR = ABRIR AL REVÉS, con los MISMOS números (petición 2026-07-25: «es hacer exactamente
+     lo mismo que cuando se abre pero al cerrarse»). Estaban a ojo y distintos —abrir dividía por
+     0,55 y elevaba a 0,85; cerrar por 0,48 y a 0,88; y el umbral de abrir pedía el doble de
+     recorrido que el de cerrar—, así que el mismo dedo daba dos sensaciones diferentes. Una sola
+     definición para los dos sentidos. */
+  const PROF_DIV=0.52, PROF_POW=0.86, PROF_TH=0.11;
+  const profResist=function(ddy){
+    const h=window.innerHeight||700;
+    return Math.pow(Math.min(1,Math.max(0,ddy/(h*PROF_DIV))),PROF_POW);
+  };
+  // ¿Ese tirón basta para cambiar de estado? Mismo criterio abriendo y cerrando.
+  const profPasa=function(dist, dt){
+    const h=window.innerHeight||700;
+    return dist>h*PROF_TH || ((dist/Math.max(1,dt))>0.35 && dist>28);
+  };
+  /* NO ACEPTAR UN GESTO NUEVO MIENTRAS EL PANEL SE ESTÁ YENDO (misma petición: «si alguien le da
+     por mantener el dedo mientras se va con la animación, que no se vuelva loco»).
+     La transición dura 0,48 s. Si en ese rato empieza otro gesto, lo primero que hace es poner
+     `.dragging` —que es `transition:none`—, así que la animación en vuelo se corta en seco y el
+     panel PEGA UN SALTO desde donde iba hasta donde diga el dedo. Con el velo y el avatar a
+     medio camino, eso es exactamente «volverse loco». Se ignoran los toques hasta que el panel
+     asiente: por `transitionend` (lo normal) y con un plazo de respaldo por si el navegador no lo
+     dispara —pasa si la pestaña pierde el foco a mitad—, que dejaría el gesto muerto para siempre. */
+  const profBusy=useRef(false), profBusyT=useRef(null);
+  const profMarkBusy=function(){
+    profBusy.current=true;
+    if(profBusyT.current) clearTimeout(profBusyT.current);
+    profBusyT.current=setTimeout(function(){ profBusy.current=false; }, 560);
+  };
+  useEffect(function(){
+    const el=profileRef.current; if(!el) return undefined;
+    const fin=function(e){ if(e.target===el && e.propertyName==="transform") profBusy.current=false; };
+    el.addEventListener("transitionend", fin);
+    return function(){ el.removeEventListener("transitionend", fin); };
+  },[]);
   useEffect(function(){
     document.documentElement.classList.toggle("profile-open", !!profileOpen);
     if(!dragging.current && gestureMode.current!=="profile"){
+      profMarkBusy();   // arranca la animación: nadie la toca hasta que acabe
       if(profileOpen) profSetOrigin();   // re-ancla al avatar ANTES de animar (apertura por tap)
       setProfileProgress(profileOpen?1:0);
       if(profileRef.current){
@@ -13488,7 +13525,10 @@ function App(){
     el.style.transform=""; el.style.opacity=""; el.style.borderRadius="";
     freezeShell(false);
   };
-  const profileStart=function(e){ const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now(); };
+  const profileStart=function(e){
+    if(profBusy.current) return;   // el panel está asentándose: este toque no es para el gesto
+    const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now();
+  };
   const profileMove=function(e){
     if(!pDrag.current) return;
     const t=e.touches[0];
@@ -13514,9 +13554,7 @@ function App(){
     if(pAx.current!=="y") return;
     if(ddy<=0){ pDY.current=0; profileQueue(1,1); return; }
     pDY.current=ddy;
-    const h=window.innerHeight||700;
-    const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.48))),0.88);
-    const s0c=profS0(), sc=1-(1-s0c)*resist;
+    const s0c=profS0(), sc=1-(1-s0c)*profResist(ddy);   // misma curva que abrir, en reversa
     /* EL PANEL NO SE DESVANECE MIENTRAS ARRASTRAS (vídeo del usuario, 2026-07-25). Antes bajaba
        la opacidad hasta 0,2 (`1-resist*0.8`), y como el panel ocupa la pantalla entera el
        resultado era ver el PERFIL Y EL RESUMEN A LA VEZ, los dos legibles, superpuestos. Eso es
@@ -13532,13 +13570,15 @@ function App(){
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
     profileRelease();
+    /* Marcar «ocupado» AQUÍ y no solo en el efecto: si el tirón no llega al umbral, el estado no
+       cambia (`setProfileOpen(true)` con profileOpen ya en true no re-renderiza), así que el
+       efecto no corre — y el rebote de vuelta a su sitio, que también es una animación de 0,48 s,
+       se quedaba sin proteger. Es justo el caso de «lo intento, no llega, y vuelvo a intentarlo». */
+    profMarkBusy();
     if(pAx.current!=="y"){ pAx.current=null; return; }
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
-    const h=window.innerHeight||700;
-    const closeProg=Math.min(1,Math.max(0,dist/(h*0.28)));
-    const flick=(dist/dt)>0.45 && dist>24;
-    const stay=!(closeProg>0.22 || flick);
+    const stay=!profPasa(dist, dt);   // mismo umbral que para abrir
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
@@ -14094,7 +14134,9 @@ function App(){
         const pageEl=pages&&pages[tab];
         const atTop=!pageEl||pageEl.scrollTop<=2;
         const fromAv=!!(e.target&&e.target.closest&&e.target.closest(".v4-avatar"));
-        if(atTop||fromAv){
+        // Mismo candado que al cerrar: si el panel se está yendo (o viniendo), este dedo no
+        // arranca un gesto nuevo — cortaría la animación en vuelo y el panel daría un salto.
+        if((atTop||fromAv) && !profBusy.current){
           gestureMode.current="profile";
           setProfileMounted(true);
           profileGrab();   // mismo enganche que el cierre: velo y radio fijos, panel opaco
@@ -14102,10 +14144,8 @@ function App(){
       }
     }
     if(axis.current==="y" && gestureMode.current==="profile"){
-      const h=window.innerHeight||700;
-      const resist=Math.pow(Math.min(1,Math.max(0,ddy/(h*0.55))),0.85);
       pDY.current=ddy;
-      const s0o=profS0(), so=s0o+(1-s0o)*resist;
+      const s0o=profS0(), so=s0o+(1-s0o)*profResist(ddy);   // misma curva que cerrar
       // Por rAF, como el cierre: touchmove dispara más veces que frames pinta la pantalla, y
       // todas las escrituras menos la última se tiran a la basura habiendo forzado su recálculo.
       profileQueue(so, 1);
@@ -14133,14 +14173,14 @@ function App(){
     if(!dragging.current) return; dragging.current=false;
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
-      const h=window.innerHeight||700;
+      profMarkBusy();   // también el rebote cuando el tirón no llega (ver profileEnd)
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
-      /* UMBRAL PARA ABRIR, más bajo (2026-07-25). Pedía 0,16 de la pantalla —unos 136 px en su
-         móvil— y en el vídeo se ve el panel asomar en miniatura y volverse a cerrar una y otra
-         vez: el tirón no llegaba, y desde fuera parece que la app parpadea sola. 0,11 (~95 px)
-         sigue estando muy por encima de un roce accidental, y el flick perdona más. */
-      const open=dist>h*0.11 || ((dist/dt)>0.35 && dist>28);
+      /* UMBRAL, el mismo que para cerrar. Antes pedía 0,16 de la pantalla —unos 136 px en su
+         móvil, el DOBLE que el de cerrar— y en el vídeo se ve el panel asomar en miniatura y
+         volverse a cerrar una y otra vez: el tirón no llegaba, y desde fuera parece que la app
+         parpadea sola. 0,11 (~95 px) sigue muy por encima de un roce sin querer. */
+      const open=profPasa(dist, dt);
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;
