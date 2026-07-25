@@ -2,6 +2,66 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.11.0] — 2026-07-25
+### El splash no se veía (y el motivo era de libro), bienes fuera de las cuentas
+
+#### El splash: existía en el HTML y no lo veía nadie
+Feedback del usuario, con vídeo: «¿has aplicado el splash? porque no furula». Tenía razón, y `grep` no lo habría cazado nunca — el elemento estaba en el artefacto desplegado. Dos causas, las dos comprobadas midiendo el DOM en el navegador (no leyendo el código):
+- **Estaba DENTRO de `#root`, y `ReactDOM.createRoot()` vacía su contenedor en el primer render.** React se lo llevaba por delante al montar. Y el vigilante esperaba a `#root` con **más de un hijo** para retirarlo — condición que por eso mismo no se cumplía jamás. Medido: `#mc-load` ausente del DOM ya a los 150 ms. Ahora es **hermano** de `#root` y el vigilante mira `>0`.
+- **React, ReactDOM y supabase-js iban en el `<head>`.** Un `<script>` inline bloquea el parser: el navegador no llegaba al `<body>` —y por tanto no tenía nada que pintar— hasta haber ejecutado ~600 KB de JS. Eso es el negro que se ve en el vídeo entre el splash nativo de Android y la app. Movidos justo DESPUÉS del splash, conservando el orden entre ellos.
+- Además: **mínimo 520 ms en pantalla** (con la nube resuelta, `__mcBootReady` llegaba antes de que React pintara y el splash se iba en un frame — un parpadeo se lee como un fallo) y **dos `requestAnimationFrame` antes de montar** en `12-boot.js`, para que el hilo suelte y se pinte lo que ya está en el DOM.
+- `e2e/splash.spec.mjs` (3): que sea hermano de `#root`, que los scripts pesados vayan después, y que **siga en pantalla después de que React monte** — que es lo único que significa «se ve».
+
+#### Corrección a la 4.10.0
+La nota de la 4.10.0 decía que el splash tapaba «el patrimonio viejo un segundo antes que el bueno». **Era falso**: el número no venía mal, es una **animación que cuenta hasta la cifra final** (se ve clarísimo a 8 fps: 11.195 → 73.427 → 87.164 → … → 189.394 en menos de un segundo). El splash sigue teniendo sentido —tapa el arranque— pero por el motivo correcto.
+
+#### Bienes fuera de «Tus cuentas»
+Al hacer Cartera ordenable, el piso y el coche quedaron dentro del bloque de las cuentas del banco («¿por qué has metido bienes junto con mis cuentas? sepáralo»). `Wealth` acepta ahora `parte` (`"cuentas"` / `"bienes"`) y Cartera los pinta como dos bloques ordenables independientes. Sin `parte` sigue pintando los dos, que es como lo usa el resto de la app.
+
+#### Perfil: cerrar es abrir al revés, con los mismos números
+Petición literal: «es hacer exactamente lo mismo que cuando se abre pero al cerrarse… que si alguien le da por mantener el dedo mientras se va con la animación, que no se vuelva loco».
+- **Las dos direcciones iban a ojo y por separado**: abrir dividía por 0,55 y elevaba a 0,85, cerrar por 0,48 y a 0,88; y el umbral de abrir pedía `0,16·alto` mientras el de cerrar se conformaba con `0,062·alto` — casi el triple de diferencia. El mismo dedo daba dos sensaciones distintas. Ahora hay UNA definición (`profResist`/`profPasa`, `PROF_DIV`/`PROF_POW`/`PROF_TH`) que usan los dos sentidos. De paso, abrir baja de 0,16 a 0,11 (~136 px → ~95 px en su móvil): en el vídeo se ve el panel asomar y cerrarse solo una y otra vez porque el tirón no llegaba.
+- **Candado durante la animación** (`profBusy`). La transición dura 0,48 s; un gesto nuevo en ese rato ponía `.dragging`, que es `transition:none`, cortando la animación en vuelo → el panel saltaba de donde iba a donde dijera el dedo, con el velo y el avatar a medio camino. Eso es «volverse loco». Se libera con `transitionend` y, de respaldo, a los 560 ms (si la pestaña pierde el foco el evento no llega y el gesto se quedaría muerto para siempre). Se marca también en los dos `End`, no solo en el efecto: cuando el tirón no llega al umbral el estado no cambia, así que el efecto no corre y **el rebote de vuelta se quedaba sin proteger** — justo el caso de «lo intento, no llega, y lo vuelvo a intentar».
+- `e2e/perfil-simetria.spec.mjs` (2): que abrir y cerrar compartan curva (paso a paso, `abrir + cerrar = 1 + s0` en todo el recorrido) y que un gesto lanzado durante la animación se ignore sin dejar estilos inline.
+
+#### Segunda vuelta: rechazada por el usuario en su móvil, y con razón (2026-07-26)
+Primera beta que llega de verdad a un móvil (la anterior no se podía ni descargar). Veredicto en `app_events`: **3 ok / 2 fallos**, los dos del perfil — «al mantener el dedo y deslizar, a la mínima vuelve a la posición inicial con la pantalla del perfil abierta». Eran dos causas distintas con el mismo síntoma:
+
+- **El umbral de cerrar se dobló.** Unificar abrir y cerrar «con los mismos números» sonaba bien, pero se unificó por arriba: cerrar pasó de `dist > 0.062·h` (~52 px) a `0.11·h` (~94 px). El tirón de siempre dejó de llegar y el panel rebotaba a abierto. La **curva** sí se comparte (era lo que él pedía: «lo mismo que al abrir pero al revés»); el **umbral** no puede, porque los dos gestos no compiten contra lo mismo: abrir pelea con el scroll de Inicio y con el cambio de pestaña, cerrar solo con el scroll del propio panel, que ya se resuelve antes. `PROF_TH_OPEN` / `PROF_TH_CLOSE`, con el porqué escrito al lado para que no se vuelvan a igualar.
+- **El candado se comía el segundo intento.** `profMarkBusy()` se llamaba al final de CUALQUIER gesto: también en el rebote de «he tirado y no ha llegado» y en un toque suelto. Sin transición no hay `transitionend`, así que el candado agotaba sus 560 ms y el siguiente intento —que es lo que uno hace inmediatamente— no llegaba ni a empezar. Ahora solo lo pone el efecto de `profileOpen`, o sea cuando el panel se va de verdad: cortar un rebote es inofensivo, cortar el cierre es lo que se veía «loco».
+- **Guardas nuevas** en `e2e/perfil-simetria.spec.mjs`: cerrar DESPACIO y CORTO (70 px en 350 ms, por debajo del umbral de velocidad para que solo decida el recorrido) y «tiro, no llega y vuelvo a tirar». Las dos pruebas que había arrastraban 240-320 px de golpe: ni un pulgar hace eso ni ese tirón deja de colar por velocidad, y por eso no vieron nada. Además se quitó una **intermitencia real** del test de simetría (leía la escala sin esperar al `requestAnimationFrame` que la pinta, así que a veces medía el frame anterior — ya tumbó un `npm test` entero).
+
+#### Tercera vuelta: el fallo del perfil era otro, y esta vez se ha REPRODUCIDO (2026-07-26)
+Las dos causas de arriba eran reales pero no eran LA causa: el usuario volvió a rechazarlo. En vez de seguir leyendo código se montó un banco de pruebas con dedos realistas (lento, con temblor de ±2 px, con pausas) y **con el panel scrolleado**, que es lo que ninguna prueba había hecho nunca — todas empezaban con el perfil arriba del todo, justo la situación en la que el gesto siempre funcionó.
+
+- **Reproducido a la primera:** con `scrollTop=220` (lo normal, el contenido mide ~1.680 px y uno MIRA el perfil antes de cerrarlo), un arrastre de 132 px hacia abajo **no cierra nada**: solo scrollea, y al soltar el perfil sigue abierto. Con la regla vieja —«mientras quede scroll, el dedo es del scroll»— para cerrar había que recoger los 220 px de scroll **y además** arrastrar otros 53 en el mismo gesto: 273 px de un tirón en una pantalla de 851.
+- **`e.preventDefault()` nunca hizo nada.** React ata `onTouchMove` al contenedor raíz **en modo pasivo**, y en un listener pasivo `preventDefault` es papel mojado: el navegador se quedaba el gesto para scrollear y el cierre competía contra él y perdía. Lo único que dejaba era un aviso en consola («Unable to preventDefault inside passive event listener invocation») que no rompía ningún test — se vio al instrumentar. Los listeners del panel se registran ahora a mano con `{passive:false}`, y de paso `touchcancel` cuenta como final (si el sistema se lleva el dedo, el panel ya no se queda encogido a medias y con `.dragging` puesto).
+- **De quién es el dedo se decide AL POSARLO, no en cada frame.** La franja de arriba (72 px) es asa y cierra esté como esté el scroll — apuntar a `.profile-pull-h` no valía porque la cabecera se va con el scroll, comprobado. Fuera de esa franja manda dónde estaba el scroll al empezar, y si llega al tope durante el mismo gesto el cierre toma el relevo re-anclando **una vez** (verificado: 220 px de scroll se recogen y el panel empieza a encoger sin soltar).
+- **Tres e2e nuevos con el panel scrolleado** (relevo, asa, y que un gesto corto en el medio SCROLLEE y no cierre). E2E 69 → 72.
+
+#### Novedades enseñaba una versión que no era
+`WhatsNew` comparaba `r.v === CONFIG.APP_VERSION`, y en beta la versión que corre lleva sufijo (4.11.0.8) mientras las notas van por versión base (4.11.0): no casaba nunca, así que **ninguna entrada salía marcada como «tu versión»** y la cabecera ponía 4.11.0 estando en la .8. Se casa por base (`mcVerBase`, extraído de `betaChecklist`, que ya lo hacía bien) y se enseña el número real.
+
+#### «Las notis se duplican» — el id salía del reloj
+`Notif.show(...)` recibía `(int)(System.currentTimeMillis() % 100000)` desde las DOS rutas que la usan. Android reemplaza una notificación solo si repites su id, así que con uno nuevo cada vez **cada aviso se apila en vez de sustituir al anterior**. Y en los avisos de actualización hay dos emisores para lo mismo (el `OtaCheckWorker` con la app cerrada y la web con la app abierta), cada uno con su id. Ahora `Notif.idFor(tag)` da ids estables por propósito, el worker y la web comparten los del update, y la confirmación de un gasto se identifica por el gasto.
+
+Y había un segundo emisor descontrolado: **`OtaCheckWorker` miraba SIEMPRE producción**, sin saber del canal. En un móvil en beta eso son dos avisos con números distintos para lo mismo. El canal viaja ahora en `syncOtaState` (lo sabe la web, vive en su `localStorage`) y el worker lee el manifiesto que toca. La parte del aviso de APK sigue saliendo de producción a propósito: la release `beta` solo lleva el bundle web.
+
+Y la mitad que sí viaja por OTA: `_mcSyncOtaNative` copiaba la marca de «ya avisé» del nativo **tal cual**, así que una marca vieja del worker pisaba la buena y el aviso volvía a salir. Una marca solo puede ir hacia adelante.
+
+**APK 34 / 4.11.0** compilada y firmada (`v4.11.0-beta34`, prerelease; verificado `CN=Mi Cartera` y el bundle sellado como 4.11.0, no `dev`). `public/apk.json` de esta rama apunta a ella; en producción sigue la 33/4.9.2 hasta que se promocione.
+
+#### Y dos del canal beta, que estrenaba móvil
+- **La beta se sellaba con un número distinto del que anunciaba.** `beta.yml` publica el manifiesto como `VERSION.RUN_NUMBER` (4.11.0.7) pero el bundle se sellaba con la `VERSION` pelada (4.11.0), así que `_mcNewerVer` daba `true` para siempre: **la misma beta ofrecida en bucle** («todo el maldito rato sale para actualizar») y Ajustes marcando un número que no era el que llevabas. El sello sale ahora del mismo sitio que el manifiesto (`MC_STAMP_VERSION`), y el workflow **no publica** si los dos no coinciden. Guarda en `tests/updates.test.mjs`.
+- **Apagar el canal beta no volvía atrás.** El OTA solo va hacia adelante, así que el móvil se quedaba con el bundle de pruebas hasta que producción lo adelantara. `_mcApplyChannelBundle()`: cambiar de canal instala lo que toca en el canal nuevo **en la dirección que sea**, que es lo que uno espera al apagar el interruptor.
+
+#### Proceso: el circuito completo, por fin
+**Aprobada en el móvil el 2026-07-26** («aprobado, todo funciona a las mil maravillas») y promocionada con el workflow «Promocionar beta a producción». Cuatro betas hicieron falta —4.11.0.7, .8, .9 y .10—, con **dos rechazos formales** desde el panel de revisión, y esos rechazos son lo que encontró el fallo de verdad del perfil: sin ellos habría subido a producción un gesto que no cerraba. Es la primera versión que recorre el circuito entero como estaba pensado desde la 4.8.0.
+
+**Esta versión iba al canal `beta`, no a `main`.** La 4.10.0 se publicó directa a producción saltándose el canal de pruebas que existe justo para esto, y lo estrenó el usuario en su móvil. Ver AGENTS §6.
+
+Lleva mezclada la **4.10.2** (abajo): sin ella, este bundle no se puede ni descargar.
+
 ## [4.10.2] — 2026-07-25
 ### El canal beta, capítulo 2: la CSP era solo la mitad — los assets de GitHub no llevan CORS
 

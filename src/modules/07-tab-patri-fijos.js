@@ -1,7 +1,7 @@
 /* ============================================================
    TAB: PATRIMONIO
    ============================================================ */
-function Wealth({state, set, totals, v4Embed}){
+function Wealth({state, set, totals, v4Embed, parte}){
   const [delAcc,setDelAcc]=React.useState("");   // id de la cuenta manual pendiente de confirmar borrado
   // Quitar a mano una cuenta manual del patrimonio (la del onboarding no se va sola al desloguear el banco:
   // las manuales viven en state.accounts, no en obAccounts, y bankDisconnect solo purga obAccounts).
@@ -118,8 +118,13 @@ function Wealth({state, set, totals, v4Embed}){
       );
     };
     const anySynced=state.accounts.some(isSynced);
+    /* CUENTAS Y BIENES SON DOS BLOQUES, NO UNO (feedback 2026-07-25: «¿por qué has metido bienes
+       junto con mis cuentas? sepáralo»). Al hacer Cartera ordenable quedaron dentro del mismo
+       bloque, así que el piso y el coche viajaban pegados a las cuentas del banco y no se podían
+       colocar por separado. `parte` los separa sin duplicar nada: sin `parte` sigue pintando los
+       dos, que es como lo usa el resto de la app. */
     return React.createElement("div",null,
-      React.createElement("div",{className:"v4-card-list"},
+      parte!=="bienes" && React.createElement("div",{className:"v4-card-list"},
         state.accounts.map(accRow),
         (state.obAccounts||[]).map(obRow),
         React.createElement("button",{className:"edit-link",style:{margin:"8px 4px"},onClick:function(){ accEd.editing?accEd.save():accEd.start(); }},accEd.editing?t("fj_save"):t("fj_edit"))
@@ -173,8 +178,10 @@ function Wealth({state, set, totals, v4Embed}){
         // Pista: «Gasto diario» se puede marcar en varios bancos (cuentan en el mismo presupuesto).
         (state.accounts||[]).length>1 && React.createElement("div",{className:"hint"}, t("v4_expdaily_row_hint"))
       ),
-      (state.assets||[]).length>0 && React.createElement(React.Fragment,null,
-        React.createElement("div",{className:"v4-sec-h"}, t("pt_goods")),
+      parte!=="cuentas" && (state.assets||[]).length>0 && React.createElement(React.Fragment,null,
+        // El título solo cuando van juntos: en Cartera lo pone el bloque ordenable, y repetirlo
+        // dejaría «Bienes» dos veces seguidas.
+        parte!=="bienes" && React.createElement("div",{className:"v4-sec-h"}, t("pt_goods")),
         state.assets.map(function(a){
           return React.createElement("div",{className:"v4-mov",key:a.id},
             React.createElement("div",{className:"tile"},a.kind==="piso"?"🏡":"🚙"),

@@ -135,6 +135,20 @@ await ta("en el móvil el manifiesto lo pide ANDROID, no el fetch de la WebView"
   assert.equal(pedidas.nativo.length, 1);
 });
 
+t("la beta se sella con el MISMO número que anuncia su manifiesto", () => {
+  /* Si el bundle lleva dentro `4.11.0` y el manifiesto anuncia `4.11.0.7`, la app no alcanza nunca
+     la versión anunciada: `_mcNewerVer` da true para siempre y el móvil ofrece la MISMA beta una y
+     otra vez, con Ajustes marcando un número que no es el que llevas. Pasó de verdad en cuanto la
+     primera beta llegó a su móvil: «todo el maldito rato sale para actualizar» (2026-07-26). */
+  const yml = fs.readFileSync(path.join(root, ".github", "workflows", "beta.yml"), "utf8");
+  assert.match(yml, /MC_STAMP_VERSION:\s*\$\{\{\s*steps\.num\.outputs\.beta\s*\}\}/,
+    "beta.yml tiene que sellar el bundle con el número de la beta, no con VERSION a pelo");
+  assert.match(yml, /BETA="\$\{\{\s*steps\.num\.outputs\.beta\s*\}\}"/,
+    "el manifiesto tiene que salir del MISMO sitio que el sello");
+  const stamp = fs.readFileSync(path.join(root, "scripts", "stamp-version.mjs"), "utf8");
+  assert.match(stamp, /process\.env\.MC_STAMP_VERSION/, "stamp-version.mjs debe aceptar el override");
+});
+
 await ta("estable: sigue leyendo de Pages", async () => {
   const { sandbox, pedidas } = sandboxCanal({ respuestas: { "github.io": { status: 200, body: '{"version":"4.10.1"}' } } });
   const r = await sandbox.mcFetchManifest("version.json");

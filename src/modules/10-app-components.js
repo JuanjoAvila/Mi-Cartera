@@ -642,10 +642,13 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
 
    El progreso se guarda en localStorage por versión: probar lleva días y cerrar la app no puede
    borrarlo. Sin traducir, como «Actividad»: es la consola privada del dueño. */
+/* Versión BASE de la que corre: la beta lleva sufijo de compilación (4.11.0.8) y todo lo que se
+   compara contra `RELEASE_NOTES` va por la base (4.11.0). Lo usan la checklist de beta y el popup
+   de Novedades — la segunda lo hacía a pelo y por eso no marcaba nunca «tu versión». */
+function mcVerBase(v){ return String(v||"").split(".").slice(0,3).join("."); }
 function betaChecklist(version){
-  // Las notas de la versión en curso SON la checklist. La beta lleva sufijo de compilación
-  // (4.8.0.17) y las notas van por versión base (4.8.0) → se casa por prefijo.
-  var base=String(version||"").split(".").slice(0,3).join(".");
+  // Las notas de la versión en curso SON la checklist.
+  var base=mcVerBase(version);
   var notes=(typeof RELEASE_NOTES!=="undefined"&&RELEASE_NOTES.length)
     ? (RELEASE_NOTES.filter(function(n){ return n.v===base; })[0] || RELEASE_NOTES[0])
     : null;
@@ -888,6 +891,17 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.11.0", d:"25 jul 2026", t:"Ahora sí: el splash se ve, y los bienes van por su cuenta", items:[
+    "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
+    "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
+    "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
+    "👤 Cerrar el perfil: encontrado el fallo de verdad, el que llevaba tres intentos escondido. Si habías bajado un poco dentro del perfil —o sea, casi siempre, porque el perfil es largo y lo miras antes de cerrarlo— el arrastre hacia abajo solo scrolleaba y al soltar seguías dentro. Para cerrar había que recoger TODO el scroll y encima seguir arrastrando en el mismo gesto: nadie hace eso. Ahora la franja de arriba del panel es un asa (tiras de ahí y cierra, esté como esté el scroll) y, si tiras desde el medio, en cuanto el contenido llega arriba el panel empieza a encogerse sin que sueltes el dedo.",
+    "✋ Y cerrar vuelve a bastar con un gesto corto: al igualar abrir y cerrar «con los mismos números» se había quedado pidiendo casi el doble de arrastre. La sensación sigue siendo la misma en los dos sentidos —eso era lo que pedías— pero sin pasarse de exigente. Si tiras, no llega y vuelves a tirar en el acto, también te hace caso ya (antes se quedaba sorda medio segundo).",
+    "✨ El popup de Novedades ya te dice qué versión llevas de verdad. En el canal de pruebas ponía «4.11.0» estando en la 4.11.0.8, y ninguna versión salía marcada como la tuya.",
+    "🔔 Y se acabaron las notificaciones duplicadas de «hay versión nueva». El aviso llevaba un identificador sacado del reloj, así que cada uno se apilaba en vez de sustituir al anterior; y había dos emisores para lo mismo (la app abierta y el vigilante que mira con la app cerrada), cada uno con el suyo. Ahora comparten identificador y el vigilante respeta el canal de pruebas. Esto va en la app nueva (34), no en la actualización web.",
+    "🚧 Canal de pruebas: la versión que ves ya dice cuál llevas (4.11.0.8 y no «4.11.0»), y se acabó el aviso de actualizar cada dos minutos — el paquete se sellaba con un número distinto del que anunciaba, así que la app creía que siempre le faltaba algo.",
+    "📦 Y apagar el canal de pruebas ahora te devuelve de verdad a la versión de todos. Antes se quedaba con la de pruebas puesta hasta que la normal la adelantara.",
+  ]},
   {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
     "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
     "🔔 Y si el canal de pruebas falla, te lo dice. Antes, cualquier problema al mirar si había versión nueva se disfrazaba de «no hay nada nuevo» — que es justo lo que hizo que esto pasara desapercibido tanto tiempo. Ahora sale el error y queda anotado.",
@@ -1305,10 +1319,15 @@ function WhatsNew({onClose, showToast, set, state}){
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "✨ "+t("wn_title")),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}}, t("wn_sub")),
     RELEASE_NOTES.map(function(r){
-      const open=openV===r.v, cur=r.v===CONFIG.APP_VERSION;
+      /* En beta la versión que corre lleva sufijo de compilación (4.11.0.8) y las notas van por
+         versión base (4.11.0), así que comparar a pelo no casaba NUNCA: ninguna entrada salía
+         marcada como «tu versión» y arriba ponía «v4.11.0» estando en la .8 — «salía la 4.11 con
+         las novedades, no salía con el .8» (2026-07-26). Se casa por base, como ya hacía la
+         checklist de beta (`betaChecklist`), y se enseña el número REAL que lleva puesto. */
+      const open=openV===r.v, cur=r.v===mcVerBase(CONFIG.APP_VERSION);
       return React.createElement("div",{key:r.v,style:card(cur)},
         React.createElement("button",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,width:"100%",background:"none",border:"none",color:"var(--text)",padding:0,cursor:"pointer",textAlign:"left"},onClick:function(){ setOpenV(open?null:r.v); }},
-          React.createElement("span",{style:{fontWeight:800,fontSize:14}},"v"+r.v+(cur?" · "+t("wn_current")+" ✓":"")),
+          React.createElement("span",{style:{fontWeight:800,fontSize:14}},"v"+(cur?CONFIG.APP_VERSION:r.v)+(cur?" · "+t("wn_current")+" ✓":"")),
           React.createElement("span",{style:{color:"var(--muted-2)",fontSize:11.5,flex:"0 0 auto"}},r.d+(open?" ▴":" ▾"))),
         React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},r.t),
         open && r.items.map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
@@ -1834,6 +1853,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
                 mcSetChannel(beta?"stable":"beta");
                 showToast(beta?"📦 Canal estable":"🚧 Canal beta activado");
                 setS({});   // repinta Ajustes para que la fila refleje el canal nuevo
+                // Y se instala YA lo que toque en el canal nuevo, arriba o abajo: apagar la beta
+                // tiene que devolver el móvil a lo que usa el resto (feedback 2026-07-26).
+                if(window._mcApplyChannelBundle) window._mcApplyChannelBundle({showToast:showToast});
               });
             }, sw(beta)),
             React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 10px"}},

@@ -171,8 +171,14 @@ public class MiCarteraPlugin extends Plugin {
         String body = call.getString("body");
         String gotoTarget = call.getString("gotoTarget");
         if (body == null || body.isEmpty()) { call.reject("body vacío"); return; }
+        // El id sale de la ETIQUETA, no del reloj: con un id nuevo cada vez, cada aviso se apilaba
+        // en vez de sustituir al anterior («las notis se duplican», 2026-07-26). La web manda `tag`
+        // (p.ej. "mc-update-4.11.0.8"); si no lo manda —bundle viejo—, se cae al deep-link, que
+        // para los avisos de actualización ya distingue ota de apk.
+        String tag = call.getString("tag");
+        if (tag == null || tag.isEmpty()) tag = gotoTarget != null ? gotoTarget : String.valueOf(body);
         Notif.show(getContext(), title != null ? title : "Mi Cartera", body,
-                (int) (System.currentTimeMillis() % 100000), gotoTarget);
+                Notif.idFor(tag), gotoTarget);
         call.resolve();
     }
 
@@ -283,6 +289,10 @@ public class MiCarteraPlugin extends Plugin {
         SharedPreferences.Editor ed = sp.edit();
         String ver = call.getString("version");
         if (ver != null && !ver.isEmpty()) ed.putString(OtaCheckWorker.KEY_CURRENT, ver);
+        // El canal (estable/beta) lo sabe la web; sin él, el worker miraba siempre producción y en
+        // un móvil en beta avisaba de una versión que no le tocaba, además de la de la propia app.
+        String chan = call.getString("channel");
+        if (chan != null && !chan.isEmpty()) ed.putString(OtaCheckWorker.KEY_CHANNEL, chan);
         String mark = call.getString("markNotifiedVer");
         if (mark != null && !mark.isEmpty()) ed.putString(OtaCheckWorker.KEY_BG_NOTIFIED, mark);
         String markApk = call.getString("markNotifiedApk");

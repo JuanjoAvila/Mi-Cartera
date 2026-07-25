@@ -218,7 +218,11 @@ public class TrExpenseListener extends NotificationListenerService {
 
             double importe = r.optDouble("importe", 0);
             String comercio = r.optString("comercio", "");
-            int id = (int) (System.currentTimeMillis() % 100000);
+            /* Id derivado del GASTO, no del reloj: si el mismo cargo se procesa dos veces (Android
+               reentrega `onNotificationPosted` cuando el banco actualiza su propia noti), la
+               confirmación sustituye a la anterior en vez de apilarse («las notis se duplican»,
+               2026-07-26). Sigue siendo una noti por gasto distinto. */
+            int id = Notif.idFor("exp|" + importe + "|" + comercio);
 
             // La alerta se mira ANTES de la confirmación: si es «gasto tocho», esa noti ya dice
             // importe y comercio → la "✓ Gasto apuntado" salía ADEMÁS, duplicada (feedback 2026-07-21).

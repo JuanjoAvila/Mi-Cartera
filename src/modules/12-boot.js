@@ -82,6 +82,34 @@ function mcFetchManifest(name){
   });
 }
 
+/* CAMBIAR DE CANAL NO ES «ACTUALIZAR»: ES INSTALAR LO QUE TOCA EN EL CANAL NUEVO.
+   El OTA solo va hacia ADELANTE (`_mcNewerVer`), así que apagar la beta dejaba el móvil con el
+   bundle de pruebas puesto para siempre: la única salida era esperar a que producción pasara ese
+   número. Feedback 2026-07-26: «si quito el canal beta no vuelve a la versión inferior, se queda
+   con la actual». Aquí se instala la versión del canal destino EN LA DIRECCIÓN QUE SEA — que es lo
+   que uno espera al apagar el interruptor: volver a lo que tiene el resto de la familia. */
+window._mcApplyChannelBundle=function(opts){
+  var toast=opts&&opts.showToast;
+  var up=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater;
+  if(!up||!up.download) return Promise.resolve(false);
+  return mcFetchManifest("version.json")
+    .then(function(r){ return r.json(); })
+    .then(function(v){
+      if(!v||!v.version||v.version===CONFIG.APP_VERSION) return false;
+      if(toast) toast(tf("st_up_applying",{v:v.version}));
+      return up.download({url:(v.url||mcUpdBase()+"bundle.zip"), version:v.version})
+        .then(function(b){
+          try{ localStorage.setItem("_otaPending", v.version); }catch(e){}
+          return up.set({id:b.id}).then(function(){ return true; });
+        });
+    }).catch(function(e){
+      var m=(e&&e.message)||String(e);
+      if(toast) toast("⚠ "+m);
+      try{ cloud.logEvent('error','canal '+mcChannel()+': '+m.slice(0,200)); }catch(_){}
+      return false;
+    });
+};
+
 window._mcNewerVer=function(a,b){
   a=String(a).split("."); b=String(b).split(".");
   for(var i=0;i<Math.max(a.length,b.length);i++){
@@ -97,7 +125,9 @@ window._mcNotifyUpdate=function(version, kind){
   try{
     var nat=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
     if(nat&&nat.showNotification){
-      var opts={title:title, body:body};
+      // `tag` para que el nativo use un id ESTABLE y el aviso se sustituya en vez de apilarse
+      // («las notis se duplican», 2026-07-26). Con APK vieja se ignora sin romper nada.
+      var opts={title:title, body:body, tag:"update|"+(kind==="apk"?"apk":"ota")};
       if(_mcNative) opts.gotoTarget=kind==="apk"?"update|apk":"update|ota";
       nat.showNotification(opts).catch(function(){});
       // Marca en nativo para que el worker no vuelva a avisar la misma versión.
@@ -154,10 +184,19 @@ window._mcSyncOtaNative=function(){
   try{
     var nat=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
     if(!nat||!nat.syncOtaState) return;
-    nat.syncOtaState({version:CONFIG.APP_VERSION}).then(function(r){
+    nat.syncOtaState({version:CONFIG.APP_VERSION, channel:mcChannel()}).then(function(r){
       try{
-        if(r&&r.bgNotifiedVer) localStorage.setItem("_otaNotifVer", r.bgNotifiedVer);
-        if(r&&r.bgNotifiedApk) localStorage.setItem("_apkNotifVer", r.bgNotifiedApk);
+        /* Estas marcas dicen «de esta versión YA se avisó». Antes se copiaba lo que dijera el
+           nativo tal cual, así que una marca VIEJA del worker de fondo pisaba la buena y el aviso
+           volvía a salir — sumándose al que ya había puesto la app. Ese era el «las notis se
+           duplican» que se ve desde la web (2026-07-26). Una marca solo puede ir hacia adelante. */
+        var mayor=function(k, v){
+          if(!v) return;
+          var cur=localStorage.getItem(k);
+          if(!cur || window._mcNewerVer(v, cur)) localStorage.setItem(k, v);
+        };
+        if(r) mayor("_otaNotifVer", r.bgNotifiedVer);
+        if(r) mayor("_apkNotifVer", r.bgNotifiedApk);
       }catch(e){}
     }).catch(function(){});
   }catch(e){}
@@ -359,6 +398,17 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0 && !_mc
     }).catch(function(){});
   });
 }
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
+/* PINTAR EL SPLASH ANTES DE MONTAR LA APP. `render()` aquí mismo encadena con el parseo del
+   bundle sin soltar el hilo, así que el navegador no llegaba a pintar NADA hasta tener el árbol
+   de React entero: pantalla negra y splash invisible (vídeo del usuario, 2026-07-25). Dos rAF
+   sueltan el hilo el tiempo justo para que se pinte lo que ya está en el DOM —el splash— antes
+   de empezar. No retrasa nada perceptible: son dos frames. */
+(function(){
+  var montar=function(){
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
+  };
+  if(typeof requestAnimationFrame!=="function"){ montar(); return; }
+  requestAnimationFrame(function(){ requestAnimationFrame(montar); });
+})();
 // Tras pintar Resumen: carga Sentry sin pelearse con el arranque (antes bloqueaba ~340 KB).
 mcScheduleIdle(function(){ mcLoadSentryDeferred(); }, 1800);

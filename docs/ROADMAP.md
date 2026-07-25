@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-25 · **v4.10.2** — publicación MÍNIMA, capítulo 2: **la CSP era solo la mitad**. Los assets de las releases de GitHub **no mandan cabeceras CORS** en ninguno de los dos saltos del redirect (verificado con `curl -H Origin`), así que el `fetch` de la WebView (origen `https://localhost`) los tira igual con la CSP arreglada — mismo síntoma, causa distinta. Ahora el manifiesto lo pide **Android** (`CapacitorHttp`), como el login de MyInvestor. Y `mcFetchManifest` solo cae a estable con un **404**: cualquier otro fallo sale en el toast y en `app_events`, porque disfrazarlo de «no hay nada nuevo» es lo que escondió esto durante semanas. El `bundle.zip` de la beta **nunca se había descargado** (`downloadCount: 0`). Guardián: `tests/updates.test.mjs` ejecuta el trozo real del monolito con `fetch`/`CapacitorHttp` de mentira.
+> Estado a 2026-07-26 · **v4.11.0** — **APROBADA en el móvil y promocionada a producción** («aprobado, todo funciona a las mil maravillas» — cuarta beta, 4.11.0.10, con la APK 34 puesta). Primera versión que recorre el circuito entero como estaba pensado: se publica en `beta`, la prueba él en su móvil, la rechaza dos veces con el panel de revisión, y sube cuando la aprueba. **el splash existía en el HTML y no lo veía nadie**: estaba dentro de `#root` y `ReactDOM.createRoot()` vacía su contenedor al montar, así que React se lo llevaba por delante (medido: fuera del DOM a los 150 ms); y React/ReactDOM/supabase iban en el `<head>`, bloqueando el parser, así que el navegador no tenía nada que pintar hasta ejecutar ~600 KB — el negro del vídeo. Ahora es hermano de `#root`, los scripts van después, con mínimo de 520 ms en pantalla y dos rAF antes de montar. **Corrección a la 4.10.0:** el patrimonio no venía mal, es una animación que cuenta hasta la cifra final. **Bienes separado de «Tus cuentas»** como bloque ordenable propio. **Perfil: cerrar = abrir al revés** — una sola curva y un solo umbral para los dos sentidos (iban con números distintos y el de abrir pedía casi el triple de arrastre), y candado durante la animación para que un dedo puesto a medias no la corte en seco. E2E 62 → 72. **Tercera vuelta (2026-07-26): el fallo del perfil era OTRO y por fin se ha reproducido** — con el panel scrolleado (`scrollTop=220`, lo normal) el arrastre solo scrollea y no cierra; ninguna prueba lo veía porque todas empezaban con el perfil arriba del todo. Además `e.preventDefault()` **nunca funcionó**: React ata `onTouchMove` en modo pasivo, así que el navegador se quedaba el gesto (los listeners van ya a mano con `{passive:false}`, y `touchcancel` cuenta como final). Ahora la franja de arriba es asa y, tirando desde el medio, el cierre toma el relevo cuando el scroll llega al tope. **⚠ Pendiente APK 34**: el arreglo de las notis duplicadas es Java (`Notif.idFor`, ids estables — el id salía del reloj y cada aviso se apilaba en vez de sustituir). **Lleva mezclada la 4.10.2**: sin ella este bundle no se puede ni descargar. **Segunda vuelta (2026-07-26): la rechazó desde el móvil, 3 ok / 2 fallos, los dos del perfil** — unificar los umbrales dobló el de cerrar (52 → 94 px) y el candado de la animación se activaba también en el rebote y en un toque suelto, dejando la app sorda medio segundo al segundo intento. Curva compartida sí, umbral no (`PROF_TH_OPEN`/`PROF_TH_CLOSE`). Y dos del canal, que estrenaba móvil: el bundle se sellaba con un número distinto del que anunciaba el manifiesto (**la misma beta ofrecida en bucle**, ahora `MC_STAMP_VERSION` + el workflow no publica si no cuadran) y **apagar la beta no devolvía a producción** (`_mcApplyChannelBundle`: cambiar de canal instala en la dirección que sea).
+>
+> Anterior: 2026-07-25 · **v4.10.2** — publicación MÍNIMA, capítulo 2: **la CSP era solo la mitad**. Los assets de las releases de GitHub **no mandan cabeceras CORS** en ninguno de los dos saltos del redirect (verificado con `curl -H Origin`), así que el `fetch` de la WebView (origen `https://localhost`) los tira igual con la CSP arreglada — mismo síntoma, causa distinta. Ahora el manifiesto lo pide **Android** (`CapacitorHttp`), como el login de MyInvestor. Y `mcFetchManifest` solo cae a estable con un **404**: cualquier otro fallo sale en el toast y en `app_events`, porque disfrazarlo de «no hay nada nuevo» es lo que escondió esto durante semanas. El `bundle.zip` de la beta **nunca se había descargado** (`downloadCount: 0`). Guardián: `tests/updates.test.mjs` ejecuta el trozo real del monolito con `fetch`/`CapacitorHttp` de mentira.
 >
 > Anterior: 2026-07-25 · **v4.10.1** — publicación MÍNIMA: **el canal beta llevaba roto en silencio**. Los assets de las releases de GitHub redirigen a `release-assets.githubusercontent.com` (antes `objects.githubusercontent.com`) y ese dominio no estaba en `connect-src`, así que el `fetch` moría; la caída a estable de `mcFetchManifest` convertía el fallo en un «✓ estás a la última» con el canal activado y la beta publicada. No podía arreglarse POR beta, porque es lo que impide bajarla. **El resto del trabajo del día (splash que no se veía, bienes separados de cuentas, perfil con una sola curva para abrir y cerrar) está en la rama `beta` = release `beta`, esperando la prueba del dueño.**
 >
@@ -24,9 +26,9 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.10.2** (producción). En `beta`: 4.11.0.x, pendiente de aprobación |
-| APK (`versionName` / `versionCode`) | **4.9.2** / **33** publicada (release GitHub `v4.9.2`). La 4.10.0 **no toca nativo**, así que llega por OTA y el APK 33 se queda como está — es lo normal, no un descuadre. ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
-| `public/apk.json` | **33** / 4.9.2 → `Mi-Cartera-4.9.2.apk` |
+| Web / OTA (`VERSION`) | **4.11.0** (en `beta`, pendiente de aprobación; producción va por la 4.10.2) |
+| APK (`versionName` / `versionCode`) | **4.11.0** / **34** publicada (release `v4.11.0`; verificada antes de subirla: `CN=Mi Cartera` y bundle sellado 4.11.0, no `dev`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). La probó él con `v4.11.0-beta34` (prerelease, se queda como registro de la ronda de pruebas). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
+| `public/apk.json` | **34** / 4.11.0 → `Mi-Cartera-4.11.0.apk` |
 
 ## Pendiente / limitaciones conocidas
 
@@ -38,6 +40,32 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | **Play Store** | Formulario Data safety + justificar NotificationListener |
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
+
+## Review externa (ChatGPT, 2026-07-25) — qué falta de verdad
+
+El usuario pidió una review del repo a ChatGPT y trajo el veredicto (arquitectura 9, organización
+8,5, seguridad 8,5, rendimiento 8, CI/CD 9,5, tests 9). **La mitad de lo que propone ya está hecho**
+y darlo por pendiente sería trabajar dos veces, así que la tabla separa las dos cosas. Lo que ya
+existe se deja anotado con su prueba: si mañana alguien vuelve a proponerlo, aquí está la respuesta.
+
+| Propuesta | Estado real | Qué falta (tarea) |
+|-----------|-------------|-------------------|
+| Beta cerrada con 10-20 amigos | **A medias.** Hay canal beta + panel de revisión (`docs/TESTING.md`), pero es de **un solo móvil**: el suyo. | Que la beta la puedan recibir otros: APK firmado repartible, alta de probador sin ser `is_admin`, y que los veredictos de varios convivan en el panel. |
+| Feedback dentro de la app | **Ya está.** Ajustes → App → «Enviar sugerencia» (4.1.0) + `betaReport` del panel de beta. | — |
+| Crash reporting | **Ya está.** Sentry en producción ([SENTRY.md](SENTRY.md)) + `app_events` propio, con `window.onerror` y `unhandledrejection` enganchados. | — |
+| Analytics de uso | **No.** `app_events` solo guarda errores y un `ping` al abrir. | Saber **qué pantallas se usan** (no quién): contador por pestaña/acción, agregado y sin datos personales. Decidir antes si compensa: hoy los usuarios son 3. |
+| Rate limiting | **A medias.** Migración `0019` + `_shared/ratelimit.ts`, aplicado en `ingest` y `myinvestor-connect` (4.10.0). | Extenderlo al resto de funciones (`prices`, `categorize`, `bank-*`) o dejar por escrito por qué no hace falta. |
+| Validar TODO lo que entra | **Sin auditar.** | Pasada por las diez Edge Functions: tipos, tamaños y rangos de cada campo del `body`, con test que mande basura y espere un 400 (no un 500). |
+| Logs sin información sensible | **A medias.** `guard-privacy` vigila el cliente. | Auditar qué acaba en `app_events` y en Sentry (mensajes de error con importes, correos o IBAN) y limpiarlo en origen. |
+| Virtualización de listas | **Ya está.** La lista pagina — `e2e/rendimiento.spec.mjs`: 3.000 movimientos no son 3.000 nodos. | — |
+| Memoización / no repetir trabajo | **Ya está** (4.8.0): estado partido, `totals` con dependencias reales, `parseDate` cacheado, filas en `React.memo`, presupuesto de rendimiento en `npm test`. | — |
+| Lógica financiera independiente de React | **A medias.** La lógica pura se extrae y se testea sin React (`scripts/load-pure-logic.mjs`, 15 suites), pero convive en el mismo fichero que la UI. | Separar de verdad los servicios (cartera, movimientos, dividendos, precios) a módulos sin un solo `React.createElement`, y que la UI solo los llame. Sin prisa: es refactor, no arreglo. |
+| Módulos por dominio, no por número | **No.** `src/modules/` va numerado por orden de ensamblado (`00-core`, `06-sync-brokers`, `10-app-components`…). | Reagrupar por dominio cuando duela — hoy 15 ficheros se siguen; el riesgo real es `10`/`11`, que son los que crecen sin parar. |
+| Importadores PDF/CSV | **CSV sí** (Revolut, con parsers y golden tests). **PDF no.** | Importar extractos en PDF (los bancos que no dan CSV). |
+| Sistema de backups | **A medias.** Export JSON a mano + estado en Supabase. | Copia automática periódica y **restaurar probado de verdad** (un backup que no se ha restaurado nunca no es un backup). |
+| Sincronización bancaria con adapters | **A medias.** Cada banco/bróker tiene su módulo, pero sin interfaz común. | Interfaz única (conectar / sincronizar / desconectar / estado) para que añadir un banco no toque la UI. Enlaza con Enable Banking. |
+| Play Store, cobrar, gestor fiscal | Ya estaba en el plan (ver «Solo si lo pides» y la nota de freemium). | Antes de cobrar un euro: **hablar con un gestor**. La consulta es barata comparada con regularizar tarde. |
+| Más tests de lógica financiera | Hay 15 suites unitarias + 67 e2e. | Seguir sumando al tocar dinero: es la regla de la casa, no una tarea con final. |
 
 ## Solo si lo pides
 

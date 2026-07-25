@@ -26,9 +26,18 @@ public class OtaCheckWorker extends Worker {
     static final String KEY_CURRENT = "current_ver";
     static final String KEY_BG_NOTIFIED = "bg_notified_ver";
     static final String KEY_BG_APK = "bg_notified_apk";
+    static final String KEY_CHANNEL = "channel";
     private static final String BASE = "https://juanjoavila.github.io/Mi-Cartera/";
-    private static final int NOTIF_OTA = 71001;
-    private static final int NOTIF_APK = 71002;
+    /* EL VIGILANTE DE FONDO TAMBIÉN TIENE CANAL. Miraba SIEMPRE producción, así que en un móvil en
+     * beta avisaba de una versión que no le toca —y a la vez la app abierta avisaba de la suya: dos
+     * notificaciones para lo mismo, con números distintos («las notis se duplican», 2026-07-26).
+     * El canal lo manda la web en `syncOtaState`, que es quien lo sabe (vive en su localStorage). */
+    private static final String BASE_BETA = "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/beta/";
+    // Compartidos con las notis que lanza la web (Notif.idFor): el aviso de «hay versión nueva» es
+    // UNO, lo emita el worker con la app cerrada o la propia app abierta. Antes eran dos ids
+    // distintos y salían las dos a la vez («las notis se duplican», 2026-07-26).
+    private static final int NOTIF_OTA = Notif.ID_UPDATE_OTA;
+    private static final int NOTIF_APK = Notif.ID_UPDATE_APK;
 
     public OtaCheckWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
@@ -42,8 +51,11 @@ public class OtaCheckWorker extends Worker {
         try {
             String current = sp.getString(KEY_CURRENT, null);
             if (current == null || current.isEmpty()) current = BuildConfig.VERSION_NAME;
+            // Mismo canal que la app: si el móvil está en beta, el aviso sale de la beta o no sale.
+            boolean beta = "beta".equals(sp.getString(KEY_CHANNEL, "stable"));
+            String base = beta ? BASE_BETA : BASE;
 
-            JSONObject verJson = fetchJson(BASE + "version.json?ts=" + System.currentTimeMillis());
+            JSONObject verJson = fetchJson(base + "version.json?ts=" + System.currentTimeMillis());
             if (verJson != null) {
                 String remote = verJson.optString("version", "");
                 if (!remote.isEmpty() && newer(remote, current)) {
@@ -57,6 +69,8 @@ public class OtaCheckWorker extends Worker {
                 }
             }
 
+            // La APK no se publica por canal (la release `beta` solo lleva el bundle web), así que
+            // ese aviso sigue saliendo de producción también en beta.
             JSONObject apkJson = fetchJson(BASE + "apk.json?ts=" + System.currentTimeMillis());
             if (apkJson != null) {
                 int remoteCode = apkJson.optInt("versionCode", 0);

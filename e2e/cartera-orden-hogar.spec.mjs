@@ -18,7 +18,10 @@ const INVERSIONES = [
 ];
 
 async function abrirApp(page) {
-  await seedLoggedInDashboard(page, { investments: INVERSIONES });
+  await seedLoggedInDashboard(page, {
+    investments: INVERSIONES,
+    assets: [{ id: "a1", kind: "coche", name: "Coche", value: 9000 }],
+  });
   await page.goto("/");
   await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
   await dismissNews(page);
@@ -58,13 +61,16 @@ test("Cartera se puede reordenar y el orden se guarda en el estado", async ({ pa
   await expect(titulos.first()).toContainText("Tus cuentas");
 
   await pantalla.getByRole("button", { name: /Ordenar secciones/i }).click();
-  // En modo orden, cada bloque enseña su etiqueta y sus flechas.
+  // En modo orden, cada bloque enseña su etiqueta y sus flechas. Bienes va APARTE de las cuentas
+  // (feedback 2026-07-25: «¿por qué has metido bienes junto con mis cuentas?»).
   const bloques = pantalla.locator(".wedit");
-  await expect(bloques).toHaveCount(2);
-  await expect(bloques.first().locator(".wedit-lbl")).toHaveText("Tus cuentas");
+  await expect(bloques).toHaveCount(3);
+  await expect(bloques.nth(0).locator(".wedit-lbl")).toContainText("Tus cuentas");
+  await expect(bloques.nth(1).locator(".wedit-lbl")).toContainText("Bienes");
+  await expect(bloques.nth(2).locator(".wedit-lbl")).toContainText("inversiones");
 
   await bloques.first().locator(".wedit-btns button").nth(1).click();   // ↓
-  await expect(pantalla.locator(".wedit .wedit-lbl").first()).toHaveText("Tus inversiones");
+  await expect(pantalla.locator(".wedit .wedit-lbl").first()).toContainText("Bienes");
 
   /* Y sobrevive a cerrar la app: el orden vive en settings.secOrder, que se guarda y sincroniza
      como todo lo demás. Se busca por TODAS las claves porque desde la 4.8.0 el estado se guarda
@@ -80,5 +86,5 @@ test("Cartera se puede reordenar y el orden se guarda en el estado", async ({ pa
     }
     return null;
   });
-  expect(guardado).toEqual(["inversiones", "cuentas"]);
+  expect(guardado).toEqual(["bienes", "cuentas", "inversiones"]);
 });

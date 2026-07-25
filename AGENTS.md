@@ -81,7 +81,20 @@ Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
      no vuelve a recibir una actualización jamás**, sin error visible (solo un «vdev» en Ajustes).
      Se publicó al padre y a la pareja. `build-www.mjs` ahora aborta si el sellado no cuaja.
    - Subir asset a un **GitHub Release** y actualizar **`public/apk.json`** (versionCode, versionName, url, notes) al APK **realmente** publicado (nunca apuntar a un release inexistente).
-6. `npm run build` + `npm test` → push a `main` → verificar workflow Pages (y Supabase si tocaste `supabase/**`).
+6. `npm run build` + `npm test` → **push a la rama `beta`**, NO a `main` (ver abajo) → cuando el
+   usuario apruebe desde su móvil, Actions → «Promote beta» lo mezcla a `main`.
+
+### El canal `beta` no es opcional
+
+**Todo cambio que el usuario vaya a NOTAR se publica primero en `beta` y lo prueba él.** El canal
+existe desde la 4.8.0 justo para eso, con panel de revisión en el móvil incluido (`docs/TESTING.md`).
+
+Se saltó el 2026-07-25 con la 4.10.0: se pusheó directo a `main` y la estrenó él —y su padre y su
+pareja— sin que nadie la hubiera abierto en un móvil. Salió con el splash invisible. Su respuesta:
+«¿pa qué tengo el canal beta? ¿no habíamos quedado que siempre pruebo antes de subir nada?».
+Publicar a `main` sin su OK convierte a la familia del usuario en el banco de pruebas.
+
+Va directo a `main` **solo** lo que no puede afectar a lo que él ve: documentación, tests y tooling.
 
 **Solo se pushea trabajo TERMINADO y verificado.** Nunca a medias. OTA web ≠ APK: si el fix es Java/Kotlin, sin APK nuevo el móvil no lo tiene.
 
