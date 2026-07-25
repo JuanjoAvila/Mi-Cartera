@@ -34,7 +34,18 @@
      y en hosting estático no hay forma de poner un nonce por petición. Aun así, el resto de la
      política sigue valiendo: object-src/base-uri a 'none' y connect-src cerrado son justo lo que
      corta la exfiltración. (frame-ancestors se ignora en <meta>; GitHub Pages ya manda
-     X-Frame-Options: DENY.) -->
+     X-Frame-Options: DENY.)
+
+     ⚠ OJO CON LOS ASSETS DE LAS RELEASES DE GITHUB (canal beta y descarga del APK).
+     `github.com/.../releases/download/...` responde un **302 a otro dominio**, y la CSP se aplica
+     también al destino del redirect. GitHub movió ese destino de `objects.githubusercontent.com`
+     a **`release-assets.githubusercontent.com`**, y como el nuevo no estaba en la lista, `fetch`
+     moría antes de leer nada. El canal beta tiene una caída a estable pensada para «la beta aún
+     no existe», así que el fallo no se veía: el móvil leía el version.json de PRODUCCIÓN y
+     contestaba tan tranquilo «✓ estás a la última». O sea, el canal beta llevaba sin funcionar
+     desde ese cambio de GitHub, en silencio (el usuario lo cazó el 2026-07-25: canal activado,
+     beta publicada y el móvil diciendo v4.10.0). Los DOS dominios se quedan: el viejo por si
+     alguna release antigua todavía redirige ahí. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   base-uri 'none';
@@ -47,7 +58,7 @@
   font-src 'self' data:;
   img-src 'self' data: blob: https://www.gstatic.com;
   frame-src https://www.google.com;
-  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://www.google.com https://www.gstatic.com;
+  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://release-assets.githubusercontent.com https://www.google.com https://www.gstatic.com;
 " />
 <!-- Que no se filtre la URL de la app (ni sus parámetros) al salir hacia el banco. -->
 <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -10533,6 +10544,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.10.1", d:"25 jul 2026", t:"El canal de pruebas vuelve a funcionar", items:[
+    "🚧 Si activabas el canal de pruebas, la app te decía «✓ estás a la última» aunque hubiera una versión de prueba esperándote. GitHub cambió el sitio de donde se bajan esos ficheros y la app tenía apuntado el antiguo, así que la descarga moría — y como hay una red de seguridad que en ese caso mira el canal normal, no se veía ningún error: simplemente te contestaba que no había nada nuevo. Corregido.",
+    "🙈 Solo afecta al canal de pruebas: si nunca lo has activado, no te ha faltado ninguna actualización.",
+  ]},
   {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
     "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",
     "🥇 El CSV de Revolut ya no te dice «no he podido leer el CSV». Subiste el extracto de tu cuenta en euros —justo el que hace falta para saber cuánto ganas con el oro— y la app lo rechazaba, aunque lo había leído perfectamente. Ahora te lo confirma, se guarda los euros de tus conversiones y te dice qué fichero falta. Puedes soltarlos de uno en uno y en el orden que quieras: los va juntando.",

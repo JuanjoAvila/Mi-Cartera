@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.10.1] — 2026-07-25
+### El canal beta llevaba roto en silencio: faltaba en la CSP el dominio al que redirige GitHub
+
+Publicación MÍNIMA a producción, y solo por necesidad: **este arreglo no puede llegar por el canal beta, porque es justo lo que impide bajar la beta.** El resto del trabajo del día (splash, bienes, perfil) se queda en `beta` esperando la prueba del usuario, como toca.
+
+- `github.com/.../releases/download/beta/version.json` responde un **302 a otro dominio**, y la CSP se aplica también al destino del redirect. GitHub movió ese destino de `objects.githubusercontent.com` a **`release-assets.githubusercontent.com`**; en `connect-src` solo estaba el viejo, así que `fetch` moría antes de leer nada.
+- **Por qué nadie lo vio:** `mcFetchManifest` cae a estable cuando el manifiesto de beta falla — una red de seguridad pensada para «la beta todavía no existe». Con el dominio bloqueado, esa red convertía el fallo en un silencio perfecto: el móvil leía el `version.json` de PRODUCCIÓN y respondía «✓ estás a la última · web v4.10.0» con el canal beta activado y la beta publicada. Lo cazó el usuario, con captura.
+- **Guarda:** `tests/security.test.mjs` comprueba ahora que `connect-src` deje pasar lo que la app SÍ descarga (la nube, los tipos de cambio, GitHub y su dominio de redirect), no solo que no tenga comodines. Una CSP demasiado estrecha no da error visible: el `fetch` rechaza y el `catch` de turno se lo traga.
+- **`docs-frescura`:** en la rama `beta` deja de exigir un bump de `VERSION` por cada arreglo — `beta.yml` publica `VERSION.RUN_NUMBER`, así que cada push ya sale con número nuevo. Exigir un bump por arreglo durante una ronda de pruebas es justo lo que empuja a saltarse el canal. (Detecta la rama con `git branch --show-current`: como existe también una RELEASE llamada `beta`, `rev-parse --abbrev-ref` devuelve «heads/beta».)
+
 ## [4.10.0] — 2026-07-25
 ### El gesto del perfil (esta vez con el caso real), el CSV que se rechazaba a sí mismo, splash, Cartera ordenable y seguridad del servidor
 

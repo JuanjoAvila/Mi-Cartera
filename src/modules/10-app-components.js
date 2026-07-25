@@ -888,6 +888,10 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.10.1", d:"25 jul 2026", t:"El canal de pruebas vuelve a funcionar", items:[
+    "🚧 Si activabas el canal de pruebas, la app te decía «✓ estás a la última» aunque hubiera una versión de prueba esperándote. GitHub cambió el sitio de donde se bajan esos ficheros y la app tenía apuntado el antiguo, así que la descarga moría — y como hay una red de seguridad que en ese caso mira el canal normal, no se veía ningún error: simplemente te contestaba que no había nada nuevo. Corregido.",
+    "🙈 Solo afecta al canal de pruebas: si nunca lo has activado, no te ha faltado ninguna actualización.",
+  ]},
   {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
     "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",
     "🥇 El CSV de Revolut ya no te dice «no he podido leer el CSV». Subiste el extracto de tu cuenta en euros —justo el que hace falta para saber cuánto ganas con el oro— y la app lo rechazaba, aunque lo había leído perfectamente. Ahora te lo confirma, se guarda los euros de tus conversiones y te dice qué fichero falta. Puedes soltarlos de uno en uno y en el orden que quieras: los va juntando.",

@@ -149,8 +149,20 @@ ok(`VERSION = ${VERSION}`);
     const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
     return r.status === 0 ? r.stdout.trim() : null;
   };
-  const lastBump = git(["log", "-1", "--format=%H", "--", "VERSION"]);
-  if (!lastBump) {
+  /* En la rama `beta` esta comprobación NO aplica: `beta.yml` publica `VERSION.RUN_NUMBER`, así
+     que CADA push a beta sale con un número distinto y el móvil del dueño sí se entera. Exigir
+     un bump de `VERSION` por cada arreglo durante una ronda de pruebas obligaría a inventar
+     versiones que nadie va a publicar — justo lo que hace que la gente se salte el canal. El
+     bump se hace UNA vez, al abrir la ronda, y se comprueba al promocionar a `main`. */
+  /* `git branch --show-current` y no `rev-parse --abbrev-ref HEAD`: como existe también una
+     RELEASE llamada `beta`, el nombre es ambiguo y rev-parse devuelve «heads/beta». Se limpia el
+     prefijo igualmente por si el entorno usa la otra forma. */
+  const rama = (process.env.GITHUB_REF_NAME || git(["branch", "--show-current"]) || git(["rev-parse", "--abbrev-ref", "HEAD"]) || "")
+    .replace(/^heads\//, "");
+  const lastBump = rama === "beta" ? null : git(["log", "-1", "--format=%H", "--", "VERSION"]);
+  if (rama === "beta") {
+    console.log("  ⊘ rama beta: cada push publica VERSION.RUN_NUMBER, no hace falta bump");
+  } else if (!lastBump) {
     console.log("  ⊘ sin historia de git: no se comprueba el bump");
   } else {
     // Lo que el usuario NOTA y viaja por OTA. La doc, los tests y el tooling no cuentan: cambiar
