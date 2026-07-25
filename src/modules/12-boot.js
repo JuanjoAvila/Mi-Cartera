@@ -34,18 +34,51 @@ function mcSetChannel(c){
   }catch(e){}
 }
 function mcUpdBase(){ return mcChannel()==="beta" ? _mcBetaBASE : _mcOtaBASE; }
-/* Baja un manifiesto (version.json / apk.json) del canal activo. Si estás en beta y ese fichero
-   no existe todavía, cae a estable: nunca dejamos un móvil sin poder actualizarse por estar en
-   un canal vacío. */
+/* Los manifiestos de la beta viven en los assets de una Release de GitHub, y esos assets NO se
+   pueden leer con `fetch` desde la app: `github.com/.../releases/download/…` responde un 302 a
+   `release-assets.githubusercontent.com` y NINGUNO de los dos saltos manda cabeceras CORS
+   (comprobado con curl el 2026-07-25). El origen de la WebView es `https://localhost`, así que el
+   navegador tira la respuesta y `fetch` peta con un TypeError vacío — exactamente el mismo
+   síntoma que daba la CSP, por eso arreglar la CSP (necesario) no destapó esto.
+   La petición la hace ANDROID (CapacitorHttp), que no sabe ni de CORS ni de CSP — la misma vía
+   que usa el login de MyInvestor (06-sync-brokers). En web se queda el `fetch` de siempre: el
+   canal beta solo existe dentro del APK. */
+function mcNativeHttp(){
+  try{
+    var cap=window.Capacitor;
+    if(!(cap&&cap.isNativePlatform&&cap.isNativePlatform())) return null;
+    var p=cap.Plugins&&cap.Plugins.CapacitorHttp;
+    return (p&&typeof p.request==="function")?p:null;
+  }catch(e){ return null; }
+}
+/* Devuelve algo con la forma mínima de una Response (ok/status/json), venga del fetch o del nativo. */
+function mcGetJson(url){
+  var nat=mcNativeHttp();
+  if(!nat) return fetch(url,{cache:"no-store"});
+  return nat.request({url:url, method:"GET", headers:{"Cache-Control":"no-cache"}}).then(function(r){
+    var st=Number((r&&r.status)||0), body=r&&r.data;
+    return { ok:st>=200&&st<300, status:st, json:function(){
+      // GitHub sirve el asset como application/octet-stream, así que el cuerpo llega en crudo.
+      return (body&&typeof body==="object")?body:JSON.parse(String(body||"null"));
+    }};
+  });
+}
+/* Baja un manifiesto (version.json / apk.json) del canal activo.
+   La caída a estable es SOLO para «todavía no hay beta publicada» (404). Cualquier otro fallo se
+   propaga: tragárselo es lo que dejó el canal beta roto en silencio: el móvil leía el manifiesto
+   de PRODUCCIÓN y contestaba «✓ estás a la última» con la beta publicada delante. Un canal que no
+   responde no es un canal sin novedades. */
 function mcFetchManifest(name){
-  var url=mcUpdBase()+name+"?ts="+Date.now();
-  return fetch(url,{cache:"no-store"}).then(function(r){
+  var estable=function(){ return mcGetJson(_mcOtaBASE+name+"?ts="+Date.now()); };
+  if(mcChannel()!=="beta"){
+    return estable().then(function(r){ if(!r.ok) throw new Error(name+": "+r.status); return r; });
+  }
+  return mcGetJson(_mcBetaBASE+name+"?ts="+Date.now()).then(function(r){
     if(r.ok) return r;
-    if(mcChannel()!=="beta") throw new Error(name+": "+r.status);
-    return fetch(_mcOtaBASE+name+"?ts="+Date.now(),{cache:"no-store"});
-  }).catch(function(e){
-    if(mcChannel()!=="beta") throw e;
-    return fetch(_mcOtaBASE+name+"?ts="+Date.now(),{cache:"no-store"});
+    if(r.status===404) return estable();   // la release `beta` no existe o aún no tiene ese asset
+    throw new Error("beta/"+name+": HTTP "+r.status);
+  }, function(e){
+    throw new Error("beta/"+name+": "+((e&&e.message)||e));
   });
 }
 
@@ -220,7 +253,11 @@ window._mcCheckOtaUpdates=function(opts){
       }
       return window._mcDownloadOta(up, v, opts);
     }).catch(function(e){
-      if(opts&&opts.showToast) opts.showToast("⚠ "+((e&&e.message)||e));
+      var m=(e&&e.message)||String(e);
+      if(opts&&opts.showToast) opts.showToast("⚠ "+m);
+      // A la telemetría también: el chequeo automático no tiene toast, y sin rastro un canal que
+      // no contesta es indistinguible de «no hay nada nuevo» (así se perdieron semanas de beta).
+      try{ cloud.logEvent('error','OTA '+mcChannel()+': '+m.slice(0,200)); }catch(_){}
       return false;
     }).finally(function(){ _mcOtaChecking=false; });
 };
@@ -268,7 +305,12 @@ window._mcCheckApkUpdate=function(opts){
         }
         return true;
       });
-    }).catch(function(){ return false; });
+    }).catch(function(e){
+      var m=(e&&e.message)||String(e);
+      if(toast&&manual) toast("⚠ "+m);
+      try{ cloud.logEvent('error','APK '+mcChannel()+': '+m.slice(0,200)); }catch(_){}
+      return false;
+    });
 };
 
 (function(){

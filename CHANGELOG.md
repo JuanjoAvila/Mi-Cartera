@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.10.2] — 2026-07-25
+### El canal beta, capítulo 2: la CSP era solo la mitad — los assets de GitHub no llevan CORS
+
+La 4.10.1 arregló la CSP y **el canal siguió sin funcionar**: el móvil, ya con la 4.10.1 puesta y la beta 4.11.0.6 publicada, seguía contestando «✓ estás a la última · web v4.10.1». Captura del usuario, 21:26.
+
+- **Causa real:** `github.com/.../releases/download/beta/version.json` responde un 302 a `release-assets.githubusercontent.com` y **ninguno de los dos saltos manda `Access-Control-Allow-Origin`** (verificado con `curl -H "Origin: https://localhost"`: el primero solo trae `Location`, el segundo un 200 pelado). El origen de la WebView es `https://localhost`, así que el navegador tira la respuesta y `fetch` peta con un `TypeError` vacío — **el mismo síntoma exacto que daba la CSP**, por eso el arreglo anterior pareció completo. Los assets de una Release no son CORS-friendly y no hay forma de hacer que lo sean: Pages sí lo es, y por eso el canal estable nunca falló.
+- **Arreglo:** en el móvil el manifiesto lo pide **Android** (`CapacitorHttp`), que no sabe ni de CORS ni de CSP — la misma vía que ya usa el login de MyInvestor desde la 4.0.12. En web se queda el `fetch` de siempre: el canal beta solo existe dentro del APK. El `bundle.zip` no estaba afectado (lo baja el plugin nativo), pero **nunca se había descargado ni una vez** (`downloadCount: 0` en la release) porque el manifiesto jamás llegaba.
+- **Se acabó el silencio.** `mcFetchManifest` cae a estable **solo con un 404** («aún no hay beta publicada»). Cualquier otro fallo se propaga: sale en el toast de «Buscar actualización» y queda en `app_events`. Un canal que no responde no es un canal sin novedades — tragárselo es lo que convirtió dos fallos distintos en el mismo «estás a la última» durante semanas.
+- **Guarda:** `tests/updates.test.mjs` ejecuta el trozo REAL del monolito (lo extrae de `public/index.html` y lo corre en un `vm` con `fetch`/`CapacitorHttp` de mentira) y comprueba los cuatro casos: fallo de red → rechaza, 5xx → rechaza, 404 → cae a estable, y en nativo la petición sale por Android y **no** por el `fetch` de la WebView. El test que había copiaba `newerVer` a mano y no ejecutaba una sola línea de lo que se despliega.
+
 ## [4.10.1] — 2026-07-25
 ### El canal beta llevaba roto en silencio: faltaba en la CSP el dominio al que redirige GitHub
 
