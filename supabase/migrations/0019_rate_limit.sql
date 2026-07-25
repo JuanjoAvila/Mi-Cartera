@@ -61,9 +61,11 @@ $$;
 revoke all on function public.check_rate_limit(text, integer, integer) from public, anon, authenticated;
 grant execute on function public.check_rate_limit(text, integer, integer) to service_role;
 
--- Limpieza: las filas viejas no sirven para nada y la tabla no debe crecer sin fin.
--- Se hace aquí (barrido perezoso) en vez de con otro cron: una función más que mantener por
--- unos pocos kilobytes no compensa.
+-- Limpieza A MANO, y a propósito: NADIE la llama sola. La tabla no crece con las peticiones sino
+-- con los cubos DISTINTOS (un hash de IP para ingest, un usuario para el login de MyInvestor), que
+-- se reutilizan; para el círculo de esta app son unas pocas filas de unos pocos bytes. Montar un
+-- cron o meter un barrido en el camino de cada petición por eso sería pagar mantenimiento por
+-- nada. Si algún día la tabla creciera de verdad: `select public.prune_rate_limits();`.
 create or replace function public.prune_rate_limits() returns void
 language sql security definer set search_path = public as $$
   delete from public.rate_limits where window_start < now() - interval '2 days';
