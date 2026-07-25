@@ -13,6 +13,9 @@ test("Perfil: escala desde el avatar y vuelve a él al cerrar", async ({ page })
   await seedLoggedInDashboard(page);
   await page.goto("/");
   await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+  // El splash tapa la pantalla hasta ~1,8 s (y sí, se come los toques: es un overlay opaco).
+  // Los toques por CDP van a lo que esté ARRIBA, así que hay que esperar a que se retire.
+  await page.locator("#mc-load").waitFor({ state: "detached", timeout: 15_000 });
   const dismissNews = page.getByRole("button", { name: /Entendido|Got it/i });
   if (await dismissNews.count()) await dismissNews.first().click();
 
@@ -50,6 +53,9 @@ test("Perfil: pull-down con el dedo abre; tirar abajo cierra", async ({ page }) 
   await seedLoggedInDashboard(page);
   await page.goto("/");
   await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+  // El splash tapa la pantalla hasta ~1,8 s (y sí, se come los toques: es un overlay opaco).
+  // Los toques por CDP van a lo que esté ARRIBA, así que hay que esperar a que se retire.
+  await page.locator("#mc-load").waitFor({ state: "detached", timeout: 15_000 });
   const dismissNews = page.getByRole("button", { name: /Entendido|Got it/i });
   if (await dismissNews.count()) await dismissNews.first().click();
 
@@ -88,6 +94,9 @@ test.describe("Perfil en un móvil de verdad (el panel scrollea)", () => {
     await seedLoggedInDashboard(page);
     await page.goto("/");
     await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+  // El splash tapa la pantalla hasta ~1,8 s (y sí, se come los toques: es un overlay opaco).
+  // Los toques por CDP van a lo que esté ARRIBA, así que hay que esperar a que se retire.
+  await page.locator("#mc-load").waitFor({ state: "detached", timeout: 15_000 });
     const dn = page.getByRole("button", { name: /Entendido|Got it/i });
     if (await dn.count()) await dn.first().click();
     await page.locator(".v4-avatar").click();
@@ -131,6 +140,9 @@ test.describe("Perfil en un móvil de verdad (el panel scrollea)", () => {
     await seedLoggedInDashboard(page);
     await page.goto("/");
     await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+  // El splash tapa la pantalla hasta ~1,8 s (y sí, se come los toques: es un overlay opaco).
+  // Los toques por CDP van a lo que esté ARRIBA, así que hay que esperar a que se retire.
+  await page.locator("#mc-load").waitFor({ state: "detached", timeout: 15_000 });
     const dn = page.getByRole("button", { name: /Entendido|Got it/i });
     if (await dn.count()) await dn.first().click();
 

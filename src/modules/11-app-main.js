@@ -1536,7 +1536,11 @@ function App(){
       const h=window.innerHeight||700;
       const dist=pDY.current;
       const dt=Math.max(1,Date.now()-startT.current);
-      const open=dist>h*0.16 || ((dist/dt)>0.5 && dist>36);
+      /* UMBRAL PARA ABRIR, más bajo (2026-07-25). Pedía 0,16 de la pantalla —unos 136 px en su
+         móvil— y en el vídeo se ve el panel asomar en miniatura y volverse a cerrar una y otra
+         vez: el tirón no llegaba, y desde fuera parece que la app parpadea sola. 0,11 (~95 px)
+         sigue estando muy por encima de un roce accidental, y el flick perdona más. */
+      const open=dist>h*0.11 || ((dist/dt)>0.35 && dist>28);
       setProfileOpen(open);
       setProfileProgress(open?1:0);
       pDY.current=0;

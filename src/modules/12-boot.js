@@ -317,6 +317,17 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0 && !_mc
     }).catch(function(){});
   });
 }
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
+/* PINTAR EL SPLASH ANTES DE MONTAR LA APP. `render()` aquí mismo encadena con el parseo del
+   bundle sin soltar el hilo, así que el navegador no llegaba a pintar NADA hasta tener el árbol
+   de React entero: pantalla negra y splash invisible (vídeo del usuario, 2026-07-25). Dos rAF
+   sueltan el hilo el tiempo justo para que se pinte lo que ya está en el DOM —el splash— antes
+   de empezar. No retrasa nada perceptible: son dos frames. */
+(function(){
+  var montar=function(){
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(ErrorBoundary,null,React.createElement(App)));
+  };
+  if(typeof requestAnimationFrame!=="function"){ montar(); return; }
+  requestAnimationFrame(function(){ requestAnimationFrame(montar); });
+})();
 // Tras pintar Resumen: carga Sentry sin pelearse con el arranque (antes bloqueaba ~340 KB).
 mcScheduleIdle(function(){ mcLoadSentryDeferred(); }, 1800);

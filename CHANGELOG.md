@@ -2,6 +2,28 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.11.0] — 2026-07-25
+### El splash no se veía (y el motivo era de libro), bienes fuera de las cuentas
+
+#### El splash: existía en el HTML y no lo veía nadie
+Feedback del usuario, con vídeo: «¿has aplicado el splash? porque no furula». Tenía razón, y `grep` no lo habría cazado nunca — el elemento estaba en el artefacto desplegado. Dos causas, las dos comprobadas midiendo el DOM en el navegador (no leyendo el código):
+- **Estaba DENTRO de `#root`, y `ReactDOM.createRoot()` vacía su contenedor en el primer render.** React se lo llevaba por delante al montar. Y el vigilante esperaba a `#root` con **más de un hijo** para retirarlo — condición que por eso mismo no se cumplía jamás. Medido: `#mc-load` ausente del DOM ya a los 150 ms. Ahora es **hermano** de `#root` y el vigilante mira `>0`.
+- **React, ReactDOM y supabase-js iban en el `<head>`.** Un `<script>` inline bloquea el parser: el navegador no llegaba al `<body>` —y por tanto no tenía nada que pintar— hasta haber ejecutado ~600 KB de JS. Eso es el negro que se ve en el vídeo entre el splash nativo de Android y la app. Movidos justo DESPUÉS del splash, conservando el orden entre ellos.
+- Además: **mínimo 520 ms en pantalla** (con la nube resuelta, `__mcBootReady` llegaba antes de que React pintara y el splash se iba en un frame — un parpadeo se lee como un fallo) y **dos `requestAnimationFrame` antes de montar** en `12-boot.js`, para que el hilo suelte y se pinte lo que ya está en el DOM.
+- `e2e/splash.spec.mjs` (3): que sea hermano de `#root`, que los scripts pesados vayan después, y que **siga en pantalla después de que React monte** — que es lo único que significa «se ve».
+
+#### Corrección a la 4.10.0
+La nota de la 4.10.0 decía que el splash tapaba «el patrimonio viejo un segundo antes que el bueno». **Era falso**: el número no venía mal, es una **animación que cuenta hasta la cifra final** (se ve clarísimo a 8 fps: 11.195 → 73.427 → 87.164 → … → 189.394 en menos de un segundo). El splash sigue teniendo sentido —tapa el arranque— pero por el motivo correcto.
+
+#### Bienes fuera de «Tus cuentas»
+Al hacer Cartera ordenable, el piso y el coche quedaron dentro del bloque de las cuentas del banco («¿por qué has metido bienes junto con mis cuentas? sepáralo»). `Wealth` acepta ahora `parte` (`"cuentas"` / `"bienes"`) y Cartera los pinta como dos bloques ordenables independientes. Sin `parte` sigue pintando los dos, que es como lo usa el resto de la app.
+
+#### Perfil
+Umbral para abrir bajado de 0,16 a 0,11 de la pantalla (~136 px → ~95 px en su móvil) y flick más permisivo. En el vídeo se ve el panel asomar en miniatura y volver a cerrarse una y otra vez: el tirón no llegaba al umbral. **Queda pendiente de su prueba**: el cierre con el panel scrolleado se arregló en la 4.10.0 y hay que confirmar en el móvil que era eso.
+
+#### Proceso
+**Esta versión va al canal `beta`, no a `main`.** La 4.10.0 se publicó directa a producción saltándose el canal de pruebas que existe justo para esto, y lo estrenó el usuario en su móvil. Ver AGENTS §6.
+
 ## [4.10.0] — 2026-07-25
 ### El gesto del perfil (esta vez con el caso real), el CSV que se rechazaba a sí mismo, splash, Cartera ordenable y seguridad del servidor
 

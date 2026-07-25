@@ -888,6 +888,12 @@ function FeedbackPanel({state, set, showToast, onClose}){
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
 var RELEASE_NOTES=[
+  {v:"4.11.0", d:"25 jul 2026", t:"Ahora sí: el splash se ve, y los bienes van por su cuenta", items:[
+    "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
+    "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
+    "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
+    "👤 El perfil se abre con menos tirón: hacía falta arrastrar demasiado y se cerraba solo a mitad.",
+  ]},
   {v:"4.10.0", d:"25 jul 2026", t:"El perfil ya se cierra a la primera, el oro de Revolut entra, y una pantalla de entrada de verdad", items:[
     "👤 El gesto del perfil, arreglado de verdad. Si habías bajado un poco dentro del perfil y luego tirabas para cerrarlo, la pantalla se ponía a parpadear entre el perfil y el resumen y no cerraba nunca. Ahora el dedo primero sube el contenido y, al llegar arriba, el panel empieza a encogerse desde donde está — sin saltos. Y ABRIRLO también: se quedó sin los dos arreglos que sí recibió el cierre, por eso seguía yendo a tirones y mezclando las dos pantallas.",
     "🥇 El CSV de Revolut ya no te dice «no he podido leer el CSV». Subiste el extracto de tu cuenta en euros —justo el que hace falta para saber cuánto ganas con el oro— y la app lo rechazaba, aunque lo había leído perfectamente. Ahora te lo confirma, se guarda los euros de tus conversiones y te dice qué fichero falta. Puedes soltarlos de uno en uno y en el orden que quieras: los va juntando.",
