@@ -125,7 +125,9 @@ window._mcNotifyUpdate=function(version, kind){
   try{
     var nat=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
     if(nat&&nat.showNotification){
-      var opts={title:title, body:body};
+      // `tag` para que el nativo use un id ESTABLE y el aviso se sustituya en vez de apilarse
+      // («las notis se duplican», 2026-07-26). Con APK vieja se ignora sin romper nada.
+      var opts={title:title, body:body, tag:"update|"+(kind==="apk"?"apk":"ota")};
       if(_mcNative) opts.gotoTarget=kind==="apk"?"update|apk":"update|ota";
       nat.showNotification(opts).catch(function(){});
       // Marca en nativo para que el worker no vuelva a avisar la misma versión.

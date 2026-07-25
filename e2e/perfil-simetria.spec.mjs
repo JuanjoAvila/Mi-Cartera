@@ -121,6 +121,53 @@ test("tiro, no llega, y vuelvo a tirar: el segundo intento NO se ignora", async 
   await expect(panel, "el segundo intento, justo después, tiene que cerrar").not.toHaveClass(/open/, { timeout: 3_000 });
 });
 
+/* EL CASO QUE NINGUNA PRUEBA MIRABA: el panel SCROLLEADO. Todas empezaban con el perfil arriba
+ * del todo, que es justo la situación en la que el gesto siempre funcionó. Con `scrollTop=220` —lo
+ * normal, porque el contenido mide ~1.680 px y uno MIRA el perfil antes de cerrarlo— el arrastre
+ * hacia abajo solo scrolleaba y al soltar el perfil seguía abierto. Tres rondas de arreglos
+ * pasaron por encima de esto (2026-07-26). */
+test.describe("con el panel scrolleado", () => {
+  const scrollear = (page, y) => page.locator(".profile-pull").evaluate((el, v) => { el.scrollTop = v; }, y);
+
+  test("arrastrar largo desde el medio: el scroll llega al tope y el cierre toma el relevo", async ({ page }) => {
+    const cdp = await app(page);
+    const panel = page.locator(".profile-pull");
+    await page.locator(".v4-avatar").click();
+    await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+    await page.waitForTimeout(700);
+    await scrollear(page, 220);
+
+    await arrastrarDespacio(cdp, page, 200, 24, 14, 25);
+    await expect(panel, "recogido el scroll, el mismo gesto tiene que seguir cerrando").not.toHaveClass(/open/, { timeout: 3_000 });
+  });
+
+  test("agarrar por la franja de arriba cierra aunque quede scroll por recoger", async ({ page }) => {
+    const cdp = await app(page);
+    const panel = page.locator(".profile-pull");
+    await page.locator(".v4-avatar").click();
+    await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+    await page.waitForTimeout(700);
+    await scrollear(page, 220);
+
+    // La cabecera se va con el scroll, así que el asa es la franja (72 px), no el elemento.
+    await arrastrarDespacio(cdp, page, 24, 8, 14, 25);
+    await expect(panel, "la franja de arriba es asa: cierra esté como esté el scroll").not.toHaveClass(/open/, { timeout: 3_000 });
+  });
+
+  test("un arrastre corto en mitad del panel SCROLLEA, no cierra", async ({ page }) => {
+    const cdp = await app(page);
+    const panel = page.locator(".profile-pull");
+    await page.locator(".v4-avatar").click();
+    await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+    await page.waitForTimeout(700);
+    await scrollear(page, 220);
+
+    await arrastrarDespacio(cdp, page, 300, 6, 12, 25);
+    await expect(panel, "con scroll pendiente, un gesto corto es del scroll").toHaveClass(/open/);
+    expect(await panel.evaluate((el) => el.scrollTop), "y tiene que haber scrolleado").toBeLessThan(220);
+  });
+});
+
 test("tocar mientras la animación se va NO la corta a medias", async ({ page }) => {
   const cdp = await app(page);
   const panel = page.locator(".profile-pull");

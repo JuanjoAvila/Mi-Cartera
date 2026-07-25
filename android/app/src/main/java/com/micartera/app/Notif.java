@@ -18,6 +18,25 @@ import android.os.Build;
 class Notif {
     static final String CHANNEL = "micartera";
 
+    /* IDS ESTABLES POR PROPÓSITO. Android reemplaza una notificación solo si repites su id; con un
+     * id nuevo cada vez, cada aviso se APILA. Y eso es justo lo que hacían las dos rutas que
+     * llegan aquí: `(int)(System.currentTimeMillis() % 100000)`. Resultado, feedback del
+     * 2026-07-26: «las notis se duplican». Peor aún con las de actualización, porque hay DOS
+     * emisores para lo mismo —el worker de fondo (OtaCheckWorker) y la web cuando la app está
+     * abierta— y cada uno ponía la suya. Ahora comparten id: el segundo aviso sustituye al
+     * primero en vez de sumarse. */
+    static final int ID_UPDATE_OTA = 71001;
+    static final int ID_UPDATE_APK = 71002;
+
+    /** Id estable a partir de una etiqueta ("mc-update-4.11.0.8", "exp|12.34|Mercadona"…). */
+    static int idFor(String tag) {
+        if (tag == null || tag.isEmpty()) return 70000;
+        if (tag.startsWith("update|ota") || tag.startsWith("mc-update")) return ID_UPDATE_OTA;
+        if (tag.startsWith("update|apk")) return ID_UPDATE_APK;
+        // Rango propio (10000-69999) para que nunca choque con los ids fijos de arriba.
+        return 10000 + Math.abs(tag.hashCode() % 60000);
+    }
+
     private static void ensureChannel(Context ctx) {
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager nm = ctx.getSystemService(NotificationManager.class);

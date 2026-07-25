@@ -27,8 +27,11 @@ public class OtaCheckWorker extends Worker {
     static final String KEY_BG_NOTIFIED = "bg_notified_ver";
     static final String KEY_BG_APK = "bg_notified_apk";
     private static final String BASE = "https://juanjoavila.github.io/Mi-Cartera/";
-    private static final int NOTIF_OTA = 71001;
-    private static final int NOTIF_APK = 71002;
+    // Compartidos con las notis que lanza la web (Notif.idFor): el aviso de «hay versión nueva» es
+    // UNO, lo emita el worker con la app cerrada o la propia app abierta. Antes eran dos ids
+    // distintos y salían las dos a la vez («las notis se duplican», 2026-07-26).
+    private static final int NOTIF_OTA = Notif.ID_UPDATE_OTA;
+    private static final int NOTIF_APK = Notif.ID_UPDATE_APK;
 
     public OtaCheckWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);

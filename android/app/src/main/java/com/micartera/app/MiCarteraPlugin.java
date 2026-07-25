@@ -171,8 +171,14 @@ public class MiCarteraPlugin extends Plugin {
         String body = call.getString("body");
         String gotoTarget = call.getString("gotoTarget");
         if (body == null || body.isEmpty()) { call.reject("body vacío"); return; }
+        // El id sale de la ETIQUETA, no del reloj: con un id nuevo cada vez, cada aviso se apilaba
+        // en vez de sustituir al anterior («las notis se duplican», 2026-07-26). La web manda `tag`
+        // (p.ej. "mc-update-4.11.0.8"); si no lo manda —bundle viejo—, se cae al deep-link, que
+        // para los avisos de actualización ya distingue ota de apk.
+        String tag = call.getString("tag");
+        if (tag == null || tag.isEmpty()) tag = gotoTarget != null ? gotoTarget : String.valueOf(body);
         Notif.show(getContext(), title != null ? title : "Mi Cartera", body,
-                (int) (System.currentTimeMillis() % 100000), gotoTarget);
+                Notif.idFor(tag), gotoTarget);
         call.resolve();
     }
 

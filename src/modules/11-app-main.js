@@ -936,27 +936,57 @@ function App(){
     el.style.transform=""; el.style.opacity=""; el.style.borderRadius="";
     freezeShell(false);
   };
+  /* ¿DE QUIÉN ES ESTE DEDO: DEL CIERRE O DEL SCROLL? Se decide AL POSARLO, no en cada frame.
+     Aquí estaba el fallo que sobrevivió a tres rondas de arreglos, y que ninguna prueba veía
+     porque todas empezaban con el panel arriba del todo. Reproducido por fin el 2026-07-26 con el
+     panel scrolleado (`scrollTop=220`, lo normal: su contenido mide ~1.680 px y él lo MIRA antes
+     de cerrarlo): 132 px de arrastre hacia abajo no cerraban nada, solo scrolleaban, y al soltar
+     el perfil seguía abierto. Eso es «al mantener el dedo y deslizar, a la mínima vuelve a la
+     posición inicial con la pantalla del perfil abierta».
+     Con la regla vieja —«mientras quede scroll, el dedo es del scroll»— para cerrar había que
+     recoger los 220 px de scroll Y ADEMÁS arrastrar otros 53 en el mismo gesto: 273 px de un
+     tirón en una pantalla de 851. Nadie hace eso. Ahora:
+       · La FRANJA DE ARRIBA del panel es asa: un arrastre que empieza ahí cierra, esté como esté
+         el scroll. Es donde vive la cabecera cuando el panel está arriba, y donde la mano va a
+         buscarla igualmente cuando no lo está (la cabecera se va con el scroll: comprobado que
+         apuntar a `.profile-pull-h` no sirve de nada estando abajo). Sin tocar el diseño.
+       · Fuera de esa franja, manda dónde estaba el scroll al posar el dedo: arriba → cierra;
+         más abajo → scrollea, y si el scroll llega al tope durante el MISMO gesto, el cierre
+         toma el relevo re-anclando una vez (no en cada frame). Verificado: 220 px de scroll se
+         recogen y el panel empieza a encoger sin soltar el dedo.
+     Tirar hacia ARRIBA nunca es del cierre: eso siempre scrollea, se agarre donde se agarre. */
+  const PROF_ASA=72;
+  const pOwn=useRef(false);
   const profileStart=function(e){
     if(profBusy.current) return;   // el panel está asentándose: este toque no es para el gesto
     const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now();
+    const el=profileRef.current;
+    let asa=false;
+    try{ asa=(t.clientY-el.getBoundingClientRect().top)<PROF_ASA; }catch(_){}
+    pOwn.current = asa || !el || el.scrollTop<=0;
   };
   const profileMove=function(e){
     if(!pDrag.current) return;
     const t=e.touches[0];
-    /* EL PERFIL SCROLLEA: su contenido mide ~1.680 px y en un móvil de verdad no cabe. Mientras
-       quede scroll por recoger, el dedo es del scroll y NO del cierre — y el gesto se re-ancla al
-       dedo en cada frame.
-       Sin el re-anclaje, `ddy` seguía contando desde donde empezaste a scrollear, así que en
-       cuanto scrollTop tocaba 0 el panel PEGABA UN SALTO a miniatura; y como el scroll rebota y
-       vuelve a scrollTop>0, los estilos se limpiaban y volvía a pantalla completa. Ida y vuelta
-       varias veces por segundo: es el parpadeo del vídeo del usuario, en el que el perfil y el
-       Resumen se turnaban y el gesto no cerraba nunca (2026-07-25, «al volver aún no va bien»). */
-    if(profileRef.current && profileRef.current.scrollTop>0){
-      if(pAx.current==="y") profileRelease();
+    if(!pOwn.current){
+      // El dedo es del scroll. Cuando llegue al tope, el cierre toma el relevo desde AQUÍ mismo:
+      // re-anclar una sola vez evita el salto a miniatura que daba el re-anclaje por frame.
+      if(profileRef.current && profileRef.current.scrollTop>0){
+        pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDY.current=0; pT.current=Date.now();
+        return;
+      }
+      pOwn.current=true;
       pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDY.current=0; pT.current=Date.now();
       return;
     }
     const ddx=t.clientX-pSX.current, ddy=t.clientY-pSY.current;
+    /* ESTE preventDefault NO HACÍA NADA HASTA HOY. React registra `onTouchMove` como listener
+       PASIVO, así que el navegador lo ignoraba y dejaba un aviso en consola que nadie miraba
+       («Unable to preventDefault inside passive event listener invocation»). Resultado: el
+       navegador se quedaba el gesto para scrollear y el cierre competía contra él y perdía. Por
+       eso los listeners se registran ahora a mano con `{passive:false}` (ver el efecto de abajo).
+       Solo se corta el gesto hacia ABAJO: hacia arriba el dedo es del scroll, siempre. */
+    if(ddy>0 && e.cancelable) e.preventDefault();
     if(pAx.current===null){
       if(Math.abs(ddx)<8 && Math.abs(ddy)<8) return;
       pAx.current=Math.abs(ddy)>Math.abs(ddx)?"y":"x";
@@ -976,11 +1006,11 @@ function App(){
        avatar y con el velo oscureciendo el fondo. Un fundido de una capa a pantalla completa
        sobre contenido siempre da papilla, por muy suave que sea. */
     profileQueue(sc, 1);
-    if(e.cancelable) e.preventDefault();
   };
   const profileEnd=function(){
     if(!pDrag.current) return; pDrag.current=false;
     profileRelease();
+    pOwn.current=false;
     if(pAx.current!=="y"){ pAx.current=null; return; }
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
@@ -998,6 +1028,29 @@ function App(){
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
   };
+
+  /* LOS TOQUES DEL PERFIL SE REGISTRAN A MANO, NO POR PROPS DE REACT. React ata `onTouchStart` y
+     `onTouchMove` al contenedor raíz **en modo pasivo**, y en un listener pasivo `preventDefault()`
+     es papel mojado: el navegador se queda el gesto para scrollear y el cierre no tiene nada que
+     hacer. Solo dejaba un aviso en consola («Unable to preventDefault inside passive event
+     listener invocation») que no rompía ningún test. Con `{passive:false}` el gesto es nuestro.
+     `touchcancel` cuenta como final: si el sistema se lleva el dedo (una noti, el borde de la
+     pantalla) y no lo tratáramos, el panel se quedaría encogido a medias y con `.dragging` puesto,
+     o sea sin transición, para siempre. */
+  useEffect(function(){
+    const el=profileRef.current;
+    if(!el||!profileOpen) return undefined;
+    el.addEventListener("touchstart", profileStart, {passive:true});
+    el.addEventListener("touchmove", profileMove, {passive:false});
+    el.addEventListener("touchend", profileEnd, {passive:true});
+    el.addEventListener("touchcancel", profileEnd, {passive:true});
+    return function(){
+      el.removeEventListener("touchstart", profileStart);
+      el.removeEventListener("touchmove", profileMove);
+      el.removeEventListener("touchend", profileEnd);
+      el.removeEventListener("touchcancel", profileEnd);
+    };
+  },[profileOpen]);
 
   const [authStart,setAuthStart]=useState("in");   // modo con el que se abre AuthPanel ("in"/"up")
   const onCloudClick=function(){
@@ -1866,12 +1919,11 @@ function App(){
       drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
+    /* Los gestos NO van por props de React (ver el efecto `profileOpen` de arriba): React registra
+       `onTouchMove` como pasivo y ahí `preventDefault()` no hace nada. */
     React.createElement("div",{
       className:"profile-pull"+(profileOpen?" open":""),
-      ref:profileRef,
-      onTouchStart:profileOpen?profileStart:undefined,
-      onTouchMove:profileOpen?profileMove:undefined,
-      onTouchEnd:profileOpen?profileEnd:undefined
+      ref:profileRef
     },
       profileMounted && React.createElement(ProfilePanel,{state:state,set:set,
         onClose:function(){ setProfileOpen(false); },
