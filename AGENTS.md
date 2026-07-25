@@ -80,6 +80,36 @@ Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
 
 **Solo se pushea trabajo TERMINADO y verificado.** Nunca a medias. OTA web ≠ APK: si el fix es Java/Kotlin, sin APK nuevo el móvil no lo tiene.
 
+## 6 bis. La documentación es parte del cambio, no un extra
+
+**Un cambio no está terminado hasta que la doc que lo describe dice la verdad.** Esta regla ya
+estaba implícita en §6 y aun así el README se quedó anunciando **v4.1.0 con la app en la 4.8.0**:
+siete versiones de desfase en lo primero que se ve al abrir el repo (lo pilló el usuario, no
+nosotros, 2026-07-25). Una regla que solo vive en un `.md` se salta sin que salte nada.
+
+**Por eso los números los vigila un test:** `tests/docs-frescura.test.mjs` (dentro de `npm test`)
+falla si `VERSION` no cuadra con `package.json`, `package-lock.json`, la primera entrada de
+`CHANGELOG.md`, la primera de `RELEASE_NOTES`, la línea «Estado actual» del `README.md` y la
+cabecera + tabla de alineación de `docs/ROADMAP.md`; y si `public/apk.json` no cuadra con
+`android/app/build.gradle`. **Si añades otro sitio donde se escriba la versión, añádelo al test**
+— si no, es el próximo que se va a quedar rancio.
+
+Lo que el test **no** puede comprobar, y por tanto va en la checklist de quien edita:
+
+| Si tocas… | Actualiza en el MISMO commit |
+|-----------|------------------------------|
+| Una pantalla o dónde se llega a ella | `README.md` (notas rápidas) y `docs/ROADMAP.md` (dónde vive cada cosa) |
+| Estructura de carpetas, scripts o tests | el árbol del `README.md` y `docs/TESTING.md` |
+| Arquitectura, flujo de datos, sincronizaciones | `docs/ARQUITECTURA.md` |
+| Backend, migraciones, secretos o Edge Functions | `docs/SETUP-SUPABASE.md` (y `docs/SETUP-INGEST-TOKEN.md` si es el token) |
+| Nativo Android | `docs/SETUP-ANDROID.md` |
+| Hogar / gastos compartidos | `docs/HOGAR.md` |
+| Algo que el usuario nota | `RELEASE_NOTES` (en cristiano) **y** `CHANGELOG.md` (técnico, con el porqué) |
+
+Y una regla de higiene: **si un documento afirma algo, tiene que ser verificable hoy.** Antes de
+copiar una frase de un doc a otro, comprueba que sigue siendo cierta — un doc que miente es peor
+que un doc que falta, porque el que viene detrás se lo cree.
+
 ## 7. Verificar de verdad (no «debería funcionar»)
 
 - **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre en CI (`.github/workflows/test.yml`).
