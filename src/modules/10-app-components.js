@@ -1618,8 +1618,19 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   useEffect(function(){
     const nat=natPlugin();
     if(!nat||!nat.appInfo) return;
+    /* EL NÚMERO QUE HACE FALTA ES EL versionCode, NO EL versionName (feedback 2026-07-26, tercera
+       vez que lo pide): «sale la versión web y la versión de la app pero no sale la interesante,
+       la de la APK, no sé si está en 34 o 35 o vete tú a saber». Y tenía razón — `versionName` es
+       "4.12.0", O SEA EXACTAMENTE LO MISMO que la versión web, así que la fila no le decía nada
+       nuevo. Lo que distingue una APK de otra es el `versionCode` (34, 35…), que es además lo que
+       compara `apk.json` para ofrecerle la instalación. Sin ese número no puede saber si un fallo
+       nativo —el icono, por ejemplo— es un bug o es que no ha instalado la APK nueva. */
     Promise.resolve(nat.appInfo()).then(function(info){
-      if(info&&info.versionName) setApkVer(String(info.versionName));
+      if(!info) return;
+      var nombre=info.versionName?String(info.versionName):"";
+      var codigo=info.versionCode!=null?String(info.versionCode):"";
+      if(codigo) setApkVer(nombre?nombre+" ("+codigo+")":"("+codigo+")");
+      else if(nombre) setApkVer(nombre);
     }).catch(function(){});
   },[]);
   const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
