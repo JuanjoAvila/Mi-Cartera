@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Fondo del icono adaptativo (Android 8+). Era el blanco de Capacitor y, con la cartera menta
+     encima, el icono se perdía en cualquier escritorio claro. Ahora es el verde oscuro de la
+     marca, el mismo `--bg` de la pantalla de carga (#0C1712), para que el icono del escritorio y
+     lo primero que se ve al abrir sean la misma cosa.
+     Los PNG se regeneran con: node scripts/iconos.mjs -->
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_background">#0C1712</color>
 </resources>

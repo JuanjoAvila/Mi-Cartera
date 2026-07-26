@@ -2,6 +2,36 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.12.0] — 2026-07-26
+### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
+
+Tanda salida entera del buzón de sugerencias de la app. Cuatro de ellas escritas por él la noche del 26, y **dos de su pareja que llevaban DIEZ DÍAS sin que las leyera nadie** — el script `errores.mjs` las traía mezcladas con los pings y sin icono propio, así que nadie miraba. Primer arreglo de la tanda: `npm run sugerencias`.
+
+#### «En deudas y metas se relentiza de manera muy bestia» + «al deslizar va a tirones las primeras veces»
+Eran el mismo problema, y **en un portátil no se ve NADA**: cero tareas largas. Hubo que estrangular la CPU x6 por CDP (`Emulation.setCPUThrottlingRate`) para reproducir lo que él ve en el móvil. Medido así, antes de tocar:
+- 1ª deslizada: tareas largas de 218+149+69+65 ms · 2ª: 97 ms · 3ª y 4ª: limpias. Exactamente «las primeras veces va a tirones, luego se suaviza».
+- Entrar por primera vez en Deudas y Metas: **171 ms de hilo bloqueado**; en Gastos, 77 ms.
+
+Dos causas independientes:
+- **Un `scrollLeft` en el peor momento.** El efecto que devuelve los chips de Gastos al inicio corría justo después de montar la pestaña, con el layout entero sucio: escribir `scrollLeft` fuerza un recálculo **síncrono**. El perfilador le atribuye **276 ms** a esas dos líneas. Ahora va a un hueco libre (`mcScheduleIdle`) y solo escribe si hay algo que resetear.
+- **Las pestañas se montaban dentro del gesto.** `prepMountTab` corría en el `touchstart`/`onMove`, o sea pagando el montaje mientras el dedo arrastra. El coste no se puede evitar, pero sí elegir cuándo se paga: ahora se montan de una en una en huecos libres, antes de que nadie toque nada. Se conservan los 3,2 s del primer hueco (bajarlos reabre el hitch de los 900 ms con WhatsNew) y el `prepMountTab` del toque, como red.
+
+A/B contra el código anterior, mismo escenario: **171 → 0 ms** en Deudas y Metas y **77 → 0 ms** en Gastos. Guardián: `e2e/rendimiento-tabs.spec.mjs`.
+
+**Trampa que casi cuesta un arreglo falso:** la primera medición señalaba a `getBoundingClientRect` con 350 ms de tiempo propio. Era **Playwright**, que sondea el DOM desde su script inyectado mientras `locator.click()` y `waitFor()` esperan. Al medir con un click crudo y una espera a ciegas, desapareció.
+
+#### «No me ha leído un ingreso de la caixa, he tenido notificación y todo» (16 jul, sin leer hasta hoy)
+Cierto, y era de diseño: `importObExpenses` filtraba por `tx.card && tx.amount>0` — **solo compras con tarjeta**. El saldo del banco sí se aplicaba (el patrimonio salía bien), pero el ingreso no aparecía como movimiento, así que desde fuera la app parecía no haberse enterado. Ahora entran también los importes negativos (convención del servidor: `CRDT → -amt`) con categoría `ingreso`. Los cargos que **no** son de tarjeta siguen fuera a propósito: son los Fijos, y contarlos aquí sería contarlos dos veces. `tests/ob-ingresos.test.mjs` fija el convenio de signos por escrito.
+
+#### Notas de versión en tres idiomas
+Petición suya. `t` e `items` aceptan ahora `{es,en,ca}` además de texto suelto. **El histórico anterior se queda en castellano a propósito**: 68 versiones y 279 entradas son 55 KB, que por tres idiomas serían 165 KB con el presupuesto en 277 KB de 310 (gzip). Además, las notas de la 4.11.0 se reescribieron: eran el contraejemplo de la regla de tono de `AGENTS.md` §4 (le hablaban a él, contaban la cocina).
+
+#### Identidad: el icono era el de Capacitor
+El icono del escritorio y el splash nativo seguían siendo **la X azul por defecto de la herramienta**, mientras la pantalla de carga web llevaba la cartera menta desde la 4.10.0: tres identidades en dos segundos, justo en la primera impresión. `scripts/iconos.mjs` rasteriza el SVG de la marca a los 26 ficheros (mipmaps, adaptativo y splash por densidad) con el Chromium que ya trae Playwright — sin dependencias nuevas. El fondo adaptativo pasa de `#FFFFFF` a `#0C1712`. **Necesita APK nueva: un icono nativo no viaja por OTA.**
+
+#### Y la barra de carga del splash, fuera
+«El resto de apps no lo tienen; el tiempo ese que se queda el logo está bien.» El botón de reintentar se queda: es la única salida si algo se atasca de verdad.
+
 ## [4.11.0] — 2026-07-25
 ### El splash no se veía (y el motivo era de libro), bienes fuera de las cuentas
 

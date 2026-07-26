@@ -906,6 +906,35 @@ function FeedbackPanel({state, set, showToast, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.12.0", d:"26 jul 2026",
+   t:{es:"Más rápida al cambiar de pestaña, y los ingresos del banco ya se apuntan",
+      en:"Faster when switching tabs, and money coming in now gets recorded",
+      ca:"Més ràpida en canviar de pestanya, i els ingressos del banc ja s'apunten"},
+   items:{
+   es:[
+    "💰 Los ingresos que llegan a tu banco ya se apuntan solos. Hasta ahora la app solo recogía las compras con tarjeta: cuando entraba una nómina o una transferencia, el saldo subía pero el movimiento no aparecía por ningún lado.",
+    "⚡ Entrar en Deudas y Metas ya no deja la app clavada un momento. Cada pestaña se preparaba justo al tocarla; ahora se prepara antes, mientras no estás haciendo nada.",
+    "👌 Y deslizar entre pestañas va suave desde la primera vez, no solo a partir de la tercera.",
+    "🌍 Las notas de cada versión, como esta, ya se leen en los tres idiomas de la app.",
+    "🚪 La pantalla de entrada se queda solo con el logo: la barrita de carga sobraba.",
+    "🎨 La app estrena su icono de verdad. El del escritorio y el de la pantalla de arranque eran todavía el genérico que trae la herramienta con la que está hecha.",
+   ],
+   en:[
+    "💰 Money coming into your bank is now recorded automatically. Until now the app only picked up card purchases: when a salary or a transfer came in, your balance went up but the transaction appeared nowhere.",
+    "⚡ Opening Debts and Goals no longer freezes the app for a moment. Each tab used to be prepared the instant you touched it; now it is prepared beforehand, while you are doing nothing.",
+    "👌 And swiping between tabs is smooth from the very first time, not only from the third onwards.",
+    "🌍 Release notes like these can now be read in all three languages of the app.",
+    "🚪 The start screen keeps just the logo: the little loading bar was unnecessary.",
+    "🎨 The app has a proper icon at last. The one on your home screen and on the start screen were still the generic one from the tool it is built with.",
+   ],
+   ca:[
+    "💰 Els ingressos que arriben al teu banc ja s'apunten sols. Fins ara l'app només recollia les compres amb targeta: quan entrava una nòmina o una transferència, el saldo pujava però el moviment no apareixia enlloc.",
+    "⚡ Entrar a Deutes i Metes ja no deixa l'app clavada un moment. Cada pestanya es preparava just en tocar-la; ara es prepara abans, mentre no estàs fent res.",
+    "👌 I lliscar entre pestanyes va suau des de la primera vegada, no només a partir de la tercera.",
+    "🌍 Les notes de cada versió, com aquesta, ja es llegeixen en els tres idiomes de l'app.",
+    "🚪 La pantalla d'entrada es queda només amb el logotip: la barreta de càrrega hi sobrava.",
+    "🎨 L'app estrena icona de debò. La de l'escriptori i la de la pantalla d'arrencada encara eren la genèrica de l'eina amb què està feta.",
+   ]}},
   {v:"4.11.0", d:"25 jul 2026",
    t:{es:"La app se presenta al abrirse, y los bienes van por su cuenta",
       en:"The app introduces itself when it opens, and assets stand on their own",

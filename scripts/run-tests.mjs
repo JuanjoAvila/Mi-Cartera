@@ -18,6 +18,7 @@ const steps = [
   ["edge-sintaxis", ["node", "tests/edge-sintaxis.test.mjs"]],
   ["presupuesto-rendimiento", ["node", "tests/presupuesto-rendimiento.test.mjs"]],
   ["finance-core", ["node", "tests/finance-core.test.mjs"]],
+  ["ob-ingresos", ["node", "tests/ob-ingresos.test.mjs"]],
   ["fx-multi", ["node", "tests/fx-multi.test.mjs"]],
   ["categories", ["node", "tests/categories.test.mjs"]],
   ["revo-parse", ["node", "tests/revo-parse.test.mjs"]],
