@@ -913,6 +913,7 @@ var RELEASE_NOTES=[
    items:{
    es:[
     "💰 Los ingresos que llegan a tu banco ya se apuntan solos. Hasta ahora la app solo recogía las compras con tarjeta: cuando entraba una nómina o una transferencia, el saldo subía pero el movimiento no aparecía por ningún lado.",
+    "🏦 Y al sincronizar los bancos ahora te dice qué ha pasado, en un solo aviso: «✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos». Antes salía el saldo suelto, de un banco solamente aunque tuvieras varios, y en dos avisos seguidos.",
     "⚡ Entrar en Deudas y Metas ya no deja la app clavada un momento. Cada pestaña se preparaba justo al tocarla; ahora se prepara antes, mientras no estás haciendo nada.",
     "👌 Y deslizar entre pestañas va suave desde la primera vez, no solo a partir de la tercera.",
     "🌍 Las notas de cada versión, como esta, ya se leen en los tres idiomas de la app.",
@@ -921,6 +922,7 @@ var RELEASE_NOTES=[
    ],
    en:[
     "💰 Money coming into your bank is now recorded automatically. Until now the app only picked up card purchases: when a salary or a transfer came in, your balance went up but the transaction appeared nowhere.",
+    "🏦 And syncing your banks now tells you what happened, in a single message: «✓ CaixaBank up to date · €1,234.56 · 3 new transactions». It used to show a bare balance, for one bank only even if you had several, in two messages one after the other.",
     "⚡ Opening Debts and Goals no longer freezes the app for a moment. Each tab used to be prepared the instant you touched it; now it is prepared beforehand, while you are doing nothing.",
     "👌 And swiping between tabs is smooth from the very first time, not only from the third onwards.",
     "🌍 Release notes like these can now be read in all three languages of the app.",
@@ -929,6 +931,7 @@ var RELEASE_NOTES=[
    ],
    ca:[
     "💰 Els ingressos que arriben al teu banc ja s'apunten sols. Fins ara l'app només recollia les compres amb targeta: quan entrava una nòmina o una transferència, el saldo pujava però el moviment no apareixia enlloc.",
+    "🏦 I en sincronitzar els bancs ara et diu què ha passat, en un sol avís: «✓ CaixaBank al dia · 1.234,56 € · 3 moviments nous». Abans sortia el saldo sol, d'un banc només encara que en tinguessis diversos, i en dos avisos seguits.",
     "⚡ Entrar a Deutes i Metes ja no deixa l'app clavada un moment. Cada pestanya es preparava just en tocar-la; ara es prepara abans, mentre no estàs fent res.",
     "👌 I lliscar entre pestanyes va suau des de la primera vegada, no només a partir de la tercera.",
     "🌍 Les notes de cada versió, com aquesta, ja es llegeixen en els tres idiomes de l'app.",

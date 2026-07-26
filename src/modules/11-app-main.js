@@ -227,7 +227,10 @@ function App(){
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
-      if(obAdded.length) showToast(tf("ob_imported",{n:obAdded.length}));
+      // En sync automática (la que dispara la noti del banco) se avisa solo de lo que ha entrado.
+      // Si has pulsado tú «↻ Sincronizar bancos», esto se junta con el resultado de abajo: dos
+      // avisos seguidos por una sola acción tuya eran ruido (feedback 2026-07-26).
+      if(obAdded.length && !opts.manual) showToast(tf("ob_imported",{n:obAdded.length}));
       // Resultado por banco (servidor tolerante a fallos): aplica los que funcionaron y avisa SOLO
       // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
@@ -235,7 +238,18 @@ function App(){
       // Saldo del banco: SOLO cuando lo pides tú (opts.manual). Antes también saltaba en cada sync
       // automático al abrir la app («el dinero de los bancos me sale, no me vale para nada»
       // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
-      if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
+      // Resultado de pedirlo tú: UN solo mensaje que dice qué ha pasado. Antes era
+      // «🏦 CaixaBank: 1.234,56 €» — un número suelto, del PRIMER banco nada más aunque hubieras
+      // sincronizado tres, y con el aviso de los movimientos nuevos llegando por separado
+      // («el mensaje al actualizar cuentas hay que cambiarlo a uno más claro y conciso»).
+      if(opts.manual && preview.synced.length){
+        const nb=preview.synced.length;
+        let msg = nb===1
+          ? tf("bank_upd_one",{bank:entOf(preview.synced[0].ent).label, x:eur(preview.synced[0].bal)})
+          : tf("bank_upd_n",{n:nb});
+        if(obAdded.length) msg += " · " + (obAdded.length===1 ? t("bank_upd_mov1") : tf("bank_upd_movn",{n:obAdded.length}));
+        showToast(msg);
+      }
       // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
       // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
       // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de

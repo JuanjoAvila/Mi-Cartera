@@ -1525,6 +1525,12 @@ Object.assign(LANG.es,{
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
+  // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
+  // un número suelto sin decir qué había pasado, que además solo enseñaba el PRIMER banco aunque
+  // sincronizaras tres, y que llegaba acompañado de un segundo aviso con los movimientos nuevos.
+  // Ahora es un solo mensaje y dice qué ha pasado.
+  bank_upd_one:"✓ {bank} al día · {x}", bank_upd_n:"✓ {n} bancos al día",
+  bank_upd_mov1:"1 movimiento nuevo", bank_upd_movn:"{n} movimientos nuevos",
   bank_expired_re:"permiso caducado · reconéctate",
   bank_nolink:"esta cuenta aún no está dada de alta en Enable Banking (modo restringido). Enlázala en el panel de Enable Banking y vuelve a conectar.",
   bank_refresh:"Actualizar saldo", bank_reconnect:"Reconectar",
@@ -1539,6 +1545,8 @@ Object.assign(LANG.en,{
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
+  bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
+  bank_upd_mov1:"1 new transaction", bank_upd_movn:"{n} new transactions",
   bank_expired_re:"consent expired · reconnect",
   bank_nolink:"this account isn't linked in Enable Banking yet (restricted mode). Link it in the Enable Banking control panel and reconnect.",
   bank_refresh:"Refresh balance", bank_reconnect:"Reconnect",
@@ -1553,6 +1561,8 @@ Object.assign(LANG.ca,{
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
+  bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
+  bank_upd_mov1:"1 moviment nou", bank_upd_movn:"{n} moviments nous",
   bank_expired_re:"permís caducat · reconnecta't",
   bank_nolink:"aquest compte encara no està donat d'alta a Enable Banking (mode restringit). Enllaça'l al panell d'Enable Banking i torna a connectar.",
   bank_refresh:"Actualitza saldo", bank_reconnect:"Reconnecta",

@@ -23,6 +23,9 @@ A/B contra el código anterior, mismo escenario: **171 → 0 ms** en Deudas y Me
 #### «No me ha leído un ingreso de la caixa, he tenido notificación y todo» (16 jul, sin leer hasta hoy)
 Cierto, y era de diseño: `importObExpenses` filtraba por `tx.card && tx.amount>0` — **solo compras con tarjeta**. El saldo del banco sí se aplicaba (el patrimonio salía bien), pero el ingreso no aparecía como movimiento, así que desde fuera la app parecía no haberse enterado. Ahora entran también los importes negativos (convención del servidor: `CRDT → -amt`) con categoría `ingreso`. Los cargos que **no** son de tarjeta siguen fuera a propósito: son los Fijos, y contarlos aquí sería contarlos dos veces. `tests/ob-ingresos.test.mjs` fija el convenio de signos por escrito.
 
+#### «El mensaje al actualizar cuentas hay que cambiarlo a uno más claro y conciso»
+Era `showToast("🏦 "+label+": "+eur(bal))`: un importe suelto, sin verbo, **del primer banco de la lista aunque hubieras sincronizado tres** — parecía que solo había funcionado uno. Y llegaba junto a un segundo toast con las compras importadas, dos avisos por una sola pulsación. Ahora, cuando lo pides tú, sale **uno**: `✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos` (o `✓ 3 bancos al día` con varios). En la sync que dispara la notificación del banco se mantiene el aviso de movimientos nuevos, que ahí sí es la única señal.
+
 #### Notas de versión en tres idiomas
 Petición suya. `t` e `items` aceptan ahora `{es,en,ca}` además de texto suelto. **El histórico anterior se queda en castellano a propósito**: 68 versiones y 279 entradas son 55 KB, que por tres idiomas serían 165 KB con el presupuesto en 277 KB de 310 (gzip). Además, las notas de la 4.11.0 se reescribieron: eran el contraejemplo de la regla de tono de `AGENTS.md` §4 (le hablaban a él, contaban la cocina).
 

@@ -3878,6 +3878,12 @@ Object.assign(LANG.es,{
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
+  // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
+  // un número suelto sin decir qué había pasado, que además solo enseñaba el PRIMER banco aunque
+  // sincronizaras tres, y que llegaba acompañado de un segundo aviso con los movimientos nuevos.
+  // Ahora es un solo mensaje y dice qué ha pasado.
+  bank_upd_one:"✓ {bank} al día · {x}", bank_upd_n:"✓ {n} bancos al día",
+  bank_upd_mov1:"1 movimiento nuevo", bank_upd_movn:"{n} movimientos nuevos",
   bank_expired_re:"permiso caducado · reconéctate",
   bank_nolink:"esta cuenta aún no está dada de alta en Enable Banking (modo restringido). Enlázala en el panel de Enable Banking y vuelve a conectar.",
   bank_refresh:"Actualizar saldo", bank_reconnect:"Reconectar",
@@ -3892,6 +3898,8 @@ Object.assign(LANG.en,{
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
+  bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
+  bank_upd_mov1:"1 new transaction", bank_upd_movn:"{n} new transactions",
   bank_expired_re:"consent expired · reconnect",
   bank_nolink:"this account isn't linked in Enable Banking yet (restricted mode). Link it in the Enable Banking control panel and reconnect.",
   bank_refresh:"Refresh balance", bank_reconnect:"Reconnect",
@@ -3906,6 +3914,8 @@ Object.assign(LANG.ca,{
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
+  bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
+  bank_upd_mov1:"1 moviment nou", bank_upd_movn:"{n} moviments nous",
   bank_expired_re:"permís caducat · reconnecta't",
   bank_nolink:"aquest compte encara no està donat d'alta a Enable Banking (mode restringit). Enllaça'l al panell d'Enable Banking i torna a connectar.",
   bank_refresh:"Actualitza saldo", bank_reconnect:"Reconnecta",
@@ -10623,6 +10633,7 @@ var RELEASE_NOTES=[
    items:{
    es:[
     "💰 Los ingresos que llegan a tu banco ya se apuntan solos. Hasta ahora la app solo recogía las compras con tarjeta: cuando entraba una nómina o una transferencia, el saldo subía pero el movimiento no aparecía por ningún lado.",
+    "🏦 Y al sincronizar los bancos ahora te dice qué ha pasado, en un solo aviso: «✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos». Antes salía el saldo suelto, de un banco solamente aunque tuvieras varios, y en dos avisos seguidos.",
     "⚡ Entrar en Deudas y Metas ya no deja la app clavada un momento. Cada pestaña se preparaba justo al tocarla; ahora se prepara antes, mientras no estás haciendo nada.",
     "👌 Y deslizar entre pestañas va suave desde la primera vez, no solo a partir de la tercera.",
     "🌍 Las notas de cada versión, como esta, ya se leen en los tres idiomas de la app.",
@@ -10631,6 +10642,7 @@ var RELEASE_NOTES=[
    ],
    en:[
     "💰 Money coming into your bank is now recorded automatically. Until now the app only picked up card purchases: when a salary or a transfer came in, your balance went up but the transaction appeared nowhere.",
+    "🏦 And syncing your banks now tells you what happened, in a single message: «✓ CaixaBank up to date · €1,234.56 · 3 new transactions». It used to show a bare balance, for one bank only even if you had several, in two messages one after the other.",
     "⚡ Opening Debts and Goals no longer freezes the app for a moment. Each tab used to be prepared the instant you touched it; now it is prepared beforehand, while you are doing nothing.",
     "👌 And swiping between tabs is smooth from the very first time, not only from the third onwards.",
     "🌍 Release notes like these can now be read in all three languages of the app.",
@@ -10639,6 +10651,7 @@ var RELEASE_NOTES=[
    ],
    ca:[
     "💰 Els ingressos que arriben al teu banc ja s'apunten sols. Fins ara l'app només recollia les compres amb targeta: quan entrava una nòmina o una transferència, el saldo pujava però el moviment no apareixia enlloc.",
+    "🏦 I en sincronitzar els bancs ara et diu què ha passat, en un sol avís: «✓ CaixaBank al dia · 1.234,56 € · 3 moviments nous». Abans sortia el saldo sol, d'un banc només encara que en tinguessis diversos, i en dos avisos seguits.",
     "⚡ Entrar a Deutes i Metes ja no deixa l'app clavada un moment. Cada pestanya es preparava just en tocar-la; ara es prepara abans, mentre no estàs fent res.",
     "👌 I lliscar entre pestanyes va suau des de la primera vegada, no només a partir de la tercera.",
     "🌍 Les notes de cada versió, com aquesta, ja es llegeixen en els tres idiomes de l'app.",
@@ -12955,7 +12968,10 @@ function App(){
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
-      if(obAdded.length) showToast(tf("ob_imported",{n:obAdded.length}));
+      // En sync automática (la que dispara la noti del banco) se avisa solo de lo que ha entrado.
+      // Si has pulsado tú «↻ Sincronizar bancos», esto se junta con el resultado de abajo: dos
+      // avisos seguidos por una sola acción tuya eran ruido (feedback 2026-07-26).
+      if(obAdded.length && !opts.manual) showToast(tf("ob_imported",{n:obAdded.length}));
       // Resultado por banco (servidor tolerante a fallos): aplica los que funcionaron y avisa SOLO
       // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
@@ -12963,7 +12979,18 @@ function App(){
       // Saldo del banco: SOLO cuando lo pides tú (opts.manual). Antes también saltaba en cada sync
       // automático al abrir la app («el dinero de los bancos me sale, no me vale para nada»
       // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
-      if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
+      // Resultado de pedirlo tú: UN solo mensaje que dice qué ha pasado. Antes era
+      // «🏦 CaixaBank: 1.234,56 €» — un número suelto, del PRIMER banco nada más aunque hubieras
+      // sincronizado tres, y con el aviso de los movimientos nuevos llegando por separado
+      // («el mensaje al actualizar cuentas hay que cambiarlo a uno más claro y conciso»).
+      if(opts.manual && preview.synced.length){
+        const nb=preview.synced.length;
+        let msg = nb===1
+          ? tf("bank_upd_one",{bank:entOf(preview.synced[0].ent).label, x:eur(preview.synced[0].bal)})
+          : tf("bank_upd_n",{n:nb});
+        if(obAdded.length) msg += " · " + (obAdded.length===1 ? t("bank_upd_mov1") : tf("bank_upd_movn",{n:obAdded.length}));
+        showToast(msg);
+      }
       // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
       // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
       // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de
