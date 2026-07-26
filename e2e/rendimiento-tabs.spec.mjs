@@ -176,3 +176,68 @@ test("scrollear Deudas y deslizar acto seguido no bloquea el hilo", async ({ pag
     `scroll→swipe bloqueó el hilo ${bloqueo} ms (tareas: ${lt.join(",") || "ninguna"})`,
   ).toBeLessThan(TOPE_MS);
 });
+
+/* ABRIR EL PERFIL NO PUEDE RE-PINTAR LAS CUATRO PESTAÑAS (feedback 2026-07-26: «lo del perfil
+ * está arreglado para salir, ahora es inmediato, pero para entrar sigue pasando lo mismo»).
+ *
+ * Lo que se creía —que el coste era la animación del panel de ~1.680 px creciendo de 0,12 a 1—
+ * se midió y NO era: con TODAS las transiciones apagadas costaba lo mismo, y quitando el panel
+ * entero del DOM el toque seguía costando ~195 ms. El coste era el re-render de App: las cuatro
+ * páginas se construían dentro de su render, así que cualquier estado de App las repintaba todas.
+ * A/B intercalado contra la beta anterior, CPU x12 y 1.200 gastos:
+ *   abrir el perfil                     339 → 175 ms
+ *   esconder la barra al hacer scroll   123 →   0 ms
+ *
+ * Los dos casos van juntos porque son el MISMO fallo por dos puertas, y el del scroll es el que
+ * mejor lo delata: esconder la barra inferior es un `setNavHidden` y nada más — si vuelve a
+ * costar decenas de milisegundos, es que algo ha vuelto a colgar las pestañas del render de App.
+ * Umbrales generosos y a x6 como el resto del fichero: esto vigila la estructura, no persigue
+ * milisegundos (un guardián de tiempos en CI acaba en flaky). */
+test("abrir el perfil y esconder la barra no arrastran a las cuatro pestañas", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__lt = [];
+    try {
+      new PerformanceObserver((l) => {
+        for (const e of l.getEntries()) window.__lt.push(Math.round(e.duration));
+      }).observe({ entryTypes: ["longtask"] });
+    } catch (e) {}
+  });
+  await seedLoggedInDashboard(page, { expenses: historico(1200), debts: deudas, goals: metas });
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: RATE });
+
+  await page.goto("/");
+  await expect(page.locator(".botnav")).toBeVisible({ timeout: 60_000 });
+  await dismissNews(page);
+  await page.waitForFunction(() => !document.getElementById("mc-load"), null, { timeout: 30_000 });
+  // 9 s: el premontaje de las cuatro pestañas Y del perfil se hace en huecos libres y termina
+  // sobre los 7 s. Antes de eso el coste que se mide es el del montaje, no el del re-render.
+  await page.waitForTimeout(9000);
+
+  // El perfil tiene que estar montado YA, sin que nadie lo haya abierto: es la mitad estructural
+  // de la prueba (montarlo dentro del toque es lo que hacía cara la primera apertura).
+  await expect(page.locator(".profile-pull .profile-pull-h"), "el perfil no se ha premontado en reposo").toHaveCount(1);
+
+  // 1) Esconder la barra inferior al hacer scroll: un solo `setNavHidden` y nada más.
+  await page.evaluate(() => { window.__lt = []; });
+  await page.evaluate(() => {
+    const live = document.querySelector(".track .page-live");
+    if (live) { live.scrollTop = 0; live.dispatchEvent(new Event("scroll")); live.scrollTop = 300; live.dispatchEvent(new Event("scroll")); }
+  });
+  await page.waitForTimeout(600);
+  const lt = await page.evaluate(() => window.__lt.slice());
+  const bloqueo = lt.reduce((a, b) => a + b, 0);
+  // Medido en este mismo entorno: con las pestañas colgando del render de App, 62-83 ms; con el
+  // useMemo, 0 ms en todas las pasadas. El umbral está a mitad de camino a propósito.
+  expect(bloqueo, `esconder la barra bloqueó el hilo ${bloqueo} ms (tareas: ${lt.join(",") || "ninguna"}) — las pestañas se están re-renderizando con App`).toBeLessThan(45);
+
+  // 2) Y abrir el perfil sigue funcionando (que la optimización no se lleve por delante lo que
+  //    tiene que hacer). El TIEMPO de abrir no se vigila aquí: son 175 ms contra 339 medidos con
+  //    el banco A/B intercalado, pero en el CI la misma medida baila entre 171 y 231 en el mismo
+  //    código — un umbral ahí sería un test intermitente, que es peor que no tenerlo. Lo que sí
+  //    se vigila es la parte que puede romperse en silencio: el premontaje de arriba.
+  await page.evaluate(() => { document.querySelector(".v4-avatar").click(); });
+  await expect(page.locator(".profile-pull")).toHaveClass(/open/, { timeout: 10_000 });
+  await expect(page.locator(".profile-pull")).toHaveCSS("transform", "matrix(1, 0, 0, 1, 0, 0)", { timeout: 5_000 });
+});

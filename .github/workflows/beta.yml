@@ -65,12 +65,26 @@ jobs:
           (cd public && zip -qr ../bundle.zip .)
           printf '{"version":"%s","url":"https://github.com/%s/releases/download/beta/bundle.zip","channel":"beta"}\n' \
             "$BETA" "$GITHUB_REPOSITORY" > version.json
+          # El manifiesto de la APK va TAMBIÉN al canal (2026-07-26). Antes solo se subían el bundle
+          # y version.json, así que en un móvil en beta `mcFetchManifest("apk.json")` daba 404, caía
+          # a producción y leía el número de PRODUCCIÓN. Efecto: con la 34 puesta y la 35 anunciada
+          # en esta rama, la app comparaba 34 contra 34 y contestaba «estás a la última» — «al
+          # intentarlo no pasa nada», sin un solo aviso. La beta anuncia ahora su propia APK.
+          cp public/apk.json apk.json
           echo "beta=$BETA" >> "$GITHUB_OUTPUT"
           echo "BETA $BETA → $(du -h bundle.zip | cut -f1)"
           # Guardián: si el sello y el manifiesto se separan otra vez, la beta se queda ofreciéndose
           # en bucle en el móvil y sin poder saber cuál llevas. Mejor no publicarla.
           grep -q "APP_VERSION: *\"$BETA\"" public/index.html || {
             echo "::error::el bundle está sellado con otra versión que el manifiesto ($BETA)"; exit 1; }
+          # Y que la APK que anuncia exista de verdad: ofrecer una descarga que da 404 se ve en el
+          # móvil como «no pasa nada», igual de mudo que el fallo que arregla este commit.
+          APK_URL=$(node -p 'require("./public/apk.json").url')
+          APK_ST=$(curl -sL -o /dev/null -w '%{http_code}' "$APK_URL" || echo 000)
+          if [ "$APK_ST" = "404" ]; then
+            echo "::error::apk.json apunta a una release que no existe: $APK_URL"; exit 1
+          fi
+          echo "APK anunciada a la beta: $APK_URL (HTTP $APK_ST)"
 
       # Release fija `beta`: siempre la misma etiqueta y las mismas URLs de descarga, así la app no
       # tiene que descubrir nada. Marcada como prerelease para que no salga como «última versión».
@@ -82,7 +96,7 @@ jobs:
             gh release create beta --prerelease --title "Beta (canal de pruebas)" \
               --notes "Canal de pruebas del dueño. Se activa en Ajustes → Dev → Pruebas. No es la versión publicada para el resto."
           fi
-          gh release upload beta bundle.zip version.json --clobber
+          gh release upload beta bundle.zip version.json apk.json --clobber
           gh release edit beta --title "Beta ${{ steps.pack.outputs.beta }}"
 
       - name: Resumen

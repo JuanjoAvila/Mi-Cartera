@@ -69,10 +69,23 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy (2026-07-26):** `VERSION` = **4.12.0** en rama `beta`, lista para que la re-pruebe en el
-móvil. Producción (`main`) sigue en **4.11.0**. Se cerraron los bloqueos de los rechazos .17/.18
-(lag scroll→swipe, bancos/TR, stopper del perfil, versiones OTA+APK en Ajustes). Detalle y
-checklist en `docs/ROADMAP.md` y `docs/TESTING.md`. **No promocionar sin su OK** en el panel.
+**Hoy (2026-07-26, tanda de noche):** `VERSION` = **4.12.0** en rama `beta`, lista para que la
+re-pruebe en el móvil. Producción (`main`) sigue en **4.11.0**. Además de los bloqueos de los
+rechazos .17/.18, esta tanda cierra dos de las tres cosas que quedaban abiertas:
+
+- **Abrir el perfil, 339 → 175 ms** (y esconder la barra al hacer scroll, 123 → **0 ms**). La
+  causa NO era la animación del panel: era que las cuatro páginas se construían dentro del render
+  de `App`. Todas las hipótesis descartadas están en el `CHANGELOG` **con su número**.
+- **La APK ya puede pasar de la 34 a la 35**: `beta.yml` no subía `apk.json` a la release `beta`,
+  así que el móvil en canal de pruebas leía el manifiesto de producción y se callaba.
+- **Sigue abierto**: «Gastos se queda a medio pintar». **No se ha reproducido** — está medido en el
+  `CHANGELOG` y en `docs/ROADMAP.md` («Abierto, con lo medido»). No lo toques a ciegas.
+
+⚠ `docs/memoria/pendiente-manana-4-12-0.md` retrata cómo se cerró la noche ANTES de esta tanda, y
+es un espejo generado (`npm run memoria`, no se edita a mano): dos de sus tres puntos ya están
+hechos. **La foto de ahora es `docs/ROADMAP.md`.**
+
+Detalle y checklist en `docs/ROADMAP.md` y `docs/TESTING.md`. **No promocionar sin su OK** en el panel.
 
 La cola post-rechazo de una beta (qué falló en el móvil y en qué orden arreglarlo) vive en
 `docs/memoria/mi-cartera-backlog.md` (§8 ter / §8 quater / siguientes). El header del ROADMAP

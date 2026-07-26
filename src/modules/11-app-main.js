@@ -532,7 +532,11 @@ function App(){
     if(g==="update|apk"){
       const nat=natPlugin();
       const run=function(url){
-        if(!nat||!nat.installApk||!url) return;
+        // Igual que en el pill: una noti que al tocarla no hace nada ni dice nada es indistinguible
+        // de una noti rota (2026-07-26).
+        if(!nat){ showToast(t("apk_why_noapp")); return; }
+        if(!nat.installApk){ showToast(t("apk_why_oldapk")); return; }
+        if(!url){ showToast(window._mcApkWhy||t("st_up_ok")); return; }
         showToast(t("apk_downloading"));
         nat.installApk({url:url}).then(function(r){
           if(r&&r.needsPermission) showToast(t("apk_perm"));
@@ -1977,7 +1981,15 @@ function App(){
       var siguiente=function(){
         if(cancelled) return;
         var id=pend.shift();
-        if(!id) return;
+        if(!id){
+          // Y el PERFIL, con la misma lógica: montarlo cuesta lo que cuesta (es la pantalla más
+          // larga de la app, ~1.680 px), y hasta ahora se pagaba dentro del propio toque, porque
+          // `onOpenProfile` hacía `setProfileMounted(true)` y a los dos frames abría. Medido con
+          // la CPU x12: abrir la primera vez costaba el doble que las siguientes. Montado ya en
+          // un hueco libre, la primera vez cuesta lo mismo que la quinta (2026-07-26).
+          setProfileMounted(true);
+          return;
+        }
         setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
         mcScheduleIdle(siguiente, 900);
       };
@@ -2022,6 +2034,33 @@ function App(){
     if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); },onReconnectBank:reconnectBank});
     return null;
   };
+
+  /* LAS CUATRO PESTAÑAS NO SE VUELVEN A PINTAR POR ABRIR EL PERFIL (medido 2026-07-26).
+     Aquí estaba el coste real de «abrir el perfil sigue yendo lento», y no era la animación:
+     con la CPU x12, el toque costaba ~195 ms de hilo bloqueado **incluso quitando el panel
+     entero del DOM**, y con TODAS las transiciones apagadas seguía costando lo mismo. Lo que se
+     paga es el re-render de App: las cuatro páginas se construyen aquí dentro, así que cualquier
+     estado de App —`profileOpen`, el velo, el toast, la barra que se esconde al hacer scroll—
+     re-renderizaba Inicio + Gastos + Plan + Cartera enteras. En reposo la traza lo confirma:
+     0 ms de tareas largas sin tocar nada, ~195 ms en cuanto cambia un estado de App.
+     Las hipótesis «bonitas» (el panel de 1.680 px que se re-rasteriza, el velo, la sombra, el
+     radio animado) se midieron una por una y NO son: mueven el rasterizado, que va en otro hilo
+     y no bloquea. Están anotadas en el CHANGELOG con su número para no repetirlas.
+     ⚠ Las dependencias son TODO lo que leen estas páginas y los cierres que les pasamos, no solo
+     lo que se ve en las props: si añades una prop que dependa de otro estado de App, añádelo aquí
+     o la pestaña se quedará con un valor viejo. Fuera quedan a propósito los estados de las capas
+     de encima (perfil, cajón, toast, barra inferior, pills de update), que es justo el ahorro. */
+  const paginas=useMemo(function(){
+    return tabIds.map(function(id,i){
+      var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
+      var show=live||!!mountedTabs[id];
+      return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
+        show ? pageFor(id) : null
+      );
+    });
+    // eslint-disable-next-line
+  },[state, totals, tab, tabIds.join("|"), mountedTabs, mountNeighbors, syncing, syncStatus,
+     gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
   if(state.onboarded===false) return React.createElement(React.Fragment,null,
@@ -2068,15 +2107,7 @@ function App(){
       "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
       React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
-        React.createElement("div",{className:"track",ref:trackRef},
-          tabIds.map(function(id,i){
-            var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
-            var show=live||!!mountedTabs[id];
-            return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
-              show ? pageFor(id) : null
-            );
-          })
-        )
+        React.createElement("div",{className:"track",ref:trackRef}, paginas)
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},

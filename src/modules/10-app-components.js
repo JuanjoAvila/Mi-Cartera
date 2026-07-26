@@ -102,7 +102,16 @@ function useUpdates(){
   };
   const installApk=function(showToast){
     const nat=natPlugin();
-    if(!nat||!nat.installApk||!apkUpd) return;
+    // Tocar el pill y que no ocurra NADA es el peor final posible: no sabes si has fallado el
+    // toque, si la app está pensando o si se ha rendido (2026-07-26). Cada motivo, dicho.
+    if(!nat) { if(showToast) showToast(t("apk_why_noapp")); return; }
+    if(!nat.installApk){ if(showToast) showToast(t("apk_why_oldapk")); return; }
+    if(!apkUpd){
+      // Sin candidata: no es un fallo, es que el chequeo no encontró nada — y el porqué lo
+      // dejó escrito quien lo miró.
+      if(showToast) showToast(window._mcApkWhy||t("st_up_ok"));
+      return;
+    }
     if(showToast) showToast(t("apk_downloading"));
     nat.installApk({url:apkUpd.url}).then(function(r){
       if(r&&r.needsPermission&&showToast){ showToast(t("apk_perm")); return; }   // Android abrió el ajuste; reintocar
@@ -770,16 +779,30 @@ function BetaReviewPanel({onClose, showToast}){
   const na=pack.items.filter(function(_,i){ return marks[i]==="na"; }).length;
   const pend=total-ok-ko-na;
 
+  /* EL VEREDICTO DICE TAMBIÉN QUÉ APK LLEVABA PUESTA (2026-07-26).
+     El veredicto ya viajaba con la versión web (4.12.0.27), pero no con el `versionCode` del APK,
+     y eso costó una sesión entera: «en deudas sigue igual» con los arreglos ya publicados, sin
+     forma de saber si los tenía puestos —esa noche salieron seis betas seguidas— ni si el fallo
+     era nativo (el icono) o web. Ahora lo dice el propio parte, y nadie tiene que preguntar. */
+  const [apkCode,setApkCode]=useState(null);
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.appInfo) return;
+    Promise.resolve(nat.appInfo()).then(function(info){
+      if(info&&info.versionCode!=null) setApkCode(String(info.versionCode));
+    }).catch(function(){});
+  },[]);
   const enviar=function(verdict){
     if(busy) return;
     setBusy(true);
     const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
+    const conApk=CONFIG.APP_VERSION+(apkCode?" (APK "+apkCode+")":"");
     const payload={
-      verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
+      verdict:verdict, version:CONFIG.APP_VERSION, apk:apkCode, notas:pack.v,
       probados:ok, fallos:ko, sinProbar:pend, noProbable:na, heredados:heredados.current,
       noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
       detalle:fallos,
-      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
+      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+conApk+
         " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+(na?" / "+na+" no probable(s)":"")+
         (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
     };
@@ -798,8 +821,10 @@ function BetaReviewPanel({onClose, showToast}){
   return React.createElement("div",{style:wrap,className:"beta-review"}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🧪 Revisar la beta"),
+    // Y a la vista, no solo en el parte: si un fallo es del icono o del instalador, lo primero que
+    // hay que saber es qué APK lleva puesta — y hasta ahora aquí solo salía la versión web.
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
-      "v"+CONFIG.APP_VERSION+(pack.t?" · "+pack.t:"")),
+      "v"+CONFIG.APP_VERSION+(apkCode?" · APK "+apkCode:"")+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
       "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
     heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
@@ -1022,8 +1047,10 @@ var RELEASE_NOTES=[
     "📈 Si Trade Republic se desconecta, también sale un aviso en Cartera para volver a entrar con el PIN y el código.",
     "📱 En Ajustes se ven las dos versiones: la de la app instalada y la que se actualiza sola.",
     "👤 Cerrar el perfil justo después de abrirlo vuelve a responder al momento.",
+    "👤 Y abrirlo también: la pantalla del perfil entra a la primera, sin el tirón que daba antes. De paso va más suelta toda la app, porque ha dejado de rehacer por dentro pantallas que no habían cambiado.",
     "🌍 Las notas de cada versión, como esta, ya se leen en los tres idiomas de la app.",
     "🚪 La pantalla de entrada se queda solo con el logo: la barrita de carga sobraba.",
+    "📲 Cuando hay una versión nueva de la app para instalar, ya se ofrece de verdad; y si por algo no se puede instalar, la app te dice el motivo en vez de quedarse callada.",
     "🎨 La app estrena su icono de verdad. El del escritorio y el de la pantalla de arranque eran todavía el genérico que trae la herramienta con la que está hecha.",
    ],
    en:[
@@ -1035,8 +1062,10 @@ var RELEASE_NOTES=[
     "📈 If Trade Republic disconnects, a warning also appears in Portfolio so you can sign back in with your PIN and code.",
     "📱 Settings now shows both versions: the installed app and the one that updates itself.",
     "👤 Closing the profile right after opening it responds instantly again.",
+    "👤 And opening it too: the profile screen comes in first time, without the stutter it had before. The whole app feels lighter as a result, because it has stopped rebuilding screens that had not changed.",
     "🌍 Release notes like these can now be read in all three languages of the app.",
     "🚪 The start screen keeps just the logo: the little loading bar was unnecessary.",
+    "📲 When a new version of the app is ready to install, it is now actually offered; and if for some reason it cannot be installed, the app tells you why instead of staying silent.",
     "🎨 The app has a proper icon at last. The one on your home screen and on the start screen were still the generic one from the tool it is built with.",
    ],
    ca:[
@@ -1048,8 +1077,10 @@ var RELEASE_NOTES=[
     "📈 Si Trade Republic es desconnecta, també surt un avís a Cartera per tornar a entrar amb el PIN i el codi.",
     "📱 A Ajustos es veuen les dues versions: la de l'app instal·lada i la que s'actualitza sola.",
     "👤 Tancar el perfil just després d'obrir-lo torna a respondre a l'instant.",
+    "👤 I obrir-lo també: la pantalla del perfil entra a la primera, sense l'estirada que feia abans. De passada va més àgil tota l'app, perquè ha deixat de refer per dins pantalles que no havien canviat.",
     "🌍 Les notes de cada versió, com aquesta, ja es llegeixen en els tres idiomes de l'app.",
     "🚪 La pantalla d'entrada es queda només amb el logotip: la barreta de càrrega hi sobrava.",
+    "📲 Quan hi ha una versió nova de l'app per instal·lar, ja s'ofereix de debò; i si per alguna cosa no es pot instal·lar, l'app et diu el motiu en comptes de quedar-se callada.",
     "🎨 L'app estrena icona de debò. La de l'escriptori i la de la pantalla d'arrencada encara eren la genèrica de l'eina amb què està feta.",
    ]}},
   {v:"4.11.0", d:"25 jul 2026",
@@ -1550,22 +1581,25 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   // manualmente»): consulta apk.json (APK) y version.json (web) al momento, sin esperar al arranque.
   const checkUpdates=function(){
     const nat=natPlugin();
-    if(!nat||!nat.appInfo) return;
-    const done=function(okMsg){
-      if(okMsg) showToast(okMsg);
-    };
+    if(!nat||!nat.appInfo){ showToast(t("apk_why_noapp")); return; }
+    // «Estás a la última» a secas no distingue «no hay nada nuevo» de «he mirado donde no era»:
+    // con la 35 publicada en la beta y el móvil leyendo el manifiesto de producción, la respuesta
+    // era la misma frase de siempre (2026-07-26). Ahora el resumen dice qué canal se ha mirado,
+    // qué APK ofrece y cuál llevas puesta, que es lo que hacía falta para no adivinar.
     Promise.resolve(window._mcCheckApkUpdate?window._mcCheckApkUpdate({manual:true, showToast:showToast}):false)
       .then(function(apkDone){
         if(apkDone) return;
+        const cierre=function(){
+          var por=window._mcApkWhy?" · "+window._mcApkWhy:"";
+          showToast(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+por);
+        };
         if(window._mcCheckOtaUpdates){
           return window._mcCheckOtaUpdates({manual:true, showToast:showToast}).then(function(otaDone){
             if(otaDone) return;
-            return Promise.resolve(nat.appInfo()).then(function(info){
-              done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+(info&&info.versionName?" · app "+info.versionName:""));
-            });
+            cierre();
           });
         }
-        done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION);
+        cierre();
       });
   };
   const [events,setEvents]=useState(null);

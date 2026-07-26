@@ -69,12 +69,16 @@ function mcGetJson(url){
    de PRODUCCIÓN y contestaba «✓ estás a la última» con la beta publicada delante. Un canal que no
    responde no es un canal sin novedades. */
 function mcFetchManifest(name){
-  var estable=function(){ return mcGetJson(_mcOtaBASE+name+"?ts="+Date.now()); };
+  // `from` dice de qué canal salió el manifiesto REALMENTE. Sin ese dato la caída a estable es
+  // invisible, y una caída invisible fue exactamente el fallo del 2026-07-26 con la APK: el móvil
+  // en beta leía el apk.json de PRODUCCIÓN sin decirlo, comparaba 34 contra 34 y se callaba.
+  var marca=function(r,from){ if(r) r.from=from; return r; };
+  var estable=function(){ return mcGetJson(_mcOtaBASE+name+"?ts="+Date.now()).then(function(r){ return marca(r,"stable"); }); };
   if(mcChannel()!=="beta"){
     return estable().then(function(r){ if(!r.ok) throw new Error(name+": "+r.status); return r; });
   }
   return mcGetJson(_mcBetaBASE+name+"?ts="+Date.now()).then(function(r){
-    if(r.ok) return r;
+    if(r.ok) return marca(r,"beta");
     if(r.status===404) return estable();   // la release `beta` no existe o aún no tiene ese asset
     throw new Error("beta/"+name+": HTTP "+r.status);
   }, function(e){
@@ -311,18 +315,33 @@ window._mcSignalApkUpdate=function(info, silent){
   }
 };
 
+/* NINGÚN CAMINO DE LA APK SE PUEDE CALLAR (2026-07-26).
+   «apk.json anuncia la 35, estoy en la 34, y al intentarlo no pasa nada»: esta función tenía
+   CUATRO `return false` mudos y el de arriba del todo ni siquiera llegaba a mirar nada. El que
+   contestaba era el de comparar números —el móvil leía el manifiesto de producción, que decía 34,
+   y 34 no es mayor que 34—, así que la app se quedaba tan tranquila y él sin saber por qué.
+   `_mcApkWhy` guarda SIEMPRE en una línea qué se ha mirado y qué ha salido (qué canal, qué número
+   ofrece y cuál llevas puesto), y Ajustes lo pega al «estás a la última». Un motivo escrito vale
+   más que otra ronda de suposiciones. */
+window._mcApkWhy=null;
 window._mcCheckApkUpdate=function(opts){
-  var mc=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
-  if(!mc||!mc.appInfo) return Promise.resolve(false);
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
   var autoInstall=opts&&opts.autoInstall!==false;   // al detectar APK nueva, abre el instalador sola
+  var porque=function(m){ window._mcApkWhy=m; return false; };
+  var mc=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
+  if(!mc||!mc.appInfo) return Promise.resolve(porque(t("apk_why_noapp")));
+  if(!mc.installApk) return Promise.resolve(porque(t("apk_why_oldapk")));
   return mcFetchManifest("apk.json")
-    .then(function(r){ return r.json(); })
-    .then(function(a){
-      if(!a||!a.versionCode||!a.url) return false;
+    .then(function(r){ var from=r.from; return Promise.resolve(r.json()).then(function(a){ return {a:a, from:from}; }); })
+    .then(function(m){
+      var a=m.a, canal=t(m.from==="beta"?"apk_ch_beta":"apk_ch_stable");
+      if(!a||!a.versionCode||!a.url) return porque(tf("apk_why_manifest",{ch:canal}));
       return mc.appInfo().then(function(info){
-        if(!info||!info.versionCode||Number(a.versionCode)<=Number(info.versionCode)) return false;
+        var mia=info&&info.versionCode!=null?Number(info.versionCode):null;
+        if(mia==null) return porque(t("apk_why_noinfo"));
+        window._mcApkWhy=tf("apk_why_state",{ch:canal, want:String(a.versionCode), have:String(mia)});
+        if(Number(a.versionCode)<=mia) return false;
         var payload={url:a.url, versionName:a.versionName||("v"+a.versionCode)};
         window._mcSignalApkUpdate(payload, !!manual);
         var startInstall=function(){
@@ -346,6 +365,7 @@ window._mcCheckApkUpdate=function(opts){
       });
     }).catch(function(e){
       var m=(e&&e.message)||String(e);
+      window._mcApkWhy="⚠ "+m;
       if(toast&&manual) toast("⚠ "+m);
       try{ cloud.logEvent('error','APK '+mcChannel()+': '+m.slice(0,200)); }catch(_){}
       return false;

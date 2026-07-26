@@ -519,12 +519,23 @@
     transform-origin:var(--pp-ox,44px) var(--pp-oy,64px);
     transform:scale(var(--pp-s0,.12));
     opacity:0;visibility:hidden;pointer-events:none;
-    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius .48s cubic-bezier(.32,.72,0,1),visibility 0s linear .48s;
+    /* EL RADIO NO SE INTERPOLA: SE CAMBIA AL FINAL, DE GOLPE (medido 2026-07-26).
+       `border-radius` no es una propiedad de compositor: animarla obliga a REDIBUJAR el panel
+       entero en cada frame de los 0,48 s. Con la CPU x12, quitarla de la transición baja las
+       tareas de rasterizado de ~200 a ~60 por apertura. Con `0s` y el retardo de la animación,
+       el cambio ocurre cuando el movimiento ya ha terminado: un solo repintado y, a la vista,
+       exactamente lo mismo (el panel llega a pantalla completa y ahí es donde el radio importa).
+       La misma lección que ya estaba escrita para el ARRASTRE en 11-app-main.js — al abrir por
+       toque no se le había aplicado. */
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius 0s linear .48s,visibility 0s linear .48s;
     will-change:transform,opacity;
     border-radius:24px;
     box-shadow:0 24px 64px rgba(0,0,0,.45);}
+  /* Al ABRIR el radio se quita ya (el panel tapa la pantalla entera y las esquinas no se ven
+     mientras crece); al CERRAR vuelve cuando la miniatura ha llegado (regla de arriba). Los dos
+     sentidos cambian el radio de golpe, nunca frame a frame. */
   .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
-    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius 0s linear;}
   .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
   /* Velo verdoso barato (Resumen SE VE detrás). Sin blur en el drag; .blurred solo al soltar. */
   .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.28);opacity:0;pointer-events:none;

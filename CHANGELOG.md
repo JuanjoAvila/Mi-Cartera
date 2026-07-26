@@ -5,6 +5,54 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
+#### Abrir el perfil: la causa NO era la animación, y esto se midió antes de tocar nada
+Él, tras probar la .28: «lo del perfil está arreglado para salir, ahora es inmediato, pero para entrar sigue pasando lo mismo». La sesión anterior dejó anotada una hipótesis razonable —se escala un panel de ~1.680 px desde 0,12 hasta 1 y el navegador lo re-rasteriza mientras crece, 482 `RasterTask` y 278 `Paint`— y la conclusión de que había que **rediseñar cómo crece el panel**. Era falsa, y bastó un experimento para tumbarla:
+
+| Escenario (CPU x12, mediana de 5) | Bloqueo |
+|---|---|
+| base | 266 ms |
+| sin el velo en el DOM | 223 ms |
+| el panel sin sombra | 211 ms |
+| solo el contenido oculto (crece la caja vacía) | 317 ms |
+| **TODAS las transiciones apagadas** | 221 ms |
+| **el panel ENTERO fuera del DOM** | 195 ms |
+| la app en reposo, sin tocar nada | **0 ms** |
+
+Quitar el panel de la pantalla **no quitaba el coste**: seguían siendo ~195 ms. Y un perfil de CPU lo remató — el JS propio de la app no llegaba al 1 %, y solo se pedían **dos** `requestAnimationFrame` en toda la apertura, o sea que no había ningún bucle por frame. Lo que se pagaba era **el re-render de `App`**.
+
+**La causa real:** las cuatro páginas del carrusel se construían dentro del `return` de `App` (`tabIds.map(...)` llamando a `pageFor`). Cualquier estado de `App` —`profileOpen`, el velo, el toast, la barra inferior que se esconde al hacer scroll— volvía a renderizar **Inicio + Gastos + Plan + Cartera enteras**. Es el mismo error de siempre en este repo (trabajo caro atado a un momento que no le corresponde), una planta más arriba. Ahora las páginas salen de un `useMemo` cuyas dependencias son lo que las páginas leen de verdad; fuera quedan a propósito los estados de las capas de encima, que es justo el ahorro.
+
+A/B **intercalado** contra la beta anterior (dos servidores y pasadas alternas A,B,A,B — sin eso, en un contenedor la mediana miente), CPU x12 y 1.200 gastos:
+
+| | antes | después |
+|---|---|---|
+| abrir el perfil | 339 ms | **175 ms** |
+| esconder la barra al hacer scroll | 123 ms | **0 ms** |
+
+El segundo no lo pidió nadie y es el que más se va a notar: esconder la barra inferior es un `setNavHidden` y nada más, y costaba más de 100 ms **cada vez que scrolleabas** una lista.
+
+Dos remates, los dos medidos:
+- **El perfil se premonta en un hueco libre**, detrás de las cuatro pestañas, con la misma maquinaria (`mcScheduleIdle`). Montarlo dentro del toque era pagar la pantalla más larga de la app (~1.680 px) con el dedo puesto.
+- **El radio del panel deja de interpolarse.** `border-radius` no es una propiedad de compositor: animarla obliga a redibujar el panel entero en cada frame de los 0,48 s. Con `0s` y el retardo de la animación el cambio ocurre al terminar el movimiento: de ~200 tareas de rasterizado por apertura a ~60, y a la vista exactamente lo mismo. La lección ya estaba escrita para el ARRASTRE desde la 4.9.0; a la apertura por toque no se le había aplicado.
+
+**Hipótesis descartadas, con su número, para que nadie las repita:** el velo (223 vs 266), la sombra del panel (211 vs 266), la animación del avatar (258 vs 266), ocultar el contenido del panel (317 vs 266) y apagar todas las transiciones (221 vs 266). Ninguna sale del ruido. Se suman a las dos que ya descartó la sesión anterior (desacoplar el candado de scroll de `gesture-freeze`, y `contain:paint` en el panel).
+
+Guardián: `e2e/rendimiento-tabs.spec.mjs`. Vigila con umbral el caso del scroll (medido aquí mismo: 62-83 ms con el código anterior, 0 ms con este) y **estructuralmente** que el perfil esté premontado en reposo. El tiempo de abrir el perfil NO se vigila con umbral a propósito: la misma medida baila entre 171 y 231 ms en el CI con el mismo código, y un guardián así acaba en intermitente.
+
+#### La APK no pasaba de la 34 a la 35: la beta nunca publicó su `apk.json`
+«`apk.json` anuncia la 35, estoy en la 34, y al intentarlo no pasa nada.» No era el instalador. `beta.yml` subía a la release `beta` **solo** `bundle.zip` y `version.json`, así que en un móvil con el canal de pruebas activado `mcFetchManifest("apk.json")` daba **404**, caía a producción —que anuncia la 34, comprobado— y comparaba 34 contra 34: `return false`, sin una palabra. Verificado contra la red: `releases/download/beta/apk.json` → 404, `version.json` → 200.
+
+- **La beta publica ya su propio `apk.json`**, y el workflow **no publica** si el APK que anuncia no existe (una descarga que da 404 se ve en el móvil igual de muda que este fallo).
+- **Ningún camino de la APK se calla.** `_mcCheckApkUpdate` tenía cuatro `return false` mudos; ahora deja siempre escrito el porqué en una línea con los datos que hacían falta —qué canal se ha leído, qué número ofrece y cuál llevas puesto— y Ajustes lo pega al «estás a la última», que era la frase que tapaba el fallo. Lo mismo en el pill de instalar y en la notificación: tocar y que no ocurra nada ni se diga nada es indistinguible de una app rota.
+- El vigilante de fondo (`OtaCheckWorker`, Java) también mira ya el canal que toca para la APK. ⚠ Eso es nativo: entra con la **APK 36**, no con la 35.
+
+Guardián: `tests/updates.test.mjs` ejecuta el trozo REAL del monolito con `CapacitorHttp` de mentira y reproduce el fallo exacto (canal beta + sin `apk.json` + 34 contra 34), comprueba que con el manifiesto puesto sí se ofrece la 35, que ningún camino se queda mudo, y que `beta.yml` sigue subiendo el asset.
+
+#### El veredicto de la beta dice ahora qué APK llevaba puesta
+Costó una sesión entera: «en Deudas sigue igual» con los arreglos ya publicados, sin forma de saber si los tenía instalados —esa noche salieron seis betas seguidas— ni si el fallo era nativo o web. El parte viaja ya con el `versionCode`, y el panel lo enseña en la cabecera junto a la versión web.
+
+**Sobre «Gastos se queda a medio pintar»: no se ha reproducido.** Se montó el camino de su vídeo (arrancar, esperar, deslizar a Gastos con el dedo, CPU x12, 1.200 gastos) y se midieron las filas y su opacidad a los 120 ms, 500 ms y 2 s de soltar: 12 filas, opacidad 1, ninguna a medias, ninguna desvaída. Queda **abierto y sin tocar** — a ciegas no se arregla. Lo que sí se ha hecho es quitar la parte que impedía diagnosticarlo: el veredicto dirá en qué compilación y con qué APK lo ve.
+
 Tanda salida entera del buzón de sugerencias de la app. Cuatro de ellas escritas por él la noche del 26, y **dos de su pareja que llevaban DIEZ DÍAS sin que las leyera nadie** — el script `errores.mjs` las traía mezcladas con los pings y sin icono propio, así que nadie miraba. Primer arreglo de la tanda: `npm run sugerencias`.
 
 #### «En deudas y metas se relentiza de manera muy bestia» + «al deslizar va a tirones las primeras veces»
