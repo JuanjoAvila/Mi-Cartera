@@ -681,18 +681,41 @@ function BetaReviewPanel({onClose, showToast}){
      Los ✗ no se heredan NUNCA, ni sus comentarios. */
   const okKey="_betaReviewOk";
   const heredarOk=function(){
-    var prev=store.get(okKey)||{}, m={};
+    var prev=store.get(okKey);
+    /* RESCATE DE LO YA APROBADO (2026-07-26 noche). La lista aparte se estrena en esta versión,
+       así que la primera vez está vacía y lo que él aprobó en las betas anteriores se habría
+       perdido igual — que es exactamente lo que notó al abrir la siguiente: «siguen saliendo las
+       que aprobé». Se rescata de las claves por compilación que ya están guardadas en el móvil.
+       Van por índice, y aquí el índice VALE: solo se leen las de la misma versión base, y las
+       notas de una versión base no cambian de orden entre compilaciones. */
+    if(!prev){
+      prev={};
+      try{
+        var pre="_betaReview_"+mcVerBase(CONFIG.APP_VERSION);
+        for(var i=0;i<localStorage.length;i++){
+          var k=localStorage.key(i);
+          if(!k||k.indexOf(pre)!==0||k.slice(-2)==="_n") continue;
+          var vieja=store.get(k)||{};
+          pack.items.forEach(function(it,j){ if(vieja[j]==="ok"||vieja[j]==="na") prev[it]=vieja[j]; });
+        }
+      }catch(e){}
+      store.set(okKey,prev);
+    }
+    var m={};
     pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na") m[i]=v; });
     return m;
   };
-  // {i: "ok" | "ko" | "na"} + notas de los que fallan
-  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || heredarOk(); });
+  // {i: "ok" | "ko" | "na"} + notas de los que fallan. Lo heredado va DEBAJO de lo marcado en esta
+  // compilación: si ya has tocado algo aquí, manda lo tuyo. (Con `||` en vez de mezcla, haber
+  // marcado una sola casilla en esta beta apagaba la herencia entera.)
+  const [marks,setMarks]=useState(function(){ return Object.assign(heredarOk(), store.get(storeKey)||{}); });
   const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
   const [busy,setBusy]=useState(false);
   const [sent,setSent]=useState(null);   // "approved" | "rejected"
   // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
   // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
-  const heredados=useRef(Object.keys(store.get(storeKey)?{}:heredarOk()).length);
+  const heredados=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, n=0;
+    Object.keys(h).forEach(function(i){ if(propias[i]===undefined) n++; }); return n; })());
   const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
   const recordarOk=function(m){
     var prev=store.get(okKey)||{};
