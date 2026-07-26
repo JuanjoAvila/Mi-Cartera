@@ -666,14 +666,43 @@ function BetaReviewPanel({onClose, showToast}){
   // y dentro de la misma beta el progreso se conserva aunque cierres la app (que era el motivo de
   // guardarlo, porque probar lleva días).
   const storeKey="_betaReview_"+CONFIG.APP_VERSION;
+  /* LO QUE YA DIO POR BUENO NO SE VUELVE A PREGUNTAR (petición suya 2026-07-26, por la noche:
+     «si algo funciona CREO que no debería reventar con otra compilación»). El reseteo por
+     compilación arreglaba una cosa y rompía otra: las cruces sí tienen que volver a preguntarse
+     —son justo lo que se acaba de arreglar—, pero los ✓ también se borraban, y volver a probar
+     siete puntos que ya iban bien es lo que hacía que no se acordara de nada («los pillo en
+     momentos diferentes»).
+
+     Así que los ✓ y los «no lo puedo probar» se guardan APARTE, en una lista que NO lleva el
+     número de compilación, y que casa por el TEXTO del punto y no por su posición. Eso importa:
+     · si reescribimos la nota, ha cambiado lo que se prueba → vuelve a preguntarse;
+     · si la nota es idéntica, es literalmente lo mismo que ya probó → viene marcado;
+     · y si se reordenan las notas, no se cruzan los cables (con índices, sí).
+     Los ✗ no se heredan NUNCA, ni sus comentarios. */
+  const okKey="_betaReviewOk";
+  const heredarOk=function(){
+    var prev=store.get(okKey)||{}, m={};
+    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na") m[i]=v; });
+    return m;
+  };
   // {i: "ok" | "ko" | "na"} + notas de los que fallan
-  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || {}; });
+  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || heredarOk(); });
   const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
   const [busy,setBusy]=useState(false);
   const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
+  // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
+  const heredados=useRef(Object.keys(store.get(storeKey)?{}:heredarOk()).length);
   const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
+  const recordarOk=function(m){
+    var prev=store.get(okKey)||{};
+    pack.items.forEach(function(it,i){
+      if(m[i]==="ok"||m[i]==="na") prev[it]=m[i]; else delete prev[it];
+    });
+    store.set(okKey,prev);
+  };
   const mark=function(i,v){
-    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); return m; });
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m); return m; });
   };
   const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
 
@@ -693,7 +722,7 @@ function BetaReviewPanel({onClose, showToast}){
     const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
     const payload={
       verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
-      probados:ok, fallos:ko, sinProbar:pend, noProbable:na,
+      probados:ok, fallos:ko, sinProbar:pend, noProbable:na, heredados:heredados.current,
       noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
       detalle:fallos,
       summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
@@ -719,6 +748,10 @@ function BetaReviewPanel({onClose, showToast}){
       "v"+CONFIG.APP_VERSION+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
       "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+    heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+      background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
+      "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
+      " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
 
     // Progreso
     React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},

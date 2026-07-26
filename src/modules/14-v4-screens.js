@@ -19,6 +19,41 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     setSeg(simple?"recibos":gotoSeg.id);
     if(clearGoto) clearGoto();
   },[gotoSeg&&gotoSeg.ts]);
+  /* «EN DEUDAS Y METAS SE RELENTIZA DE MANERA MUY BESTIA» — CAPÍTULO 2 (2026-07-26 noche).
+     La 4.12.0 sacó el montaje de las PESTAÑAS fuera del gesto y él confirmó que deslizar «va de
+     10»… pero seguía marcando esto como fallo, y tenía razón: aquí dentro había otro montaje al
+     tocar. Estos tres segmentos se pintaban con `seg==="deudas" && <Debts/>`, así que estrenar
+     Deudas montaba el componente ENTERO dentro del toque. Medido con la CPU x6: **203 ms de hilo
+     bloqueado** recién abierta la app, 119 ms con ella ya reposada.
+
+     ⚠ Y el guardián no lo veía: `rendimiento-tabs.spec.mjs` medía ENTRAR EN PLAN, que aterriza en
+     Recibos, y nunca tocaba el segmento de Deudas. Pasaba en verde mientras él seguía viendo el
+     tirón — de ahí que esto sobreviviera a dos versiones.
+
+     Mismo arreglo que el carrusel: montar en huecos libres y luego solo enseñar/esconder, sin
+     desmontar. Y esconder con `height:0 + overflow:hidden + visibility:hidden` A PROPÓSITO, NO con
+     `display:none`: `display:none` se salta el layout, así que el coste no desaparecería, solo se
+     mudaría al momento de enseñarlo — que es exactamente la trampa que ya costó una vuelta con
+     `content-visibility` en las pestañas. Así el layout se paga una vez, en reposo. */
+  const [segMounted,setSegMounted]=useState(function(){ return {recibos:true}; });
+  useEffect(function(){ setSegMounted(function(m){ return m[seg]?m:Object.assign({},m,{[seg]:true}); }); },[seg]);
+  useEffect(function(){
+    if(simple) return;
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setSegMounted(function(m){ return m.deudas?m:Object.assign({},m,{deudas:true}); });
+      mcScheduleIdle(function(){
+        if(!cancelled) setSegMounted(function(m){ return m.metas?m:Object.assign({},m,{metas:true}); });
+      }, 4000);
+    }, 4000);
+    return function(){ cancelled=true; };
+  },[simple]);
+  const oculto={height:0,overflow:"hidden",visibility:"hidden",pointerEvents:"none"};
+  const capa=function(id,hijo){
+    if(!segMounted[id]) return null;
+    return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
+  };
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_plan_title")),
     React.createElement("div",{className:"v4-seg",role:"tablist"},
@@ -27,9 +62,9 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
           className:"v4-seg-btn"+(seg===s.id?" on":""),onClick:function(){ setSeg(s.id); }}, s.lab);
       })
     ),
-    seg==="recibos" && React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen}),
-    seg==="deudas" && React.createElement(Debts,{state:state,set:set,showToast:showToast}),
-    seg==="metas" && React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast})
+    capa("recibos", React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen})),
+    !simple && capa("deudas", React.createElement(Debts,{state:state,set:set,showToast:showToast})),
+    !simple && capa("metas", React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast}))
   );
 }
 

@@ -115,7 +115,6 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     return function(){ cancelled=true; };
   },[active]);
   const expensesDef=useDeferredValue(state.expenses);
-  const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
     set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:pushDeleted(s.deleted, keyOfE(e)) }); });
@@ -294,11 +293,33 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
   };
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
-  useEffect(()=>{
-    const el=sentinelRef.current; if(!el) return;
-    const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting) setVisible(v=> v<filtered.length?v+CONFIG.PAGE_SIZE:v); },{rootMargin:"120px"});
-    io.observe(el); return ()=>io.disconnect();
-  },[filtered.length]);
+  /* LA PAGINACIÓN DE LA LISTA — sus dos fallos del 26/7 por la noche, y salían del mismo sitio.
+     1. «Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.» El centinela
+        se vigilaba con `rootMargin:120px`, o sea que la tanda siguiente no se pedía hasta tenerlo
+        casi encima, y llegaban de 12 en 12: en un desliz rápido te comes el final de la lista
+        antes de que dé tiempo a pintar la siguiente. Ahora se pide con 600 px de antelación y de
+        24 en 24 (la PRIMERA tanda sigue siendo de 12, que es lo que se pinta al entrar y lo que
+        vigila el presupuesto de rendimiento).
+     2. «Cuando le doy otra vez a "Este mes" sale lo de la foto y no carga nada aun esperando un
+        rato.» Éste era un fallo de verdad y llevaba escondido desde siempre: el observador se
+        creaba en un efecto atado a `filtered.length`, pero el centinela SOLO EXISTE mientras
+        `visible<filtered.length`. Al llegar al final de la lista se desmonta, y el observador se
+        quedaba mirando un nodo huérfano; si algo lo volvía a montar sin que cambiara
+        `filtered.length` —volver a pulsar el filtro que ya estaba puesto resetea `visible` a 12
+        con la misma lista— nadie lo vigilaba: «Cargando más…» ahí clavado para siempre.
+        Ahora el observador se ata al nodo con una callback ref, así que se rehace exactamente
+        cuando el centinela nace o muere, pasen lo que pasen las dependencias del efecto. */
+  const filtLen=useRef(0); filtLen.current=filtered.length;   // el observador vive fuera del render: sin esto cerraría sobre una longitud vieja
+  const ioRef=useRef(null);
+  const sentinelRefCb=useCallback(function(el){
+    if(ioRef.current){ ioRef.current.disconnect(); ioRef.current=null; }
+    if(!el) return;
+    const io=new IntersectionObserver(function(es){
+      if(es[0].isIntersecting) setVisible(function(v){ return v<filtLen.current ? v+CONFIG.PAGE_SIZE*2 : v; });
+    },{rootMargin:"600px"});
+    io.observe(el); ioRef.current=io;
+  },[]);
+  useEffect(function(){ return function(){ if(ioRef.current) ioRef.current.disconnect(); }; },[]);
 
   // Abrir la ficha de un movimiento. useCallback = referencia ESTABLE: si cambiara en cada render,
   // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
@@ -477,7 +498,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
               : React.createElement(MovRow,{key:g.e.id||i, e:g.e, d:g.d, onOpen:openDetail, l10n:l10nKey}); }),
-        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
+        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
     React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),

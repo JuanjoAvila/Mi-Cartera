@@ -5775,7 +5775,6 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     return function(){ cancelled=true; };
   },[active]);
   const expensesDef=useDeferredValue(state.expenses);
-  const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
     set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:pushDeleted(s.deleted, keyOfE(e)) }); });
@@ -5954,11 +5953,33 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
   };
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
-  useEffect(()=>{
-    const el=sentinelRef.current; if(!el) return;
-    const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting) setVisible(v=> v<filtered.length?v+CONFIG.PAGE_SIZE:v); },{rootMargin:"120px"});
-    io.observe(el); return ()=>io.disconnect();
-  },[filtered.length]);
+  /* LA PAGINACIÓN DE LA LISTA — sus dos fallos del 26/7 por la noche, y salían del mismo sitio.
+     1. «Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.» El centinela
+        se vigilaba con `rootMargin:120px`, o sea que la tanda siguiente no se pedía hasta tenerlo
+        casi encima, y llegaban de 12 en 12: en un desliz rápido te comes el final de la lista
+        antes de que dé tiempo a pintar la siguiente. Ahora se pide con 600 px de antelación y de
+        24 en 24 (la PRIMERA tanda sigue siendo de 12, que es lo que se pinta al entrar y lo que
+        vigila el presupuesto de rendimiento).
+     2. «Cuando le doy otra vez a "Este mes" sale lo de la foto y no carga nada aun esperando un
+        rato.» Éste era un fallo de verdad y llevaba escondido desde siempre: el observador se
+        creaba en un efecto atado a `filtered.length`, pero el centinela SOLO EXISTE mientras
+        `visible<filtered.length`. Al llegar al final de la lista se desmonta, y el observador se
+        quedaba mirando un nodo huérfano; si algo lo volvía a montar sin que cambiara
+        `filtered.length` —volver a pulsar el filtro que ya estaba puesto resetea `visible` a 12
+        con la misma lista— nadie lo vigilaba: «Cargando más…» ahí clavado para siempre.
+        Ahora el observador se ata al nodo con una callback ref, así que se rehace exactamente
+        cuando el centinela nace o muere, pasen lo que pasen las dependencias del efecto. */
+  const filtLen=useRef(0); filtLen.current=filtered.length;   // el observador vive fuera del render: sin esto cerraría sobre una longitud vieja
+  const ioRef=useRef(null);
+  const sentinelRefCb=useCallback(function(el){
+    if(ioRef.current){ ioRef.current.disconnect(); ioRef.current=null; }
+    if(!el) return;
+    const io=new IntersectionObserver(function(es){
+      if(es[0].isIntersecting) setVisible(function(v){ return v<filtLen.current ? v+CONFIG.PAGE_SIZE*2 : v; });
+    },{rootMargin:"600px"});
+    io.observe(el); ioRef.current=io;
+  },[]);
+  useEffect(function(){ return function(){ if(ioRef.current) ioRef.current.disconnect(); }; },[]);
 
   // Abrir la ficha de un movimiento. useCallback = referencia ESTABLE: si cambiara en cada render,
   // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
@@ -6137,7 +6158,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
               : React.createElement(MovRow,{key:g.e.id||i, e:g.e, d:g.d, onOpen:openDetail, l10n:l10nKey}); }),
-        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
+        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
     React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
@@ -10399,14 +10420,43 @@ function BetaReviewPanel({onClose, showToast}){
   // y dentro de la misma beta el progreso se conserva aunque cierres la app (que era el motivo de
   // guardarlo, porque probar lleva días).
   const storeKey="_betaReview_"+CONFIG.APP_VERSION;
+  /* LO QUE YA DIO POR BUENO NO SE VUELVE A PREGUNTAR (petición suya 2026-07-26, por la noche:
+     «si algo funciona CREO que no debería reventar con otra compilación»). El reseteo por
+     compilación arreglaba una cosa y rompía otra: las cruces sí tienen que volver a preguntarse
+     —son justo lo que se acaba de arreglar—, pero los ✓ también se borraban, y volver a probar
+     siete puntos que ya iban bien es lo que hacía que no se acordara de nada («los pillo en
+     momentos diferentes»).
+
+     Así que los ✓ y los «no lo puedo probar» se guardan APARTE, en una lista que NO lleva el
+     número de compilación, y que casa por el TEXTO del punto y no por su posición. Eso importa:
+     · si reescribimos la nota, ha cambiado lo que se prueba → vuelve a preguntarse;
+     · si la nota es idéntica, es literalmente lo mismo que ya probó → viene marcado;
+     · y si se reordenan las notas, no se cruzan los cables (con índices, sí).
+     Los ✗ no se heredan NUNCA, ni sus comentarios. */
+  const okKey="_betaReviewOk";
+  const heredarOk=function(){
+    var prev=store.get(okKey)||{}, m={};
+    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na") m[i]=v; });
+    return m;
+  };
   // {i: "ok" | "ko" | "na"} + notas de los que fallan
-  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || {}; });
+  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || heredarOk(); });
   const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
   const [busy,setBusy]=useState(false);
   const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
+  // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
+  const heredados=useRef(Object.keys(store.get(storeKey)?{}:heredarOk()).length);
   const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
+  const recordarOk=function(m){
+    var prev=store.get(okKey)||{};
+    pack.items.forEach(function(it,i){
+      if(m[i]==="ok"||m[i]==="na") prev[it]=m[i]; else delete prev[it];
+    });
+    store.set(okKey,prev);
+  };
   const mark=function(i,v){
-    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); return m; });
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m); return m; });
   };
   const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
 
@@ -10426,7 +10476,7 @@ function BetaReviewPanel({onClose, showToast}){
     const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
     const payload={
       verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
-      probados:ok, fallos:ko, sinProbar:pend, noProbable:na,
+      probados:ok, fallos:ko, sinProbar:pend, noProbable:na, heredados:heredados.current,
       noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
       detalle:fallos,
       summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
@@ -10452,6 +10502,10 @@ function BetaReviewPanel({onClose, showToast}){
       "v"+CONFIG.APP_VERSION+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
       "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+    heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+      background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
+      "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
+      " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
 
     // Progreso
     React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
@@ -12282,6 +12336,41 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     setSeg(simple?"recibos":gotoSeg.id);
     if(clearGoto) clearGoto();
   },[gotoSeg&&gotoSeg.ts]);
+  /* «EN DEUDAS Y METAS SE RELENTIZA DE MANERA MUY BESTIA» — CAPÍTULO 2 (2026-07-26 noche).
+     La 4.12.0 sacó el montaje de las PESTAÑAS fuera del gesto y él confirmó que deslizar «va de
+     10»… pero seguía marcando esto como fallo, y tenía razón: aquí dentro había otro montaje al
+     tocar. Estos tres segmentos se pintaban con `seg==="deudas" && <Debts/>`, así que estrenar
+     Deudas montaba el componente ENTERO dentro del toque. Medido con la CPU x6: **203 ms de hilo
+     bloqueado** recién abierta la app, 119 ms con ella ya reposada.
+
+     ⚠ Y el guardián no lo veía: `rendimiento-tabs.spec.mjs` medía ENTRAR EN PLAN, que aterriza en
+     Recibos, y nunca tocaba el segmento de Deudas. Pasaba en verde mientras él seguía viendo el
+     tirón — de ahí que esto sobreviviera a dos versiones.
+
+     Mismo arreglo que el carrusel: montar en huecos libres y luego solo enseñar/esconder, sin
+     desmontar. Y esconder con `height:0 + overflow:hidden + visibility:hidden` A PROPÓSITO, NO con
+     `display:none`: `display:none` se salta el layout, así que el coste no desaparecería, solo se
+     mudaría al momento de enseñarlo — que es exactamente la trampa que ya costó una vuelta con
+     `content-visibility` en las pestañas. Así el layout se paga una vez, en reposo. */
+  const [segMounted,setSegMounted]=useState(function(){ return {recibos:true}; });
+  useEffect(function(){ setSegMounted(function(m){ return m[seg]?m:Object.assign({},m,{[seg]:true}); }); },[seg]);
+  useEffect(function(){
+    if(simple) return;
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setSegMounted(function(m){ return m.deudas?m:Object.assign({},m,{deudas:true}); });
+      mcScheduleIdle(function(){
+        if(!cancelled) setSegMounted(function(m){ return m.metas?m:Object.assign({},m,{metas:true}); });
+      }, 4000);
+    }, 4000);
+    return function(){ cancelled=true; };
+  },[simple]);
+  const oculto={height:0,overflow:"hidden",visibility:"hidden",pointerEvents:"none"};
+  const capa=function(id,hijo){
+    if(!segMounted[id]) return null;
+    return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
+  };
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_plan_title")),
     React.createElement("div",{className:"v4-seg",role:"tablist"},
@@ -12290,9 +12379,9 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
           className:"v4-seg-btn"+(seg===s.id?" on":""),onClick:function(){ setSeg(s.id); }}, s.lab);
       })
     ),
-    seg==="recibos" && React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen}),
-    seg==="deudas" && React.createElement(Debts,{state:state,set:set,showToast:showToast}),
-    seg==="metas" && React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast})
+    capa("recibos", React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen})),
+    !simple && capa("deudas", React.createElement(Debts,{state:state,set:set,showToast:showToast})),
+    !simple && capa("metas", React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast}))
   );
 }
 

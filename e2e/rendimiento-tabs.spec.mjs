@@ -89,4 +89,16 @@ test("entrar por primera vez en cada pestaña no bloquea el hilo principal", asy
   const lt = await page.evaluate(() => window.__lt.slice());
   const bloqueo = lt.reduce((a, b) => a + b, 0);
   expect(bloqueo, `entrar en Deudas y Metas bloqueó el hilo ${bloqueo} ms (tareas: ${lt.join(",") || "ninguna"})`).toBeLessThan(TOPE_MS);
+
+  // ⚠ LO QUE ESTA PRUEBA NO MIRABA, Y COSTÓ DOS VERSIONES (2026-07-26 noche). Entrar en la
+  // pestaña Plan aterriza en RECIBOS. El segmento de Deudas se montaba aparte, al tocarlo
+  // (`seg==="deudas" && <Debts/>`), y eso costaba 203 ms de hilo bloqueado con la CPU x6 — el
+  // «en deudas y metas se relentiza de manera muy bestia» que él seguía marcando como fallo
+  // mientras esta prueba pasaba en verde. La lección es la de siempre: medir LO QUE TOCA EL
+  // USUARIO, no lo que es cómodo de medir. Estructural, como el de Gastos: los tres segmentos
+  // tienen que estar montados ya, con Recibos siendo el único visible.
+  for (const seg of ["recibos", "deudas", "metas"]) {
+    await expect(page.locator(`[data-seg="${seg}"]`), `el segmento «${seg}» de Plan no se ha montado por adelantado`).toHaveCount(1);
+  }
+  expect(await page.locator('[data-seg="deudas"]').isVisible(), "Deudas debería estar montado pero NO visible").toBe(false);
 });
