@@ -74,6 +74,23 @@ existe se deja anotado con su prueba: si mañana alguien vuelve a proponerlo, aq
 | Play Store, cobrar, gestor fiscal | Ya estaba en el plan (ver «Solo si lo pides» y la nota de freemium). | Antes de cobrar un euro: **hablar con un gestor**. La consulta es barata comparada con regularizar tarde. |
 | Más tests de lógica financiera | Hay 15 suites unitarias + 67 e2e. | Seguir sumando al tocar dinero: es la regla de la casa, no una tarea con final. |
 
+### Segunda tanda de la misma review (2026-07-26)
+
+El usuario trajo una segunda ronda, centrada en **operación** más que en producto. Dos de las
+propuestas son la tabla de arriba dicha con otras palabras, y dos las descartamos a propósito —
+queda escrito para no volver a discutirlas.
+
+| Propuesta | Veredicto | Qué falta (tarea) |
+|-----------|-----------|-------------------|
+| **Métricas funcionales** (usuarios activos, syncs OK/KO, imports, tiempo medio de sync, bancos más usados, errores por banco, funciones más usadas) | **Repetido** — es la fila «Analytics de uso». Lo nuevo es la lista de qué medir. **Más barato de lo que parece**: `Core.logEvent(kind,message,detail)` (`00-core.js`) ya existe con RLS solo-admin, tope de 20/sesión y dedupe. | Un `kind` nuevo (`use`) + una vista SQL agregada. **Agregado y anónimo**: son datos financieros, `guard-privacy` vigila el cliente. Instrumentar **ahora** aunque haya 3 usuarios: el histórico de uso no se recupera hacia atrás. |
+| **Health check** (versiones, migraciones pendientes, última release, errores 24h/7d, último backup) | **Sí, pero como script**, no como pantalla. Con 3 usuarios una pantalla es un producto más que mantener; el precedente bueno es `scripts/errores.mjs`. | `npm run salud`: alineación `VERSION`/`package.json`/`apk.json`/APK, migraciones sin aplicar, última release, recuento de `app_events` por severidad a 24 h y 7 días. |
+| **ADR** (`docs/adr/`, una página por decisión) | **Sí.** Encaja con la casa y dentro de dos años nadie recordará los porqués. | Solo **retro** y solo decisiones que costaron dinero: Supabase vs Firebase, monolito HTML + módulos numerados, cero CDNs de terceros, OTA propio vs Capgo, Capacitor. **No** un ADR por cambio. |
+| **Threat model** (XSS, inyección, token robado, noti falsa, replay, función pública, acceso indebido) con ✅ mitigado / ⚠ pendiente | **Sí**, y es el más útil de los suyos porque no es papel: alimenta dos filas ya pendientes de esta misma tabla. | Una página que cruce cada amenaza con lo que ya hay (CSP, RLS, token de ingest de 256 bits en cabecera con comparación en tiempo constante, CORS con lista blanca, rate limit, `state` de OAuth de un solo uso) y marque los huecos → **validar la entrada de las diez Edge Functions** y **auditar los logs**. |
+| **Observabilidad** (duración de Edge Functions, consultas SQL más caras, tiempo de carga) | **A medias, y la mayor parte NO se construye.** Las duraciones de Edge Functions y el SQL caro ya los da el panel de Supabase (Logs + Query Performance); rehacerlo es trabajo tirado. | Solo lo que Supabase **no** puede ver porque pasa en el móvil: duración de una sincronización y de un import, como `logEvent('perf', …)`. Sale gratis si se hace junto a las métricas funcionales. |
+| **Feature flags** por usuario | **No ahora.** Ya hay dos ejes de gating: el canal beta y `profiles.is_admin`. Meter flags en el monolito = ramas de código muertas conviviendo en los ficheros que ya crecen sin parar (`10`/`11`). | Se recupera **el día que la beta tenga varios móviles** (fila «Beta cerrada» de arriba). Entonces sí es una maravilla; antes, no. |
+| **Tercer canal «Experimental»** (Experimental/Beta/Stable) | **No.** Repite la fila «Beta cerrada» y multiplica por tres la matriz de release (OTA + manifiesto + APK), que es exactamente la que reventó dos veces seguidas en 4.10.1 y 4.10.2. | Lo que falta no es un canal más: son **más móviles en el que ya existe**. |
+| **«Operations Dashboard» como tarea única** | **Dividido a propósito.** Son tres cosas distintas (salud + métricas + observabilidad) con costes muy diferentes. | Con 3 usuarios, el 90 % del valor está en el script de salud + la vista SQL de métricas. La pantalla, si algún día compensa. |
+
 ## Solo si lo pides
 
 | Tema | Notas |
