@@ -659,8 +659,14 @@ function betaChecklist(version){
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
   const pack=betaChecklist(CONFIG.APP_VERSION);
-  const storeKey="_betaReview_"+pack.v;
-  // {i: "ok" | "ko"} + notas de los que fallan
+  // La clave va por la COMPILACIÓN (4.12.0.17), no por la versión base (4.12.0). Petición suya
+  // 2026-07-26: «cuando me subas una nueva versión con el fix de eso, que se resetee y se ponga
+  // vacío». Con la clave por versión base, la beta siguiente heredaba las cruces y los comentarios
+  // de la anterior — o sea, el arreglo llegaba ya marcado como fallo. Cada beta empieza en blanco,
+  // y dentro de la misma beta el progreso se conserva aunque cierres la app (que era el motivo de
+  // guardarlo, porque probar lleva días).
+  const storeKey="_betaReview_"+CONFIG.APP_VERSION;
+  // {i: "ok" | "ko" | "na"} + notas de los que fallan
   const [marks,setMarks]=useState(function(){ return store.get(storeKey) || {}; });
   const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
   const [busy,setBusy]=useState(false);
@@ -674,7 +680,12 @@ function BetaReviewPanel({onClose, showToast}){
   const total=pack.items.length;
   const ok=pack.items.filter(function(_,i){ return marks[i]==="ok"; }).length;
   const ko=pack.items.filter(function(_,i){ return marks[i]==="ko"; }).length;
-  const pend=total-ok-ko;
+  // «No se puede probar» (petición suya 2026-07-26): hay cosas que no dependen de él —que llegue
+  // la nómina, que el banco mande una notificación, un icono que solo se ve con la APK instalada—
+  // y no tenían casilla. Al no poder marcarlas, contaban como pendientes y BLOQUEABAN el aprobar,
+  // así que o mentía marcando «va bien» o la beta se quedaba sin veredicto. Esto NO bloquea.
+  const na=pack.items.filter(function(_,i){ return marks[i]==="na"; }).length;
+  const pend=total-ok-ko-na;
 
   const enviar=function(verdict){
     if(busy) return;
@@ -682,9 +693,11 @@ function BetaReviewPanel({onClose, showToast}){
     const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
     const payload={
       verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
-      probados:ok, fallos:ko, sinProbar:pend, detalle:fallos,
+      probados:ok, fallos:ko, sinProbar:pend, noProbable:na,
+      noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
+      detalle:fallos,
       summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
-        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+
+        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+(na?" / "+na+" no probable(s)":"")+
         (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
     };
     cloud.betaReport(payload)
@@ -710,21 +723,23 @@ function BetaReviewPanel({onClose, showToast}){
     // Progreso
     React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
       React.createElement("div",{style:{flex:1,height:8,borderRadius:8,background:"var(--surface-2)",overflow:"hidden"}},
-        React.createElement("div",{style:{width:(total?Math.round((ok+ko)/total*100):0)+"%",height:"100%",
+        React.createElement("div",{style:{width:(total?Math.round((ok+ko+na)/total*100):0)+"%",height:"100%",
           background:ko?"var(--coral)":"var(--mint)",transition:"width .25s ease"}})),
-      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko)+"/"+total)),
+      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko+na)+"/"+total)),
 
     pack.items.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)"}},
       "Esta versión no trae notas, así que no hay checklist. Prueba lo que hayas tocado."),
 
     pack.items.map(function(it,i){
       const m=marks[i];
-      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":"var(--line-soft)"),
-        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)"}},
+      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
+        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
         React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
           React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
+        React.createElement("button",{type:"button",style:Object.assign({},btn(m==="na","var(--muted-2)"),{marginTop:8,width:"100%"}),
+          onClick:function(){ mark(i,"na"); }}, "— No lo puedo probar"),
         m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
           placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
           onChange:function(e){ setNote(i,e.target.value); }})

@@ -242,11 +242,23 @@ function App(){
       // «🏦 CaixaBank: 1.234,56 €» — un número suelto, del PRIMER banco nada más aunque hubieras
       // sincronizado tres, y con el aviso de los movimientos nuevos llegando por separado
       // («el mensaje al actualizar cuentas hay que cambiarlo a uno más claro y conciso»).
-      if(opts.manual && preview.synced.length){
-        const nb=preview.synced.length;
-        let msg = nb===1
-          ? tf("bank_upd_one",{bank:entOf(preview.synced[0].ent).label, x:eur(preview.synced[0].bal)})
-          : tf("bank_upd_n",{n:nb});
+      //
+      // DOS CORRECCIONES tras probarlo él en el móvil (rechazo de la 4.12.0.17): «me dice que
+      // Sabadell perdió la conexión y luego sale una notificación de 4 bancos al día... los que
+      // tengo son Sabadell, Caixa, Revolut y Trade Republic».
+      //   1) `synced` trae una entrada por CUENTA, no por banco (mira `applyBankBalances`: el push
+      //      va dentro del bucle de cuentas). Con dos cuentas en Caixa ya decía «2 bancos». Se
+      //      cuentan entidades distintas.
+      //   2) Y no se canta victoria con un banco caído: si hay alguno que reconectar, el aviso que
+      //      manda es el ⚠ de abajo —que además abre el panel para arreglarlo—, no un «✓ al día»
+      //      que dice lo contrario medio segundo después.
+      const issues=bankIssuesOf(links);
+      if(opts.manual && preview.synced.length && !issues.length){
+        const ents={}; preview.synced.forEach(function(x){ if(x&&x.ent) ents[x.ent]=1; });
+        const bancos=Object.keys(ents);
+        let msg = bancos.length===1
+          ? tf("bank_upd_one",{bank:entOf(bancos[0]).label, x:eur(preview.synced[0].bal)})
+          : tf("bank_upd_n",{n:bancos.length});
         if(obAdded.length) msg += " · " + (obAdded.length===1 ? t("bank_upd_mov1") : tf("bank_upd_movn",{n:obAdded.length}));
         showToast(msg);
       }
@@ -256,7 +268,6 @@ function App(){
       // Cartera existía pero había que dar con él. Ahora, al sincronizar A MANO:
       //   1) notificación de verdad (queda en la bandeja) que al tocarla abre Cartera + Mis bancos,
       //   2) y en el momento, la app abre sola el panel de bancos con ese banco resaltado.
-      const issues=bankIssuesOf(links);
       if(issues.length){
         const lbl=issues[0].ent?entOf(issues[0].ent).label:(issues[0].aspsp||"🏦");
         const msg=issues.length>1
