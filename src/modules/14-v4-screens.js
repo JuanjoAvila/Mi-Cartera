@@ -49,6 +49,17 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     }, 4000);
     return function(){ cancelled=true; };
   },[simple]);
+  /* Y OJO CON CÓMO SE ESCONDEN — aquí me equivoqué yo primero (2026-07-26 noche). Empecé con
+     `height:0 + overflow:hidden + visibility:hidden` para no perder el layout… y `visibility:hidden`
+     SIGUE PINTANDO: el elemento no se ve, pero participa en estilo, capas y pintado. Como los tres
+     segmentos viven dentro del `.track` que se mueve con el dedo, al deslizar se repintaban los
+     TRES en cada frame. Trazado: **323 `Paint`, 114 `UpdateLayoutTree` y 95 `Layerize` en un solo
+     gesto**, o sea 126 ms repartidos en trocitos — que no es una tarea larga que salte a la vista,
+     pero es exactamente su «al entrar en Deudas, moverte, y luego deslizar va con muchísimo lag».
+     Cambié un tirón de 203 ms al entrar por un peaje en CADA deslizada: mal negocio.
+     `display:none` NO pinta, NO calcula estilo y NO hace layout, y React conserva el estado del
+     componente igual, que era lo único que se quería conservar: lo caro es MONTARLO, y eso ya se
+     paga una vez en un hueco libre. */
   const oculto={height:0,overflow:"hidden",visibility:"hidden",pointerEvents:"none"};
   const capa=function(id,hijo){
     if(!segMounted[id]) return null;

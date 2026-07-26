@@ -17,7 +17,12 @@ function App(){
   const lastScrollY=useRef(0);
   const scrollTab=useRef(0);
   const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
+  // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
+  // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
+  // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
+  const lastScrollAt=useRef(0);
   const onPageScroll=function(e){
+    lastScrollAt.current=Date.now();
     // Mientras el dedo cambia de pestaña, el momentum del scroll vertical sigue disparando
     // eventos. Cada uno podía llamar a setNavHidden y re-renderizar App entera a mitad del
     // gesto — eso es el «si te mueves en Deudas/Metas y deslizas acto seguido, se laguea»
@@ -813,7 +818,15 @@ function App(){
   const freezeShell=function(on, kind){
     if(!appShellRef.current) return;
     if(on){
-      appShellRef.current.classList.add("gesture-freeze","dragging");
+      /* ⚠ `gesture-freeze` NO se pone al deslizar entre pestañas, y esto valía 28 ms por gesto.
+         Lo único que hace esa clase es `pointer-events:none` sobre el shell… y `pointer-events`
+         es una propiedad HEREDADA, así que tocarla en la raíz invalida el estilo del árbol
+         ENTERO. Trazado con la CPU x6 en el escenario del rechazo: un solo `UpdateLayoutTree` de
+         28,6 ms, el trozo más gordo de la tarea que rompía el frame. Tiene sentido en el perfil y
+         en el cajón (se superponen y no quieres que un dedo toque lo de debajo), pero deslizando
+         entre pestañas no protege de nada: un arrastre de más de 10 px ya no genera click. */
+      appShellRef.current.classList.add("dragging");
+      if(kind!=="tab") appShellRef.current.classList.add("gesture-freeze");
       if(kind==="profile") appShellRef.current.classList.add("profile-gesturing");
       // Bloquea el scroll de la página activa: si pelea con el gesto → lag.
       // · perfil (2026-07-18): pull-down vs scroll de Inicio.
@@ -822,9 +835,25 @@ function App(){
       if((kind==="profile" || kind==="tab") && trackRef.current){
         const pageEl=trackRef.current.children[tabRef.current];
         if(pageEl){
-          pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
-          pageEl.style.overflow="hidden";
+          /* ⚠ `overflow:hidden` SOBRE UNA PÁGINA SCROLLEADA NO ES GRATIS, y era el «al entrar en
+             Deudas, moverte, y luego deslizar va con muchísimo lag» (rechazos .17 → .23). El
+             navegador colapsa el rango de scroll: tira el scrollTop a 0 y repinta la página
+             entera, y al soltar se restaura y vuelve a repintar. Trazado con la CPU x6 en el
+             escenario exacto: **321 `Paint`, 113 `UpdateLayoutTree` y 95 `Layerize` en un solo
+             gesto** — no una tarea larga que salte a la vista, sino 126 ms en trocitos. Por eso
+             SOLO pasaba si te habías movido dentro: sin scroll no hay nada que colapsar.
+
+             Congelar hacía falta de verdad (el momentum vertical peleaba con el translateX del
+             track), pero solo cuando hay momentum VIVO. Si scrolleaste, paraste y luego deslizas
+             —que es el caso normal— no hay nada contra lo que pelear. Así que el candado caro se
+             pone solo si hubo scroll en los últimos 200 ms; el resto de las veces basta con
+             `touch-action`, que no es propiedad de layout y no cuesta ni un repintado. */
+          const conMomentum=(Date.now()-lastScrollAt.current)<200;
           pageEl.style.touchAction="none";
+          if(conMomentum){
+            pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
+            pageEl.style.overflow="hidden";
+          }
         }
       }
     } else {
@@ -1622,6 +1651,7 @@ function App(){
   // startTransition: la animación del track va primero; React monta la pestaña en segundo plano.
   const goTab=function(i){
     if(i<0||i>=tabIds.length||i===tab) return;
+    lastTabAt.current=Date.now();   // ver el «stopper» en onMove: encadenar deslizadas no debe abrir Ajustes
     revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
     prepMountTab(i);
     if(i>0) prepMountId(tabIds[i-1]);
@@ -1639,6 +1669,22 @@ function App(){
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
+  const trackW=useRef(0);   // ancho del carrusel, medido al empezar el gesto (ver onMove)
+  const prepped=useRef(0);    // qué vecina se ha premontado ya EN ESTE gesto (ver onMove)
+  const lastTabAt=useRef(0);   // cuándo se cambió de pestaña por última vez (ver el «stopper» en onMove)
+  /* EL CARRUSEL SE MUEVE EN PÍXELES, NO EN PORCENTAJES — y esto valía la mitad del lag.
+     Iba con `translateX(-100%)`, y un porcentaje en un `transform` se resuelve contra el ancho
+     del propio elemento, o sea que **hay que consultar el layout para saber a cuántos píxeles
+     equivale**. En un valor fijo eso se hace una vez; escrito en cada `touchmove` durante un
+     arrastre, se paga por frame y saca el gesto del compositor. Medido en el escenario del
+     rechazo (scroll en Deudas → deslizar, CPU x12): **146 → 76 ms** de tareas largas solo por
+     este cambio. Con `translate3d(px,0,0)` no hay nada que resolver y además el `,0,0` pide capa
+     propia explícitamente.
+     Se usa en TODAS las escrituras del track, no solo en la del arrastre: si unas fueran en `%` y
+     otras en píxeles, la transición al soltar interpolaría entre dos listas de funciones
+     distintas y el navegador caería a interpolar matrices. */
+  const trackAnchoAhora=function(){ return (trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360; };
+  const trackX=function(i){ return "translate3d("+(-i*(trackW.current||trackAnchoAhora()))+"px,0,0)"; };
   /* Aquí vivían revealDots()/hideDotsSoon(), que encendían y apagaban el indicador de puntitos
      del swipe. Ese indicador se lo llevó por delante el rediseño v4: `.app.v4 .dots` está oculto
      con `display:none !important` y ningún módulo crea ya el elemento (comprobado buscando
@@ -1655,6 +1701,10 @@ function App(){
     // React burbujea hasta aquí — sin esto, scroll de chips mueve las tabs (2026-07-17).
     if(document.documentElement.classList.contains("sheet-open")) return;
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
+    // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
+    // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
+    trackW.current=(trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360;
+    prepped.current=0;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
@@ -1679,7 +1729,19 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
+        /* EL «STOPPER» (rechazos .19 y .23: «hay un stopper o algo que no permite deslizar de
+           manera seguida y rápida»). Reproducido midiendo: tres arrastres encadenados dan
+           `gastos → inicio → ninguna`, y que no haya pestaña activa significa que se abrió el
+           cajón. La causa es esta línea: en Inicio, un desliz a la derecha abre Ajustes DESDE
+           TODA LA PANTALLA (se hizo así a propósito el 17/7). Está bien cuando es un gesto
+           deliberado, pero encadenando deslizadas hacia atrás llegas a Inicio y **la siguiente
+           te planta Ajustes en la cara** — que es exactamente lo que se siente como un tope.
+           Solución: el atajo de pantalla completa solo cuenta si el dedo no viene de estar
+           cambiando de pestaña hace nada. Si acabas de cambiar (<450 ms), en Inicio manda el
+           borde, como en el resto de pestañas: sigues pudiendo abrir Ajustes desde la franja
+           izquierda, pero una deslizada de más ya no te saca de donde estás. */
+        const encadenando=(Date.now()-lastTabAt.current)<450;
+        const openSettings = ddx>0 && ((tab===0 && !encadenando) || startX.current < EDGE_OPEN);
         if(openSettings){
           gestureMode.current="drawer";
           setDrawerMounted(true);   // por si el idle aún no ha premontado (1ª vez sin negro)
@@ -1723,14 +1785,30 @@ function App(){
       if(e.cancelable) e.preventDefault();
       return;
     }
-    const w=trackRef.current?trackRef.current.offsetWidth:360;
+    /* EL ANCHO SE MIDE UNA VEZ, AL EMPEZAR EL GESTO — aquí estaba el lag de verdad (rechazos
+       .17 → .23: «al entrar en Deudas, moverte, y luego deslizar va con muchísimo lag»).
+       Esto leía `trackRef.current.offsetWidth` EN CADA `touchmove`, y leer `offsetWidth` obliga al
+       navegador a recalcular el layout de forma SÍNCRONA. Con la página sin scrollear el layout
+       está limpio y la lectura sale gratis; pero congelar el scroll le pone `overflow:hidden`, eso
+       ensucia el layout, y entonces cada lectura se convierte en un reflow COMPLETO del documento.
+       Por eso solo se notaba «si te movías dentro»: hacían falta las dos cosas a la vez, y por
+       separado ninguna cantaba. Trazado con la CPU x6: 113 `UpdateLayoutTree` y 322 `Paint` en un
+       solo gesto — no una tarea larga que salte a la vista, sino 126 ms en trocitos.
+       Es layout-thrashing de manual, y la cura es la de manual: leer una vez, fuera del bucle. El
+       ancho del track no cambia mientras el dedo está en la pantalla. */
+    const w=trackW.current||360;
     let off=-tab*100+(dx.current/w)*100;
     // Sin rubber-band a la derecha en Inicio (ese gesto es Ajustes) — evitaba el rebote raro.
     if(tab===tabIds.length-1&&dx.current<0) off=-tab*100+(dx.current/w)*100*0.28;
     else if(tab===0&&dx.current>0) off=-tab*100;
-    if(trackRef.current) trackRef.current.style.transform="translateX("+off+"%)";
-    if(dx.current<-24 && tab<tabIds.length-1) prepMountTab(tab+1);
-    else if(dx.current>24 && tab>0) prepMountTab(tab-1);
+    if(trackRef.current) trackRef.current.style.transform="translate3d("+(off*w/100)+"px,0,0)";
+    /* Y ESTO SE PEDÍA EN CADA `touchmove`. `prepMountTab` acaba en un `setMountedTabs` que
+       devuelve el MISMO objeto si la pestaña ya estaba montada, así que React se ahorra el
+       re-render… pero no se ahorra la llamada, ni la comprobación, ni el trabajo de programar la
+       actualización: en un arrastre son ~35 veces para no cambiar nada. Con una marca por gesto
+       basta, porque montar es idempotente y la dirección no cambia a mitad de arrastre. */
+    if(dx.current<-24 && tab<tabIds.length-1 && prepped.current!==1){ prepped.current=1; prepMountTab(tab+1); }
+    else if(dx.current>24 && tab>0 && prepped.current!==-1){ prepped.current=-1; prepMountTab(tab-1); }
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
@@ -1771,13 +1849,25 @@ function App(){
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
         if(nt!==tab) goTab(nt);
-        else if(trackRef.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)";
+        else if(trackRef.current) trackRef.current.style.transform=trackX(tab);
       }
     }
     gestureMode.current=null;
     axis.current=null;
   };
-  useEffect(()=>{ if(trackRef.current&&!dragging.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; },[tab]);
+  useEffect(()=>{ if(trackRef.current&&!dragging.current) trackRef.current.style.transform=trackX(tab); },[tab]);
+  // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
+  // píxel no. Si cambia el ancho (rotación, teclado, barra del navegador), se tira la medida
+  // cacheada y se vuelve a colocar el carrusel. Fuera del gesto, para no medir con el dedo puesto.
+  useEffect(function(){
+    const alRedimensionar=function(){
+      trackW.current=0;
+      if(trackRef.current&&!dragging.current) trackRef.current.style.transform=trackX(tab);
+    };
+    window.addEventListener("resize",alRedimensionar);
+    window.addEventListener("orientationchange",alRedimensionar);
+    return function(){ window.removeEventListener("resize",alRedimensionar); window.removeEventListener("orientationchange",alRedimensionar); };
+  },[tab]);
   /* auto-scroll del tab bar para que la pestaña activa siempre se vea */
   useEffect(()=>{
     const bar=tabbarRef.current; if(!bar) return;
@@ -1855,7 +1945,7 @@ function App(){
   const cancelSwipe=function(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
-    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; }
+    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform=trackX(tab); }
     if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
     freezeShell(false);
     setSettingsProgress(drawerOpen?1:0);

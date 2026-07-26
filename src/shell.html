@@ -311,6 +311,24 @@
   /* 0.42s + ease suave tipo Trade Republic (feedback 2026-07-17: el 0.22 era demasiado «firme»). */
   .track{display:flex;height:100%;transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;}
   .track.dragging{transition:none;}
+  /* Los segmentos de Plan que no se ven se quedan MONTADOS Y CON SU LAYOUT HECHO (ver
+     14-v4-screens.js): así estrenar Deudas cuesta 0 ms en vez de 203. El precio es que
+     visibility:hidden SIGUE PARTICIPANDO EN EL PINTADO, y como viven dentro del .track que se
+     arrastra con el dedo, se repintaban los tres en cada frame del gesto: medido con la CPU x12,
+     156 ms de tareas largas contra 80 sin ellos.
+
+     O sea que ninguna de las dos formas de esconder valía SOLA, y lo probé las tres:
+       · visibility:hidden      → entrar 0 ms, pero deslizar 156 ms
+       · display:none           → deslizar 80 ms, pero entrar 133 ms
+       · content-visibility     → deslizar 86 ms, pero entrar 124 ms
+     El coste existe; lo único que se puede elegir es CUÁNDO se paga. Y hay un momento en que no
+     molesta a nadie: mientras el dedo está en la pantalla no se ve ningún segmento oculto, así
+     que ahí no hace falta ni layout ni pintado. Durante el arrastre (.track.dragging, que ya se
+     pone y se quita en el gesto) los ocultos pasan a content-visibility:hidden y desaparecen del
+     pintado; al soltar vuelven y recuperan su layout. Ese recálculo cae DESPUÉS del touchend, que
+     es tiempo que no le quita un frame al dedo (AGENTS §7 bis). Resultado: 0 ms al entrar y ~80
+     al deslizar, en vez de tener que elegir. */
+  .track.dragging [data-seg][aria-hidden="true"]{content-visibility:hidden;}
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
