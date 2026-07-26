@@ -20,6 +20,30 @@ A/B contra el código anterior, mismo escenario: **171 → 0 ms** en Deudas y Me
 
 **Trampa que casi cuesta un arreglo falso:** la primera medición señalaba a `getBoundingClientRect` con 350 ms de tiempo propio. Era **Playwright**, que sondea el DOM desde su script inyectado mientras `locator.click()` y `waitFor()` esperan. Al medir con un click crudo y una espera a ciegas, desapareció.
 
+**Y de propina, un peaje que no compraba nada:** el gesto seguía encendiendo y apagando el indicador de puntitos del swipe (`showDots` + `dotsTimer`, con `revealDots()` al declararse el eje horizontal y `hideDotsSoon()` 1,1 s después). Ese indicador **se lo llevó por delante el rediseño v4** — `.app.v4 .dots{display:none !important}` y ningún render crea ya el elemento (comprobado buscando `showDots` y `className:"dots"` en todo `src/`: cero apariciones fuera de la propia maquinaria). O sea **dos re-renders completos de `App` por cada pasada de dedo entre pestañas, para no pintar absolutamente nada**. Retirado; el CSS se queda por si el indicador vuelve. Guardián nuevo: `e2e/swipe-pestanas.spec.mjs`, que cubre lo que `rendimiento-tabs` no miraba — que deslizar **funcione** (las cuatro pestañas ida y vuelta, sin descarrilar en la última, con contenido de verdad al llegar). Hacía falta ahora que el montaje vive FUERA del gesto: un montaje que llegue tarde daría pestaña en blanco sin que ninguna tarea larga se entere.
+
+Las tres trampas de medir gestos táctiles (el splash tapando la pantalla, las zonas con `stopSwipe` que invalidan la muestra, y el perfilador distorsionando más de lo que mide) quedan escritas en `AGENTS.md` §7 bis.
+
+#### Y quedaba un tirón más, que NO era del gesto
+Con la limpieza puesta, el A/B seguía dando **65 ms de tareas largas en la primera deslizada** (antes 74; tres vueltas sin solape, 71/74/78 → 62/65/68). O sea: el arreglo grande se había llevado los 500 ms, pero quedaba un pellizco. Dos experimentos para saber de quién era:
+
+- **Llegar a Gastos por CLICK, sin gesto ninguno: 66 ms.** Y después, el primer arrastre: **0 ms**.
+- **Un arrastre corto que no llega al umbral** (toca toda la maquinaria del gesto, pero no cambia de pestaña): **0 ms**. Y el arrastre completo justo después: 67 ms.
+
+Conclusión: **el gesto no costaba nada**; el coste era *entrar en Gastos la primera vez*, se llegara como se llegara. `Tracing` (no `Profiler`, que a 6× de freno distorsiona más de lo que mide) lo puso en un sitio concreto: de esos 67 ms, **59,7 eran un `Layout` completo** —1.196 objetos, `partialLayout:false`—, y contando etiquetas antes y después del cambio salían **~50 nodos nuevos de golpe**: la tarjeta de suscripciones detectadas.
+
+El culpable, `heavyOk` en `04-tab-gastos.js`: la detección de suscripciones esperaba a que la pestaña estuviera **activa**. Es exactamente el mismo error que tenía el montaje de las pestañas —trabajo caro atado al momento en que el usuario toca— y se arregla igual: **no se puede evitar el coste, pero sí elegir cuándo se paga**. Ahora se adelanta a un hueco libre aunque la pestaña no esté activa, con tope generoso (4 s frente a los 40 ms de cuando sí lo está) para que no se cuele a la fuerza en mitad del arranque, que es el rato más ocupado.
+
+Medido después, con solo 600 ms de reposo antes de tocar nada — o sea el caso que él describe, «las primeras veces»:
+
+| | 1ª deslizada | 2ª | 3ª |
+|---|---|---|---|
+| beta anterior (`f1ce06d`) | 74 ms | 0 | 0 |
+| + limpieza de los puntitos | 65 ms | 0 | 0 |
+| + `heavyOk` adelantado | **0 ms** | 0 | 0 |
+
+Y el precio, que lo tiene: en los 8 primeros segundos el total de tareas largas sube de **762 a 800 ms** (mediana de 3 vueltas) porque ese trabajo ahora se hace igualmente, solo que en reposo. Lo que NO se mueve es lo único que se nota: **la tarea más larga del arranque sigue en ~205 ms** (203 → 206, dentro del ruido) y la app tarda lo mismo en estar lista (1.517 → 1.564 ms, con las vueltas sueltas solapando: 1.459-1.544 antes, 1.457-1.602 después). Guardián: `rendimiento-tabs.spec.mjs` comprueba **estando en Inicio** que las filas de suscripción —que solo viven en Gastos— ya están pintadas. Es estructural a propósito, no de tiempos: un guardián de milisegundos en CI acaba en flaky. Verificado que falla con el código anterior.
+
 #### «No me ha leído un ingreso de la caixa, he tenido notificación y todo» (16 jul, sin leer hasta hoy)
 Cierto, y era de diseño: `importObExpenses` filtraba por `tx.card && tx.amount>0` — **solo compras con tarjeta**. El saldo del banco sí se aplicaba (el patrimonio salía bien), pero el ingreso no aparecía como movimiento, así que desde fuera la app parecía no haberse enterado. Ahora entran también los importes negativos (convención del servidor: `CRDT → -amt`) con categoría `ingreso`. Los cargos que **no** son de tarjeta siguen fuera a propósito: son los Fijos, y contarlos aquí sería contarlos dos veces. `tests/ob-ingresos.test.mjs` fija el convenio de signos por escrito.
 

@@ -5735,10 +5735,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       }
     };
   };
+  // Lo caro de Gastos (detectar suscripciones y pintar su tarjeta) esperaba a que la pestaña
+  // estuviera ACTIVA, así que se pagaba AL LLEGAR: en la cola del gesto de deslizar. Medido con
+  // la CPU estrangulada x6 y trazado con `Tracing` (2026-07-26): la primera entrada en Gastos
+  // costaba una tarea de ~67 ms, de los cuales **59,7 ms eran un Layout completo** (1.196
+  // objetos, `partialLayout:false`) — el de las ~50 etiquetas que aparecen de golpe al ponerse
+  // `heavyOk` en true. Y se pagaba igual llegando por gesto que tocando la barra de abajo, así
+  // que no era el gesto: era esto.
+  //
+  // Es el mismo error que tenía el montaje de las pestañas, y se arregla igual: el coste no se
+  // puede evitar, pero sí ELEGIR CUÁNDO se paga. Ahora se adelanta a un hueco libre aunque la
+  // pestaña no esté activa (a esas alturas ya está montada y no hay ningún dedo en la pantalla).
+  // El tope generoso —4 s frente a 40 ms— es lo que impide que se cuele a la fuerza en mitad del
+  // arranque, que sigue siendo el momento más ocupado; con la pestaña activa manda la prisa.
   useEffect(function(){
-    if(!active||heavyOk) return;
+    if(heavyOk) return;
     var cancelled=false;
-    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 40);
+    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, active?40:4000);
     return function(){ cancelled=true; };
   },[active,heavyOk]);
   // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs

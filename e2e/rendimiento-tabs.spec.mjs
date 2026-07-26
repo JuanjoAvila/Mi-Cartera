@@ -69,6 +69,17 @@ test("entrar por primera vez en cada pestaña no bloquea el hilo principal", asy
   const vivas = await page.locator(".track > .page-live").count();
   expect(vivas, `solo ${vivas} pestañas montadas tras 6 s de reposo`).toBeGreaterThanOrEqual(4);
 
+  // Y montada no basta: lo CARO de cada pestaña también tiene que estar hecho ya. Gastos deja
+  // para el final la detección de suscripciones (`heavyOk`), y eso esperaba a que la pestaña
+  // estuviera ACTIVA — o sea que se pagaba al llegar, en la cola del gesto. Trazado con la CPU
+  // x6: 67 ms de tarea, 59,7 de ellos un Layout completo por las ~50 etiquetas que aparecían de
+  // golpe (2026-07-26). Las filas de suscripción SOLO viven en Gastos, así que verlas estando en
+  // Inicio es la prueba de que el trabajo se adelantó. Es una comprobación estructural, no de
+  // tiempos: no puede quedarse en flaky cuando el CI vaya lento.
+  expect(await page.locator('.botnav-tab.active').getAttribute("data-tour")).toBe("inicio");
+  const subs = await page.locator(".sub-row").count();
+  expect(subs, "la tarjeta cara de Gastos no se ha adelantado: sigue esperando a que entres").toBeGreaterThan(0);
+
   // Y la comprobación cara, solo en la pestaña que motivó el feedback (Deudas y Metas). Se mide
   // una sola para no acaparar la máquina: con la CPU estrangulada, esta prueba compite con el
   // resto del suite y hace flaquear a las que van con clics encadenados.
