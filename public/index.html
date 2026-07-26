@@ -1031,16 +1031,16 @@
   #mc-load .mcl-mark svg{width:52px;height:52px;display:block;}
   #mc-load .mcl-name{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:560;letter-spacing:-.3px;color:var(--text,#EAF2EC);
     animation:mclpop .5s .07s cubic-bezier(.32,.72,0,1) both;}
-  /* Barra indeterminada en vez de ruleta: ocupa poco, no gira y no promete un porcentaje que no sabemos. */
-  #mc-load .mcl-bar{width:116px;height:3px;border-radius:3px;background:var(--line-soft,#1A3228);overflow:hidden;}
-  #mc-load .mcl-bar i{display:block;width:38%;height:100%;border-radius:3px;background:var(--mint,#5FD08A);animation:mclbar 1.15s ease-in-out infinite;}
+  /* SIN BARRA DE CARGA (2026-07-26). Había una barra indeterminada debajo del nombre; fuera, por
+     petición desde el móvil: «quitar lo de la barra de carga al abrir la app, el resto de apps no
+     lo tienen; el tiempo ese que se queda el logo está bien». Una barra que no mide nada solo
+     dice «esto va lento». El botón de reintentar SÍ se queda: ese aparece únicamente si algo se
+     ha atascado de verdad, y es la única salida cuando pasa. */
   #mc-load .mcl-retry{display:none;margin-top:2px;background:none;border:none;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;
     color:var(--mint,#5FD08A);text-decoration:underline;padding:8px 12px;cursor:pointer;}
   @keyframes mclpop{from{opacity:0;transform:translateY(9px) scale(.94);}to{opacity:1;transform:none;}}
-  @keyframes mclbar{0%{transform:translateX(-110%);}100%{transform:translateX(310%);}}
   @media (prefers-reduced-motion:reduce){
     #mc-load .mcl-mark,#mc-load .mcl-name{animation:none !important;}
-    #mc-load .mcl-bar i{animation:none !important;width:100%;}
   }
 </style>
 </head>
@@ -1050,7 +1050,7 @@
      De ahí que el vigilante esperase `#root` con más de un hijo —cosa que no pasaba nunca— y que
      el usuario no viera splash ninguno, solo negro. Como hermano, React ni lo toca y se retira
      cuando nosotros decidimos. -->
-<div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><div class="mcl-bar"><i></i></div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
+<div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
 <div id="root"></div>
 
 
@@ -5733,9 +5733,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   },[active,heavyOk]);
   // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
   // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
+  //
+  // OJO CON EL MOMENTO (2026-07-26). Escribir `scrollLeft` obliga al navegador a recalcular el
+  // layout de forma SÍNCRONA, y este efecto corría justo después de montar la pestaña —con el
+  // layout entero sucio— en mitad del gesto de deslizar. Medido con el perfilador de CPU (x6,
+  // 3.000 gastos): **276 ms de hilo bloqueado en estas dos líneas**, el mayor coste con nombre
+  // propio de todo el cambio de pestaña. Era la mitad del «va a tirones las primeras veces».
+  // Los chips no tienen ninguna prisa (la pestaña tarda 420 ms en entrar), así que esto se va a
+  // un hueco libre y solo escribe si de verdad hay algo que resetear.
   useEffect(function(){
-    if(catChipsRef.current) catChipsRef.current.scrollLeft=0;
-    if(bankChipsRef.current) bankChipsRef.current.scrollLeft=0;
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      var c=catChipsRef.current, b=bankChipsRef.current;
+      if(c&&c.scrollLeft) c.scrollLeft=0;
+      if(b&&b.scrollLeft) b.scrollLeft=0;
+    }, 300);
+    return function(){ cancelled=true; };
   },[active]);
   const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);
@@ -10332,7 +10346,9 @@ function betaChecklist(version){
   var notes=(typeof RELEASE_NOTES!=="undefined"&&RELEASE_NOTES.length)
     ? (RELEASE_NOTES.filter(function(n){ return n.v===base; })[0] || RELEASE_NOTES[0])
     : null;
-  return notes ? { v:notes.v, t:notes.t, items:(notes.items||[]) } : { v:base, t:"", items:[] };
+  // El panel de revisión es la consola privada del dueño y va SIN traducir (como «Actividad»),
+  // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
+  return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
 }
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
@@ -10570,18 +10586,49 @@ function FeedbackPanel({state, set, showToast, onClose}){
    El CONTENIDO de las notas va solo en castellano a propósito (release notes para el
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
+/* NOTAS DE VERSIÓN EN TRES IDIOMAS (petición desde el móvil, 2026-07-26: «que el histórico de
+   actualizaciones sea en todos los idiomas, no solo español»).
+
+   Cada entrada admite las dos formas:
+     · texto suelto            → castellano (todo el histórico anterior a esta fecha)
+     · {es:"…",en:"…",ca:"…"}  → traducida
+
+   POR QUÉ NO SE TRADUCE EL HISTÓRICO ENTERO: son 68 versiones y 279 entradas, 55 KB de texto.
+   Por tres idiomas serían 165 KB, y el presupuesto de descarga (`tests/presupuesto-rendimiento`)
+   va por 277 KB de 310 en gzip — se lo comería de golpe para que nadie lea nunca las notas de
+   una versión de hace dos meses en catalán. De aquí en adelante, cada nota nace en los tres. */
+function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
+function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.11.0", d:"25 jul 2026", t:"Ahora sí: el splash se ve, y los bienes van por su cuenta", items:[
-    "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
-    "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
-    "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 Cerrar el perfil: encontrado el fallo de verdad, el que llevaba tres intentos escondido. Si habías bajado un poco dentro del perfil —o sea, casi siempre, porque el perfil es largo y lo miras antes de cerrarlo— el arrastre hacia abajo solo scrolleaba y al soltar seguías dentro. Para cerrar había que recoger TODO el scroll y encima seguir arrastrando en el mismo gesto: nadie hace eso. Ahora la franja de arriba del panel es un asa (tiras de ahí y cierra, esté como esté el scroll) y, si tiras desde el medio, en cuanto el contenido llega arriba el panel empieza a encogerse sin que sueltes el dedo.",
-    "✋ Y cerrar vuelve a bastar con un gesto corto: al igualar abrir y cerrar «con los mismos números» se había quedado pidiendo casi el doble de arrastre. La sensación sigue siendo la misma en los dos sentidos —eso era lo que pedías— pero sin pasarse de exigente. Si tiras, no llega y vuelves a tirar en el acto, también te hace caso ya (antes se quedaba sorda medio segundo).",
-    "✨ El popup de Novedades ya te dice qué versión llevas de verdad. En el canal de pruebas ponía «4.11.0» estando en la 4.11.0.8, y ninguna versión salía marcada como la tuya.",
-    "🔔 Y se acabaron las notificaciones duplicadas de «hay versión nueva». El aviso llevaba un identificador sacado del reloj, así que cada uno se apilaba en vez de sustituir al anterior; y había dos emisores para lo mismo (la app abierta y el vigilante que mira con la app cerrada), cada uno con el suyo. Ahora comparten identificador y el vigilante respeta el canal de pruebas. Esto va en la app nueva (34), no en la actualización web.",
-    "🚧 Canal de pruebas: la versión que ves ya dice cuál llevas (4.11.0.8 y no «4.11.0»), y se acabó el aviso de actualizar cada dos minutos — el paquete se sellaba con un número distinto del que anunciaba, así que la app creía que siempre le faltaba algo.",
-    "📦 Y apagar el canal de pruebas ahora te devuelve de verdad a la versión de todos. Antes se quedaba con la de pruebas puesta hasta que la normal la adelantara.",
-  ]},
+  {v:"4.11.0", d:"25 jul 2026",
+   t:{es:"La app se presenta al abrirse, y los bienes van por su cuenta",
+      en:"The app introduces itself when it opens, and assets stand on their own",
+      ca:"L'app es presenta en obrir-se, i els béns van pel seu compte"},
+   items:{
+   es:[
+    "🚪 Al abrir la app ya se ve su logo mientras carga, en vez de una pantalla en negro.",
+    "🏡 Tus bienes (piso, coche…) tienen ahora su propio bloque en Cartera, separado de las cuentas del banco. Puedes subirlo o bajarlo con «⇅ Ordenar secciones».",
+    "👤 Cerrar el perfil vuelve a ir a la primera, también si habías bajado dentro. Abrirlo y cerrarlo se sienten igual de suaves.",
+    "🔔 Se acabaron los avisos repetidos de que hay una versión nueva.",
+    "✨ El popup de Novedades marca bien cuál es la versión que llevas puesta.",
+    "💡 Por si acaso: el patrimonio de Inicio sube contando hasta tu cifra. Es una animación — el número final siempre ha sido el correcto.",
+   ],
+   en:[
+    "🚪 Opening the app now shows its logo while it loads, instead of a black screen.",
+    "🏡 Your assets (flat, car…) now have their own block in Portfolio, separate from your bank accounts. Move it up or down with «⇅ Reorder sections».",
+    "👤 Closing your profile works first time again, even if you had scrolled down inside it. Opening and closing now feel the same.",
+    "🔔 No more repeated notifications about a new version being available.",
+    "✨ The What's new popup now correctly marks which version you are running.",
+    "💡 Just in case: the net worth on Home counts up to your figure. It's an animation — the final number was always the right one.",
+   ],
+   ca:[
+    "🚪 En obrir l'app ja es veu el seu logotip mentre carrega, en lloc d'una pantalla en negre.",
+    "🏡 Els teus béns (pis, cotxe…) tenen ara el seu propi bloc a Cartera, separat dels comptes del banc. El pots pujar o baixar amb «⇅ Ordenar seccions».",
+    "👤 Tancar el perfil torna a anar a la primera, també si havies baixat a dins. Obrir-lo i tancar-lo se senten igual de suaus.",
+    "🔔 S'han acabat els avisos repetits que hi ha una versió nova.",
+    "✨ El missatge de Novetats marca bé quina versió portes posada.",
+    "💡 Per si de cas: el patrimoni d'Inici puja comptant fins a la teva xifra. És una animació — el número final sempre ha estat el correcte.",
+   ]}},
   {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
     "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
     "🔔 Y si el canal de pruebas falla, te lo dice. Antes, cualquier problema al mirar si había versión nueva se disfrazaba de «no hay nada nuevo» — que es justo lo que hizo que esto pasara desapercibido tanto tiempo. Ahora sale el error y queda anotado.",
@@ -11009,8 +11056,8 @@ function WhatsNew({onClose, showToast, set, state}){
         React.createElement("button",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,width:"100%",background:"none",border:"none",color:"var(--text)",padding:0,cursor:"pointer",textAlign:"left"},onClick:function(){ setOpenV(open?null:r.v); }},
           React.createElement("span",{style:{fontWeight:800,fontSize:14}},"v"+(cur?CONFIG.APP_VERSION:r.v)+(cur?" · "+t("wn_current")+" ✓":"")),
           React.createElement("span",{style:{color:"var(--muted-2)",fontSize:11.5,flex:"0 0 auto"}},r.d+(open?" ▴":" ▾"))),
-        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},r.t),
-        open && r.items.map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
+        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},rnT(r.t)),
+        open && rnItems(r).map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
       );
     }),
     React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},onClick:onClose}, t("wn_close"))
@@ -14409,10 +14456,33 @@ function App(){
   },[tab, tabIds.join("|")]);
   // Tras el primer pintado: NO montar vecinas en auto. Montar ±1 al toque/swipe (prepMountTab)
   // evitaba un segundo hitch a ~900 ms junto con WhatsNew (feedback 2026-07-16).
+  //
+  // PERO montarlas al TOCAR significa montarlas DENTRO del gesto (feedback 2026-07-26: «las
+  // primeras veces que deslizas entre pestañas va a tirones, luego se suaviza»). Medido con la
+  // CPU estrangulada x6: 1ª deslizada 218+149+69+65 ms de tareas largas, 2ª 97 ms, 3ª y 4ª
+  // limpias — exactamente lo que él describió. El coste de montar no se puede evitar, pero sí
+  // ELEGIR CUÁNDO se paga: aquí se paga en huecos libres, una pestaña por hueco, antes de que
+  // nadie toque la pantalla. Se mantienen los 3,2 s del primer hueco (mover eso reabre el hitch
+  // de los 900 ms) y el `prepMountTab` del toque, que sigue haciendo de red por si el usuario
+  // desliza antes de que dé tiempo a todo.
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    mcScheduleIdle(function(){ setMountNeighbors(true); }, 3200);
-  },[state.onboarded, locked]);
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setMountNeighbors(true);
+      var pend=tabIds.slice();
+      var siguiente=function(){
+        if(cancelled) return;
+        var id=pend.shift();
+        if(!id) return;
+        setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
+        mcScheduleIdle(siguiente, 900);
+      };
+      mcScheduleIdle(siguiente, 900);
+    }, 3200);
+    return function(){ cancelled=true; };
+  },[state.onboarded, locked, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.

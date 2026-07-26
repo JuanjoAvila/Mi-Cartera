@@ -652,7 +652,9 @@ function betaChecklist(version){
   var notes=(typeof RELEASE_NOTES!=="undefined"&&RELEASE_NOTES.length)
     ? (RELEASE_NOTES.filter(function(n){ return n.v===base; })[0] || RELEASE_NOTES[0])
     : null;
-  return notes ? { v:notes.v, t:notes.t, items:(notes.items||[]) } : { v:base, t:"", items:[] };
+  // El panel de revisión es la consola privada del dueño y va SIN traducir (como «Actividad»),
+  // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
+  return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
 }
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
@@ -890,18 +892,49 @@ function FeedbackPanel({state, set, showToast, onClose}){
    El CONTENIDO de las notas va solo en castellano a propósito (release notes para el
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
+/* NOTAS DE VERSIÓN EN TRES IDIOMAS (petición desde el móvil, 2026-07-26: «que el histórico de
+   actualizaciones sea en todos los idiomas, no solo español»).
+
+   Cada entrada admite las dos formas:
+     · texto suelto            → castellano (todo el histórico anterior a esta fecha)
+     · {es:"…",en:"…",ca:"…"}  → traducida
+
+   POR QUÉ NO SE TRADUCE EL HISTÓRICO ENTERO: son 68 versiones y 279 entradas, 55 KB de texto.
+   Por tres idiomas serían 165 KB, y el presupuesto de descarga (`tests/presupuesto-rendimiento`)
+   va por 277 KB de 310 en gzip — se lo comería de golpe para que nadie lea nunca las notas de
+   una versión de hace dos meses en catalán. De aquí en adelante, cada nota nace en los tres. */
+function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
+function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.11.0", d:"25 jul 2026", t:"Ahora sí: el splash se ve, y los bienes van por su cuenta", items:[
-    "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
-    "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
-    "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 Cerrar el perfil: encontrado el fallo de verdad, el que llevaba tres intentos escondido. Si habías bajado un poco dentro del perfil —o sea, casi siempre, porque el perfil es largo y lo miras antes de cerrarlo— el arrastre hacia abajo solo scrolleaba y al soltar seguías dentro. Para cerrar había que recoger TODO el scroll y encima seguir arrastrando en el mismo gesto: nadie hace eso. Ahora la franja de arriba del panel es un asa (tiras de ahí y cierra, esté como esté el scroll) y, si tiras desde el medio, en cuanto el contenido llega arriba el panel empieza a encogerse sin que sueltes el dedo.",
-    "✋ Y cerrar vuelve a bastar con un gesto corto: al igualar abrir y cerrar «con los mismos números» se había quedado pidiendo casi el doble de arrastre. La sensación sigue siendo la misma en los dos sentidos —eso era lo que pedías— pero sin pasarse de exigente. Si tiras, no llega y vuelves a tirar en el acto, también te hace caso ya (antes se quedaba sorda medio segundo).",
-    "✨ El popup de Novedades ya te dice qué versión llevas de verdad. En el canal de pruebas ponía «4.11.0» estando en la 4.11.0.8, y ninguna versión salía marcada como la tuya.",
-    "🔔 Y se acabaron las notificaciones duplicadas de «hay versión nueva». El aviso llevaba un identificador sacado del reloj, así que cada uno se apilaba en vez de sustituir al anterior; y había dos emisores para lo mismo (la app abierta y el vigilante que mira con la app cerrada), cada uno con el suyo. Ahora comparten identificador y el vigilante respeta el canal de pruebas. Esto va en la app nueva (34), no en la actualización web.",
-    "🚧 Canal de pruebas: la versión que ves ya dice cuál llevas (4.11.0.8 y no «4.11.0»), y se acabó el aviso de actualizar cada dos minutos — el paquete se sellaba con un número distinto del que anunciaba, así que la app creía que siempre le faltaba algo.",
-    "📦 Y apagar el canal de pruebas ahora te devuelve de verdad a la versión de todos. Antes se quedaba con la de pruebas puesta hasta que la normal la adelantara.",
-  ]},
+  {v:"4.11.0", d:"25 jul 2026",
+   t:{es:"La app se presenta al abrirse, y los bienes van por su cuenta",
+      en:"The app introduces itself when it opens, and assets stand on their own",
+      ca:"L'app es presenta en obrir-se, i els béns van pel seu compte"},
+   items:{
+   es:[
+    "🚪 Al abrir la app ya se ve su logo mientras carga, en vez de una pantalla en negro.",
+    "🏡 Tus bienes (piso, coche…) tienen ahora su propio bloque en Cartera, separado de las cuentas del banco. Puedes subirlo o bajarlo con «⇅ Ordenar secciones».",
+    "👤 Cerrar el perfil vuelve a ir a la primera, también si habías bajado dentro. Abrirlo y cerrarlo se sienten igual de suaves.",
+    "🔔 Se acabaron los avisos repetidos de que hay una versión nueva.",
+    "✨ El popup de Novedades marca bien cuál es la versión que llevas puesta.",
+    "💡 Por si acaso: el patrimonio de Inicio sube contando hasta tu cifra. Es una animación — el número final siempre ha sido el correcto.",
+   ],
+   en:[
+    "🚪 Opening the app now shows its logo while it loads, instead of a black screen.",
+    "🏡 Your assets (flat, car…) now have their own block in Portfolio, separate from your bank accounts. Move it up or down with «⇅ Reorder sections».",
+    "👤 Closing your profile works first time again, even if you had scrolled down inside it. Opening and closing now feel the same.",
+    "🔔 No more repeated notifications about a new version being available.",
+    "✨ The What's new popup now correctly marks which version you are running.",
+    "💡 Just in case: the net worth on Home counts up to your figure. It's an animation — the final number was always the right one.",
+   ],
+   ca:[
+    "🚪 En obrir l'app ja es veu el seu logotip mentre carrega, en lloc d'una pantalla en negre.",
+    "🏡 Els teus béns (pis, cotxe…) tenen ara el seu propi bloc a Cartera, separat dels comptes del banc. El pots pujar o baixar amb «⇅ Ordenar seccions».",
+    "👤 Tancar el perfil torna a anar a la primera, també si havies baixat a dins. Obrir-lo i tancar-lo se senten igual de suaus.",
+    "🔔 S'han acabat els avisos repetits que hi ha una versió nova.",
+    "✨ El missatge de Novetats marca bé quina versió portes posada.",
+    "💡 Per si de cas: el patrimoni d'Inici puja comptant fins a la teva xifra. És una animació — el número final sempre ha estat el correcte.",
+   ]}},
   {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
     "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
     "🔔 Y si el canal de pruebas falla, te lo dice. Antes, cualquier problema al mirar si había versión nueva se disfrazaba de «no hay nada nuevo» — que es justo lo que hizo que esto pasara desapercibido tanto tiempo. Ahora sale el error y queda anotado.",
@@ -1329,8 +1362,8 @@ function WhatsNew({onClose, showToast, set, state}){
         React.createElement("button",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,width:"100%",background:"none",border:"none",color:"var(--text)",padding:0,cursor:"pointer",textAlign:"left"},onClick:function(){ setOpenV(open?null:r.v); }},
           React.createElement("span",{style:{fontWeight:800,fontSize:14}},"v"+(cur?CONFIG.APP_VERSION:r.v)+(cur?" · "+t("wn_current")+" ✓":"")),
           React.createElement("span",{style:{color:"var(--muted-2)",fontSize:11.5,flex:"0 0 auto"}},r.d+(open?" ▴":" ▾"))),
-        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},r.t),
-        open && r.items.map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
+        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},rnT(r.t)),
+        open && rnItems(r).map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
       );
     }),
     React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},onClick:onClose}, t("wn_close"))

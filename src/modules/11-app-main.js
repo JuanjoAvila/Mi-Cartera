@@ -1773,10 +1773,33 @@ function App(){
   },[tab, tabIds.join("|")]);
   // Tras el primer pintado: NO montar vecinas en auto. Montar ±1 al toque/swipe (prepMountTab)
   // evitaba un segundo hitch a ~900 ms junto con WhatsNew (feedback 2026-07-16).
+  //
+  // PERO montarlas al TOCAR significa montarlas DENTRO del gesto (feedback 2026-07-26: «las
+  // primeras veces que deslizas entre pestañas va a tirones, luego se suaviza»). Medido con la
+  // CPU estrangulada x6: 1ª deslizada 218+149+69+65 ms de tareas largas, 2ª 97 ms, 3ª y 4ª
+  // limpias — exactamente lo que él describió. El coste de montar no se puede evitar, pero sí
+  // ELEGIR CUÁNDO se paga: aquí se paga en huecos libres, una pestaña por hueco, antes de que
+  // nadie toque la pantalla. Se mantienen los 3,2 s del primer hueco (mover eso reabre el hitch
+  // de los 900 ms) y el `prepMountTab` del toque, que sigue haciendo de red por si el usuario
+  // desliza antes de que dé tiempo a todo.
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    mcScheduleIdle(function(){ setMountNeighbors(true); }, 3200);
-  },[state.onboarded, locked]);
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setMountNeighbors(true);
+      var pend=tabIds.slice();
+      var siguiente=function(){
+        if(cancelled) return;
+        var id=pend.shift();
+        if(!id) return;
+        setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
+        mcScheduleIdle(siguiente, 900);
+      };
+      mcScheduleIdle(siguiente, 900);
+    }, 3200);
+    return function(){ cancelled=true; };
+  },[state.onboarded, locked, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.

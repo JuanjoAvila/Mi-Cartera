@@ -83,9 +83,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   },[active,heavyOk]);
   // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
   // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
+  //
+  // OJO CON EL MOMENTO (2026-07-26). Escribir `scrollLeft` obliga al navegador a recalcular el
+  // layout de forma SÍNCRONA, y este efecto corría justo después de montar la pestaña —con el
+  // layout entero sucio— en mitad del gesto de deslizar. Medido con el perfilador de CPU (x6,
+  // 3.000 gastos): **276 ms de hilo bloqueado en estas dos líneas**, el mayor coste con nombre
+  // propio de todo el cambio de pestaña. Era la mitad del «va a tirones las primeras veces».
+  // Los chips no tienen ninguna prisa (la pestaña tarda 420 ms en entrar), así que esto se va a
+  // un hueco libre y solo escribe si de verdad hay algo que resetear.
   useEffect(function(){
-    if(catChipsRef.current) catChipsRef.current.scrollLeft=0;
-    if(bankChipsRef.current) bankChipsRef.current.scrollLeft=0;
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      var c=catChipsRef.current, b=bankChipsRef.current;
+      if(c&&c.scrollLeft) c.scrollLeft=0;
+      if(b&&b.scrollLeft) b.scrollLeft=0;
+    }, 300);
+    return function(){ cancelled=true; };
   },[active]);
   const expensesDef=useDeferredValue(state.expenses);
   const sentinelRef=useRef(null);

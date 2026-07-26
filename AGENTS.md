@@ -44,7 +44,18 @@ qué falta.
 Hay tres bloques de idioma: `LANG.es`, `LANG.en`, `LANG.ca`. **Cada clave nueva va en los tres.**
 Se usan con `t("clave")` y `tf("clave",{x:…})` para interpolar.
 
-Las notas de versión (`RELEASE_NOTES`) son la excepción: **solo castellano**, a propósito.
+Las notas de versión (`RELEASE_NOTES`) iban **solo en castellano**… hasta el 2026-07-26, que él
+pidió lo contrario desde el móvil: «que el histórico de actualizaciones sea en todos los idiomas,
+no solo español». Desde entonces **cada entrada nueva nace en los tres**:
+
+```js
+{v:"4.12.0", d:"…", t:{es:"…",en:"…",ca:"…"}, items:{es:[…],en:[…],ca:[…]}}
+```
+
+Un texto suelto sigue valiendo y se entiende como castellano — así es como está **todo el
+histórico anterior**, y se queda así a propósito: son 68 versiones y 279 entradas, 55 KB, que por
+tres idiomas serían 165 KB con el presupuesto de descarga en 277 KB de 310 (gzip). Traducir notas
+de hace dos meses al catalán no lo va a leer nadie y cuesta el margen entero.
 
 ### Y el TONO de `RELEASE_NOTES` no es negociable (feedback 2026-07-26)
 
