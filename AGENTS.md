@@ -155,6 +155,27 @@ Y una regla de higiene: **si un documento afirma algo, tiene que ser verificable
 copiar una frase de un doc a otro, comprueba que sigue siendo cierta — un doc que miente es peor
 que un doc que falta, porque el que viene detrás se lo cree.
 
+## 6 ter. Lo que sabes va al REPO, no solo a tu memoria
+
+Regla suya del 26/7/2026, y con motivo: ese día una sesión del móvil se gastó **medio presupuesto
+de tokens** trabajando sobre una rama equivocada. Lo que hacía falta para no hacerlo estaba
+escrito… en la memoria local del Claude del PC. Desde el móvil, desde Cursor o desde cualquier
+otra IA, eso **no existe**.
+
+> **Él no siempre trabaja desde el PC.** Da igual quién ni desde dónde: si una sesión necesita
+> saber algo para no meter la pata, ese algo tiene que estar EN EL REPO.
+
+- Guarda en tu memoria lo que quieras, pero **replícalo siempre**: `npm run memoria` espeja la
+  memoria del agente en `docs/memoria/`. Hazlo en la misma tanda en que escribes la memoria, no
+  «luego».
+- **El repo es PÚBLICO.** Por eso el espejo no es un copiar y pegar: tacha IBAN, correos,
+  teléfonos y rutas de Windows, y **aborta sin escribir nada** si algo sensible sobrevive al
+  filtro. Si añades un tipo de dato nuevo, añade también su filtro en `scripts/sync-memoria.mjs`.
+- El punto de entrada para cualquier agente nuevo es **[`EMPIEZA-AQUI.md`](EMPIEZA-AQUI.md)** (raíz).
+  Si aprendes algo que le habría ahorrado tiempo a la siguiente sesión, va ahí.
+- Y lo de siempre: el **porqué** de cada cambio al `CHANGELOG`, el **estado** a `docs/ROADMAP.md`,
+  las **reglas** aquí. `npm test` vigila que no se queden atrás.
+
 ## 7. Verificar de verdad (no «debería funcionar»)
 
 - **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre en CI (`.github/workflows/test.yml`).

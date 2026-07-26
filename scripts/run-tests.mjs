@@ -14,6 +14,10 @@ const steps = [
   ["check-syntax", ["node", "scripts/check-syntax.mjs"]],
   ["i18n-keys", ["node", "tests/i18n-keys.test.mjs"]],
   ["docs-frescura", ["node", "tests/docs-frescura.test.mjs"]],
+  // El espejo de la memoria en docs/memoria/ tiene que ir al día: es lo único que ve una sesión
+  // que no corra en este PC (móvil, Cursor, otra IA). En una máquina sin memoria local —el CI—
+  // el script sale en verde sin hacer nada, así que esto solo pincha aquí, que es donde se arregla.
+  ["memoria-espejo", ["node", "scripts/sync-memoria.mjs", "--check"]],
   ["security", ["node", "tests/security.test.mjs"]],
   ["edge-sintaxis", ["node", "tests/edge-sintaxis.test.mjs"]],
   ["presupuesto-rendimiento", ["node", "tests/presupuesto-rendimiento.test.mjs"]],

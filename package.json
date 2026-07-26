@@ -11,6 +11,7 @@
     "test:privacy": "node scripts/guard-privacy.mjs",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",
     "stamp": "node scripts/stamp-version.mjs",
+    "memoria": "node scripts/sync-memoria.mjs",
     "errores": "node scripts/errores.mjs",
     "sugerencias": "node scripts/errores.mjs --kind=feedback --limit=50",
     "apk:prep": "node scripts/build-app.mjs && node scripts/build-www.mjs && npx cap sync android",

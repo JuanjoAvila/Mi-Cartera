@@ -52,7 +52,18 @@ diez días sin que las leyera nadie, y una era un bug de verdad.
 - **Nunca editar ficheros con PowerShell** (`Get-Content|Set-Content` corrompe el UTF-8 y mete BOM:
   costó un APK inservible ya publicado a su familia). Usa las herramientas de edición.
 
-## 5. Estado y pendientes
+## 5. Todo lo que se sabe está aquí, no en la cabeza de nadie
+
+`docs/memoria/` es el espejo de la memoria del agente: el histórico de por qué se decidió cada
+cosa (la saga de Trade Republic en frío, los tres intentos del gesto del perfil, la estrategia de
+escalado, el backlog largo) y cómo le gusta trabajar a él. **Se regenera con `npm run memoria` y
+`npm test` avisa si se ha quedado atrás.** Está tachado de datos personales porque el repo es
+público — si añades un tipo de dato nuevo, añade su filtro en `scripts/sync-memoria.mjs`.
+
+Si aprendes algo que le habría ahorrado tiempo a la siguiente sesión, **escríbelo aquí mismo**.
+La norma completa está en `AGENTS.md` §6 ter.
+
+## 6. Estado y pendientes
 
 `docs/ROADMAP.md` es la foto de ahora: qué versión va por dónde, qué está hecho y qué falta.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
