@@ -102,3 +102,77 @@ test("entrar por primera vez en cada pestaña no bloquea el hilo principal", asy
   }
   expect(await page.locator('[data-seg="deudas"]').isVisible(), "Deudas debería estar montado pero NO visible").toBe(false);
 });
+
+/* EL CASO QUE QUEDABA TRAS EL PREMOUNT (rechazo 4.12.0.17): scrollear dentro de Deudas/Metas
+ * y deslizar acto seguido. El montaje ya no cuesta; lo que pelea es el momentum del scroll
+ * con el translateX del track + setNavHidden re-renderizando App. */
+test("scrollear Deudas y deslizar acto seguido no bloquea el hilo", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__lt = [];
+    try {
+      new PerformanceObserver((l) => {
+        for (const e of l.getEntries()) window.__lt.push(Math.round(e.duration));
+      }).observe({ entryTypes: ["longtask"] });
+    } catch (e) {}
+  });
+  await seedLoggedInDashboard(page, { expenses: historico(1200), debts: deudas, goals: metas });
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: RATE });
+
+  await page.goto("/");
+  await expect(page.locator(".botnav")).toBeVisible({ timeout: 60_000 });
+  await dismissNews(page);
+  await page.waitForFunction(() => !document.getElementById("mc-load"), null, { timeout: 30_000 });
+  await page.waitForTimeout(6000);
+
+  // Click crudo (no locator.click): Playwright sondeando el DOM distorsiona la medida.
+  await page.evaluate(() => {
+    document.querySelector('.botnav-tab[data-tour="plan"]').click();
+  });
+  await page.waitForTimeout(400);
+  await page.evaluate(() => {
+    const btn = Array.from(document.querySelectorAll(".v4-seg-btn")).find((b) => /deuda|debt|deute/i.test(b.textContent || ""));
+    if (btn) btn.click();
+  });
+  await page.waitForTimeout(300);
+  // Los segmentos se montan ocultos: enseñar Deudas si el click del seg no bastó.
+  await page.evaluate(() => {
+    const seg = document.querySelector('[data-seg="deudas"]');
+    if (seg && getComputedStyle(seg).visibility === "hidden") {
+      const btn = Array.from(document.querySelectorAll(".v4-seg-btn")).find((b) => /deuda|debt|deute/i.test(b.textContent || ""));
+      if (btn) btn.click();
+    }
+  });
+  await page.waitForTimeout(200);
+
+  // Scroll real de la página activa (por encima del umbral de navHidden = 56).
+  await page.evaluate(() => {
+    const live = document.querySelector(".track .page-live") || document.querySelector(".track .page");
+    if (live) live.scrollTop = 280;
+  });
+  await page.waitForTimeout(80);
+
+  await page.evaluate(() => { window.__lt = []; });
+
+  // Swipe a Gastos (anterior), CDP touch, y=200 como en swipe-pestanas.
+  const W = page.viewportSize().width;
+  const y = 200;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 80, y }] });
+  for (let i = 1; i <= 16; i++) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: 80 + ((W - 40 - 80) * i) / 16, y }],
+    });
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(300);
+
+  const lt = await page.evaluate(() => window.__lt.slice());
+  const bloqueo = lt.reduce((a, b) => a + b, 0);
+  expect(
+    bloqueo,
+    `scroll→swipe bloqueó el hilo ${bloqueo} ms (tareas: ${lt.join(",") || "ninguna"})`,
+  ).toBeLessThan(TOPE_MS);
+});

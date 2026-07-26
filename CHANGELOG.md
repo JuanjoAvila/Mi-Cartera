@@ -73,6 +73,21 @@ El icono del escritorio y el splash nativo seguían siendo **la X azul por defec
 #### Y la barra de carga del splash, fuera
 «El resto de apps no lo tienen; el tiempo ese que se queda el logo está bien.» El botón de reintentar se queda: es la única salida si algo se atasca de verdad.
 
+#### Capítulo 3 del lag: scrollear Deudas/Metas y deslizar acto seguido
+El premount dejó el montaje a 0 ms, pero él seguía viendo tirones si **se movía dentro** del segmento y deslizaba enseguida (rechazo 4.12.0.17). Causas: el momentum del scroll vertical peleaba con el `translateX` del track (el perfil ya congelaba el scroll; el swipe de pestañas no) y `onPageScroll` seguía llamando a `setNavHidden` durante el gesto → re-render de App entera. Ahora, al fijar el eje horizontal, `freezeShell(...,"tab")` congela el scroll de la página activa, y `onPageScroll` ignora eventos mientras `dragging.current`. Guardián: `rendimiento-tabs` con el caso scroll→swipe a CPU ×6.
+
+#### Bancos caídos: noti → banner de Cartera, una sola autorización
+Tras sincronizar con un banco caducado, la app abría sola Mis bancos (y a veces OAuth). Con dos bancos caídos se lanzaban dos autorizaciones: Enable Banking devolvía `error=invalid_request` en la segunda aunque el banco dijera «Operación realizada correctamente» (el `state` es de un solo uso). Ahora la noti / `handleGoto("banks|…")` solo deja Cartera con el banner; el CTA del banner es el único toque que llama a `bankConnectOnce` (candado compartido con Mis bancos). Mis bancos pinta coral si `state.bankIssues` marca el banco aunque `bank_links.status` siga `active`. Mensaje propio para `invalid_request`.
+
+#### Trade Republic desconectado deja de quedarse mudo
+TR no pasa por `bankIssuesOf` (no es Open Banking). Al caducar de verdad: toast + notificación estable (`gotoTarget: tr|reconnect` → Cartera) + evento `mc-tr-status` para refrescar el banner; el CTA abre Mis bancos con la tarjeta TR, nunca OAuth. El resumen de Ajustes cuenta TR desconectado.
+
+#### Candado del perfil afinado (el «stopper» de 560 ms)
+Se mantiene (corta un `.dragging` a mitad de cierre), pero: candado síncrono al cerrar de verdad, cierre permitido durante la apertura, `transitionend` limpia el timeout y solo vale la generación actual, fallback 500 ms. Guardián nuevo: abrir y cerrar al momento.
+
+#### Ajustes enseña OTA y APK
+`nat.appInfo()` al montar → pie y fila de actualizaciones: `web vX · app Y`. Sin APK nueva: el puente ya estaba en la 35.
+
 ## [4.11.0] — 2026-07-25
 ### El splash no se veía (y el motivo era de libro), bienes fuera de las cuentas
 

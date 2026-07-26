@@ -96,7 +96,7 @@ Para el look, reutiliza lo que ya existe: `.tabsheet`, `.btn btn-primary` / `.bt
 Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
 
 1. **Bump `VERSION`** (X.Y.Z) y **`package.json`** / **`package-lock.json`** (mismo número).
-2. **`RELEASE_NOTES`** al principio del array en `src/modules/10-app-components.js` (solo castellano, en cristiano).
+2. **`RELEASE_NOTES`** al principio del array en `src/modules/10-app-components.js` (**es/en/ca**, en cristiano — ver §4).
 3. **`CHANGELOG.md`** técnico, con el porqué.
 4. **`docs/ROADMAP.md`**: línea de estado + versión actual.
 5. Si tocas nativo Android **o** quieres APK alineado con la web:

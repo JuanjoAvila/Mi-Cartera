@@ -2339,6 +2339,23 @@ const bio = {
   },
 };
 
+/* UNA SOLA AUTORIZACIÓN BANCARIA A LA VEZ (2026-07-26).
+   El permiso de Enable Banking caduca a los 30 min y es de un solo uso. Si dos toques (noti +
+   banner, o dos bancos a la vez) lanzan bankConnect, la segunda vuelve con error=invalid_request
+   aunque el banco diga «Operación realizada correctamente». Un candado compartido por Cartera y
+   Mis bancos evita gastar el permiso dos veces. */
+var _bankConnectBusy=null;
+function bankConnectOnce(aspsp_name, country){
+  if(_bankConnectBusy){
+    const err=new Error("busy");
+    err.code="busy";
+    return Promise.reject(err);
+  }
+  _bankConnectBusy=Promise.resolve(cloud.bankConnect(aspsp_name, country))
+    .finally(function(){ _bankConnectBusy=null; });
+  return _bankConnectBusy;
+}
+
 /* ---------- Helpers ---------- */
 const NF  = new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
 const NF0 = new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
@@ -2384,9 +2401,11 @@ const LANG = {
     // Aviso al sincronizar con algún banco caído (petición 2026-07-24): sale como notificación de
     // verdad y al tocarla lleva a Cartera → Mis bancos, que era lo que no se encontraba.
     bk_notif_title:"Un banco necesita que lo reconectes",
-    bk_notif_one:"{bank} pide permiso otra vez · toca para reconectarlo",
-    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para arreglarlo",
+    bk_notif_one:"{bank} pide permiso otra vez · toca para ver el aviso",
+    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para ver el aviso",
     bk_notif_n:"{n} bancos necesitan que los reconectes · toca para verlos",
+    bk_tr_notif_title:"Trade Republic está desconectado",
+    bk_tr_notif_body:"La sesión caducó · toca para ver el aviso en Cartera",
     bk_issue_noacct:"⚠ {bank} está conectado a medias", bk_issue_noacct_sub:"El enlace existe pero el banco no da ninguna cuenta. Vuelve a conectarlo y elige las cuentas que quieres ver.",
     bk_tr_sub:"Su sesión caducó: las posiciones y el efectivo no se actualizan. Se reconecta aquí, en la app (PIN + código SMS) — no en la app de Trade Republic.",
     bk_tr_cta:"🔓 Reconectar Trade Republic",
@@ -2522,9 +2541,11 @@ const LANG = {
     bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
     bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
     bk_notif_title:"A bank needs reconnecting",
-    bk_notif_one:"{bank} is asking for permission again · tap to reconnect it",
-    bk_notif_noacct:"{bank} is linked but has no accounts · tap to fix it",
+    bk_notif_one:"{bank} is asking for permission again · tap to see the warning",
+    bk_notif_noacct:"{bank} is linked but has no accounts · tap to see the warning",
     bk_notif_n:"{n} banks need reconnecting · tap to see them",
+    bk_tr_notif_title:"Trade Republic is disconnected",
+    bk_tr_notif_body:"The session expired · tap to see the warning in Portfolio",
     bk_issue_noacct:"⚠ {bank} is only half connected", bk_issue_noacct_sub:"The link exists but the bank returns no account. Connect it again and pick the accounts you want to see.",
     bk_tr_sub:"Its session expired: positions and cash aren't updating. Reconnect HERE in the app (PIN + SMS code) — not in the Trade Republic app.",
     bk_tr_cta:"🔓 Reconnect Trade Republic",
@@ -2650,9 +2671,11 @@ const LANG = {
     bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
     bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
     bk_notif_title:"Un banc necessita que el reconnectis",
-    bk_notif_one:"{bank} demana permís altra vegada · toca per reconnectar-lo",
-    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per arreglar-ho",
+    bk_notif_one:"{bank} demana permís altra vegada · toca per veure l'avís",
+    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per veure l'avís",
     bk_notif_n:"{n} bancs necessiten que els reconnectis · toca per veure'ls",
+    bk_tr_notif_title:"Trade Republic està desconnectat",
+    bk_tr_notif_body:"La sessió ha caducat · toca per veure l'avís a Cartera",
     bk_issue_noacct:"⚠ {bank} està connectat a mitges", bk_issue_noacct_sub:"L'enllaç existeix però el banc no dóna cap compte. Torna a connectar-lo i tria els comptes que vulguis veure.",
     bk_tr_sub:"La sessió ha caducat: posicions i efectiu no s'actualitzen. Es reconnecta AQUÍ, a l'app (PIN + codi SMS) — no a l'app de Trade Republic.",
     bk_tr_cta:"🔓 Reconnecta Trade Republic",
@@ -3876,6 +3899,8 @@ Object.assign(LANG.es,{
   bank_intro:"Conecta tu banco y tu saldo real será el «hoy» de la app. Solo lectura, sin tarjeta. El permiso se renueva cada ~3 meses.",
   bank_connect:"Conectar mi banco", bank_connecting:"Abriendo tu banco…",
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
+  bank_error_invalid:"Ese permiso ya se usó o caducó · vuelve a pulsar Reconectar y termina solo esa autorización",
+  bank_error_busy:"Ya hay una autorización en marcha · termínala antes de abrir otra",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
   // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
@@ -3896,6 +3921,8 @@ Object.assign(LANG.en,{
   bank_intro:"Connect your bank and your real balance becomes the app's “today”. Read-only, no card. The consent renews every ~3 months.",
   bank_connect:"Connect my bank", bank_connecting:"Opening your bank…",
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
+  bank_error_invalid:"That permission was already used or expired · tap Reconnect again and finish only that one authorization",
+  bank_error_busy:"An authorization is already in progress · finish it before opening another",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
   bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
@@ -3912,6 +3939,8 @@ Object.assign(LANG.ca,{
   bank_intro:"Connecta el teu banc i el teu saldo real serà l'«avui» de l'app. Només lectura, sense targeta. El permís es renova cada ~3 mesos.",
   bank_connect:"Connecta el meu banc", bank_connecting:"Obrint el teu banc…",
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
+  bank_error_invalid:"Aquest permís ja s'ha usat o ha caducat · torna a prémer Reconnecta i acaba només aquesta autorització",
+  bank_error_busy:"Ja hi ha una autorització en marxa · acaba-la abans d'obrir-ne una altra",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
   bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
@@ -3983,6 +4012,8 @@ Object.assign(LANG.es,{
   bp_expbanks:"También apuntar gastos de tarjeta de…", bp_expbanks_hint:"Sus compras con tarjeta entrarán solas en Gastos.", bp_expbanks_none:"Conecta un banco Open Banking para poder importar sus compras con tarjeta a Gastos.",
   bp_hist_btn:"Importar histórico", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae movimientos de los últimos meses de: {banks}. Elige cuáles y si van a Gastos, Recibos o Ingresos. Tarjeta→Gasto, recibo→Recibos, crédito→Ingreso (puedes cambiarlo).", bp_hist_nodaily:"Conecta un banco Open Banking (o márcalo en «También apuntar gastos de tarjeta»). Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay movimientos nuevos en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos · marca y elige destino", bp_hist_notcard:"no es tarjeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importados", bp_hist_as_gasto:"🛒 Gasto", bp_hist_as_recibo:"🧾 Recibo", bp_hist_as_ingreso:"💰 Ingreso", bp_hist_recibo:"Recibo", bp_hist_done_g:"✓ {n} en Gastos", bp_hist_done_i:"✓ {n} ingresos", bp_hist_done_r:"✓ {n} recibos",
   bp_summary_n:"{n} conectado(s)", bp_summary_exp:"⚠ {n} caducado(s) — reconéctalo", bp_summary_none:"Ningún banco conectado todavía",
+  bp_summary_tr_dead:"⚠ Trade Republic desconectado",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Elige tu banco", bp_pick_sub:"Solo verás las cuentas que autorices.",
   bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
   bp_need_login:"Inicia sesión para conectar tu banco", bp_syncing:"Actualizando…",
@@ -4006,6 +4037,8 @@ Object.assign(LANG.en,{
   bp_expbanks:"Also log card spending from…", bp_expbanks_hint:"Their card purchases will land in Spending on their own.", bp_expbanks_none:"Connect an Open Banking bank to import its card purchases into Spending.",
   bp_hist_btn:"Import history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months from: {banks}. Pick which ones and whether they go to Spending, Bills or Income. Card→Spending, bill→Bills, credit→Income (you can change it).", bp_hist_nodaily:"Connect an Open Banking bank (or tick it under “Also log card spending”). Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new transactions in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions · check and pick destination", bp_hist_notcard:"not a card purchase", bp_hist_import:"Import {n}", bp_hist_done:"✓ {n} imported", bp_hist_as_gasto:"🛒 Spend", bp_hist_as_recibo:"🧾 Bill", bp_hist_as_ingreso:"💰 Income", bp_hist_recibo:"Bill", bp_hist_done_g:"✓ {n} in Spending", bp_hist_done_i:"✓ {n} income", bp_hist_done_r:"✓ {n} bills",
   bp_summary_n:"{n} connected", bp_summary_exp:"⚠ {n} expired — reconnect it", bp_summary_none:"No bank connected yet",
+  bp_summary_tr_dead:"⚠ Trade Republic disconnected",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Choose your bank", bp_pick_sub:"You'll only see the accounts you authorize.",
   bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
   bp_need_login:"Sign in to connect your bank", bp_syncing:"Refreshing…",
@@ -4029,6 +4062,8 @@ Object.assign(LANG.ca,{
   bp_expbanks:"També apuntar despeses de targeta de…", bp_expbanks_hint:"Les seves compres amb targeta entraran soles a Despeses.", bp_expbanks_none:"Connecta un banc Open Banking per poder importar-ne les compres amb targeta a Despeses.",
   bp_hist_btn:"Importar històric", bp_hist_title:"Importar històric", bp_hist_sub:"Porta moviments dels últims mesos de: {banks}. Tria quins i si van a Despeses, Rebuts o Ingressos. Targeta→Despesa, rebut→Rebuts, crèdit→Ingrés (ho pots canviar).", bp_hist_nodaily:"Connecta un banc Open Banking (o marca'l a «També apuntar despeses de targeta»). Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha moviments nous en aquest període (o ja estan tots apuntats). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments · marca i tria destinació", bp_hist_notcard:"no és targeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importats", bp_hist_as_gasto:"🛒 Despesa", bp_hist_as_recibo:"🧾 Rebut", bp_hist_as_ingreso:"💰 Ingrés", bp_hist_recibo:"Rebut", bp_hist_done_g:"✓ {n} a Despeses", bp_hist_done_i:"✓ {n} ingressos", bp_hist_done_r:"✓ {n} rebuts",
   bp_summary_n:"{n} connectat(s)", bp_summary_exp:"⚠ {n} caducat(s) — reconnecta'l", bp_summary_none:"Cap banc connectat encara",
+  bp_summary_tr_dead:"⚠ Trade Republic desconnectat",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Tria el teu banc", bp_pick_sub:"Només veuràs els comptes que autoritzis.",
   bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
   bp_need_login:"Inicia sessió per connectar el teu banc", bp_syncing:"Actualitzant…",
@@ -10172,14 +10207,19 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     if(i>=0) setOpenBank("");
     set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{brokersOn:base})}); });
   };
-  // Banco a resaltar al entrar (viene del sync o de la noti «reconéctalo»): lo centramos en
+  // Banco a resaltar al entrar (viene del sync o del banner de Cartera): lo centramos en
   // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
+  // TR llega como focus «trade_republic» → abre su tarjeta de bróker (br:tr), no una fila OB.
   const focusRef=useRef(null);
   useEffect(function(){
-    if(!focusAspsp || !links || !links.length) return;
+    if(!focusAspsp) return;
+    if(focusAspsp==="trade_republic" || focusAspsp==="tr"){
+      setOpenBank("br:tr");
+      return;
+    }
+    if(!links || !links.length) return;
     // El banco al que venías a arreglar llega ABIERTO: si el acordeón lo dejara plegado, el
-    // deep-link te dejaría mirando la tarjeta del banco roto sin el botón de reconectar delante,
-    // que es justo lo que la noti prometía. Resaltar y esconder la acción a la vez no tiene sentido.
+    // deep-link te dejaría mirando la tarjeta del banco roto sin el botón de reconectar delante.
     setOpenBank(focusAspsp);
     const el=focusRef.current; if(!el || !el.scrollIntoView) return;
     const tm=setTimeout(function(){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
@@ -10193,7 +10233,28 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   useEffect(loadLinks,[uid]);
   const loadAspsps=function(){ if(aspsps!==null||loadingA) return; setLoadingA(true); cloud.bankAspsps("ES").then(function(rows){ setAspsps(rows||[]); }).catch(function(e){ setAspsps([]); showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setLoadingA(false); }); };
   const openPicker=function(){ setPicking(true); loadAspsps(); };
-  const connect=function(name,country){ if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; } setBusy(name); showToast(t("bank_connecting")); set(function(s){ return Object.assign({},s,{hasBankLink:true}); }); cloud.bankConnect(name, country||"ES").then(function(d){ location.href=d.url; }).catch(function(e){ setBusy(""); showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); }); };
+  // Candado compartido con el banner de Cartera: dos toques no gastan el permiso dos veces
+  // (invalid_request de Enable Banking — 2026-07-26).
+  const connect=function(name,country){
+    if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; }
+    setBusy(name); showToast(t("bank_connecting"));
+    set(function(s){ return Object.assign({},s,{hasBankLink:true}); });
+    bankConnectOnce(name, country||"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){
+        setBusy("");
+        if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+      });
+  };
+  // Issues de la última sync: pinta rojo aunque bank_links.status siga en «active»
+  // (regresión 4.12.0.18: «marca 1 falla y en Mis bancos todos salen verdes»).
+  const issueOf=function(aspsp){
+    const list=state&&state.bankIssues||[];
+    for(let i=0;i<list.length;i++){
+      if(list[i] && String(list[i].aspsp||"").toLowerCase()===String(aspsp||"").toLowerCase()) return list[i];
+    }
+    return null;
+  };
   const refresh=function(){ if(!onBankSync){ return; } setBusy("__sync"); Promise.resolve(onBankSync()).finally(function(){ setBusy(""); loadLinks(); }); };
   // Quitar banco (revoca en EB + borra la fila). Reversible: reaparece el picker para reconectar.
   // Purga al momento sus cuentas sincronizadas (obAccounts) del patrimonio: antes se quedaban
@@ -10266,12 +10327,17 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
-      const noAcct = l.status==='error';
-      // El banco que venías a arreglar (desde el sync o la noti): resaltado y centrado en pantalla.
+      const liveIssue=issueOf(l.aspsp_name);
+      const noAcct = l.status==='error' || (liveIssue&&liveIssue.kind==="noacct");
+      const liveDead = !!(liveIssue&&liveIssue.kind==="expired") || l.status==='expired';
+      // El banco que venías a arreglar (desde el sync o el banner): resaltado y centrado.
       const isFocus = !!focusAspsp && l.aspsp_name===focusAspsp;
-      const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
+      // Píldora: gana el resultado de la ÚLTIMA sync sobre el status de la tabla. Si no, un
+      // Sabadell caído seguía en verde porque bank_links aún decía «active».
+      const sp = noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
+               : liveDead ? pill(t("bp_st_expired"),"var(--coral)")
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
-               : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
+               : l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : pill(t("bp_st_expired"),"var(--coral)");
       const abierto = openBank===l.aspsp_name;
       // Abrir uno CIERRA el anterior (acordeón): con varios bancos desplegados volvíamos al muro
@@ -10282,7 +10348,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         React.createElement("div",{className:"v4-mov",role:"button",tabIndex:0,"aria-expanded":abierto?"true":"false",
           onClick:toggle,
           onKeyDown:function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); } },
-          style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+(isFocus?"var(--coral)":"var(--line-soft)"),background:"var(--sur)",cursor:"pointer"}},
+          style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+((isFocus||liveDead||noAcct)?"var(--coral)":"var(--line-soft)"),background:"var(--sur)",cursor:"pointer"}},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"nm"}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--mint)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
@@ -10740,7 +10806,11 @@ var RELEASE_NOTES=[
     "💰 Los ingresos que llegan a tu banco ya se apuntan solos. Hasta ahora la app solo recogía las compras con tarjeta: cuando entraba una nómina o una transferencia, el saldo subía pero el movimiento no aparecía por ningún lado.",
     "🏦 Y al sincronizar los bancos ahora te dice qué ha pasado, en un solo aviso: «✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos». Antes salía el saldo suelto, de un banco solamente aunque tuvieras varios, y en dos avisos seguidos.",
     "⚡ Entrar en Deudas y Metas ya no deja la app clavada un momento. Cada pestaña se preparaba justo al tocarla; ahora se prepara antes, mientras no estás haciendo nada.",
-    "👌 Y deslizar entre pestañas va suave desde la primera vez, no solo a partir de la tercera.",
+    "👌 Y deslizar entre pestañas va suave desde la primera vez, también si acabas de moverte dentro de Deudas o Metas.",
+    "🔔 Si un banco pierde el permiso, el aviso te deja delante del aviso en Cartera. Tú decides cuándo reconectar: así no se abren dos autorizaciones a la vez ni se gasta el permiso.",
+    "📈 Si Trade Republic se desconecta, también sale un aviso en Cartera para volver a entrar con el PIN y el código.",
+    "📱 En Ajustes se ven las dos versiones: la de la app instalada y la que se actualiza sola.",
+    "👤 Cerrar el perfil justo después de abrirlo vuelve a responder al momento.",
     "🌍 Las notas de cada versión, como esta, ya se leen en los tres idiomas de la app.",
     "🚪 La pantalla de entrada se queda solo con el logo: la barrita de carga sobraba.",
     "🎨 La app estrena su icono de verdad. El del escritorio y el de la pantalla de arranque eran todavía el genérico que trae la herramienta con la que está hecha.",
@@ -10749,7 +10819,11 @@ var RELEASE_NOTES=[
     "💰 Money coming into your bank is now recorded automatically. Until now the app only picked up card purchases: when a salary or a transfer came in, your balance went up but the transaction appeared nowhere.",
     "🏦 And syncing your banks now tells you what happened, in a single message: «✓ CaixaBank up to date · €1,234.56 · 3 new transactions». It used to show a bare balance, for one bank only even if you had several, in two messages one after the other.",
     "⚡ Opening Debts and Goals no longer freezes the app for a moment. Each tab used to be prepared the instant you touched it; now it is prepared beforehand, while you are doing nothing.",
-    "👌 And swiping between tabs is smooth from the very first time, not only from the third onwards.",
+    "👌 And swiping between tabs is smooth from the very first time, even right after you have been scrolling inside Debts or Goals.",
+    "🔔 If a bank loses its permission, the alert takes you to the warning in Portfolio. You choose when to reconnect, so two authorizations are not opened at once and the permission is not wasted.",
+    "📈 If Trade Republic disconnects, a warning also appears in Portfolio so you can sign back in with your PIN and code.",
+    "📱 Settings now shows both versions: the installed app and the one that updates itself.",
+    "👤 Closing the profile right after opening it responds instantly again.",
     "🌍 Release notes like these can now be read in all three languages of the app.",
     "🚪 The start screen keeps just the logo: the little loading bar was unnecessary.",
     "🎨 The app has a proper icon at last. The one on your home screen and on the start screen were still the generic one from the tool it is built with.",
@@ -10758,7 +10832,11 @@ var RELEASE_NOTES=[
     "💰 Els ingressos que arriben al teu banc ja s'apunten sols. Fins ara l'app només recollia les compres amb targeta: quan entrava una nòmina o una transferència, el saldo pujava però el moviment no apareixia enlloc.",
     "🏦 I en sincronitzar els bancs ara et diu què ha passat, en un sol avís: «✓ CaixaBank al dia · 1.234,56 € · 3 moviments nous». Abans sortia el saldo sol, d'un banc només encara que en tinguessis diversos, i en dos avisos seguits.",
     "⚡ Entrar a Deutes i Metes ja no deixa l'app clavada un moment. Cada pestanya es preparava just en tocar-la; ara es prepara abans, mentre no estàs fent res.",
-    "👌 I lliscar entre pestanyes va suau des de la primera vegada, no només a partir de la tercera.",
+    "👌 I lliscar entre pestanyes va suau des de la primera vegada, també si acabes de moure't dins de Deutes o Metes.",
+    "🔔 Si un banc perd el permís, l'avís et deixa davant de l'avís a Cartera. Tu decides quan reconnectar: així no s'obren dues autoritzacions a la vegada ni es gasta el permís.",
+    "📈 Si Trade Republic es desconnecta, també surt un avís a Cartera per tornar a entrar amb el PIN i el codi.",
+    "📱 A Ajustos es veuen les dues versions: la de l'app instal·lada i la que s'actualitza sola.",
+    "👤 Tancar el perfil just després d'obrir-lo torna a respondre a l'instant.",
     "🌍 Les notes de cada versió, com aquesta, ja es llegeixen en els tres idiomes de l'app.",
     "🚪 La pantalla d'entrada es queda només amb el logotip: la barreta de càrrega hi sobrava.",
     "🎨 L'app estrena icona de debò. La de l'escriptori i la de la pantalla d'arrencada encara eren la genèrica de l'eina amb què està feta.",
@@ -11307,7 +11385,32 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno (resumen)
   const [bankBusy,setBankBusy]=useState(false);
   const [trConn,setTrConn]=useState(false);        // TR también cuenta como banco conectado (feedback 2026-07-10)
-  useEffect(function(){ const b=trBridge(); if(!b||!b.status) return; Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); },[uid]);
+  const [trKnown,setTrKnown]=useState(false);      // tuvo TR alguna vez (mc_tr_phone) → puede estar «caído»
+  // Versión nativa del APK (hueco 2026-07-26): sin esto Ajustes solo mostraba la OTA y no
+  // sabías si el icono/splash nuevos estaban puestos o seguías en la 34.
+  const [apkVer,setApkVer]=useState(null);
+  useEffect(function(){
+    const refreshTr=function(){
+      const known=!!(typeof trPhoneSaved==="function"&&trPhoneSaved());
+      setTrKnown(known);
+      const b=trBridge(); if(!b||!b.status){ if(!known) setTrConn(false); return; }
+      Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){});
+    };
+    refreshTr();
+    const onTr=function(e){
+      if(e&&e.detail&&typeof e.detail.connected==="boolean"){ setTrConn(!!e.detail.connected); setTrKnown(true); return; }
+      refreshTr();
+    };
+    window.addEventListener("mc-tr-status", onTr);
+    return function(){ window.removeEventListener("mc-tr-status", onTr); };
+  },[uid]);
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.appInfo) return;
+    Promise.resolve(nat.appInfo()).then(function(info){
+      if(info&&info.versionName) setApkVer(String(info.versionName));
+    }).catch(function(){});
+  },[]);
   const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
   useBackClose(manageBanks, function(){ setManageBanks(false); });   // gesto atrás: cierra "Mis bancos"
   // Banner «Reconectar TR» de Cartera (evento mc-open-banks → App abre Ajustes + goBanks):
@@ -11569,12 +11672,23 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
     cloud.enabled() && (function(){
       const links=bankLinks;
-      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
-      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
-      const summary = links===null ? "…"
+      // Issues de la última sync también cuentan: si no, el resumen decía «3 conectados» con
+      // uno caído en Cartera (rechazo 4.12.0.18). TR desconectado (tuvo teléfono, no conectado)
+      // entra en nDead por su propio camino — no es Open Banking.
+      const issueAsp={};
+      (state.bankIssues||[]).forEach(function(is){ if(is&&is.aspsp) issueAsp[String(is.aspsp).toLowerCase()]=1; });
+      const nActive=(links||[]).filter(function(r){
+        if(r.status!=='active') return false;
+        return !issueAsp[String(r.aspsp_name||"").toLowerCase()];
+      }).length + (trConn?1:0);
+      const nDeadDb=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'||issueAsp[String(r.aspsp_name||"").toLowerCase()]; }).length;
+      const trDead=trKnown&&!trConn;
+      const nDead=nDeadDb + (trDead?1:0);
+      let summary = links===null ? "…"
         : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
         : nDead>0 ? tf("bp_summary_exp",{n:nDead})
         : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
+      if(trDead && summary.indexOf("Trade Republic")<0) summary += (summary&&summary!=="…"?" · ":"") + t("bp_summary_tr_dead");
       return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
         row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
       );
@@ -11633,8 +11747,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
     fbOpen && ReactDOM.createPortal(React.createElement(FeedbackPanel,{state:state,set:set,showToast:showToast,onClose:function(){ setFbOpen(false); }}), document.body),
-    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
-      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",
+      apkVer ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer}) : tf("st_ver_web",{v:CONFIG.APP_VERSION}),
+      row("upd","⬇️",t("st_update"),
+        apkVer ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer}) : ("v"+CONFIG.APP_VERSION),
+        checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
     grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
@@ -11795,10 +11912,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
 
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
-    // El canal se canta en el pie: si algo va raro, lo primero que hay que saber es si este móvil
-    // está en una beta o en la versión de todos (2026-07-24).
+    // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,
+    // aquí se ve al momento si sigues en una APK vieja aunque la web ya esté al día (2026-07-26).
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},
-      "Mi Cartera · v"+CONFIG.APP_VERSION+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
+      "Mi Cartera · "+(apkVer
+        ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer})
+        : ("v"+CONFIG.APP_VERSION))+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
   );
 
 }
@@ -12521,12 +12640,28 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
   // TR desconectado (y el usuario SÍ lo tuvo conectado alguna vez → mc_tr_phone guardado):
   // banner con botón que abre Mis bancos directamente. UX padre 2026-07-18: al ver el saldo
   // descuadrado se fue a la app de Trade Republic — el arreglo debe estar donde está el problema.
+  // Se reconsulta al volver a primer plano y cuando App avisa por `mc-tr-status` (antes solo
+  // miraba al montar y el banner se quedaba mudo tras un sync que caducaba la sesión).
   const [trDead,setTrDead]=useState(false);
   useEffect(function(){
-    const b=(typeof trBridge==="function")?trBridge():null;
-    if(!b||!b.status) return;
-    if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())) return;
-    Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    const check=function(){
+      const b=(typeof trBridge==="function")?trBridge():null;
+      if(!b||!b.status) return;
+      if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())){ setTrDead(false); return; }
+      Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    };
+    check();
+    const onVis=function(){ if(document.visibilityState==="visible") check(); };
+    const onEvt=function(e){
+      if(e&&e.detail&&typeof e.detail.connected==="boolean"){ setTrDead(!e.detail.connected); return; }
+      check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("mc-tr-status", onEvt);
+    return function(){
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("mc-tr-status", onEvt);
+    };
   },[]);
   // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
   // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
@@ -12598,10 +12733,12 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
         onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
       );
     }),
-    trDead && React.createElement("div",{className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+    trDead && React.createElement("div",{className:"v4-card v4-tr-issue",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
       React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, t("bk_tr_dead")),
       React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
-      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
+      // TR no es Open Banking: el CTA abre Mis bancos con la tarjeta de TR desplegada (PIN+SMS),
+      // nunca un OAuth de Enable Banking.
+      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:"trade_republic"}})); }catch(e){} }}, t("bk_tr_cta"))
     ),
     /* BLOQUES ORDENABLES (petición 2026-07-25: «poder ordenar las cosas de la tab de cartera»).
        Mismo mecanismo que ya usan Fijos/Patrimonio/Deudas/Inversiones/Metas desde la 3.94:
@@ -12899,6 +13036,11 @@ function App(){
   const scrollTab=useRef(0);
   const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
   const onPageScroll=function(e){
+    // Mientras el dedo cambia de pestaña, el momentum del scroll vertical sigue disparando
+    // eventos. Cada uno podía llamar a setNavHidden y re-renderizar App entera a mitad del
+    // gesto — eso es el «si te mueves en Deudas/Metas y deslizas acto seguido, se laguea»
+    // (rechazo 4.12.0.17). El perfil ya congelaba el scroll; el swipe de pestañas no.
+    if(dragging.current) return;
     const y=e.currentTarget.scrollTop;
     // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
     // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
@@ -13143,12 +13285,11 @@ function App(){
         if(obAdded.length) msg += " · " + (obAdded.length===1 ? t("bank_upd_mov1") : tf("bank_upd_movn",{n:obAdded.length}));
         showToast(msg);
       }
-      // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
-      // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
-      // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de
-      // Cartera existía pero había que dar con él. Ahora, al sincronizar A MANO:
-      //   1) notificación de verdad (queda en la bandeja) que al tocarla abre Cartera + Mis bancos,
-      //   2) y en el momento, la app abre sola el panel de bancos con ese banco resaltado.
+      // ── BANCO SIN CONECTAR: avisar y dejar el banner de Cartera a la vista ─────────────────
+      // Petición del padre (2026-07-24) + corrección 2026-07-26: la noti lleva a Cartera (donde
+      // está el banner con el botón), NO abre sola Mis bancos ni la autorización del banco.
+      // Abrir OAuth automáticamente con varios bancos caídos gastaba el permiso de un solo uso
+      // (invalid_request) y dejaba al usuario dando vueltas aunque el banco dijera «OK».
       if(issues.length){
         const lbl=issues[0].ent?entOf(issues[0].ent).label:(issues[0].aspsp||"🏦");
         const msg=issues.length>1
@@ -13158,10 +13299,11 @@ function App(){
         if(opts.manual){
           const nat=natPlugin();
           if(nat&&nat.showNotification){
-            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||"")}).catch(function(){}); }catch(e){}
+            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||""), tag:"banks"}).catch(function(){}); }catch(e){}
           }
-          // Y aquí mismo: el panel donde se reconecta, abierto y con el banco señalado.
-          setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:issues[0].aspsp||null}})); }catch(e){} }, 700);
+          // Deja Cartera delante para que el banner se vea sin buscar.
+          const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+          if(ci>=0) setTab(ci);
         }
       }
       // Fallo NO caducado = hipo transitorio del banco (rate-limit PSD2, 5xx…): el enlace sigue
@@ -13213,6 +13355,24 @@ function App(){
   // opts.manual = botón «Sincronizar» de Cartera (2026-07-18): además de MyInvestor entra
   // Trade Republic (solo a demanda: el TR de arranque deslogueaba APKs viejos) y se salta el
   // throttle. En automático (al abrir) sigue siendo solo MI, silencioso y con throttle.
+  // Aviso TR (2026-07-26): TR NO es Open Banking — va por otro camino y se quedaba mudo al
+  // caducar. Ahora, si la sesión murió de verdad, hay toast + noti estable + evento para que
+  // el banner de Cartera se entere, sin meterlo en bankIssuesOf.
+  const signalTrDead=function(){
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:false}})); }catch(e){}
+    try{
+      if(localStorage.getItem("_trDeadNotif")==="1") return;
+      localStorage.setItem("_trDeadNotif","1");
+    }catch(e){}
+    const nat=natPlugin();
+    if(nat&&nat.showNotification){
+      try{ nat.showNotification({title:t("bk_tr_notif_title"), body:t("bk_tr_notif_body"), gotoTarget:"tr|reconnect", tag:"tr"}).catch(function(){}); }catch(e){}
+    }
+  };
+  const signalTrAlive=function(){
+    try{ localStorage.removeItem("_trDeadNotif"); }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:true}})); }catch(e){}
+  };
   const runBrokerSync=function(opts){
     opts=opts||{};
     if(brokerSyncing.current) return Promise.resolve();
@@ -13220,12 +13380,20 @@ function App(){
     const jobs=[];
     const st=stateRef.current||{};
     let touched=0; const expiredB=[];
-    const bridge=(opts.manual && typeof trBridge==="function") ? trBridge() : null;
-    if(bridge && bridge.status && bridge.sync){
+    // Estado de TR: se consulta también en automático (solo status, sin sync) para que el
+    // banner de Cartera no se quede mirando un "conectado" viejo tras matar la app.
+    const bridge=(typeof trBridge==="function") ? trBridge() : null;
+    if(bridge && bridge.status){
       jobs.push(Promise.resolve(bridge.status()).then(function(r){
-        if(!(r&&r.connected)) return;
+        const hadPhone=typeof trPhoneSaved==="function"&&!!trPhoneSaved();
+        if(!(r&&r.connected)){
+          if(hadPhone){ expiredB.push("Trade Republic"); signalTrDead(); }
+          return;
+        }
+        signalTrAlive();
+        if(!opts.manual || !bridge.sync) return;   // sync TR solo a demanda
         return Promise.resolve(bridge.sync()).then(function(res){
-          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); return; }
+          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); signalTrDead(); return; }
           if(!res||!res.ok||!Array.isArray(res.positions)) return;   // anti-bot/hipo: silencio, se reintenta luego
           applyBrokerPositions(res.positions, "lastTrSync"); touched++;
         });
@@ -13245,7 +13413,14 @@ function App(){
     return Promise.all(jobs).catch(function(){}).then(function(){
       brokerSyncing.current=false;
       if(opts.manual){
-        if(expiredB.length) showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+        if(expiredB.length){
+          showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+          // TR: deja Cartera delante para que el banner se vea (mismo patrón que OB).
+          if(expiredB[0]==="Trade Republic"){
+            const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+            if(ci>=0) setTab(ci);
+          }
+        }
         else if(touched) showToast(t("v4_sync_brokers_ok"));
       }
     });
@@ -13358,6 +13533,9 @@ function App(){
       } else {
         const m=parts.slice(2).join("|");
         if(m.indexOf("nolink:")===0){ const nm=m.slice(7), en=entFromAspsp(nm), lbl=en?entOf(en).label:(nm||"🏦"); showToast("⚠ "+lbl+": "+t("bank_nolink")); }
+        // invalid_request = permiso ya gastado o caducado (casi siempre por lanzar dos
+        // autorizaciones a la vez). Mensaje propio, sin el error crudo de Enable Banking.
+        else if(/invalid_request/i.test(m)) showToast("⚠ "+t("bank_error_invalid"));
         else showToast("⚠ "+t("bank_error")+(m?": "+m:""));
       }
       return;
@@ -13388,14 +13566,13 @@ function App(){
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
       return;
     }
-    // Noti «tienes un banco sin conectar» (2026-07-24): abre Cartera (donde está el banner con el
-    // botón) y, encima, el panel de Mis bancos ya desplegado. El padre no sabía DÓNDE se conectaba;
-    // ahora la noti le deja en el sitio exacto, sin buscar nada.
-    if(g==="banks" || g.indexOf("banks|")===0){
+    // Noti «banco caído» / «TR desconectado» (2026-07-26): SOLO Cartera, con el banner a la vista.
+    // Antes abría además Mis bancos (y a veces lanzaba la autorización), y con dos bancos caídos
+    // se disparaban dos OAuth: la segunda volvía con invalid_request aunque el banco dijera OK.
+    // El padre sigue viendo el aviso delante; el toque que reconecta es el del banner, no la noti.
+    if(g==="banks" || g.indexOf("banks|")===0 || g==="tr" || g.indexOf("tr|")===0){
       const ci=tabOrderOf(stateRef.current).indexOf("cartera");
       if(ci>=0) setTab(ci);
-      const aspsp=g.indexOf("banks|")===0 ? g.slice(6) : "";
-      setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:aspsp||null}})); }catch(e){} }, 250);
       return;
     }
     if(g==="gastos" || g.indexOf("exp|")===0){
@@ -13475,7 +13652,8 @@ function App(){
       if(m.indexOf("nolink:")===0){   // autorizó pero la cuenta no está dada de alta (modo restringido EB) → mensaje accionable
         const nm=m.slice(7), e=entFromAspsp(nm), lbl=e?entOf(e).label:(nm||"🏦");
         showToast("⚠ "+lbl+": "+t("bank_nolink"));
-      } else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
+      } else if(/invalid_request/i.test(m)){ showToast("⚠ "+t("bank_error_invalid")); }
+      else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
     }
   },[]);
 
@@ -13583,12 +13761,16 @@ function App(){
     window.addEventListener("mc-open-shared",h);
     return function(){ window.removeEventListener("mc-open-shared",h); };
   },[]);
-  // Banner «Reconectar {banco}» de Cartera: directo a la autorización del banco (vuelve con ?bank=ok).
+  // Banner «Reconectar {banco}» de Cartera: el ÚNICO toque que lanza la autorización.
+  // Candado compartido (bankConnectOnce): dos toques seguidos no gastan el permiso dos veces.
   const reconnectBank=function(aspsp){
     if(!cloud.enabled()||!sessionRef.current){ showToast(t("bp_need_login")); return; }
     showToast(t("bank_connecting"));
-    cloud.bankConnect(aspsp,"ES").then(function(d){ location.href=d.url; })
-      .catch(function(e){ showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
+    bankConnectOnce(aspsp,"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){
+        if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+      });
   };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
@@ -13651,8 +13833,11 @@ function App(){
     if(on){
       appShellRef.current.classList.add("gesture-freeze","dragging");
       if(kind==="profile") appShellRef.current.classList.add("profile-gesturing");
-      // Bloquea scroll de Resumen: si pelea con el pull-down del perfil → lag (feedback 2026-07-18).
-      if(kind==="profile" && trackRef.current){
+      // Bloquea el scroll de la página activa: si pelea con el gesto → lag.
+      // · perfil (2026-07-18): pull-down vs scroll de Inicio.
+      // · tab (2026-07-26): tras scrollear Deudas/Metas, el momentum vertical seguía vivo
+      //   mientras el track se desplazaba en horizontal — rechazo 4.12.0.17.
+      if((kind==="profile" || kind==="tab") && trackRef.current){
         const pageEl=trackRef.current.children[tabRef.current];
         if(pageEl){
           pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
@@ -13725,25 +13910,40 @@ function App(){
      La transición dura 0,48 s. Si en ese rato empieza otro gesto, lo primero que hace es poner
      `.dragging` —que es `transition:none`—, así que la animación en vuelo se corta en seco y el
      panel PEGA UN SALTO desde donde iba hasta donde diga el dedo. Con el velo y el avatar a
-     medio camino, eso es exactamente «volverse loco». Se ignoran los toques hasta que el panel
-     asiente: por `transitionend` (lo normal) y con un plazo de respaldo por si el navegador no lo
-     dispara —pasa si la pestaña pierde el foco a mitad—, que dejaría el gesto muerto para siempre. */
-  const profBusy=useRef(false), profBusyT=useRef(null);
+     medio camino, eso es exactamente «volverse loco».
+     Afinado 2026-07-26 (rechazo «stopper»): el candado SE QUEDA, pero (1) se pone YA en el
+     cierre real, no en el useEffect de después —si no, hay una ventana en la que un segundo
+     dedo corta la animación—, (2) cerrar durante la apertura SÍ se deja (el usuario quiere
+     salir; lo que se bloquea es abrir desde Inicio a mitad de transición), y (3) transitionend
+     limpia el timeout y solo vale si es de la generación actual. */
+  const profBusy=useRef(false), profBusyT=useRef(null), profBusyGen=useRef(0);
+  const profClearBusy=function(){
+    profBusy.current=false;
+    if(profBusyT.current){ clearTimeout(profBusyT.current); profBusyT.current=null; }
+  };
   const profMarkBusy=function(){
+    const gen=++profBusyGen.current;
     profBusy.current=true;
     if(profBusyT.current) clearTimeout(profBusyT.current);
-    profBusyT.current=setTimeout(function(){ profBusy.current=false; }, 560);
+    // 500 ms = 480 de la CSS + margen pequeño. Antes 560 y se notaba «sordo» al cerrar rápido.
+    profBusyT.current=setTimeout(function(){ if(profBusyGen.current===gen) profClearBusy(); }, 500);
   };
   useEffect(function(){
     const el=profileRef.current; if(!el) return undefined;
-    const fin=function(e){ if(e.target===el && e.propertyName==="transform") profBusy.current=false; };
+    const fin=function(e){
+      if(e.target!==el || e.propertyName!=="transform") return;
+      // Solo la generación en curso: un transitionend viejo no desbloquea una animación nueva.
+      profClearBusy();
+    };
     el.addEventListener("transitionend", fin);
     return function(){ el.removeEventListener("transitionend", fin); };
   },[]);
   useEffect(function(){
     document.documentElement.classList.toggle("profile-open", !!profileOpen);
     if(!dragging.current && gestureMode.current!=="profile"){
-      profMarkBusy();   // arranca la animación: nadie la toca hasta que acabe
+      // Apertura por tap / cierre programático (✕, Ajustes, atrás). El cierre por gesto ya
+      // puso el candado en profileEnd; aquí cubrimos el resto.
+      if(!profBusy.current) profMarkBusy();
       if(profileOpen) profSetOrigin();   // re-ancla al avatar ANTES de animar (apertura por tap)
       setProfileProgress(profileOpen?1:0);
       if(profileRef.current){
@@ -13864,7 +14064,11 @@ function App(){
   const PROF_ASA=72;
   const pOwn=useRef(false);
   const profileStart=function(e){
-    if(profBusy.current) return;   // el panel está asentándose: este toque no es para el gesto
+    // Cerrar SÍ se deja aunque la apertura aún anime: el usuario quiere salir y el ✕ ya
+    // funcionaba sin el candado. Lo que el candado debe impedir es un segundo gesto que
+    // CORTE un cierre en vuelo (`.dragging` = transition:none → salto). Eso se cubre
+    // poniendo el candado síncrono en profileEnd al cerrar de verdad, más pointer-events:none
+    // del CSS mientras cierra. Bloquear aquí el arranque del cierre era el «stopper» de 560 ms.
     const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now();
     const el=profileRef.current;
     let asa=false;
@@ -13921,15 +14125,12 @@ function App(){
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const stay=!profPasa(dist, dt, PROF_TH_CLOSE);
-    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose. Lo pone el
-       efecto de `profileOpen`, así que aquí basta con no estorbar.
-       La 4.11.0 lo ponía en CUALQUIER final de gesto: también en el rebote de «he tirado y no ha
-       llegado», y también en un simple toque. Como en esos casos no hay `transitionend` que lo
-       levante (o llega tarde), el candado se comía sus 560 ms y el SIGUIENTE intento de cerrar no
-       llegaba ni a empezar. Sumado al umbral doblado, esa era la otra mitad de «a la mínima vuelve
-       a la posición inicial» (veredicto de beta 2026-07-26): tiras, no llega, vuelves a tirar en
-       el acto y la app está sorda. Cortar un rebote es inofensivo —el panel vuelve a donde ya
-       estaba—; cortar el cierre es lo que se veía «loco», y eso lo sigue cubriendo el efecto. */
+    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose.
+       Se pone AQUÍ, síncrono, ANTES de setProfileOpen(false): si espera al useEffect, hay una
+       ventana en la que un segundo touchstart todavía ve profBusy=false, engancha `.dragging`
+       y corta la transición (el «vuelve loco» original). El rebote (stay=true) NO lo pone:
+       bloquearlo dejaba la app sorda al segundo intento (veredicto beta 2026-07-26). */
+    if(!stay) profMarkBusy();
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
@@ -14505,6 +14706,9 @@ function App(){
         } else {
           gestureMode.current="tab";
           if(trackRef.current) trackRef.current.classList.add("dragging");
+          // Congela el scroll de la página: sin esto, el momentum vertical de Deudas/Metas
+          // pelea con el translateX del track (mismo patrón que el perfil, 2026-07-18).
+          freezeShell(true,"tab");
         }
       } else if(axis.current==="y" && tab===0 && ddy>0){
         const pages=trackRef.current&&trackRef.current.children;
@@ -14574,6 +14778,7 @@ function App(){
         setSettingsProgress(open?1:0);
       } else {
         if(trackRef.current) trackRef.current.classList.remove("dragging");
+        freezeShell(false);   // suelta el scroll que congelamos al fijar el eje horizontal
         const w=trackRef.current?trackRef.current.offsetWidth:360;
         const dist=dx.current;
         const dt=Math.max(1,Date.now()-startT.current);

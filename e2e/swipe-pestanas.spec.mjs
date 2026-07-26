@@ -80,9 +80,12 @@ test("la pestaña que entra se pinta de verdad, no llega en blanco", async ({ pa
   await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("gastos");
 
   // El montaje de la pestaña es perezoso: lo que importa es que acabe con contenido REAL.
+  // No fijamos el orden de la lista (misma marca de tiempo → el sort no es estable entre runs).
   const filas = page.locator("button.v4-mov");
   await expect(filas.first()).toBeVisible({ timeout: 15_000 });
-  await expect(filas.first()).toContainText("Mercadona");
+  await expect(filas).toHaveCount(2);
+  await expect(page.locator("button.v4-mov", { hasText: "Mercadona" })).toBeVisible();
+  await expect(page.locator("button.v4-mov", { hasText: "Bar Paco" })).toBeVisible();
 
   // Y al volver, Inicio sigue estando pintado (no se desmonta al salir).
   await deslizar(page, cdp, "anterior");

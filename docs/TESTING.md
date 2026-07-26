@@ -238,3 +238,20 @@ repo**). Para que `beta.yml` publique un APK firmado harían falta como secrets 
 en base64, su contraseña, el alias y la del alias. **Es una decisión con coste:** esa clave es la
 identidad de la app; quien la tenga puede firmar una actualización que los móviles aceptarían como
 tuya. Mientras no compense, el APK se compila en el PC.
+
+## Checklist de re-prueba — beta 4.12.0 (tras rechazos .17/.18)
+
+Además de la checklist automática del panel (sale de `RELEASE_NOTES`), conviene mirar a mano:
+
+1. **Plan → Deudas (o Metas) → scrollear un poco → deslizar a otra pestaña al momento.** No debe
+   ir a tirones. (Si solo entras y deslizas sin scrollear, eso ya iba bien.)
+2. **Banco caído:** sincronizar a mano con un banco sin permiso → toast + noti; al tocar la noti,
+   Cartera con el banner rojo a la vista (Mis bancos **no** se abre solo). Un toque en el banner
+   sí abre la autorización. En Mis bancos ese banco sale en coral, no en verde.
+3. **Trade Republic desconectado:** banner en Cartera; el botón abre Mis bancos con TR, no un
+   login de Open Banking. Ajustes → Bancos menciona TR desconectado.
+4. **Perfil:** abrir (avatar) y cerrar tirando **sin esperar** medio segundo. Tiene que cerrar.
+5. **Ajustes → pie / Actualizaciones:** se ven `web v4.12.0` y `app 4.12.0` (o la APK que lleves).
+   Si solo sale la web, la APK es anterior a la 35.
+6. **Panel de revisión:** los ✓ de una compilación anterior con el mismo texto de nota llegan
+   heredados; los ✗ no.

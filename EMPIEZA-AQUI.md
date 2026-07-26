@@ -68,3 +68,13 @@ La norma completa está en `AGENTS.md` §6 ter.
 `docs/ROADMAP.md` es la foto de ahora: qué versión va por dónde, qué está hecho y qué falta.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
+
+**Hoy (2026-07-26):** `VERSION` = **4.12.0** en rama `beta`, lista para que la re-pruebe en el
+móvil. Producción (`main`) sigue en **4.11.0**. Se cerraron los bloqueos de los rechazos .17/.18
+(lag scroll→swipe, bancos/TR, stopper del perfil, versiones OTA+APK en Ajustes). Detalle y
+checklist en `docs/ROADMAP.md` y `docs/TESTING.md`. **No promocionar sin su OK** en el panel.
+
+La cola post-rechazo de una beta (qué falló en el móvil y en qué orden arreglarlo) vive en
+`docs/memoria/mi-cartera-backlog.md` (§8 ter / §8 quater / siguientes). El header del ROADMAP
+puede ir un paso por detrás del último veredicto: **mira el backlog** antes de asumir que está
+«pendiente de su primera prueba».

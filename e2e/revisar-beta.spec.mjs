@@ -146,3 +146,52 @@ test("?canal=estable devuelve el móvil al canal de todos", async ({ page }) => 
   await expect.poll(() => page.evaluate(() => localStorage.getItem("_mcChannel"))).toBeNull();
   await expect.poll(() => page.evaluate(() => mcChannel())).toBe("stable");
 });
+
+test("✓ y «no lo puedo probar» se heredan entre compilaciones; los ✗ no", async ({ page }) => {
+  // Petición 2026-07-26: lo que ya dio por bueno no se vuelve a preguntar si el texto del punto
+  // no ha cambiado. Los fallos SÍ se resetean (son justo lo que se acaba de arreglar).
+  await abrirRevisionBeta(page);
+  await page.evaluate(() => {
+    const items = betaChecklist(CONFIG.APP_VERSION).items;
+    store.set("_betaReviewOk", { [items[0]]: "ok", [items[1]]: "na" });
+    // Compilación anterior: un fallo que NO debe reaparecer.
+    store.set("_betaReview_" + CONFIG.APP_VERSION + ".99", { 0: "ok", 2: "ko" });
+    store.set("_betaReview_" + CONFIG.APP_VERSION + ".99_n", { 2: "era un fallo viejo" });
+    try { localStorage.removeItem("_betaReview_" + CONFIG.APP_VERSION); } catch (e) {}
+    try { localStorage.removeItem("_betaReview_" + CONFIG.APP_VERSION + "_n"); } catch (e) {}
+  });
+
+  await page.evaluate(() => {
+    const host = document.createElement("div");
+    host.id = "e2e-beta";
+    document.body.appendChild(host);
+    ReactDOM.createRoot(host).render(
+      React.createElement(BetaReviewPanel, { onClose: () => {}, showToast: () => {} }),
+    );
+  });
+  const panel = page.locator(".beta-review");
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText(/vienen ya marcado/i);
+
+  // El estado interno del panel (marks) es la fuente de verdad — el borde CSS depende del tema.
+  const marks = await page.evaluate(() => {
+    const root = document.querySelector(".beta-review");
+    // React no expone marks; se lee lo que el usuario ve: botones con fondo distinto al ghost.
+    // Más fiable: la clave de herencia + que esta compilación no tenga store propio aún.
+    return {
+      okKey: store.get("_betaReviewOk"),
+      propia: store.get("_betaReview_" + CONFIG.APP_VERSION),
+      items: betaChecklist(CONFIG.APP_VERSION).items.slice(0, 3),
+    };
+  });
+  expect(marks.okKey[marks.items[0]]).toBe("ok");
+  expect(marks.okKey[marks.items[1]]).toBe("na");
+  expect(marks.propia, "esta compilación empieza sin marcas propias").toBeFalsy();
+  // El ✗ de .99 no está en okKey (solo viajan ok/na).
+  expect(Object.values(marks.okKey || {})).not.toContain("ko");
+
+  // Y en la UI: el 3.º punto NO pide nota de fallo (no heredó el ✗).
+  await expect(panel.locator(".beta-item").nth(2).locator("input")).toHaveCount(0);
+  // El progreso cuenta los dos heredados.
+  await expect(panel).toContainText("2/");
+});

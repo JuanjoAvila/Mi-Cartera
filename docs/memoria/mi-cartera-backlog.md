@@ -58,15 +58,22 @@ Lo que falta de verdad: **beta con más de un móvil** (hoy el canal es solo el 
 ## 8 bis. NOMBRE NUEVO — decidido 2026-07-26, pendiente de elegir
 **«Mi Cartera» se cambia antes de publicar en Play.** Ya existe una app «Mi Cartera» de finanzas personales en Play (`com.support_tech.micartera`) y el Gobierno tiene «Cartera Digital Beta». Un nombre descriptivo no se puede registrar y en Play es invisible. Él eligió «buscar nombre nuevo». Los candidatos se comprueban en Play + App Store + dominio + OEPM/EUIPO antes de proponérselos; la elección es SUYA y el registro real lo confirma un agente de la propiedad industrial. Bloqueante de Play Store, no de la beta. Ficha en `docs/ROADMAP.md`.
 
-## 8 quater. COLA DE LA PRÓXIMA SESIÓN — rechazo de la 4.12.0.18 (2026-07-26). En este orden:
-1. **El lag** (ver 8 ter, es el mismo que sigue sin arreglar). Él: «por lo que te dije antes».
-2. **Banco caído: ni redirige ni se ve rojo.** «Ahora sí marca que hay 3 bancos conectados y 1 falla, pero ni me redirige ni me marca dónde tengo que ir —**eso fue de versiones pasadas, te lo dije para mi padre** para que fuera más sencillo— y cuando voy a bancos, **todos salen en verde**». Es una REGRESIÓN de algo que ya funcionaba (4.7.x). Sospecha: el fallo de Sabadell no cae en `bankIssuesOf` (solo devuelve expired/noacct) así que no hay `issues` que disparen el evento `mc-open-banks`; y «Mis bancos» pinta por `status` de la tabla, no por el resultado de la última sync.
-3. **El panel de beta marca 6/7 al abrirlo sin tocar nada.** Dos hipótesis: (a) enviar el veredicto NO limpia las marcas (los 6 cuadran con los 3 ok + 3 ko de la .17) → limpiar al enviar; (b) `storeKey` lee `CONFIG.APP_VERSION` antes de que el updater aplique la de la beta y cae en la clave de la base. Medir cuál.
-4. **Icono: él no lo ve todavía.** Normal si aún no ha instalado la **APK 35** ([prerelease v4.12.0-beta35](https://github.com/JuanjoAvila/Mi-Cartera/releases/tag/v4.12.0-beta35), publicada y verificada: firma CN=Mi Cartera + bundle sellado 4.12.0). Confirmar que la instaló ANTES de tocar nada de iconos. ⚠ **El APK se puede compilar desde este equipo**: SDK en `%LOCALAPPDATA%\Android\Sdk`, firma en `android/local.properties`, JDK en `C:\Program Files\Android\Android Studio\jbr` (no hay `java` en el PATH, hay que exportar `JAVA_HOME`). Ojo: `--` no se puede usar dentro de un comentario XML de Android, rompe `mergeReleaseResources`.
-5. Lo bueno: **«— No lo puedo probar» funciona** (el veredicto .18 ya trae `noProbable:1`) y el reseteo de mensajes por compilación también.
+## 8 quinta. DECISIONES .21 + CIERRE POR CURSOR (2026-07-26 noche) — HECHO en beta 4.12.0
+Cola de §8 quater + lo que Claude dejó solo en chat, implementado en `beta` (Cursor):
+1. **Lag scroll→swipe** ✅ `freezeShell(...,"tab")` + `onPageScroll` ignora mientras `dragging`. Guardián en `rendimiento-tabs`.
+2. **Banco caído** ✅ Noti/`handleGoto("banks|")` → SOLO Cartera con banner (NUNCA auto Mis bancos ni OAuth). CTA del banner = único toque a `bankConnectOnce`. Mis bancos pinta coral con `state.bankIssues` aunque `bank_links` diga active. `invalid_request` → mensaje propio.
+3. **CaixaBank invalid_request** ✅ Causa documentada: dos autorizaciones a la vez gastan el `state` de un solo uso. Candado compartido Cartera+Mis bancos.
+4. **TR desconectado** ✅ Banner + noti `tr|reconnect` → Cartera; CTA abre Mis bancos con TR; resumen Ajustes.
+5. **Stopper perfil 560 ms** ✅ Afinado (no quitado): candado síncrono al cerrar, cierre OK durante apertura, gen en transitionend, fallback 500 ms.
+6. **OTA + APK en Ajustes** ✅ `web vX · app Y` en pie y actualizaciones (puente ya en APK 35).
+7. **Herencia de ✓** ya estaba en `a528dd8`.
+**DO / DON'T bancos:** DO aterrizar en el banner de Cartera; DON'T abrir sola la autorización ni Mis bancos desde la noti.
 
-## 8 ter. LO PRIMERO: el lag que SIGUE (rechazo de la 4.12.0.17, 2026-07-26)
-Palabras suyas: «Al entrar en metas o deudas, si luego deslizas entre tabs sin hacer nada, no pasa nada. El problema viene si por ahí **te mueves** en metas o deudas y luego **inmediatamente haces scroll hacia las otras tabs**: se laguea una barbaridad». O sea: el montaje de pestañas YA está arreglado (0 ms medidos) — lo que queda es **interactuar/scrollear dentro de la pestaña y deslizar acto seguido**. A medir con CPU x6 (AGENTS §7 bis). Sospechas sin confirmar: `onPageScroll` disparando estado (revealNav/navHidden) que re-renderiza App entera, o el momentum del scroll peleándose con el gesto.
+## 8 quater. COLA — rechazo de la 4.12.0.18 (2026-07-26) — CERRADA en §8 quinta
+Era: lag, banco caído verde, panel 6/7, icono/APK 35. Lo bueno que ya iba: «— No lo puedo probar» y reseteo por compilación.
+
+## 8 ter. Lag scroll→swipe — CERRADO (era el rechazo 4.12.0.17)
+Montaje ya a 0 ms; lo que quedaba era scrollear dentro de Deudas/Metas y deslizar acto seguido. Fix en §8 quinta.
 
 **Nombre — segunda ronda pendiente.** Rechazó Zurrón/Alforja/Brújula/Guardabienes («no me gustan nada»). El brief nuevo (suyo vía ChatGPT, y tiene razón): la metáfora era «bolsa donde guardar cosas» y hay que subir a **crecer / patrimonio / horizonte / rumbo / progreso / legado**; y decidir si el nombre debe funcionar también en inglés por si internacionaliza. Ojo al lado malo de esa lista: son palabras muy usadas en marca financiera (rumbo.es es una agencia de viajes grande) y descriptivas = marca débil.
 

@@ -181,12 +181,28 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
   // TR desconectado (y el usuario SÍ lo tuvo conectado alguna vez → mc_tr_phone guardado):
   // banner con botón que abre Mis bancos directamente. UX padre 2026-07-18: al ver el saldo
   // descuadrado se fue a la app de Trade Republic — el arreglo debe estar donde está el problema.
+  // Se reconsulta al volver a primer plano y cuando App avisa por `mc-tr-status` (antes solo
+  // miraba al montar y el banner se quedaba mudo tras un sync que caducaba la sesión).
   const [trDead,setTrDead]=useState(false);
   useEffect(function(){
-    const b=(typeof trBridge==="function")?trBridge():null;
-    if(!b||!b.status) return;
-    if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())) return;
-    Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    const check=function(){
+      const b=(typeof trBridge==="function")?trBridge():null;
+      if(!b||!b.status) return;
+      if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())){ setTrDead(false); return; }
+      Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    };
+    check();
+    const onVis=function(){ if(document.visibilityState==="visible") check(); };
+    const onEvt=function(e){
+      if(e&&e.detail&&typeof e.detail.connected==="boolean"){ setTrDead(!e.detail.connected); return; }
+      check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("mc-tr-status", onEvt);
+    return function(){
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("mc-tr-status", onEvt);
+    };
   },[]);
   // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
   // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
@@ -258,10 +274,12 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
         onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
       );
     }),
-    trDead && React.createElement("div",{className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+    trDead && React.createElement("div",{className:"v4-card v4-tr-issue",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
       React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, t("bk_tr_dead")),
       React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
-      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
+      // TR no es Open Banking: el CTA abre Mis bancos con la tarjeta de TR desplegada (PIN+SMS),
+      // nunca un OAuth de Enable Banking.
+      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:"trade_republic"}})); }catch(e){} }}, t("bk_tr_cta"))
     ),
     /* BLOQUES ORDENABLES (petición 2026-07-25: «poder ordenar las cosas de la tab de cartera»).
        Mismo mecanismo que ya usan Fijos/Patrimonio/Deudas/Inversiones/Metas desde la 3.94:

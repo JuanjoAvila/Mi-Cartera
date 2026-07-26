@@ -18,6 +18,11 @@ function App(){
   const scrollTab=useRef(0);
   const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
   const onPageScroll=function(e){
+    // Mientras el dedo cambia de pestaña, el momentum del scroll vertical sigue disparando
+    // eventos. Cada uno podía llamar a setNavHidden y re-renderizar App entera a mitad del
+    // gesto — eso es el «si te mueves en Deudas/Metas y deslizas acto seguido, se laguea»
+    // (rechazo 4.12.0.17). El perfil ya congelaba el scroll; el swipe de pestañas no.
+    if(dragging.current) return;
     const y=e.currentTarget.scrollTop;
     // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
     // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
@@ -262,12 +267,11 @@ function App(){
         if(obAdded.length) msg += " · " + (obAdded.length===1 ? t("bank_upd_mov1") : tf("bank_upd_movn",{n:obAdded.length}));
         showToast(msg);
       }
-      // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
-      // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
-      // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de
-      // Cartera existía pero había que dar con él. Ahora, al sincronizar A MANO:
-      //   1) notificación de verdad (queda en la bandeja) que al tocarla abre Cartera + Mis bancos,
-      //   2) y en el momento, la app abre sola el panel de bancos con ese banco resaltado.
+      // ── BANCO SIN CONECTAR: avisar y dejar el banner de Cartera a la vista ─────────────────
+      // Petición del padre (2026-07-24) + corrección 2026-07-26: la noti lleva a Cartera (donde
+      // está el banner con el botón), NO abre sola Mis bancos ni la autorización del banco.
+      // Abrir OAuth automáticamente con varios bancos caídos gastaba el permiso de un solo uso
+      // (invalid_request) y dejaba al usuario dando vueltas aunque el banco dijera «OK».
       if(issues.length){
         const lbl=issues[0].ent?entOf(issues[0].ent).label:(issues[0].aspsp||"🏦");
         const msg=issues.length>1
@@ -277,10 +281,11 @@ function App(){
         if(opts.manual){
           const nat=natPlugin();
           if(nat&&nat.showNotification){
-            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||"")}).catch(function(){}); }catch(e){}
+            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||""), tag:"banks"}).catch(function(){}); }catch(e){}
           }
-          // Y aquí mismo: el panel donde se reconecta, abierto y con el banco señalado.
-          setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:issues[0].aspsp||null}})); }catch(e){} }, 700);
+          // Deja Cartera delante para que el banner se vea sin buscar.
+          const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+          if(ci>=0) setTab(ci);
         }
       }
       // Fallo NO caducado = hipo transitorio del banco (rate-limit PSD2, 5xx…): el enlace sigue
@@ -332,6 +337,24 @@ function App(){
   // opts.manual = botón «Sincronizar» de Cartera (2026-07-18): además de MyInvestor entra
   // Trade Republic (solo a demanda: el TR de arranque deslogueaba APKs viejos) y se salta el
   // throttle. En automático (al abrir) sigue siendo solo MI, silencioso y con throttle.
+  // Aviso TR (2026-07-26): TR NO es Open Banking — va por otro camino y se quedaba mudo al
+  // caducar. Ahora, si la sesión murió de verdad, hay toast + noti estable + evento para que
+  // el banner de Cartera se entere, sin meterlo en bankIssuesOf.
+  const signalTrDead=function(){
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:false}})); }catch(e){}
+    try{
+      if(localStorage.getItem("_trDeadNotif")==="1") return;
+      localStorage.setItem("_trDeadNotif","1");
+    }catch(e){}
+    const nat=natPlugin();
+    if(nat&&nat.showNotification){
+      try{ nat.showNotification({title:t("bk_tr_notif_title"), body:t("bk_tr_notif_body"), gotoTarget:"tr|reconnect", tag:"tr"}).catch(function(){}); }catch(e){}
+    }
+  };
+  const signalTrAlive=function(){
+    try{ localStorage.removeItem("_trDeadNotif"); }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:true}})); }catch(e){}
+  };
   const runBrokerSync=function(opts){
     opts=opts||{};
     if(brokerSyncing.current) return Promise.resolve();
@@ -339,12 +362,20 @@ function App(){
     const jobs=[];
     const st=stateRef.current||{};
     let touched=0; const expiredB=[];
-    const bridge=(opts.manual && typeof trBridge==="function") ? trBridge() : null;
-    if(bridge && bridge.status && bridge.sync){
+    // Estado de TR: se consulta también en automático (solo status, sin sync) para que el
+    // banner de Cartera no se quede mirando un "conectado" viejo tras matar la app.
+    const bridge=(typeof trBridge==="function") ? trBridge() : null;
+    if(bridge && bridge.status){
       jobs.push(Promise.resolve(bridge.status()).then(function(r){
-        if(!(r&&r.connected)) return;
+        const hadPhone=typeof trPhoneSaved==="function"&&!!trPhoneSaved();
+        if(!(r&&r.connected)){
+          if(hadPhone){ expiredB.push("Trade Republic"); signalTrDead(); }
+          return;
+        }
+        signalTrAlive();
+        if(!opts.manual || !bridge.sync) return;   // sync TR solo a demanda
         return Promise.resolve(bridge.sync()).then(function(res){
-          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); return; }
+          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); signalTrDead(); return; }
           if(!res||!res.ok||!Array.isArray(res.positions)) return;   // anti-bot/hipo: silencio, se reintenta luego
           applyBrokerPositions(res.positions, "lastTrSync"); touched++;
         });
@@ -364,7 +395,14 @@ function App(){
     return Promise.all(jobs).catch(function(){}).then(function(){
       brokerSyncing.current=false;
       if(opts.manual){
-        if(expiredB.length) showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+        if(expiredB.length){
+          showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+          // TR: deja Cartera delante para que el banner se vea (mismo patrón que OB).
+          if(expiredB[0]==="Trade Republic"){
+            const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+            if(ci>=0) setTab(ci);
+          }
+        }
         else if(touched) showToast(t("v4_sync_brokers_ok"));
       }
     });
@@ -477,6 +515,9 @@ function App(){
       } else {
         const m=parts.slice(2).join("|");
         if(m.indexOf("nolink:")===0){ const nm=m.slice(7), en=entFromAspsp(nm), lbl=en?entOf(en).label:(nm||"🏦"); showToast("⚠ "+lbl+": "+t("bank_nolink")); }
+        // invalid_request = permiso ya gastado o caducado (casi siempre por lanzar dos
+        // autorizaciones a la vez). Mensaje propio, sin el error crudo de Enable Banking.
+        else if(/invalid_request/i.test(m)) showToast("⚠ "+t("bank_error_invalid"));
         else showToast("⚠ "+t("bank_error")+(m?": "+m:""));
       }
       return;
@@ -507,14 +548,13 @@ function App(){
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
       return;
     }
-    // Noti «tienes un banco sin conectar» (2026-07-24): abre Cartera (donde está el banner con el
-    // botón) y, encima, el panel de Mis bancos ya desplegado. El padre no sabía DÓNDE se conectaba;
-    // ahora la noti le deja en el sitio exacto, sin buscar nada.
-    if(g==="banks" || g.indexOf("banks|")===0){
+    // Noti «banco caído» / «TR desconectado» (2026-07-26): SOLO Cartera, con el banner a la vista.
+    // Antes abría además Mis bancos (y a veces lanzaba la autorización), y con dos bancos caídos
+    // se disparaban dos OAuth: la segunda volvía con invalid_request aunque el banco dijera OK.
+    // El padre sigue viendo el aviso delante; el toque que reconecta es el del banner, no la noti.
+    if(g==="banks" || g.indexOf("banks|")===0 || g==="tr" || g.indexOf("tr|")===0){
       const ci=tabOrderOf(stateRef.current).indexOf("cartera");
       if(ci>=0) setTab(ci);
-      const aspsp=g.indexOf("banks|")===0 ? g.slice(6) : "";
-      setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:aspsp||null}})); }catch(e){} }, 250);
       return;
     }
     if(g==="gastos" || g.indexOf("exp|")===0){
@@ -594,7 +634,8 @@ function App(){
       if(m.indexOf("nolink:")===0){   // autorizó pero la cuenta no está dada de alta (modo restringido EB) → mensaje accionable
         const nm=m.slice(7), e=entFromAspsp(nm), lbl=e?entOf(e).label:(nm||"🏦");
         showToast("⚠ "+lbl+": "+t("bank_nolink"));
-      } else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
+      } else if(/invalid_request/i.test(m)){ showToast("⚠ "+t("bank_error_invalid")); }
+      else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
     }
   },[]);
 
@@ -702,12 +743,16 @@ function App(){
     window.addEventListener("mc-open-shared",h);
     return function(){ window.removeEventListener("mc-open-shared",h); };
   },[]);
-  // Banner «Reconectar {banco}» de Cartera: directo a la autorización del banco (vuelve con ?bank=ok).
+  // Banner «Reconectar {banco}» de Cartera: el ÚNICO toque que lanza la autorización.
+  // Candado compartido (bankConnectOnce): dos toques seguidos no gastan el permiso dos veces.
   const reconnectBank=function(aspsp){
     if(!cloud.enabled()||!sessionRef.current){ showToast(t("bp_need_login")); return; }
     showToast(t("bank_connecting"));
-    cloud.bankConnect(aspsp,"ES").then(function(d){ location.href=d.url; })
-      .catch(function(e){ showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
+    bankConnectOnce(aspsp,"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){
+        if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+      });
   };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
@@ -770,8 +815,11 @@ function App(){
     if(on){
       appShellRef.current.classList.add("gesture-freeze","dragging");
       if(kind==="profile") appShellRef.current.classList.add("profile-gesturing");
-      // Bloquea scroll de Resumen: si pelea con el pull-down del perfil → lag (feedback 2026-07-18).
-      if(kind==="profile" && trackRef.current){
+      // Bloquea el scroll de la página activa: si pelea con el gesto → lag.
+      // · perfil (2026-07-18): pull-down vs scroll de Inicio.
+      // · tab (2026-07-26): tras scrollear Deudas/Metas, el momentum vertical seguía vivo
+      //   mientras el track se desplazaba en horizontal — rechazo 4.12.0.17.
+      if((kind==="profile" || kind==="tab") && trackRef.current){
         const pageEl=trackRef.current.children[tabRef.current];
         if(pageEl){
           pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
@@ -844,25 +892,40 @@ function App(){
      La transición dura 0,48 s. Si en ese rato empieza otro gesto, lo primero que hace es poner
      `.dragging` —que es `transition:none`—, así que la animación en vuelo se corta en seco y el
      panel PEGA UN SALTO desde donde iba hasta donde diga el dedo. Con el velo y el avatar a
-     medio camino, eso es exactamente «volverse loco». Se ignoran los toques hasta que el panel
-     asiente: por `transitionend` (lo normal) y con un plazo de respaldo por si el navegador no lo
-     dispara —pasa si la pestaña pierde el foco a mitad—, que dejaría el gesto muerto para siempre. */
-  const profBusy=useRef(false), profBusyT=useRef(null);
+     medio camino, eso es exactamente «volverse loco».
+     Afinado 2026-07-26 (rechazo «stopper»): el candado SE QUEDA, pero (1) se pone YA en el
+     cierre real, no en el useEffect de después —si no, hay una ventana en la que un segundo
+     dedo corta la animación—, (2) cerrar durante la apertura SÍ se deja (el usuario quiere
+     salir; lo que se bloquea es abrir desde Inicio a mitad de transición), y (3) transitionend
+     limpia el timeout y solo vale si es de la generación actual. */
+  const profBusy=useRef(false), profBusyT=useRef(null), profBusyGen=useRef(0);
+  const profClearBusy=function(){
+    profBusy.current=false;
+    if(profBusyT.current){ clearTimeout(profBusyT.current); profBusyT.current=null; }
+  };
   const profMarkBusy=function(){
+    const gen=++profBusyGen.current;
     profBusy.current=true;
     if(profBusyT.current) clearTimeout(profBusyT.current);
-    profBusyT.current=setTimeout(function(){ profBusy.current=false; }, 560);
+    // 500 ms = 480 de la CSS + margen pequeño. Antes 560 y se notaba «sordo» al cerrar rápido.
+    profBusyT.current=setTimeout(function(){ if(profBusyGen.current===gen) profClearBusy(); }, 500);
   };
   useEffect(function(){
     const el=profileRef.current; if(!el) return undefined;
-    const fin=function(e){ if(e.target===el && e.propertyName==="transform") profBusy.current=false; };
+    const fin=function(e){
+      if(e.target!==el || e.propertyName!=="transform") return;
+      // Solo la generación en curso: un transitionend viejo no desbloquea una animación nueva.
+      profClearBusy();
+    };
     el.addEventListener("transitionend", fin);
     return function(){ el.removeEventListener("transitionend", fin); };
   },[]);
   useEffect(function(){
     document.documentElement.classList.toggle("profile-open", !!profileOpen);
     if(!dragging.current && gestureMode.current!=="profile"){
-      profMarkBusy();   // arranca la animación: nadie la toca hasta que acabe
+      // Apertura por tap / cierre programático (✕, Ajustes, atrás). El cierre por gesto ya
+      // puso el candado en profileEnd; aquí cubrimos el resto.
+      if(!profBusy.current) profMarkBusy();
       if(profileOpen) profSetOrigin();   // re-ancla al avatar ANTES de animar (apertura por tap)
       setProfileProgress(profileOpen?1:0);
       if(profileRef.current){
@@ -983,7 +1046,11 @@ function App(){
   const PROF_ASA=72;
   const pOwn=useRef(false);
   const profileStart=function(e){
-    if(profBusy.current) return;   // el panel está asentándose: este toque no es para el gesto
+    // Cerrar SÍ se deja aunque la apertura aún anime: el usuario quiere salir y el ✕ ya
+    // funcionaba sin el candado. Lo que el candado debe impedir es un segundo gesto que
+    // CORTE un cierre en vuelo (`.dragging` = transition:none → salto). Eso se cubre
+    // poniendo el candado síncrono en profileEnd al cerrar de verdad, más pointer-events:none
+    // del CSS mientras cierra. Bloquear aquí el arranque del cierre era el «stopper» de 560 ms.
     const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now();
     const el=profileRef.current;
     let asa=false;
@@ -1040,15 +1107,12 @@ function App(){
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const stay=!profPasa(dist, dt, PROF_TH_CLOSE);
-    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose. Lo pone el
-       efecto de `profileOpen`, así que aquí basta con no estorbar.
-       La 4.11.0 lo ponía en CUALQUIER final de gesto: también en el rebote de «he tirado y no ha
-       llegado», y también en un simple toque. Como en esos casos no hay `transitionend` que lo
-       levante (o llega tarde), el candado se comía sus 560 ms y el SIGUIENTE intento de cerrar no
-       llegaba ni a empezar. Sumado al umbral doblado, esa era la otra mitad de «a la mínima vuelve
-       a la posición inicial» (veredicto de beta 2026-07-26): tiras, no llega, vuelves a tirar en
-       el acto y la app está sorda. Cortar un rebote es inofensivo —el panel vuelve a donde ya
-       estaba—; cortar el cierre es lo que se veía «loco», y eso lo sigue cubriendo el efecto. */
+    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose.
+       Se pone AQUÍ, síncrono, ANTES de setProfileOpen(false): si espera al useEffect, hay una
+       ventana en la que un segundo touchstart todavía ve profBusy=false, engancha `.dragging`
+       y corta la transición (el «vuelve loco» original). El rebote (stay=true) NO lo pone:
+       bloquearlo dejaba la app sorda al segundo intento (veredicto beta 2026-07-26). */
+    if(!stay) profMarkBusy();
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
@@ -1624,6 +1688,9 @@ function App(){
         } else {
           gestureMode.current="tab";
           if(trackRef.current) trackRef.current.classList.add("dragging");
+          // Congela el scroll de la página: sin esto, el momentum vertical de Deudas/Metas
+          // pelea con el translateX del track (mismo patrón que el perfil, 2026-07-18).
+          freezeShell(true,"tab");
         }
       } else if(axis.current==="y" && tab===0 && ddy>0){
         const pages=trackRef.current&&trackRef.current.children;
@@ -1693,6 +1760,7 @@ function App(){
         setSettingsProgress(open?1:0);
       } else {
         if(trackRef.current) trackRef.current.classList.remove("dragging");
+        freezeShell(false);   // suelta el scroll que congelamos al fijar el eje horizontal
         const w=trackRef.current?trackRef.current.offsetWidth:360;
         const dist=dx.current;
         const dt=Math.max(1,Date.now()-startT.current);
