@@ -1088,8 +1088,6 @@ function App(){
     setAuthStart("up");   // onboarding → "Crear cuenta" directo, sin pasar por el login (punto 5)
     setShowAuth(true);
   };
-  const [showDots,setShowDots]=useState(false);
-  const dotsTimer=useRef(null);
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
@@ -1577,8 +1575,13 @@ function App(){
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
-  const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
-  const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
+  /* Aquí vivían revealDots()/hideDotsSoon(), que encendían y apagaban el indicador de puntitos
+     del swipe. Ese indicador se lo llevó por delante el rediseño v4: `.app.v4 .dots` está oculto
+     con `display:none !important` y ningún módulo crea ya el elemento (comprobado buscando
+     `showDots` y `className:"dots"` en todo `src/`: no aparece en un solo render). Lo que
+     sobrevivió fue su maquinaria de estado, y cobraba peaje —`setShowDots(true)` al declararse el
+     gesto horizontal y `setShowDots(false)` 1,1 s después—: DOS re-renders completos de App por
+     cada pasada de dedo entre pestañas, para no pintar absolutamente nada. Retirado 2026-07-26. */
   const drawerW=function(){ return window.innerWidth||360; };
   const EDGE_OPEN=52;
   const onStart=(e)=>{
@@ -1620,7 +1623,7 @@ function App(){
           freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
-          if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
+          if(trackRef.current) trackRef.current.classList.add("dragging");
         }
       } else if(axis.current==="y" && tab===0 && ddy>0){
         const pages=trackRef.current&&trackRef.current.children;
@@ -1701,7 +1704,6 @@ function App(){
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
         if(nt!==tab) goTab(nt);
         else if(trackRef.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)";
-        hideDotsSoon();
       }
     }
     gestureMode.current=null;

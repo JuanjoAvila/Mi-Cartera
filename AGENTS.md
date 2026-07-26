@@ -222,6 +222,23 @@ Lección de la 4.8.0, tras el enésimo «cuanto más tiempo uso la app, más len
   `waitFor()` sondean el DOM desde el script inyectado de Playwright mientras esperan. Para
   perfilar, click CRUDO desde la página (`page.evaluate(() => el.click())`) y espera a ciegas
   (`waitForTimeout`); las esperas que sondean van DESPUÉS de parar el perfilador.
+- **Y con gestos táctiles, tres trampas más** (aprendidas quemando una sesión entera midiendo
+  cosas que no eran el gesto):
+  1. **Espera a que se vaya el splash.** `#mc-load` tapa la pantalla ~0,5 s y es hermano de
+     `#root`, así que `.botnav` puede estar ya en el DOM con el splash todavía encima. Un
+     arrastre lanzado antes ni siquiera entra en `.viewport` — el `touchstart` cae sobre el
+     splash y parece un gesto «perdido» que no lo es:
+     `await page.waitForFunction(() => !document.getElementById("mc-load"))`.
+  2. **Comprueba que el gesto ATERRIZA; si no, tira la muestra.** Hay zonas que se tragan el
+     swipe a propósito (`stopSwipe`: chips de Gastos, scrollers, el gráfico de Inicio). Un
+     arrastre ahí no mueve el track: su medida es ruido, no un dato. Se comprueba mirando si
+     `.botnav-tab.active` cambió de `data-tour`. En viewport de Pixel 5, `y=200` sirve en Inicio
+     y en Gastos; `y=320..440` NO sirve en Gastos. Y el gesto hacia atrás tiene que empezar
+     fuera de la franja de borde (`EDGE_OPEN`=52 px) o lo que se abre es **Ajustes**.
+  3. **No midas tiempos con el perfilador puesto.** A 6× de freno, `Profiler` a intervalo corto
+     distorsiona más de lo que mide: dejaba en ~150 ms pasadas que sin él iban a 17 ms. Para
+     atribuir trabajo, `Tracing` (`devtools.timeline`) y acota el gesto con `console.timeStamp`,
+     que un `Layout` gordo TRAS el `touchend` no le quita ni un frame al dedo.
 - **Antes de decir que algo va más rápido, MÍDELO A/B** contra `main` (`git archive HEAD` a un
   temporal, `build-app`, `serve` en otro puerto y dos pasadas del mismo guion en Playwright). En la
   4.8.0 el primer intento daba 1,1-1,5× y parecía poco; medir los BYTES escritos por vuelta a
