@@ -879,6 +879,14 @@
   /* gesture-freeze: no re-pinta el shell. profile-gesturing: bloquea scroll de .page
      (si Resumen scrollea a la vez que el pull-down → lag — feedback 2026-07-18). */
   .app-shell.gesture-freeze{pointer-events:none;}
+  /* ⚠ ABRIR EL PERFIL SIGUE COSTANDO ~300 ms (medido a x12, 2026-07-26) y NO es esto. Se probó:
+     desacoplar este candado de `gesture-freeze` para no tocar `pointer-events` (que es heredada y
+     fue la causa del lag de las pestañas) → 300 vs 310 ms, o sea ruido; y `contain:paint` en el
+     panel mientras se arrastra → 304 vs 300, ruido también. Lo que dice la traza es otra cosa:
+     482 `RasterTask` y 278 `Paint`, porque se escala un panel de ~1.680 px de alto DESDE 0,12
+     HASTA 1, y el navegador lo re-rasteriza mientras crece. Eso no se arregla con una propiedad
+     suelta: hay que reducir lo que se pinta durante el crecimiento. Pendiente, con el número
+     medido para no volver a empezar de cero. */
   .app-shell.gesture-freeze.profile-gesturing .page{overflow:hidden !important;overscroll-behavior:none;touch-action:none !important;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
