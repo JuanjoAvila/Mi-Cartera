@@ -93,6 +93,21 @@ queda escrito para no volver a discutirlas.
 | **Tercer canal «Experimental»** (Experimental/Beta/Stable) | **No.** Repite la fila «Beta cerrada» y multiplica por tres la matriz de release (OTA + manifiesto + APK), que es exactamente la que reventó dos veces seguidas en 4.10.1 y 4.10.2. | Lo que falta no es un canal más: son **más móviles en el que ya existe**. |
 | **«Operations Dashboard» como tarea única** | **Dividido a propósito.** Son tres cosas distintas (salud + métricas + observabilidad) con costes muy diferentes. | Con 3 usuarios, el 90 % del valor está en el script de salud + la vista SQL de métricas. La pantalla, si algún día compensa. |
 
+## Bloqueante antes de publicar en Play Store: el NOMBRE
+
+Decidido el 2026-07-26. **«Mi Cartera» se queda como descripción, no como marca.** Los hechos:
+
+- Ya hay una app **«Mi Cartera»** de finanzas personales en Google Play (`com.support_tech.micartera`),
+  misma categoría: gastos, informes, export a Excel. No es ilegal llamarse igual —el nombre es
+  genérico y nadie puede apropiárselo— pero en Play seríamos invisibles entre los homónimos.
+- El Gobierno tiene **«Cartera Digital Beta»** (identidad digital y verificación de edad). Nombre
+  distinto, pero la palabra «cartera» arrastra esa asociación en España.
+- Un nombre descriptivo **no se puede registrar** como marca: no habría nada que defender.
+
+Cambiarlo ahora cuesta un rato; con la app instalada en 300 móviles, cuesta muchísimo más. La
+lista de candidatos se comprueba en Play, App Store, dominio y OEPM/EUIPO antes de proponerla, y
+la elección es suya. El registro real lo confirma un agente de la propiedad industrial, no nosotros.
+
 ## Solo si lo pides
 
 | Tema | Notas |

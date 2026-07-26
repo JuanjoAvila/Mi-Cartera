@@ -211,6 +211,17 @@ Lección de la 4.8.0, tras el enésimo «cuanto más tiempo uso la app, más len
   en el `totals` de `11-app-main.js`).
 - **Fechas:** `parseDate` cachea; para comparar y ordenar usa `dateMs()`, que no crea objetos.
   Nunca construyas `Date` dentro de un filtro que recorre el histórico.
+- **En un portátil los problemas de rendimiento del móvil NO SE VEN.** Medir el lag que él ve
+  daba **cero tareas largas** hasta estrangular la CPU por CDP: `page.context().newCDPSession(page)`
+  → `Emulation.setCPUThrottlingRate({rate:6})`. Con eso, «entrar en Deudas y Metas» pasó de
+  parecer instantáneo a enseñar 171 ms de hilo bloqueado, que es justo lo que él describía.
+  Las tareas largas se recogen con un `PerformanceObserver({entryTypes:["longtask"]})` sembrado
+  en `addInitScript`.
+- **Y ojo con medir a Playwright en vez de a la app.** El primer perfil de CPU señalaba a
+  `getBoundingClientRect` con 350 ms de tiempo propio, y no era nuestro: `locator.click()` y
+  `waitFor()` sondean el DOM desde el script inyectado de Playwright mientras esperan. Para
+  perfilar, click CRUDO desde la página (`page.evaluate(() => el.click())`) y espera a ciegas
+  (`waitForTimeout`); las esperas que sondean van DESPUÉS de parar el perfilador.
 - **Antes de decir que algo va más rápido, MÍDELO A/B** contra `main` (`git archive HEAD` a un
   temporal, `build-app`, `serve` en otro puerto y dos pasadas del mismo guion en Playwright). En la
   4.8.0 el primer intento daba 1,1-1,5× y parecía poco; medir los BYTES escritos por vuelta a
