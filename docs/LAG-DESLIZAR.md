@@ -6,6 +6,60 @@
 >
 > Estado: beta **4.12.0.33** en el canal de pruebas. Producción (`main`) sigue en 4.11.0.
 
+## ⚠ ESTADO AL CERRAR LA NOCHE DEL 27: SIGUE FALLANDO. LÉEME ANTES QUE NADA
+
+Su veredicto de la beta **4.12.0.38**, con todo lo de abajo puesto: **«sigue exactamente igual que
+cuando comenzamos»**.
+
+O sea: los dos fallos de §0 y §0 bis eran **reales y están medidos antes/después en su móvil**, pero
+**NINGUNO era la causa de lo que él siente**. No los deshagas —son correctos y hay guardianes que los
+protegen— pero **no los des por la solución**.
+
+**Lo que él nota sigue sin explicación, y sigue siendo esto, literal:**
+
+> «estar **arriba del todo en Gastos**, moverte **rápido** por Deudas, y luego deslizarte a Gastos:
+> **ahí se pierde la fluidez de golpe**.»
+
+**Lo que ya está descartado CON NÚMEROS, en su móvil y con su dedo (no lo repitas):**
+
+| medida | caso malo suyo | veredicto |
+|---|---|---|
+| Tareas largas de JavaScript | **0** en 38 s de uso | el hilo principal no es |
+| Frames perdidos (`rAF`) | 9-12 en 60 s, el peor de 33 ms | no son frames perdidos |
+| Frames caídos según Chromium, solo en el desliz de vuelta | **0,75 %** vs **0,99 %** en su caso «fluido» | **no hay diferencia entre su caso malo y el bueno** |
+| Movimiento del carrusel frame a frame | 64 frames en 530 ms, sin un salto, igual en los dos casos | el carrusel se mueve perfecto |
+| Gestos cancelados por el navegador | 174/185 **→ 0/99** tras el arreglo | arreglado, y aun así él lo sigue notando |
+| Arrastres que vuelven a la misma pestaña | 6/18 **→ 0** | arreglado, y aun así lo sigue notando |
+
+**Por dónde seguiría yo, en este orden y con este porqué:**
+
+1. **Lo que pasa DESPUÉS de aterrizar en Gastos, no el desliz.** Todas las medidas de arriba miran el
+   gesto y la transición. Pero él dice «se pierde la fluidez **de golpe**», y estando **arriba del
+   todo** lo que se ve al llegar es la cabecera: tarjetas con `animation: rise .32s` y barras con
+   `v4bar .8s`. Si esas animaciones de entrada se relanzan al activarse la pestaña, al llegar hay
+   **dos movimientos a la vez** (el carrusel todavía deslizándose y la cabecera entrando), y eso el
+   ojo lo lee como pérdida de fluidez aunque salgan 120 fps. **Con Gastos bajado esa cabecera no se
+   ve, y ese es justo su caso «ultra fluido».** Encaja con todo y **no se ha medido nunca**.
+   → Prueba barata: apagar SOLO `rise` y `v4bar` en la cabecera de Gastos y que lo juzgue ÉL.
+2. **`useDeferredValue(state.expenses)` en `04-tab-gastos.js`**: React puede pintar Gastos dos veces
+   al entrar. Sospecha viva del §7, nunca medida.
+3. **El `active` de `Expenses`** (`active: tabIds[tab]==="gastos"`): cuando la pestaña pasa a activa
+   hace trabajo caro (`heavyOk`, suscripciones). Ya fue causa de un tirón antes (ver roadmap). Al
+   llegar arriba del todo coincide con la cabecera visible.
+4. **Y si nada de eso: que lo juzgue él, no un instrumento.** Con cuatro medidas en verde y él
+   viéndolo, el único sensor que queda es su ojo: dos o tres betas seguidas quitando UNA cosa cada
+   una y que diga cuál va mejor. Es más lento pero es honesto.
+
+**Lo primero que pediría yo:** un **vídeo suyo a cámara lenta de ESE repro exacto** (su móvil graba a
+120 fps; el del 27/7 a las 19:15 era de otro síntoma). Ver qué se mueve mal vale más que otra tanda
+de medidas verdes.
+
+**Las herramientas están en [`tools/movil/`](../tools/movil/) con su README.** Su móvil tiene puesta
+una APK compilada en casa con la inspección abierta (misma firma, mismos datos); la del CI no la
+lleva.
+
+---
+
 ## 0. CÓMO ACABÓ: no era rendimiento, era que UN TERCIO DE SUS DESLIZADAS NO CONTABA
 
 **Su repro, el que hay que probar, con sus palabras:** «estar **arriba del todo en Gastos**,
