@@ -23,6 +23,31 @@ function mcScheduleIdle(fn, timeoutMs){
   setTimeout(fn, 16);
 }
 
+/* Gastos necesita saber si es la pestaña activa (para heavyOk y reset de chips), pero eso NO
+   puede viajar como prop: cada cambio de `active` reconstruía Expenses entero justo al aterrizar
+   el gesto, y eso era la asimetría «Deudas→Gastos lag / Deudas→Cartera fluido» (el destino
+   Cartera no toca Gastos; el destino Gastos sí, vía `gastosActiva` en el memo). Bus + ref: el
+   árbol de Gastos se queda quieto; solo corren efectos baratos si hace falta. */
+var _mcGastosActive=false;
+var _mcGastosActiveCbs=[];
+function mcSetGastosActive(on){
+  on=!!on;
+  if(_mcGastosActive===on) return;
+  _mcGastosActive=on;
+  for(var i=0;i<_mcGastosActiveCbs.length;i++){
+    try{ _mcGastosActiveCbs[i](on); }catch(e){}
+  }
+}
+function mcOnGastosActive(cb){
+  if(typeof cb!=="function") return function(){};
+  _mcGastosActiveCbs.push(cb);
+  try{ cb(_mcGastosActive); }catch(e){}
+  return function(){
+    var i=_mcGastosActiveCbs.indexOf(cb);
+    if(i>=0) _mcGastosActiveCbs.splice(i,1);
+  };
+}
+
 /* Le dice al SPLASH de entrada que ya puede irse: lo que se vea a partir de ahora es lo bueno.
    El vigilante vive al final de shell.html y no depende de esto para retirarse (tiene un tope de
    1,8 s), así que llamar de más es gratis y no llamar nunca solo devuelve el comportamiento viejo.

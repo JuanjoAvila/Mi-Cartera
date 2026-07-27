@@ -2201,7 +2201,9 @@ function App(){
       },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); },
       onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
+    // Sin prop `active`: ver `mcOnGastosActive` — si viaja por props, entrar en Gastos
+    // reconstruye el árbol entero encima del gesto (asimetría Deudas→Gastos vs →Cartera).
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
@@ -2241,14 +2243,16 @@ function App(){
     return out;
     // eslint-disable-next-line
   },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
-  /* Gastos aparte porque es la ÚNICA que necesita saber si es la pestaña activa (`active`, que
-     le sirve para decidir cuándo hacer su trabajo caro). Va en su propio memo para que ese dato
-     no arrastre a las otras tres: así entrar o salir de Gastos re-renderiza Gastos y nada más. */
-  const gastosActiva=tabIds[tab]==="gastos";
+  /* Gastos iba en memo aparte POR la prop `active` — y esa prop era el lag. Ahora se entera
+     por bus (`mcSetGastosActive` abajo) y comparte deps con las otras: entrar/salir de Gastos
+     ya NO reconstruye Expenses. Se deja el memo propio por si mañana vuelve a necesitar algo
+     que las otras no (focusExp sigue aquí). */
   const contenidoGastos=useMemo(function(){
     return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
     // eslint-disable-next-line
-  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosActiva]);
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
+  useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];

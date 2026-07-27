@@ -1435,6 +1435,31 @@ function mcScheduleIdle(fn, timeoutMs){
   setTimeout(fn, 16);
 }
 
+/* Gastos necesita saber si es la pestaña activa (para heavyOk y reset de chips), pero eso NO
+   puede viajar como prop: cada cambio de `active` reconstruía Expenses entero justo al aterrizar
+   el gesto, y eso era la asimetría «Deudas→Gastos lag / Deudas→Cartera fluido» (el destino
+   Cartera no toca Gastos; el destino Gastos sí, vía `gastosActiva` en el memo). Bus + ref: el
+   árbol de Gastos se queda quieto; solo corren efectos baratos si hace falta. */
+var _mcGastosActive=false;
+var _mcGastosActiveCbs=[];
+function mcSetGastosActive(on){
+  on=!!on;
+  if(_mcGastosActive===on) return;
+  _mcGastosActive=on;
+  for(var i=0;i<_mcGastosActiveCbs.length;i++){
+    try{ _mcGastosActiveCbs[i](on); }catch(e){}
+  }
+}
+function mcOnGastosActive(cb){
+  if(typeof cb!=="function") return function(){};
+  _mcGastosActiveCbs.push(cb);
+  try{ cb(_mcGastosActive); }catch(e){}
+  return function(){
+    var i=_mcGastosActiveCbs.indexOf(cb);
+    if(i>=0) _mcGastosActiveCbs.splice(i,1);
+  };
+}
+
 /* Le dice al SPLASH de entrada que ya puede irse: lo que se vea a partir de ahora es lo bueno.
    El vigilante vive al final de shell.html y no depende de esto para retirarse (tiene un tope de
    1,8 s), así que llamar de más es gratis y no llamar nunca solo devuelve el comportamiento viejo.
@@ -5785,7 +5810,7 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -5800,8 +5825,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
+  const heavyOkRef=useRef(false);
   const catChipsRef=useRef(null), bankChipsRef=useRef(null);
   const chipDrag=useRef({sx:0,sy:0,capturing:false});
+  const heavyIdleGen=useRef(0);
   // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
   // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
   const chipSwipe=function(ref){
@@ -5838,32 +5865,34 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // pestaña no esté activa (a esas alturas ya está montada y no hay ningún dedo en la pantalla).
   // El tope generoso —4 s frente a 40 ms— es lo que impide que se cuele a la fuerza en mitad del
   // arranque, que sigue siendo el momento más ocupado; con la pestaña activa manda la prisa.
-  useEffect(function(){
-    if(heavyOk) return;
-    var cancelled=false;
-    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, active?40:4000);
-    return function(){ cancelled=true; };
-  },[active,heavyOk]);
-  // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
-  // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
   //
-  // OJO CON EL MOMENTO (2026-07-26). Escribir `scrollLeft` obliga al navegador a recalcular el
-  // layout de forma SÍNCRONA, y este efecto corría justo después de montar la pestaña —con el
-  // layout entero sucio— en mitad del gesto de deslizar. Medido con el perfilador de CPU (x6,
-  // 3.000 gastos): **276 ms de hilo bloqueado en estas dos líneas**, el mayor coste con nombre
-  // propio de todo el cambio de pestaña. Era la mitad del «va a tirones las primeras veces».
-  // Los chips no tienen ninguna prisa (la pestaña tarda 420 ms en entrar), así que esto se va a
-  // un hueco libre y solo escribe si de verdad hay algo que resetear.
+  // ⚠ Y el aviso de «eres la activa» NO PUEDE ser una prop (2026-07-27 noche). Con `active` en
+  // props, CADA entrada a Gastos reconstruía Expenses entero encima del carrusel — y eso era
+  // justo su «Deudas→Gastos lagazo / Deudas→Cartera fluido»: hacia Cartera el memo de Gastos no
+  // se tocaba; hacia Gastos sí. El expediente ya lo había medido («dejar active fijo quita la
+  // asimetría») y lo descartó mal: se puede enterarse sin re-render vía `mcOnGastosActive`.
+  useEffect(function(){ heavyOkRef.current=heavyOk; },[heavyOk]);
   useEffect(function(){
-    var cancelled=false;
-    mcScheduleIdle(function(){
-      if(cancelled) return;
-      var c=catChipsRef.current, b=bankChipsRef.current;
-      if(c&&c.scrollLeft) c.scrollLeft=0;
-      if(b&&b.scrollLeft) b.scrollLeft=0;
-    }, 300);
-    return function(){ cancelled=true; };
-  },[active]);
+    var chipGen=0;
+    var unsub=mcOnGastosActive(function(active){
+      // Chips: idle + solo si hay scroll que resetear (escribir scrollLeft en caliente costó
+      // 276 ms — ver comentario histórico en el CHANGELOG de la 4.12.0).
+      var cg=++chipGen;
+      mcScheduleIdle(function(){
+        if(cg!==chipGen) return;
+        var c=catChipsRef.current, b=bankChipsRef.current;
+        if(c&&c.scrollLeft) c.scrollLeft=0;
+        if(b&&b.scrollLeft) b.scrollLeft=0;
+      }, 300);
+      if(heavyOkRef.current) return;
+      var gen=++heavyIdleGen.current;
+      mcScheduleIdle(function(){
+        if(gen!==heavyIdleGen.current || heavyOkRef.current) return;
+        setHeavyOk(true);
+      }, active?40:4000);
+    });
+    return function(){ chipGen++; heavyIdleGen.current++; unsub(); };
+  },[]);
   const expensesDef=useDeferredValue(state.expenses);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
@@ -10899,6 +10928,7 @@ var RELEASE_NOTES=[
     "🏦 Y al sincronizar los bancos ahora te dice qué ha pasado, en un solo aviso: «✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos». Antes salía el saldo suelto, de un banco solamente aunque tuvieras varios, y en dos avisos seguidos.",
     "⚡ Entrar en Deudas y Metas ya no deja la app clavada un momento. Cada pestaña se preparaba justo al tocarla; ahora se prepara antes, mientras no estás haciendo nada.",
     "👌 Y deslizar entre pestañas va suave desde la primera vez, también si acabas de moverte dentro de Deudas o Metas.",
+    "🎯 Sobre todo al volver de Deudas a Gastos: esa dirección iba con tirón y hacia Cartera no. Ya no reconstruye Gastos al llegar; el gesto llega limpio en los dos sentidos.",
     "🖐️ Deslizar entre pestañas ya cuenta SIEMPRE. El móvil se quedaba con uno de cada tres gestos —creía que estabas haciendo scroll— y esa deslizada no cambiaba de pestaña: se movía a medias y se volvía. Por fuera parecía que la app se atascaba o que iba lenta, y lo que pasaba es que un tercio de los intentos no llegaba a contar.",
     "🔔 Si un banco pierde el permiso, el aviso te deja delante del aviso en Cartera. Tú decides cuándo reconectar: así no se abren dos autorizaciones a la vez ni se gasta el permiso.",
     "📈 Si Trade Republic se desconecta, también sale un aviso en Cartera para volver a entrar con el PIN y el código.",
@@ -10915,6 +10945,7 @@ var RELEASE_NOTES=[
     "🏦 And syncing your banks now tells you what happened, in a single message: «✓ CaixaBank up to date · €1,234.56 · 3 new transactions». It used to show a bare balance, for one bank only even if you had several, in two messages one after the other.",
     "⚡ Opening Debts and Goals no longer freezes the app for a moment. Each tab used to be prepared the instant you touched it; now it is prepared beforehand, while you are doing nothing.",
     "👌 And swiping between tabs is smooth from the very first time, even right after you have been scrolling inside Debts or Goals.",
+    "🎯 Especially going back from Debts to Expenses: that direction used to hitch, and towards Portfolio it did not. Expenses is no longer rebuilt on arrival; the swipe is clean both ways.",
     "🖐️ Swiping between tabs now always counts. The phone was taking over one in every three gestures —it thought you were scrolling— and that swipe never changed tab: it moved halfway and came back. From the outside it looked like the app was stuttering or slow, when in fact a third of your attempts simply did not count.",
     "🔔 If a bank loses its permission, the alert takes you to the warning in Portfolio. You choose when to reconnect, so two authorizations are not opened at once and the permission is not wasted.",
     "📈 If Trade Republic disconnects, a warning also appears in Portfolio so you can sign back in with your PIN and code.",
@@ -10931,6 +10962,7 @@ var RELEASE_NOTES=[
     "🏦 I en sincronitzar els bancs ara et diu què ha passat, en un sol avís: «✓ CaixaBank al dia · 1.234,56 € · 3 moviments nous». Abans sortia el saldo sol, d'un banc només encara que en tinguessis diversos, i en dos avisos seguits.",
     "⚡ Entrar a Deutes i Metes ja no deixa l'app clavada un moment. Cada pestanya es preparava just en tocar-la; ara es prepara abans, mentre no estàs fent res.",
     "👌 I lliscar entre pestanyes va suau des de la primera vegada, també si acabes de moure't dins de Deutes o Metes.",
+    "🎯 Sobretot en tornar de Deutes a Despeses: aquella direcció anava amb estrebada i cap a Cartera no. Ja no reconstrueix Despeses en arribar; el gest arriba net en els dos sentits.",
     "🖐️ Lliscar entre pestanyes ja compta SEMPRE. El mòbil es quedava amb un de cada tres gestos —es pensava que estaves fent scroll— i aquella lliscada no canviava de pestanya: es movia a mitges i tornava. Des de fora semblava que l'app s'encallava o anava lenta, i el que passava és que un terç dels intents no arribava a comptar.",
     "🔔 Si un banc perd el permís, l'avís et deixa davant de l'avís a Cartera. Tu decides quan reconnectar: així no s'obren dues autoritzacions a la vegada ni es gasta el permís.",
     "📈 Si Trade Republic es desconnecta, també surt un avís a Cartera per tornar a entrar amb el PIN i el codi.",
@@ -15365,7 +15397,9 @@ function App(){
       },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); },
       onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
+    // Sin prop `active`: ver `mcOnGastosActive` — si viaja por props, entrar en Gastos
+    // reconstruye el árbol entero encima del gesto (asimetría Deudas→Gastos vs →Cartera).
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
@@ -15405,14 +15439,16 @@ function App(){
     return out;
     // eslint-disable-next-line
   },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
-  /* Gastos aparte porque es la ÚNICA que necesita saber si es la pestaña activa (`active`, que
-     le sirve para decidir cuándo hacer su trabajo caro). Va en su propio memo para que ese dato
-     no arrastre a las otras tres: así entrar o salir de Gastos re-renderiza Gastos y nada más. */
-  const gastosActiva=tabIds[tab]==="gastos";
+  /* Gastos iba en memo aparte POR la prop `active` — y esa prop era el lag. Ahora se entera
+     por bus (`mcSetGastosActive` abajo) y comparte deps con las otras: entrar/salir de Gastos
+     ya NO reconstruye Expenses. Se deja el memo propio por si mañana vuelve a necesitar algo
+     que las otras no (focusExp sigue aquí). */
   const contenidoGastos=useMemo(function(){
     return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
     // eslint-disable-next-line
-  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosActiva]);
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
+  useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];

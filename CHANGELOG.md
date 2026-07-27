@@ -5,6 +5,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
+#### Sexta vuelta: Deudas→Gastos no era el gesto, era RE-PINTAR Gastos al llegar
+Él lo había dicho con la pista perfecta y se midió mal: **hacia Cartera va fluidísimo; hacia Gastos, no.** Un lag que depende del sentido no puede ser el carrusel (es idéntico): tiene que ser el destino. En su móvil, con la beta .42 cargada y un contador inyectado sobre `Expenses`:
+
+| gesto | re-renders de Gastos |
+|---|---|
+| Plan/Deudas → **Gastos** | **+1** (y `active` pasa a `true`) |
+| Plan/Deudas → **Cartera** | **0** |
+
+La prop `active` de Expenses viajaba en el `useMemo` de Gastos (`gastosActiva`). Cada entrada a Gastos **reconstruía el árbol entero** encima de la animación del carrusel. El expediente ya lo había anotado («dejar `active` fijo quita la asimetría, pero no vale») y se descartó mal: **sí vale** enterarse sin re-render. `mcSetGastosActive` / `mcOnGastosActive` (bus en `00-core.js`): heavyOk y el reset de chips siguen avisados; el árbol de Gastos no se toca. Guardián: `tests/gastos-active-bus.test.mjs`.
+
 #### Quinta vuelta: el banco de pruebas no reproducía su fallo, y ese era el problema de verdad
 «Sigue exactamente igual, no hay manera.» Y con razón: hasta aquí yo medía **tareas largas** en un contenedor, y su síntoma —tirones al deslizar— no aparecía en esa métrica. Al reproducir sus dos casos, la diferencia era 190 contra 174 ms: ruido. **Estaba optimizando contra un espejo que no enseñaba el fallo**, y de ahí que dos tandas seguidas no le llegaran.
 

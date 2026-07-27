@@ -35,7 +35,7 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -50,8 +50,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
+  const heavyOkRef=useRef(false);
   const catChipsRef=useRef(null), bankChipsRef=useRef(null);
   const chipDrag=useRef({sx:0,sy:0,capturing:false});
+  const heavyIdleGen=useRef(0);
   // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
   // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
   const chipSwipe=function(ref){
@@ -88,32 +90,34 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // pestaña no esté activa (a esas alturas ya está montada y no hay ningún dedo en la pantalla).
   // El tope generoso —4 s frente a 40 ms— es lo que impide que se cuele a la fuerza en mitad del
   // arranque, que sigue siendo el momento más ocupado; con la pestaña activa manda la prisa.
-  useEffect(function(){
-    if(heavyOk) return;
-    var cancelled=false;
-    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, active?40:4000);
-    return function(){ cancelled=true; };
-  },[active,heavyOk]);
-  // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
-  // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
   //
-  // OJO CON EL MOMENTO (2026-07-26). Escribir `scrollLeft` obliga al navegador a recalcular el
-  // layout de forma SÍNCRONA, y este efecto corría justo después de montar la pestaña —con el
-  // layout entero sucio— en mitad del gesto de deslizar. Medido con el perfilador de CPU (x6,
-  // 3.000 gastos): **276 ms de hilo bloqueado en estas dos líneas**, el mayor coste con nombre
-  // propio de todo el cambio de pestaña. Era la mitad del «va a tirones las primeras veces».
-  // Los chips no tienen ninguna prisa (la pestaña tarda 420 ms en entrar), así que esto se va a
-  // un hueco libre y solo escribe si de verdad hay algo que resetear.
+  // ⚠ Y el aviso de «eres la activa» NO PUEDE ser una prop (2026-07-27 noche). Con `active` en
+  // props, CADA entrada a Gastos reconstruía Expenses entero encima del carrusel — y eso era
+  // justo su «Deudas→Gastos lagazo / Deudas→Cartera fluido»: hacia Cartera el memo de Gastos no
+  // se tocaba; hacia Gastos sí. El expediente ya lo había medido («dejar active fijo quita la
+  // asimetría») y lo descartó mal: se puede enterarse sin re-render vía `mcOnGastosActive`.
+  useEffect(function(){ heavyOkRef.current=heavyOk; },[heavyOk]);
   useEffect(function(){
-    var cancelled=false;
-    mcScheduleIdle(function(){
-      if(cancelled) return;
-      var c=catChipsRef.current, b=bankChipsRef.current;
-      if(c&&c.scrollLeft) c.scrollLeft=0;
-      if(b&&b.scrollLeft) b.scrollLeft=0;
-    }, 300);
-    return function(){ cancelled=true; };
-  },[active]);
+    var chipGen=0;
+    var unsub=mcOnGastosActive(function(active){
+      // Chips: idle + solo si hay scroll que resetear (escribir scrollLeft en caliente costó
+      // 276 ms — ver comentario histórico en el CHANGELOG de la 4.12.0).
+      var cg=++chipGen;
+      mcScheduleIdle(function(){
+        if(cg!==chipGen) return;
+        var c=catChipsRef.current, b=bankChipsRef.current;
+        if(c&&c.scrollLeft) c.scrollLeft=0;
+        if(b&&b.scrollLeft) b.scrollLeft=0;
+      }, 300);
+      if(heavyOkRef.current) return;
+      var gen=++heavyIdleGen.current;
+      mcScheduleIdle(function(){
+        if(gen!==heavyIdleGen.current || heavyOkRef.current) return;
+        setHeavyOk(true);
+      }, active?40:4000);
+    });
+    return function(){ chipGen++; heavyIdleGen.current++; unsub(); };
+  },[]);
   const expensesDef=useDeferredValue(state.expenses);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){

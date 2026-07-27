@@ -29,6 +29,7 @@ No hacen falta dependencias: el `WebSocket` es el nativo de Node 22+.
 | | qué mide | cuándo usarla |
 |---|---|---|
 | `gestos.mjs` | toques, **gestos cancelados** por el navegador y **arrastres que vuelven a la misma pestaña** | **empieza siempre por aquí** si el síntoma es «no responde» o «hay un stopper» |
+| `medir-renders.mjs` | re-renders de `Expenses` al deslizar (parchea el global y remonta) | **si el lag depende del DESTINO** (Deudas→Gastos sí / →Cartera no) |
 | `fluidez.mjs` | dónde está el carrusel **en cada frame**: huecos, parones y saltos, con el scroll y la barra al lado | si el síntoma es «se mueve raro» o «pierde fluidez» |
 | `frames.mjs` | frames perdidos (deltas de `rAF`) con el contexto de cada uno | para descartar que el hilo principal tenga la culpa |
 | `frames-ab.mjs` | A/B intercalado con el **veredicto de frames de Chromium** (`PipelineReporter`), solo en la ventana del desliz | para comparar dos variantes; edita la lista `CONF` con los parches CSS a probar |
