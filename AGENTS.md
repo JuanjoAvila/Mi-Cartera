@@ -267,6 +267,14 @@ Lección de la 4.8.0, tras el enésimo «cuanto más tiempo uso la app, más len
      distorsiona más de lo que mide: dejaba en ~150 ms pasadas que sin él iban a 17 ms. Para
      atribuir trabajo, `Tracing` (`devtools.timeline`) y acota el gesto con `console.timeStamp`,
      que un `Layout` gordo TRAS el `touchend` no le quita ni un frame al dedo.
+- **Si el banco de pruebas no reproduce el fallo, el problema es el banco, no el código** (2026-07-27).
+  Dos tandas seguidas de arreglos «medidos» no le llegaron al usuario porque la métrica era la
+  equivocada: se medían TAREAS LARGAS y su síntoma eran TIRONES, que son frames de 100 ms sin
+  tarea larga ninguna. Mide deltas de `requestAnimationFrame` y cuenta los frames >32 ms.
+  Y ojo con reproducir el escenario DE VERDAD: la app ignora los eventos de scroll mientras hay un
+  dedo puesto (`onPageScroll`), así que con toques sintéticos la barra inferior no se esconde nunca
+  y el caso que el usuario describe no llega a existir. En un móvil la esconde la inercia al soltar.
+  **Antes de optimizar nada, comprueba que tu medida distingue el caso bueno del malo que él cuenta.**
 - **Antes de decir que algo va más rápido, MÍDELO A/B** contra `main` (`git archive HEAD` a un
   temporal, `build-app`, `serve` en otro puerto y dos pasadas del mismo guion en Playwright). En la
   4.8.0 el primer intento daba 1,1-1,5× y parecía poco; medir los BYTES escritos por vuelta a

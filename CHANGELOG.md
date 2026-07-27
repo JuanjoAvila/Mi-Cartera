@@ -5,6 +5,28 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
+#### Quinta vuelta: el banco de pruebas no reproducía su fallo, y ese era el problema de verdad
+«Sigue exactamente igual, no hay manera.» Y con razón: hasta aquí yo medía **tareas largas** en un contenedor, y su síntoma —tirones al deslizar— no aparecía en esa métrica. Al reproducir sus dos casos, la diferencia era 190 contra 174 ms: ruido. **Estaba optimizando contra un espejo que no enseñaba el fallo**, y de ahí que dos tandas seguidas no le llegaran.
+
+Lo primero fue arreglar el medidor, no el código. Dos cambios:
+- **Medir FRAMES, no tareas largas.** Lo que se nota es un frame que tarda 100 ms, y eso puede pasar sin que ninguna tarea larga salte.
+- **Reproducir su caso de verdad.** La app **ignora los eventos de scroll mientras hay un dedo puesto** (`if(dragging.current) return` en `onPageScroll`), así que con toques sintéticos la barra inferior no se escondía nunca — en un móvil real la esconde la inercia al soltar. Simulado eso, el fallo apareció a la primera.
+
+Con el medidor arreglado, su repro salió al instante… y desmintió lo que parecía:
+
+| caso | peor frame |
+|---|---|
+| Gastos arriba + barra escondida (su caso lento) | **100-117 ms** |
+| Gastos arriba + barra **ya visible** | 83 ms |
+| Gastos bajado (su caso fluido) | 83 ms |
+| Gastos arriba, **todo** el bloque de arriba oculto | 100 ms |
+
+**La variable no era «Gastos arriba del todo»**: era si la **barra inferior estaba escondida y tenía que reaparecer** durante el desliz. Ocultar entero el contenido de arriba de Gastos no cambiaba nada (100 ms), así que tampoco era lo que se pintaba. Y explica su «a veces sí y a veces no»: dependía de si había scrolleado antes.
+
+**La causa:** `goTab` llamaba a `revealNav()` y a los `prepMount*` como `setState` **urgentes**, mientras el cambio de pestaña iba en `startTransition`. React los atiende en carriles distintos → **App se renderizaba DOS VECES** al soltar el dedo, encima de la animación del carrusel. Y reaparecer la barra es justo lo que dispara el render urgente. Todo en la misma transición: una sola pasada. **Peor frame del caso lento: 100 → 83 ms**, ya igualado con los casos que él da por fluidos.
+
+⚠ **Y una corrección a la cuarta vuelta:** el desenfoque de la barra NO era la causa de su repro — en el caso lento la barra estaba *escondida*, o sea sin nada que desenfocar. Aquella medida (181 → 145 ms de tareas largas, con el tope teórico en 141) es real y el cambio se queda porque es una mejora medida en cualquier desliz, pero **no era lo que él notaba**. Queda dicho para que nadie lo lea como el arreglo de esto.
+
 #### Cuarta vuelta: la barra de abajo desenfoca, y eso se paga EN CADA FRAME
 Su repro, que es el que resolvió esto y que ninguna medida mía habría encontrado sola:
 

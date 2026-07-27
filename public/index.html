@@ -14821,11 +14821,25 @@ function App(){
     // temprano se tragaría el salto: «Ver más → Gastos» sin hacer nada.
     if(i<0||i>=tabIds.length||i===tabRef.current) return;
     lastTabAt.current=Date.now();   // ver el «stopper» en onMove: encadenar deslizadas no debe abrir Ajustes
-    revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
-    prepMountTab(i);
-    if(i>0) prepMountId(tabIds[i-1]);
-    if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
-    React.startTransition(function(){ setTab(i); });
+    /* TODO EN LA MISMA TRANSICIÓN, Y ESTO ERA EL LAG QUE ÉL SEGUÍA NOTANDO (2026-07-27).
+       `revealNav()` y los `prepMount*` son `setState` URGENTES, mientras que el cambio de pestaña
+       iba en `startTransition`: React los atiende en carriles distintos, así que al soltar el dedo
+       se renderizaba App DOS VECES —una urgente y otra de transición— justo encima de la animación
+       del carrusel. Su repro lo dejó ver: el caso lento no era «Gastos arriba», era que **la barra
+       inferior estaba escondida y tenía que reaparecer**, y reaparecer es precisamente lo que
+       dispara el render urgente. Medido con frames (que es lo que se nota, no las tareas largas):
+         Gastos arriba + barra escondida (su caso lento)   peor frame 100-117 ms
+         Gastos arriba + barra ya visible                  peor frame  83 ms
+         Gastos bajado (su caso fluido)                    peor frame  83 ms
+       Ocultar TODO el contenido de arriba de Gastos no cambiaba nada (100 ms), así que no era lo
+       que se pintaba: era el render de más. Con todo en la misma transición, una sola pasada. */
+    React.startTransition(function(){
+      revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
+      prepMountTab(i);
+      if(i>0) prepMountId(tabIds[i-1]);
+      if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
+      setTab(i);
+    });
   };
   // «Ver más» desde Resumen: la pestaña destino conserva su scroll y aterrizabas a mitad de
   // Metas/Gastos (feedback 2026-07-18) → estos enlaces resetean el scroll de la página destino.
