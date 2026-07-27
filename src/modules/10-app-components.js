@@ -102,7 +102,16 @@ function useUpdates(){
   };
   const installApk=function(showToast){
     const nat=natPlugin();
-    if(!nat||!nat.installApk||!apkUpd) return;
+    // Tocar el pill y que no ocurra NADA es el peor final posible: no sabes si has fallado el
+    // toque, si la app está pensando o si se ha rendido (2026-07-26). Cada motivo, dicho.
+    if(!nat) { if(showToast) showToast(t("apk_why_noapp")); return; }
+    if(!nat.installApk){ if(showToast) showToast(t("apk_why_oldapk")); return; }
+    if(!apkUpd){
+      // Sin candidata: no es un fallo, es que el chequeo no encontró nada — y el porqué lo
+      // dejó escrito quien lo miró.
+      if(showToast) showToast(window._mcApkWhy||t("st_up_ok"));
+      return;
+    }
     if(showToast) showToast(t("apk_downloading"));
     nat.installApk({url:apkUpd.url}).then(function(r){
       if(r&&r.needsPermission&&showToast){ showToast(t("apk_perm")); return; }   // Android abrió el ajuste; reintocar
@@ -418,14 +427,19 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     if(i>=0) setOpenBank("");
     set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{brokersOn:base})}); });
   };
-  // Banco a resaltar al entrar (viene del sync o de la noti «reconéctalo»): lo centramos en
+  // Banco a resaltar al entrar (viene del sync o del banner de Cartera): lo centramos en
   // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
+  // TR llega como focus «trade_republic» → abre su tarjeta de bróker (br:tr), no una fila OB.
   const focusRef=useRef(null);
   useEffect(function(){
-    if(!focusAspsp || !links || !links.length) return;
+    if(!focusAspsp) return;
+    if(focusAspsp==="trade_republic" || focusAspsp==="tr"){
+      setOpenBank("br:tr");
+      return;
+    }
+    if(!links || !links.length) return;
     // El banco al que venías a arreglar llega ABIERTO: si el acordeón lo dejara plegado, el
-    // deep-link te dejaría mirando la tarjeta del banco roto sin el botón de reconectar delante,
-    // que es justo lo que la noti prometía. Resaltar y esconder la acción a la vez no tiene sentido.
+    // deep-link te dejaría mirando la tarjeta del banco roto sin el botón de reconectar delante.
     setOpenBank(focusAspsp);
     const el=focusRef.current; if(!el || !el.scrollIntoView) return;
     const tm=setTimeout(function(){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
@@ -439,7 +453,28 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   useEffect(loadLinks,[uid]);
   const loadAspsps=function(){ if(aspsps!==null||loadingA) return; setLoadingA(true); cloud.bankAspsps("ES").then(function(rows){ setAspsps(rows||[]); }).catch(function(e){ setAspsps([]); showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setLoadingA(false); }); };
   const openPicker=function(){ setPicking(true); loadAspsps(); };
-  const connect=function(name,country){ if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; } setBusy(name); showToast(t("bank_connecting")); set(function(s){ return Object.assign({},s,{hasBankLink:true}); }); cloud.bankConnect(name, country||"ES").then(function(d){ location.href=d.url; }).catch(function(e){ setBusy(""); showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); }); };
+  // Candado compartido con el banner de Cartera: dos toques no gastan el permiso dos veces
+  // (invalid_request de Enable Banking — 2026-07-26).
+  const connect=function(name,country){
+    if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; }
+    setBusy(name); showToast(t("bank_connecting"));
+    set(function(s){ return Object.assign({},s,{hasBankLink:true}); });
+    bankConnectOnce(name, country||"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){
+        setBusy("");
+        if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+      });
+  };
+  // Issues de la última sync: pinta rojo aunque bank_links.status siga en «active»
+  // (regresión 4.12.0.18: «marca 1 falla y en Mis bancos todos salen verdes»).
+  const issueOf=function(aspsp){
+    const list=state&&state.bankIssues||[];
+    for(let i=0;i<list.length;i++){
+      if(list[i] && String(list[i].aspsp||"").toLowerCase()===String(aspsp||"").toLowerCase()) return list[i];
+    }
+    return null;
+  };
   const refresh=function(){ if(!onBankSync){ return; } setBusy("__sync"); Promise.resolve(onBankSync()).finally(function(){ setBusy(""); loadLinks(); }); };
   // Quitar banco (revoca en EB + borra la fila). Reversible: reaparece el picker para reconectar.
   // Purga al momento sus cuentas sincronizadas (obAccounts) del patrimonio: antes se quedaban
@@ -512,12 +547,17 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
-      const noAcct = l.status==='error';
-      // El banco que venías a arreglar (desde el sync o la noti): resaltado y centrado en pantalla.
+      const liveIssue=issueOf(l.aspsp_name);
+      const noAcct = l.status==='error' || (liveIssue&&liveIssue.kind==="noacct");
+      const liveDead = !!(liveIssue&&liveIssue.kind==="expired") || l.status==='expired';
+      // El banco que venías a arreglar (desde el sync o el banner): resaltado y centrado.
       const isFocus = !!focusAspsp && l.aspsp_name===focusAspsp;
-      const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
+      // Píldora: gana el resultado de la ÚLTIMA sync sobre el status de la tabla. Si no, un
+      // Sabadell caído seguía en verde porque bank_links aún decía «active».
+      const sp = noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
+               : liveDead ? pill(t("bp_st_expired"),"var(--coral)")
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
-               : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
+               : l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : pill(t("bp_st_expired"),"var(--coral)");
       const abierto = openBank===l.aspsp_name;
       // Abrir uno CIERRA el anterior (acordeón): con varios bancos desplegados volvíamos al muro
@@ -528,7 +568,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         React.createElement("div",{className:"v4-mov",role:"button",tabIndex:0,"aria-expanded":abierto?"true":"false",
           onClick:toggle,
           onKeyDown:function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); } },
-          style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+(isFocus?"var(--coral)":"var(--line-soft)"),background:"var(--sur)",cursor:"pointer"}},
+          style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+((isFocus||liveDead||noAcct)?"var(--coral)":"var(--line-soft)"),background:"var(--sur)",cursor:"pointer"}},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"nm"}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--mint)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
@@ -652,37 +692,118 @@ function betaChecklist(version){
   var notes=(typeof RELEASE_NOTES!=="undefined"&&RELEASE_NOTES.length)
     ? (RELEASE_NOTES.filter(function(n){ return n.v===base; })[0] || RELEASE_NOTES[0])
     : null;
-  return notes ? { v:notes.v, t:notes.t, items:(notes.items||[]) } : { v:base, t:"", items:[] };
+  // El panel de revisión es la consola privada del dueño y va SIN traducir (como «Actividad»),
+  // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
+  return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
 }
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
   const pack=betaChecklist(CONFIG.APP_VERSION);
-  const storeKey="_betaReview_"+pack.v;
-  // {i: "ok" | "ko"} + notas de los que fallan
-  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || {}; });
+  // La clave va por la COMPILACIÓN (4.12.0.17), no por la versión base (4.12.0). Petición suya
+  // 2026-07-26: «cuando me subas una nueva versión con el fix de eso, que se resetee y se ponga
+  // vacío». Con la clave por versión base, la beta siguiente heredaba las cruces y los comentarios
+  // de la anterior — o sea, el arreglo llegaba ya marcado como fallo. Cada beta empieza en blanco,
+  // y dentro de la misma beta el progreso se conserva aunque cierres la app (que era el motivo de
+  // guardarlo, porque probar lleva días).
+  const storeKey="_betaReview_"+CONFIG.APP_VERSION;
+  /* LO QUE YA DIO POR BUENO NO SE VUELVE A PREGUNTAR (petición suya 2026-07-26, por la noche:
+     «si algo funciona CREO que no debería reventar con otra compilación»). El reseteo por
+     compilación arreglaba una cosa y rompía otra: las cruces sí tienen que volver a preguntarse
+     —son justo lo que se acaba de arreglar—, pero los ✓ también se borraban, y volver a probar
+     siete puntos que ya iban bien es lo que hacía que no se acordara de nada («los pillo en
+     momentos diferentes»).
+
+     Así que los ✓ y los «no lo puedo probar» se guardan APARTE, en una lista que NO lleva el
+     número de compilación, y que casa por el TEXTO del punto y no por su posición. Eso importa:
+     · si reescribimos la nota, ha cambiado lo que se prueba → vuelve a preguntarse;
+     · si la nota es idéntica, es literalmente lo mismo que ya probó → viene marcado;
+     · y si se reordenan las notas, no se cruzan los cables (con índices, sí).
+     Los ✗ no se heredan NUNCA, ni sus comentarios. */
+  const okKey="_betaReviewOk";
+  const heredarOk=function(){
+    var prev=store.get(okKey);
+    /* RESCATE DE LO YA APROBADO (2026-07-26 noche). La lista aparte se estrena en esta versión,
+       así que la primera vez está vacía y lo que él aprobó en las betas anteriores se habría
+       perdido igual — que es exactamente lo que notó al abrir la siguiente: «siguen saliendo las
+       que aprobé». Se rescata de las claves por compilación que ya están guardadas en el móvil.
+       Van por índice, y aquí el índice VALE: solo se leen las de la misma versión base, y las
+       notas de una versión base no cambian de orden entre compilaciones. */
+    if(!prev){
+      prev={};
+      try{
+        var pre="_betaReview_"+mcVerBase(CONFIG.APP_VERSION);
+        for(var i=0;i<localStorage.length;i++){
+          var k=localStorage.key(i);
+          if(!k||k.indexOf(pre)!==0||k.slice(-2)==="_n") continue;
+          var vieja=store.get(k)||{};
+          pack.items.forEach(function(it,j){ if(vieja[j]==="ok"||vieja[j]==="na") prev[it]=vieja[j]; });
+        }
+      }catch(e){}
+      store.set(okKey,prev);
+    }
+    var m={};
+    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na") m[i]=v; });
+    return m;
+  };
+  // {i: "ok" | "ko" | "na"} + notas de los que fallan. Lo heredado va DEBAJO de lo marcado en esta
+  // compilación: si ya has tocado algo aquí, manda lo tuyo. (Con `||` en vez de mezcla, haber
+  // marcado una sola casilla en esta beta apagaba la herencia entera.)
+  const [marks,setMarks]=useState(function(){ return Object.assign(heredarOk(), store.get(storeKey)||{}); });
   const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
   const [busy,setBusy]=useState(false);
   const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
+  // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
+  const heredados=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, n=0;
+    Object.keys(h).forEach(function(i){ if(propias[i]===undefined) n++; }); return n; })());
   const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
+  const recordarOk=function(m){
+    var prev=store.get(okKey)||{};
+    pack.items.forEach(function(it,i){
+      if(m[i]==="ok"||m[i]==="na") prev[it]=m[i]; else delete prev[it];
+    });
+    store.set(okKey,prev);
+  };
   const mark=function(i,v){
-    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); return m; });
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m); return m; });
   };
   const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
 
   const total=pack.items.length;
   const ok=pack.items.filter(function(_,i){ return marks[i]==="ok"; }).length;
   const ko=pack.items.filter(function(_,i){ return marks[i]==="ko"; }).length;
-  const pend=total-ok-ko;
+  // «No se puede probar» (petición suya 2026-07-26): hay cosas que no dependen de él —que llegue
+  // la nómina, que el banco mande una notificación, un icono que solo se ve con la APK instalada—
+  // y no tenían casilla. Al no poder marcarlas, contaban como pendientes y BLOQUEABAN el aprobar,
+  // así que o mentía marcando «va bien» o la beta se quedaba sin veredicto. Esto NO bloquea.
+  const na=pack.items.filter(function(_,i){ return marks[i]==="na"; }).length;
+  const pend=total-ok-ko-na;
 
+  /* EL VEREDICTO DICE TAMBIÉN QUÉ APK LLEVABA PUESTA (2026-07-26).
+     El veredicto ya viajaba con la versión web (4.12.0.27), pero no con el `versionCode` del APK,
+     y eso costó una sesión entera: «en deudas sigue igual» con los arreglos ya publicados, sin
+     forma de saber si los tenía puestos —esa noche salieron seis betas seguidas— ni si el fallo
+     era nativo (el icono) o web. Ahora lo dice el propio parte, y nadie tiene que preguntar. */
+  const [apkCode,setApkCode]=useState(null);
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.appInfo) return;
+    Promise.resolve(nat.appInfo()).then(function(info){
+      if(info&&info.versionCode!=null) setApkCode(String(info.versionCode));
+    }).catch(function(){});
+  },[]);
   const enviar=function(verdict){
     if(busy) return;
     setBusy(true);
     const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
+    const conApk=CONFIG.APP_VERSION+(apkCode?" (APK "+apkCode+")":"");
     const payload={
-      verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
-      probados:ok, fallos:ko, sinProbar:pend, detalle:fallos,
-      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
-        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+
+      verdict:verdict, version:CONFIG.APP_VERSION, apk:apkCode, notas:pack.v,
+      probados:ok, fallos:ko, sinProbar:pend, noProbable:na, heredados:heredados.current,
+      noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
+      detalle:fallos,
+      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+conApk+
+        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+(na?" / "+na+" no probable(s)":"")+
         (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
     };
     cloud.betaReport(payload)
@@ -700,29 +821,37 @@ function BetaReviewPanel({onClose, showToast}){
   return React.createElement("div",{style:wrap,className:"beta-review"}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🧪 Revisar la beta"),
+    // Y a la vista, no solo en el parte: si un fallo es del icono o del instalador, lo primero que
+    // hay que saber es qué APK lleva puesta — y hasta ahora aquí solo salía la versión web.
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
-      "v"+CONFIG.APP_VERSION+(pack.t?" · "+pack.t:"")),
+      "v"+CONFIG.APP_VERSION+(apkCode?" · APK "+apkCode:"")+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
       "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+    heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+      background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
+      "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
+      " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
 
     // Progreso
     React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
       React.createElement("div",{style:{flex:1,height:8,borderRadius:8,background:"var(--surface-2)",overflow:"hidden"}},
-        React.createElement("div",{style:{width:(total?Math.round((ok+ko)/total*100):0)+"%",height:"100%",
+        React.createElement("div",{style:{width:(total?Math.round((ok+ko+na)/total*100):0)+"%",height:"100%",
           background:ko?"var(--coral)":"var(--mint)",transition:"width .25s ease"}})),
-      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko)+"/"+total)),
+      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko+na)+"/"+total)),
 
     pack.items.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)"}},
       "Esta versión no trae notas, así que no hay checklist. Prueba lo que hayas tocado."),
 
     pack.items.map(function(it,i){
       const m=marks[i];
-      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":"var(--line-soft)"),
-        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)"}},
+      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
+        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
         React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
           React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
+        React.createElement("button",{type:"button",style:Object.assign({},btn(m==="na","var(--muted-2)"),{marginTop:8,width:"100%"}),
+          onClick:function(){ mark(i,"na"); }}, "— No lo puedo probar"),
         m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
           placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
           onChange:function(e){ setNote(i,e.target.value); }})
@@ -890,18 +1019,105 @@ function FeedbackPanel({state, set, showToast, onClose}){
    El CONTENIDO de las notas va solo en castellano a propósito (release notes para el
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
+/* NOTAS DE VERSIÓN EN TRES IDIOMAS (petición desde el móvil, 2026-07-26: «que el histórico de
+   actualizaciones sea en todos los idiomas, no solo español»).
+
+   Cada entrada admite las dos formas:
+     · texto suelto            → castellano (todo el histórico anterior a esta fecha)
+     · {es:"…",en:"…",ca:"…"}  → traducida
+
+   POR QUÉ NO SE TRADUCE EL HISTÓRICO ENTERO: son 68 versiones y 279 entradas, 55 KB de texto.
+   Por tres idiomas serían 165 KB, y el presupuesto de descarga (`tests/presupuesto-rendimiento`)
+   va por 277 KB de 310 en gzip — se lo comería de golpe para que nadie lea nunca las notas de
+   una versión de hace dos meses en catalán. De aquí en adelante, cada nota nace en los tres. */
+function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
+function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.11.0", d:"25 jul 2026", t:"Ahora sí: el splash se ve, y los bienes van por su cuenta", items:[
-    "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
-    "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
-    "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 Cerrar el perfil: encontrado el fallo de verdad, el que llevaba tres intentos escondido. Si habías bajado un poco dentro del perfil —o sea, casi siempre, porque el perfil es largo y lo miras antes de cerrarlo— el arrastre hacia abajo solo scrolleaba y al soltar seguías dentro. Para cerrar había que recoger TODO el scroll y encima seguir arrastrando en el mismo gesto: nadie hace eso. Ahora la franja de arriba del panel es un asa (tiras de ahí y cierra, esté como esté el scroll) y, si tiras desde el medio, en cuanto el contenido llega arriba el panel empieza a encogerse sin que sueltes el dedo.",
-    "✋ Y cerrar vuelve a bastar con un gesto corto: al igualar abrir y cerrar «con los mismos números» se había quedado pidiendo casi el doble de arrastre. La sensación sigue siendo la misma en los dos sentidos —eso era lo que pedías— pero sin pasarse de exigente. Si tiras, no llega y vuelves a tirar en el acto, también te hace caso ya (antes se quedaba sorda medio segundo).",
-    "✨ El popup de Novedades ya te dice qué versión llevas de verdad. En el canal de pruebas ponía «4.11.0» estando en la 4.11.0.8, y ninguna versión salía marcada como la tuya.",
-    "🔔 Y se acabaron las notificaciones duplicadas de «hay versión nueva». El aviso llevaba un identificador sacado del reloj, así que cada uno se apilaba en vez de sustituir al anterior; y había dos emisores para lo mismo (la app abierta y el vigilante que mira con la app cerrada), cada uno con el suyo. Ahora comparten identificador y el vigilante respeta el canal de pruebas. Esto va en la app nueva (34), no en la actualización web.",
-    "🚧 Canal de pruebas: la versión que ves ya dice cuál llevas (4.11.0.8 y no «4.11.0»), y se acabó el aviso de actualizar cada dos minutos — el paquete se sellaba con un número distinto del que anunciaba, así que la app creía que siempre le faltaba algo.",
-    "📦 Y apagar el canal de pruebas ahora te devuelve de verdad a la versión de todos. Antes se quedaba con la de pruebas puesta hasta que la normal la adelantara.",
-  ]},
+  {v:"4.12.0", d:"26 jul 2026",
+   t:{es:"Más rápida al cambiar de pestaña, y los ingresos del banco ya se apuntan",
+      en:"Faster when switching tabs, and money coming in now gets recorded",
+      ca:"Més ràpida en canviar de pestanya, i els ingressos del banc ja s'apunten"},
+   items:{
+   es:[
+    "💰 Los ingresos que llegan a tu banco ya se apuntan solos. Hasta ahora la app solo recogía las compras con tarjeta: cuando entraba una nómina o una transferencia, el saldo subía pero el movimiento no aparecía por ningún lado.",
+    "🏦 Y al sincronizar los bancos ahora te dice qué ha pasado, en un solo aviso: «✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos». Antes salía el saldo suelto, de un banco solamente aunque tuvieras varios, y en dos avisos seguidos.",
+    "⚡ Entrar en Deudas y Metas ya no deja la app clavada un momento. Cada pestaña se preparaba justo al tocarla; ahora se prepara antes, mientras no estás haciendo nada.",
+    "👌 Y deslizar entre pestañas va suave desde la primera vez, también si acabas de moverte dentro de Deudas o Metas.",
+    "🎯 Al soltar el dedo al cambiar de pestaña ya no se pierde la fluidez: el arrastre iba bien y el medio segundo de después iba a trompicones. Ese tramo ya va tan limpio como el gesto.",
+    "🖐️ Deslizar entre pestañas ya cuenta SIEMPRE. El móvil se quedaba con uno de cada tres gestos —creía que estabas haciendo scroll— y esa deslizada no cambiaba de pestaña: se movía a medias y se volvía. Por fuera parecía que la app se atascaba o que iba lenta, y lo que pasaba es que un tercio de los intentos no llegaba a contar.",
+    "🔔 Si un banco pierde el permiso, el aviso te deja delante del aviso en Cartera. Tú decides cuándo reconectar: así no se abren dos autorizaciones a la vez ni se gasta el permiso.",
+    "📈 Si Trade Republic se desconecta, también sale un aviso en Cartera para volver a entrar con el PIN y el código.",
+    "📱 En Ajustes se ven las dos versiones: la de la app instalada y la que se actualiza sola.",
+    "👤 Cerrar el perfil justo después de abrirlo vuelve a responder al momento.",
+    "👤 Y abrirlo también: la pantalla del perfil entra a la primera, sin el tirón que daba antes. De paso va más suelta toda la app, porque ha dejado de rehacer por dentro pantallas que no habían cambiado.",
+    "🌍 Las notas de cada versión, como esta, ya se leen en los tres idiomas de la app.",
+    "🚪 La pantalla de entrada se queda solo con el logo: la barrita de carga sobraba.",
+    "📲 Cuando hay una versión nueva de la app para instalar, ya se ofrece de verdad; y si por algo no se puede instalar, la app te dice el motivo en vez de quedarse callada.",
+    "🎨 La app estrena su icono de verdad. El del escritorio y el de la pantalla de arranque eran todavía el genérico que trae la herramienta con la que está hecha.",
+   ],
+   en:[
+    "💰 Money coming into your bank is now recorded automatically. Until now the app only picked up card purchases: when a salary or a transfer came in, your balance went up but the transaction appeared nowhere.",
+    "🏦 And syncing your banks now tells you what happened, in a single message: «✓ CaixaBank up to date · €1,234.56 · 3 new transactions». It used to show a bare balance, for one bank only even if you had several, in two messages one after the other.",
+    "⚡ Opening Debts and Goals no longer freezes the app for a moment. Each tab used to be prepared the instant you touched it; now it is prepared beforehand, while you are doing nothing.",
+    "👌 And swiping between tabs is smooth from the very first time, even right after you have been scrolling inside Debts or Goals.",
+    "🎯 Letting go after a tab swipe no longer kills the smoothness: the drag itself was fine, and the half-second after it juddered. That bit is now as clean as the gesture.",
+    "🖐️ Swiping between tabs now always counts. The phone was taking over one in every three gestures —it thought you were scrolling— and that swipe never changed tab: it moved halfway and came back. From the outside it looked like the app was stuttering or slow, when in fact a third of your attempts simply did not count.",
+    "🔔 If a bank loses its permission, the alert takes you to the warning in Portfolio. You choose when to reconnect, so two authorizations are not opened at once and the permission is not wasted.",
+    "📈 If Trade Republic disconnects, a warning also appears in Portfolio so you can sign back in with your PIN and code.",
+    "📱 Settings now shows both versions: the installed app and the one that updates itself.",
+    "👤 Closing the profile right after opening it responds instantly again.",
+    "👤 And opening it too: the profile screen comes in first time, without the stutter it had before. The whole app feels lighter as a result, because it has stopped rebuilding screens that had not changed.",
+    "🌍 Release notes like these can now be read in all three languages of the app.",
+    "🚪 The start screen keeps just the logo: the little loading bar was unnecessary.",
+    "📲 When a new version of the app is ready to install, it is now actually offered; and if for some reason it cannot be installed, the app tells you why instead of staying silent.",
+    "🎨 The app has a proper icon at last. The one on your home screen and on the start screen were still the generic one from the tool it is built with.",
+   ],
+   ca:[
+    "💰 Els ingressos que arriben al teu banc ja s'apunten sols. Fins ara l'app només recollia les compres amb targeta: quan entrava una nòmina o una transferència, el saldo pujava però el moviment no apareixia enlloc.",
+    "🏦 I en sincronitzar els bancs ara et diu què ha passat, en un sol avís: «✓ CaixaBank al dia · 1.234,56 € · 3 moviments nous». Abans sortia el saldo sol, d'un banc només encara que en tinguessis diversos, i en dos avisos seguits.",
+    "⚡ Entrar a Deutes i Metes ja no deixa l'app clavada un moment. Cada pestanya es preparava just en tocar-la; ara es prepara abans, mentre no estàs fent res.",
+    "👌 I lliscar entre pestanyes va suau des de la primera vegada, també si acabes de moure't dins de Deutes o Metes.",
+    "🎯 En deixar anar el dit en canviar de pestanya ja no es perd la fluïdesa: l'arrossegament anava bé i el mig segon de després anava a trepets. Aquell tram ja va tan net com el gest.",
+    "🖐️ Lliscar entre pestanyes ja compta SEMPRE. El mòbil es quedava amb un de cada tres gestos —es pensava que estaves fent scroll— i aquella lliscada no canviava de pestanya: es movia a mitges i tornava. Des de fora semblava que l'app s'encallava o anava lenta, i el que passava és que un terç dels intents no arribava a comptar.",
+    "🔔 Si un banc perd el permís, l'avís et deixa davant de l'avís a Cartera. Tu decides quan reconnectar: així no s'obren dues autoritzacions a la vegada ni es gasta el permís.",
+    "📈 Si Trade Republic es desconnecta, també surt un avís a Cartera per tornar a entrar amb el PIN i el codi.",
+    "📱 A Ajustos es veuen les dues versions: la de l'app instal·lada i la que s'actualitza sola.",
+    "👤 Tancar el perfil just després d'obrir-lo torna a respondre a l'instant.",
+    "👤 I obrir-lo també: la pantalla del perfil entra a la primera, sense l'estirada que feia abans. De passada va més àgil tota l'app, perquè ha deixat de refer per dins pantalles que no havien canviat.",
+    "🌍 Les notes de cada versió, com aquesta, ja es llegeixen en els tres idiomes de l'app.",
+    "🚪 La pantalla d'entrada es queda només amb el logotip: la barreta de càrrega hi sobrava.",
+    "📲 Quan hi ha una versió nova de l'app per instal·lar, ja s'ofereix de debò; i si per alguna cosa no es pot instal·lar, l'app et diu el motiu en comptes de quedar-se callada.",
+    "🎨 L'app estrena icona de debò. La de l'escriptori i la de la pantalla d'arrencada encara eren la genèrica de l'eina amb què està feta.",
+   ]}},
+  {v:"4.11.0", d:"25 jul 2026",
+   t:{es:"La app se presenta al abrirse, y los bienes van por su cuenta",
+      en:"The app introduces itself when it opens, and assets stand on their own",
+      ca:"L'app es presenta en obrir-se, i els béns van pel seu compte"},
+   items:{
+   es:[
+    "🚪 Al abrir la app ya se ve su logo mientras carga, en vez de una pantalla en negro.",
+    "🏡 Tus bienes (piso, coche…) tienen ahora su propio bloque en Cartera, separado de las cuentas del banco. Puedes subirlo o bajarlo con «⇅ Ordenar secciones».",
+    "👤 Cerrar el perfil vuelve a ir a la primera, también si habías bajado dentro. Abrirlo y cerrarlo se sienten igual de suaves.",
+    "🔔 Se acabaron los avisos repetidos de que hay una versión nueva.",
+    "✨ El popup de Novedades marca bien cuál es la versión que llevas puesta.",
+    "💡 Por si acaso: el patrimonio de Inicio sube contando hasta tu cifra. Es una animación — el número final siempre ha sido el correcto.",
+   ],
+   en:[
+    "🚪 Opening the app now shows its logo while it loads, instead of a black screen.",
+    "🏡 Your assets (flat, car…) now have their own block in Portfolio, separate from your bank accounts. Move it up or down with «⇅ Reorder sections».",
+    "👤 Closing your profile works first time again, even if you had scrolled down inside it. Opening and closing now feel the same.",
+    "🔔 No more repeated notifications about a new version being available.",
+    "✨ The What's new popup now correctly marks which version you are running.",
+    "💡 Just in case: the net worth on Home counts up to your figure. It's an animation — the final number was always the right one.",
+   ],
+   ca:[
+    "🚪 En obrir l'app ja es veu el seu logotip mentre carrega, en lloc d'una pantalla en negre.",
+    "🏡 Els teus béns (pis, cotxe…) tenen ara el seu propi bloc a Cartera, separat dels comptes del banc. El pots pujar o baixar amb «⇅ Ordenar seccions».",
+    "👤 Tancar el perfil torna a anar a la primera, també si havies baixat a dins. Obrir-lo i tancar-lo se senten igual de suaus.",
+    "🔔 S'han acabat els avisos repetits que hi ha una versió nova.",
+    "✨ El missatge de Novetats marca bé quina versió portes posada.",
+    "💡 Per si de cas: el patrimoni d'Inici puja comptant fins a la teva xifra. És una animació — el número final sempre ha estat el correcte.",
+   ]}},
   {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
     "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
     "🔔 Y si el canal de pruebas falla, te lo dice. Antes, cualquier problema al mirar si había versión nueva se disfrazaba de «no hay nada nuevo» — que es justo lo que hizo que esto pasara desapercibido tanto tiempo. Ahora sale el error y queda anotado.",
@@ -1329,8 +1545,8 @@ function WhatsNew({onClose, showToast, set, state}){
         React.createElement("button",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,width:"100%",background:"none",border:"none",color:"var(--text)",padding:0,cursor:"pointer",textAlign:"left"},onClick:function(){ setOpenV(open?null:r.v); }},
           React.createElement("span",{style:{fontWeight:800,fontSize:14}},"v"+(cur?CONFIG.APP_VERSION:r.v)+(cur?" · "+t("wn_current")+" ✓":"")),
           React.createElement("span",{style:{color:"var(--muted-2)",fontSize:11.5,flex:"0 0 auto"}},r.d+(open?" ▴":" ▾"))),
-        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},r.t),
-        open && r.items.map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
+        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},rnT(r.t)),
+        open && rnItems(r).map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
       );
     }),
     React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},onClick:onClose}, t("wn_close"))
@@ -1371,22 +1587,25 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   // manualmente»): consulta apk.json (APK) y version.json (web) al momento, sin esperar al arranque.
   const checkUpdates=function(){
     const nat=natPlugin();
-    if(!nat||!nat.appInfo) return;
-    const done=function(okMsg){
-      if(okMsg) showToast(okMsg);
-    };
+    if(!nat||!nat.appInfo){ showToast(t("apk_why_noapp")); return; }
+    // «Estás a la última» a secas no distingue «no hay nada nuevo» de «he mirado donde no era»:
+    // con la 35 publicada en la beta y el móvil leyendo el manifiesto de producción, la respuesta
+    // era la misma frase de siempre (2026-07-26). Ahora el resumen dice qué canal se ha mirado,
+    // qué APK ofrece y cuál llevas puesta, que es lo que hacía falta para no adivinar.
     Promise.resolve(window._mcCheckApkUpdate?window._mcCheckApkUpdate({manual:true, showToast:showToast}):false)
       .then(function(apkDone){
         if(apkDone) return;
+        const cierre=function(){
+          var por=window._mcApkWhy?" · "+window._mcApkWhy:"";
+          showToast(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+por);
+        };
         if(window._mcCheckOtaUpdates){
           return window._mcCheckOtaUpdates({manual:true, showToast:showToast}).then(function(otaDone){
             if(otaDone) return;
-            return Promise.resolve(nat.appInfo()).then(function(info){
-              done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+(info&&info.versionName?" · app "+info.versionName:""));
-            });
+            cierre();
           });
         }
-        done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION);
+        cierre();
       });
   };
   const [events,setEvents]=useState(null);
@@ -1417,7 +1636,43 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno (resumen)
   const [bankBusy,setBankBusy]=useState(false);
   const [trConn,setTrConn]=useState(false);        // TR también cuenta como banco conectado (feedback 2026-07-10)
-  useEffect(function(){ const b=trBridge(); if(!b||!b.status) return; Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); },[uid]);
+  const [trKnown,setTrKnown]=useState(false);      // tuvo TR alguna vez (mc_tr_phone) → puede estar «caído»
+  // Versión nativa del APK (hueco 2026-07-26): sin esto Ajustes solo mostraba la OTA y no
+  // sabías si el icono/splash nuevos estaban puestos o seguías en la 34.
+  const [apkVer,setApkVer]=useState(null);
+  useEffect(function(){
+    const refreshTr=function(){
+      const known=!!(typeof trPhoneSaved==="function"&&trPhoneSaved());
+      setTrKnown(known);
+      const b=trBridge(); if(!b||!b.status){ if(!known) setTrConn(false); return; }
+      Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){});
+    };
+    refreshTr();
+    const onTr=function(e){
+      if(e&&e.detail&&typeof e.detail.connected==="boolean"){ setTrConn(!!e.detail.connected); setTrKnown(true); return; }
+      refreshTr();
+    };
+    window.addEventListener("mc-tr-status", onTr);
+    return function(){ window.removeEventListener("mc-tr-status", onTr); };
+  },[uid]);
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.appInfo) return;
+    /* EL NÚMERO QUE HACE FALTA ES EL versionCode, NO EL versionName (feedback 2026-07-26, tercera
+       vez que lo pide): «sale la versión web y la versión de la app pero no sale la interesante,
+       la de la APK, no sé si está en 34 o 35 o vete tú a saber». Y tenía razón — `versionName` es
+       "4.12.0", O SEA EXACTAMENTE LO MISMO que la versión web, así que la fila no le decía nada
+       nuevo. Lo que distingue una APK de otra es el `versionCode` (34, 35…), que es además lo que
+       compara `apk.json` para ofrecerle la instalación. Sin ese número no puede saber si un fallo
+       nativo —el icono, por ejemplo— es un bug o es que no ha instalado la APK nueva. */
+    Promise.resolve(nat.appInfo()).then(function(info){
+      if(!info) return;
+      var nombre=info.versionName?String(info.versionName):"";
+      var codigo=info.versionCode!=null?String(info.versionCode):"";
+      if(codigo) setApkVer(nombre?nombre+" ("+codigo+")":"("+codigo+")");
+      else if(nombre) setApkVer(nombre);
+    }).catch(function(){});
+  },[]);
   const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
   useBackClose(manageBanks, function(){ setManageBanks(false); });   // gesto atrás: cierra "Mis bancos"
   // Banner «Reconectar TR» de Cartera (evento mc-open-banks → App abre Ajustes + goBanks):
@@ -1679,12 +1934,23 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
     cloud.enabled() && (function(){
       const links=bankLinks;
-      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
-      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
-      const summary = links===null ? "…"
+      // Issues de la última sync también cuentan: si no, el resumen decía «3 conectados» con
+      // uno caído en Cartera (rechazo 4.12.0.18). TR desconectado (tuvo teléfono, no conectado)
+      // entra en nDead por su propio camino — no es Open Banking.
+      const issueAsp={};
+      (state.bankIssues||[]).forEach(function(is){ if(is&&is.aspsp) issueAsp[String(is.aspsp).toLowerCase()]=1; });
+      const nActive=(links||[]).filter(function(r){
+        if(r.status!=='active') return false;
+        return !issueAsp[String(r.aspsp_name||"").toLowerCase()];
+      }).length + (trConn?1:0);
+      const nDeadDb=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'||issueAsp[String(r.aspsp_name||"").toLowerCase()]; }).length;
+      const trDead=trKnown&&!trConn;
+      const nDead=nDeadDb + (trDead?1:0);
+      let summary = links===null ? "…"
         : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
         : nDead>0 ? tf("bp_summary_exp",{n:nDead})
         : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
+      if(trDead && summary.indexOf("Trade Republic")<0) summary += (summary&&summary!=="…"?" · ":"") + t("bp_summary_tr_dead");
       return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
         row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
       );
@@ -1743,8 +2009,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
     fbOpen && ReactDOM.createPortal(React.createElement(FeedbackPanel,{state:state,set:set,showToast:showToast,onClose:function(){ setFbOpen(false); }}), document.body),
-    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
-      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",
+      apkVer ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer}) : tf("st_ver_web",{v:CONFIG.APP_VERSION}),
+      row("upd","⬇️",t("st_update"),
+        apkVer ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer}) : ("v"+CONFIG.APP_VERSION),
+        checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
     grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
@@ -1905,10 +2174,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
 
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
-    // El canal se canta en el pie: si algo va raro, lo primero que hay que saber es si este móvil
-    // está en una beta o en la versión de todos (2026-07-24).
+    // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,
+    // aquí se ve al momento si sigues en una APK vieja aunque la web ya esté al día (2026-07-26).
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},
-      "Mi Cartera · v"+CONFIG.APP_VERSION+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
+      "Mi Cartera · "+(apkVer
+        ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer})
+        : ("v"+CONFIG.APP_VERSION))+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
   );
 
 }

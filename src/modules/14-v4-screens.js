@@ -19,6 +19,72 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     setSeg(simple?"recibos":gotoSeg.id);
     if(clearGoto) clearGoto();
   },[gotoSeg&&gotoSeg.ts]);
+  /* «EN DEUDAS Y METAS SE RELENTIZA DE MANERA MUY BESTIA» — CAPÍTULO 2 (2026-07-26 noche).
+     La 4.12.0 sacó el montaje de las PESTAÑAS fuera del gesto y él confirmó que deslizar «va de
+     10»… pero seguía marcando esto como fallo, y tenía razón: aquí dentro había otro montaje al
+     tocar. Estos tres segmentos se pintaban con `seg==="deudas" && <Debts/>`, así que estrenar
+     Deudas montaba el componente ENTERO dentro del toque. Medido con la CPU x6: **203 ms de hilo
+     bloqueado** recién abierta la app, 119 ms con ella ya reposada.
+
+     ⚠ Y el guardián no lo veía: `rendimiento-tabs.spec.mjs` medía ENTRAR EN PLAN, que aterriza en
+     Recibos, y nunca tocaba el segmento de Deudas. Pasaba en verde mientras él seguía viendo el
+     tirón — de ahí que esto sobreviviera a dos versiones.
+
+     Mismo arreglo que el carrusel: montar en huecos libres y luego solo enseñar/esconder, sin
+     desmontar. Y esconder con `height:0 + overflow:hidden + visibility:hidden` A PROPÓSITO, NO con
+     `display:none`: `display:none` se salta el layout, así que el coste no desaparecería, solo se
+     mudaría al momento de enseñarlo — que es exactamente la trampa que ya costó una vuelta con
+     `content-visibility` en las pestañas. Así el layout se paga una vez, en reposo. */
+  const [segMounted,setSegMounted]=useState(function(){ return {recibos:true}; });
+  useEffect(function(){ setSegMounted(function(m){ return m[seg]?m:Object.assign({},m,{[seg]:true}); }); },[seg]);
+  useEffect(function(){
+    if(simple) return;
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setSegMounted(function(m){ return m.deudas?m:Object.assign({},m,{deudas:true}); });
+      mcScheduleIdle(function(){
+        if(!cancelled) setSegMounted(function(m){ return m.metas?m:Object.assign({},m,{metas:true}); });
+      }, 4000);
+    }, 4000);
+    return function(){ cancelled=true; };
+  },[simple]);
+  /* Y OJO CON CÓMO SE ESCONDEN — aquí me equivoqué yo primero (2026-07-26 noche). Empecé con
+     `height:0 + overflow:hidden + visibility:hidden` para no perder el layout… y `visibility:hidden`
+     SIGUE PINTANDO: el elemento no se ve, pero participa en estilo, capas y pintado. Como los tres
+     segmentos viven dentro del `.track` que se mueve con el dedo, al deslizar se repintaban los
+     TRES en cada frame. Trazado: **323 `Paint`, 114 `UpdateLayoutTree` y 95 `Layerize` en un solo
+     gesto**, o sea 126 ms repartidos en trocitos — que no es una tarea larga que salte a la vista,
+     pero es exactamente su «al entrar en Deudas, moverte, y luego deslizar va con muchísimo lag».
+     Cambié un tirón de 203 ms al entrar por un peaje en CADA deslizada: mal negocio.
+     `display:none` NO pinta, NO calcula estilo y NO hace layout, y React conserva el estado del
+     componente igual, que era lo único que se quería conservar: lo caro es MONTARLO, y eso ya se
+     paga una vez en un hueco libre.
+
+     SEGUNDA VUELTA, 2026-07-27 — y aquí el que se equivocó fui yo. La solución que quedó fue
+     `visibility:hidden` SIEMPRE + `content-visibility:hidden` solo mientras el dedo arrastra, con
+     la idea de que el recálculo cayera después del `touchend`. Él lo siguió notando: «vas a
+     deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible el lag». Y tenía
+     razón: ese peaje no desaparecía, solo se movía tres milisegundos más allá.
+
+     Medidas de HOY (CPU x12, medianas de 5), que es lo que manda porque el premontaje y el que las
+     páginas ya no cuelguen del render de App han cambiado el terreno:
+
+       | cómo se esconden          | entrar en Plan | abrir Deudas | salir de Plan |
+       | visibility:hidden (antes) |     162 ms     |    198 ms    |    185 ms     |
+       | content-visibility SIEMPRE|      90 ms     |    148 ms    |    182 ms     |
+       | display:none              |      74 ms     |    253 ms    |    176 ms     |
+
+     Gana `content-visibility:hidden` puesto SIEMPRE: casi tan barato como `display:none` al entrar
+     y MUCHO mejor al abrir un segmento (148 vs 253), porque a diferencia de `display:none`
+     conserva el estado ya renderizado y solo tiene que volver a pintarlo. Y no era medible antes
+     de tener el resto arreglado, que es justo por qué esta decisión se re-mide en vez de heredarse.
+     Al ponerse siempre, sobra la regla especial de `.track.dragging` que había en shell.html. */
+  const oculto={height:0,overflow:"hidden",contentVisibility:"hidden",pointerEvents:"none"};
+  const capa=function(id,hijo){
+    if(!segMounted[id]) return null;
+    return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
+  };
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_plan_title")),
     React.createElement("div",{className:"v4-seg",role:"tablist"},
@@ -27,9 +93,9 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
           className:"v4-seg-btn"+(seg===s.id?" on":""),onClick:function(){ setSeg(s.id); }}, s.lab);
       })
     ),
-    seg==="recibos" && React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen}),
-    seg==="deudas" && React.createElement(Debts,{state:state,set:set,showToast:showToast}),
-    seg==="metas" && React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast})
+    capa("recibos", React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen})),
+    !simple && capa("deudas", React.createElement(Debts,{state:state,set:set,showToast:showToast})),
+    !simple && capa("metas", React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast}))
   );
 }
 
@@ -146,12 +212,28 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
   // TR desconectado (y el usuario SÍ lo tuvo conectado alguna vez → mc_tr_phone guardado):
   // banner con botón que abre Mis bancos directamente. UX padre 2026-07-18: al ver el saldo
   // descuadrado se fue a la app de Trade Republic — el arreglo debe estar donde está el problema.
+  // Se reconsulta al volver a primer plano y cuando App avisa por `mc-tr-status` (antes solo
+  // miraba al montar y el banner se quedaba mudo tras un sync que caducaba la sesión).
   const [trDead,setTrDead]=useState(false);
   useEffect(function(){
-    const b=(typeof trBridge==="function")?trBridge():null;
-    if(!b||!b.status) return;
-    if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())) return;
-    Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    const check=function(){
+      const b=(typeof trBridge==="function")?trBridge():null;
+      if(!b||!b.status) return;
+      if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())){ setTrDead(false); return; }
+      Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    };
+    check();
+    const onVis=function(){ if(document.visibilityState==="visible") check(); };
+    const onEvt=function(e){
+      if(e&&e.detail&&typeof e.detail.connected==="boolean"){ setTrDead(!e.detail.connected); return; }
+      check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("mc-tr-status", onEvt);
+    return function(){
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("mc-tr-status", onEvt);
+    };
   },[]);
   // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
   // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
@@ -223,10 +305,12 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
         onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
       );
     }),
-    trDead && React.createElement("div",{className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+    trDead && React.createElement("div",{className:"v4-card v4-tr-issue",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
       React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, t("bk_tr_dead")),
       React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
-      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
+      // TR no es Open Banking: el CTA abre Mis bancos con la tarjeta de TR desplegada (PIN+SMS),
+      // nunca un OAuth de Enable Banking.
+      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:"trade_republic"}})); }catch(e){} }}, t("bk_tr_cta"))
     ),
     /* BLOQUES ORDENABLES (petición 2026-07-25: «poder ordenar las cosas de la tab de cartera»).
        Mismo mecanismo que ya usan Fijos/Patrimonio/Deudas/Inversiones/Metas desde la 3.94:

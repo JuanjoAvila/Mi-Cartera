@@ -155,3 +155,129 @@ await ta("estable: sigue leyendo de Pages", async () => {
   assert.equal((await r.json()).version, "4.10.1");
   assert.ok(pedidas.fetch[0].indexOf("juanjoavila.github.io") >= 0);
 });
+
+await ta("el manifiesto dice de qué canal ha salido REALMENTE", async () => {
+  // Sin esta marca, caer a estable es invisible — y una caída invisible es justo lo que dejó la
+  // APK encallada en la 34: el móvil en beta leía producción sin decirlo (2026-07-26).
+  const beta = sandboxCanal({ respuestas: { "releases/download": { status: 200, body: '{"versionCode":35}' } } });
+  beta.sandbox.mcSetChannel("beta");
+  assert.equal((await beta.sandbox.mcFetchManifest("apk.json")).from, "beta");
+
+  const caida = sandboxCanal({
+    respuestas: { "releases/download": { status: 404, body: "" }, "github.io": { status: 200, body: '{"versionCode":34}' } },
+  });
+  caida.sandbox.mcSetChannel("beta");
+  assert.equal((await caida.sandbox.mcFetchManifest("apk.json")).from, "stable");
+});
+
+/* ---------- La APK: el trozo REAL de _mcCheckApkUpdate ----------
+   «apk.json anuncia la 35, estoy en la 34, y al intentarlo no pasa nada» (2026-07-26). No era el
+   instalador: la release `beta` no publicaba `apk.json`, así que el manifiesto daba 404, se caía a
+   producción —que decía 34— y comparar 34 con 34 devolvía `false` sin abrir la boca. */
+const desdeApk = html.indexOf("window._mcApkWhy=null;");
+const hastaApk = html.indexOf("if('serviceWorker' in navigator");
+assert.ok(desdeApk > 0 && hastaApk > desdeApk, "no se encontró _mcCheckApkUpdate en public/index.html");
+const fuenteApk = html.slice(desdeApk, hastaApk);
+
+function sandboxApk({ canal = "stable", instalada = 34, manifiestos = {} } = {}) {
+  const llamadas = { install: [], toast: [], evento: [] };
+  const responder = (url) => {
+    const clave = Object.keys(manifiestos).find((k) => url.indexOf(k) >= 0);
+    return manifiestos[clave] || { status: 404, body: "" };
+  };
+  const sandbox = {
+    console, JSON, Date, Promise, Error, String, Number, Object, Math, parseInt, setTimeout,
+    // Los textos no se traducen aquí: interesa QUÉ clave se elige y con qué datos.
+    t: (k) => k,
+    tf: (k, v) => k + " " + JSON.stringify(v),
+    cloud: { logEvent: () => {} },
+    mcChannel: () => canal,
+    mcFetchManifest: (name) => {
+      const usaBeta = canal === "beta" && responder("releases/download/beta/" + name).status === 200;
+      const r = usaBeta ? responder("releases/download/beta/" + name) : responder("github.io/" + name);
+      if (r.status !== 200) return Promise.reject(new Error(name + ": " + r.status));
+      return Promise.resolve({ ok: true, status: 200, from: usaBeta ? "beta" : "stable", json: () => JSON.parse(r.body) });
+    },
+    window: {
+      _mcSignalApkUpdate: (info) => { llamadas.evento.push(info); },
+      Capacitor: {
+        isNativePlatform: () => true,
+        Plugins: {
+          MiCartera: {
+            appInfo: () => Promise.resolve(instalada == null ? {} : { versionName: "4.12.0", versionCode: instalada }),
+            installApk: ({ url }) => { llamadas.install.push(url); return Promise.resolve({ ok: true }); },
+          },
+        },
+      },
+    },
+  };
+  sandbox.globalThis = sandbox;
+  vm.runInNewContext(fuenteApk, sandbox, { filename: "public/index.html:apk" });
+  const showToast = (m) => llamadas.toast.push(m);
+  return { sandbox, llamadas, showToast };
+}
+
+await ta("el fallo del 26/7: en beta sin apk.json se leía producción y se callaba", async () => {
+  const { sandbox, llamadas, showToast } = sandboxApk({
+    canal: "beta",
+    instalada: 34,
+    manifiestos: { "github.io/apk.json": { status: 200, body: '{"versionCode":34,"versionName":"4.11.0","url":"x"}' } },
+  });
+  const hay = await sandbox.window._mcCheckApkUpdate({ manual: true, showToast });
+  assert.equal(hay, false, "producción va por la 34: no hay nada que instalar");
+  assert.equal(llamadas.install.length, 0);
+  // Lo que ANTES no existía: el motivo, con el canal leído y los dos números.
+  assert.match(sandbox.window._mcApkWhy, /apk_why_state/);
+  assert.match(sandbox.window._mcApkWhy, /"ch":"apk_ch_stable"/, "tiene que confesar que ha leído el canal estable");
+  assert.match(sandbox.window._mcApkWhy, /"want":"34".*"have":"34"|"have":"34".*"want":"34"/);
+});
+
+await ta("con apk.json en la beta, la 35 sí se ofrece", async () => {
+  const { sandbox, llamadas, showToast } = sandboxApk({
+    canal: "beta",
+    instalada: 34,
+    manifiestos: {
+      "releases/download/beta/apk.json": { status: 200, body: '{"versionCode":35,"versionName":"4.12.0","url":"https://x/beta35.apk"}' },
+      "github.io/apk.json": { status: 200, body: '{"versionCode":34,"versionName":"4.11.0","url":"y"}' },
+    },
+  });
+  const hay = await sandbox.window._mcCheckApkUpdate({ manual: true, showToast });
+  assert.equal(hay, true);
+  assert.deepEqual(llamadas.install, ["https://x/beta35.apk"], "la beta instala la APK de la beta, no la de producción");
+  assert.match(sandbox.window._mcApkWhy, /"ch":"apk_ch_beta"/);
+});
+
+await ta("ningún camino de la APK se queda mudo", async () => {
+  // Sin app nativa
+  const sinApp = sandboxApk({});
+  delete sinApp.sandbox.window.Capacitor.Plugins.MiCartera.appInfo;
+  assert.equal(await sinApp.sandbox.window._mcCheckApkUpdate({ manual: true, showToast: sinApp.showToast }), false);
+  assert.equal(sinApp.sandbox.window._mcApkWhy, "apk_why_noapp");
+
+  // APK tan vieja que su plugin no sabe instalar nada
+  const vieja = sandboxApk({});
+  delete vieja.sandbox.window.Capacitor.Plugins.MiCartera.installApk;
+  assert.equal(await vieja.sandbox.window._mcCheckApkUpdate({ manual: true, showToast: vieja.showToast }), false);
+  assert.equal(vieja.sandbox.window._mcApkWhy, "apk_why_oldapk");
+
+  // Manifiesto sin los datos mínimos
+  const roto = sandboxApk({ manifiestos: { "github.io/apk.json": { status: 200, body: '{"versionName":"4.12.0"}' } } });
+  assert.equal(await roto.sandbox.window._mcCheckApkUpdate({ manual: true, showToast: roto.showToast }), false);
+  assert.match(roto.sandbox.window._mcApkWhy, /apk_why_manifest/);
+
+  // Y un manifiesto que no se puede ni leer deja el aviso, no el silencio
+  const caido = sandboxApk({ manifiestos: {} });
+  assert.equal(await caido.sandbox.window._mcCheckApkUpdate({ manual: true, showToast: caido.showToast }), false);
+  assert.match(caido.sandbox.window._mcApkWhy, /^⚠ /);
+  assert.equal(caido.llamadas.toast.length, 1, "y al pedirlo a mano, se dice en pantalla");
+});
+
+t("la release `beta` publica TAMBIÉN el manifiesto de la APK", () => {
+  /* La causa raíz: `beta.yml` subía solo bundle.zip y version.json. Sin apk.json en la release, un
+     móvil en canal beta lee el número de PRODUCCIÓN y la APK de pruebas no existe para él. */
+  const yml = fs.readFileSync(path.join(root, ".github", "workflows", "beta.yml"), "utf8");
+  assert.match(yml, /gh release upload beta [^\n]*\bapk\.json\b/,
+    "beta.yml tiene que subir apk.json a la release `beta`");
+  assert.match(yml, /cp public\/apk\.json apk\.json/,
+    "el apk.json que se sube es el de la rama beta, que es quien conoce la APK de pruebas");
+});

@@ -31,9 +31,11 @@ const LANG = {
     // Aviso al sincronizar con algún banco caído (petición 2026-07-24): sale como notificación de
     // verdad y al tocarla lleva a Cartera → Mis bancos, que era lo que no se encontraba.
     bk_notif_title:"Un banco necesita que lo reconectes",
-    bk_notif_one:"{bank} pide permiso otra vez · toca para reconectarlo",
-    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para arreglarlo",
+    bk_notif_one:"{bank} pide permiso otra vez · toca para ver el aviso",
+    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para ver el aviso",
     bk_notif_n:"{n} bancos necesitan que los reconectes · toca para verlos",
+    bk_tr_notif_title:"Trade Republic está desconectado",
+    bk_tr_notif_body:"La sesión caducó · toca para ver el aviso en Cartera",
     bk_issue_noacct:"⚠ {bank} está conectado a medias", bk_issue_noacct_sub:"El enlace existe pero el banco no da ninguna cuenta. Vuelve a conectarlo y elige las cuentas que quieres ver.",
     bk_tr_sub:"Su sesión caducó: las posiciones y el efectivo no se actualizan. Se reconecta aquí, en la app (PIN + código SMS) — no en la app de Trade Republic.",
     bk_tr_cta:"🔓 Reconectar Trade Republic",
@@ -88,6 +90,10 @@ const LANG = {
     upd_notif_web:"Hay una versión nueva de la app. Toca el botón de arriba para actualizar.",
     upd_notif_apk:"Hay una app nueva (v{v}). Toca el botón de arriba para instalarla.",
     apk_ready:"⬇️ App {v} lista · toca para instalar", apk_downloading:"Descargando la actualización… se abrirá el instalador", apk_perm:"Permite «instalar apps desconocidas» a Mi Cartera y vuelve a tocar el botón",
+    // El porqué de que la app no se actualice sola: antes este camino se callaba y «no pasaba nada».
+    apk_why_noapp:"Instalar la app solo se puede desde la app de Android", apk_why_oldapk:"La app que tienes instalada no sabe actualizarse sola: instala la última a mano una vez",
+    apk_why_manifest:"El canal {ch} no dice qué app hay publicada", apk_why_noinfo:"No se puede leer qué versión de la app tienes instalada",
+    apk_why_state:"app: canal {ch} ofrece la {want}, tienes la {have}", apk_ch_beta:"pruebas", apk_ch_stable:"estable",
     ob_signup:"Crear cuenta nueva",
     st_custom:"Personalización", st_notifs:"Notificaciones", st_simple_lbl:"Modo sencillo",
     st_g_general:"General", st_search_ph:"🔍 Buscar en ajustes…", st_search_none:"Nada con ese nombre. Prueba con «tema», «banco», «copia»…",
@@ -169,9 +175,11 @@ const LANG = {
     bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
     bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
     bk_notif_title:"A bank needs reconnecting",
-    bk_notif_one:"{bank} is asking for permission again · tap to reconnect it",
-    bk_notif_noacct:"{bank} is linked but has no accounts · tap to fix it",
+    bk_notif_one:"{bank} is asking for permission again · tap to see the warning",
+    bk_notif_noacct:"{bank} is linked but has no accounts · tap to see the warning",
     bk_notif_n:"{n} banks need reconnecting · tap to see them",
+    bk_tr_notif_title:"Trade Republic is disconnected",
+    bk_tr_notif_body:"The session expired · tap to see the warning in Portfolio",
     bk_issue_noacct:"⚠ {bank} is only half connected", bk_issue_noacct_sub:"The link exists but the bank returns no account. Connect it again and pick the accounts you want to see.",
     bk_tr_sub:"Its session expired: positions and cash aren't updating. Reconnect HERE in the app (PIN + SMS code) — not in the Trade Republic app.",
     bk_tr_cta:"🔓 Reconnect Trade Republic",
@@ -221,6 +229,9 @@ const LANG = {
     upd_notif_web:"A new app version is ready. Tap the button at the top to update.",
     upd_notif_apk:"A new app (v{v}) is ready. Tap the button at the top to install it.",
     apk_ready:"⬇️ App {v} ready · tap to install", apk_downloading:"Downloading the update… the installer will open", apk_perm:"Allow «install unknown apps» for Mi Cartera and tap the button again",
+    apk_why_noapp:"Installing the app only works from the Android app", apk_why_oldapk:"The app you have installed can't update itself: install the latest one by hand once",
+    apk_why_manifest:"The {ch} channel doesn't say which app is published", apk_why_noinfo:"Can't read which version of the app you have installed",
+    apk_why_state:"app: {ch} channel offers {want}, you have {have}", apk_ch_beta:"testing", apk_ch_stable:"stable",
     ob_signup:"Create a new account",
     st_custom:"Customisation", st_notifs:"Notifications", st_simple_lbl:"Simple mode",
     st_g_general:"General", st_search_ph:"🔍 Search settings…", st_search_none:"Nothing by that name. Try “theme”, “bank”, “backup”…",
@@ -297,9 +308,11 @@ const LANG = {
     bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
     bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
     bk_notif_title:"Un banc necessita que el reconnectis",
-    bk_notif_one:"{bank} demana permís altra vegada · toca per reconnectar-lo",
-    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per arreglar-ho",
+    bk_notif_one:"{bank} demana permís altra vegada · toca per veure l'avís",
+    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per veure l'avís",
     bk_notif_n:"{n} bancs necessiten que els reconnectis · toca per veure'ls",
+    bk_tr_notif_title:"Trade Republic està desconnectat",
+    bk_tr_notif_body:"La sessió ha caducat · toca per veure l'avís a Cartera",
     bk_issue_noacct:"⚠ {bank} està connectat a mitges", bk_issue_noacct_sub:"L'enllaç existeix però el banc no dóna cap compte. Torna a connectar-lo i tria els comptes que vulguis veure.",
     bk_tr_sub:"La sessió ha caducat: posicions i efectiu no s'actualitzen. Es reconnecta AQUÍ, a l'app (PIN + codi SMS) — no a l'app de Trade Republic.",
     bk_tr_cta:"🔓 Reconnecta Trade Republic",
@@ -349,6 +362,9 @@ const LANG = {
     upd_notif_web:"Hi ha una versió nova de l'app. Toca el botó de dalt per actualitzar.",
     upd_notif_apk:"Hi ha una app nova (v{v}). Toca el botó de dalt per instal·lar-la.",
     apk_ready:"⬇️ App {v} a punt · toca per instal·lar", apk_downloading:"Baixant l'actualització… s'obrirà l'instal·lador", apk_perm:"Permet «instal·lar apps desconegudes» a Mi Cartera i torna a tocar el botó",
+    apk_why_noapp:"Instal·lar l'app només es pot des de l'app d'Android", apk_why_oldapk:"L'app que tens instal·lada no sap actualitzar-se sola: instal·la l'última a mà un cop",
+    apk_why_manifest:"El canal {ch} no diu quina app hi ha publicada", apk_why_noinfo:"No es pot llegir quina versió de l'app tens instal·lada",
+    apk_why_state:"app: el canal {ch} ofereix la {want}, tens la {have}", apk_ch_beta:"proves", apk_ch_stable:"estable",
     ob_signup:"Crea un compte nou",
     st_custom:"Personalització", st_notifs:"Notificacions", st_simple_lbl:"Mode senzill",
     st_g_general:"General", st_search_ph:"🔍 Cerca als ajustos…", st_search_none:"Res amb aquest nom. Prova amb «tema», «banc», «còpia»…",
@@ -1523,8 +1539,16 @@ Object.assign(LANG.es,{
   bank_intro:"Conecta tu banco y tu saldo real será el «hoy» de la app. Solo lectura, sin tarjeta. El permiso se renueva cada ~3 meses.",
   bank_connect:"Conectar mi banco", bank_connecting:"Abriendo tu banco…",
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
+  bank_error_invalid:"Ese permiso ya se usó o caducó · vuelve a pulsar Reconectar y termina solo esa autorización",
+  bank_error_busy:"Ya hay una autorización en marcha · termínala antes de abrir otra",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
+  // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
+  // un número suelto sin decir qué había pasado, que además solo enseñaba el PRIMER banco aunque
+  // sincronizaras tres, y que llegaba acompañado de un segundo aviso con los movimientos nuevos.
+  // Ahora es un solo mensaje y dice qué ha pasado.
+  bank_upd_one:"✓ {bank} al día · {x}", bank_upd_n:"✓ {n} bancos al día",
+  bank_upd_mov1:"1 movimiento nuevo", bank_upd_movn:"{n} movimientos nuevos",
   bank_expired_re:"permiso caducado · reconéctate",
   bank_nolink:"esta cuenta aún no está dada de alta en Enable Banking (modo restringido). Enlázala en el panel de Enable Banking y vuelve a conectar.",
   bank_refresh:"Actualizar saldo", bank_reconnect:"Reconectar",
@@ -1537,8 +1561,12 @@ Object.assign(LANG.en,{
   bank_intro:"Connect your bank and your real balance becomes the app's “today”. Read-only, no card. The consent renews every ~3 months.",
   bank_connect:"Connect my bank", bank_connecting:"Opening your bank…",
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
+  bank_error_invalid:"That permission was already used or expired · tap Reconnect again and finish only that one authorization",
+  bank_error_busy:"An authorization is already in progress · finish it before opening another",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
+  bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
+  bank_upd_mov1:"1 new transaction", bank_upd_movn:"{n} new transactions",
   bank_expired_re:"consent expired · reconnect",
   bank_nolink:"this account isn't linked in Enable Banking yet (restricted mode). Link it in the Enable Banking control panel and reconnect.",
   bank_refresh:"Refresh balance", bank_reconnect:"Reconnect",
@@ -1551,8 +1579,12 @@ Object.assign(LANG.ca,{
   bank_intro:"Connecta el teu banc i el teu saldo real serà l'«avui» de l'app. Només lectura, sense targeta. El permís es renova cada ~3 mesos.",
   bank_connect:"Connecta el meu banc", bank_connecting:"Obrint el teu banc…",
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
+  bank_error_invalid:"Aquest permís ja s'ha usat o ha caducat · torna a prémer Reconnecta i acaba només aquesta autorització",
+  bank_error_busy:"Ja hi ha una autorització en marxa · acaba-la abans d'obrir-ne una altra",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
+  bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
+  bank_upd_mov1:"1 moviment nou", bank_upd_movn:"{n} moviments nous",
   bank_expired_re:"permís caducat · reconnecta't",
   bank_nolink:"aquest compte encara no està donat d'alta a Enable Banking (mode restringit). Enllaça'l al panell d'Enable Banking i torna a connectar.",
   bank_refresh:"Actualitza saldo", bank_reconnect:"Reconnecta",
@@ -1620,6 +1652,8 @@ Object.assign(LANG.es,{
   bp_expbanks:"También apuntar gastos de tarjeta de…", bp_expbanks_hint:"Sus compras con tarjeta entrarán solas en Gastos.", bp_expbanks_none:"Conecta un banco Open Banking para poder importar sus compras con tarjeta a Gastos.",
   bp_hist_btn:"Importar histórico", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae movimientos de los últimos meses de: {banks}. Elige cuáles y si van a Gastos, Recibos o Ingresos. Tarjeta→Gasto, recibo→Recibos, crédito→Ingreso (puedes cambiarlo).", bp_hist_nodaily:"Conecta un banco Open Banking (o márcalo en «También apuntar gastos de tarjeta»). Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay movimientos nuevos en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos · marca y elige destino", bp_hist_notcard:"no es tarjeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importados", bp_hist_as_gasto:"🛒 Gasto", bp_hist_as_recibo:"🧾 Recibo", bp_hist_as_ingreso:"💰 Ingreso", bp_hist_recibo:"Recibo", bp_hist_done_g:"✓ {n} en Gastos", bp_hist_done_i:"✓ {n} ingresos", bp_hist_done_r:"✓ {n} recibos",
   bp_summary_n:"{n} conectado(s)", bp_summary_exp:"⚠ {n} caducado(s) — reconéctalo", bp_summary_none:"Ningún banco conectado todavía",
+  bp_summary_tr_dead:"⚠ Trade Republic desconectado",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Elige tu banco", bp_pick_sub:"Solo verás las cuentas que autorices.",
   bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
   bp_need_login:"Inicia sesión para conectar tu banco", bp_syncing:"Actualizando…",
@@ -1643,6 +1677,8 @@ Object.assign(LANG.en,{
   bp_expbanks:"Also log card spending from…", bp_expbanks_hint:"Their card purchases will land in Spending on their own.", bp_expbanks_none:"Connect an Open Banking bank to import its card purchases into Spending.",
   bp_hist_btn:"Import history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months from: {banks}. Pick which ones and whether they go to Spending, Bills or Income. Card→Spending, bill→Bills, credit→Income (you can change it).", bp_hist_nodaily:"Connect an Open Banking bank (or tick it under “Also log card spending”). Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new transactions in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions · check and pick destination", bp_hist_notcard:"not a card purchase", bp_hist_import:"Import {n}", bp_hist_done:"✓ {n} imported", bp_hist_as_gasto:"🛒 Spend", bp_hist_as_recibo:"🧾 Bill", bp_hist_as_ingreso:"💰 Income", bp_hist_recibo:"Bill", bp_hist_done_g:"✓ {n} in Spending", bp_hist_done_i:"✓ {n} income", bp_hist_done_r:"✓ {n} bills",
   bp_summary_n:"{n} connected", bp_summary_exp:"⚠ {n} expired — reconnect it", bp_summary_none:"No bank connected yet",
+  bp_summary_tr_dead:"⚠ Trade Republic disconnected",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Choose your bank", bp_pick_sub:"You'll only see the accounts you authorize.",
   bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
   bp_need_login:"Sign in to connect your bank", bp_syncing:"Refreshing…",
@@ -1666,6 +1702,8 @@ Object.assign(LANG.ca,{
   bp_expbanks:"També apuntar despeses de targeta de…", bp_expbanks_hint:"Les seves compres amb targeta entraran soles a Despeses.", bp_expbanks_none:"Connecta un banc Open Banking per poder importar-ne les compres amb targeta a Despeses.",
   bp_hist_btn:"Importar històric", bp_hist_title:"Importar històric", bp_hist_sub:"Porta moviments dels últims mesos de: {banks}. Tria quins i si van a Despeses, Rebuts o Ingressos. Targeta→Despesa, rebut→Rebuts, crèdit→Ingrés (ho pots canviar).", bp_hist_nodaily:"Connecta un banc Open Banking (o marca'l a «També apuntar despeses de targeta»). Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha moviments nous en aquest període (o ja estan tots apuntats). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments · marca i tria destinació", bp_hist_notcard:"no és targeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importats", bp_hist_as_gasto:"🛒 Despesa", bp_hist_as_recibo:"🧾 Rebut", bp_hist_as_ingreso:"💰 Ingrés", bp_hist_recibo:"Rebut", bp_hist_done_g:"✓ {n} a Despeses", bp_hist_done_i:"✓ {n} ingressos", bp_hist_done_r:"✓ {n} rebuts",
   bp_summary_n:"{n} connectat(s)", bp_summary_exp:"⚠ {n} caducat(s) — reconnecta'l", bp_summary_none:"Cap banc connectat encara",
+  bp_summary_tr_dead:"⚠ Trade Republic desconnectat",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Tria el teu banc", bp_pick_sub:"Només veuràs els comptes que autoritzis.",
   bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
   bp_need_login:"Inicia sessió per connectar el teu banc", bp_syncing:"Actualitzant…",
@@ -2366,7 +2404,14 @@ function applyReduceMotion(on){ try{ document.documentElement.classList.toggle("
 function applyContrast(on){ try{ document.documentElement.classList.toggle("hi-contrast", !!on); }catch(e){} }
 // Temática de temporada (Mundial, Halloween, Navidad…): re-tinta acentos decorativos y activa
 // una capa ambiental animada. data-season en <html>; "" o "none" = sin temática.
-function applySeason(season){ try{ document.documentElement.setAttribute("data-season", (season&&season!=="none")?season:""); }catch(e){} }
+// ⚠ Hay que QUITAR el atributo, no dejarlo en "". `html[data-season]` casa con presencia, así
+// que `data-season=""` encendía fabpulse/seasonglow sin temática (medido en su móvil 2026-07-27).
+function applySeason(season){
+  try{
+    if(season&&season!=="none") document.documentElement.setAttribute("data-season", season);
+    else document.documentElement.removeAttribute("data-season");
+  }catch(e){}
+}
 function applyA11y(s){
   applyTextSize(textSizeOf(s));
   applyReduceMotion(!!(s&&s.settings&&s.settings.reduceMotion));

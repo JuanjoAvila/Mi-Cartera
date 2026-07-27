@@ -308,9 +308,34 @@
   .tour-skip{font-size:13px;font-weight:700;color:var(--muted-2);padding:8px;}
 
   .viewport{flex:1 1 auto;overflow:hidden;min-height:0;}
-  /* 0.42s + ease suave tipo Trade Republic (feedback 2026-07-17: el 0.22 era demasiado «firme»). */
-  .track{display:flex;height:100%;transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;}
+  /* El asentamiento del carrusel ya NO va por transition CSS: en su móvil de 120 Hz esa
+     transición producía 14 saltos de 25/8 ms (judder a 60 Hz) justo al soltar el dedo — el
+     arrastre iba perfecto y al soltar se perdía la fluidez de golpe. Ahora lo anima
+     `asentarTrack` en 11-app-main.js con requestAnimationFrame (misma curva, 0 saltos medidos).
+     transition:none permanente: si vuelve la CSS, vuelve el judder. */
+  .track{display:flex;height:100%;transition:none;will-change:transform;}
   .track.dragging{transition:none;}
+  /* Los segmentos de Plan que no se ven se quedan MONTADOS Y CON SU LAYOUT HECHO (ver
+     14-v4-screens.js): así estrenar Deudas cuesta 0 ms en vez de 203. El precio es que
+     visibility:hidden SIGUE PARTICIPANDO EN EL PINTADO, y como viven dentro del .track que se
+     arrastra con el dedo, se repintaban los tres en cada frame del gesto: medido con la CPU x12,
+     156 ms de tareas largas contra 80 sin ellos.
+
+     O sea que ninguna de las dos formas de esconder valía SOLA, y lo probé las tres:
+       · visibility:hidden      → entrar 0 ms, pero deslizar 156 ms
+       · display:none           → deslizar 80 ms, pero entrar 133 ms
+       · content-visibility     → deslizar 86 ms, pero entrar 124 ms
+     El coste existe; lo único que se puede elegir es CUÁNDO se paga. Y hay un momento en que no
+     molesta a nadie: mientras el dedo está en la pantalla no se ve ningún segmento oculto, así
+     que ahí no hace falta ni layout ni pintado. Durante el arrastre (.track.dragging, que ya se
+     pone y se quita en el gesto) los ocultos pasan a content-visibility:hidden y desaparecen del
+     pintado; al soltar vuelven y recuperan su layout. Ese recálculo cae DESPUÉS del touchend, que
+     es tiempo que no le quita un frame al dedo (AGENTS §7 bis). Resultado: 0 ms al entrar y ~80
+     al deslizar, en vez de tener que elegir. */
+  /* La regla que vivía aquí (`content-visibility:hidden` SOLO mientras el dedo arrastra) se ha
+     retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
+     estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
+     durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
@@ -328,6 +353,11 @@
        de golpe se sentía «brusco» (feedback 2026-07-18). Ahora se desliza y desvanece con calma. */
     transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .4s ease;will-change:transform,opacity;}
   .botnav.botnav-hidden{transform:translateY(120%);opacity:0;pointer-events:none;}
+  /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
+     11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
+     detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
+     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar. */
+  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;}
   .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
@@ -501,12 +531,23 @@
     transform-origin:var(--pp-ox,44px) var(--pp-oy,64px);
     transform:scale(var(--pp-s0,.12));
     opacity:0;visibility:hidden;pointer-events:none;
-    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius .48s cubic-bezier(.32,.72,0,1),visibility 0s linear .48s;
+    /* EL RADIO NO SE INTERPOLA: SE CAMBIA AL FINAL, DE GOLPE (medido 2026-07-26).
+       `border-radius` no es una propiedad de compositor: animarla obliga a REDIBUJAR el panel
+       entero en cada frame de los 0,48 s. Con la CPU x12, quitarla de la transición baja las
+       tareas de rasterizado de ~200 a ~60 por apertura. Con `0s` y el retardo de la animación,
+       el cambio ocurre cuando el movimiento ya ha terminado: un solo repintado y, a la vista,
+       exactamente lo mismo (el panel llega a pantalla completa y ahí es donde el radio importa).
+       La misma lección que ya estaba escrita para el ARRASTRE en 11-app-main.js — al abrir por
+       toque no se le había aplicado. */
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius 0s linear .48s,visibility 0s linear .48s;
     will-change:transform,opacity;
     border-radius:24px;
     box-shadow:0 24px 64px rgba(0,0,0,.45);}
+  /* Al ABRIR el radio se quita ya (el panel tapa la pantalla entera y las esquinas no se ven
+     mientras crece); al CERRAR vuelve cuando la miniatura ha llegado (regla de arriba). Los dos
+     sentidos cambian el radio de golpe, nunca frame a frame. */
   .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
-    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius 0s linear;}
   .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
   /* Velo verdoso barato (Resumen SE VE detrás). Sin blur en el drag; .blurred solo al soltar. */
   .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.28);opacity:0;pointer-events:none;
@@ -861,6 +902,14 @@
   /* gesture-freeze: no re-pinta el shell. profile-gesturing: bloquea scroll de .page
      (si Resumen scrollea a la vez que el pull-down → lag — feedback 2026-07-18). */
   .app-shell.gesture-freeze{pointer-events:none;}
+  /* ⚠ ABRIR EL PERFIL SIGUE COSTANDO ~300 ms (medido a x12, 2026-07-26) y NO es esto. Se probó:
+     desacoplar este candado de `gesture-freeze` para no tocar `pointer-events` (que es heredada y
+     fue la causa del lag de las pestañas) → 300 vs 310 ms, o sea ruido; y `contain:paint` en el
+     panel mientras se arrastra → 304 vs 300, ruido también. Lo que dice la traza es otra cosa:
+     482 `RasterTask` y 278 `Paint`, porque se escala un panel de ~1.680 px de alto DESDE 0,12
+     HASTA 1, y el navegador lo re-rasteriza mientras crece. Eso no se arregla con una propiedad
+     suelta: hay que reducir lo que se pinta durante el crecimiento. Pendiente, con el número
+     medido para no volver a empezar de cero. */
   .app-shell.gesture-freeze.profile-gesturing .page{overflow:hidden !important;overscroll-behavior:none;touch-action:none !important;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
@@ -1031,16 +1080,16 @@
   #mc-load .mcl-mark svg{width:52px;height:52px;display:block;}
   #mc-load .mcl-name{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:560;letter-spacing:-.3px;color:var(--text,#EAF2EC);
     animation:mclpop .5s .07s cubic-bezier(.32,.72,0,1) both;}
-  /* Barra indeterminada en vez de ruleta: ocupa poco, no gira y no promete un porcentaje que no sabemos. */
-  #mc-load .mcl-bar{width:116px;height:3px;border-radius:3px;background:var(--line-soft,#1A3228);overflow:hidden;}
-  #mc-load .mcl-bar i{display:block;width:38%;height:100%;border-radius:3px;background:var(--mint,#5FD08A);animation:mclbar 1.15s ease-in-out infinite;}
+  /* SIN BARRA DE CARGA (2026-07-26). Había una barra indeterminada debajo del nombre; fuera, por
+     petición desde el móvil: «quitar lo de la barra de carga al abrir la app, el resto de apps no
+     lo tienen; el tiempo ese que se queda el logo está bien». Una barra que no mide nada solo
+     dice «esto va lento». El botón de reintentar SÍ se queda: ese aparece únicamente si algo se
+     ha atascado de verdad, y es la única salida cuando pasa. */
   #mc-load .mcl-retry{display:none;margin-top:2px;background:none;border:none;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;
     color:var(--mint,#5FD08A);text-decoration:underline;padding:8px 12px;cursor:pointer;}
   @keyframes mclpop{from{opacity:0;transform:translateY(9px) scale(.94);}to{opacity:1;transform:none;}}
-  @keyframes mclbar{0%{transform:translateX(-110%);}100%{transform:translateX(310%);}}
   @media (prefers-reduced-motion:reduce){
     #mc-load .mcl-mark,#mc-load .mcl-name{animation:none !important;}
-    #mc-load .mcl-bar i{animation:none !important;width:100%;}
   }
 </style>
 </head>
@@ -1050,7 +1099,7 @@
      De ahí que el vigilante esperase `#root` con más de un hijo —cosa que no pasaba nunca— y que
      el usuario no viera splash ninguno, solo negro. Como hermano, React ni lo toca y se retira
      cuando nosotros decidimos. -->
-<div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><div class="mcl-bar"><i></i></div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
+<div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
 <div id="root"></div>
 
 
@@ -1388,6 +1437,31 @@ function mcScheduleIdle(fn, timeoutMs){
     if(typeof requestIdleCallback==="function"){ requestIdleCallback(fn,{timeout:timeoutMs}); return; }
   }catch(e){}
   setTimeout(fn, 16);
+}
+
+/* Gastos necesita saber si es la pestaña activa (para heavyOk y reset de chips), pero eso NO
+   puede viajar como prop: cada cambio de `active` reconstruía Expenses entero justo al aterrizar
+   el gesto, y eso era la asimetría «Deudas→Gastos lag / Deudas→Cartera fluido» (el destino
+   Cartera no toca Gastos; el destino Gastos sí, vía `gastosActiva` en el memo). Bus + ref: el
+   árbol de Gastos se queda quieto; solo corren efectos baratos si hace falta. */
+var _mcGastosActive=false;
+var _mcGastosActiveCbs=[];
+function mcSetGastosActive(on){
+  on=!!on;
+  if(_mcGastosActive===on) return;
+  _mcGastosActive=on;
+  for(var i=0;i<_mcGastosActiveCbs.length;i++){
+    try{ _mcGastosActiveCbs[i](on); }catch(e){}
+  }
+}
+function mcOnGastosActive(cb){
+  if(typeof cb!=="function") return function(){};
+  _mcGastosActiveCbs.push(cb);
+  try{ cb(_mcGastosActive); }catch(e){}
+  return function(){
+    var i=_mcGastosActiveCbs.indexOf(cb);
+    if(i>=0) _mcGastosActiveCbs.splice(i,1);
+  };
 }
 
 /* Le dice al SPLASH de entrada que ya puede irse: lo que se vea a partir de ahora es lo bueno.
@@ -2339,6 +2413,23 @@ const bio = {
   },
 };
 
+/* UNA SOLA AUTORIZACIÓN BANCARIA A LA VEZ (2026-07-26).
+   El permiso de Enable Banking caduca a los 30 min y es de un solo uso. Si dos toques (noti +
+   banner, o dos bancos a la vez) lanzan bankConnect, la segunda vuelve con error=invalid_request
+   aunque el banco diga «Operación realizada correctamente». Un candado compartido por Cartera y
+   Mis bancos evita gastar el permiso dos veces. */
+var _bankConnectBusy=null;
+function bankConnectOnce(aspsp_name, country){
+  if(_bankConnectBusy){
+    const err=new Error("busy");
+    err.code="busy";
+    return Promise.reject(err);
+  }
+  _bankConnectBusy=Promise.resolve(cloud.bankConnect(aspsp_name, country))
+    .finally(function(){ _bankConnectBusy=null; });
+  return _bankConnectBusy;
+}
+
 /* ---------- Helpers ---------- */
 const NF  = new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
 const NF0 = new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
@@ -2384,9 +2475,11 @@ const LANG = {
     // Aviso al sincronizar con algún banco caído (petición 2026-07-24): sale como notificación de
     // verdad y al tocarla lleva a Cartera → Mis bancos, que era lo que no se encontraba.
     bk_notif_title:"Un banco necesita que lo reconectes",
-    bk_notif_one:"{bank} pide permiso otra vez · toca para reconectarlo",
-    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para arreglarlo",
+    bk_notif_one:"{bank} pide permiso otra vez · toca para ver el aviso",
+    bk_notif_noacct:"{bank} está enlazado pero sin cuentas · toca para ver el aviso",
     bk_notif_n:"{n} bancos necesitan que los reconectes · toca para verlos",
+    bk_tr_notif_title:"Trade Republic está desconectado",
+    bk_tr_notif_body:"La sesión caducó · toca para ver el aviso en Cartera",
     bk_issue_noacct:"⚠ {bank} está conectado a medias", bk_issue_noacct_sub:"El enlace existe pero el banco no da ninguna cuenta. Vuelve a conectarlo y elige las cuentas que quieres ver.",
     bk_tr_sub:"Su sesión caducó: las posiciones y el efectivo no se actualizan. Se reconecta aquí, en la app (PIN + código SMS) — no en la app de Trade Republic.",
     bk_tr_cta:"🔓 Reconectar Trade Republic",
@@ -2441,6 +2534,10 @@ const LANG = {
     upd_notif_web:"Hay una versión nueva de la app. Toca el botón de arriba para actualizar.",
     upd_notif_apk:"Hay una app nueva (v{v}). Toca el botón de arriba para instalarla.",
     apk_ready:"⬇️ App {v} lista · toca para instalar", apk_downloading:"Descargando la actualización… se abrirá el instalador", apk_perm:"Permite «instalar apps desconocidas» a Mi Cartera y vuelve a tocar el botón",
+    // El porqué de que la app no se actualice sola: antes este camino se callaba y «no pasaba nada».
+    apk_why_noapp:"Instalar la app solo se puede desde la app de Android", apk_why_oldapk:"La app que tienes instalada no sabe actualizarse sola: instala la última a mano una vez",
+    apk_why_manifest:"El canal {ch} no dice qué app hay publicada", apk_why_noinfo:"No se puede leer qué versión de la app tienes instalada",
+    apk_why_state:"app: canal {ch} ofrece la {want}, tienes la {have}", apk_ch_beta:"pruebas", apk_ch_stable:"estable",
     ob_signup:"Crear cuenta nueva",
     st_custom:"Personalización", st_notifs:"Notificaciones", st_simple_lbl:"Modo sencillo",
     st_g_general:"General", st_search_ph:"🔍 Buscar en ajustes…", st_search_none:"Nada con ese nombre. Prueba con «tema», «banco», «copia»…",
@@ -2522,9 +2619,11 @@ const LANG = {
     bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
     bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
     bk_notif_title:"A bank needs reconnecting",
-    bk_notif_one:"{bank} is asking for permission again · tap to reconnect it",
-    bk_notif_noacct:"{bank} is linked but has no accounts · tap to fix it",
+    bk_notif_one:"{bank} is asking for permission again · tap to see the warning",
+    bk_notif_noacct:"{bank} is linked but has no accounts · tap to see the warning",
     bk_notif_n:"{n} banks need reconnecting · tap to see them",
+    bk_tr_notif_title:"Trade Republic is disconnected",
+    bk_tr_notif_body:"The session expired · tap to see the warning in Portfolio",
     bk_issue_noacct:"⚠ {bank} is only half connected", bk_issue_noacct_sub:"The link exists but the bank returns no account. Connect it again and pick the accounts you want to see.",
     bk_tr_sub:"Its session expired: positions and cash aren't updating. Reconnect HERE in the app (PIN + SMS code) — not in the Trade Republic app.",
     bk_tr_cta:"🔓 Reconnect Trade Republic",
@@ -2574,6 +2673,9 @@ const LANG = {
     upd_notif_web:"A new app version is ready. Tap the button at the top to update.",
     upd_notif_apk:"A new app (v{v}) is ready. Tap the button at the top to install it.",
     apk_ready:"⬇️ App {v} ready · tap to install", apk_downloading:"Downloading the update… the installer will open", apk_perm:"Allow «install unknown apps» for Mi Cartera and tap the button again",
+    apk_why_noapp:"Installing the app only works from the Android app", apk_why_oldapk:"The app you have installed can't update itself: install the latest one by hand once",
+    apk_why_manifest:"The {ch} channel doesn't say which app is published", apk_why_noinfo:"Can't read which version of the app you have installed",
+    apk_why_state:"app: {ch} channel offers {want}, you have {have}", apk_ch_beta:"testing", apk_ch_stable:"stable",
     ob_signup:"Create a new account",
     st_custom:"Customisation", st_notifs:"Notifications", st_simple_lbl:"Simple mode",
     st_g_general:"General", st_search_ph:"🔍 Search settings…", st_search_none:"Nothing by that name. Try “theme”, “bank”, “backup”…",
@@ -2650,9 +2752,11 @@ const LANG = {
     bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
     bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
     bk_notif_title:"Un banc necessita que el reconnectis",
-    bk_notif_one:"{bank} demana permís altra vegada · toca per reconnectar-lo",
-    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per arreglar-ho",
+    bk_notif_one:"{bank} demana permís altra vegada · toca per veure l'avís",
+    bk_notif_noacct:"{bank} està enllaçat però sense comptes · toca per veure l'avís",
     bk_notif_n:"{n} bancs necessiten que els reconnectis · toca per veure'ls",
+    bk_tr_notif_title:"Trade Republic està desconnectat",
+    bk_tr_notif_body:"La sessió ha caducat · toca per veure l'avís a Cartera",
     bk_issue_noacct:"⚠ {bank} està connectat a mitges", bk_issue_noacct_sub:"L'enllaç existeix però el banc no dóna cap compte. Torna a connectar-lo i tria els comptes que vulguis veure.",
     bk_tr_sub:"La sessió ha caducat: posicions i efectiu no s'actualitzen. Es reconnecta AQUÍ, a l'app (PIN + codi SMS) — no a l'app de Trade Republic.",
     bk_tr_cta:"🔓 Reconnecta Trade Republic",
@@ -2702,6 +2806,9 @@ const LANG = {
     upd_notif_web:"Hi ha una versió nova de l'app. Toca el botó de dalt per actualitzar.",
     upd_notif_apk:"Hi ha una app nova (v{v}). Toca el botó de dalt per instal·lar-la.",
     apk_ready:"⬇️ App {v} a punt · toca per instal·lar", apk_downloading:"Baixant l'actualització… s'obrirà l'instal·lador", apk_perm:"Permet «instal·lar apps desconegudes» a Mi Cartera i torna a tocar el botó",
+    apk_why_noapp:"Instal·lar l'app només es pot des de l'app d'Android", apk_why_oldapk:"L'app que tens instal·lada no sap actualitzar-se sola: instal·la l'última a mà un cop",
+    apk_why_manifest:"El canal {ch} no diu quina app hi ha publicada", apk_why_noinfo:"No es pot llegir quina versió de l'app tens instal·lada",
+    apk_why_state:"app: el canal {ch} ofereix la {want}, tens la {have}", apk_ch_beta:"proves", apk_ch_stable:"estable",
     ob_signup:"Crea un compte nou",
     st_custom:"Personalització", st_notifs:"Notificacions", st_simple_lbl:"Mode senzill",
     st_g_general:"General", st_search_ph:"🔍 Cerca als ajustos…", st_search_none:"Res amb aquest nom. Prova amb «tema», «banc», «còpia»…",
@@ -3876,8 +3983,16 @@ Object.assign(LANG.es,{
   bank_intro:"Conecta tu banco y tu saldo real será el «hoy» de la app. Solo lectura, sin tarjeta. El permiso se renueva cada ~3 meses.",
   bank_connect:"Conectar mi banco", bank_connecting:"Abriendo tu banco…",
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
+  bank_error_invalid:"Ese permiso ya se usó o caducó · vuelve a pulsar Reconectar y termina solo esa autorización",
+  bank_error_busy:"Ya hay una autorización en marcha · termínala antes de abrir otra",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
+  // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
+  // un número suelto sin decir qué había pasado, que además solo enseñaba el PRIMER banco aunque
+  // sincronizaras tres, y que llegaba acompañado de un segundo aviso con los movimientos nuevos.
+  // Ahora es un solo mensaje y dice qué ha pasado.
+  bank_upd_one:"✓ {bank} al día · {x}", bank_upd_n:"✓ {n} bancos al día",
+  bank_upd_mov1:"1 movimiento nuevo", bank_upd_movn:"{n} movimientos nuevos",
   bank_expired_re:"permiso caducado · reconéctate",
   bank_nolink:"esta cuenta aún no está dada de alta en Enable Banking (modo restringido). Enlázala en el panel de Enable Banking y vuelve a conectar.",
   bank_refresh:"Actualizar saldo", bank_reconnect:"Reconectar",
@@ -3890,8 +4005,12 @@ Object.assign(LANG.en,{
   bank_intro:"Connect your bank and your real balance becomes the app's “today”. Read-only, no card. The consent renews every ~3 months.",
   bank_connect:"Connect my bank", bank_connecting:"Opening your bank…",
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
+  bank_error_invalid:"That permission was already used or expired · tap Reconnect again and finish only that one authorization",
+  bank_error_busy:"An authorization is already in progress · finish it before opening another",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
+  bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
+  bank_upd_mov1:"1 new transaction", bank_upd_movn:"{n} new transactions",
   bank_expired_re:"consent expired · reconnect",
   bank_nolink:"this account isn't linked in Enable Banking yet (restricted mode). Link it in the Enable Banking control panel and reconnect.",
   bank_refresh:"Refresh balance", bank_reconnect:"Reconnect",
@@ -3904,8 +4023,12 @@ Object.assign(LANG.ca,{
   bank_intro:"Connecta el teu banc i el teu saldo real serà l'«avui» de l'app. Només lectura, sense targeta. El permís es renova cada ~3 mesos.",
   bank_connect:"Connecta el meu banc", bank_connecting:"Obrint el teu banc…",
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
+  bank_error_invalid:"Aquest permís ja s'ha usat o ha caducat · torna a prémer Reconnecta i acaba només aquesta autorització",
+  bank_error_busy:"Ja hi ha una autorització en marxa · acaba-la abans d'obrir-ne una altra",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
+  bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
+  bank_upd_mov1:"1 moviment nou", bank_upd_movn:"{n} moviments nous",
   bank_expired_re:"permís caducat · reconnecta't",
   bank_nolink:"aquest compte encara no està donat d'alta a Enable Banking (mode restringit). Enllaça'l al panell d'Enable Banking i torna a connectar.",
   bank_refresh:"Actualitza saldo", bank_reconnect:"Reconnecta",
@@ -3973,6 +4096,8 @@ Object.assign(LANG.es,{
   bp_expbanks:"También apuntar gastos de tarjeta de…", bp_expbanks_hint:"Sus compras con tarjeta entrarán solas en Gastos.", bp_expbanks_none:"Conecta un banco Open Banking para poder importar sus compras con tarjeta a Gastos.",
   bp_hist_btn:"Importar histórico", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae movimientos de los últimos meses de: {banks}. Elige cuáles y si van a Gastos, Recibos o Ingresos. Tarjeta→Gasto, recibo→Recibos, crédito→Ingreso (puedes cambiarlo).", bp_hist_nodaily:"Conecta un banco Open Banking (o márcalo en «También apuntar gastos de tarjeta»). Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay movimientos nuevos en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos · marca y elige destino", bp_hist_notcard:"no es tarjeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importados", bp_hist_as_gasto:"🛒 Gasto", bp_hist_as_recibo:"🧾 Recibo", bp_hist_as_ingreso:"💰 Ingreso", bp_hist_recibo:"Recibo", bp_hist_done_g:"✓ {n} en Gastos", bp_hist_done_i:"✓ {n} ingresos", bp_hist_done_r:"✓ {n} recibos",
   bp_summary_n:"{n} conectado(s)", bp_summary_exp:"⚠ {n} caducado(s) — reconéctalo", bp_summary_none:"Ningún banco conectado todavía",
+  bp_summary_tr_dead:"⚠ Trade Republic desconectado",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Elige tu banco", bp_pick_sub:"Solo verás las cuentas que autorices.",
   bp_search:"Buscar banco…", bp_loading:"Cargando bancos…", bp_noresults:"Ningún banco coincide.", bp_already:"ya conectado",
   bp_need_login:"Inicia sesión para conectar tu banco", bp_syncing:"Actualizando…",
@@ -3996,6 +4121,8 @@ Object.assign(LANG.en,{
   bp_expbanks:"Also log card spending from…", bp_expbanks_hint:"Their card purchases will land in Spending on their own.", bp_expbanks_none:"Connect an Open Banking bank to import its card purchases into Spending.",
   bp_hist_btn:"Import history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months from: {banks}. Pick which ones and whether they go to Spending, Bills or Income. Card→Spending, bill→Bills, credit→Income (you can change it).", bp_hist_nodaily:"Connect an Open Banking bank (or tick it under “Also log card spending”). Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new transactions in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions · check and pick destination", bp_hist_notcard:"not a card purchase", bp_hist_import:"Import {n}", bp_hist_done:"✓ {n} imported", bp_hist_as_gasto:"🛒 Spend", bp_hist_as_recibo:"🧾 Bill", bp_hist_as_ingreso:"💰 Income", bp_hist_recibo:"Bill", bp_hist_done_g:"✓ {n} in Spending", bp_hist_done_i:"✓ {n} income", bp_hist_done_r:"✓ {n} bills",
   bp_summary_n:"{n} connected", bp_summary_exp:"⚠ {n} expired — reconnect it", bp_summary_none:"No bank connected yet",
+  bp_summary_tr_dead:"⚠ Trade Republic disconnected",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Choose your bank", bp_pick_sub:"You'll only see the accounts you authorize.",
   bp_search:"Search bank…", bp_loading:"Loading banks…", bp_noresults:"No bank matches.", bp_already:"already connected",
   bp_need_login:"Sign in to connect your bank", bp_syncing:"Refreshing…",
@@ -4019,6 +4146,8 @@ Object.assign(LANG.ca,{
   bp_expbanks:"També apuntar despeses de targeta de…", bp_expbanks_hint:"Les seves compres amb targeta entraran soles a Despeses.", bp_expbanks_none:"Connecta un banc Open Banking per poder importar-ne les compres amb targeta a Despeses.",
   bp_hist_btn:"Importar històric", bp_hist_title:"Importar històric", bp_hist_sub:"Porta moviments dels últims mesos de: {banks}. Tria quins i si van a Despeses, Rebuts o Ingressos. Targeta→Despesa, rebut→Rebuts, crèdit→Ingrés (ho pots canviar).", bp_hist_nodaily:"Connecta un banc Open Banking (o marca'l a «També apuntar despeses de targeta»). Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha moviments nous en aquest període (o ja estan tots apuntats). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments · marca i tria destinació", bp_hist_notcard:"no és targeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importats", bp_hist_as_gasto:"🛒 Despesa", bp_hist_as_recibo:"🧾 Rebut", bp_hist_as_ingreso:"💰 Ingrés", bp_hist_recibo:"Rebut", bp_hist_done_g:"✓ {n} a Despeses", bp_hist_done_i:"✓ {n} ingressos", bp_hist_done_r:"✓ {n} rebuts",
   bp_summary_n:"{n} connectat(s)", bp_summary_exp:"⚠ {n} caducat(s) — reconnecta'l", bp_summary_none:"Cap banc connectat encara",
+  bp_summary_tr_dead:"⚠ Trade Republic desconnectat",
+  st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
   bp_pick_title:"Tria el teu banc", bp_pick_sub:"Només veuràs els comptes que autoritzis.",
   bp_search:"Cerca banc…", bp_loading:"Carregant bancs…", bp_noresults:"Cap banc coincideix.", bp_already:"ja connectat",
   bp_need_login:"Inicia sessió per connectar el teu banc", bp_syncing:"Actualitzant…",
@@ -4719,7 +4848,14 @@ function applyReduceMotion(on){ try{ document.documentElement.classList.toggle("
 function applyContrast(on){ try{ document.documentElement.classList.toggle("hi-contrast", !!on); }catch(e){} }
 // Temática de temporada (Mundial, Halloween, Navidad…): re-tinta acentos decorativos y activa
 // una capa ambiental animada. data-season en <html>; "" o "none" = sin temática.
-function applySeason(season){ try{ document.documentElement.setAttribute("data-season", (season&&season!=="none")?season:""); }catch(e){} }
+// ⚠ Hay que QUITAR el atributo, no dejarlo en "". `html[data-season]` casa con presencia, así
+// que `data-season=""` encendía fabpulse/seasonglow sin temática (medido en su móvil 2026-07-27).
+function applySeason(season){
+  try{
+    if(season&&season!=="none") document.documentElement.setAttribute("data-season", season);
+    else document.documentElement.removeAttribute("data-season");
+  }catch(e){}
+}
 function applyA11y(s){
   applyTextSize(textSizeOf(s));
   applyReduceMotion(!!(s&&s.settings&&s.settings.reduceMotion));
@@ -5685,7 +5821,7 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -5700,8 +5836,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
+  const heavyOkRef=useRef(false);
   const catChipsRef=useRef(null), bankChipsRef=useRef(null);
   const chipDrag=useRef({sx:0,sy:0,capturing:false});
+  const heavyIdleGen=useRef(0);
   // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
   // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
   const chipSwipe=function(ref){
@@ -5725,20 +5863,48 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       }
     };
   };
+  // Lo caro de Gastos (detectar suscripciones y pintar su tarjeta) esperaba a que la pestaña
+  // estuviera ACTIVA, así que se pagaba AL LLEGAR: en la cola del gesto de deslizar. Medido con
+  // la CPU estrangulada x6 y trazado con `Tracing` (2026-07-26): la primera entrada en Gastos
+  // costaba una tarea de ~67 ms, de los cuales **59,7 ms eran un Layout completo** (1.196
+  // objetos, `partialLayout:false`) — el de las ~50 etiquetas que aparecen de golpe al ponerse
+  // `heavyOk` en true. Y se pagaba igual llegando por gesto que tocando la barra de abajo, así
+  // que no era el gesto: era esto.
+  //
+  // Es el mismo error que tenía el montaje de las pestañas, y se arregla igual: el coste no se
+  // puede evitar, pero sí ELEGIR CUÁNDO se paga. Ahora se adelanta a un hueco libre aunque la
+  // pestaña no esté activa (a esas alturas ya está montada y no hay ningún dedo en la pantalla).
+  // El tope generoso —4 s frente a 40 ms— es lo que impide que se cuele a la fuerza en mitad del
+  // arranque, que sigue siendo el momento más ocupado; con la pestaña activa manda la prisa.
+  //
+  // ⚠ Y el aviso de «eres la activa» NO PUEDE ser una prop (2026-07-27 noche). Con `active` en
+  // props, CADA entrada a Gastos reconstruía Expenses entero encima del carrusel — y eso era
+  // justo su «Deudas→Gastos lagazo / Deudas→Cartera fluido»: hacia Cartera el memo de Gastos no
+  // se tocaba; hacia Gastos sí. El expediente ya lo había medido («dejar active fijo quita la
+  // asimetría») y lo descartó mal: se puede enterarse sin re-render vía `mcOnGastosActive`.
+  useEffect(function(){ heavyOkRef.current=heavyOk; },[heavyOk]);
   useEffect(function(){
-    if(!active||heavyOk) return;
-    var cancelled=false;
-    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 40);
-    return function(){ cancelled=true; };
-  },[active,heavyOk]);
-  // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
-  // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
-  useEffect(function(){
-    if(catChipsRef.current) catChipsRef.current.scrollLeft=0;
-    if(bankChipsRef.current) bankChipsRef.current.scrollLeft=0;
-  },[active]);
+    var chipGen=0;
+    var unsub=mcOnGastosActive(function(active){
+      // Chips: idle + solo si hay scroll que resetear (escribir scrollLeft en caliente costó
+      // 276 ms — ver comentario histórico en el CHANGELOG de la 4.12.0).
+      var cg=++chipGen;
+      mcScheduleIdle(function(){
+        if(cg!==chipGen) return;
+        var c=catChipsRef.current, b=bankChipsRef.current;
+        if(c&&c.scrollLeft) c.scrollLeft=0;
+        if(b&&b.scrollLeft) b.scrollLeft=0;
+      }, 300);
+      if(heavyOkRef.current) return;
+      var gen=++heavyIdleGen.current;
+      mcScheduleIdle(function(){
+        if(gen!==heavyIdleGen.current || heavyOkRef.current) return;
+        setHeavyOk(true);
+      }, active?40:4000);
+    });
+    return function(){ chipGen++; heavyIdleGen.current++; unsub(); };
+  },[]);
   const expensesDef=useDeferredValue(state.expenses);
-  const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
     set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:pushDeleted(s.deleted, keyOfE(e)) }); });
@@ -5917,11 +6083,33 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
   };
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
-  useEffect(()=>{
-    const el=sentinelRef.current; if(!el) return;
-    const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting) setVisible(v=> v<filtered.length?v+CONFIG.PAGE_SIZE:v); },{rootMargin:"120px"});
-    io.observe(el); return ()=>io.disconnect();
-  },[filtered.length]);
+  /* LA PAGINACIÓN DE LA LISTA — sus dos fallos del 26/7 por la noche, y salían del mismo sitio.
+     1. «Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.» El centinela
+        se vigilaba con `rootMargin:120px`, o sea que la tanda siguiente no se pedía hasta tenerlo
+        casi encima, y llegaban de 12 en 12: en un desliz rápido te comes el final de la lista
+        antes de que dé tiempo a pintar la siguiente. Ahora se pide con 600 px de antelación y de
+        24 en 24 (la PRIMERA tanda sigue siendo de 12, que es lo que se pinta al entrar y lo que
+        vigila el presupuesto de rendimiento).
+     2. «Cuando le doy otra vez a "Este mes" sale lo de la foto y no carga nada aun esperando un
+        rato.» Éste era un fallo de verdad y llevaba escondido desde siempre: el observador se
+        creaba en un efecto atado a `filtered.length`, pero el centinela SOLO EXISTE mientras
+        `visible<filtered.length`. Al llegar al final de la lista se desmonta, y el observador se
+        quedaba mirando un nodo huérfano; si algo lo volvía a montar sin que cambiara
+        `filtered.length` —volver a pulsar el filtro que ya estaba puesto resetea `visible` a 12
+        con la misma lista— nadie lo vigilaba: «Cargando más…» ahí clavado para siempre.
+        Ahora el observador se ata al nodo con una callback ref, así que se rehace exactamente
+        cuando el centinela nace o muere, pasen lo que pasen las dependencias del efecto. */
+  const filtLen=useRef(0); filtLen.current=filtered.length;   // el observador vive fuera del render: sin esto cerraría sobre una longitud vieja
+  const ioRef=useRef(null);
+  const sentinelRefCb=useCallback(function(el){
+    if(ioRef.current){ ioRef.current.disconnect(); ioRef.current=null; }
+    if(!el) return;
+    const io=new IntersectionObserver(function(es){
+      if(es[0].isIntersecting) setVisible(function(v){ return v<filtLen.current ? v+CONFIG.PAGE_SIZE*2 : v; });
+    },{rootMargin:"600px"});
+    io.observe(el); ioRef.current=io;
+  },[]);
+  useEffect(function(){ return function(){ if(ioRef.current) ioRef.current.disconnect(); }; },[]);
 
   // Abrir la ficha de un movimiento. useCallback = referencia ESTABLE: si cambiara en cada render,
   // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
@@ -5935,15 +6123,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const l10nKey=CURLANG+"|"+DISP.sym;
 
   const shown=filtered.slice(0,visible);
+  /* A LA FILA SE LE PASA EL NÚMERO, NO EL `Date` (2026-07-27, y esto llevaba roto desde siempre).
+     `parseDate` cachea los MILISEGUNDOS pero devuelve `new Date(ms)`: un objeto NUEVO en cada
+     llamada. Como la fecha viajaba a `MovRow` como prop, la comparación superficial de
+     `React.memo` fallaba SIEMPRE por esa prop —da igual que el gasto sea idéntico—, así que
+     cualquier re-render de Gastos repintaba las doce filas. Se cuidó que `onOpen` fuera estable
+     (ahí al lado está el comentario) y la fecha se coló por debajo.
+     Se vio saliendo de Deudas hacia Gastos: el perfilador ponía `MovRow` como la función más cara
+     de la app en ese gesto. Con un número, la comparación acierta y la fila solo se rehace cuando
+     cambia de verdad; el `Date` se construye DENTRO, que es donde se usa para formatear. */
   const groups=[]; let last=null;
   shown.forEach(function(e){
-    const d=parseDate(e.date), k=dayKey(d);
+    const ms=dateMs(e.date), d=new Date(ms), k=dayKey(d);
     if(k!==last){
       const today=dayKey(new Date()), yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
       const label=k===today?t("g_today"):k===dayKey(yesterday)?t("g_yesterday"):d.toLocaleDateString(loc(),{weekday:"long",day:"numeric",month:"short"});
       groups.push({sep:label}); last=k;
     }
-    groups.push({e:e,d:d});
+    groups.push({e:e,ms:ms});
   });
 
   const addExpense=()=>{
@@ -6099,8 +6296,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, d:g.d, onOpen:openDetail, l10n:l10nKey}); }),
-        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),
+        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
     React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
@@ -6124,7 +6321,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, d, onOpen}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen}){
+  // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
+  // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
+  const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);
@@ -8497,11 +8697,27 @@ function importObExpenses(s, txs){
   const add=[];
   txs.forEach(function(tx){
     if(!allow[tx.ent]) return;
-    if(!tx.card || !(tx.amount>0)) return;                        // solo compras con tarjeta (gasto)
+    // COMPRAS con tarjeta (importe POSITIVO) e INGRESOS (importe NEGATIVO: el servidor manda
+    // CRDT → -amt, ver `mapTransaction`).
+    //
+    // Los ingresos entraron el 2026-07-26, por un fallo que llevaba DIEZ DÍAS sin que nadie lo
+    // leyera: «no me ha leído un ingreso de la caixa, he tenido notificación y todo pero no lo ha
+    // leído». Y era verdad: aquí solo pasaban las compras con tarjeta. El saldo sí subía —el
+    // patrimonio salía bien— pero en Gastos no aparecía nada, así que parecía que la app no se
+    // había enterado. Un ingreso es justo lo que más se quiere ver apuntado.
+    //
+    // Lo que sigue fuera a propósito: los CARGOS que no son de tarjeta (recibos domiciliados,
+    // hipoteca, seguros). Eso son los Fijos, que ya están contados en el motor mensual, y
+    // apuntarlos aquí sería contarlos dos veces.
+    const esIngreso = tx.amount<0;
+    const esCompra  = tx.card && tx.amount>0;
+    if(!esIngreso && !esCompra) return;
     if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
-    const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(), merchant:tx.merchant||"Compra", amount:tx.amount, category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+    const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
+      merchant:tx.merchant||(esIngreso?"Ingreso":"Compra"), amount:tx.amount,
+      category:esIngreso?INGRESO_CAT.id:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
@@ -9782,7 +9998,16 @@ function useUpdates(){
   };
   const installApk=function(showToast){
     const nat=natPlugin();
-    if(!nat||!nat.installApk||!apkUpd) return;
+    // Tocar el pill y que no ocurra NADA es el peor final posible: no sabes si has fallado el
+    // toque, si la app está pensando o si se ha rendido (2026-07-26). Cada motivo, dicho.
+    if(!nat) { if(showToast) showToast(t("apk_why_noapp")); return; }
+    if(!nat.installApk){ if(showToast) showToast(t("apk_why_oldapk")); return; }
+    if(!apkUpd){
+      // Sin candidata: no es un fallo, es que el chequeo no encontró nada — y el porqué lo
+      // dejó escrito quien lo miró.
+      if(showToast) showToast(window._mcApkWhy||t("st_up_ok"));
+      return;
+    }
     if(showToast) showToast(t("apk_downloading"));
     nat.installApk({url:apkUpd.url}).then(function(r){
       if(r&&r.needsPermission&&showToast){ showToast(t("apk_perm")); return; }   // Android abrió el ajuste; reintocar
@@ -10098,14 +10323,19 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
     if(i>=0) setOpenBank("");
     set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{brokersOn:base})}); });
   };
-  // Banco a resaltar al entrar (viene del sync o de la noti «reconéctalo»): lo centramos en
+  // Banco a resaltar al entrar (viene del sync o del banner de Cartera): lo centramos en
   // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
+  // TR llega como focus «trade_republic» → abre su tarjeta de bróker (br:tr), no una fila OB.
   const focusRef=useRef(null);
   useEffect(function(){
-    if(!focusAspsp || !links || !links.length) return;
+    if(!focusAspsp) return;
+    if(focusAspsp==="trade_republic" || focusAspsp==="tr"){
+      setOpenBank("br:tr");
+      return;
+    }
+    if(!links || !links.length) return;
     // El banco al que venías a arreglar llega ABIERTO: si el acordeón lo dejara plegado, el
-    // deep-link te dejaría mirando la tarjeta del banco roto sin el botón de reconectar delante,
-    // que es justo lo que la noti prometía. Resaltar y esconder la acción a la vez no tiene sentido.
+    // deep-link te dejaría mirando la tarjeta del banco roto sin el botón de reconectar delante.
     setOpenBank(focusAspsp);
     const el=focusRef.current; if(!el || !el.scrollIntoView) return;
     const tm=setTimeout(function(){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
@@ -10119,7 +10349,28 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   useEffect(loadLinks,[uid]);
   const loadAspsps=function(){ if(aspsps!==null||loadingA) return; setLoadingA(true); cloud.bankAspsps("ES").then(function(rows){ setAspsps(rows||[]); }).catch(function(e){ setAspsps([]); showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setLoadingA(false); }); };
   const openPicker=function(){ setPicking(true); loadAspsps(); };
-  const connect=function(name,country){ if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; } setBusy(name); showToast(t("bank_connecting")); set(function(s){ return Object.assign({},s,{hasBankLink:true}); }); cloud.bankConnect(name, country||"ES").then(function(d){ location.href=d.url; }).catch(function(e){ setBusy(""); showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); }); };
+  // Candado compartido con el banner de Cartera: dos toques no gastan el permiso dos veces
+  // (invalid_request de Enable Banking — 2026-07-26).
+  const connect=function(name,country){
+    if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; }
+    setBusy(name); showToast(t("bank_connecting"));
+    set(function(s){ return Object.assign({},s,{hasBankLink:true}); });
+    bankConnectOnce(name, country||"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){
+        setBusy("");
+        if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+      });
+  };
+  // Issues de la última sync: pinta rojo aunque bank_links.status siga en «active»
+  // (regresión 4.12.0.18: «marca 1 falla y en Mis bancos todos salen verdes»).
+  const issueOf=function(aspsp){
+    const list=state&&state.bankIssues||[];
+    for(let i=0;i<list.length;i++){
+      if(list[i] && String(list[i].aspsp||"").toLowerCase()===String(aspsp||"").toLowerCase()) return list[i];
+    }
+    return null;
+  };
   const refresh=function(){ if(!onBankSync){ return; } setBusy("__sync"); Promise.resolve(onBankSync()).finally(function(){ setBusy(""); loadLinks(); }); };
   // Quitar banco (revoca en EB + borra la fila). Reversible: reaparece el picker para reconectar.
   // Purga al momento sus cuentas sincronizadas (obAccounts) del patrimonio: antes se quedaban
@@ -10192,12 +10443,17 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       const ent=entFromAspsp(l.aspsp_name);
       const vu=l.valid_until?new Date(l.valid_until).getTime():0;
       const soon=vu && (vu-Date.now()<14*86400000);
-      const noAcct = l.status==='error';
-      // El banco que venías a arreglar (desde el sync o la noti): resaltado y centrado en pantalla.
+      const liveIssue=issueOf(l.aspsp_name);
+      const noAcct = l.status==='error' || (liveIssue&&liveIssue.kind==="noacct");
+      const liveDead = !!(liveIssue&&liveIssue.kind==="expired") || l.status==='expired';
+      // El banco que venías a arreglar (desde el sync o el banner): resaltado y centrado.
       const isFocus = !!focusAspsp && l.aspsp_name===focusAspsp;
-      const sp = l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
+      // Píldora: gana el resultado de la ÚLTIMA sync sobre el status de la tabla. Si no, un
+      // Sabadell caído seguía en verde porque bank_links aún decía «active».
+      const sp = noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
+               : liveDead ? pill(t("bp_st_expired"),"var(--coral)")
                : l.status==='pending' ? pill(t("bp_st_pending"),"#E2A05F")
-               : noAcct ? pill(t("bp_st_noacct"),"#E2A05F")
+               : l.status==='active' ? (soon? pill(t("bp_st_soon"),"#E2A05F") : pill(t("bp_st_active"),"var(--mint)"))
                : pill(t("bp_st_expired"),"var(--coral)");
       const abierto = openBank===l.aspsp_name;
       // Abrir uno CIERRA el anterior (acordeón): con varios bancos desplegados volvíamos al muro
@@ -10208,7 +10464,7 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         React.createElement("div",{className:"v4-mov",role:"button",tabIndex:0,"aria-expanded":abierto?"true":"false",
           onClick:toggle,
           onKeyDown:function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); toggle(); } },
-          style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+(isFocus?"var(--coral)":"var(--line-soft)"),background:"var(--sur)",cursor:"pointer"}},
+          style:{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:16,border:"1px solid "+((isFocus||liveDead||noAcct)?"var(--coral)":"var(--line-soft)"),background:"var(--sur)",cursor:"pointer"}},
           React.createElement(Mono,{ent:ent||"",size:40}),
           React.createElement("div",{style:{flex:1,minWidth:0}},
             React.createElement("div",{className:"nm"}, bankLabel(l.aspsp_name), (Array.isArray(l.accounts)&&l.accounts.length>1)?React.createElement("span",{style:{marginLeft:7,fontSize:11,fontWeight:700,color:"var(--mint)"}}, tf("bp_naccts",{n:l.accounts.length})):null),
@@ -10332,37 +10588,118 @@ function betaChecklist(version){
   var notes=(typeof RELEASE_NOTES!=="undefined"&&RELEASE_NOTES.length)
     ? (RELEASE_NOTES.filter(function(n){ return n.v===base; })[0] || RELEASE_NOTES[0])
     : null;
-  return notes ? { v:notes.v, t:notes.t, items:(notes.items||[]) } : { v:base, t:"", items:[] };
+  // El panel de revisión es la consola privada del dueño y va SIN traducir (como «Actividad»),
+  // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
+  return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
 }
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
   const pack=betaChecklist(CONFIG.APP_VERSION);
-  const storeKey="_betaReview_"+pack.v;
-  // {i: "ok" | "ko"} + notas de los que fallan
-  const [marks,setMarks]=useState(function(){ return store.get(storeKey) || {}; });
+  // La clave va por la COMPILACIÓN (4.12.0.17), no por la versión base (4.12.0). Petición suya
+  // 2026-07-26: «cuando me subas una nueva versión con el fix de eso, que se resetee y se ponga
+  // vacío». Con la clave por versión base, la beta siguiente heredaba las cruces y los comentarios
+  // de la anterior — o sea, el arreglo llegaba ya marcado como fallo. Cada beta empieza en blanco,
+  // y dentro de la misma beta el progreso se conserva aunque cierres la app (que era el motivo de
+  // guardarlo, porque probar lleva días).
+  const storeKey="_betaReview_"+CONFIG.APP_VERSION;
+  /* LO QUE YA DIO POR BUENO NO SE VUELVE A PREGUNTAR (petición suya 2026-07-26, por la noche:
+     «si algo funciona CREO que no debería reventar con otra compilación»). El reseteo por
+     compilación arreglaba una cosa y rompía otra: las cruces sí tienen que volver a preguntarse
+     —son justo lo que se acaba de arreglar—, pero los ✓ también se borraban, y volver a probar
+     siete puntos que ya iban bien es lo que hacía que no se acordara de nada («los pillo en
+     momentos diferentes»).
+
+     Así que los ✓ y los «no lo puedo probar» se guardan APARTE, en una lista que NO lleva el
+     número de compilación, y que casa por el TEXTO del punto y no por su posición. Eso importa:
+     · si reescribimos la nota, ha cambiado lo que se prueba → vuelve a preguntarse;
+     · si la nota es idéntica, es literalmente lo mismo que ya probó → viene marcado;
+     · y si se reordenan las notas, no se cruzan los cables (con índices, sí).
+     Los ✗ no se heredan NUNCA, ni sus comentarios. */
+  const okKey="_betaReviewOk";
+  const heredarOk=function(){
+    var prev=store.get(okKey);
+    /* RESCATE DE LO YA APROBADO (2026-07-26 noche). La lista aparte se estrena en esta versión,
+       así que la primera vez está vacía y lo que él aprobó en las betas anteriores se habría
+       perdido igual — que es exactamente lo que notó al abrir la siguiente: «siguen saliendo las
+       que aprobé». Se rescata de las claves por compilación que ya están guardadas en el móvil.
+       Van por índice, y aquí el índice VALE: solo se leen las de la misma versión base, y las
+       notas de una versión base no cambian de orden entre compilaciones. */
+    if(!prev){
+      prev={};
+      try{
+        var pre="_betaReview_"+mcVerBase(CONFIG.APP_VERSION);
+        for(var i=0;i<localStorage.length;i++){
+          var k=localStorage.key(i);
+          if(!k||k.indexOf(pre)!==0||k.slice(-2)==="_n") continue;
+          var vieja=store.get(k)||{};
+          pack.items.forEach(function(it,j){ if(vieja[j]==="ok"||vieja[j]==="na") prev[it]=vieja[j]; });
+        }
+      }catch(e){}
+      store.set(okKey,prev);
+    }
+    var m={};
+    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na") m[i]=v; });
+    return m;
+  };
+  // {i: "ok" | "ko" | "na"} + notas de los que fallan. Lo heredado va DEBAJO de lo marcado en esta
+  // compilación: si ya has tocado algo aquí, manda lo tuyo. (Con `||` en vez de mezcla, haber
+  // marcado una sola casilla en esta beta apagaba la herencia entera.)
+  const [marks,setMarks]=useState(function(){ return Object.assign(heredarOk(), store.get(storeKey)||{}); });
   const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
   const [busy,setBusy]=useState(false);
   const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
+  // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
+  const heredados=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, n=0;
+    Object.keys(h).forEach(function(i){ if(propias[i]===undefined) n++; }); return n; })());
   const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
+  const recordarOk=function(m){
+    var prev=store.get(okKey)||{};
+    pack.items.forEach(function(it,i){
+      if(m[i]==="ok"||m[i]==="na") prev[it]=m[i]; else delete prev[it];
+    });
+    store.set(okKey,prev);
+  };
   const mark=function(i,v){
-    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); return m; });
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m); return m; });
   };
   const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
 
   const total=pack.items.length;
   const ok=pack.items.filter(function(_,i){ return marks[i]==="ok"; }).length;
   const ko=pack.items.filter(function(_,i){ return marks[i]==="ko"; }).length;
-  const pend=total-ok-ko;
+  // «No se puede probar» (petición suya 2026-07-26): hay cosas que no dependen de él —que llegue
+  // la nómina, que el banco mande una notificación, un icono que solo se ve con la APK instalada—
+  // y no tenían casilla. Al no poder marcarlas, contaban como pendientes y BLOQUEABAN el aprobar,
+  // así que o mentía marcando «va bien» o la beta se quedaba sin veredicto. Esto NO bloquea.
+  const na=pack.items.filter(function(_,i){ return marks[i]==="na"; }).length;
+  const pend=total-ok-ko-na;
 
+  /* EL VEREDICTO DICE TAMBIÉN QUÉ APK LLEVABA PUESTA (2026-07-26).
+     El veredicto ya viajaba con la versión web (4.12.0.27), pero no con el `versionCode` del APK,
+     y eso costó una sesión entera: «en deudas sigue igual» con los arreglos ya publicados, sin
+     forma de saber si los tenía puestos —esa noche salieron seis betas seguidas— ni si el fallo
+     era nativo (el icono) o web. Ahora lo dice el propio parte, y nadie tiene que preguntar. */
+  const [apkCode,setApkCode]=useState(null);
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.appInfo) return;
+    Promise.resolve(nat.appInfo()).then(function(info){
+      if(info&&info.versionCode!=null) setApkCode(String(info.versionCode));
+    }).catch(function(){});
+  },[]);
   const enviar=function(verdict){
     if(busy) return;
     setBusy(true);
     const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
+    const conApk=CONFIG.APP_VERSION+(apkCode?" (APK "+apkCode+")":"");
     const payload={
-      verdict:verdict, version:CONFIG.APP_VERSION, notas:pack.v,
-      probados:ok, fallos:ko, sinProbar:pend, detalle:fallos,
-      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+CONFIG.APP_VERSION+
-        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+
+      verdict:verdict, version:CONFIG.APP_VERSION, apk:apkCode, notas:pack.v,
+      probados:ok, fallos:ko, sinProbar:pend, noProbable:na, heredados:heredados.current,
+      noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
+      detalle:fallos,
+      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+conApk+
+        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+(na?" / "+na+" no probable(s)":"")+
         (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
     };
     cloud.betaReport(payload)
@@ -10380,29 +10717,37 @@ function BetaReviewPanel({onClose, showToast}){
   return React.createElement("div",{style:wrap,className:"beta-review"}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ Ajustes"),
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🧪 Revisar la beta"),
+    // Y a la vista, no solo en el parte: si un fallo es del icono o del instalador, lo primero que
+    // hay que saber es qué APK lleva puesta — y hasta ahora aquí solo salía la versión web.
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
-      "v"+CONFIG.APP_VERSION+(pack.t?" · "+pack.t:"")),
+      "v"+CONFIG.APP_VERSION+(apkCode?" · APK "+apkCode:"")+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
       "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+    heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+      background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
+      "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
+      " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
 
     // Progreso
     React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
       React.createElement("div",{style:{flex:1,height:8,borderRadius:8,background:"var(--surface-2)",overflow:"hidden"}},
-        React.createElement("div",{style:{width:(total?Math.round((ok+ko)/total*100):0)+"%",height:"100%",
+        React.createElement("div",{style:{width:(total?Math.round((ok+ko+na)/total*100):0)+"%",height:"100%",
           background:ko?"var(--coral)":"var(--mint)",transition:"width .25s ease"}})),
-      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko)+"/"+total)),
+      React.createElement("span",{style:{fontSize:12.5,fontWeight:700,color:"var(--muted)"}}, (ok+ko+na)+"/"+total)),
 
     pack.items.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)"}},
       "Esta versión no trae notas, así que no hay checklist. Prueba lo que hayas tocado."),
 
     pack.items.map(function(it,i){
       const m=marks[i];
-      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":"var(--line-soft)"),
-        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)"}},
+      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
+        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
         React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
         React.createElement("div",{style:{display:"flex",gap:8}},
           React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
           React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
+        React.createElement("button",{type:"button",style:Object.assign({},btn(m==="na","var(--muted-2)"),{marginTop:8,width:"100%"}),
+          onClick:function(){ mark(i,"na"); }}, "— No lo puedo probar"),
         m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
           placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
           onChange:function(e){ setNote(i,e.target.value); }})
@@ -10570,18 +10915,105 @@ function FeedbackPanel({state, set, showToast, onClose}){
    El CONTENIDO de las notas va solo en castellano a propósito (release notes para el
    círculo actual); el marco del panel sí está traducido (wn_*). Al publicar una versión:
    añadir su entrada AL PRINCIPIO del array, en cristiano y sin jerga. */
+/* NOTAS DE VERSIÓN EN TRES IDIOMAS (petición desde el móvil, 2026-07-26: «que el histórico de
+   actualizaciones sea en todos los idiomas, no solo español»).
+
+   Cada entrada admite las dos formas:
+     · texto suelto            → castellano (todo el histórico anterior a esta fecha)
+     · {es:"…",en:"…",ca:"…"}  → traducida
+
+   POR QUÉ NO SE TRADUCE EL HISTÓRICO ENTERO: son 68 versiones y 279 entradas, 55 KB de texto.
+   Por tres idiomas serían 165 KB, y el presupuesto de descarga (`tests/presupuesto-rendimiento`)
+   va por 277 KB de 310 en gzip — se lo comería de golpe para que nadie lea nunca las notas de
+   una versión de hace dos meses en catalán. De aquí en adelante, cada nota nace en los tres. */
+function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
+function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.11.0", d:"25 jul 2026", t:"Ahora sí: el splash se ve, y los bienes van por su cuenta", items:[
-    "🚪 El splash no se veía, y tenías razón. Estaba puesto dentro del contenedor de la app, y lo primero que hace React al arrancar es vaciar ese contenedor: se lo llevaba por delante antes de que te diera tiempo a verlo. Encima, las librerías pesadas iban en la cabecera de la página, así que el móvil no tenía NADA que pintar hasta haberlas cargado enteras — de ahí el negro. Movido fuera, librerías después, y medio segundo mínimo en pantalla.",
-    "💡 Y una corrección: el patrimonio no «saltaba» por los datos, es una animación que cuenta desde abajo hasta tu cifra. Estaba funcionando bien; el número que ves al final siempre fue el bueno.",
-    "🏡 Bienes (piso, coche…) ya es su propio bloque en Cartera, separado de tus cuentas de banco. Se sube y se baja aparte con «⇅ Ordenar secciones».",
-    "👤 Cerrar el perfil: encontrado el fallo de verdad, el que llevaba tres intentos escondido. Si habías bajado un poco dentro del perfil —o sea, casi siempre, porque el perfil es largo y lo miras antes de cerrarlo— el arrastre hacia abajo solo scrolleaba y al soltar seguías dentro. Para cerrar había que recoger TODO el scroll y encima seguir arrastrando en el mismo gesto: nadie hace eso. Ahora la franja de arriba del panel es un asa (tiras de ahí y cierra, esté como esté el scroll) y, si tiras desde el medio, en cuanto el contenido llega arriba el panel empieza a encogerse sin que sueltes el dedo.",
-    "✋ Y cerrar vuelve a bastar con un gesto corto: al igualar abrir y cerrar «con los mismos números» se había quedado pidiendo casi el doble de arrastre. La sensación sigue siendo la misma en los dos sentidos —eso era lo que pedías— pero sin pasarse de exigente. Si tiras, no llega y vuelves a tirar en el acto, también te hace caso ya (antes se quedaba sorda medio segundo).",
-    "✨ El popup de Novedades ya te dice qué versión llevas de verdad. En el canal de pruebas ponía «4.11.0» estando en la 4.11.0.8, y ninguna versión salía marcada como la tuya.",
-    "🔔 Y se acabaron las notificaciones duplicadas de «hay versión nueva». El aviso llevaba un identificador sacado del reloj, así que cada uno se apilaba en vez de sustituir al anterior; y había dos emisores para lo mismo (la app abierta y el vigilante que mira con la app cerrada), cada uno con el suyo. Ahora comparten identificador y el vigilante respeta el canal de pruebas. Esto va en la app nueva (34), no en la actualización web.",
-    "🚧 Canal de pruebas: la versión que ves ya dice cuál llevas (4.11.0.8 y no «4.11.0»), y se acabó el aviso de actualizar cada dos minutos — el paquete se sellaba con un número distinto del que anunciaba, así que la app creía que siempre le faltaba algo.",
-    "📦 Y apagar el canal de pruebas ahora te devuelve de verdad a la versión de todos. Antes se quedaba con la de pruebas puesta hasta que la normal la adelantara.",
-  ]},
+  {v:"4.12.0", d:"26 jul 2026",
+   t:{es:"Más rápida al cambiar de pestaña, y los ingresos del banco ya se apuntan",
+      en:"Faster when switching tabs, and money coming in now gets recorded",
+      ca:"Més ràpida en canviar de pestanya, i els ingressos del banc ja s'apunten"},
+   items:{
+   es:[
+    "💰 Los ingresos que llegan a tu banco ya se apuntan solos. Hasta ahora la app solo recogía las compras con tarjeta: cuando entraba una nómina o una transferencia, el saldo subía pero el movimiento no aparecía por ningún lado.",
+    "🏦 Y al sincronizar los bancos ahora te dice qué ha pasado, en un solo aviso: «✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos». Antes salía el saldo suelto, de un banco solamente aunque tuvieras varios, y en dos avisos seguidos.",
+    "⚡ Entrar en Deudas y Metas ya no deja la app clavada un momento. Cada pestaña se preparaba justo al tocarla; ahora se prepara antes, mientras no estás haciendo nada.",
+    "👌 Y deslizar entre pestañas va suave desde la primera vez, también si acabas de moverte dentro de Deudas o Metas.",
+    "🎯 Al soltar el dedo al cambiar de pestaña ya no se pierde la fluidez: el arrastre iba bien y el medio segundo de después iba a trompicones. Ese tramo ya va tan limpio como el gesto.",
+    "🖐️ Deslizar entre pestañas ya cuenta SIEMPRE. El móvil se quedaba con uno de cada tres gestos —creía que estabas haciendo scroll— y esa deslizada no cambiaba de pestaña: se movía a medias y se volvía. Por fuera parecía que la app se atascaba o que iba lenta, y lo que pasaba es que un tercio de los intentos no llegaba a contar.",
+    "🔔 Si un banco pierde el permiso, el aviso te deja delante del aviso en Cartera. Tú decides cuándo reconectar: así no se abren dos autorizaciones a la vez ni se gasta el permiso.",
+    "📈 Si Trade Republic se desconecta, también sale un aviso en Cartera para volver a entrar con el PIN y el código.",
+    "📱 En Ajustes se ven las dos versiones: la de la app instalada y la que se actualiza sola.",
+    "👤 Cerrar el perfil justo después de abrirlo vuelve a responder al momento.",
+    "👤 Y abrirlo también: la pantalla del perfil entra a la primera, sin el tirón que daba antes. De paso va más suelta toda la app, porque ha dejado de rehacer por dentro pantallas que no habían cambiado.",
+    "🌍 Las notas de cada versión, como esta, ya se leen en los tres idiomas de la app.",
+    "🚪 La pantalla de entrada se queda solo con el logo: la barrita de carga sobraba.",
+    "📲 Cuando hay una versión nueva de la app para instalar, ya se ofrece de verdad; y si por algo no se puede instalar, la app te dice el motivo en vez de quedarse callada.",
+    "🎨 La app estrena su icono de verdad. El del escritorio y el de la pantalla de arranque eran todavía el genérico que trae la herramienta con la que está hecha.",
+   ],
+   en:[
+    "💰 Money coming into your bank is now recorded automatically. Until now the app only picked up card purchases: when a salary or a transfer came in, your balance went up but the transaction appeared nowhere.",
+    "🏦 And syncing your banks now tells you what happened, in a single message: «✓ CaixaBank up to date · €1,234.56 · 3 new transactions». It used to show a bare balance, for one bank only even if you had several, in two messages one after the other.",
+    "⚡ Opening Debts and Goals no longer freezes the app for a moment. Each tab used to be prepared the instant you touched it; now it is prepared beforehand, while you are doing nothing.",
+    "👌 And swiping between tabs is smooth from the very first time, even right after you have been scrolling inside Debts or Goals.",
+    "🎯 Letting go after a tab swipe no longer kills the smoothness: the drag itself was fine, and the half-second after it juddered. That bit is now as clean as the gesture.",
+    "🖐️ Swiping between tabs now always counts. The phone was taking over one in every three gestures —it thought you were scrolling— and that swipe never changed tab: it moved halfway and came back. From the outside it looked like the app was stuttering or slow, when in fact a third of your attempts simply did not count.",
+    "🔔 If a bank loses its permission, the alert takes you to the warning in Portfolio. You choose when to reconnect, so two authorizations are not opened at once and the permission is not wasted.",
+    "📈 If Trade Republic disconnects, a warning also appears in Portfolio so you can sign back in with your PIN and code.",
+    "📱 Settings now shows both versions: the installed app and the one that updates itself.",
+    "👤 Closing the profile right after opening it responds instantly again.",
+    "👤 And opening it too: the profile screen comes in first time, without the stutter it had before. The whole app feels lighter as a result, because it has stopped rebuilding screens that had not changed.",
+    "🌍 Release notes like these can now be read in all three languages of the app.",
+    "🚪 The start screen keeps just the logo: the little loading bar was unnecessary.",
+    "📲 When a new version of the app is ready to install, it is now actually offered; and if for some reason it cannot be installed, the app tells you why instead of staying silent.",
+    "🎨 The app has a proper icon at last. The one on your home screen and on the start screen were still the generic one from the tool it is built with.",
+   ],
+   ca:[
+    "💰 Els ingressos que arriben al teu banc ja s'apunten sols. Fins ara l'app només recollia les compres amb targeta: quan entrava una nòmina o una transferència, el saldo pujava però el moviment no apareixia enlloc.",
+    "🏦 I en sincronitzar els bancs ara et diu què ha passat, en un sol avís: «✓ CaixaBank al dia · 1.234,56 € · 3 moviments nous». Abans sortia el saldo sol, d'un banc només encara que en tinguessis diversos, i en dos avisos seguits.",
+    "⚡ Entrar a Deutes i Metes ja no deixa l'app clavada un moment. Cada pestanya es preparava just en tocar-la; ara es prepara abans, mentre no estàs fent res.",
+    "👌 I lliscar entre pestanyes va suau des de la primera vegada, també si acabes de moure't dins de Deutes o Metes.",
+    "🎯 En deixar anar el dit en canviar de pestanya ja no es perd la fluïdesa: l'arrossegament anava bé i el mig segon de després anava a trepets. Aquell tram ja va tan net com el gest.",
+    "🖐️ Lliscar entre pestanyes ja compta SEMPRE. El mòbil es quedava amb un de cada tres gestos —es pensava que estaves fent scroll— i aquella lliscada no canviava de pestanya: es movia a mitges i tornava. Des de fora semblava que l'app s'encallava o anava lenta, i el que passava és que un terç dels intents no arribava a comptar.",
+    "🔔 Si un banc perd el permís, l'avís et deixa davant de l'avís a Cartera. Tu decides quan reconnectar: així no s'obren dues autoritzacions a la vegada ni es gasta el permís.",
+    "📈 Si Trade Republic es desconnecta, també surt un avís a Cartera per tornar a entrar amb el PIN i el codi.",
+    "📱 A Ajustos es veuen les dues versions: la de l'app instal·lada i la que s'actualitza sola.",
+    "👤 Tancar el perfil just després d'obrir-lo torna a respondre a l'instant.",
+    "👤 I obrir-lo també: la pantalla del perfil entra a la primera, sense l'estirada que feia abans. De passada va més àgil tota l'app, perquè ha deixat de refer per dins pantalles que no havien canviat.",
+    "🌍 Les notes de cada versió, com aquesta, ja es llegeixen en els tres idiomes de l'app.",
+    "🚪 La pantalla d'entrada es queda només amb el logotip: la barreta de càrrega hi sobrava.",
+    "📲 Quan hi ha una versió nova de l'app per instal·lar, ja s'ofereix de debò; i si per alguna cosa no es pot instal·lar, l'app et diu el motiu en comptes de quedar-se callada.",
+    "🎨 L'app estrena icona de debò. La de l'escriptori i la de la pantalla d'arrencada encara eren la genèrica de l'eina amb què està feta.",
+   ]}},
+  {v:"4.11.0", d:"25 jul 2026",
+   t:{es:"La app se presenta al abrirse, y los bienes van por su cuenta",
+      en:"The app introduces itself when it opens, and assets stand on their own",
+      ca:"L'app es presenta en obrir-se, i els béns van pel seu compte"},
+   items:{
+   es:[
+    "🚪 Al abrir la app ya se ve su logo mientras carga, en vez de una pantalla en negro.",
+    "🏡 Tus bienes (piso, coche…) tienen ahora su propio bloque en Cartera, separado de las cuentas del banco. Puedes subirlo o bajarlo con «⇅ Ordenar secciones».",
+    "👤 Cerrar el perfil vuelve a ir a la primera, también si habías bajado dentro. Abrirlo y cerrarlo se sienten igual de suaves.",
+    "🔔 Se acabaron los avisos repetidos de que hay una versión nueva.",
+    "✨ El popup de Novedades marca bien cuál es la versión que llevas puesta.",
+    "💡 Por si acaso: el patrimonio de Inicio sube contando hasta tu cifra. Es una animación — el número final siempre ha sido el correcto.",
+   ],
+   en:[
+    "🚪 Opening the app now shows its logo while it loads, instead of a black screen.",
+    "🏡 Your assets (flat, car…) now have their own block in Portfolio, separate from your bank accounts. Move it up or down with «⇅ Reorder sections».",
+    "👤 Closing your profile works first time again, even if you had scrolled down inside it. Opening and closing now feel the same.",
+    "🔔 No more repeated notifications about a new version being available.",
+    "✨ The What's new popup now correctly marks which version you are running.",
+    "💡 Just in case: the net worth on Home counts up to your figure. It's an animation — the final number was always the right one.",
+   ],
+   ca:[
+    "🚪 En obrir l'app ja es veu el seu logotip mentre carrega, en lloc d'una pantalla en negre.",
+    "🏡 Els teus béns (pis, cotxe…) tenen ara el seu propi bloc a Cartera, separat dels comptes del banc. El pots pujar o baixar amb «⇅ Ordenar seccions».",
+    "👤 Tancar el perfil torna a anar a la primera, també si havies baixat a dins. Obrir-lo i tancar-lo se senten igual de suaus.",
+    "🔔 S'han acabat els avisos repetits que hi ha una versió nova.",
+    "✨ El missatge de Novetats marca bé quina versió portes posada.",
+    "💡 Per si de cas: el patrimoni d'Inici puja comptant fins a la teva xifra. És una animació — el número final sempre ha estat el correcte.",
+   ]}},
   {v:"4.10.2", d:"25 jul 2026", t:"El canal de pruebas, esta vez de verdad", items:[
     "🚧 Lo de ayer era solo la mitad. Después del arreglo anterior, la app seguía diciéndote «✓ estás a la última» con la versión de prueba ahí publicada. El motivo de fondo: GitHub no deja que la app lea esos ficheros directamente desde la web, así que ahora los pide Android, que sí puede. Comprobado: la versión de prueba nunca se había llegado a descargar ni una sola vez.",
     "🔔 Y si el canal de pruebas falla, te lo dice. Antes, cualquier problema al mirar si había versión nueva se disfrazaba de «no hay nada nuevo» — que es justo lo que hizo que esto pasara desapercibido tanto tiempo. Ahora sale el error y queda anotado.",
@@ -11009,8 +11441,8 @@ function WhatsNew({onClose, showToast, set, state}){
         React.createElement("button",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:8,width:"100%",background:"none",border:"none",color:"var(--text)",padding:0,cursor:"pointer",textAlign:"left"},onClick:function(){ setOpenV(open?null:r.v); }},
           React.createElement("span",{style:{fontWeight:800,fontSize:14}},"v"+(cur?CONFIG.APP_VERSION:r.v)+(cur?" · "+t("wn_current")+" ✓":"")),
           React.createElement("span",{style:{color:"var(--muted-2)",fontSize:11.5,flex:"0 0 auto"}},r.d+(open?" ▴":" ▾"))),
-        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},r.t),
-        open && r.items.map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
+        React.createElement("div",{style:{fontWeight:700,fontSize:13,margin:"5px 0 "+(open?"7px":"0"),color:cur?"var(--mint)":"var(--muted)"}},rnT(r.t)),
+        open && rnItems(r).map(function(it,j){ return React.createElement("div",{key:j,style:{fontSize:12.5,lineHeight:1.55,color:"var(--text)",margin:"0 0 7px",paddingLeft:14,textIndent:-14}},"• "+it); })
       );
     }),
     React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:12},onClick:onClose}, t("wn_close"))
@@ -11051,22 +11483,25 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   // manualmente»): consulta apk.json (APK) y version.json (web) al momento, sin esperar al arranque.
   const checkUpdates=function(){
     const nat=natPlugin();
-    if(!nat||!nat.appInfo) return;
-    const done=function(okMsg){
-      if(okMsg) showToast(okMsg);
-    };
+    if(!nat||!nat.appInfo){ showToast(t("apk_why_noapp")); return; }
+    // «Estás a la última» a secas no distingue «no hay nada nuevo» de «he mirado donde no era»:
+    // con la 35 publicada en la beta y el móvil leyendo el manifiesto de producción, la respuesta
+    // era la misma frase de siempre (2026-07-26). Ahora el resumen dice qué canal se ha mirado,
+    // qué APK ofrece y cuál llevas puesta, que es lo que hacía falta para no adivinar.
     Promise.resolve(window._mcCheckApkUpdate?window._mcCheckApkUpdate({manual:true, showToast:showToast}):false)
       .then(function(apkDone){
         if(apkDone) return;
+        const cierre=function(){
+          var por=window._mcApkWhy?" · "+window._mcApkWhy:"";
+          showToast(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+por);
+        };
         if(window._mcCheckOtaUpdates){
           return window._mcCheckOtaUpdates({manual:true, showToast:showToast}).then(function(otaDone){
             if(otaDone) return;
-            return Promise.resolve(nat.appInfo()).then(function(info){
-              done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION+(info&&info.versionName?" · app "+info.versionName:""));
-            });
+            cierre();
           });
         }
-        done(t("st_up_ok")+" · web v"+CONFIG.APP_VERSION);
+        cierre();
       });
   };
   const [events,setEvents]=useState(null);
@@ -11097,7 +11532,43 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [bankLinks,setBankLinks]=useState(null);   // null = cargando, [] = ninguno (resumen)
   const [bankBusy,setBankBusy]=useState(false);
   const [trConn,setTrConn]=useState(false);        // TR también cuenta como banco conectado (feedback 2026-07-10)
-  useEffect(function(){ const b=trBridge(); if(!b||!b.status) return; Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){}); },[uid]);
+  const [trKnown,setTrKnown]=useState(false);      // tuvo TR alguna vez (mc_tr_phone) → puede estar «caído»
+  // Versión nativa del APK (hueco 2026-07-26): sin esto Ajustes solo mostraba la OTA y no
+  // sabías si el icono/splash nuevos estaban puestos o seguías en la 34.
+  const [apkVer,setApkVer]=useState(null);
+  useEffect(function(){
+    const refreshTr=function(){
+      const known=!!(typeof trPhoneSaved==="function"&&trPhoneSaved());
+      setTrKnown(known);
+      const b=trBridge(); if(!b||!b.status){ if(!known) setTrConn(false); return; }
+      Promise.resolve(b.status()).then(function(r){ setTrConn(!!(r&&r.connected)); }).catch(function(){});
+    };
+    refreshTr();
+    const onTr=function(e){
+      if(e&&e.detail&&typeof e.detail.connected==="boolean"){ setTrConn(!!e.detail.connected); setTrKnown(true); return; }
+      refreshTr();
+    };
+    window.addEventListener("mc-tr-status", onTr);
+    return function(){ window.removeEventListener("mc-tr-status", onTr); };
+  },[uid]);
+  useEffect(function(){
+    const nat=natPlugin();
+    if(!nat||!nat.appInfo) return;
+    /* EL NÚMERO QUE HACE FALTA ES EL versionCode, NO EL versionName (feedback 2026-07-26, tercera
+       vez que lo pide): «sale la versión web y la versión de la app pero no sale la interesante,
+       la de la APK, no sé si está en 34 o 35 o vete tú a saber». Y tenía razón — `versionName` es
+       "4.12.0", O SEA EXACTAMENTE LO MISMO que la versión web, así que la fila no le decía nada
+       nuevo. Lo que distingue una APK de otra es el `versionCode` (34, 35…), que es además lo que
+       compara `apk.json` para ofrecerle la instalación. Sin ese número no puede saber si un fallo
+       nativo —el icono, por ejemplo— es un bug o es que no ha instalado la APK nueva. */
+    Promise.resolve(nat.appInfo()).then(function(info){
+      if(!info) return;
+      var nombre=info.versionName?String(info.versionName):"";
+      var codigo=info.versionCode!=null?String(info.versionCode):"";
+      if(codigo) setApkVer(nombre?nombre+" ("+codigo+")":"("+codigo+")");
+      else if(nombre) setApkVer(nombre);
+    }).catch(function(){});
+  },[]);
   const [manageBanks,setManageBanks]=useState(false);   // abre la sección "Mis bancos"
   useBackClose(manageBanks, function(){ setManageBanks(false); });   // gesto atrás: cierra "Mis bancos"
   // Banner «Reconectar TR» de Cartera (evento mc-open-banks → App abre Ajustes + goBanks):
@@ -11359,12 +11830,23 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_conn")),
     cloud.enabled() && (function(){
       const links=bankLinks;
-      const nActive=(links||[]).filter(function(r){ return r.status==='active'; }).length + (trConn?1:0);
-      const nDead=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'; }).length;
-      const summary = links===null ? "…"
+      // Issues de la última sync también cuentan: si no, el resumen decía «3 conectados» con
+      // uno caído en Cartera (rechazo 4.12.0.18). TR desconectado (tuvo teléfono, no conectado)
+      // entra en nDead por su propio camino — no es Open Banking.
+      const issueAsp={};
+      (state.bankIssues||[]).forEach(function(is){ if(is&&is.aspsp) issueAsp[String(is.aspsp).toLowerCase()]=1; });
+      const nActive=(links||[]).filter(function(r){
+        if(r.status!=='active') return false;
+        return !issueAsp[String(r.aspsp_name||"").toLowerCase()];
+      }).length + (trConn?1:0);
+      const nDeadDb=(links||[]).filter(function(r){ return r.status==='expired'||r.status==='error'||issueAsp[String(r.aspsp_name||"").toLowerCase()]; }).length;
+      const trDead=trKnown&&!trConn;
+      const nDead=nDeadDb + (trDead?1:0);
+      let summary = links===null ? "…"
         : nActive>0 ? (tf("bp_summary_n",{n:nActive}) + (nDead?" · "+tf("bp_summary_exp",{n:nDead}):""))
         : nDead>0 ? tf("bp_summary_exp",{n:nDead})
         : ((links||[]).some(function(r){return r.status==='pending';}) ? t("bank_pending") : t("bp_summary_none"));
+      if(trDead && summary.indexOf("Trade Republic")<0) summary += (summary&&summary!=="…"?" · ":"") + t("bp_summary_tr_dead");
       return grp("banks","🏦",t("bank_section"),"banco bancos bank conectar caixabank revolut sabadell trade republic myinvestor broker open banking sincronizar",summary,
         row("banks","🏦",t("bp_manage"),null,function(){ setManageBanks(true); })
       );
@@ -11423,8 +11905,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     newsOpen && React.createElement(WhatsNew,{onClose:function(){ setNewsOpen(false); },showToast:showToast,set:set,state:state}),
     fbOpen && ReactDOM.createPortal(React.createElement(FeedbackPanel,{state:state,set:set,showToast:showToast,onClose:function(){ setFbOpen(false); }}), document.body),
-    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",null,
-      row("upd","⬇️",t("st_update"),"v"+CONFIG.APP_VERSION,checkUpdates),
+    natPlugin() && grp("updates","⬇️",t("st_updates"),"actualizar update version apk buscar widget",
+      apkVer ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer}) : tf("st_ver_web",{v:CONFIG.APP_VERSION}),
+      row("upd","⬇️",t("st_update"),
+        apkVer ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer}) : ("v"+CONFIG.APP_VERSION),
+        checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
     grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
@@ -11585,10 +12070,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
 
     React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
-    // El canal se canta en el pie: si algo va raro, lo primero que hay que saber es si este móvil
-    // está en una beta o en la versión de todos (2026-07-24).
+    // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,
+    // aquí se ve al momento si sigues en una APK vieja aunque la web ya esté al día (2026-07-26).
     React.createElement("div",{style:{textAlign:"center",color:"#5E7468",fontSize:"12px",marginTop:"22px"}},
-      "Mi Cartera · v"+CONFIG.APP_VERSION+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
+      "Mi Cartera · "+(apkVer
+        ? tf("st_ver_both",{w:CONFIG.APP_VERSION,a:apkVer})
+        : ("v"+CONFIG.APP_VERSION))+((typeof mcChannel==="function"&&mcChannel()==="beta")?" · 🚧 beta":""))
   );
 
 }
@@ -12149,6 +12636,72 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     setSeg(simple?"recibos":gotoSeg.id);
     if(clearGoto) clearGoto();
   },[gotoSeg&&gotoSeg.ts]);
+  /* «EN DEUDAS Y METAS SE RELENTIZA DE MANERA MUY BESTIA» — CAPÍTULO 2 (2026-07-26 noche).
+     La 4.12.0 sacó el montaje de las PESTAÑAS fuera del gesto y él confirmó que deslizar «va de
+     10»… pero seguía marcando esto como fallo, y tenía razón: aquí dentro había otro montaje al
+     tocar. Estos tres segmentos se pintaban con `seg==="deudas" && <Debts/>`, así que estrenar
+     Deudas montaba el componente ENTERO dentro del toque. Medido con la CPU x6: **203 ms de hilo
+     bloqueado** recién abierta la app, 119 ms con ella ya reposada.
+
+     ⚠ Y el guardián no lo veía: `rendimiento-tabs.spec.mjs` medía ENTRAR EN PLAN, que aterriza en
+     Recibos, y nunca tocaba el segmento de Deudas. Pasaba en verde mientras él seguía viendo el
+     tirón — de ahí que esto sobreviviera a dos versiones.
+
+     Mismo arreglo que el carrusel: montar en huecos libres y luego solo enseñar/esconder, sin
+     desmontar. Y esconder con `height:0 + overflow:hidden + visibility:hidden` A PROPÓSITO, NO con
+     `display:none`: `display:none` se salta el layout, así que el coste no desaparecería, solo se
+     mudaría al momento de enseñarlo — que es exactamente la trampa que ya costó una vuelta con
+     `content-visibility` en las pestañas. Así el layout se paga una vez, en reposo. */
+  const [segMounted,setSegMounted]=useState(function(){ return {recibos:true}; });
+  useEffect(function(){ setSegMounted(function(m){ return m[seg]?m:Object.assign({},m,{[seg]:true}); }); },[seg]);
+  useEffect(function(){
+    if(simple) return;
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setSegMounted(function(m){ return m.deudas?m:Object.assign({},m,{deudas:true}); });
+      mcScheduleIdle(function(){
+        if(!cancelled) setSegMounted(function(m){ return m.metas?m:Object.assign({},m,{metas:true}); });
+      }, 4000);
+    }, 4000);
+    return function(){ cancelled=true; };
+  },[simple]);
+  /* Y OJO CON CÓMO SE ESCONDEN — aquí me equivoqué yo primero (2026-07-26 noche). Empecé con
+     `height:0 + overflow:hidden + visibility:hidden` para no perder el layout… y `visibility:hidden`
+     SIGUE PINTANDO: el elemento no se ve, pero participa en estilo, capas y pintado. Como los tres
+     segmentos viven dentro del `.track` que se mueve con el dedo, al deslizar se repintaban los
+     TRES en cada frame. Trazado: **323 `Paint`, 114 `UpdateLayoutTree` y 95 `Layerize` en un solo
+     gesto**, o sea 126 ms repartidos en trocitos — que no es una tarea larga que salte a la vista,
+     pero es exactamente su «al entrar en Deudas, moverte, y luego deslizar va con muchísimo lag».
+     Cambié un tirón de 203 ms al entrar por un peaje en CADA deslizada: mal negocio.
+     `display:none` NO pinta, NO calcula estilo y NO hace layout, y React conserva el estado del
+     componente igual, que era lo único que se quería conservar: lo caro es MONTARLO, y eso ya se
+     paga una vez en un hueco libre.
+
+     SEGUNDA VUELTA, 2026-07-27 — y aquí el que se equivocó fui yo. La solución que quedó fue
+     `visibility:hidden` SIEMPRE + `content-visibility:hidden` solo mientras el dedo arrastra, con
+     la idea de que el recálculo cayera después del `touchend`. Él lo siguió notando: «vas a
+     deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible el lag». Y tenía
+     razón: ese peaje no desaparecía, solo se movía tres milisegundos más allá.
+
+     Medidas de HOY (CPU x12, medianas de 5), que es lo que manda porque el premontaje y el que las
+     páginas ya no cuelguen del render de App han cambiado el terreno:
+
+       | cómo se esconden          | entrar en Plan | abrir Deudas | salir de Plan |
+       | visibility:hidden (antes) |     162 ms     |    198 ms    |    185 ms     |
+       | content-visibility SIEMPRE|      90 ms     |    148 ms    |    182 ms     |
+       | display:none              |      74 ms     |    253 ms    |    176 ms     |
+
+     Gana `content-visibility:hidden` puesto SIEMPRE: casi tan barato como `display:none` al entrar
+     y MUCHO mejor al abrir un segmento (148 vs 253), porque a diferencia de `display:none`
+     conserva el estado ya renderizado y solo tiene que volver a pintarlo. Y no era medible antes
+     de tener el resto arreglado, que es justo por qué esta decisión se re-mide en vez de heredarse.
+     Al ponerse siempre, sobra la regla especial de `.track.dragging` que había en shell.html. */
+  const oculto={height:0,overflow:"hidden",contentVisibility:"hidden",pointerEvents:"none"};
+  const capa=function(id,hijo){
+    if(!segMounted[id]) return null;
+    return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
+  };
   return React.createElement("div",{className:"v4-screen"},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_plan_title")),
     React.createElement("div",{className:"v4-seg",role:"tablist"},
@@ -12157,9 +12710,9 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
           className:"v4-seg-btn"+(seg===s.id?" on":""),onClick:function(){ setSeg(s.id); }}, s.lab);
       })
     ),
-    seg==="recibos" && React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen}),
-    seg==="deudas" && React.createElement(Debts,{state:state,set:set,showToast:showToast}),
-    seg==="metas" && React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast})
+    capa("recibos", React.createElement(PlanBills,{state:state,set:set,totals:totals,manageOpen:manageOpen,setManageOpen:setManageOpen})),
+    !simple && capa("deudas", React.createElement(Debts,{state:state,set:set,showToast:showToast})),
+    !simple && capa("metas", React.createElement(Goals,{state:state,set:set,totals:totals,showToast:showToast}))
   );
 }
 
@@ -12276,12 +12829,28 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
   // TR desconectado (y el usuario SÍ lo tuvo conectado alguna vez → mc_tr_phone guardado):
   // banner con botón que abre Mis bancos directamente. UX padre 2026-07-18: al ver el saldo
   // descuadrado se fue a la app de Trade Republic — el arreglo debe estar donde está el problema.
+  // Se reconsulta al volver a primer plano y cuando App avisa por `mc-tr-status` (antes solo
+  // miraba al montar y el banner se quedaba mudo tras un sync que caducaba la sesión).
   const [trDead,setTrDead]=useState(false);
   useEffect(function(){
-    const b=(typeof trBridge==="function")?trBridge():null;
-    if(!b||!b.status) return;
-    if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())) return;
-    Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    const check=function(){
+      const b=(typeof trBridge==="function")?trBridge():null;
+      if(!b||!b.status) return;
+      if(!(typeof trPhoneSaved==="function"&&trPhoneSaved())){ setTrDead(false); return; }
+      Promise.resolve(b.status()).then(function(r){ setTrDead(!(r&&r.connected)); }).catch(function(){});
+    };
+    check();
+    const onVis=function(){ if(document.visibilityState==="visible") check(); };
+    const onEvt=function(e){
+      if(e&&e.detail&&typeof e.detail.connected==="boolean"){ setTrDead(!e.detail.connected); return; }
+      check();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("mc-tr-status", onEvt);
+    return function(){
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("mc-tr-status", onEvt);
+    };
   },[]);
   // Qué compone el gráfico del hero: liquidez / inversiones / bienes, multiseleccionables
   // (petición 2026-07-18: «quiero ver inversiones + líquido, por ejemplo»). Todo ON por defecto.
@@ -12353,10 +12922,12 @@ function CarteraTab({state, set, totals, fetchPrices, pricing, simple, onBankSyn
         onReconnectBank && React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ onReconnectBank(is.aspsp); }}, tf("bk_issue_cta",{bank:lbl}))
       );
     }),
-    trDead && React.createElement("div",{className:"v4-card",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
+    trDead && React.createElement("div",{className:"v4-card v4-tr-issue",style:{marginTop:10,padding:"14px 16px",border:"1px solid rgba(226,112,95,.45)",background:"rgba(226,112,95,.08)"}},
       React.createElement("div",{style:{fontWeight:800,fontSize:14.5,lineHeight:1.4}}, t("bk_tr_dead")),
       React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:3,lineHeight:1.45}}, t("bk_tr_sub")),
-      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks")); }catch(e){} }}, t("bk_tr_cta"))
+      // TR no es Open Banking: el CTA abre Mis bancos con la tarjeta de TR desplegada (PIN+SMS),
+      // nunca un OAuth de Enable Banking.
+      React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,height:46},onClick:function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:"trade_republic"}})); }catch(e){} }}, t("bk_tr_cta"))
     ),
     /* BLOQUES ORDENABLES (petición 2026-07-25: «poder ordenar las cosas de la tab de cartera»).
        Mismo mecanismo que ya usan Fijos/Patrimonio/Deudas/Inversiones/Metas desde la 3.94:
@@ -12653,7 +13224,17 @@ function App(){
   const lastScrollY=useRef(0);
   const scrollTab=useRef(0);
   const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
+  // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
+  // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
+  // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
+  const lastScrollAt=useRef(0);
   const onPageScroll=function(e){
+    lastScrollAt.current=Date.now();
+    // Mientras el dedo cambia de pestaña, el momentum del scroll vertical sigue disparando
+    // eventos. Cada uno podía llamar a setNavHidden y re-renderizar App entera a mitad del
+    // gesto — eso es el «si te mueves en Deudas/Metas y deslizas acto seguido, se laguea»
+    // (rechazo 4.12.0.17). El perfil ya congelaba el scroll; el swipe de pestañas no.
+    if(dragging.current) return;
     const y=e.currentTarget.scrollTop;
     // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
     // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
@@ -12863,7 +13444,10 @@ function App(){
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
-      if(obAdded.length) showToast(tf("ob_imported",{n:obAdded.length}));
+      // En sync automática (la que dispara la noti del banco) se avisa solo de lo que ha entrado.
+      // Si has pulsado tú «↻ Sincronizar bancos», esto se junta con el resultado de abajo: dos
+      // avisos seguidos por una sola acción tuya eran ruido (feedback 2026-07-26).
+      if(obAdded.length && !opts.manual) showToast(tf("ob_imported",{n:obAdded.length}));
       // Resultado por banco (servidor tolerante a fallos): aplica los que funcionaron y avisa SOLO
       // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
@@ -12871,14 +13455,35 @@ function App(){
       // Saldo del banco: SOLO cuando lo pides tú (opts.manual). Antes también saltaba en cada sync
       // automático al abrir la app («el dinero de los bancos me sale, no me vale para nada»
       // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
-      if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
-      // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
-      // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
-      // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de
-      // Cartera existía pero había que dar con él. Ahora, al sincronizar A MANO:
-      //   1) notificación de verdad (queda en la bandeja) que al tocarla abre Cartera + Mis bancos,
-      //   2) y en el momento, la app abre sola el panel de bancos con ese banco resaltado.
+      // Resultado de pedirlo tú: UN solo mensaje que dice qué ha pasado. Antes era
+      // «🏦 CaixaBank: 1.234,56 €» — un número suelto, del PRIMER banco nada más aunque hubieras
+      // sincronizado tres, y con el aviso de los movimientos nuevos llegando por separado
+      // («el mensaje al actualizar cuentas hay que cambiarlo a uno más claro y conciso»).
+      //
+      // DOS CORRECCIONES tras probarlo él en el móvil (rechazo de la 4.12.0.17): «me dice que
+      // Sabadell perdió la conexión y luego sale una notificación de 4 bancos al día... los que
+      // tengo son Sabadell, Caixa, Revolut y Trade Republic».
+      //   1) `synced` trae una entrada por CUENTA, no por banco (mira `applyBankBalances`: el push
+      //      va dentro del bucle de cuentas). Con dos cuentas en Caixa ya decía «2 bancos». Se
+      //      cuentan entidades distintas.
+      //   2) Y no se canta victoria con un banco caído: si hay alguno que reconectar, el aviso que
+      //      manda es el ⚠ de abajo —que además abre el panel para arreglarlo—, no un «✓ al día»
+      //      que dice lo contrario medio segundo después.
       const issues=bankIssuesOf(links);
+      if(opts.manual && preview.synced.length && !issues.length){
+        const ents={}; preview.synced.forEach(function(x){ if(x&&x.ent) ents[x.ent]=1; });
+        const bancos=Object.keys(ents);
+        let msg = bancos.length===1
+          ? tf("bank_upd_one",{bank:entOf(bancos[0]).label, x:eur(preview.synced[0].bal)})
+          : tf("bank_upd_n",{n:bancos.length});
+        if(obAdded.length) msg += " · " + (obAdded.length===1 ? t("bank_upd_mov1") : tf("bank_upd_movn",{n:obAdded.length}));
+        showToast(msg);
+      }
+      // ── BANCO SIN CONECTAR: avisar y dejar el banner de Cartera a la vista ─────────────────
+      // Petición del padre (2026-07-24) + corrección 2026-07-26: la noti lleva a Cartera (donde
+      // está el banner con el botón), NO abre sola Mis bancos ni la autorización del banco.
+      // Abrir OAuth automáticamente con varios bancos caídos gastaba el permiso de un solo uso
+      // (invalid_request) y dejaba al usuario dando vueltas aunque el banco dijera «OK».
       if(issues.length){
         const lbl=issues[0].ent?entOf(issues[0].ent).label:(issues[0].aspsp||"🏦");
         const msg=issues.length>1
@@ -12888,10 +13493,11 @@ function App(){
         if(opts.manual){
           const nat=natPlugin();
           if(nat&&nat.showNotification){
-            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||"")}).catch(function(){}); }catch(e){}
+            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||""), tag:"banks"}).catch(function(){}); }catch(e){}
           }
-          // Y aquí mismo: el panel donde se reconecta, abierto y con el banco señalado.
-          setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:issues[0].aspsp||null}})); }catch(e){} }, 700);
+          // Deja Cartera delante para que el banner se vea sin buscar.
+          const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+          if(ci>=0) setTab(ci);
         }
       }
       // Fallo NO caducado = hipo transitorio del banco (rate-limit PSD2, 5xx…): el enlace sigue
@@ -12943,6 +13549,24 @@ function App(){
   // opts.manual = botón «Sincronizar» de Cartera (2026-07-18): además de MyInvestor entra
   // Trade Republic (solo a demanda: el TR de arranque deslogueaba APKs viejos) y se salta el
   // throttle. En automático (al abrir) sigue siendo solo MI, silencioso y con throttle.
+  // Aviso TR (2026-07-26): TR NO es Open Banking — va por otro camino y se quedaba mudo al
+  // caducar. Ahora, si la sesión murió de verdad, hay toast + noti estable + evento para que
+  // el banner de Cartera se entere, sin meterlo en bankIssuesOf.
+  const signalTrDead=function(){
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:false}})); }catch(e){}
+    try{
+      if(localStorage.getItem("_trDeadNotif")==="1") return;
+      localStorage.setItem("_trDeadNotif","1");
+    }catch(e){}
+    const nat=natPlugin();
+    if(nat&&nat.showNotification){
+      try{ nat.showNotification({title:t("bk_tr_notif_title"), body:t("bk_tr_notif_body"), gotoTarget:"tr|reconnect", tag:"tr"}).catch(function(){}); }catch(e){}
+    }
+  };
+  const signalTrAlive=function(){
+    try{ localStorage.removeItem("_trDeadNotif"); }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:true}})); }catch(e){}
+  };
   const runBrokerSync=function(opts){
     opts=opts||{};
     if(brokerSyncing.current) return Promise.resolve();
@@ -12950,12 +13574,20 @@ function App(){
     const jobs=[];
     const st=stateRef.current||{};
     let touched=0; const expiredB=[];
-    const bridge=(opts.manual && typeof trBridge==="function") ? trBridge() : null;
-    if(bridge && bridge.status && bridge.sync){
+    // Estado de TR: se consulta también en automático (solo status, sin sync) para que el
+    // banner de Cartera no se quede mirando un "conectado" viejo tras matar la app.
+    const bridge=(typeof trBridge==="function") ? trBridge() : null;
+    if(bridge && bridge.status){
       jobs.push(Promise.resolve(bridge.status()).then(function(r){
-        if(!(r&&r.connected)) return;
+        const hadPhone=typeof trPhoneSaved==="function"&&!!trPhoneSaved();
+        if(!(r&&r.connected)){
+          if(hadPhone){ expiredB.push("Trade Republic"); signalTrDead(); }
+          return;
+        }
+        signalTrAlive();
+        if(!opts.manual || !bridge.sync) return;   // sync TR solo a demanda
         return Promise.resolve(bridge.sync()).then(function(res){
-          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); return; }
+          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); signalTrDead(); return; }
           if(!res||!res.ok||!Array.isArray(res.positions)) return;   // anti-bot/hipo: silencio, se reintenta luego
           applyBrokerPositions(res.positions, "lastTrSync"); touched++;
         });
@@ -12975,7 +13607,14 @@ function App(){
     return Promise.all(jobs).catch(function(){}).then(function(){
       brokerSyncing.current=false;
       if(opts.manual){
-        if(expiredB.length) showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+        if(expiredB.length){
+          showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+          // TR: deja Cartera delante para que el banner se vea (mismo patrón que OB).
+          if(expiredB[0]==="Trade Republic"){
+            const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+            if(ci>=0) setTab(ci);
+          }
+        }
         else if(touched) showToast(t("v4_sync_brokers_ok"));
       }
     });
@@ -13088,6 +13727,9 @@ function App(){
       } else {
         const m=parts.slice(2).join("|");
         if(m.indexOf("nolink:")===0){ const nm=m.slice(7), en=entFromAspsp(nm), lbl=en?entOf(en).label:(nm||"🏦"); showToast("⚠ "+lbl+": "+t("bank_nolink")); }
+        // invalid_request = permiso ya gastado o caducado (casi siempre por lanzar dos
+        // autorizaciones a la vez). Mensaje propio, sin el error crudo de Enable Banking.
+        else if(/invalid_request/i.test(m)) showToast("⚠ "+t("bank_error_invalid"));
         else showToast("⚠ "+t("bank_error")+(m?": "+m:""));
       }
       return;
@@ -13097,7 +13739,11 @@ function App(){
     if(g==="update|apk"){
       const nat=natPlugin();
       const run=function(url){
-        if(!nat||!nat.installApk||!url) return;
+        // Igual que en el pill: una noti que al tocarla no hace nada ni dice nada es indistinguible
+        // de una noti rota (2026-07-26).
+        if(!nat){ showToast(t("apk_why_noapp")); return; }
+        if(!nat.installApk){ showToast(t("apk_why_oldapk")); return; }
+        if(!url){ showToast(window._mcApkWhy||t("st_up_ok")); return; }
         showToast(t("apk_downloading"));
         nat.installApk({url:url}).then(function(r){
           if(r&&r.needsPermission) showToast(t("apk_perm"));
@@ -13118,14 +13764,13 @@ function App(){
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
       return;
     }
-    // Noti «tienes un banco sin conectar» (2026-07-24): abre Cartera (donde está el banner con el
-    // botón) y, encima, el panel de Mis bancos ya desplegado. El padre no sabía DÓNDE se conectaba;
-    // ahora la noti le deja en el sitio exacto, sin buscar nada.
-    if(g==="banks" || g.indexOf("banks|")===0){
+    // Noti «banco caído» / «TR desconectado» (2026-07-26): SOLO Cartera, con el banner a la vista.
+    // Antes abría además Mis bancos (y a veces lanzaba la autorización), y con dos bancos caídos
+    // se disparaban dos OAuth: la segunda volvía con invalid_request aunque el banco dijera OK.
+    // El padre sigue viendo el aviso delante; el toque que reconecta es el del banner, no la noti.
+    if(g==="banks" || g.indexOf("banks|")===0 || g==="tr" || g.indexOf("tr|")===0){
       const ci=tabOrderOf(stateRef.current).indexOf("cartera");
       if(ci>=0) setTab(ci);
-      const aspsp=g.indexOf("banks|")===0 ? g.slice(6) : "";
-      setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:aspsp||null}})); }catch(e){} }, 250);
       return;
     }
     if(g==="gastos" || g.indexOf("exp|")===0){
@@ -13205,7 +13850,8 @@ function App(){
       if(m.indexOf("nolink:")===0){   // autorizó pero la cuenta no está dada de alta (modo restringido EB) → mensaje accionable
         const nm=m.slice(7), e=entFromAspsp(nm), lbl=e?entOf(e).label:(nm||"🏦");
         showToast("⚠ "+lbl+": "+t("bank_nolink"));
-      } else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
+      } else if(/invalid_request/i.test(m)){ showToast("⚠ "+t("bank_error_invalid")); }
+      else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
     }
   },[]);
 
@@ -13313,12 +13959,16 @@ function App(){
     window.addEventListener("mc-open-shared",h);
     return function(){ window.removeEventListener("mc-open-shared",h); };
   },[]);
-  // Banner «Reconectar {banco}» de Cartera: directo a la autorización del banco (vuelve con ?bank=ok).
+  // Banner «Reconectar {banco}» de Cartera: el ÚNICO toque que lanza la autorización.
+  // Candado compartido (bankConnectOnce): dos toques seguidos no gastan el permiso dos veces.
   const reconnectBank=function(aspsp){
     if(!cloud.enabled()||!sessionRef.current){ showToast(t("bp_need_login")); return; }
     showToast(t("bank_connecting"));
-    cloud.bankConnect(aspsp,"ES").then(function(d){ location.href=d.url; })
-      .catch(function(e){ showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
+    bankConnectOnce(aspsp,"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){
+        if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+      });
   };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
@@ -13379,24 +14029,64 @@ function App(){
   const freezeShell=function(on, kind){
     if(!appShellRef.current) return;
     if(on){
-      appShellRef.current.classList.add("gesture-freeze","dragging");
+      /* ⚠ `gesture-freeze` NO se pone al deslizar entre pestañas, y esto valía 28 ms por gesto.
+         Lo único que hace esa clase es `pointer-events:none` sobre el shell… y `pointer-events`
+         es una propiedad HEREDADA, así que tocarla en la raíz invalida el estilo del árbol
+         ENTERO. Trazado con la CPU x6 en el escenario del rechazo: un solo `UpdateLayoutTree` de
+         28,6 ms, el trozo más gordo de la tarea que rompía el frame. Tiene sentido en el perfil y
+         en el cajón (se superponen y no quieres que un dedo toque lo de debajo), pero deslizando
+         entre pestañas no protege de nada: un arrastre de más de 10 px ya no genera click. */
+      appShellRef.current.classList.add("dragging");
+      if(kind!=="tab") appShellRef.current.classList.add("gesture-freeze");
       if(kind==="profile") appShellRef.current.classList.add("profile-gesturing");
-      // Bloquea scroll de Resumen: si pelea con el pull-down del perfil → lag (feedback 2026-07-18).
-      if(kind==="profile" && trackRef.current){
+      // Bloquea el scroll de la página activa: si pelea con el gesto → lag.
+      // · perfil (2026-07-18): pull-down vs scroll de Inicio.
+      // · tab (2026-07-26): tras scrollear Deudas/Metas, el momentum vertical seguía vivo
+      //   mientras el track se desplazaba en horizontal — rechazo 4.12.0.17.
+      if((kind==="profile" || kind==="tab") && trackRef.current){
         const pageEl=trackRef.current.children[tabRef.current];
         if(pageEl){
-          pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
-          pageEl.style.overflow="hidden";
-          pageEl.style.touchAction="none";
+          /* ⚠ `overflow:hidden` SOBRE UNA PÁGINA SCROLLEADA NO ES GRATIS, y era el «al entrar en
+             Deudas, moverte, y luego deslizar va con muchísimo lag» (rechazos .17 → .23). El
+             navegador colapsa el rango de scroll: tira el scrollTop a 0 y repinta la página
+             entera, y al soltar se restaura y vuelve a repintar. Trazado con la CPU x6 en el
+             escenario exacto: **321 `Paint`, 113 `UpdateLayoutTree` y 95 `Layerize` en un solo
+             gesto** — no una tarea larga que salte a la vista, sino 126 ms en trocitos. Por eso
+             SOLO pasaba si te habías movido dentro: sin scroll no hay nada que colapsar.
+
+             Congelar hacía falta de verdad (el momentum vertical peleaba con el translateX del
+             track), pero solo cuando hay momentum VIVO. Si scrolleaste, paraste y luego deslizas
+             —que es el caso normal— no hay nada contra lo que pelear. Así que el candado caro se
+             pone solo si hubo scroll en los últimos 200 ms.
+
+             ⚠ AQUÍ VIVÍA `pageEl.style.touchAction="none"`, Y NO SERVÍA PARA NADA — salvo para
+             dejar la app muerta. El navegador decide qué puede hacer con un gesto **en el
+             `touchstart`**, mirando el `touch-action` de ese momento; cambiarlo con el dedo ya
+             puesto no afecta al gesto en curso (así lo dice la especificación y así se comporta
+             Chromium). O sea que como freno del momentum era decorativo. Lo que sí hacía era
+             quedarse puesto: si el gesto no acababa en `touchend` —y no acaba casi nunca, ver
+             `onCancel`—, la página se quedaba con `touch-action:none` y **el dedo dejaba de mover
+             la lista** hasta el siguiente gesto que terminara bien. Medido en su móvil por CDP el
+             2026-07-27: gesto cortado → dos deslizadas reales sin mover un píxel (scroll 473 →
+             473 → 473) → un gesto limpio → vuelve a ir (473 → 820). Eso es el «tirón». */
+          const conMomentum=(Date.now()-lastScrollAt.current)<200;
+          if(conMomentum){
+            pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
+            pageEl.style.overflow="hidden";
+          }
         }
       }
     } else {
       appShellRef.current.classList.remove("gesture-freeze","dragging","profile-gesturing");
       if(trackRef.current){
-        const pageEl=trackRef.current.children[tabRef.current];
-        if(pageEl){
-          pageEl.style.overflow="";
-          pageEl.style.touchAction="";
+        /* Se sueltan TODAS las páginas, no solo la activa. Si el gesto cambió de pestaña,
+           `tabRef` ya apunta a la nueva y la que se congeló se quedaba con el candado puesto
+           para siempre. Son cuatro elementos: barato y no deja rincones. */
+        const pgs=trackRef.current.children;
+        for(let i=0;i<pgs.length;i++){
+          const pageEl=pgs[i]; if(!pageEl||!pageEl.style) continue;
+          if(pageEl.style.overflow) pageEl.style.overflow="";
+          if(pageEl.style.touchAction) pageEl.style.touchAction="";   // limpia el de versiones viejas
           const y=parseFloat(pageEl.dataset.mcLockY);
           if(!isNaN(y)) try{ pageEl.scrollTop=y; }catch(e){}
           delete pageEl.dataset.mcLockY;
@@ -13455,25 +14145,40 @@ function App(){
      La transición dura 0,48 s. Si en ese rato empieza otro gesto, lo primero que hace es poner
      `.dragging` —que es `transition:none`—, así que la animación en vuelo se corta en seco y el
      panel PEGA UN SALTO desde donde iba hasta donde diga el dedo. Con el velo y el avatar a
-     medio camino, eso es exactamente «volverse loco». Se ignoran los toques hasta que el panel
-     asiente: por `transitionend` (lo normal) y con un plazo de respaldo por si el navegador no lo
-     dispara —pasa si la pestaña pierde el foco a mitad—, que dejaría el gesto muerto para siempre. */
-  const profBusy=useRef(false), profBusyT=useRef(null);
+     medio camino, eso es exactamente «volverse loco».
+     Afinado 2026-07-26 (rechazo «stopper»): el candado SE QUEDA, pero (1) se pone YA en el
+     cierre real, no en el useEffect de después —si no, hay una ventana en la que un segundo
+     dedo corta la animación—, (2) cerrar durante la apertura SÍ se deja (el usuario quiere
+     salir; lo que se bloquea es abrir desde Inicio a mitad de transición), y (3) transitionend
+     limpia el timeout y solo vale si es de la generación actual. */
+  const profBusy=useRef(false), profBusyT=useRef(null), profBusyGen=useRef(0);
+  const profClearBusy=function(){
+    profBusy.current=false;
+    if(profBusyT.current){ clearTimeout(profBusyT.current); profBusyT.current=null; }
+  };
   const profMarkBusy=function(){
+    const gen=++profBusyGen.current;
     profBusy.current=true;
     if(profBusyT.current) clearTimeout(profBusyT.current);
-    profBusyT.current=setTimeout(function(){ profBusy.current=false; }, 560);
+    // 500 ms = 480 de la CSS + margen pequeño. Antes 560 y se notaba «sordo» al cerrar rápido.
+    profBusyT.current=setTimeout(function(){ if(profBusyGen.current===gen) profClearBusy(); }, 500);
   };
   useEffect(function(){
     const el=profileRef.current; if(!el) return undefined;
-    const fin=function(e){ if(e.target===el && e.propertyName==="transform") profBusy.current=false; };
+    const fin=function(e){
+      if(e.target!==el || e.propertyName!=="transform") return;
+      // Solo la generación en curso: un transitionend viejo no desbloquea una animación nueva.
+      profClearBusy();
+    };
     el.addEventListener("transitionend", fin);
     return function(){ el.removeEventListener("transitionend", fin); };
   },[]);
   useEffect(function(){
     document.documentElement.classList.toggle("profile-open", !!profileOpen);
     if(!dragging.current && gestureMode.current!=="profile"){
-      profMarkBusy();   // arranca la animación: nadie la toca hasta que acabe
+      // Apertura por tap / cierre programático (✕, Ajustes, atrás). El cierre por gesto ya
+      // puso el candado en profileEnd; aquí cubrimos el resto.
+      if(!profBusy.current) profMarkBusy();
       if(profileOpen) profSetOrigin();   // re-ancla al avatar ANTES de animar (apertura por tap)
       setProfileProgress(profileOpen?1:0);
       if(profileRef.current){
@@ -13511,6 +14216,12 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     setSettingsProgress(!(closeProg>0.35 || flick)?1:0);
     dAx.current=null;
+  };
+  // El navegador se lleva el gesto (ver `onCancel`): Ajustes se queda como estaba, sin decidir.
+  const drawerCancel=function(){
+    if(!dDrag.current) return; dDrag.current=false; dAx.current=null; dDX.current=0;
+    if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
+    freezeShell(false);
   };
   // Cerrar perfil tirando ABAJO (arriba→abajo): misma escala al avatar en reversa.
   // Abrir ya es pull-down desde Inicio; cerrar «tira hacia atrás» el mismo gesto (feedback 2026-07-17).
@@ -13594,7 +14305,11 @@ function App(){
   const PROF_ASA=72;
   const pOwn=useRef(false);
   const profileStart=function(e){
-    if(profBusy.current) return;   // el panel está asentándose: este toque no es para el gesto
+    // Cerrar SÍ se deja aunque la apertura aún anime: el usuario quiere salir y el ✕ ya
+    // funcionaba sin el candado. Lo que el candado debe impedir es un segundo gesto que
+    // CORTE un cierre en vuelo (`.dragging` = transition:none → salto). Eso se cubre
+    // poniendo el candado síncrono en profileEnd al cerrar de verdad, más pointer-events:none
+    // del CSS mientras cierra. Bloquear aquí el arranque del cierre era el «stopper» de 560 ms.
     const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now();
     const el=profileRef.current;
     let asa=false;
@@ -13651,15 +14366,12 @@ function App(){
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const stay=!profPasa(dist, dt, PROF_TH_CLOSE);
-    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose. Lo pone el
-       efecto de `profileOpen`, así que aquí basta con no estorbar.
-       La 4.11.0 lo ponía en CUALQUIER final de gesto: también en el rebote de «he tirado y no ha
-       llegado», y también en un simple toque. Como en esos casos no hay `transitionend` que lo
-       levante (o llega tarde), el candado se comía sus 560 ms y el SIGUIENTE intento de cerrar no
-       llegaba ni a empezar. Sumado al umbral doblado, esa era la otra mitad de «a la mínima vuelve
-       a la posición inicial» (veredicto de beta 2026-07-26): tiras, no llega, vuelves a tirar en
-       el acto y la app está sorda. Cortar un rebote es inofensivo —el panel vuelve a donde ya
-       estaba—; cortar el cierre es lo que se veía «loco», y eso lo sigue cubriendo el efecto. */
+    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose.
+       Se pone AQUÍ, síncrono, ANTES de setProfileOpen(false): si espera al useEffect, hay una
+       ventana en la que un segundo touchstart todavía ve profBusy=false, engancha `.dragging`
+       y corta la transición (el «vuelve loco» original). El rebote (stay=true) NO lo pone:
+       bloquearlo dejaba la app sorda al segundo intento (veredicto beta 2026-07-26). */
+    if(!stay) profMarkBusy();
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
@@ -13699,8 +14411,6 @@ function App(){
     setAuthStart("up");   // onboarding → "Crear cuenta" directo, sin pasar por el login (punto 5)
     setShowAuth(true);
   };
-  const [showDots,setShowDots]=useState(false);
-  const dotsTimer=useRef(null);
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
@@ -14170,12 +14880,31 @@ function App(){
   };
   // startTransition: la animación del track va primero; React monta la pestaña en segundo plano.
   const goTab=function(i){
-    if(i<0||i>=tabIds.length||i===tab) return;
-    revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
-    prepMountTab(i);
-    if(i>0) prepMountId(tabIds[i-1]);
-    if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
-    React.startTransition(function(){ setTab(i); });
+    // `tabRef` y no `tab`: este cierre viaja dentro de las páginas memoizadas (ver `contenidos`
+    // más abajo), que a propósito NO se rehacen al cambiar de pestaña. Leyendo `tab` se quedaría
+    // con el de cuando se construyó la página y, si coincidiera con el destino, este `return`
+    // temprano se tragaría el salto: «Ver más → Gastos» sin hacer nada.
+    if(i<0||i>=tabIds.length||i===tabRef.current) return;
+    lastTabAt.current=Date.now();   // ver el «stopper» en onMove: encadenar deslizadas no debe abrir Ajustes
+    /* TODO EN LA MISMA TRANSICIÓN, Y ESTO ERA EL LAG QUE ÉL SEGUÍA NOTANDO (2026-07-27).
+       `revealNav()` y los `prepMount*` son `setState` URGENTES, mientras que el cambio de pestaña
+       iba en `startTransition`: React los atiende en carriles distintos, así que al soltar el dedo
+       se renderizaba App DOS VECES —una urgente y otra de transición— justo encima de la animación
+       del carrusel. Su repro lo dejó ver: el caso lento no era «Gastos arriba», era que **la barra
+       inferior estaba escondida y tenía que reaparecer**, y reaparecer es precisamente lo que
+       dispara el render urgente. Medido con frames (que es lo que se nota, no las tareas largas):
+         Gastos arriba + barra escondida (su caso lento)   peor frame 100-117 ms
+         Gastos arriba + barra ya visible                  peor frame  83 ms
+         Gastos bajado (su caso fluido)                    peor frame  83 ms
+       Ocultar TODO el contenido de arriba de Gastos no cambiaba nada (100 ms), así que no era lo
+       que se pintaba: era el render de más. Con todo en la misma transición, una sola pasada. */
+    React.startTransition(function(){
+      revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
+      prepMountTab(i);
+      if(i>0) prepMountId(tabIds[i-1]);
+      if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
+      setTab(i);
+    });
   };
   // «Ver más» desde Resumen: la pestaña destino conserva su scroll y aterrizabas a mitad de
   // Metas/Gastos (feedback 2026-07-18) → estos enlaces resetean el scroll de la página destino.
@@ -14188,8 +14917,131 @@ function App(){
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
-  const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
-  const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
+  const trackW=useRef(0);   // ancho del carrusel, medido al empezar el gesto (ver onMove)
+  const prepped=useRef(0);    // qué vecina se ha premontado ya EN ESTE gesto (ver onMove)
+  const lastTabAt=useRef(0);   // cuándo se cambió de pestaña por última vez (ver el «stopper» en onMove)
+  /* EL CARRUSEL SE MUEVE EN PÍXELES, NO EN PORCENTAJES — y esto valía la mitad del lag.
+     Iba con `translateX(-100%)`, y un porcentaje en un `transform` se resuelve contra el ancho
+     del propio elemento, o sea que **hay que consultar el layout para saber a cuántos píxeles
+     equivale**. En un valor fijo eso se hace una vez; escrito en cada `touchmove` durante un
+     arrastre, se paga por frame y saca el gesto del compositor. Medido en el escenario del
+     rechazo (scroll en Deudas → deslizar, CPU x12): **146 → 76 ms** de tareas largas solo por
+     este cambio. Con `translate3d(px,0,0)` no hay nada que resolver y además el `,0,0` pide capa
+     propia explícitamente.
+     Se usa en TODAS las escrituras del track, no solo en la del arrastre: si unas fueran en `%` y
+     otras en píxeles, la transición al soltar interpolaría entre dos listas de funciones
+     distintas y el navegador caería a interpolar matrices. */
+  /* LA BARRA DE ABAJO DESENFOCA LO QUE PASA POR DETRÁS, Y ESO SE PAGA EN CADA FRAME (2026-07-27).
+     Su repro, que es el que lo destapó: «cuando en Gastos estás ARRIBA DEL TODO… vas a Deudas, te
+     mueves, y vuelves a Gastos: hay lag. Si en Gastos estabas abajo, no hay nada de lag, va ultra
+     fluido». La diferencia entre los dos casos es que al bajar en una lista **la barra inferior se
+     esconde**, y una barra escondida no tiene nada que desenfocar.
+
+     `.botnav` lleva `backdrop-filter: blur(16px)`: el navegador tiene que recalcular el desenfoque
+     cada vez que cambia lo que hay detrás — y al deslizar entre pestañas, detrás se mueve la app
+     entera. Medido: la barra se repinta 47 veces en un solo gesto. Y acotado con el tope teórico:
+
+       barra visible, con desenfoque (como estaba)   181 ms
+       barra visible, SIN desenfoque                 145 ms
+       barra fuera del pintado (tope teórico)        141 ms
+
+     O sea que el coste de la barra durante un desliz es CASI TODO su desenfoque, y quitarlo se
+     lleva prácticamente el máximo posible. Como el diseño no se toca (petición suya), se apaga
+     solo mientras hay movimiento y vuelve al terminar: exactamente lo que ya se hace con el velo
+     del perfil, que tampoco desenfoca durante el arrastre. A 0,42 s de transición nadie ve la
+     diferencia; lo que sí se nota es el tirón. */
+  const navBlurT=useRef(0);
+  const navSinBlur=function(off){
+    if(navBlurT.current){ clearTimeout(navBlurT.current); navBlurT.current=0; }
+    if(!appShellRef.current) return;
+    appShellRef.current.classList.toggle("nav-sin-blur", !!off);
+  };
+  const navSinBlurTrasTransicion=function(){
+    // Respaldo por tiempo: si el asentamiento rAF se cancela a mitad, el desenfoque no se queda.
+    if(navBlurT.current) clearTimeout(navBlurT.current);
+    navBlurT.current=setTimeout(function(){
+      navBlurT.current=0;
+      if(appShellRef.current) appShellRef.current.classList.remove("nav-sin-blur");
+    }, 480);
+  };
+  useEffect(function(){ return function(){ if(navBlurT.current) clearTimeout(navBlurT.current); }; },[]);
+  const trackAnchoAhora=function(){ return (trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360; };
+  const trackX=function(i){ return "translate3d("+(-i*(trackW.current||trackAnchoAhora()))+"px,0,0)"; };
+  /* ASENTAR EL CARRUSEL CON rAF, NO CON transition CSS — 2026-07-27, medido en SU móvil.
+     La transition de 0,42 s producía exactamente este ritmo al soltar el dedo:
+       25 8 25 8 25 8 … (trece veces) → 60 Hz a trompicones durante todo el asentamiento.
+     El arrastre con el dedo iba a 8,3 ms clavados (120 Hz). WAAPI igual de malo; acortar la
+     transition a 0,18 s dejaba 6 saltos (proporcional). Con rAF escribiendo transform: **0
+     saltos**, cuatro veces seguidas. Herramienta: tools/movil/ab-waapi.mjs / huecos.mjs.
+     Curva = la misma cubic-bezier(.32,.72,0,1) que tenía el CSS (feedback 2026-07-17). */
+  const settleRaf=useRef(0);
+  const settleGen=useRef(0);
+  const settleTo=useRef(-1);
+  const trackPxAhora=function(){
+    const el=trackRef.current; if(!el) return 0;
+    const cur=getComputedStyle(el).transform;
+    if(!cur||cur==="none") return 0;
+    const m=cur.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*(-?[\d.]+)/);
+    return m?parseFloat(m[1]):0;
+  };
+  const easeTrack=function(x){
+    // Resuelve Y de cubic-bezier(.32,.72,0,1) para progreso X ∈ [0,1].
+    var lo=0, hi=1, t=x, i, u, bx;
+    for(i=0;i<10;i++){
+      t=(lo+hi)/2; u=1-t;
+      bx=3*u*u*t*0.32 + 3*u*t*t*0 + t*t*t;
+      if(bx<x) lo=t; else hi=t;
+    }
+    u=1-t;
+    return 3*u*u*t*0.72 + 3*u*t*t*1 + t*t*t;
+  };
+  const asentarTrack=function(i){
+    const el=trackRef.current; if(!el) return;
+    if(settleRaf.current && settleTo.current===i) return;   // ya vamos ahí: no reiniciar
+    if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
+    const gen=++settleGen.current;
+    settleTo.current=i;
+    el.classList.remove("dragging");
+    const toX=-(i*(trackW.current||trackAnchoAhora()));
+    if(document.documentElement.classList.contains("reduce-motion")){
+      el.style.transform="translate3d("+toX+"px,0,0)";
+      settleTo.current=-1;
+      navSinBlur(false);
+      return;
+    }
+    const fromX=trackPxAhora();
+    if(Math.abs(fromX-toX)<0.5){
+      el.style.transform="translate3d("+toX+"px,0,0)";
+      settleTo.current=-1;
+      navSinBlurTrasTransicion();
+      return;
+    }
+    const t0=performance.now();
+    const dur=420;
+    const step=function(now){
+      if(gen!==settleGen.current) return;
+      const p=Math.min(1,(now-t0)/dur);
+      const x=fromX+(toX-fromX)*easeTrack(p);
+      el.style.transform="translate3d("+x+"px,0,0)";
+      if(p<1){ settleRaf.current=requestAnimationFrame(step); }
+      else {
+        settleRaf.current=0; settleTo.current=-1;
+        el.style.transform="translate3d("+toX+"px,0,0)";
+        navSinBlur(false);
+      }
+    };
+    settleRaf.current=requestAnimationFrame(step);
+  };
+  useEffect(function(){
+    return function(){ if(settleRaf.current) cancelAnimationFrame(settleRaf.current); };
+  },[]);
+  /* Aquí vivían revealDots()/hideDotsSoon(), que encendían y apagaban el indicador de puntitos
+     del swipe. Ese indicador se lo llevó por delante el rediseño v4: `.app.v4 .dots` está oculto
+     con `display:none !important` y ningún módulo crea ya el elemento (comprobado buscando
+     `showDots` y `className:"dots"` en todo `src/`: no aparece en un solo render). Lo que
+     sobrevivió fue su maquinaria de estado, y cobraba peaje —`setShowDots(true)` al declararse el
+     gesto horizontal y `setShowDots(false)` 1,1 s después—: DOS re-renders completos de App por
+     cada pasada de dedo entre pestañas, para no pintar absolutamente nada. Retirado 2026-07-26. */
   const drawerW=function(){ return window.innerWidth||360; };
   const EDGE_OPEN=52;
   const onStart=(e)=>{
@@ -14198,7 +15050,34 @@ function App(){
     // Sheets portaleados desde una tab (editar gasto): el DOM está en body pero el árbol
     // React burbujea hasta aquí — sin esto, scroll de chips mueve las tabs (2026-07-17).
     if(document.documentElement.classList.contains("sheet-open")) return;
+    /* ZONAS QUE NO SON NUESTRAS. Los toques se escuchan a mano (ver el efecto de más abajo), y un
+       listener nativo en `.viewport` se dispara ANTES que los de React, así que el
+       `stopPropagation` de `stopSwipe` ya no llegaría a tiempo: hay que mirarlo aquí.
+         · `[data-noswipe]`: buscador y rango de fechas de Gastos, que lo piden explícitamente.
+         · cualquier cosa con scroll horizontal propio (las filas de chips): el dedo es del
+           navegador, no nuestro. Antes esto «funcionaba» de rebote —el navegador se quedaba el
+           gesto porque no podíamos impedírselo— y ahora que sí podemos hay que ser explícitos. */
+    const t=e.target;
+    if(t&&t.closest&&t.closest("[data-noswipe]")) return;
+    for(let el=t; el&&el!==document.body; el=el.parentElement){
+      if(el.classList&&el.classList.contains("page")) break;
+      if(el.scrollWidth>el.clientWidth+4){
+        const ox=getComputedStyle(el).overflowX;
+        if(ox==="auto"||ox==="scroll") return;
+      }
+    }
+    /* RED DE SEGURIDAD. `touchcancel` cubre el caso conocido, pero un gesto también puede morirse
+       sin avisar de ninguna manera: si la app se va a segundo plano con el dedo puesto, no llega
+       ni `touchend` ni `touchcancel` y el candado se queda. Soltar siempre antes de empezar no
+       cuesta nada (son cuatro `style.x=""` y quitar clases) y garantiza que NINGÚN dedo se
+       encuentre la app bloqueada por el gesto anterior. Si algún día vuelve a haber una fuga,
+       aquí se cura sola. */
+    if(dragging.current) onCancel();
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
+    // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
+    // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
+    trackW.current=(trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360;
+    prepped.current=0;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
@@ -14223,7 +15102,19 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
+        /* EL «STOPPER» (rechazos .19 y .23: «hay un stopper o algo que no permite deslizar de
+           manera seguida y rápida»). Reproducido midiendo: tres arrastres encadenados dan
+           `gastos → inicio → ninguna`, y que no haya pestaña activa significa que se abrió el
+           cajón. La causa es esta línea: en Inicio, un desliz a la derecha abre Ajustes DESDE
+           TODA LA PANTALLA (se hizo así a propósito el 17/7). Está bien cuando es un gesto
+           deliberado, pero encadenando deslizadas hacia atrás llegas a Inicio y **la siguiente
+           te planta Ajustes en la cara** — que es exactamente lo que se siente como un tope.
+           Solución: el atajo de pantalla completa solo cuenta si el dedo no viene de estar
+           cambiando de pestaña hace nada. Si acabas de cambiar (<450 ms), en Inicio manda el
+           borde, como en el resto de pestañas: sigues pudiendo abrir Ajustes desde la franja
+           izquierda, pero una deslizada de más ya no te saca de donde estás. */
+        const encadenando=(Date.now()-lastTabAt.current)<450;
+        const openSettings = ddx>0 && ((tab===0 && !encadenando) || startX.current < EDGE_OPEN);
         if(openSettings){
           gestureMode.current="drawer";
           setDrawerMounted(true);   // por si el idle aún no ha premontado (1ª vez sin negro)
@@ -14231,7 +15122,11 @@ function App(){
           freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
-          if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
+          if(trackRef.current) trackRef.current.classList.add("dragging");
+          navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
+          // Congela el scroll de la página: sin esto, el momentum vertical de Deudas/Metas
+          // pelea con el translateX del track (mismo patrón que el perfil, 2026-07-18).
+          freezeShell(true,"tab");
         }
       } else if(axis.current==="y" && tab===0 && ddy>0){
         const pages=trackRef.current&&trackRef.current.children;
@@ -14264,14 +15159,42 @@ function App(){
       if(e.cancelable) e.preventDefault();
       return;
     }
-    const w=trackRef.current?trackRef.current.offsetWidth:360;
+    /* EL ANCHO SE MIDE UNA VEZ, AL EMPEZAR EL GESTO — aquí estaba el lag de verdad (rechazos
+       .17 → .23: «al entrar en Deudas, moverte, y luego deslizar va con muchísimo lag»).
+       Esto leía `trackRef.current.offsetWidth` EN CADA `touchmove`, y leer `offsetWidth` obliga al
+       navegador a recalcular el layout de forma SÍNCRONA. Con la página sin scrollear el layout
+       está limpio y la lectura sale gratis; pero congelar el scroll le pone `overflow:hidden`, eso
+       ensucia el layout, y entonces cada lectura se convierte en un reflow COMPLETO del documento.
+       Por eso solo se notaba «si te movías dentro»: hacían falta las dos cosas a la vez, y por
+       separado ninguna cantaba. Trazado con la CPU x6: 113 `UpdateLayoutTree` y 322 `Paint` en un
+       solo gesto — no una tarea larga que salte a la vista, sino 126 ms en trocitos.
+       Es layout-thrashing de manual, y la cura es la de manual: leer una vez, fuera del bucle. El
+       ancho del track no cambia mientras el dedo está en la pantalla. */
+    const w=trackW.current||360;
     let off=-tab*100+(dx.current/w)*100;
     // Sin rubber-band a la derecha en Inicio (ese gesto es Ajustes) — evitaba el rebote raro.
     if(tab===tabIds.length-1&&dx.current<0) off=-tab*100+(dx.current/w)*100*0.28;
     else if(tab===0&&dx.current>0) off=-tab*100;
-    if(trackRef.current) trackRef.current.style.transform="translateX("+off+"%)";
-    if(dx.current<-24 && tab<tabIds.length-1) prepMountTab(tab+1);
-    else if(dx.current>24 && tab>0) prepMountTab(tab-1);
+    if(trackRef.current) trackRef.current.style.transform="translate3d("+(off*w/100)+"px,0,0)";
+    /* ESTE `preventDefault` ES EL QUE FALTABA, Y ES TODO EL PROBLEMA (2026-07-27).
+       Sin él, el navegador considera que el gesto es SUYO en cuanto huele scroll: se lo lleva,
+       manda `touchcancel` y el arrastre de pestañas se queda a medias. Medido en su móvil:
+       **174 de 185 gestos suyos acabaron cancelados**, y **6 de cada 18 arrastres del carrusel
+       volvían a la pestaña de la que salieron** — o sea, deslizaba y no pasaba nada. Eso es su
+       «hay un stopper» y su «se pierde la fluidez de golpe»: no es que fuera lento, es que un
+       tercio de sus deslizadas no contaban.
+       Con el eje ya declarado horizontal, el gesto es nuestro y hay que decirlo. Ojo: solo
+       funciona porque los listeners se registran a mano con `{passive:false}` (ver el efecto de
+       abajo) — exactamente el mismo agujero que se arregló en el perfil el 18/7 y que aquí se
+       quedó sin arreglar. */
+    if(e.cancelable) e.preventDefault();
+    /* Y ESTO SE PEDÍA EN CADA `touchmove`. `prepMountTab` acaba en un `setMountedTabs` que
+       devuelve el MISMO objeto si la pestaña ya estaba montada, así que React se ahorra el
+       re-render… pero no se ahorra la llamada, ni la comprobación, ni el trabajo de programar la
+       actualización: en un arrastre son ~35 veces para no cambiar nada. Con una marca por gesto
+       basta, porque montar es idempotente y la dirección no cambia a mitad de arrastre. */
+    if(dx.current<-24 && tab<tabIds.length-1 && prepped.current!==1){ prepped.current=1; prepMountTab(tab+1); }
+    else if(dx.current>24 && tab>0 && prepped.current!==-1){ prepped.current=-1; prepMountTab(tab-1); }
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
@@ -14300,7 +15223,10 @@ function App(){
         setDrawerOpen(open);
         setSettingsProgress(open?1:0);
       } else {
-        if(trackRef.current) trackRef.current.classList.remove("dragging");
+        // El desenfoque NO vuelve al soltar: el carrusel sigue moviéndose 0,42 s, y ahí es
+        // donde más se nota. `asentarTrack` lo apaga al terminar; el timer es el respaldo.
+        navSinBlurTrasTransicion();
+        freezeShell(false);   // suelta el scroll que congelamos al fijar el eje horizontal
         const w=trackRef.current?trackRef.current.offsetWidth:360;
         const dist=dx.current;
         const dt=Math.max(1,Date.now()-startT.current);
@@ -14310,15 +15236,95 @@ function App(){
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
+        // Asentar YA (rAF), no esperar al setState: si no, el carrusel se queda un frame
+        // plantado donde lo soltó el dedo. goTab dispara el useEffect de `tab`, que vuelve a
+        // llamar asentarTrack con el mismo destino → no-op (ver settleTo).
         if(nt!==tab) goTab(nt);
-        else if(trackRef.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)";
-        hideDotsSoon();
+        asentarTrack(nt);
       }
     }
     gestureMode.current=null;
     axis.current=null;
   };
-  useEffect(()=>{ if(trackRef.current&&!dragging.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; },[tab]);
+  /* EL GESTO QUE NO ACABA EN `touchend` — y aquí estaba el «tirón» de verdad, cuatro rechazos.
+     Cuando el navegador decide que un gesto es SUYO (lo normal: cualquier arrastre que acabe
+     scrolleando la lista) se lleva el dedo y avisa con `touchcancel`. **`touchend` ya no llega
+     nunca.** Y `.viewport` solo tenía `onTouchStart/onTouchMove/onTouchEnd`, así que en ese
+     camino no se ejecutaba NADA de lo que suelta el gesto: ni `freezeShell(false)`, ni quitar
+     `.dragging` del track, ni devolver el carrusel a su sitio, ni encender otra vez el
+     desenfoque de la barra. Con el dedo real pasa constantemente — en su móvil, **174 de 185
+     gestos terminaron cancelados** (medido por CDP el 2026-07-27).
+
+     Lo que se sentía: la app se quedaba con la página bloqueada y el carrusel plantado a medio
+     camino. Deslizas y no se mueve nada; insistes; en cuanto un gesto termina bien, se suelta
+     todo de golpe y la pantalla PEGA EL SALTO. Es exactamente su «hay un stopper», su «no se
+     mueve y luego va a trompicones» y su «a veces sí y a veces no» — y explica por qué un día
+     entero de medir rendimiento no lo encontró: **la app no iba lenta, iba bloqueada**. Ningún
+     banco de pruebas lo reprodujo porque un gesto sintético siempre termina con un `touchend`
+     limpio; solo un dedo de verdad hace que el navegador se lleve el gesto.
+
+     El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
+  const onCancel=function(){
+    if(!dragging.current) return;
+    if(gestureMode.current==="profile"){
+      profileRelease();
+      setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba
+      pDY.current=0;
+      dragging.current=false; axis.current=null; gestureMode.current=null;
+      freezeShell(false);
+      return;
+    }
+    // El desenfoque vuelve YA (no como al soltar): aquí no hay transición del carrusel que proteger.
+    navSinBlur(false);
+    cancelSwipe();
+  };
+  /* LOS TOQUES DE LAS PESTAÑAS, A MANO Y CON `{passive:false}` — el mismo arreglo que necesitó el
+     perfil el 18/7 y que aquí nunca se aplicó. React ata `onTouchMove` al contenedor raíz en modo
+     PASIVO, y en un listener pasivo `preventDefault()` no hace nada: solo deja un aviso en consola
+     que ningún test mira. Resultado, medido en su móvil: el navegador se quedaba uno de cada tres
+     arrastres para scrollear, mandaba `touchcancel`, y la deslizada no cambiaba de pestaña.
+     Con el listener a mano el gesto es nuestro de verdad. `touchcancel` sigue atado (`onCancel`)
+     porque el sistema —una noti, el borde de la pantalla— también puede llevárselo. */
+  const viewportRef=useRef(null);
+  const gestRef=useRef({});
+  gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
+  useEffect(function(){
+    const el=viewportRef.current; if(!el) return undefined;
+    const s=function(e){ gestRef.current.s(e); };
+    const m=function(e){ gestRef.current.m(e); };
+    const t=function(e){ gestRef.current.e(e); };
+    const c=function(e){ gestRef.current.c(e); };
+    el.addEventListener("touchstart", s, {passive:true});
+    el.addEventListener("touchmove", m, {passive:false});
+    el.addEventListener("touchend", t, {passive:true});
+    el.addEventListener("touchcancel", c, {passive:true});
+    return function(){
+      el.removeEventListener("touchstart", s);
+      el.removeEventListener("touchmove", m);
+      el.removeEventListener("touchend", t);
+      el.removeEventListener("touchcancel", c);
+    };
+  },[]);
+  // Toque en la barra inferior (y cualquier setTab que no venga del gesto): mismo asentamiento
+  // por rAF. Si el gesto ya lo arrancó hacia este índice, asentarTrack no reinicia.
+  useEffect(function(){ if(!dragging.current) asentarTrack(tab); },[tab]);
+  // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
+  // píxel no. Si cambia el ancho (rotación, teclado, barra del navegador), se tira la medida
+  // cacheada y se vuelve a colocar el carrusel. Fuera del gesto, para no medir con el dedo puesto.
+  useEffect(function(){
+    const alRedimensionar=function(){
+      trackW.current=0;
+      if(trackRef.current&&!dragging.current){
+        // Snap sin animar: el ancho nuevo cambia el destino en px; animar desde el viejo salta.
+        if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
+        settleTo.current=-1;
+        trackRef.current.style.transform=trackX(tab);
+      }
+    };
+    window.addEventListener("resize",alRedimensionar);
+    window.addEventListener("orientationchange",alRedimensionar);
+    return function(){ window.removeEventListener("resize",alRedimensionar); window.removeEventListener("orientationchange",alRedimensionar); };
+  },[tab]);
   /* auto-scroll del tab bar para que la pestaña activa siempre se vea */
   useEffect(()=>{
     const bar=tabbarRef.current; if(!bar) return;
@@ -14391,12 +15397,17 @@ function App(){
     // deps: si la app arranca en el candado o el onboarding, la tabbar aún no existe en el
     // primer montaje y los listeners no se instalarían nunca; al desbloquear se re-ejecuta.
   },[locked, state.onboarded]);
-  const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
+  // `data-noswipe` además del stopPropagation: los toques de las pestañas van por listener nativo
+  // y ese se dispara antes que los de React (ver `onStart`).
+  const stopSwipe={ "data-noswipe":"1", onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
   // Cancela el gesto de tabs/ajustes a mitad (chips de Gastos: scroll interno sin cambiar de pestaña).
   const cancelSwipe=function(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
-    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; }
+    // `tabRef` por lo mismo que en `goTab`: con el `tab` de cuando se construyó la página, cancelar
+    // el gesto devolvería el carrusel a la pestaña equivocada. Asentar por rAF (no snap a pelo):
+    // si no, el dedo ve un salto seco cuando el navegador se lleva el gesto.
+    asentarTrack(tabRef.current);
     if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
     freezeShell(false);
     setSettingsProgress(drawerOpen?1:0);
@@ -14409,10 +15420,41 @@ function App(){
   },[tab, tabIds.join("|")]);
   // Tras el primer pintado: NO montar vecinas en auto. Montar ±1 al toque/swipe (prepMountTab)
   // evitaba un segundo hitch a ~900 ms junto con WhatsNew (feedback 2026-07-16).
+  //
+  // PERO montarlas al TOCAR significa montarlas DENTRO del gesto (feedback 2026-07-26: «las
+  // primeras veces que deslizas entre pestañas va a tirones, luego se suaviza»). Medido con la
+  // CPU estrangulada x6: 1ª deslizada 218+149+69+65 ms de tareas largas, 2ª 97 ms, 3ª y 4ª
+  // limpias — exactamente lo que él describió. El coste de montar no se puede evitar, pero sí
+  // ELEGIR CUÁNDO se paga: aquí se paga en huecos libres, una pestaña por hueco, antes de que
+  // nadie toque la pantalla. Se mantienen los 3,2 s del primer hueco (mover eso reabre el hitch
+  // de los 900 ms) y el `prepMountTab` del toque, que sigue haciendo de red por si el usuario
+  // desliza antes de que dé tiempo a todo.
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    mcScheduleIdle(function(){ setMountNeighbors(true); }, 3200);
-  },[state.onboarded, locked]);
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setMountNeighbors(true);
+      var pend=tabIds.slice();
+      var siguiente=function(){
+        if(cancelled) return;
+        var id=pend.shift();
+        if(!id){
+          // Y el PERFIL, con la misma lógica: montarlo cuesta lo que cuesta (es la pantalla más
+          // larga de la app, ~1.680 px), y hasta ahora se pagaba dentro del propio toque, porque
+          // `onOpenProfile` hacía `setProfileMounted(true)` y a los dos frames abría. Medido con
+          // la CPU x12: abrir la primera vez costaba el doble que las siguientes. Montado ya en
+          // un hueco libre, la primera vez cuesta lo mismo que la quinta (2026-07-26).
+          setProfileMounted(true);
+          return;
+        }
+        setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
+        mcScheduleIdle(siguiente, 900);
+      };
+      mcScheduleIdle(siguiente, 900);
+    }, 3200);
+    return function(){ cancelled=true; };
+  },[state.onboarded, locked, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.
@@ -14443,13 +15485,65 @@ function App(){
       },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); },
       onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
+    // Sin prop `active`: ver `mcOnGastosActive` — si viaja por props, entrar en Gastos
+    // reconstruye el árbol entero encima del gesto (asimetría Deudas→Gastos vs →Cartera).
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
     if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); },onReconnectBank:reconnectBank});
     return null;
   };
+
+  /* LAS CUATRO PESTAÑAS NO SE VUELVEN A PINTAR POR ABRIR EL PERFIL (medido 2026-07-26).
+     Aquí estaba el coste real de «abrir el perfil sigue yendo lento», y no era la animación:
+     con la CPU x12, el toque costaba ~195 ms de hilo bloqueado **incluso quitando el panel
+     entero del DOM**, y con TODAS las transiciones apagadas seguía costando lo mismo. Lo que se
+     paga es el re-render de App: las cuatro páginas se construyen aquí dentro, así que cualquier
+     estado de App —`profileOpen`, el velo, el toast, la barra que se esconde al hacer scroll—
+     re-renderizaba Inicio + Gastos + Plan + Cartera enteras. En reposo la traza lo confirma:
+     0 ms de tareas largas sin tocar nada, ~195 ms en cuanto cambia un estado de App.
+     Las hipótesis «bonitas» (el panel de 1.680 px que se re-rasteriza, el velo, la sombra, el
+     radio animado) se midieron una por una y NO son: mueven el rasterizado, que va en otro hilo
+     y no bloquea. Están anotadas en el CHANGELOG con su número para no repetirlas.
+     ⚠ Las dependencias son TODO lo que leen estas páginas y los cierres que les pasamos, no solo
+     lo que se ve en las props: si añades una prop que dependa de otro estado de App, añádelo aquí
+     o la pestaña se quedará con un valor viejo. Fuera quedan a propósito los estados de las capas
+     de encima (perfil, cajón, toast, barra inferior, pills de update), que es justo el ahorro.
+
+     Y `tab` TAMPOCO ES DEPENDENCIA — segunda vuelta, 2026-07-27. Con `tab` dentro, cambiar de
+     pestaña seguía reconstruyendo las cuatro páginas, y eso es exactamente lo que él siguió
+     notando: «vas a deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible».
+     Medido a x12: entrar en Deudas 172 ms, moverse dentro 0 ms (eso ya estaba), **deslizar fuera
+     219 ms**. Al quedar fuera, cambiar de pestaña solo re-renderiza los cuatro `div` de arriba
+     (que sí necesitan `tab` para la clase `page-live`); React ve el MISMO elemento hijo por
+     referencia y se salta el subárbol entero. De ahí que el mapa de abajo ya no vaya memoizado:
+     cuatro `createElement` de un `div` no cuestan nada, y lo caro es lo que cuelga de ellos.
+     El precio de sacar `tab` son los cierres que lo leían (`goTab`, `cancelSwipe`): ahora leen
+     `tabRef`, con el porqué escrito en cada uno. */
+  const contenidos=useMemo(function(){
+    var out={};
+    tabIds.forEach(function(id){ if(id!=="gastos") out[id]=pageFor(id); });
+    return out;
+    // eslint-disable-next-line
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  /* Gastos iba en memo aparte POR la prop `active` — y esa prop era el lag. Ahora se entera
+     por bus (`mcSetGastosActive` abajo) y comparte deps con las otras: entrar/salir de Gastos
+     ya NO reconstruye Expenses. Se deja el memo propio por si mañana vuelve a necesitar algo
+     que las otras no (focusExp sigue aquí). */
+  const contenidoGastos=useMemo(function(){
+    return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
+    // eslint-disable-next-line
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
+  useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
+  const paginas=tabIds.map(function(id,i){
+    var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
+    var show=live||!!mountedTabs[id];
+    return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
+      show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
+    );
+  });
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
   if(state.onboarded===false) return React.createElement(React.Fragment,null,
@@ -14495,16 +15589,8 @@ function App(){
       onClick:function(){ mcExitSandbox(); location.reload(); }},
       "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
-      React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
-        React.createElement("div",{className:"track",ref:trackRef},
-          tabIds.map(function(id,i){
-            var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
-            var show=live||!!mountedTabs[id];
-            return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
-              show ? pageFor(id) : null
-            );
-          })
-        )
+      React.createElement("div",{className:"viewport",ref:viewportRef},
+        React.createElement("div",{className:"track",ref:trackRef}, paginas)
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
@@ -14546,7 +15632,10 @@ function App(){
       ref:drawerRef,
       onTouchStart:drawerOpen?drawerStart:undefined,
       onTouchMove:drawerOpen?drawerMove:undefined,
-      onTouchEnd:drawerOpen?drawerEnd:undefined
+      onTouchEnd:drawerOpen?drawerEnd:undefined,
+      // Mismo agujero que en las pestañas (ver `onCancel`): si el navegador se lleva el gesto,
+      // `touchend` no llega y Ajustes se quedaba con el candado y a medio arrastrar.
+      onTouchCancel:drawerOpen?drawerCancel:undefined
     },
       React.createElement("div",{className:"settings-push-h"},
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
@@ -14639,12 +15728,16 @@ function mcGetJson(url){
    de PRODUCCIÓN y contestaba «✓ estás a la última» con la beta publicada delante. Un canal que no
    responde no es un canal sin novedades. */
 function mcFetchManifest(name){
-  var estable=function(){ return mcGetJson(_mcOtaBASE+name+"?ts="+Date.now()); };
+  // `from` dice de qué canal salió el manifiesto REALMENTE. Sin ese dato la caída a estable es
+  // invisible, y una caída invisible fue exactamente el fallo del 2026-07-26 con la APK: el móvil
+  // en beta leía el apk.json de PRODUCCIÓN sin decirlo, comparaba 34 contra 34 y se callaba.
+  var marca=function(r,from){ if(r) r.from=from; return r; };
+  var estable=function(){ return mcGetJson(_mcOtaBASE+name+"?ts="+Date.now()).then(function(r){ return marca(r,"stable"); }); };
   if(mcChannel()!=="beta"){
     return estable().then(function(r){ if(!r.ok) throw new Error(name+": "+r.status); return r; });
   }
   return mcGetJson(_mcBetaBASE+name+"?ts="+Date.now()).then(function(r){
-    if(r.ok) return r;
+    if(r.ok) return marca(r,"beta");
     if(r.status===404) return estable();   // la release `beta` no existe o aún no tiene ese asset
     throw new Error("beta/"+name+": HTTP "+r.status);
   }, function(e){
@@ -14881,18 +15974,33 @@ window._mcSignalApkUpdate=function(info, silent){
   }
 };
 
+/* NINGÚN CAMINO DE LA APK SE PUEDE CALLAR (2026-07-26).
+   «apk.json anuncia la 35, estoy en la 34, y al intentarlo no pasa nada»: esta función tenía
+   CUATRO `return false` mudos y el de arriba del todo ni siquiera llegaba a mirar nada. El que
+   contestaba era el de comparar números —el móvil leía el manifiesto de producción, que decía 34,
+   y 34 no es mayor que 34—, así que la app se quedaba tan tranquila y él sin saber por qué.
+   `_mcApkWhy` guarda SIEMPRE en una línea qué se ha mirado y qué ha salido (qué canal, qué número
+   ofrece y cuál llevas puesto), y Ajustes lo pega al «estás a la última». Un motivo escrito vale
+   más que otra ronda de suposiciones. */
+window._mcApkWhy=null;
 window._mcCheckApkUpdate=function(opts){
-  var mc=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
-  if(!mc||!mc.appInfo) return Promise.resolve(false);
   var manual=opts&&opts.manual;
   var toast=opts&&opts.showToast;
   var autoInstall=opts&&opts.autoInstall!==false;   // al detectar APK nueva, abre el instalador sola
+  var porque=function(m){ window._mcApkWhy=m; return false; };
+  var mc=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.MiCartera;
+  if(!mc||!mc.appInfo) return Promise.resolve(porque(t("apk_why_noapp")));
+  if(!mc.installApk) return Promise.resolve(porque(t("apk_why_oldapk")));
   return mcFetchManifest("apk.json")
-    .then(function(r){ return r.json(); })
-    .then(function(a){
-      if(!a||!a.versionCode||!a.url) return false;
+    .then(function(r){ var from=r.from; return Promise.resolve(r.json()).then(function(a){ return {a:a, from:from}; }); })
+    .then(function(m){
+      var a=m.a, canal=t(m.from==="beta"?"apk_ch_beta":"apk_ch_stable");
+      if(!a||!a.versionCode||!a.url) return porque(tf("apk_why_manifest",{ch:canal}));
       return mc.appInfo().then(function(info){
-        if(!info||!info.versionCode||Number(a.versionCode)<=Number(info.versionCode)) return false;
+        var mia=info&&info.versionCode!=null?Number(info.versionCode):null;
+        if(mia==null) return porque(t("apk_why_noinfo"));
+        window._mcApkWhy=tf("apk_why_state",{ch:canal, want:String(a.versionCode), have:String(mia)});
+        if(Number(a.versionCode)<=mia) return false;
         var payload={url:a.url, versionName:a.versionName||("v"+a.versionCode)};
         window._mcSignalApkUpdate(payload, !!manual);
         var startInstall=function(){
@@ -14916,6 +16024,7 @@ window._mcCheckApkUpdate=function(opts){
       });
     }).catch(function(e){
       var m=(e&&e.message)||String(e);
+      window._mcApkWhy="⚠ "+m;
       if(toast&&manual) toast("⚠ "+m);
       try{ cloud.logEvent('error','APK '+mcChannel()+': '+m.slice(0,200)); }catch(_){}
       return false;

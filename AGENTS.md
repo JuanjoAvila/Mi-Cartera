@@ -44,7 +44,18 @@ qué falta.
 Hay tres bloques de idioma: `LANG.es`, `LANG.en`, `LANG.ca`. **Cada clave nueva va en los tres.**
 Se usan con `t("clave")` y `tf("clave",{x:…})` para interpolar.
 
-Las notas de versión (`RELEASE_NOTES`) son la excepción: **solo castellano**, a propósito.
+Las notas de versión (`RELEASE_NOTES`) iban **solo en castellano**… hasta el 2026-07-26, que él
+pidió lo contrario desde el móvil: «que el histórico de actualizaciones sea en todos los idiomas,
+no solo español». Desde entonces **cada entrada nueva nace en los tres**:
+
+```js
+{v:"4.12.0", d:"…", t:{es:"…",en:"…",ca:"…"}, items:{es:[…],en:[…],ca:[…]}}
+```
+
+Un texto suelto sigue valiendo y se entiende como castellano — así es como está **todo el
+histórico anterior**, y se queda así a propósito: son 68 versiones y 279 entradas, 55 KB, que por
+tres idiomas serían 165 KB con el presupuesto de descarga en 277 KB de 310 (gzip). Traducir notas
+de hace dos meses al catalán no lo va a leer nadie y cuesta el margen entero.
 
 ### Y el TONO de `RELEASE_NOTES` no es negociable (feedback 2026-07-26)
 
@@ -85,7 +96,7 @@ Para el look, reutiliza lo que ya existe: `.tabsheet`, `.btn btn-primary` / `.bt
 Checklist **obligatoria** (sin descuadres — feedback 2026-07-17):
 
 1. **Bump `VERSION`** (X.Y.Z) y **`package.json`** / **`package-lock.json`** (mismo número).
-2. **`RELEASE_NOTES`** al principio del array en `src/modules/10-app-components.js` (solo castellano, en cristiano).
+2. **`RELEASE_NOTES`** al principio del array en `src/modules/10-app-components.js` (**es/en/ca**, en cristiano — ver §4).
 3. **`CHANGELOG.md`** técnico, con el porqué.
 4. **`docs/ROADMAP.md`**: línea de estado + versión actual.
 5. Si tocas nativo Android **o** quieres APK alineado con la web:
@@ -144,6 +155,27 @@ Y una regla de higiene: **si un documento afirma algo, tiene que ser verificable
 copiar una frase de un doc a otro, comprueba que sigue siendo cierta — un doc que miente es peor
 que un doc que falta, porque el que viene detrás se lo cree.
 
+## 6 ter. Lo que sabes va al REPO, no solo a tu memoria
+
+Regla suya del 26/7/2026, y con motivo: ese día una sesión del móvil se gastó **medio presupuesto
+de tokens** trabajando sobre una rama equivocada. Lo que hacía falta para no hacerlo estaba
+escrito… en la memoria local del Claude del PC. Desde el móvil, desde Cursor o desde cualquier
+otra IA, eso **no existe**.
+
+> **Él no siempre trabaja desde el PC.** Da igual quién ni desde dónde: si una sesión necesita
+> saber algo para no meter la pata, ese algo tiene que estar EN EL REPO.
+
+- Guarda en tu memoria lo que quieras, pero **replícalo siempre**: `npm run memoria` espeja la
+  memoria del agente en `docs/memoria/`. Hazlo en la misma tanda en que escribes la memoria, no
+  «luego».
+- **El repo es PÚBLICO.** Por eso el espejo no es un copiar y pegar: tacha IBAN, correos,
+  teléfonos y rutas de Windows, y **aborta sin escribir nada** si algo sensible sobrevive al
+  filtro. Si añades un tipo de dato nuevo, añade también su filtro en `scripts/sync-memoria.mjs`.
+- El punto de entrada para cualquier agente nuevo es **[`EMPIEZA-AQUI.md`](EMPIEZA-AQUI.md)** (raíz).
+  Si aprendes algo que le habría ahorrado tiempo a la siguiente sesión, va ahí.
+- Y lo de siempre: el **porqué** de cada cambio al `CHANGELOG`, el **estado** a `docs/ROADMAP.md`,
+  las **reglas** aquí. `npm test` vigila que no se queden atrás.
+
 ## 7. Verificar de verdad (no «debería funcionar»)
 
 - **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre en CI (`.github/workflows/test.yml`).
@@ -198,8 +230,51 @@ Lección de la 4.8.0, tras el enésimo «cuanto más tiempo uso la app, más len
   `useMemo(..., [state])` no acierta jamás. Depende de las porciones concretas que leas — y si el
   cálculo usa funciones auxiliares, incluye también lo que lean ellas (ver el comentario de deps
   en el `totals` de `11-app-main.js`).
-- **Fechas:** `parseDate` cachea; para comparar y ordenar usa `dateMs()`, que no crea objetos.
-  Nunca construyas `Date` dentro de un filtro que recorre el histórico.
+- **Fechas:** `parseDate` cachea los MILISEGUNDOS, pero **devuelve un `Date` NUEVO en cada
+  llamada**. Para comparar y ordenar usa `dateMs()`, que no crea objetos, y nunca construyas
+  `Date` dentro de un filtro que recorre el histórico.
+  **Y nunca pases un `Date` como prop a un componente con `React.memo`**: la comparación
+  superficial falla siempre por esa prop y el memo queda de adorno. Pasa el número y construye el
+  `Date` dentro, en la línea que lo formatea. Así estuvo `MovRow` desde siempre —las doce filas de
+  Gastos se repintaban en CADA re-render— y no lo cazó nadie hasta perfilar un gesto concreto
+  (2026-07-27): se cuidó que el callback fuera estable con `useCallback` y la fecha se coló por
+  debajo. La regla vale para cualquier objeto nuevo por render (arrays y objetos literales igual).
+- **En un portátil los problemas de rendimiento del móvil NO SE VEN.** Medir el lag que él ve
+  daba **cero tareas largas** hasta estrangular la CPU por CDP: `page.context().newCDPSession(page)`
+  → `Emulation.setCPUThrottlingRate({rate:6})`. Con eso, «entrar en Deudas y Metas» pasó de
+  parecer instantáneo a enseñar 171 ms de hilo bloqueado, que es justo lo que él describía.
+  Las tareas largas se recogen con un `PerformanceObserver({entryTypes:["longtask"]})` sembrado
+  en `addInitScript`.
+- **Y ojo con medir a Playwright en vez de a la app.** El primer perfil de CPU señalaba a
+  `getBoundingClientRect` con 350 ms de tiempo propio, y no era nuestro: `locator.click()` y
+  `waitFor()` sondean el DOM desde el script inyectado de Playwright mientras esperan. Para
+  perfilar, click CRUDO desde la página (`page.evaluate(() => el.click())`) y espera a ciegas
+  (`waitForTimeout`); las esperas que sondean van DESPUÉS de parar el perfilador.
+- **Y con gestos táctiles, tres trampas más** (aprendidas quemando una sesión entera midiendo
+  cosas que no eran el gesto):
+  1. **Espera a que se vaya el splash.** `#mc-load` tapa la pantalla ~0,5 s y es hermano de
+     `#root`, así que `.botnav` puede estar ya en el DOM con el splash todavía encima. Un
+     arrastre lanzado antes ni siquiera entra en `.viewport` — el `touchstart` cae sobre el
+     splash y parece un gesto «perdido» que no lo es:
+     `await page.waitForFunction(() => !document.getElementById("mc-load"))`.
+  2. **Comprueba que el gesto ATERRIZA; si no, tira la muestra.** Hay zonas que se tragan el
+     swipe a propósito (`stopSwipe`: chips de Gastos, scrollers, el gráfico de Inicio). Un
+     arrastre ahí no mueve el track: su medida es ruido, no un dato. Se comprueba mirando si
+     `.botnav-tab.active` cambió de `data-tour`. En viewport de Pixel 5, `y=200` sirve en Inicio
+     y en Gastos; `y=320..440` NO sirve en Gastos. Y el gesto hacia atrás tiene que empezar
+     fuera de la franja de borde (`EDGE_OPEN`=52 px) o lo que se abre es **Ajustes**.
+  3. **No midas tiempos con el perfilador puesto.** A 6× de freno, `Profiler` a intervalo corto
+     distorsiona más de lo que mide: dejaba en ~150 ms pasadas que sin él iban a 17 ms. Para
+     atribuir trabajo, `Tracing` (`devtools.timeline`) y acota el gesto con `console.timeStamp`,
+     que un `Layout` gordo TRAS el `touchend` no le quita ni un frame al dedo.
+- **Si el banco de pruebas no reproduce el fallo, el problema es el banco, no el código** (2026-07-27).
+  Dos tandas seguidas de arreglos «medidos» no le llegaron al usuario porque la métrica era la
+  equivocada: se medían TAREAS LARGAS y su síntoma eran TIRONES, que son frames de 100 ms sin
+  tarea larga ninguna. Mide deltas de `requestAnimationFrame` y cuenta los frames >32 ms.
+  Y ojo con reproducir el escenario DE VERDAD: la app ignora los eventos de scroll mientras hay un
+  dedo puesto (`onPageScroll`), así que con toques sintéticos la barra inferior no se esconde nunca
+  y el caso que el usuario describe no llega a existir. En un móvil la esconde la inercia al soltar.
+  **Antes de optimizar nada, comprueba que tu medida distingue el caso bueno del malo que él cuenta.**
 - **Antes de decir que algo va más rápido, MÍDELO A/B** contra `main` (`git archive HEAD` a un
   temporal, `build-app`, `serve` en otro puerto y dos pasadas del mismo guion en Playwright). En la
   4.8.0 el primer intento daba 1,1-1,5× y parecía poco; medir los BYTES escritos por vuelta a

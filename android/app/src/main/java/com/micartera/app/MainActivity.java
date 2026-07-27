@@ -20,6 +20,21 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MiCarteraPlugin.class);       // antes de super.onCreate (así lo pide Capacitor)
         registerPlugin(TradeRepublicPlugin.class);   // puente TR (beta)
         super.onCreate(savedInstanceState);
+        /* INSPECCIÓN DE LA WEBVIEW EN EL MÓVIL DE VERDAD (2026-07-27). Sin esto no hay forma de
+           medir el lag donde ocurre: `dumpsys gfxinfo` da 120 fps aunque la web esté congelada,
+           porque una WebView pinta siempre su ÚLTIMO fotograma disponible y Android lo cuenta como
+           frame bueno. Con esto, `chrome://inspect` (o CDP por adb) ve el proceso de render real y
+           se puede medir el gesto que falla con sus datos y su dedo. Así se encontró el candado
+           que no se soltaba (docs/LAG-DESLIZAR.md §0).
+           ⚠ APAGADO salvo que se compile con MICARTERA_WEBDEBUG=1 en local.properties: la APK que
+           publica el CI NO abre el socket. El de casa sí, y por adb desde un PC autorizado.
+           ⚠ DESPUÉS de super.onCreate() a propósito: Capacitor hace
+           `WebView.setWebContentsDebuggingEnabled(config.isWebContentsDebuggingEnabled())` al
+           montar el puente (Bridge.java:599), o sea que en release lo APAGA. Si esta línea va
+           antes, Capacitor la pisa y el socket no aparece nunca. */
+        if (BuildConfig.WEB_DEBUG) {
+            try { android.webkit.WebView.setWebContentsDebuggingEnabled(true); } catch (Throwable ignored) {}
+        }
         // Edge-to-edge: la WebView pinta bajo status bar Y nav bar; el CSS usa --safe-top/--safe-bottom.
         try {
             Window w = getWindow();

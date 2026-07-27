@@ -69,9 +69,13 @@ public class OtaCheckWorker extends Worker {
                 }
             }
 
-            // La APK no se publica por canal (la release `beta` solo lleva el bundle web), así que
-            // ese aviso sigue saliendo de producción también en beta.
-            JSONObject apkJson = fetchJson(BASE + "apk.json?ts=" + System.currentTimeMillis());
+            // La APK SÍ se publica por canal desde el 2026-07-26: la release `beta` lleva ya su
+            // propio apk.json. Antes solo llevaba el bundle web, así que este aviso salía siempre
+            // de producción — y con la APK de pruebas 35 publicada, un móvil en beta seguía
+            // comparándose contra la 34 de todos y no se enteraba nunca de que había algo nuevo.
+            // Se cae a producción si la beta aún no ha publicado el suyo (mismo criterio que la web).
+            JSONObject apkJson = beta ? fetchJson(BASE_BETA + "apk.json?ts=" + System.currentTimeMillis()) : null;
+            if (apkJson == null) apkJson = fetchJson(BASE + "apk.json?ts=" + System.currentTimeMillis());
             if (apkJson != null) {
                 int remoteCode = apkJson.optInt("versionCode", 0);
                 if (remoteCode > BuildConfig.VERSION_CODE) {

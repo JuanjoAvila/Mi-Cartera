@@ -35,7 +35,7 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, active}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus}){
   const [preset,setPreset]=useState("month");
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
@@ -50,8 +50,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Trabajo pesado (suscripciones) solo la 1ª vez que Gastos está activo. NO resetear al
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
+  const heavyOkRef=useRef(false);
   const catChipsRef=useRef(null), bankChipsRef=useRef(null);
   const chipDrag=useRef({sx:0,sy:0,capturing:false});
+  const heavyIdleGen=useRef(0);
   // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
   // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
   const chipSwipe=function(ref){
@@ -75,20 +77,48 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       }
     };
   };
+  // Lo caro de Gastos (detectar suscripciones y pintar su tarjeta) esperaba a que la pestaña
+  // estuviera ACTIVA, así que se pagaba AL LLEGAR: en la cola del gesto de deslizar. Medido con
+  // la CPU estrangulada x6 y trazado con `Tracing` (2026-07-26): la primera entrada en Gastos
+  // costaba una tarea de ~67 ms, de los cuales **59,7 ms eran un Layout completo** (1.196
+  // objetos, `partialLayout:false`) — el de las ~50 etiquetas que aparecen de golpe al ponerse
+  // `heavyOk` en true. Y se pagaba igual llegando por gesto que tocando la barra de abajo, así
+  // que no era el gesto: era esto.
+  //
+  // Es el mismo error que tenía el montaje de las pestañas, y se arregla igual: el coste no se
+  // puede evitar, pero sí ELEGIR CUÁNDO se paga. Ahora se adelanta a un hueco libre aunque la
+  // pestaña no esté activa (a esas alturas ya está montada y no hay ningún dedo en la pantalla).
+  // El tope generoso —4 s frente a 40 ms— es lo que impide que se cuele a la fuerza en mitad del
+  // arranque, que sigue siendo el momento más ocupado; con la pestaña activa manda la prisa.
+  //
+  // ⚠ Y el aviso de «eres la activa» NO PUEDE ser una prop (2026-07-27 noche). Con `active` en
+  // props, CADA entrada a Gastos reconstruía Expenses entero encima del carrusel — y eso era
+  // justo su «Deudas→Gastos lagazo / Deudas→Cartera fluido»: hacia Cartera el memo de Gastos no
+  // se tocaba; hacia Gastos sí. El expediente ya lo había medido («dejar active fijo quita la
+  // asimetría») y lo descartó mal: se puede enterarse sin re-render vía `mcOnGastosActive`.
+  useEffect(function(){ heavyOkRef.current=heavyOk; },[heavyOk]);
   useEffect(function(){
-    if(!active||heavyOk) return;
-    var cancelled=false;
-    mcScheduleIdle(function(){ if(!cancelled) setHeavyOk(true); }, 40);
-    return function(){ cancelled=true; };
-  },[active,heavyOk]);
-  // Al entrar/salir de Gastos, chips de categoría/banco vuelven al inicio (así el swipe de tabs
-  // por el centro no se atasca en un scroll a medias — feedback 2026-07-17).
-  useEffect(function(){
-    if(catChipsRef.current) catChipsRef.current.scrollLeft=0;
-    if(bankChipsRef.current) bankChipsRef.current.scrollLeft=0;
-  },[active]);
+    var chipGen=0;
+    var unsub=mcOnGastosActive(function(active){
+      // Chips: idle + solo si hay scroll que resetear (escribir scrollLeft en caliente costó
+      // 276 ms — ver comentario histórico en el CHANGELOG de la 4.12.0).
+      var cg=++chipGen;
+      mcScheduleIdle(function(){
+        if(cg!==chipGen) return;
+        var c=catChipsRef.current, b=bankChipsRef.current;
+        if(c&&c.scrollLeft) c.scrollLeft=0;
+        if(b&&b.scrollLeft) b.scrollLeft=0;
+      }, 300);
+      if(heavyOkRef.current) return;
+      var gen=++heavyIdleGen.current;
+      mcScheduleIdle(function(){
+        if(gen!==heavyIdleGen.current || heavyOkRef.current) return;
+        setHeavyOk(true);
+      }, active?40:4000);
+    });
+    return function(){ chipGen++; heavyIdleGen.current++; unsub(); };
+  },[]);
   const expensesDef=useDeferredValue(state.expenses);
-  const sentinelRef=useRef(null);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const delExpense=function(e){
     set(function(s){ return Object.assign({},s,{ expenses:s.expenses.filter(function(x){ return x.id!==e.id; }), deleted:pushDeleted(s.deleted, keyOfE(e)) }); });
@@ -267,11 +297,33 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
   };
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
-  useEffect(()=>{
-    const el=sentinelRef.current; if(!el) return;
-    const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting) setVisible(v=> v<filtered.length?v+CONFIG.PAGE_SIZE:v); },{rootMargin:"120px"});
-    io.observe(el); return ()=>io.disconnect();
-  },[filtered.length]);
+  /* LA PAGINACIÓN DE LA LISTA — sus dos fallos del 26/7 por la noche, y salían del mismo sitio.
+     1. «Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.» El centinela
+        se vigilaba con `rootMargin:120px`, o sea que la tanda siguiente no se pedía hasta tenerlo
+        casi encima, y llegaban de 12 en 12: en un desliz rápido te comes el final de la lista
+        antes de que dé tiempo a pintar la siguiente. Ahora se pide con 600 px de antelación y de
+        24 en 24 (la PRIMERA tanda sigue siendo de 12, que es lo que se pinta al entrar y lo que
+        vigila el presupuesto de rendimiento).
+     2. «Cuando le doy otra vez a "Este mes" sale lo de la foto y no carga nada aun esperando un
+        rato.» Éste era un fallo de verdad y llevaba escondido desde siempre: el observador se
+        creaba en un efecto atado a `filtered.length`, pero el centinela SOLO EXISTE mientras
+        `visible<filtered.length`. Al llegar al final de la lista se desmonta, y el observador se
+        quedaba mirando un nodo huérfano; si algo lo volvía a montar sin que cambiara
+        `filtered.length` —volver a pulsar el filtro que ya estaba puesto resetea `visible` a 12
+        con la misma lista— nadie lo vigilaba: «Cargando más…» ahí clavado para siempre.
+        Ahora el observador se ata al nodo con una callback ref, así que se rehace exactamente
+        cuando el centinela nace o muere, pasen lo que pasen las dependencias del efecto. */
+  const filtLen=useRef(0); filtLen.current=filtered.length;   // el observador vive fuera del render: sin esto cerraría sobre una longitud vieja
+  const ioRef=useRef(null);
+  const sentinelRefCb=useCallback(function(el){
+    if(ioRef.current){ ioRef.current.disconnect(); ioRef.current=null; }
+    if(!el) return;
+    const io=new IntersectionObserver(function(es){
+      if(es[0].isIntersecting) setVisible(function(v){ return v<filtLen.current ? v+CONFIG.PAGE_SIZE*2 : v; });
+    },{rootMargin:"600px"});
+    io.observe(el); ioRef.current=io;
+  },[]);
+  useEffect(function(){ return function(){ if(ioRef.current) ioRef.current.disconnect(); }; },[]);
 
   // Abrir la ficha de un movimiento. useCallback = referencia ESTABLE: si cambiara en cada render,
   // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
@@ -285,15 +337,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const l10nKey=CURLANG+"|"+DISP.sym;
 
   const shown=filtered.slice(0,visible);
+  /* A LA FILA SE LE PASA EL NÚMERO, NO EL `Date` (2026-07-27, y esto llevaba roto desde siempre).
+     `parseDate` cachea los MILISEGUNDOS pero devuelve `new Date(ms)`: un objeto NUEVO en cada
+     llamada. Como la fecha viajaba a `MovRow` como prop, la comparación superficial de
+     `React.memo` fallaba SIEMPRE por esa prop —da igual que el gasto sea idéntico—, así que
+     cualquier re-render de Gastos repintaba las doce filas. Se cuidó que `onOpen` fuera estable
+     (ahí al lado está el comentario) y la fecha se coló por debajo.
+     Se vio saliendo de Deudas hacia Gastos: el perfilador ponía `MovRow` como la función más cara
+     de la app en ese gesto. Con un número, la comparación acierta y la fila solo se rehace cuando
+     cambia de verdad; el `Date` se construye DENTRO, que es donde se usa para formatear. */
   const groups=[]; let last=null;
   shown.forEach(function(e){
-    const d=parseDate(e.date), k=dayKey(d);
+    const ms=dateMs(e.date), d=new Date(ms), k=dayKey(d);
     if(k!==last){
       const today=dayKey(new Date()), yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
       const label=k===today?t("g_today"):k===dayKey(yesterday)?t("g_yesterday"):d.toLocaleDateString(loc(),{weekday:"long",day:"numeric",month:"short"});
       groups.push({sep:label}); last=k;
     }
-    groups.push({e:e,d:d});
+    groups.push({e:e,ms:ms});
   });
 
   const addExpense=()=>{
@@ -449,8 +510,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, d:g.d, onOpen:openDetail, l10n:l10nKey}); }),
-        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRef},t("g_loadmore"))
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),
+        visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
     React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
@@ -474,7 +535,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, d, onOpen}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen}){
+  // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
+  // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
+  const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);

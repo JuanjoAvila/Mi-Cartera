@@ -23,6 +23,31 @@ function mcScheduleIdle(fn, timeoutMs){
   setTimeout(fn, 16);
 }
 
+/* Gastos necesita saber si es la pestaña activa (para heavyOk y reset de chips), pero eso NO
+   puede viajar como prop: cada cambio de `active` reconstruía Expenses entero justo al aterrizar
+   el gesto, y eso era la asimetría «Deudas→Gastos lag / Deudas→Cartera fluido» (el destino
+   Cartera no toca Gastos; el destino Gastos sí, vía `gastosActiva` en el memo). Bus + ref: el
+   árbol de Gastos se queda quieto; solo corren efectos baratos si hace falta. */
+var _mcGastosActive=false;
+var _mcGastosActiveCbs=[];
+function mcSetGastosActive(on){
+  on=!!on;
+  if(_mcGastosActive===on) return;
+  _mcGastosActive=on;
+  for(var i=0;i<_mcGastosActiveCbs.length;i++){
+    try{ _mcGastosActiveCbs[i](on); }catch(e){}
+  }
+}
+function mcOnGastosActive(cb){
+  if(typeof cb!=="function") return function(){};
+  _mcGastosActiveCbs.push(cb);
+  try{ cb(_mcGastosActive); }catch(e){}
+  return function(){
+    var i=_mcGastosActiveCbs.indexOf(cb);
+    if(i>=0) _mcGastosActiveCbs.splice(i,1);
+  };
+}
+
 /* Le dice al SPLASH de entrada que ya puede irse: lo que se vea a partir de ahora es lo bueno.
    El vigilante vive al final de shell.html y no depende de esto para retirarse (tiene un tope de
    1,8 s), así que llamar de más es gratis y no llamar nunca solo devuelve el comportamiento viejo.
@@ -971,6 +996,23 @@ const bio = {
     return true;  // si no lanza, la huella se verificó
   },
 };
+
+/* UNA SOLA AUTORIZACIÓN BANCARIA A LA VEZ (2026-07-26).
+   El permiso de Enable Banking caduca a los 30 min y es de un solo uso. Si dos toques (noti +
+   banner, o dos bancos a la vez) lanzan bankConnect, la segunda vuelve con error=invalid_request
+   aunque el banco diga «Operación realizada correctamente». Un candado compartido por Cartera y
+   Mis bancos evita gastar el permiso dos veces. */
+var _bankConnectBusy=null;
+function bankConnectOnce(aspsp_name, country){
+  if(_bankConnectBusy){
+    const err=new Error("busy");
+    err.code="busy";
+    return Promise.reject(err);
+  }
+  _bankConnectBusy=Promise.resolve(cloud.bankConnect(aspsp_name, country))
+    .finally(function(){ _bankConnectBusy=null; });
+  return _bankConnectBusy;
+}
 
 /* ---------- Helpers ---------- */
 const NF  = new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});

@@ -308,9 +308,34 @@
   .tour-skip{font-size:13px;font-weight:700;color:var(--muted-2);padding:8px;}
 
   .viewport{flex:1 1 auto;overflow:hidden;min-height:0;}
-  /* 0.42s + ease suave tipo Trade Republic (feedback 2026-07-17: el 0.22 era demasiado «firme»). */
-  .track{display:flex;height:100%;transition:transform .42s cubic-bezier(.32,.72,0,1);will-change:transform;}
+  /* El asentamiento del carrusel ya NO va por transition CSS: en su móvil de 120 Hz esa
+     transición producía 14 saltos de 25/8 ms (judder a 60 Hz) justo al soltar el dedo — el
+     arrastre iba perfecto y al soltar se perdía la fluidez de golpe. Ahora lo anima
+     `asentarTrack` en 11-app-main.js con requestAnimationFrame (misma curva, 0 saltos medidos).
+     transition:none permanente: si vuelve la CSS, vuelve el judder. */
+  .track{display:flex;height:100%;transition:none;will-change:transform;}
   .track.dragging{transition:none;}
+  /* Los segmentos de Plan que no se ven se quedan MONTADOS Y CON SU LAYOUT HECHO (ver
+     14-v4-screens.js): así estrenar Deudas cuesta 0 ms en vez de 203. El precio es que
+     visibility:hidden SIGUE PARTICIPANDO EN EL PINTADO, y como viven dentro del .track que se
+     arrastra con el dedo, se repintaban los tres en cada frame del gesto: medido con la CPU x12,
+     156 ms de tareas largas contra 80 sin ellos.
+
+     O sea que ninguna de las dos formas de esconder valía SOLA, y lo probé las tres:
+       · visibility:hidden      → entrar 0 ms, pero deslizar 156 ms
+       · display:none           → deslizar 80 ms, pero entrar 133 ms
+       · content-visibility     → deslizar 86 ms, pero entrar 124 ms
+     El coste existe; lo único que se puede elegir es CUÁNDO se paga. Y hay un momento en que no
+     molesta a nadie: mientras el dedo está en la pantalla no se ve ningún segmento oculto, así
+     que ahí no hace falta ni layout ni pintado. Durante el arrastre (.track.dragging, que ya se
+     pone y se quita en el gesto) los ocultos pasan a content-visibility:hidden y desaparecen del
+     pintado; al soltar vuelven y recuperan su layout. Ese recálculo cae DESPUÉS del touchend, que
+     es tiempo que no le quita un frame al dedo (AGENTS §7 bis). Resultado: 0 ms al entrar y ~80
+     al deslizar, en vez de tener que elegir. */
+  /* La regla que vivía aquí (`content-visibility:hidden` SOLO mientras el dedo arrastra) se ha
+     retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
+     estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
+     durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
@@ -328,6 +353,11 @@
        de golpe se sentía «brusco» (feedback 2026-07-18). Ahora se desliza y desvanece con calma. */
     transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .4s ease;will-change:transform,opacity;}
   .botnav.botnav-hidden{transform:translateY(120%);opacity:0;pointer-events:none;}
+  /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
+     11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
+     detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
+     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar. */
+  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;}
   .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
@@ -501,12 +531,23 @@
     transform-origin:var(--pp-ox,44px) var(--pp-oy,64px);
     transform:scale(var(--pp-s0,.12));
     opacity:0;visibility:hidden;pointer-events:none;
-    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius .48s cubic-bezier(.32,.72,0,1),visibility 0s linear .48s;
+    /* EL RADIO NO SE INTERPOLA: SE CAMBIA AL FINAL, DE GOLPE (medido 2026-07-26).
+       `border-radius` no es una propiedad de compositor: animarla obliga a REDIBUJAR el panel
+       entero en cada frame de los 0,48 s. Con la CPU x12, quitarla de la transición baja las
+       tareas de rasterizado de ~200 a ~60 por apertura. Con `0s` y el retardo de la animación,
+       el cambio ocurre cuando el movimiento ya ha terminado: un solo repintado y, a la vista,
+       exactamente lo mismo (el panel llega a pantalla completa y ahí es donde el radio importa).
+       La misma lección que ya estaba escrita para el ARRASTRE en 11-app-main.js — al abrir por
+       toque no se le había aplicado. */
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .26s ease,border-radius 0s linear .48s,visibility 0s linear .48s;
     will-change:transform,opacity;
     border-radius:24px;
     box-shadow:0 24px 64px rgba(0,0,0,.45);}
+  /* Al ABRIR el radio se quita ya (el panel tapa la pantalla entera y las esquinas no se ven
+     mientras crece); al CERRAR vuelve cuando la miniatura ha llegado (regla de arriba). Los dos
+     sentidos cambian el radio de golpe, nunca frame a frame. */
   .profile-pull.open{transform:scale(1);border-radius:0;opacity:1;visibility:visible;pointer-events:auto;
-    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius .48s cubic-bezier(.32,.72,0,1);}
+    transition:transform .48s cubic-bezier(.32,.72,0,1),opacity .16s ease,border-radius 0s linear;}
   .profile-pull.dragging{transition:none !important;visibility:visible;pointer-events:auto;}
   /* Velo verdoso barato (Resumen SE VE detrás). Sin blur en el drag; .blurred solo al soltar. */
   .profile-dim-layer{position:fixed;inset:0;z-index:71;background:rgba(8,28,20,.28);opacity:0;pointer-events:none;
@@ -861,6 +902,14 @@
   /* gesture-freeze: no re-pinta el shell. profile-gesturing: bloquea scroll de .page
      (si Resumen scrollea a la vez que el pull-down → lag — feedback 2026-07-18). */
   .app-shell.gesture-freeze{pointer-events:none;}
+  /* ⚠ ABRIR EL PERFIL SIGUE COSTANDO ~300 ms (medido a x12, 2026-07-26) y NO es esto. Se probó:
+     desacoplar este candado de `gesture-freeze` para no tocar `pointer-events` (que es heredada y
+     fue la causa del lag de las pestañas) → 300 vs 310 ms, o sea ruido; y `contain:paint` en el
+     panel mientras se arrastra → 304 vs 300, ruido también. Lo que dice la traza es otra cosa:
+     482 `RasterTask` y 278 `Paint`, porque se escala un panel de ~1.680 px de alto DESDE 0,12
+     HASTA 1, y el navegador lo re-rasteriza mientras crece. Eso no se arregla con una propiedad
+     suelta: hay que reducir lo que se pinta durante el crecimiento. Pendiente, con el número
+     medido para no volver a empezar de cero. */
   .app-shell.gesture-freeze.profile-gesturing .page{overflow:hidden !important;overscroll-behavior:none;touch-action:none !important;}
   .app-shell.settings-dim.dragging{transition:none;}
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
@@ -1031,16 +1080,16 @@
   #mc-load .mcl-mark svg{width:52px;height:52px;display:block;}
   #mc-load .mcl-name{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:560;letter-spacing:-.3px;color:var(--text,#EAF2EC);
     animation:mclpop .5s .07s cubic-bezier(.32,.72,0,1) both;}
-  /* Barra indeterminada en vez de ruleta: ocupa poco, no gira y no promete un porcentaje que no sabemos. */
-  #mc-load .mcl-bar{width:116px;height:3px;border-radius:3px;background:var(--line-soft,#1A3228);overflow:hidden;}
-  #mc-load .mcl-bar i{display:block;width:38%;height:100%;border-radius:3px;background:var(--mint,#5FD08A);animation:mclbar 1.15s ease-in-out infinite;}
+  /* SIN BARRA DE CARGA (2026-07-26). Había una barra indeterminada debajo del nombre; fuera, por
+     petición desde el móvil: «quitar lo de la barra de carga al abrir la app, el resto de apps no
+     lo tienen; el tiempo ese que se queda el logo está bien». Una barra que no mide nada solo
+     dice «esto va lento». El botón de reintentar SÍ se queda: ese aparece únicamente si algo se
+     ha atascado de verdad, y es la única salida cuando pasa. */
   #mc-load .mcl-retry{display:none;margin-top:2px;background:none;border:none;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;
     color:var(--mint,#5FD08A);text-decoration:underline;padding:8px 12px;cursor:pointer;}
   @keyframes mclpop{from{opacity:0;transform:translateY(9px) scale(.94);}to{opacity:1;transform:none;}}
-  @keyframes mclbar{0%{transform:translateX(-110%);}100%{transform:translateX(310%);}}
   @media (prefers-reduced-motion:reduce){
     #mc-load .mcl-mark,#mc-load .mcl-name{animation:none !important;}
-    #mc-load .mcl-bar i{animation:none !important;width:100%;}
   }
 </style>
 </head>
@@ -1050,7 +1099,7 @@
      De ahí que el vigilante esperase `#root` con más de un hijo —cosa que no pasaba nunca— y que
      el usuario no viera splash ninguno, solo negro. Como hermano, React ni lo toca y se retira
      cuando nosotros decidimos. -->
-<div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><div class="mcl-bar"><i></i></div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
+<div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
 <div id="root"></div>
 
 

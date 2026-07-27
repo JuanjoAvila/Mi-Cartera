@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-26 · **v4.11.0** — **APROBADA en el móvil y promocionada a producción** («aprobado, todo funciona a las mil maravillas» — cuarta beta, 4.11.0.10, con la APK 34 puesta). Primera versión que recorre el circuito entero como estaba pensado: se publica en `beta`, la prueba él en su móvil, la rechaza dos veces con el panel de revisión, y sube cuando la aprueba. **el splash existía en el HTML y no lo veía nadie**: estaba dentro de `#root` y `ReactDOM.createRoot()` vacía su contenedor al montar, así que React se lo llevaba por delante (medido: fuera del DOM a los 150 ms); y React/ReactDOM/supabase iban en el `<head>`, bloqueando el parser, así que el navegador no tenía nada que pintar hasta ejecutar ~600 KB — el negro del vídeo. Ahora es hermano de `#root`, los scripts van después, con mínimo de 520 ms en pantalla y dos rAF antes de montar. **Corrección a la 4.10.0:** el patrimonio no venía mal, es una animación que cuenta hasta la cifra final. **Bienes separado de «Tus cuentas»** como bloque ordenable propio. **Perfil: cerrar = abrir al revés** — una sola curva y un solo umbral para los dos sentidos (iban con números distintos y el de abrir pedía casi el triple de arrastre), y candado durante la animación para que un dedo puesto a medias no la corte en seco. E2E 62 → 72. **Tercera vuelta (2026-07-26): el fallo del perfil era OTRO y por fin se ha reproducido** — con el panel scrolleado (`scrollTop=220`, lo normal) el arrastre solo scrollea y no cierra; ninguna prueba lo veía porque todas empezaban con el perfil arriba del todo. Además `e.preventDefault()` **nunca funcionó**: React ata `onTouchMove` en modo pasivo, así que el navegador se quedaba el gesto (los listeners van ya a mano con `{passive:false}`, y `touchcancel` cuenta como final). Ahora la franja de arriba es asa y, tirando desde el medio, el cierre toma el relevo cuando el scroll llega al tope. **⚠ Pendiente APK 34**: el arreglo de las notis duplicadas es Java (`Notif.idFor`, ids estables — el id salía del reloj y cada aviso se apilaba en vez de sustituir). **Lleva mezclada la 4.10.2**: sin ella este bundle no se puede ni descargar. **Segunda vuelta (2026-07-26): la rechazó desde el móvil, 3 ok / 2 fallos, los dos del perfil** — unificar los umbrales dobló el de cerrar (52 → 94 px) y el candado de la animación se activaba también en el rebote y en un toque suelto, dejando la app sorda medio segundo al segundo intento. Curva compartida sí, umbral no (`PROF_TH_OPEN`/`PROF_TH_CLOSE`). Y dos del canal, que estrenaba móvil: el bundle se sellaba con un número distinto del que anunciaba el manifiesto (**la misma beta ofrecida en bucle**, ahora `MC_STAMP_VERSION` + el workflow no publica si no cuadran) y **apagar la beta no devolvía a producción** (`_mcApplyChannelBundle`: cambiar de canal instala en la dirección que sea).
+> Estado a 2026-07-27 · **v4.12.0** — en `beta`. **Causa REAL del tirón al soltar el dedo** (noche del 27, Cursor, 7ª vuelta): la `transition` CSS de 0,42 s del carrusel produce 14 saltos 25/8 ms en su pantalla de 120 Hz (el arrastre iba perfecto). Asentamiento por `requestAnimationFrame` → **0 saltos** medidos. El bus de `active` de la 6ª vuelta se queda (era un re-render real) pero no era lo que él notaba. **Pendiente su veredicto**. Producción sigue en **4.11.0**. APK **35**. Ver `docs/LAG-DESLIZAR.md`.
+>
+> Anterior: 2026-07-26 · **v4.11.0** — **APROBADA en el móvil y promocionada a producción** («aprobado, todo funciona a las mil maravillas» — cuarta beta, 4.11.0.10, con la APK 34 puesta). Primera versión que recorre el circuito entero como estaba pensado: se publica en `beta`, la prueba él en su móvil, la rechaza dos veces con el panel de revisión, y sube cuando la aprueba. **el splash existía en el HTML y no lo veía nadie**: estaba dentro de `#root` y `ReactDOM.createRoot()` vacía su contenedor al montar, así que React se lo llevaba por delante (medido: fuera del DOM a los 150 ms); y React/ReactDOM/supabase iban en el `<head>`, bloqueando el parser, así que el navegador no tenía nada que pintar hasta ejecutar ~600 KB — el negro del vídeo. Ahora es hermano de `#root`, los scripts van después, con mínimo de 520 ms en pantalla y dos rAF antes de montar. **Corrección a la 4.10.0:** el patrimonio no venía mal, es una animación que cuenta hasta la cifra final. **Bienes separado de «Tus cuentas»** como bloque ordenable propio. **Perfil: cerrar = abrir al revés** — una sola curva y un solo umbral para los dos sentidos (iban con números distintos y el de abrir pedía casi el triple de arrastre), y candado durante la animación para que un dedo puesto a medias no la corte en seco. E2E 62 → 72. **Tercera vuelta (2026-07-26): el fallo del perfil era OTRO y por fin se ha reproducido** — con el panel scrolleado (`scrollTop=220`, lo normal) el arrastre solo scrollea y no cierra; ninguna prueba lo veía porque todas empezaban con el perfil arriba del todo. Además `e.preventDefault()` **nunca funcionó**: React ata `onTouchMove` en modo pasivo, así que el navegador se quedaba el gesto (los listeners van ya a mano con `{passive:false}`, y `touchcancel` cuenta como final). Ahora la franja de arriba es asa y, tirando desde el medio, el cierre toma el relevo cuando el scroll llega al tope. **⚠ Pendiente APK 34**: el arreglo de las notis duplicadas es Java (`Notif.idFor`, ids estables — el id salía del reloj y cada aviso se apilaba en vez de sustituir). **Lleva mezclada la 4.10.2**: sin ella este bundle no se puede ni descargar. **Segunda vuelta (2026-07-26): la rechazó desde el móvil, 3 ok / 2 fallos, los dos del perfil** — unificar los umbrales dobló el de cerrar (52 → 94 px) y el candado de la animación se activaba también en el rebote y en un toque suelto, dejando la app sorda medio segundo al segundo intento. Curva compartida sí, umbral no (`PROF_TH_OPEN`/`PROF_TH_CLOSE`). Y dos del canal, que estrenaba móvil: el bundle se sellaba con un número distinto del que anunciaba el manifiesto (**la misma beta ofrecida en bucle**, ahora `MC_STAMP_VERSION` + el workflow no publica si no cuadran) y **apagar la beta no devolvía a producción** (`_mcApplyChannelBundle`: cambiar de canal instala en la dirección que sea).
 >
 > Anterior: 2026-07-25 · **v4.10.2** — publicación MÍNIMA, capítulo 2: **la CSP era solo la mitad**. Los assets de las releases de GitHub **no mandan cabeceras CORS** en ninguno de los dos saltos del redirect (verificado con `curl -H Origin`), así que el `fetch` de la WebView (origen `https://localhost`) los tira igual con la CSP arreglada — mismo síntoma, causa distinta. Ahora el manifiesto lo pide **Android** (`CapacitorHttp`), como el login de MyInvestor. Y `mcFetchManifest` solo cae a estable con un **404**: cualquier otro fallo sale en el toast y en `app_events`, porque disfrazarlo de «no hay nada nuevo» es lo que escondió esto durante semanas. El `bundle.zip` de la beta **nunca se había descargado** (`downloadCount: 0`). Guardián: `tests/updates.test.mjs` ejecuta el trozo real del monolito con `fetch`/`CapacitorHttp` de mentira.
 >
@@ -26,9 +28,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.11.0** (en `beta`, pendiente de aprobación; producción va por la 4.10.2) |
-| APK (`versionName` / `versionCode`) | **4.11.0** / **34** publicada (release `v4.11.0`; verificada antes de subirla: `CN=Mi Cartera` y bundle sellado 4.11.0, no `dev`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). La probó él con `v4.11.0-beta34` (prerelease, se queda como registro de la ronda de pruebas). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
-| `public/apk.json` | **34** / 4.11.0 → `Mi-Cartera-4.11.0.apk` |
+| Web / OTA (`VERSION`) | **4.12.0** (en `beta`; asentamiento del carrusel por rAF, pendiente su OK; producción = 4.11.0) |
+| APK (`versionName` / `versionCode`) | **4.12.0** / **35** compilada y publicada como prerelease `v4.12.0-beta35`. Trae el **icono y el splash nativos** de la marca, que son ficheros del APK y no viajan por OTA. Verificada antes de subirla: firma `CN=Mi Cartera` (misma clave que la 34, se instala encima sin desinstalar ni perder datos) y bundle sellado `4.12.0`, no `dev`. Cuando la 4.12.0 se apruebe y se promocione, esta misma APK se publica como release de producción. `build.gradle` se sube A LA VEZ que se compila, nunca antes — `apk.json` apuntando a una release que no existe es el incidente de 4.9.2. |
+| Anterior | **4.11.0 / 34** (release `v4.11.0`, la que corre en producción). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
+| `public/apk.json` | **35** / 4.12.0 → `Mi-Cartera-4.12.0.apk` |
 
 ## Pendiente / limitaciones conocidas
 
@@ -41,12 +44,35 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
 
-## Lo primero de la próxima sesión (apuntado por él, 2026-07-26)
+## Lo que apuntó él el 2026-07-26 — HECHO en la 4.12.0
+
+| Tema | Cómo quedó |
+|------|------------|
+| **`RELEASE_NOTES` en cristiano** | ✅ Hecho. Regla y tabla de ejemplos en `AGENTS.md` §4; las de la 4.11.0, que eran el contraejemplo, están reescritas; y de paso las notas van ya en **es/en/ca**. |
+| **Tirón al deslizar / Deudas** | ✅ Hecho en tres capas: premount + `heavyOk` adelantado + **scroll→swipe** (`freezeShell` en tab + `onPageScroll` ignora durante el gesto). Guardián con el caso real a CPU ×6. |
+| **Banco caído: ni redirige ni se ve rojo** | ✅ Noti → solo Cartera con banner; Mis bancos usa `bankIssues` para pintar coral; `bankConnectOnce` evita doble OAuth / `invalid_request`. |
+| **Trade Republic mudo al desconectarse** | ✅ Banner + noti + resumen en Ajustes; CTA abre Mis bancos con TR, no OAuth. |
+| **Stopper del perfil (560 ms)** | ✅ Candado afinado: síncrono al cerrar, cierre permitido tras abrir, generación en `transitionend`. |
+| **Versión APK invisible en Ajustes** | ✅ Pie y fila de actualizaciones: `web vX · app Y` (puente ya en APK 35). |
+| **Herencia de ✓ en el panel de beta** | ✅ Entre compilaciones, por texto del punto; los ✗ no se heredan. |
+
+## Lo siguiente
+
+> ✅ **Causa del tirón al soltar el dedo** (noche del 27, 7ª vuelta): la `transition` CSS del
+> carrusel juddea a 120 Hz (14 saltos 25/8 ms). Asentamiento por rAF → 0 saltos. Expediente +
+> métrica buena: **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**. **Falta su veredicto.**
+
+1. **Probar en el móvil** la beta nueva: Gastos arriba → Deudas (moverte) → deslizar a Gastos. Al soltar tiene que seguir fluido (no «perderse de golpe»).
+2. **Si aprueba: promocionar a producción** (`promote-beta.yml`) y publicar la APK 35 como release de producción.
+3. Si rechaza, el informe del panel dice qué falla — y la compilación/APK con las que lo probó.
+4. **Una beta cada vez.** Esa noche salieron seis seguidas (.22 a .27): cada push le vuelve a pedir actualizar y acabó sin saber qué estaba probando.
+
+### Abierto, con lo medido
 
 | Tema | Qué se sabe |
 |------|-------------|
-| **`RELEASE_NOTES` en cristiano** | Petición suya: **genéricas, que las entienda cualquiera, ni dirigidas a él ni técnicas** — las lee su padre y su pareja. Las de la 4.11.0, ahora mismo en producción, son el contraejemplo («lo que rechazaste», canal de pruebas, px). Reescribirlas. Regla completa y ejemplos en `AGENTS.md` §4. |
-| **Tirón al deslizar entre pestañas** | Lo vio **en directo en el móvil de su pareja**: las primeras veces que deslizas lateralmente entre pestañas va a tirones, y luego se suaviza. Sospechas a comprobar (no dar ninguna por buena sin medir, §7 bis): el montaje perezoso de pestañas (`prepMountTab`) cayendo dentro del gesto, o el primer render de una lista grande. El gesto vive en `11-app-main.js` (`onMove`/`onEnd` del track). **Pista cara de la 4.11.0: los `onTouch*` de React son PASIVOS**, así que `preventDefault` ahí no hace nada. |
+| **«Gastos se queda a medio pintar / desvaído»** | **No reproducido.** Se montó su camino del vídeo (arrancar, esperar, deslizar a Gastos con el dedo, CPU x12, 1.200 gastos) y se midieron filas y opacidad a los 120 ms, 500 ms y 2 s de soltar: 12 filas, opacidad 1, ninguna a medias ni desvaída. No se toca a ciegas. Sospechas sin descartar: el `content-visibility:auto` de `.page` cuando entra una pestaña que aún no es `page-live`, y la paginación de la lista (12 filas + centinela) leída como «lista a medias». Lo que desbloquea el diagnóstico ya está puesto: el veredicto dice la compilación y la APK. |
+| **Abrir el perfil: los ~175 ms que quedan** | Suyo, 27/7: «ha mejorado una barbaridad, le queda nada para ir a la velocidad que quiero». Ya no es JS (el perfil de CPU deja la app por debajo del 1 %): es pintado del navegador al hacer visible una pantalla de ~1.680 px. **No hay palanca CSS**: velo, sombra, animación del avatar, radio y `content-visibility:auto` en sus tarjetas están medidos y descartados uno por uno (números en el `CHANGELOG`; el último parecía ganar con 5 pasadas y salió peor con 9 intercaladas). El siguiente tramo pide **rediseñar qué se enseña al abrir** — enseñar menos panel, no pintarlo más rápido. |
 
 ## Review externa (ChatGPT, 2026-07-25) — qué falta de verdad
 
@@ -60,7 +86,7 @@ existe se deja anotado con su prueba: si mañana alguien vuelve a proponerlo, aq
 | Beta cerrada con 10-20 amigos | **A medias.** Hay canal beta + panel de revisión (`docs/TESTING.md`), pero es de **un solo móvil**: el suyo. | Que la beta la puedan recibir otros: APK firmado repartible, alta de probador sin ser `is_admin`, y que los veredictos de varios convivan en el panel. |
 | Feedback dentro de la app | **Ya está.** Ajustes → App → «Enviar sugerencia» (4.1.0) + `betaReport` del panel de beta. | — |
 | Crash reporting | **Ya está.** Sentry en producción ([SENTRY.md](SENTRY.md)) + `app_events` propio, con `window.onerror` y `unhandledrejection` enganchados. | — |
-| Analytics de uso | **No.** `app_events` solo guarda errores y un `ping` al abrir. | Saber **qué pantallas se usan** (no quién): contador por pestaña/acción, agregado y sin datos personales. Decidir antes si compensa: hoy los usuarios son 3. |
+| Analytics de uso | **No.** `app_events` solo guarda errores y un `ping` al abrir. | Saber **qué pantallas se usan** (no quién): contador por pestaña/acción, agregado y sin datos personales. **Hacerlo ya, no cuando haya usuarios**: el histórico de uso no se recupera hacia atrás. |
 | Rate limiting | **A medias.** Migración `0019` + `_shared/ratelimit.ts`, aplicado en `ingest` y `myinvestor-connect` (4.10.0). | Extenderlo al resto de funciones (`prices`, `categorize`, `bank-*`) o dejar por escrito por qué no hace falta. |
 | Validar TODO lo que entra | **Sin auditar.** | Pasada por las diez Edge Functions: tipos, tamaños y rangos de cada campo del `body`, con test que mande basura y espere un 400 (no un 500). |
 | Logs sin información sensible | **A medias.** `guard-privacy` vigila el cliente. | Auditar qué acaba en `app_events` y en Sentry (mensajes de error con importes, correos o IBAN) y limpiarlo en origen. |
@@ -73,6 +99,38 @@ existe se deja anotado con su prueba: si mañana alguien vuelve a proponerlo, aq
 | Sincronización bancaria con adapters | **A medias.** Cada banco/bróker tiene su módulo, pero sin interfaz común. | Interfaz única (conectar / sincronizar / desconectar / estado) para que añadir un banco no toque la UI. Enlaza con Enable Banking. |
 | Play Store, cobrar, gestor fiscal | Ya estaba en el plan (ver «Solo si lo pides» y la nota de freemium). | Antes de cobrar un euro: **hablar con un gestor**. La consulta es barata comparada con regularizar tarde. |
 | Más tests de lógica financiera | Hay 15 suites unitarias + 67 e2e. | Seguir sumando al tocar dinero: es la regla de la casa, no una tarea con final. |
+
+### Segunda tanda de la misma review (2026-07-26)
+
+El usuario trajo una segunda ronda, centrada en **operación** más que en producto. Dos de las
+propuestas son la tabla de arriba dicha con otras palabras, y dos las descartamos a propósito —
+queda escrito para no volver a discutirlas.
+
+| Propuesta | Veredicto | Qué falta (tarea) |
+|-----------|-----------|-------------------|
+| **Métricas funcionales** (usuarios activos, syncs OK/KO, imports, tiempo medio de sync, bancos más usados, errores por banco, funciones más usadas) | **Repetido** — es la fila «Analytics de uso». Lo nuevo es la lista de qué medir. **Más barato de lo que parece**: `Core.logEvent(kind,message,detail)` (`00-core.js`) ya existe con RLS solo-admin, tope de 20/sesión y dedupe. | Un `kind` nuevo (`use`) + una vista SQL agregada. **Agregado y anónimo**: son datos financieros, `guard-privacy` vigila el cliente. Instrumentar **ahora** aunque haya 3 usuarios: el histórico de uso no se recupera hacia atrás. |
+| **Health check** (versiones, migraciones pendientes, última release, errores 24h/7d, último backup) | **Sí, pero como script**, no como pantalla. Con 3 usuarios una pantalla es un producto más que mantener; el precedente bueno es `scripts/errores.mjs`. | `npm run salud`: alineación `VERSION`/`package.json`/`apk.json`/APK, migraciones sin aplicar, última release, recuento de `app_events` por severidad a 24 h y 7 días. |
+| **ADR** (`docs/adr/`, una página por decisión) | **Sí.** Encaja con la casa y dentro de dos años nadie recordará los porqués. | Solo **retro** y solo decisiones que costaron dinero: Supabase vs Firebase, monolito HTML + módulos numerados, cero CDNs de terceros, OTA propio vs Capgo, Capacitor. **No** un ADR por cambio. |
+| **Threat model** (XSS, inyección, token robado, noti falsa, replay, función pública, acceso indebido) con ✅ mitigado / ⚠ pendiente | **Sí**, y es el más útil de los suyos porque no es papel: alimenta dos filas ya pendientes de esta misma tabla. | Una página que cruce cada amenaza con lo que ya hay (CSP, RLS, token de ingest de 256 bits en cabecera con comparación en tiempo constante, CORS con lista blanca, rate limit, `state` de OAuth de un solo uso) y marque los huecos → **validar la entrada de las diez Edge Functions** y **auditar los logs**. |
+| **Observabilidad** (duración de Edge Functions, consultas SQL más caras, tiempo de carga) | **A medias, y la mayor parte NO se construye.** Las duraciones de Edge Functions y el SQL caro ya los da el panel de Supabase (Logs + Query Performance); rehacerlo es trabajo tirado. | Solo lo que Supabase **no** puede ver porque pasa en el móvil: duración de una sincronización y de un import, como `logEvent('perf', …)`. Sale gratis si se hace junto a las métricas funcionales. |
+| **Feature flags** por usuario | **No ahora.** Ya hay dos ejes de gating: el canal beta y `profiles.is_admin`. Meter flags en el monolito = ramas de código muertas conviviendo en los ficheros que ya crecen sin parar (`10`/`11`). | Se recupera **el día que la beta tenga varios móviles** (fila «Beta cerrada» de arriba). Entonces sí es una maravilla; antes, no. |
+| **Tercer canal «Experimental»** (Experimental/Beta/Stable) | **No.** Repite la fila «Beta cerrada» y multiplica por tres la matriz de release (OTA + manifiesto + APK), que es exactamente la que reventó dos veces seguidas en 4.10.1 y 4.10.2. | Lo que falta no es un canal más: son **más móviles en el que ya existe**. |
+| **«Operations Dashboard» como tarea única** | **Dividido a propósito.** Son tres cosas distintas (salud + métricas + observabilidad) con costes muy diferentes. | Con 3 usuarios, el 90 % del valor está en el script de salud + la vista SQL de métricas. La pantalla, si algún día compensa. |
+
+## Bloqueante antes de publicar en Play Store: el NOMBRE
+
+Decidido el 2026-07-26. **«Mi Cartera» se queda como descripción, no como marca.** Los hechos:
+
+- Ya hay una app **«Mi Cartera»** de finanzas personales en Google Play (`com.support_tech.micartera`),
+  misma categoría: gastos, informes, export a Excel. No es ilegal llamarse igual —el nombre es
+  genérico y nadie puede apropiárselo— pero en Play seríamos invisibles entre los homónimos.
+- El Gobierno tiene **«Cartera Digital Beta»** (identidad digital y verificación de edad). Nombre
+  distinto, pero la palabra «cartera» arrastra esa asociación en España.
+- Un nombre descriptivo **no se puede registrar** como marca: no habría nada que defender.
+
+Cambiarlo ahora cuesta un rato; con la app instalada en 300 móviles, cuesta muchísimo más. La
+lista de candidatos se comprueba en Play, App Store, dominio y OEPM/EUIPO antes de proponerla, y
+la elección es suya. El registro real lo confirma un agente de la propiedad industrial, no nosotros.
 
 ## Solo si lo pides
 

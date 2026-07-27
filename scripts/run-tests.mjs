@@ -14,10 +14,17 @@ const steps = [
   ["check-syntax", ["node", "scripts/check-syntax.mjs"]],
   ["i18n-keys", ["node", "tests/i18n-keys.test.mjs"]],
   ["docs-frescura", ["node", "tests/docs-frescura.test.mjs"]],
+  // El espejo de la memoria en docs/memoria/ tiene que ir al día: es lo único que ve una sesión
+  // que no corra en este PC (móvil, Cursor, otra IA). En una máquina sin memoria local —el CI—
+  // el script sale en verde sin hacer nada, así que esto solo pincha aquí, que es donde se arregla.
+  ["memoria-espejo", ["node", "scripts/sync-memoria.mjs", "--check"]],
   ["security", ["node", "tests/security.test.mjs"]],
+  ["gastos-active-bus", ["node", "tests/gastos-active-bus.test.mjs"]],
+  ["track-asentar-raf", ["node", "tests/track-asentar-raf.test.mjs"]],
   ["edge-sintaxis", ["node", "tests/edge-sintaxis.test.mjs"]],
   ["presupuesto-rendimiento", ["node", "tests/presupuesto-rendimiento.test.mjs"]],
   ["finance-core", ["node", "tests/finance-core.test.mjs"]],
+  ["ob-ingresos", ["node", "tests/ob-ingresos.test.mjs"]],
   ["fx-multi", ["node", "tests/fx-multi.test.mjs"]],
   ["categories", ["node", "tests/categories.test.mjs"]],
   ["revo-parse", ["node", "tests/revo-parse.test.mjs"]],
@@ -32,6 +39,7 @@ const steps = [
   ["onboarding", ["node", "tests/onboarding.test.mjs"]],
   ["expense-bank", ["node", "tests/expense-bank.test.mjs"]],
   ["expense-note", ["node", "tests/expense-note.test.mjs"]],
+  ["bank-connect-once", ["node", "tests/bank-connect-once.test.mjs"]],
   ["inv-dashboard", ["node", "tests/inv-dashboard.test.mjs"]],
   ["financing", ["node", "tests/financing.test.mjs"]],
   ["updates", ["node", "tests/updates.test.mjs"]],

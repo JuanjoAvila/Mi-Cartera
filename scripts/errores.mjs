@@ -17,12 +17,18 @@
  * Alternativa sin service_role: exportar desde el panel. Pero entonces vuelve el ping-pong.
  *
  * Uso:
- *   node scripts/errores.mjs                    # últimos 30 eventos
+ *   npm run errores                             # últimos 30 eventos de todo tipo
+ *   npm run sugerencias                         # SOLO lo que ha escrito la gente (kind=feedback)
  *   node scripts/errores.mjs --limit=100
- *   node scripts/errores.mjs --kind=error       # error | ping | beta
+ *   node scripts/errores.mjs --kind=error       # error | ping | beta | feedback
  *   node scripts/errores.mjs --since=2h         # 90m | 2h | 7d
  *   node scripts/errores.mjs --grep=TR          # filtra por texto del mensaje
  *   node scripts/errores.mjs --json             # crudo, para pipes
+ *
+ * `npm run sugerencias` existe por una razón concreta (2026-07-26): dos sugerencias escritas desde
+ * la app el 16 de julio estuvieron DIEZ DÍAS sin que las leyera nadie —una de ellas, un ingreso de
+ * CaixaBank que no se apuntó— porque el script las traía mezcladas con los pings y sin icono
+ * propio. Una sugerencia que nadie mira es una sugerencia que no existe.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -112,7 +118,7 @@ if (!rows.length) { console.log("Sin eventos para ese filtro."); process.exit(0)
 
 // Quién es quién: el email completo es un dato personal y aquí solo hace falta distinguir móviles.
 const quien = (e) => (e ? String(e).split("@")[0].slice(0, 12) : "—");
-const icono = { error: "✗", ping: "·", beta: "🧪" };
+const icono = { error: "✗", ping: "·", beta: "🧪", feedback: "💬" };
 
 console.log(`${rows.length} evento(s) · más reciente arriba\n`);
 for (const r of rows) {

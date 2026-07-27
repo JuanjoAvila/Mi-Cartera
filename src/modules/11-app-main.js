@@ -17,7 +17,17 @@ function App(){
   const lastScrollY=useRef(0);
   const scrollTab=useRef(0);
   const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
+  // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
+  // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
+  // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
+  const lastScrollAt=useRef(0);
   const onPageScroll=function(e){
+    lastScrollAt.current=Date.now();
+    // Mientras el dedo cambia de pestaña, el momentum del scroll vertical sigue disparando
+    // eventos. Cada uno podía llamar a setNavHidden y re-renderizar App entera a mitad del
+    // gesto — eso es el «si te mueves en Deudas/Metas y deslizas acto seguido, se laguea»
+    // (rechazo 4.12.0.17). El perfil ya congelaba el scroll; el swipe de pestañas no.
+    if(dragging.current) return;
     const y=e.currentTarget.scrollTop;
     // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
     // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
@@ -227,7 +237,10 @@ function App(){
       });
       // sube las importadas a la tabla expenses (best-effort; el estado local ya las tiene)
       setTimeout(function(){ obAdded.forEach(function(e){ cloud.addExpense(e).catch(function(){}); }); }, 0);
-      if(obAdded.length) showToast(tf("ob_imported",{n:obAdded.length}));
+      // En sync automática (la que dispara la noti del banco) se avisa solo de lo que ha entrado.
+      // Si has pulsado tú «↻ Sincronizar bancos», esto se junta con el resultado de abajo: dos
+      // avisos seguidos por una sola acción tuya eran ruido (feedback 2026-07-26).
+      if(obAdded.length && !opts.manual) showToast(tf("ob_imported",{n:obAdded.length}));
       // Resultado por banco (servidor tolerante a fallos): aplica los que funcionaron y avisa SOLO
       // del que falló. ok===false explícito → fallo (respuestas antiguas sin 'ok' se tratan como ok).
       const bankLabelOf=function(l){ const e=entFromAspsp(l&&l.aspsp); return e?entOf(e).label:((l&&l.aspsp)||"🏦"); };
@@ -235,14 +248,35 @@ function App(){
       // Saldo del banco: SOLO cuando lo pides tú (opts.manual). Antes también saltaba en cada sync
       // automático al abrir la app («el dinero de los bancos me sale, no me vale para nada»
       // — feedback 2026-07-15): el saldo ya se ve en Patrimonio, no hace falta interrumpir.
-      if(preview.synced.length && opts.manual) showToast("🏦 "+entOf(preview.synced[0].ent).label+": "+eur(preview.synced[0].bal));
-      // ── BANCO SIN CONECTAR: avisar Y llevar a arreglarlo ──────────────────────────────────
-      // Petición del padre (2026-07-24): «que se lo conectará, que no sabía dónde hacerlo». Antes
-      // solo salía un toast de 2 segundos que decía «reconéctate» sin decir dónde; el banner de
-      // Cartera existía pero había que dar con él. Ahora, al sincronizar A MANO:
-      //   1) notificación de verdad (queda en la bandeja) que al tocarla abre Cartera + Mis bancos,
-      //   2) y en el momento, la app abre sola el panel de bancos con ese banco resaltado.
+      // Resultado de pedirlo tú: UN solo mensaje que dice qué ha pasado. Antes era
+      // «🏦 CaixaBank: 1.234,56 €» — un número suelto, del PRIMER banco nada más aunque hubieras
+      // sincronizado tres, y con el aviso de los movimientos nuevos llegando por separado
+      // («el mensaje al actualizar cuentas hay que cambiarlo a uno más claro y conciso»).
+      //
+      // DOS CORRECCIONES tras probarlo él en el móvil (rechazo de la 4.12.0.17): «me dice que
+      // Sabadell perdió la conexión y luego sale una notificación de 4 bancos al día... los que
+      // tengo son Sabadell, Caixa, Revolut y Trade Republic».
+      //   1) `synced` trae una entrada por CUENTA, no por banco (mira `applyBankBalances`: el push
+      //      va dentro del bucle de cuentas). Con dos cuentas en Caixa ya decía «2 bancos». Se
+      //      cuentan entidades distintas.
+      //   2) Y no se canta victoria con un banco caído: si hay alguno que reconectar, el aviso que
+      //      manda es el ⚠ de abajo —que además abre el panel para arreglarlo—, no un «✓ al día»
+      //      que dice lo contrario medio segundo después.
       const issues=bankIssuesOf(links);
+      if(opts.manual && preview.synced.length && !issues.length){
+        const ents={}; preview.synced.forEach(function(x){ if(x&&x.ent) ents[x.ent]=1; });
+        const bancos=Object.keys(ents);
+        let msg = bancos.length===1
+          ? tf("bank_upd_one",{bank:entOf(bancos[0]).label, x:eur(preview.synced[0].bal)})
+          : tf("bank_upd_n",{n:bancos.length});
+        if(obAdded.length) msg += " · " + (obAdded.length===1 ? t("bank_upd_mov1") : tf("bank_upd_movn",{n:obAdded.length}));
+        showToast(msg);
+      }
+      // ── BANCO SIN CONECTAR: avisar y dejar el banner de Cartera a la vista ─────────────────
+      // Petición del padre (2026-07-24) + corrección 2026-07-26: la noti lleva a Cartera (donde
+      // está el banner con el botón), NO abre sola Mis bancos ni la autorización del banco.
+      // Abrir OAuth automáticamente con varios bancos caídos gastaba el permiso de un solo uso
+      // (invalid_request) y dejaba al usuario dando vueltas aunque el banco dijera «OK».
       if(issues.length){
         const lbl=issues[0].ent?entOf(issues[0].ent).label:(issues[0].aspsp||"🏦");
         const msg=issues.length>1
@@ -252,10 +286,11 @@ function App(){
         if(opts.manual){
           const nat=natPlugin();
           if(nat&&nat.showNotification){
-            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||"")}).catch(function(){}); }catch(e){}
+            try{ nat.showNotification({title:t("bk_notif_title"), body:msg, gotoTarget:"banks|"+(issues[0].aspsp||""), tag:"banks"}).catch(function(){}); }catch(e){}
           }
-          // Y aquí mismo: el panel donde se reconecta, abierto y con el banco señalado.
-          setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:issues[0].aspsp||null}})); }catch(e){} }, 700);
+          // Deja Cartera delante para que el banner se vea sin buscar.
+          const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+          if(ci>=0) setTab(ci);
         }
       }
       // Fallo NO caducado = hipo transitorio del banco (rate-limit PSD2, 5xx…): el enlace sigue
@@ -307,6 +342,24 @@ function App(){
   // opts.manual = botón «Sincronizar» de Cartera (2026-07-18): además de MyInvestor entra
   // Trade Republic (solo a demanda: el TR de arranque deslogueaba APKs viejos) y se salta el
   // throttle. En automático (al abrir) sigue siendo solo MI, silencioso y con throttle.
+  // Aviso TR (2026-07-26): TR NO es Open Banking — va por otro camino y se quedaba mudo al
+  // caducar. Ahora, si la sesión murió de verdad, hay toast + noti estable + evento para que
+  // el banner de Cartera se entere, sin meterlo en bankIssuesOf.
+  const signalTrDead=function(){
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:false}})); }catch(e){}
+    try{
+      if(localStorage.getItem("_trDeadNotif")==="1") return;
+      localStorage.setItem("_trDeadNotif","1");
+    }catch(e){}
+    const nat=natPlugin();
+    if(nat&&nat.showNotification){
+      try{ nat.showNotification({title:t("bk_tr_notif_title"), body:t("bk_tr_notif_body"), gotoTarget:"tr|reconnect", tag:"tr"}).catch(function(){}); }catch(e){}
+    }
+  };
+  const signalTrAlive=function(){
+    try{ localStorage.removeItem("_trDeadNotif"); }catch(e){}
+    try{ window.dispatchEvent(new CustomEvent("mc-tr-status",{detail:{connected:true}})); }catch(e){}
+  };
   const runBrokerSync=function(opts){
     opts=opts||{};
     if(brokerSyncing.current) return Promise.resolve();
@@ -314,12 +367,20 @@ function App(){
     const jobs=[];
     const st=stateRef.current||{};
     let touched=0; const expiredB=[];
-    const bridge=(opts.manual && typeof trBridge==="function") ? trBridge() : null;
-    if(bridge && bridge.status && bridge.sync){
+    // Estado de TR: se consulta también en automático (solo status, sin sync) para que el
+    // banner de Cartera no se quede mirando un "conectado" viejo tras matar la app.
+    const bridge=(typeof trBridge==="function") ? trBridge() : null;
+    if(bridge && bridge.status){
       jobs.push(Promise.resolve(bridge.status()).then(function(r){
-        if(!(r&&r.connected)) return;
+        const hadPhone=typeof trPhoneSaved==="function"&&!!trPhoneSaved();
+        if(!(r&&r.connected)){
+          if(hadPhone){ expiredB.push("Trade Republic"); signalTrDead(); }
+          return;
+        }
+        signalTrAlive();
+        if(!opts.manual || !bridge.sync) return;   // sync TR solo a demanda
         return Promise.resolve(bridge.sync()).then(function(res){
-          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); return; }
+          if(res&&res.authExpired&&!res.softFail&&!res.wafBlocked){ expiredB.push("Trade Republic"); signalTrDead(); return; }
           if(!res||!res.ok||!Array.isArray(res.positions)) return;   // anti-bot/hipo: silencio, se reintenta luego
           applyBrokerPositions(res.positions, "lastTrSync"); touched++;
         });
@@ -339,7 +400,14 @@ function App(){
     return Promise.all(jobs).catch(function(){}).then(function(){
       brokerSyncing.current=false;
       if(opts.manual){
-        if(expiredB.length) showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+        if(expiredB.length){
+          showToast(tf("v4_sync_broker_exp",{b:expiredB[0]}));
+          // TR: deja Cartera delante para que el banner se vea (mismo patrón que OB).
+          if(expiredB[0]==="Trade Republic"){
+            const ci=tabOrderOf(stateRef.current).indexOf("cartera");
+            if(ci>=0) setTab(ci);
+          }
+        }
         else if(touched) showToast(t("v4_sync_brokers_ok"));
       }
     });
@@ -452,6 +520,9 @@ function App(){
       } else {
         const m=parts.slice(2).join("|");
         if(m.indexOf("nolink:")===0){ const nm=m.slice(7), en=entFromAspsp(nm), lbl=en?entOf(en).label:(nm||"🏦"); showToast("⚠ "+lbl+": "+t("bank_nolink")); }
+        // invalid_request = permiso ya gastado o caducado (casi siempre por lanzar dos
+        // autorizaciones a la vez). Mensaje propio, sin el error crudo de Enable Banking.
+        else if(/invalid_request/i.test(m)) showToast("⚠ "+t("bank_error_invalid"));
         else showToast("⚠ "+t("bank_error")+(m?": "+m:""));
       }
       return;
@@ -461,7 +532,11 @@ function App(){
     if(g==="update|apk"){
       const nat=natPlugin();
       const run=function(url){
-        if(!nat||!nat.installApk||!url) return;
+        // Igual que en el pill: una noti que al tocarla no hace nada ni dice nada es indistinguible
+        // de una noti rota (2026-07-26).
+        if(!nat){ showToast(t("apk_why_noapp")); return; }
+        if(!nat.installApk){ showToast(t("apk_why_oldapk")); return; }
+        if(!url){ showToast(window._mcApkWhy||t("st_up_ok")); return; }
         showToast(t("apk_downloading"));
         nat.installApk({url:url}).then(function(r){
           if(r&&r.needsPermission) showToast(t("apk_perm"));
@@ -482,14 +557,13 @@ function App(){
       if(window.__mcApplyUpdate){ window.__mcApplyUpdate(); return; }
       return;
     }
-    // Noti «tienes un banco sin conectar» (2026-07-24): abre Cartera (donde está el banner con el
-    // botón) y, encima, el panel de Mis bancos ya desplegado. El padre no sabía DÓNDE se conectaba;
-    // ahora la noti le deja en el sitio exacto, sin buscar nada.
-    if(g==="banks" || g.indexOf("banks|")===0){
+    // Noti «banco caído» / «TR desconectado» (2026-07-26): SOLO Cartera, con el banner a la vista.
+    // Antes abría además Mis bancos (y a veces lanzaba la autorización), y con dos bancos caídos
+    // se disparaban dos OAuth: la segunda volvía con invalid_request aunque el banco dijera OK.
+    // El padre sigue viendo el aviso delante; el toque que reconecta es el del banner, no la noti.
+    if(g==="banks" || g.indexOf("banks|")===0 || g==="tr" || g.indexOf("tr|")===0){
       const ci=tabOrderOf(stateRef.current).indexOf("cartera");
       if(ci>=0) setTab(ci);
-      const aspsp=g.indexOf("banks|")===0 ? g.slice(6) : "";
-      setTimeout(function(){ try{ window.dispatchEvent(new CustomEvent("mc-open-banks",{detail:{focus:aspsp||null}})); }catch(e){} }, 250);
       return;
     }
     if(g==="gastos" || g.indexOf("exp|")===0){
@@ -569,7 +643,8 @@ function App(){
       if(m.indexOf("nolink:")===0){   // autorizó pero la cuenta no está dada de alta (modo restringido EB) → mensaje accionable
         const nm=m.slice(7), e=entFromAspsp(nm), lbl=e?entOf(e).label:(nm||"🏦");
         showToast("⚠ "+lbl+": "+t("bank_nolink"));
-      } else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
+      } else if(/invalid_request/i.test(m)){ showToast("⚠ "+t("bank_error_invalid")); }
+      else { showToast("⚠ "+t("bank_error")+(m?": "+m:"")); }
     }
   },[]);
 
@@ -677,12 +752,16 @@ function App(){
     window.addEventListener("mc-open-shared",h);
     return function(){ window.removeEventListener("mc-open-shared",h); };
   },[]);
-  // Banner «Reconectar {banco}» de Cartera: directo a la autorización del banco (vuelve con ?bank=ok).
+  // Banner «Reconectar {banco}» de Cartera: el ÚNICO toque que lanza la autorización.
+  // Candado compartido (bankConnectOnce): dos toques seguidos no gastan el permiso dos veces.
   const reconnectBank=function(aspsp){
     if(!cloud.enabled()||!sessionRef.current){ showToast(t("bp_need_login")); return; }
     showToast(t("bank_connecting"));
-    cloud.bankConnect(aspsp,"ES").then(function(d){ location.href=d.url; })
-      .catch(function(e){ showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e)); });
+    bankConnectOnce(aspsp,"ES").then(function(d){ location.href=d.url; })
+      .catch(function(e){
+        if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+      });
   };
   useEffect(function(){
     const on=function(){ setOnline(true); }; const off=function(){ setOnline(false); };
@@ -743,24 +822,64 @@ function App(){
   const freezeShell=function(on, kind){
     if(!appShellRef.current) return;
     if(on){
-      appShellRef.current.classList.add("gesture-freeze","dragging");
+      /* ⚠ `gesture-freeze` NO se pone al deslizar entre pestañas, y esto valía 28 ms por gesto.
+         Lo único que hace esa clase es `pointer-events:none` sobre el shell… y `pointer-events`
+         es una propiedad HEREDADA, así que tocarla en la raíz invalida el estilo del árbol
+         ENTERO. Trazado con la CPU x6 en el escenario del rechazo: un solo `UpdateLayoutTree` de
+         28,6 ms, el trozo más gordo de la tarea que rompía el frame. Tiene sentido en el perfil y
+         en el cajón (se superponen y no quieres que un dedo toque lo de debajo), pero deslizando
+         entre pestañas no protege de nada: un arrastre de más de 10 px ya no genera click. */
+      appShellRef.current.classList.add("dragging");
+      if(kind!=="tab") appShellRef.current.classList.add("gesture-freeze");
       if(kind==="profile") appShellRef.current.classList.add("profile-gesturing");
-      // Bloquea scroll de Resumen: si pelea con el pull-down del perfil → lag (feedback 2026-07-18).
-      if(kind==="profile" && trackRef.current){
+      // Bloquea el scroll de la página activa: si pelea con el gesto → lag.
+      // · perfil (2026-07-18): pull-down vs scroll de Inicio.
+      // · tab (2026-07-26): tras scrollear Deudas/Metas, el momentum vertical seguía vivo
+      //   mientras el track se desplazaba en horizontal — rechazo 4.12.0.17.
+      if((kind==="profile" || kind==="tab") && trackRef.current){
         const pageEl=trackRef.current.children[tabRef.current];
         if(pageEl){
-          pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
-          pageEl.style.overflow="hidden";
-          pageEl.style.touchAction="none";
+          /* ⚠ `overflow:hidden` SOBRE UNA PÁGINA SCROLLEADA NO ES GRATIS, y era el «al entrar en
+             Deudas, moverte, y luego deslizar va con muchísimo lag» (rechazos .17 → .23). El
+             navegador colapsa el rango de scroll: tira el scrollTop a 0 y repinta la página
+             entera, y al soltar se restaura y vuelve a repintar. Trazado con la CPU x6 en el
+             escenario exacto: **321 `Paint`, 113 `UpdateLayoutTree` y 95 `Layerize` en un solo
+             gesto** — no una tarea larga que salte a la vista, sino 126 ms en trocitos. Por eso
+             SOLO pasaba si te habías movido dentro: sin scroll no hay nada que colapsar.
+
+             Congelar hacía falta de verdad (el momentum vertical peleaba con el translateX del
+             track), pero solo cuando hay momentum VIVO. Si scrolleaste, paraste y luego deslizas
+             —que es el caso normal— no hay nada contra lo que pelear. Así que el candado caro se
+             pone solo si hubo scroll en los últimos 200 ms.
+
+             ⚠ AQUÍ VIVÍA `pageEl.style.touchAction="none"`, Y NO SERVÍA PARA NADA — salvo para
+             dejar la app muerta. El navegador decide qué puede hacer con un gesto **en el
+             `touchstart`**, mirando el `touch-action` de ese momento; cambiarlo con el dedo ya
+             puesto no afecta al gesto en curso (así lo dice la especificación y así se comporta
+             Chromium). O sea que como freno del momentum era decorativo. Lo que sí hacía era
+             quedarse puesto: si el gesto no acababa en `touchend` —y no acaba casi nunca, ver
+             `onCancel`—, la página se quedaba con `touch-action:none` y **el dedo dejaba de mover
+             la lista** hasta el siguiente gesto que terminara bien. Medido en su móvil por CDP el
+             2026-07-27: gesto cortado → dos deslizadas reales sin mover un píxel (scroll 473 →
+             473 → 473) → un gesto limpio → vuelve a ir (473 → 820). Eso es el «tirón». */
+          const conMomentum=(Date.now()-lastScrollAt.current)<200;
+          if(conMomentum){
+            pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
+            pageEl.style.overflow="hidden";
+          }
         }
       }
     } else {
       appShellRef.current.classList.remove("gesture-freeze","dragging","profile-gesturing");
       if(trackRef.current){
-        const pageEl=trackRef.current.children[tabRef.current];
-        if(pageEl){
-          pageEl.style.overflow="";
-          pageEl.style.touchAction="";
+        /* Se sueltan TODAS las páginas, no solo la activa. Si el gesto cambió de pestaña,
+           `tabRef` ya apunta a la nueva y la que se congeló se quedaba con el candado puesto
+           para siempre. Son cuatro elementos: barato y no deja rincones. */
+        const pgs=trackRef.current.children;
+        for(let i=0;i<pgs.length;i++){
+          const pageEl=pgs[i]; if(!pageEl||!pageEl.style) continue;
+          if(pageEl.style.overflow) pageEl.style.overflow="";
+          if(pageEl.style.touchAction) pageEl.style.touchAction="";   // limpia el de versiones viejas
           const y=parseFloat(pageEl.dataset.mcLockY);
           if(!isNaN(y)) try{ pageEl.scrollTop=y; }catch(e){}
           delete pageEl.dataset.mcLockY;
@@ -819,25 +938,40 @@ function App(){
      La transición dura 0,48 s. Si en ese rato empieza otro gesto, lo primero que hace es poner
      `.dragging` —que es `transition:none`—, así que la animación en vuelo se corta en seco y el
      panel PEGA UN SALTO desde donde iba hasta donde diga el dedo. Con el velo y el avatar a
-     medio camino, eso es exactamente «volverse loco». Se ignoran los toques hasta que el panel
-     asiente: por `transitionend` (lo normal) y con un plazo de respaldo por si el navegador no lo
-     dispara —pasa si la pestaña pierde el foco a mitad—, que dejaría el gesto muerto para siempre. */
-  const profBusy=useRef(false), profBusyT=useRef(null);
+     medio camino, eso es exactamente «volverse loco».
+     Afinado 2026-07-26 (rechazo «stopper»): el candado SE QUEDA, pero (1) se pone YA en el
+     cierre real, no en el useEffect de después —si no, hay una ventana en la que un segundo
+     dedo corta la animación—, (2) cerrar durante la apertura SÍ se deja (el usuario quiere
+     salir; lo que se bloquea es abrir desde Inicio a mitad de transición), y (3) transitionend
+     limpia el timeout y solo vale si es de la generación actual. */
+  const profBusy=useRef(false), profBusyT=useRef(null), profBusyGen=useRef(0);
+  const profClearBusy=function(){
+    profBusy.current=false;
+    if(profBusyT.current){ clearTimeout(profBusyT.current); profBusyT.current=null; }
+  };
   const profMarkBusy=function(){
+    const gen=++profBusyGen.current;
     profBusy.current=true;
     if(profBusyT.current) clearTimeout(profBusyT.current);
-    profBusyT.current=setTimeout(function(){ profBusy.current=false; }, 560);
+    // 500 ms = 480 de la CSS + margen pequeño. Antes 560 y se notaba «sordo» al cerrar rápido.
+    profBusyT.current=setTimeout(function(){ if(profBusyGen.current===gen) profClearBusy(); }, 500);
   };
   useEffect(function(){
     const el=profileRef.current; if(!el) return undefined;
-    const fin=function(e){ if(e.target===el && e.propertyName==="transform") profBusy.current=false; };
+    const fin=function(e){
+      if(e.target!==el || e.propertyName!=="transform") return;
+      // Solo la generación en curso: un transitionend viejo no desbloquea una animación nueva.
+      profClearBusy();
+    };
     el.addEventListener("transitionend", fin);
     return function(){ el.removeEventListener("transitionend", fin); };
   },[]);
   useEffect(function(){
     document.documentElement.classList.toggle("profile-open", !!profileOpen);
     if(!dragging.current && gestureMode.current!=="profile"){
-      profMarkBusy();   // arranca la animación: nadie la toca hasta que acabe
+      // Apertura por tap / cierre programático (✕, Ajustes, atrás). El cierre por gesto ya
+      // puso el candado en profileEnd; aquí cubrimos el resto.
+      if(!profBusy.current) profMarkBusy();
       if(profileOpen) profSetOrigin();   // re-ancla al avatar ANTES de animar (apertura por tap)
       setProfileProgress(profileOpen?1:0);
       if(profileRef.current){
@@ -875,6 +1009,12 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     setSettingsProgress(!(closeProg>0.35 || flick)?1:0);
     dAx.current=null;
+  };
+  // El navegador se lleva el gesto (ver `onCancel`): Ajustes se queda como estaba, sin decidir.
+  const drawerCancel=function(){
+    if(!dDrag.current) return; dDrag.current=false; dAx.current=null; dDX.current=0;
+    if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
+    freezeShell(false);
   };
   // Cerrar perfil tirando ABAJO (arriba→abajo): misma escala al avatar en reversa.
   // Abrir ya es pull-down desde Inicio; cerrar «tira hacia atrás» el mismo gesto (feedback 2026-07-17).
@@ -958,7 +1098,11 @@ function App(){
   const PROF_ASA=72;
   const pOwn=useRef(false);
   const profileStart=function(e){
-    if(profBusy.current) return;   // el panel está asentándose: este toque no es para el gesto
+    // Cerrar SÍ se deja aunque la apertura aún anime: el usuario quiere salir y el ✕ ya
+    // funcionaba sin el candado. Lo que el candado debe impedir es un segundo gesto que
+    // CORTE un cierre en vuelo (`.dragging` = transition:none → salto). Eso se cubre
+    // poniendo el candado síncrono en profileEnd al cerrar de verdad, más pointer-events:none
+    // del CSS mientras cierra. Bloquear aquí el arranque del cierre era el «stopper» de 560 ms.
     const t=e.touches[0]; pSX.current=t.clientX; pSY.current=t.clientY; pAx.current=null; pDrag.current=true; pDY.current=0; pT.current=Date.now();
     const el=profileRef.current;
     let asa=false;
@@ -1015,15 +1159,12 @@ function App(){
     const dist=pDY.current;
     const dt=Math.max(1,Date.now()-pT.current);
     const stay=!profPasa(dist, dt, PROF_TH_CLOSE);
-    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose. Lo pone el
-       efecto de `profileOpen`, así que aquí basta con no estorbar.
-       La 4.11.0 lo ponía en CUALQUIER final de gesto: también en el rebote de «he tirado y no ha
-       llegado», y también en un simple toque. Como en esos casos no hay `transitionend` que lo
-       levante (o llega tarde), el candado se comía sus 560 ms y el SIGUIENTE intento de cerrar no
-       llegaba ni a empezar. Sumado al umbral doblado, esa era la otra mitad de «a la mínima vuelve
-       a la posición inicial» (veredicto de beta 2026-07-26): tiras, no llega, vuelves a tirar en
-       el acto y la app está sorda. Cortar un rebote es inofensivo —el panel vuelve a donde ya
-       estaba—; cortar el cierre es lo que se veía «loco», y eso lo sigue cubriendo el efecto. */
+    /* EL CANDADO SOLO PARA LA ANIMACIÓN QUE CAMBIA DE ESTADO — la del panel yéndose.
+       Se pone AQUÍ, síncrono, ANTES de setProfileOpen(false): si espera al useEffect, hay una
+       ventana en la que un segundo touchstart todavía ve profBusy=false, engancha `.dragging`
+       y corta la transición (el «vuelve loco» original). El rebote (stay=true) NO lo pone:
+       bloquearlo dejaba la app sorda al segundo intento (veredicto beta 2026-07-26). */
+    if(!stay) profMarkBusy();
     setProfileOpen(stay);
     setProfileProgress(stay?1:0);
     pAx.current=null; pDY.current=0;
@@ -1063,8 +1204,6 @@ function App(){
     setAuthStart("up");   // onboarding → "Crear cuenta" directo, sin pasar por el login (punto 5)
     setShowAuth(true);
   };
-  const [showDots,setShowDots]=useState(false);
-  const dotsTimer=useRef(null);
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
@@ -1534,12 +1673,31 @@ function App(){
   };
   // startTransition: la animación del track va primero; React monta la pestaña en segundo plano.
   const goTab=function(i){
-    if(i<0||i>=tabIds.length||i===tab) return;
-    revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
-    prepMountTab(i);
-    if(i>0) prepMountId(tabIds[i-1]);
-    if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
-    React.startTransition(function(){ setTab(i); });
+    // `tabRef` y no `tab`: este cierre viaja dentro de las páginas memoizadas (ver `contenidos`
+    // más abajo), que a propósito NO se rehacen al cambiar de pestaña. Leyendo `tab` se quedaría
+    // con el de cuando se construyó la página y, si coincidiera con el destino, este `return`
+    // temprano se tragaría el salto: «Ver más → Gastos» sin hacer nada.
+    if(i<0||i>=tabIds.length||i===tabRef.current) return;
+    lastTabAt.current=Date.now();   // ver el «stopper» en onMove: encadenar deslizadas no debe abrir Ajustes
+    /* TODO EN LA MISMA TRANSICIÓN, Y ESTO ERA EL LAG QUE ÉL SEGUÍA NOTANDO (2026-07-27).
+       `revealNav()` y los `prepMount*` son `setState` URGENTES, mientras que el cambio de pestaña
+       iba en `startTransition`: React los atiende en carriles distintos, así que al soltar el dedo
+       se renderizaba App DOS VECES —una urgente y otra de transición— justo encima de la animación
+       del carrusel. Su repro lo dejó ver: el caso lento no era «Gastos arriba», era que **la barra
+       inferior estaba escondida y tenía que reaparecer**, y reaparecer es precisamente lo que
+       dispara el render urgente. Medido con frames (que es lo que se nota, no las tareas largas):
+         Gastos arriba + barra escondida (su caso lento)   peor frame 100-117 ms
+         Gastos arriba + barra ya visible                  peor frame  83 ms
+         Gastos bajado (su caso fluido)                    peor frame  83 ms
+       Ocultar TODO el contenido de arriba de Gastos no cambiaba nada (100 ms), así que no era lo
+       que se pintaba: era el render de más. Con todo en la misma transición, una sola pasada. */
+    React.startTransition(function(){
+      revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
+      prepMountTab(i);
+      if(i>0) prepMountId(tabIds[i-1]);
+      if(i<tabIds.length-1) prepMountId(tabIds[i+1]);
+      setTab(i);
+    });
   };
   // «Ver más» desde Resumen: la pestaña destino conserva su scroll y aterrizabas a mitad de
   // Metas/Gastos (feedback 2026-07-18) → estos enlaces resetean el scroll de la página destino.
@@ -1552,8 +1710,131 @@ function App(){
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
-  const revealDots=()=>{ setShowDots(true); if(dotsTimer.current) clearTimeout(dotsTimer.current); };
-  const hideDotsSoon=()=>{ if(dotsTimer.current) clearTimeout(dotsTimer.current); dotsTimer.current=setTimeout(()=>setShowDots(false),1100); };
+  const trackW=useRef(0);   // ancho del carrusel, medido al empezar el gesto (ver onMove)
+  const prepped=useRef(0);    // qué vecina se ha premontado ya EN ESTE gesto (ver onMove)
+  const lastTabAt=useRef(0);   // cuándo se cambió de pestaña por última vez (ver el «stopper» en onMove)
+  /* EL CARRUSEL SE MUEVE EN PÍXELES, NO EN PORCENTAJES — y esto valía la mitad del lag.
+     Iba con `translateX(-100%)`, y un porcentaje en un `transform` se resuelve contra el ancho
+     del propio elemento, o sea que **hay que consultar el layout para saber a cuántos píxeles
+     equivale**. En un valor fijo eso se hace una vez; escrito en cada `touchmove` durante un
+     arrastre, se paga por frame y saca el gesto del compositor. Medido en el escenario del
+     rechazo (scroll en Deudas → deslizar, CPU x12): **146 → 76 ms** de tareas largas solo por
+     este cambio. Con `translate3d(px,0,0)` no hay nada que resolver y además el `,0,0` pide capa
+     propia explícitamente.
+     Se usa en TODAS las escrituras del track, no solo en la del arrastre: si unas fueran en `%` y
+     otras en píxeles, la transición al soltar interpolaría entre dos listas de funciones
+     distintas y el navegador caería a interpolar matrices. */
+  /* LA BARRA DE ABAJO DESENFOCA LO QUE PASA POR DETRÁS, Y ESO SE PAGA EN CADA FRAME (2026-07-27).
+     Su repro, que es el que lo destapó: «cuando en Gastos estás ARRIBA DEL TODO… vas a Deudas, te
+     mueves, y vuelves a Gastos: hay lag. Si en Gastos estabas abajo, no hay nada de lag, va ultra
+     fluido». La diferencia entre los dos casos es que al bajar en una lista **la barra inferior se
+     esconde**, y una barra escondida no tiene nada que desenfocar.
+
+     `.botnav` lleva `backdrop-filter: blur(16px)`: el navegador tiene que recalcular el desenfoque
+     cada vez que cambia lo que hay detrás — y al deslizar entre pestañas, detrás se mueve la app
+     entera. Medido: la barra se repinta 47 veces en un solo gesto. Y acotado con el tope teórico:
+
+       barra visible, con desenfoque (como estaba)   181 ms
+       barra visible, SIN desenfoque                 145 ms
+       barra fuera del pintado (tope teórico)        141 ms
+
+     O sea que el coste de la barra durante un desliz es CASI TODO su desenfoque, y quitarlo se
+     lleva prácticamente el máximo posible. Como el diseño no se toca (petición suya), se apaga
+     solo mientras hay movimiento y vuelve al terminar: exactamente lo que ya se hace con el velo
+     del perfil, que tampoco desenfoca durante el arrastre. A 0,42 s de transición nadie ve la
+     diferencia; lo que sí se nota es el tirón. */
+  const navBlurT=useRef(0);
+  const navSinBlur=function(off){
+    if(navBlurT.current){ clearTimeout(navBlurT.current); navBlurT.current=0; }
+    if(!appShellRef.current) return;
+    appShellRef.current.classList.toggle("nav-sin-blur", !!off);
+  };
+  const navSinBlurTrasTransicion=function(){
+    // Respaldo por tiempo: si el asentamiento rAF se cancela a mitad, el desenfoque no se queda.
+    if(navBlurT.current) clearTimeout(navBlurT.current);
+    navBlurT.current=setTimeout(function(){
+      navBlurT.current=0;
+      if(appShellRef.current) appShellRef.current.classList.remove("nav-sin-blur");
+    }, 480);
+  };
+  useEffect(function(){ return function(){ if(navBlurT.current) clearTimeout(navBlurT.current); }; },[]);
+  const trackAnchoAhora=function(){ return (trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360; };
+  const trackX=function(i){ return "translate3d("+(-i*(trackW.current||trackAnchoAhora()))+"px,0,0)"; };
+  /* ASENTAR EL CARRUSEL CON rAF, NO CON transition CSS — 2026-07-27, medido en SU móvil.
+     La transition de 0,42 s producía exactamente este ritmo al soltar el dedo:
+       25 8 25 8 25 8 … (trece veces) → 60 Hz a trompicones durante todo el asentamiento.
+     El arrastre con el dedo iba a 8,3 ms clavados (120 Hz). WAAPI igual de malo; acortar la
+     transition a 0,18 s dejaba 6 saltos (proporcional). Con rAF escribiendo transform: **0
+     saltos**, cuatro veces seguidas. Herramienta: tools/movil/ab-waapi.mjs / huecos.mjs.
+     Curva = la misma cubic-bezier(.32,.72,0,1) que tenía el CSS (feedback 2026-07-17). */
+  const settleRaf=useRef(0);
+  const settleGen=useRef(0);
+  const settleTo=useRef(-1);
+  const trackPxAhora=function(){
+    const el=trackRef.current; if(!el) return 0;
+    const cur=getComputedStyle(el).transform;
+    if(!cur||cur==="none") return 0;
+    const m=cur.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*(-?[\d.]+)/);
+    return m?parseFloat(m[1]):0;
+  };
+  const easeTrack=function(x){
+    // Resuelve Y de cubic-bezier(.32,.72,0,1) para progreso X ∈ [0,1].
+    var lo=0, hi=1, t=x, i, u, bx;
+    for(i=0;i<10;i++){
+      t=(lo+hi)/2; u=1-t;
+      bx=3*u*u*t*0.32 + 3*u*t*t*0 + t*t*t;
+      if(bx<x) lo=t; else hi=t;
+    }
+    u=1-t;
+    return 3*u*u*t*0.72 + 3*u*t*t*1 + t*t*t;
+  };
+  const asentarTrack=function(i){
+    const el=trackRef.current; if(!el) return;
+    if(settleRaf.current && settleTo.current===i) return;   // ya vamos ahí: no reiniciar
+    if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
+    const gen=++settleGen.current;
+    settleTo.current=i;
+    el.classList.remove("dragging");
+    const toX=-(i*(trackW.current||trackAnchoAhora()));
+    if(document.documentElement.classList.contains("reduce-motion")){
+      el.style.transform="translate3d("+toX+"px,0,0)";
+      settleTo.current=-1;
+      navSinBlur(false);
+      return;
+    }
+    const fromX=trackPxAhora();
+    if(Math.abs(fromX-toX)<0.5){
+      el.style.transform="translate3d("+toX+"px,0,0)";
+      settleTo.current=-1;
+      navSinBlurTrasTransicion();
+      return;
+    }
+    const t0=performance.now();
+    const dur=420;
+    const step=function(now){
+      if(gen!==settleGen.current) return;
+      const p=Math.min(1,(now-t0)/dur);
+      const x=fromX+(toX-fromX)*easeTrack(p);
+      el.style.transform="translate3d("+x+"px,0,0)";
+      if(p<1){ settleRaf.current=requestAnimationFrame(step); }
+      else {
+        settleRaf.current=0; settleTo.current=-1;
+        el.style.transform="translate3d("+toX+"px,0,0)";
+        navSinBlur(false);
+      }
+    };
+    settleRaf.current=requestAnimationFrame(step);
+  };
+  useEffect(function(){
+    return function(){ if(settleRaf.current) cancelAnimationFrame(settleRaf.current); };
+  },[]);
+  /* Aquí vivían revealDots()/hideDotsSoon(), que encendían y apagaban el indicador de puntitos
+     del swipe. Ese indicador se lo llevó por delante el rediseño v4: `.app.v4 .dots` está oculto
+     con `display:none !important` y ningún módulo crea ya el elemento (comprobado buscando
+     `showDots` y `className:"dots"` en todo `src/`: no aparece en un solo render). Lo que
+     sobrevivió fue su maquinaria de estado, y cobraba peaje —`setShowDots(true)` al declararse el
+     gesto horizontal y `setShowDots(false)` 1,1 s después—: DOS re-renders completos de App por
+     cada pasada de dedo entre pestañas, para no pintar absolutamente nada. Retirado 2026-07-26. */
   const drawerW=function(){ return window.innerWidth||360; };
   const EDGE_OPEN=52;
   const onStart=(e)=>{
@@ -1562,7 +1843,34 @@ function App(){
     // Sheets portaleados desde una tab (editar gasto): el DOM está en body pero el árbol
     // React burbujea hasta aquí — sin esto, scroll de chips mueve las tabs (2026-07-17).
     if(document.documentElement.classList.contains("sheet-open")) return;
+    /* ZONAS QUE NO SON NUESTRAS. Los toques se escuchan a mano (ver el efecto de más abajo), y un
+       listener nativo en `.viewport` se dispara ANTES que los de React, así que el
+       `stopPropagation` de `stopSwipe` ya no llegaría a tiempo: hay que mirarlo aquí.
+         · `[data-noswipe]`: buscador y rango de fechas de Gastos, que lo piden explícitamente.
+         · cualquier cosa con scroll horizontal propio (las filas de chips): el dedo es del
+           navegador, no nuestro. Antes esto «funcionaba» de rebote —el navegador se quedaba el
+           gesto porque no podíamos impedírselo— y ahora que sí podemos hay que ser explícitos. */
+    const t=e.target;
+    if(t&&t.closest&&t.closest("[data-noswipe]")) return;
+    for(let el=t; el&&el!==document.body; el=el.parentElement){
+      if(el.classList&&el.classList.contains("page")) break;
+      if(el.scrollWidth>el.clientWidth+4){
+        const ox=getComputedStyle(el).overflowX;
+        if(ox==="auto"||ox==="scroll") return;
+      }
+    }
+    /* RED DE SEGURIDAD. `touchcancel` cubre el caso conocido, pero un gesto también puede morirse
+       sin avisar de ninguna manera: si la app se va a segundo plano con el dedo puesto, no llega
+       ni `touchend` ni `touchcancel` y el candado se queda. Soltar siempre antes de empezar no
+       cuesta nada (son cuatro `style.x=""` y quitar clases) y garantiza que NINGÚN dedo se
+       encuentre la app bloqueada por el gesto anterior. Si algún día vuelve a haber una fuga,
+       aquí se cura sola. */
+    if(dragging.current) onCancel();
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
+    // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
+    // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
+    trackW.current=(trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360;
+    prepped.current=0;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
@@ -1587,7 +1895,19 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        const openSettings = ddx>0 && (tab===0 || startX.current < EDGE_OPEN);
+        /* EL «STOPPER» (rechazos .19 y .23: «hay un stopper o algo que no permite deslizar de
+           manera seguida y rápida»). Reproducido midiendo: tres arrastres encadenados dan
+           `gastos → inicio → ninguna`, y que no haya pestaña activa significa que se abrió el
+           cajón. La causa es esta línea: en Inicio, un desliz a la derecha abre Ajustes DESDE
+           TODA LA PANTALLA (se hizo así a propósito el 17/7). Está bien cuando es un gesto
+           deliberado, pero encadenando deslizadas hacia atrás llegas a Inicio y **la siguiente
+           te planta Ajustes en la cara** — que es exactamente lo que se siente como un tope.
+           Solución: el atajo de pantalla completa solo cuenta si el dedo no viene de estar
+           cambiando de pestaña hace nada. Si acabas de cambiar (<450 ms), en Inicio manda el
+           borde, como en el resto de pestañas: sigues pudiendo abrir Ajustes desde la franja
+           izquierda, pero una deslizada de más ya no te saca de donde estás. */
+        const encadenando=(Date.now()-lastTabAt.current)<450;
+        const openSettings = ddx>0 && ((tab===0 && !encadenando) || startX.current < EDGE_OPEN);
         if(openSettings){
           gestureMode.current="drawer";
           setDrawerMounted(true);   // por si el idle aún no ha premontado (1ª vez sin negro)
@@ -1595,7 +1915,11 @@ function App(){
           freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
-          if(trackRef.current) trackRef.current.classList.add("dragging"); revealDots();
+          if(trackRef.current) trackRef.current.classList.add("dragging");
+          navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
+          // Congela el scroll de la página: sin esto, el momentum vertical de Deudas/Metas
+          // pelea con el translateX del track (mismo patrón que el perfil, 2026-07-18).
+          freezeShell(true,"tab");
         }
       } else if(axis.current==="y" && tab===0 && ddy>0){
         const pages=trackRef.current&&trackRef.current.children;
@@ -1628,14 +1952,42 @@ function App(){
       if(e.cancelable) e.preventDefault();
       return;
     }
-    const w=trackRef.current?trackRef.current.offsetWidth:360;
+    /* EL ANCHO SE MIDE UNA VEZ, AL EMPEZAR EL GESTO — aquí estaba el lag de verdad (rechazos
+       .17 → .23: «al entrar en Deudas, moverte, y luego deslizar va con muchísimo lag»).
+       Esto leía `trackRef.current.offsetWidth` EN CADA `touchmove`, y leer `offsetWidth` obliga al
+       navegador a recalcular el layout de forma SÍNCRONA. Con la página sin scrollear el layout
+       está limpio y la lectura sale gratis; pero congelar el scroll le pone `overflow:hidden`, eso
+       ensucia el layout, y entonces cada lectura se convierte en un reflow COMPLETO del documento.
+       Por eso solo se notaba «si te movías dentro»: hacían falta las dos cosas a la vez, y por
+       separado ninguna cantaba. Trazado con la CPU x6: 113 `UpdateLayoutTree` y 322 `Paint` en un
+       solo gesto — no una tarea larga que salte a la vista, sino 126 ms en trocitos.
+       Es layout-thrashing de manual, y la cura es la de manual: leer una vez, fuera del bucle. El
+       ancho del track no cambia mientras el dedo está en la pantalla. */
+    const w=trackW.current||360;
     let off=-tab*100+(dx.current/w)*100;
     // Sin rubber-band a la derecha en Inicio (ese gesto es Ajustes) — evitaba el rebote raro.
     if(tab===tabIds.length-1&&dx.current<0) off=-tab*100+(dx.current/w)*100*0.28;
     else if(tab===0&&dx.current>0) off=-tab*100;
-    if(trackRef.current) trackRef.current.style.transform="translateX("+off+"%)";
-    if(dx.current<-24 && tab<tabIds.length-1) prepMountTab(tab+1);
-    else if(dx.current>24 && tab>0) prepMountTab(tab-1);
+    if(trackRef.current) trackRef.current.style.transform="translate3d("+(off*w/100)+"px,0,0)";
+    /* ESTE `preventDefault` ES EL QUE FALTABA, Y ES TODO EL PROBLEMA (2026-07-27).
+       Sin él, el navegador considera que el gesto es SUYO en cuanto huele scroll: se lo lleva,
+       manda `touchcancel` y el arrastre de pestañas se queda a medias. Medido en su móvil:
+       **174 de 185 gestos suyos acabaron cancelados**, y **6 de cada 18 arrastres del carrusel
+       volvían a la pestaña de la que salieron** — o sea, deslizaba y no pasaba nada. Eso es su
+       «hay un stopper» y su «se pierde la fluidez de golpe»: no es que fuera lento, es que un
+       tercio de sus deslizadas no contaban.
+       Con el eje ya declarado horizontal, el gesto es nuestro y hay que decirlo. Ojo: solo
+       funciona porque los listeners se registran a mano con `{passive:false}` (ver el efecto de
+       abajo) — exactamente el mismo agujero que se arregló en el perfil el 18/7 y que aquí se
+       quedó sin arreglar. */
+    if(e.cancelable) e.preventDefault();
+    /* Y ESTO SE PEDÍA EN CADA `touchmove`. `prepMountTab` acaba en un `setMountedTabs` que
+       devuelve el MISMO objeto si la pestaña ya estaba montada, así que React se ahorra el
+       re-render… pero no se ahorra la llamada, ni la comprobación, ni el trabajo de programar la
+       actualización: en un arrastre son ~35 veces para no cambiar nada. Con una marca por gesto
+       basta, porque montar es idempotente y la dirección no cambia a mitad de arrastre. */
+    if(dx.current<-24 && tab<tabIds.length-1 && prepped.current!==1){ prepped.current=1; prepMountTab(tab+1); }
+    else if(dx.current>24 && tab>0 && prepped.current!==-1){ prepped.current=-1; prepMountTab(tab-1); }
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
@@ -1664,7 +2016,10 @@ function App(){
         setDrawerOpen(open);
         setSettingsProgress(open?1:0);
       } else {
-        if(trackRef.current) trackRef.current.classList.remove("dragging");
+        // El desenfoque NO vuelve al soltar: el carrusel sigue moviéndose 0,42 s, y ahí es
+        // donde más se nota. `asentarTrack` lo apaga al terminar; el timer es el respaldo.
+        navSinBlurTrasTransicion();
+        freezeShell(false);   // suelta el scroll que congelamos al fijar el eje horizontal
         const w=trackRef.current?trackRef.current.offsetWidth:360;
         const dist=dx.current;
         const dt=Math.max(1,Date.now()-startT.current);
@@ -1674,15 +2029,95 @@ function App(){
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
+        // Asentar YA (rAF), no esperar al setState: si no, el carrusel se queda un frame
+        // plantado donde lo soltó el dedo. goTab dispara el useEffect de `tab`, que vuelve a
+        // llamar asentarTrack con el mismo destino → no-op (ver settleTo).
         if(nt!==tab) goTab(nt);
-        else if(trackRef.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)";
-        hideDotsSoon();
+        asentarTrack(nt);
       }
     }
     gestureMode.current=null;
     axis.current=null;
   };
-  useEffect(()=>{ if(trackRef.current&&!dragging.current) trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; },[tab]);
+  /* EL GESTO QUE NO ACABA EN `touchend` — y aquí estaba el «tirón» de verdad, cuatro rechazos.
+     Cuando el navegador decide que un gesto es SUYO (lo normal: cualquier arrastre que acabe
+     scrolleando la lista) se lleva el dedo y avisa con `touchcancel`. **`touchend` ya no llega
+     nunca.** Y `.viewport` solo tenía `onTouchStart/onTouchMove/onTouchEnd`, así que en ese
+     camino no se ejecutaba NADA de lo que suelta el gesto: ni `freezeShell(false)`, ni quitar
+     `.dragging` del track, ni devolver el carrusel a su sitio, ni encender otra vez el
+     desenfoque de la barra. Con el dedo real pasa constantemente — en su móvil, **174 de 185
+     gestos terminaron cancelados** (medido por CDP el 2026-07-27).
+
+     Lo que se sentía: la app se quedaba con la página bloqueada y el carrusel plantado a medio
+     camino. Deslizas y no se mueve nada; insistes; en cuanto un gesto termina bien, se suelta
+     todo de golpe y la pantalla PEGA EL SALTO. Es exactamente su «hay un stopper», su «no se
+     mueve y luego va a trompicones» y su «a veces sí y a veces no» — y explica por qué un día
+     entero de medir rendimiento no lo encontró: **la app no iba lenta, iba bloqueada**. Ningún
+     banco de pruebas lo reprodujo porque un gesto sintético siempre termina con un `touchend`
+     limpio; solo un dedo de verdad hace que el navegador se lleve el gesto.
+
+     El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
+  const onCancel=function(){
+    if(!dragging.current) return;
+    if(gestureMode.current==="profile"){
+      profileRelease();
+      setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba
+      pDY.current=0;
+      dragging.current=false; axis.current=null; gestureMode.current=null;
+      freezeShell(false);
+      return;
+    }
+    // El desenfoque vuelve YA (no como al soltar): aquí no hay transición del carrusel que proteger.
+    navSinBlur(false);
+    cancelSwipe();
+  };
+  /* LOS TOQUES DE LAS PESTAÑAS, A MANO Y CON `{passive:false}` — el mismo arreglo que necesitó el
+     perfil el 18/7 y que aquí nunca se aplicó. React ata `onTouchMove` al contenedor raíz en modo
+     PASIVO, y en un listener pasivo `preventDefault()` no hace nada: solo deja un aviso en consola
+     que ningún test mira. Resultado, medido en su móvil: el navegador se quedaba uno de cada tres
+     arrastres para scrollear, mandaba `touchcancel`, y la deslizada no cambiaba de pestaña.
+     Con el listener a mano el gesto es nuestro de verdad. `touchcancel` sigue atado (`onCancel`)
+     porque el sistema —una noti, el borde de la pantalla— también puede llevárselo. */
+  const viewportRef=useRef(null);
+  const gestRef=useRef({});
+  gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
+  useEffect(function(){
+    const el=viewportRef.current; if(!el) return undefined;
+    const s=function(e){ gestRef.current.s(e); };
+    const m=function(e){ gestRef.current.m(e); };
+    const t=function(e){ gestRef.current.e(e); };
+    const c=function(e){ gestRef.current.c(e); };
+    el.addEventListener("touchstart", s, {passive:true});
+    el.addEventListener("touchmove", m, {passive:false});
+    el.addEventListener("touchend", t, {passive:true});
+    el.addEventListener("touchcancel", c, {passive:true});
+    return function(){
+      el.removeEventListener("touchstart", s);
+      el.removeEventListener("touchmove", m);
+      el.removeEventListener("touchend", t);
+      el.removeEventListener("touchcancel", c);
+    };
+  },[]);
+  // Toque en la barra inferior (y cualquier setTab que no venga del gesto): mismo asentamiento
+  // por rAF. Si el gesto ya lo arrancó hacia este índice, asentarTrack no reinicia.
+  useEffect(function(){ if(!dragging.current) asentarTrack(tab); },[tab]);
+  // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
+  // píxel no. Si cambia el ancho (rotación, teclado, barra del navegador), se tira la medida
+  // cacheada y se vuelve a colocar el carrusel. Fuera del gesto, para no medir con el dedo puesto.
+  useEffect(function(){
+    const alRedimensionar=function(){
+      trackW.current=0;
+      if(trackRef.current&&!dragging.current){
+        // Snap sin animar: el ancho nuevo cambia el destino en px; animar desde el viejo salta.
+        if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
+        settleTo.current=-1;
+        trackRef.current.style.transform=trackX(tab);
+      }
+    };
+    window.addEventListener("resize",alRedimensionar);
+    window.addEventListener("orientationchange",alRedimensionar);
+    return function(){ window.removeEventListener("resize",alRedimensionar); window.removeEventListener("orientationchange",alRedimensionar); };
+  },[tab]);
   /* auto-scroll del tab bar para que la pestaña activa siempre se vea */
   useEffect(()=>{
     const bar=tabbarRef.current; if(!bar) return;
@@ -1755,12 +2190,17 @@ function App(){
     // deps: si la app arranca en el candado o el onboarding, la tabbar aún no existe en el
     // primer montaje y los listeners no se instalarían nunca; al desbloquear se re-ejecuta.
   },[locked, state.onboarded]);
-  const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
+  // `data-noswipe` además del stopPropagation: los toques de las pestañas van por listener nativo
+  // y ese se dispara antes que los de React (ver `onStart`).
+  const stopSwipe={ "data-noswipe":"1", onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
   // Cancela el gesto de tabs/ajustes a mitad (chips de Gastos: scroll interno sin cambiar de pestaña).
   const cancelSwipe=function(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
-    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform="translateX("+(-tab*100)+"%)"; }
+    // `tabRef` por lo mismo que en `goTab`: con el `tab` de cuando se construyó la página, cancelar
+    // el gesto devolvería el carrusel a la pestaña equivocada. Asentar por rAF (no snap a pelo):
+    // si no, el dedo ve un salto seco cuando el navegador se lleva el gesto.
+    asentarTrack(tabRef.current);
     if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
     freezeShell(false);
     setSettingsProgress(drawerOpen?1:0);
@@ -1773,10 +2213,41 @@ function App(){
   },[tab, tabIds.join("|")]);
   // Tras el primer pintado: NO montar vecinas en auto. Montar ±1 al toque/swipe (prepMountTab)
   // evitaba un segundo hitch a ~900 ms junto con WhatsNew (feedback 2026-07-16).
+  //
+  // PERO montarlas al TOCAR significa montarlas DENTRO del gesto (feedback 2026-07-26: «las
+  // primeras veces que deslizas entre pestañas va a tirones, luego se suaviza»). Medido con la
+  // CPU estrangulada x6: 1ª deslizada 218+149+69+65 ms de tareas largas, 2ª 97 ms, 3ª y 4ª
+  // limpias — exactamente lo que él describió. El coste de montar no se puede evitar, pero sí
+  // ELEGIR CUÁNDO se paga: aquí se paga en huecos libres, una pestaña por hueco, antes de que
+  // nadie toque la pantalla. Se mantienen los 3,2 s del primer hueco (mover eso reabre el hitch
+  // de los 900 ms) y el `prepMountTab` del toque, que sigue haciendo de red por si el usuario
+  // desliza antes de que dé tiempo a todo.
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    mcScheduleIdle(function(){ setMountNeighbors(true); }, 3200);
-  },[state.onboarded, locked]);
+    var cancelled=false;
+    mcScheduleIdle(function(){
+      if(cancelled) return;
+      setMountNeighbors(true);
+      var pend=tabIds.slice();
+      var siguiente=function(){
+        if(cancelled) return;
+        var id=pend.shift();
+        if(!id){
+          // Y el PERFIL, con la misma lógica: montarlo cuesta lo que cuesta (es la pantalla más
+          // larga de la app, ~1.680 px), y hasta ahora se pagaba dentro del propio toque, porque
+          // `onOpenProfile` hacía `setProfileMounted(true)` y a los dos frames abría. Medido con
+          // la CPU x12: abrir la primera vez costaba el doble que las siguientes. Montado ya en
+          // un hueco libre, la primera vez cuesta lo mismo que la quinta (2026-07-26).
+          setProfileMounted(true);
+          return;
+        }
+        setMountedTabs(function(m){ return m[id]? m : Object.assign({},m,{[id]:true}); });
+        mcScheduleIdle(siguiente, 900);
+      };
+      mcScheduleIdle(siguiente, 900);
+    }, 3200);
+    return function(){ cancelled=true; };
+  },[state.onboarded, locked, tabIds.join("|")]);
   useEffect(function(){ if(tab>tabIds.length-1) setTab(0); },[tabIds.length]);   // modo simple reduce pestañas → no dejar un índice fuera de rango
   // Ocultar bloques por pestaña: publica el estado para CollapsibleCard (que no recibe props
   // de App) y escucha el toggle. settings.cardHidden se sincroniza con la nube como todo.
@@ -1807,13 +2278,65 @@ function App(){
       },
       onGoGastos:function(){ const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); },
       onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },active:tabIds[tab]==="gastos"});
+    // Sin prop `active`: ver `mcOnGastosActive` — si viaja por props, entrar en Gastos
+    // reconstruye el árbol entero encima del gesto (asimetría Deudas→Gastos vs →Cartera).
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
     if(id==="cartera") return React.createElement(CarteraTab,{state:state,set:set,totals:totals,fetchPrices:fetchPrices,pricing:pricing,simple:simple,onBankSync:function(){ return Promise.all([runBankSync({manual:true}), runBrokerSync({manual:true})]); },onReconnectBank:reconnectBank});
     return null;
   };
+
+  /* LAS CUATRO PESTAÑAS NO SE VUELVEN A PINTAR POR ABRIR EL PERFIL (medido 2026-07-26).
+     Aquí estaba el coste real de «abrir el perfil sigue yendo lento», y no era la animación:
+     con la CPU x12, el toque costaba ~195 ms de hilo bloqueado **incluso quitando el panel
+     entero del DOM**, y con TODAS las transiciones apagadas seguía costando lo mismo. Lo que se
+     paga es el re-render de App: las cuatro páginas se construyen aquí dentro, así que cualquier
+     estado de App —`profileOpen`, el velo, el toast, la barra que se esconde al hacer scroll—
+     re-renderizaba Inicio + Gastos + Plan + Cartera enteras. En reposo la traza lo confirma:
+     0 ms de tareas largas sin tocar nada, ~195 ms en cuanto cambia un estado de App.
+     Las hipótesis «bonitas» (el panel de 1.680 px que se re-rasteriza, el velo, la sombra, el
+     radio animado) se midieron una por una y NO son: mueven el rasterizado, que va en otro hilo
+     y no bloquea. Están anotadas en el CHANGELOG con su número para no repetirlas.
+     ⚠ Las dependencias son TODO lo que leen estas páginas y los cierres que les pasamos, no solo
+     lo que se ve en las props: si añades una prop que dependa de otro estado de App, añádelo aquí
+     o la pestaña se quedará con un valor viejo. Fuera quedan a propósito los estados de las capas
+     de encima (perfil, cajón, toast, barra inferior, pills de update), que es justo el ahorro.
+
+     Y `tab` TAMPOCO ES DEPENDENCIA — segunda vuelta, 2026-07-27. Con `tab` dentro, cambiar de
+     pestaña seguía reconstruyendo las cuatro páginas, y eso es exactamente lo que él siguió
+     notando: «vas a deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible».
+     Medido a x12: entrar en Deudas 172 ms, moverse dentro 0 ms (eso ya estaba), **deslizar fuera
+     219 ms**. Al quedar fuera, cambiar de pestaña solo re-renderiza los cuatro `div` de arriba
+     (que sí necesitan `tab` para la clase `page-live`); React ve el MISMO elemento hijo por
+     referencia y se salta el subárbol entero. De ahí que el mapa de abajo ya no vaya memoizado:
+     cuatro `createElement` de un `div` no cuestan nada, y lo caro es lo que cuelga de ellos.
+     El precio de sacar `tab` son los cierres que lo leían (`goTab`, `cancelSwipe`): ahora leen
+     `tabRef`, con el porqué escrito en cada uno. */
+  const contenidos=useMemo(function(){
+    var out={};
+    tabIds.forEach(function(id){ if(id!=="gastos") out[id]=pageFor(id); });
+    return out;
+    // eslint-disable-next-line
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  /* Gastos iba en memo aparte POR la prop `active` — y esa prop era el lag. Ahora se entera
+     por bus (`mcSetGastosActive` abajo) y comparte deps con las otras: entrar/salir de Gastos
+     ya NO reconstruye Expenses. Se deja el memo propio por si mañana vuelve a necesitar algo
+     que las otras no (focusExp sigue aquí). */
+  const contenidoGastos=useMemo(function(){
+    return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
+    // eslint-disable-next-line
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
+  useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
+  const paginas=tabIds.map(function(id,i){
+    var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
+    var show=live||!!mountedTabs[id];
+    return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
+      show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
+    );
+  });
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
   if(state.onboarded===false) return React.createElement(React.Fragment,null,
@@ -1859,16 +2382,8 @@ function App(){
       onClick:function(){ mcExitSandbox(); location.reload(); }},
       "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
-      React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
-        React.createElement("div",{className:"track",ref:trackRef},
-          tabIds.map(function(id,i){
-            var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
-            var show=live||!!mountedTabs[id];
-            return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
-              show ? pageFor(id) : null
-            );
-          })
-        )
+      React.createElement("div",{className:"viewport",ref:viewportRef},
+        React.createElement("div",{className:"track",ref:trackRef}, paginas)
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
@@ -1910,7 +2425,10 @@ function App(){
       ref:drawerRef,
       onTouchStart:drawerOpen?drawerStart:undefined,
       onTouchMove:drawerOpen?drawerMove:undefined,
-      onTouchEnd:drawerOpen?drawerEnd:undefined
+      onTouchEnd:drawerOpen?drawerEnd:undefined,
+      // Mismo agujero que en las pestañas (ver `onCancel`): si el navegador se lleva el gesto,
+      // `touchend` no llega y Ajustes se quedaba con el candado y a medio arrastrar.
+      onTouchCancel:drawerOpen?drawerCancel:undefined
     },
       React.createElement("div",{className:"settings-push-h"},
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),

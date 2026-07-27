@@ -188,3 +188,20 @@ test("tocar mientras la animación se va NO la corta a medias", async ({ page })
   await expect(panel).toHaveCSS("visibility", "hidden", { timeout: 3_000 });
   expect(durante.length).toBeGreaterThan(0);
 });
+
+test("abrir y cerrar al momento: el candado NO deja sorda la app medio segundo", async ({ page }) => {
+  // El «stopper» de 560 ms (4.11.0) arreglaba el corte a medias, pero bloqueaba también el
+  // cierre justo después de abrir. Ahora el candado se afina: cerrar en caliente SÍ se deja;
+  // lo que se sigue bloqueando es un gesto que corte un cierre en vuelo.
+  const cdp = await app(page);
+  const panel = page.locator(".profile-pull");
+
+  await page.locator(".v4-avatar").click();
+  await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+  // Un frame para que React enganche los listeners del panel (useEffect). Muy por debajo
+  // de los 500–560 ms del candado viejo — si volviera el stopper, este test falla.
+  await page.waitForTimeout(80);
+  await arrastrar(cdp, page, 200, 6, 45);
+  await expect(panel, "cerrar en caliente tras abrir tiene que funcionar").not.toHaveClass(/open/, { timeout: 3_000 });
+  await expect(panel).toHaveCSS("visibility", "hidden", { timeout: 3_000 });
+});

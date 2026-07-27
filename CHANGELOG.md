@@ -2,6 +2,289 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.12.0] — 2026-07-26
+### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
+
+#### Séptima vuelta: el tirón era el ASENTAMIENTO CSS a 120 Hz (no el arrastre, no React)
+Él lo describía perfecto y se midió mal otra vez: «**se pierde la fluidez de golpe**». Con la métrica correcta —huecos entre frames **presentados** por el compositor, no deltas de `requestAnimationFrame` ni `% DROPPED`— la secuencia de un deslice en su móvil (120 Hz) es:
+
+```
+… 8 8 8 8 …   ← arrastre con el dedo, impecable
+25 8 25 8 25 8 … (×13)   ← al soltar, 0,42 s exactos
+… 8 8 8 8 …   ← al acabar, impecable otra vez
+```
+
+Eso es el batido 60/120: la `transition: transform .42s` del `.track` pelea con la pantalla. WAAPI igual (13 saltos). Acortar a 0,18 s deja 6 (proporcional). **Asentar escribiendo `transform` desde `requestAnimationFrame`: 0 saltos, cuatro veces seguidas** (`tools/movil/ab-waapi.mjs`). Mismo easing `cubic-bezier(.32,.72,0,1)`, misma duración. `.track{transition:none}` permanente; si vuelve la CSS, vuelve el judder.
+
+Lección de las varas (para no repetir el camino): rAF vive en el hilo principal y el desliz va en el compositor → rAF puede ir a 8,3 ms con la pantalla a trompicones; `% DROPPED` da 33 % hasta en reposo (el compositor pide 183/s y la pantalla presenta 122). Lo que cuenta es el **hueco entre presentaciones**.
+
+De paso: `applySeason("")` dejaba `data-season=""` y `html[data-season]` encendía `fabpulse` (anima `box-shadow` → repintado permanente). No era ESTE tirón (A/B intercalado: 14 saltos con o sin él), pero estaba mal; ahora se quita el atributo.
+
+⚠ La sexta vuelta (bus de `active`) **se queda**: era un re-render medido de verdad. **No era** lo que él seguía notando. Guardián del asentamiento: `tests/track-asentar-raf.test.mjs`.
+
+#### Sexta vuelta: Deudas→Gastos no era el gesto, era RE-PINTAR Gastos al llegar
+Él lo había dicho con la pista perfecta y se midió mal: **hacia Cartera va fluidísimo; hacia Gastos, no.** Un lag que depende del sentido no puede ser el carrusel (es idéntico): tiene que ser el destino. En su móvil, con la beta .42 cargada y un contador inyectado sobre `Expenses`:
+
+| gesto | re-renders de Gastos |
+|---|---|
+| Plan/Deudas → **Gastos** | **+1** (y `active` pasa a `true`) |
+| Plan/Deudas → **Cartera** | **0** |
+
+La prop `active` de Expenses viajaba en el `useMemo` de Gastos (`gastosActiva`). Cada entrada a Gastos **reconstruía el árbol entero** encima de la animación del carrusel. El expediente ya lo había anotado («dejar `active` fijo quita la asimetría, pero no vale») y se descartó mal: **sí vale** enterarse sin re-render. `mcSetGastosActive` / `mcOnGastosActive` (bus en `00-core.js`): heavyOk y el reset de chips siguen avisados; el árbol de Gastos no se toca. Guardián: `tests/gastos-active-bus.test.mjs`.
+
+⚠ **Veredicto suyo tras la .43: «sigue falla».** El re-render era real y el bus lo quita, pero **no era la causa del tirón que él siente**. La séptima vuelta es la que apunta a eso.
+
+#### Quinta vuelta: el banco de pruebas no reproducía su fallo, y ese era el problema de verdad
+«Sigue exactamente igual, no hay manera.» Y con razón: hasta aquí yo medía **tareas largas** en un contenedor, y su síntoma —tirones al deslizar— no aparecía en esa métrica. Al reproducir sus dos casos, la diferencia era 190 contra 174 ms: ruido. **Estaba optimizando contra un espejo que no enseñaba el fallo**, y de ahí que dos tandas seguidas no le llegaran.
+
+Lo primero fue arreglar el medidor, no el código. Dos cambios:
+- **Medir FRAMES, no tareas largas.** Lo que se nota es un frame que tarda 100 ms, y eso puede pasar sin que ninguna tarea larga salte.
+- **Reproducir su caso de verdad.** La app **ignora los eventos de scroll mientras hay un dedo puesto** (`if(dragging.current) return` en `onPageScroll`), así que con toques sintéticos la barra inferior no se escondía nunca — en un móvil real la esconde la inercia al soltar. Simulado eso, el fallo apareció a la primera.
+
+Con el medidor arreglado, su repro salió al instante… y desmintió lo que parecía:
+
+| caso | peor frame |
+|---|---|
+| Gastos arriba + barra escondida (su caso lento) | **100-117 ms** |
+| Gastos arriba + barra **ya visible** | 83 ms |
+| Gastos bajado (su caso fluido) | 83 ms |
+| Gastos arriba, **todo** el bloque de arriba oculto | 100 ms |
+
+**La variable no era «Gastos arriba del todo»**: era si la **barra inferior estaba escondida y tenía que reaparecer** durante el desliz. Ocultar entero el contenido de arriba de Gastos no cambiaba nada (100 ms), así que tampoco era lo que se pintaba. Y explica su «a veces sí y a veces no»: dependía de si había scrolleado antes.
+
+**La causa:** `goTab` llamaba a `revealNav()` y a los `prepMount*` como `setState` **urgentes**, mientras el cambio de pestaña iba en `startTransition`. React los atiende en carriles distintos → **App se renderizaba DOS VECES** al soltar el dedo, encima de la animación del carrusel. Y reaparecer la barra es justo lo que dispara el render urgente. Todo en la misma transición: una sola pasada. **Peor frame del caso lento: 100 → 83 ms**, ya igualado con los casos que él da por fluidos.
+
+⚠ **Y una corrección a la cuarta vuelta:** el desenfoque de la barra NO era la causa de su repro — en el caso lento la barra estaba *escondida*, o sea sin nada que desenfocar. Aquella medida (181 → 145 ms de tareas largas, con el tope teórico en 141) es real y el cambio se queda porque es una mejora medida en cualquier desliz, pero **no era lo que él notaba**. Queda dicho para que nadie lo lea como el arreglo de esto.
+
+#### Cuarta vuelta: la barra de abajo desenfoca, y eso se paga EN CADA FRAME
+Su repro, que es el que resolvió esto y que ninguna medida mía habría encontrado sola:
+
+> «Cuando en Gastos está **arriba del todo** —esto es importante— y luego entras en Deudas, te mueves, y vuelves a Gastos: hay lag y se ralentiza todo. En cambio si en Gastos **bajas** sin ver la parte de arriba, vuelves a Deudas, te mueves, y deslizas otra vez a Gastos: no hay nada de lag, va ultra fluido.»
+
+Lo que cambia entre los dos casos no es Gastos: **es que al bajar en una lista la barra inferior se esconde**. Y una barra escondida no tiene nada que desenfocar. `.botnav` lleva `backdrop-filter: blur(16px)`, que el navegador recalcula **cada vez que cambia lo que hay detrás** — y deslizando entre pestañas, detrás se mueve la app entera. En la traza se ve sin ambigüedad: **la barra se repinta 47 veces en un solo gesto**.
+
+Acotado con el tope teórico, que es lo que convierte una sospecha en un dato:
+
+| | bloqueo por gesto |
+|---|---|
+| barra visible, con desenfoque (como estaba) | 181 ms |
+| barra visible, **sin** desenfoque | **145 ms** |
+| barra **fuera del pintado** (tope teórico) | 141 ms |
+
+O sea: el coste de la barra durante un desliz **es casi todo su desenfoque**, y quitarlo se lleva prácticamente el máximo posible. Y explica el «a veces sí y a veces no» que traía loco a cualquiera: dependía de si la barra estaba visible en ese momento.
+
+**El diseño no se toca** (petición suya explícita). El desenfoque se apaga solo mientras hay movimiento y vuelve al parar — exactamente lo que ya se hacía con el velo del perfil desde la 4.9.0, que tampoco desenfoca durante el arrastre. A 0,42 s de transición nadie ve la diferencia; el tirón sí se veía. A/B intercalado contra la beta publicada, con su repro exacto: **180 → 157 ms**, y con la dispersión mucho más apretada (143-210 contra 126-301).
+
+Detalle de fontanería: la vuelta del desenfoque va por temporizador y no por `transitionend`, porque si el desliz no llega al umbral el carrusel no transiciona y el evento no llegaría nunca — el candado del perfil ya tropezó con eso en la 4.11.0.
+
+Guardián: `e2e/swipe-pestanas.spec.mjs` comprueba que la clase está puesta CON EL DEDO PUESTO y que se quita sola después (si se quedara, el diseño cambiaría de verdad).
+
+#### Tercera vuelta: el lag dependía de la DIRECCIÓN, y eso destapó un memo roto desde siempre
+Su prueba, y el dato que lo resolvió: «se ha arreglado lo de las deudas en dirección hacia Cartera, va fluidísimo; ahora falta hacia Gastos». **Un lag que depende del sentido no puede ser el gesto** —es idéntico en los dos—: tiene que ser el destino. Medido saliendo de Deudas: hacia Gastos 165 ms, hacia Cartera 127. Y el perfilador puso nombre al culpable: **`MovRow`, las filas de movimientos, era la función más cara de la app durante ese desliz (2,5-3,4 %)**.
+
+**La causa, y llevaba ahí desde siempre:** `parseDate` cachea los milisegundos pero devuelve `new Date(ms)` — **un objeto nuevo en cada llamada**. Esa fecha viajaba como prop a `MovRow`, así que la comparación superficial de `React.memo` fallaba SIEMPRE por esa prop, aunque el gasto fuera idéntico: **cualquier re-render de Gastos repintaba las doce filas**. El `openDetail` sí se cuidó en su día con un `useCallback` (el comentario está justo al lado); la fecha se coló por debajo y dejó el memo de adorno.
+
+Ahora a la fila le llega el **número** (`ms`) y el `Date` se construye dentro, que es la única línea que lo usa. **Comprobado en el perfilador, que es lo que no engaña: `MovRow` pasa de 2,5 % a no aparecer.** Y no afecta solo a este gesto — afecta a CADA re-render de Gastos: escribir en el buscador, cambiar un filtro, que entre un gasto del banco.
+
+⚠ **Sobre los milisegundos, con honestidad:** la asimetría 165/127 que motivó todo esto se midió tres veces y en una cuarta pasada no se reprodujo (164 contra 159): en esta máquina el ruido se come diferencias de ese tamaño. Por eso la prueba que vale aquí es la del perfilador —el trabajo desaparece, no «sale un número más bajo»— y por eso el guardián que se deja es estructural.
+
+**Dos intentos que NO se quedan, con su número:** dejar `active` fijo en Gastos (quita la asimetría pero haría que Gastos hiciera su trabajo caro en el arranque) y retrasar el aviso de «ya eres la pestaña activa» 460 ms hasta que pare el carrusel (**empeoró**: 239 contra 165, porque paga dos re-renders en vez de uno).
+
+#### Deudas, segunda vuelta: no era «salir de Deudas», era PLAN entero (2026-07-27)
+Su veredicto por la mañana: la APK aprobada, el perfil «ha mejorado una barbaridad» pero aún no del todo, y **Deudas igual** — «vas a deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible el lag… y ahora se nota más porque va la app ultra fluida».
+
+Lo primero fue partir su frase en tres medidas, porque «Deudas va lento» puede ser cualquiera de tres cosas (CPU x12, 1.200 gastos, 6 deudas, 6 metas):
+
+| | antes de esta tanda |
+|---|---|
+| entrar en Deudas | 183 ms |
+| moverse DENTRO de Deudas | **0 ms** (esto ya estaba arreglado) |
+| deslizar fuera | 259 ms |
+
+Y luego, la pregunta que lo cambió todo: **¿es Plan o es deslizar?** Midiendo el mismo gesto saliendo de cada pestaña:
+
+| gesto | bloqueo |
+|---|---|
+| Gastos → Inicio | **58 ms** |
+| Plan → Gastos | 156 ms |
+| Cartera → **Plan** | **187 ms** |
+
+O sea: no es salir de Deudas, es que **cualquier gesto que involucre Plan cuesta el triple**. Plan lleva sus tres segmentos (Recibos, Deudas, Metas) montados a la vez, y estaban ocultos con `visibility:hidden`, que **sigue participando en estilo, capas y pintado**. La 4.12.0 ya lo sabía y lo compensaba poniendo `content-visibility:hidden` **solo mientras el dedo arrastra**, para que el recálculo cayera después del `touchend`. Ese era el error: el peaje no desaparecía, se aplazaba tres milisegundos — justo al soltar, que es donde él lo notaba.
+
+Re-medidos hoy los tres candidatos, porque el terreno ha cambiado (premontaje + páginas fuera del render de `App`):
+
+| cómo se esconden los segmentos | entrar en Plan | abrir Deudas | salir de Plan |
+|---|---|---|---|
+| `visibility:hidden` (lo que había) | 162 ms | 198 ms | 185 ms |
+| **`content-visibility:hidden` siempre** | **90 ms** | **148 ms** | 182 ms |
+| `display:none` | 74 ms | 253 ms | 176 ms |
+
+Gana `content-visibility:hidden` puesto **siempre**: casi tan barato como `display:none` al entrar y mucho mejor al abrir un segmento (148 contra 253), porque conserva el estado ya renderizado en vez de tirarlo. Verificado después del cambio: **entrar en Plan 162 → 89 ms**. Sobra, y se retira, la regla especial de `.track.dragging` en `shell.html`.
+
+#### Y `tab` deja de ser dependencia de las páginas
+El `useMemo` de anoche dejaba `tab` dentro, así que **cambiar de pestaña seguía reconstruyendo las cuatro páginas**. Ahora las páginas se memoizan sin `tab` y lo único que se rehace al deslizar son los cuatro `div` contenedores (que sí necesitan `tab` para la clase `page-live`); React ve el mismo elemento hijo por referencia y se salta el subárbol. Gastos va en su propio memo porque es la única que necesita saber si es la pestaña activa. **Entrar en Deudas: 183 → 108 ms.**
+
+El precio, y queda escrito al lado de cada uno: `goTab` y `cancelSwipe` leían `tab` desde dentro de esas páginas y ahora leen `tabRef`. Con el valor viejo, `goTab` se habría tragado un salto («Ver más → Gastos» sin hacer nada) y `cancelSwipe` habría devuelto el carrusel a la pestaña equivocada.
+
+#### Lo que se probó y NO era, con su número
+Que no lo repita nadie, incluido yo:
+- `content-visibility` de los segmentos solo al arrastrar → quitarlo: 257 vs 236 ms. Nada.
+- `content-visibility:auto` de `.page` → quitarlo: 252 vs 236. Nada.
+- `will-change` del `.track` → quitarlo: 212 vs 236. Ruido.
+- Que cambiar de pestaña no re-renderice Gastos (`active` fijo): 275 vs 236. Nada.
+- **En el perfil**, `content-visibility:auto` en sus tarjetas: parecía ganar con 5 pasadas (171 vs 215) y con **9 intercaladas salió PEOR** (229 vs 166). Descartado — y sirve de recordatorio de por qué en esta máquina no vale medir a la primera.
+
+**El perfil se queda como está.** Tras lo de anoche (339 → 175 ms) el JS propio de la app no llega al 1 % al abrirlo: lo que queda es trabajo del navegador para hacer visible una pantalla de ~1.680 px, y hoy no he encontrado ninguna palanca que lo baje de verdad. Él lo describe como «a puntito, le queda nada»; lo honesto es decir que para el siguiente tramo hace falta rediseñar qué se enseña al abrir, no otra propiedad CSS.
+
+Guardián nuevo en `e2e/rendimiento-tabs.spec.mjs`: el segmento oculto de Plan tiene que tener `content-visibility: hidden` computado. Estructural, que es lo que aguanta en CI.
+
+#### Abrir el perfil: la causa NO era la animación, y esto se midió antes de tocar nada
+Él, tras probar la .28: «lo del perfil está arreglado para salir, ahora es inmediato, pero para entrar sigue pasando lo mismo». La sesión anterior dejó anotada una hipótesis razonable —se escala un panel de ~1.680 px desde 0,12 hasta 1 y el navegador lo re-rasteriza mientras crece, 482 `RasterTask` y 278 `Paint`— y la conclusión de que había que **rediseñar cómo crece el panel**. Era falsa, y bastó un experimento para tumbarla:
+
+| Escenario (CPU x12, mediana de 5) | Bloqueo |
+|---|---|
+| base | 266 ms |
+| sin el velo en el DOM | 223 ms |
+| el panel sin sombra | 211 ms |
+| solo el contenido oculto (crece la caja vacía) | 317 ms |
+| **TODAS las transiciones apagadas** | 221 ms |
+| **el panel ENTERO fuera del DOM** | 195 ms |
+| la app en reposo, sin tocar nada | **0 ms** |
+
+Quitar el panel de la pantalla **no quitaba el coste**: seguían siendo ~195 ms. Y un perfil de CPU lo remató — el JS propio de la app no llegaba al 1 %, y solo se pedían **dos** `requestAnimationFrame` en toda la apertura, o sea que no había ningún bucle por frame. Lo que se pagaba era **el re-render de `App`**.
+
+**La causa real:** las cuatro páginas del carrusel se construían dentro del `return` de `App` (`tabIds.map(...)` llamando a `pageFor`). Cualquier estado de `App` —`profileOpen`, el velo, el toast, la barra inferior que se esconde al hacer scroll— volvía a renderizar **Inicio + Gastos + Plan + Cartera enteras**. Es el mismo error de siempre en este repo (trabajo caro atado a un momento que no le corresponde), una planta más arriba. Ahora las páginas salen de un `useMemo` cuyas dependencias son lo que las páginas leen de verdad; fuera quedan a propósito los estados de las capas de encima, que es justo el ahorro.
+
+A/B **intercalado** contra la beta anterior (dos servidores y pasadas alternas A,B,A,B — sin eso, en un contenedor la mediana miente), CPU x12 y 1.200 gastos:
+
+| | antes | después |
+|---|---|---|
+| abrir el perfil | 339 ms | **175 ms** |
+| esconder la barra al hacer scroll | 123 ms | **0 ms** |
+
+El segundo no lo pidió nadie y es el que más se va a notar: esconder la barra inferior es un `setNavHidden` y nada más, y costaba más de 100 ms **cada vez que scrolleabas** una lista.
+
+Dos remates, los dos medidos:
+- **El perfil se premonta en un hueco libre**, detrás de las cuatro pestañas, con la misma maquinaria (`mcScheduleIdle`). Montarlo dentro del toque era pagar la pantalla más larga de la app (~1.680 px) con el dedo puesto.
+- **El radio del panel deja de interpolarse.** `border-radius` no es una propiedad de compositor: animarla obliga a redibujar el panel entero en cada frame de los 0,48 s. Con `0s` y el retardo de la animación el cambio ocurre al terminar el movimiento: de ~200 tareas de rasterizado por apertura a ~60, y a la vista exactamente lo mismo. La lección ya estaba escrita para el ARRASTRE desde la 4.9.0; a la apertura por toque no se le había aplicado.
+
+**Hipótesis descartadas, con su número, para que nadie las repita:** el velo (223 vs 266), la sombra del panel (211 vs 266), la animación del avatar (258 vs 266), ocultar el contenido del panel (317 vs 266) y apagar todas las transiciones (221 vs 266). Ninguna sale del ruido. Se suman a las dos que ya descartó la sesión anterior (desacoplar el candado de scroll de `gesture-freeze`, y `contain:paint` en el panel).
+
+Guardián: `e2e/rendimiento-tabs.spec.mjs`. Vigila con umbral el caso del scroll (medido aquí mismo: 62-83 ms con el código anterior, 0 ms con este) y **estructuralmente** que el perfil esté premontado en reposo. El tiempo de abrir el perfil NO se vigila con umbral a propósito: la misma medida baila entre 171 y 231 ms en el CI con el mismo código, y un guardián así acaba en intermitente.
+
+#### La APK no pasaba de la 34 a la 35: la beta nunca publicó su `apk.json`
+«`apk.json` anuncia la 35, estoy en la 34, y al intentarlo no pasa nada.» No era el instalador. `beta.yml` subía a la release `beta` **solo** `bundle.zip` y `version.json`, así que en un móvil con el canal de pruebas activado `mcFetchManifest("apk.json")` daba **404**, caía a producción —que anuncia la 34, comprobado— y comparaba 34 contra 34: `return false`, sin una palabra. Verificado contra la red: `releases/download/beta/apk.json` → 404, `version.json` → 200.
+
+- **La beta publica ya su propio `apk.json`**, y el workflow **no publica** si el APK que anuncia no existe (una descarga que da 404 se ve en el móvil igual de muda que este fallo).
+- **Ningún camino de la APK se calla.** `_mcCheckApkUpdate` tenía cuatro `return false` mudos; ahora deja siempre escrito el porqué en una línea con los datos que hacían falta —qué canal se ha leído, qué número ofrece y cuál llevas puesto— y Ajustes lo pega al «estás a la última», que era la frase que tapaba el fallo. Lo mismo en el pill de instalar y en la notificación: tocar y que no ocurra nada ni se diga nada es indistinguible de una app rota.
+- El vigilante de fondo (`OtaCheckWorker`, Java) también mira ya el canal que toca para la APK. ⚠ Eso es nativo: entra con la **APK 36**, no con la 35.
+
+Guardián: `tests/updates.test.mjs` ejecuta el trozo REAL del monolito con `CapacitorHttp` de mentira y reproduce el fallo exacto (canal beta + sin `apk.json` + 34 contra 34), comprueba que con el manifiesto puesto sí se ofrece la 35, que ningún camino se queda mudo, y que `beta.yml` sigue subiendo el asset.
+
+#### El veredicto de la beta dice ahora qué APK llevaba puesta
+Costó una sesión entera: «en Deudas sigue igual» con los arreglos ya publicados, sin forma de saber si los tenía instalados —esa noche salieron seis betas seguidas— ni si el fallo era nativo o web. El parte viaja ya con el `versionCode`, y el panel lo enseña en la cabecera junto a la versión web.
+
+**Sobre «Gastos se queda a medio pintar»: no se ha reproducido.** Se montó el camino de su vídeo (arrancar, esperar, deslizar a Gastos con el dedo, CPU x12, 1.200 gastos) y se midieron las filas y su opacidad a los 120 ms, 500 ms y 2 s de soltar: 12 filas, opacidad 1, ninguna a medias, ninguna desvaída. Queda **abierto y sin tocar** — a ciegas no se arregla. Lo que sí se ha hecho es quitar la parte que impedía diagnosticarlo: el veredicto dirá en qué compilación y con qué APK lo ve.
+
+Tanda salida entera del buzón de sugerencias de la app. Cuatro de ellas escritas por él la noche del 26, y **dos de su pareja que llevaban DIEZ DÍAS sin que las leyera nadie** — el script `errores.mjs` las traía mezcladas con los pings y sin icono propio, así que nadie miraba. Primer arreglo de la tanda: `npm run sugerencias`.
+
+#### «En deudas y metas se relentiza de manera muy bestia» + «al deslizar va a tirones las primeras veces»
+Eran el mismo problema, y **en un portátil no se ve NADA**: cero tareas largas. Hubo que estrangular la CPU x6 por CDP (`Emulation.setCPUThrottlingRate`) para reproducir lo que él ve en el móvil. Medido así, antes de tocar:
+- 1ª deslizada: tareas largas de 218+149+69+65 ms · 2ª: 97 ms · 3ª y 4ª: limpias. Exactamente «las primeras veces va a tirones, luego se suaviza».
+- Entrar por primera vez en Deudas y Metas: **171 ms de hilo bloqueado**; en Gastos, 77 ms.
+
+Dos causas independientes:
+- **Un `scrollLeft` en el peor momento.** El efecto que devuelve los chips de Gastos al inicio corría justo después de montar la pestaña, con el layout entero sucio: escribir `scrollLeft` fuerza un recálculo **síncrono**. El perfilador le atribuye **276 ms** a esas dos líneas. Ahora va a un hueco libre (`mcScheduleIdle`) y solo escribe si hay algo que resetear.
+- **Las pestañas se montaban dentro del gesto.** `prepMountTab` corría en el `touchstart`/`onMove`, o sea pagando el montaje mientras el dedo arrastra. El coste no se puede evitar, pero sí elegir cuándo se paga: ahora se montan de una en una en huecos libres, antes de que nadie toque nada. Se conservan los 3,2 s del primer hueco (bajarlos reabre el hitch de los 900 ms con WhatsNew) y el `prepMountTab` del toque, como red.
+
+A/B contra el código anterior, mismo escenario: **171 → 0 ms** en Deudas y Metas y **77 → 0 ms** en Gastos. Guardián: `e2e/rendimiento-tabs.spec.mjs`.
+
+**Trampa que casi cuesta un arreglo falso:** la primera medición señalaba a `getBoundingClientRect` con 350 ms de tiempo propio. Era **Playwright**, que sondea el DOM desde su script inyectado mientras `locator.click()` y `waitFor()` esperan. Al medir con un click crudo y una espera a ciegas, desapareció.
+
+**Y de propina, un peaje que no compraba nada:** el gesto seguía encendiendo y apagando el indicador de puntitos del swipe (`showDots` + `dotsTimer`, con `revealDots()` al declararse el eje horizontal y `hideDotsSoon()` 1,1 s después). Ese indicador **se lo llevó por delante el rediseño v4** — `.app.v4 .dots{display:none !important}` y ningún render crea ya el elemento (comprobado buscando `showDots` y `className:"dots"` en todo `src/`: cero apariciones fuera de la propia maquinaria). O sea **dos re-renders completos de `App` por cada pasada de dedo entre pestañas, para no pintar absolutamente nada**. Retirado; el CSS se queda por si el indicador vuelve. Guardián nuevo: `e2e/swipe-pestanas.spec.mjs`, que cubre lo que `rendimiento-tabs` no miraba — que deslizar **funcione** (las cuatro pestañas ida y vuelta, sin descarrilar en la última, con contenido de verdad al llegar). Hacía falta ahora que el montaje vive FUERA del gesto: un montaje que llegue tarde daría pestaña en blanco sin que ninguna tarea larga se entere.
+
+Las tres trampas de medir gestos táctiles (el splash tapando la pantalla, las zonas con `stopSwipe` que invalidan la muestra, y el perfilador distorsionando más de lo que mide) quedan escritas en `AGENTS.md` §7 bis.
+
+#### Y quedaba un tirón más, que NO era del gesto
+Con la limpieza puesta, el A/B seguía dando **65 ms de tareas largas en la primera deslizada** (antes 74; tres vueltas sin solape, 71/74/78 → 62/65/68). O sea: el arreglo grande se había llevado los 500 ms, pero quedaba un pellizco. Dos experimentos para saber de quién era:
+
+- **Llegar a Gastos por CLICK, sin gesto ninguno: 66 ms.** Y después, el primer arrastre: **0 ms**.
+- **Un arrastre corto que no llega al umbral** (toca toda la maquinaria del gesto, pero no cambia de pestaña): **0 ms**. Y el arrastre completo justo después: 67 ms.
+
+Conclusión: **el gesto no costaba nada**; el coste era *entrar en Gastos la primera vez*, se llegara como se llegara. `Tracing` (no `Profiler`, que a 6× de freno distorsiona más de lo que mide) lo puso en un sitio concreto: de esos 67 ms, **59,7 eran un `Layout` completo** —1.196 objetos, `partialLayout:false`—, y contando etiquetas antes y después del cambio salían **~50 nodos nuevos de golpe**: la tarjeta de suscripciones detectadas.
+
+El culpable, `heavyOk` en `04-tab-gastos.js`: la detección de suscripciones esperaba a que la pestaña estuviera **activa**. Es exactamente el mismo error que tenía el montaje de las pestañas —trabajo caro atado al momento en que el usuario toca— y se arregla igual: **no se puede evitar el coste, pero sí elegir cuándo se paga**. Ahora se adelanta a un hueco libre aunque la pestaña no esté activa, con tope generoso (4 s frente a los 40 ms de cuando sí lo está) para que no se cuele a la fuerza en mitad del arranque, que es el rato más ocupado.
+
+Medido después, con solo 600 ms de reposo antes de tocar nada — o sea el caso que él describe, «las primeras veces»:
+
+| | 1ª deslizada | 2ª | 3ª |
+|---|---|---|---|
+| beta anterior (`f1ce06d`) | 74 ms | 0 | 0 |
+| + limpieza de los puntitos | 65 ms | 0 | 0 |
+| + `heavyOk` adelantado | **0 ms** | 0 | 0 |
+
+Y el precio, que lo tiene: en los 8 primeros segundos el total de tareas largas sube de **762 a 800 ms** (mediana de 3 vueltas) porque ese trabajo ahora se hace igualmente, solo que en reposo. Lo que NO se mueve es lo único que se nota: **la tarea más larga del arranque sigue en ~205 ms** (203 → 206, dentro del ruido) y la app tarda lo mismo en estar lista (1.517 → 1.564 ms, con las vueltas sueltas solapando: 1.459-1.544 antes, 1.457-1.602 después). Guardián: `rendimiento-tabs.spec.mjs` comprueba **estando en Inicio** que las filas de suscripción —que solo viven en Gastos— ya están pintadas. Es estructural a propósito, no de tiempos: un guardián de milisegundos en CI acaba en flaky. Verificado que falla con el código anterior.
+
+#### Capítulo 3 y último: el lag no estaba donde llevábamos cuatro versiones mirando
+Rechazos .17, .19 y .23, siempre con la misma frase suya: «al entrar en Deudas, **moverte**, y luego deslizar». Esa palabra era la pista y no la habíamos usado: **entrar** ya costaba 0 ms; el problema aparecía solo si habías scrolleado dentro. Escenario reproducido y medido con la CPU estrangulada (rate 12, para parecerse al CI, que es más lento que un portátil): **170 ms de tareas largas → 0**. Cuatro causas, ninguna de ellas «el gesto»:
+
+1. **`pointer-events` es una propiedad HEREDADA, y la tocábamos en la raíz.** `freezeShell` añadía `gesture-freeze` al shell, cuya única regla es `pointer-events:none`. Cambiar una propiedad heredada en la raíz **invalida el estilo del árbol entero**: un solo `UpdateLayoutTree` de 28,6 ms, el trozo más gordo de la tarea que rompía el frame. Tiene sentido en el perfil y el cajón, que se superponen; deslizando entre pestañas no protege de nada, porque un arrastre de más de 10 px ya no genera click. **Fuera para `kind==="tab"`. Solo esto: de 79 a 0-50 ms.**
+2. **`translateX(%)` en vez de píxeles.** Un porcentaje dentro de un `transform` se resuelve **contra el ancho del propio elemento**, así que hay que consultar el layout para saber a cuántos píxeles equivale. Escrito una vez da igual; escrito en cada `touchmove`, se paga por frame y saca la animación del compositor. Con `translate3d(px,0,0)`: **146 → 76 ms**.
+3. **`offsetWidth` leído en cada `touchmove`.** Layout-thrashing de manual. Y explica por qué solo se notaba «si te movías dentro»: sin scroll el layout está limpio y la lectura sale gratis, pero al congelar el scroll se pone `overflow:hidden`, eso lo ensucia, y **entonces** cada lectura fuerza un reflow completo. Hacían falta las dos cosas a la vez, y por separado ninguna cantaba. Ahora se mide una vez al empezar el gesto.
+4. **`prepMountTab` en cada `touchmove`** — ~35 llamadas por arrastre para no cambiar nada (React se ahorra el re-render, pero no la llamada). Una marca por gesto basta.
+
+Y el congelado del scroll, que era el arreglo del .17, solo se pone si de verdad hay momentum (hubo scroll en los últimos 200 ms). Si scrolleaste, paraste y luego deslizas —el caso normal— no hay nada contra lo que pelear.
+
+#### El «stopper» no era un freno: te abría Ajustes
+«Hay un stopper o algo que no permite deslizar de manera seguida y rápida.» Reproducido midiendo: tres arrastres encadenados daban `gastos → inicio → ninguna pestaña activa`. Y que no haya ninguna activa significa una cosa: **se abrió el cajón**. En Inicio, un desliz a la derecha abre Ajustes desde toda la pantalla (atajo puesto el 17/7, deliberado). Está bien como gesto buscado, pero encadenando deslizadas hacia atrás llegas a Inicio y **la siguiente te planta Ajustes en la cara**. Ahora el atajo de pantalla completa no cuenta si acabas de cambiar de pestaña (<450 ms); desde el borde izquierdo sigue funcionando siempre. Guardián nuevo en `swipe-pestanas.spec.mjs`, verificado que falla sin el arreglo.
+
+#### La versión del APK: era el `versionName`, o sea la misma que la web
+Tercera vez que lo pedía. Se mostraba `info.versionName` = `"4.12.0"`, **idéntico a la versión web**, así que la fila no decía nada nuevo. Lo que distingue una APK de otra es el `versionCode`. Ahora sale `4.12.0 (35)`.
+
+#### Capítulo 2 de «en deudas y metas se relentiza de manera muy bestia»
+Él aprobó el deslizar («va de 10, espectacular, súper fluido») y **siguió marcando esto como fallo**. Tenía razón: quedaba un montaje al tocar, un piso más abajo. Los tres segmentos de Plan se pintaban con `seg==="deudas" && <Debts/>`, así que estrenar Deudas montaba el componente entero **dentro del toque**. Medido con la CPU x6: **203 ms de hilo bloqueado** recién abierta la app, 119 ms con ella reposada. Ahora se montan en huecos libres y luego solo se enseñan y esconden. **203 → 0 ms**.
+
+Se esconden con `height:0 + overflow:hidden + visibility:hidden` **a propósito, no con `display:none`**: `display:none` se salta el layout, así que el coste no desaparecería, solo se mudaría al momento de enseñarlo — que es exactamente la trampa que ya costó una vuelta con `content-visibility`.
+
+⚠ **Y lo que de verdad hay que aprender de esto: el guardián no lo veía.** `rendimiento-tabs.spec.mjs` medía *entrar en la pestaña Plan*, que aterriza en **Recibos**, y nunca tocaba el segmento de Deudas. Pasaba en verde mientras él seguía viendo el tirón, dos versiones seguidas. **Medir lo que toca el usuario, no lo que es cómodo de medir.** El guardián comprueba ahora que los tres segmentos estén montados por adelantado.
+
+#### Los dos fallos de la lista de Gastos, que eran el mismo trozo de código
+- **«Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.»** El centinela del scroll infinito se vigilaba con `rootMargin:120px` —o sea que la tanda siguiente no se pedía hasta tenerlo casi encima— y llegaban de 12 en 12. En un desliz rápido te comes el final antes de que dé tiempo a pintar. Ahora se pide con **600 px de antelación y de 24 en 24**; la primera tanda sigue siendo de 12, que es lo que vigila el presupuesto de rendimiento.
+- **«Cuando le doy otra vez a "Este mes" no carga nada aun esperando un rato.»** Fallo de verdad, y llevaba escondido desde siempre. El observador se creaba en un efecto atado a `filtered.length`, pero **el centinela solo existe mientras `visible < filtered.length`**: al llegar al final de la lista se desmonta, y el observador se quedaba mirando un nodo huérfano. Volver a pulsar el filtro que ya estaba puesto resetea `visible` a 12 **con la misma lista**, así que el centinela renacía sin que `filtered.length` cambiara → nadie lo vigilaba → «Cargando más…» clavado para siempre. Ahora se ata al nodo con una *callback ref*, que se dispara exactamente cuando el centinela nace o muere.
+
+#### El panel de revisión ya no te hace repetir lo que diste por bueno
+Petición suya: «si algo funciona CREO que no debería reventar con otra compilación». El reseteo por compilación arreglaba una cosa y rompía otra — las cruces sí tienen que volver a preguntarse, pero los ✓ también se borraban, y volver a probar siete puntos que ya iban bien es lo que hacía que no se acordara de nada («los pillo en momentos diferentes»). Ahora los ✓ y los «no lo puedo probar» se guardan aparte, **casando por el TEXTO del punto y no por su posición**: si reescribimos una nota vuelve a preguntarse (ha cambiado lo que se prueba), si es idéntica viene ya marcada, y reordenar las notas no cruza los cables. Los ✗ no se heredan nunca. El panel dice cuántos vienen heredados, para que no parezca que se ha inventado unos ✓.
+
+#### «No me ha leído un ingreso de la caixa, he tenido notificación y todo» (16 jul, sin leer hasta hoy)
+Cierto, y era de diseño: `importObExpenses` filtraba por `tx.card && tx.amount>0` — **solo compras con tarjeta**. El saldo del banco sí se aplicaba (el patrimonio salía bien), pero el ingreso no aparecía como movimiento, así que desde fuera la app parecía no haberse enterado. Ahora entran también los importes negativos (convención del servidor: `CRDT → -amt`) con categoría `ingreso`. Los cargos que **no** son de tarjeta siguen fuera a propósito: son los Fijos, y contarlos aquí sería contarlos dos veces. `tests/ob-ingresos.test.mjs` fija el convenio de signos por escrito.
+
+#### «El mensaje al actualizar cuentas hay que cambiarlo a uno más claro y conciso»
+Era `showToast("🏦 "+label+": "+eur(bal))`: un importe suelto, sin verbo, **del primer banco de la lista aunque hubieras sincronizado tres** — parecía que solo había funcionado uno. Y llegaba junto a un segundo toast con las compras importadas, dos avisos por una sola pulsación. Ahora, cuando lo pides tú, sale **uno**: `✓ CaixaBank al día · 1.234,56 € · 3 movimientos nuevos` (o `✓ 3 bancos al día` con varios). En la sync que dispara la notificación del banco se mantiene el aviso de movimientos nuevos, que ahí sí es la única señal.
+
+#### Notas de versión en tres idiomas
+Petición suya. `t` e `items` aceptan ahora `{es,en,ca}` además de texto suelto. **El histórico anterior se queda en castellano a propósito**: 68 versiones y 279 entradas son 55 KB, que por tres idiomas serían 165 KB con el presupuesto en 277 KB de 310 (gzip). Además, las notas de la 4.11.0 se reescribieron: eran el contraejemplo de la regla de tono de `AGENTS.md` §4 (le hablaban a él, contaban la cocina).
+
+#### Identidad: el icono era el de Capacitor
+El icono del escritorio y el splash nativo seguían siendo **la X azul por defecto de la herramienta**, mientras la pantalla de carga web llevaba la cartera menta desde la 4.10.0: tres identidades en dos segundos, justo en la primera impresión. `scripts/iconos.mjs` rasteriza el SVG de la marca a los 26 ficheros (mipmaps, adaptativo y splash por densidad) con el Chromium que ya trae Playwright — sin dependencias nuevas. El fondo adaptativo pasa de `#FFFFFF` a `#0C1712`. **Necesita APK nueva: un icono nativo no viaja por OTA.**
+
+#### Y la barra de carga del splash, fuera
+«El resto de apps no lo tienen; el tiempo ese que se queda el logo está bien.» El botón de reintentar se queda: es la única salida si algo se atasca de verdad.
+
+#### Capítulo 3 del lag: scrollear Deudas/Metas y deslizar acto seguido
+El premount dejó el montaje a 0 ms, pero él seguía viendo tirones si **se movía dentro** del segmento y deslizaba enseguida (rechazo 4.12.0.17). Causas: el momentum del scroll vertical peleaba con el `translateX` del track (el perfil ya congelaba el scroll; el swipe de pestañas no) y `onPageScroll` seguía llamando a `setNavHidden` durante el gesto → re-render de App entera. Ahora, al fijar el eje horizontal, `freezeShell(...,"tab")` congela el scroll de la página activa, y `onPageScroll` ignora eventos mientras `dragging.current`. Guardián: `rendimiento-tabs` con el caso scroll→swipe a CPU ×6.
+
+#### Bancos caídos: noti → banner de Cartera, una sola autorización
+Tras sincronizar con un banco caducado, la app abría sola Mis bancos (y a veces OAuth). Con dos bancos caídos se lanzaban dos autorizaciones: Enable Banking devolvía `error=invalid_request` en la segunda aunque el banco dijera «Operación realizada correctamente» (el `state` es de un solo uso). Ahora la noti / `handleGoto("banks|…")` solo deja Cartera con el banner; el CTA del banner es el único toque que llama a `bankConnectOnce` (candado compartido con Mis bancos). Mis bancos pinta coral si `state.bankIssues` marca el banco aunque `bank_links.status` siga `active`. Mensaje propio para `invalid_request`.
+
+#### Trade Republic desconectado deja de quedarse mudo
+TR no pasa por `bankIssuesOf` (no es Open Banking). Al caducar de verdad: toast + notificación estable (`gotoTarget: tr|reconnect` → Cartera) + evento `mc-tr-status` para refrescar el banner; el CTA abre Mis bancos con la tarjeta TR, nunca OAuth. El resumen de Ajustes cuenta TR desconectado.
+
+#### Candado del perfil afinado (el «stopper» de 560 ms)
+Se mantiene (corta un `.dragging` a mitad de cierre), pero: candado síncrono al cerrar de verdad, cierre permitido durante la apertura, `transitionend` limpia el timeout y solo vale la generación actual, fallback 500 ms. Guardián nuevo: abrir y cerrar al momento.
+
+#### Ajustes enseña OTA y APK
+`nat.appInfo()` al montar → pie y fila de actualizaciones: `web vX · app Y`. Sin APK nueva: el puente ya estaba en la 35.
+
 ## [4.11.0] — 2026-07-25
 ### El splash no se veía (y el motivo era de libro), bienes fuera de las cuentas
 

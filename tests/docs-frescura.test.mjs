@@ -71,7 +71,7 @@ ok(`VERSION = ${VERSION}`);
   const comp = read("src/modules/10-app-components.js");
   const block = comp.match(/var RELEASE_NOTES=\[\s*\{\s*v:\s*"(\d+\.\d+\.\d+)"/);
   if (!block) bad("RELEASE_NOTES existe y empieza por {v:\"X.Y.Z\"}", "no se encontró en 10-app-components.js");
-  else eq("RELEASE_NOTES primera nota", block[1], VERSION, "añade la nota de esta versión al PRINCIPIO del array (solo castellano)");
+  else eq("RELEASE_NOTES primera nota", block[1], VERSION, "añade la nota de esta versión al PRINCIPIO del array (es/en/ca)");
 }
 
 /* ---- 4. El escaparate: README y ROADMAP ----

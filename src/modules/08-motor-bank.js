@@ -323,11 +323,27 @@ function importObExpenses(s, txs){
   const add=[];
   txs.forEach(function(tx){
     if(!allow[tx.ent]) return;
-    if(!tx.card || !(tx.amount>0)) return;                        // solo compras con tarjeta (gasto)
+    // COMPRAS con tarjeta (importe POSITIVO) e INGRESOS (importe NEGATIVO: el servidor manda
+    // CRDT → -amt, ver `mapTransaction`).
+    //
+    // Los ingresos entraron el 2026-07-26, por un fallo que llevaba DIEZ DÍAS sin que nadie lo
+    // leyera: «no me ha leído un ingreso de la caixa, he tenido notificación y todo pero no lo ha
+    // leído». Y era verdad: aquí solo pasaban las compras con tarjeta. El saldo sí subía —el
+    // patrimonio salía bien— pero en Gastos no aparecía nada, así que parecía que la app no se
+    // había enterado. Un ingreso es justo lo que más se quiere ver apuntado.
+    //
+    // Lo que sigue fuera a propósito: los CARGOS que no son de tarjeta (recibos domiciliados,
+    // hipoteca, seguros). Eso son los Fijos, que ya están contados en el motor mensual, y
+    // apuntarlos aquí sería contarlos dos veces.
+    const esIngreso = tx.amount<0;
+    const esCompra  = tx.card && tx.amount>0;
+    if(!esIngreso && !esCompra) return;
     if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
-    const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(), merchant:tx.merchant||"Compra", amount:tx.amount, category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+    const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
+      merchant:tx.merchant||(esIngreso?"Ingreso":"Compra"), amount:tx.amount,
+      category:esIngreso?INGRESO_CAT.id:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
