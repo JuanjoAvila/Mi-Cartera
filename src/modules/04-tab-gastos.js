@@ -297,13 +297,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
   };
   useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
-  /* LA PAGINACIÓN DE LA LISTA — sus dos fallos del 26/7 por la noche, y salían del mismo sitio.
+  /* LA PAGINACIÓN DE LA LISTA — sus fallos, y el de 2026-07-27.
      1. «Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.» El centinela
         se vigilaba con `rootMargin:120px`, o sea que la tanda siguiente no se pedía hasta tenerlo
         casi encima, y llegaban de 12 en 12: en un desliz rápido te comes el final de la lista
-        antes de que dé tiempo a pintar la siguiente. Ahora se pide con 600 px de antelación y de
-        24 en 24 (la PRIMERA tanda sigue siendo de 12, que es lo que se pinta al entrar y lo que
-        vigila el presupuesto de rendimiento).
+        antes de que dé tiempo a pintar la siguiente. Con 600 px / +24 aún se notaba el tope
+        (feedback 2026-07-27: «hasta cierto gasto se bloquea y al milisegundo puedo seguir»).
+        Ahora se pide con 2.000 px de antelación y de 60 en 60 (la PRIMERA tanda sigue siendo
+        de 12, que es lo que se pinta al entrar y lo que vigila el presupuesto de rendimiento).
      2. «Cuando le doy otra vez a "Este mes" sale lo de la foto y no carga nada aun esperando un
         rato.» Éste era un fallo de verdad y llevaba escondido desde siempre: el observador se
         creaba en un efecto atado a `filtered.length`, pero el centinela SOLO EXISTE mientras
@@ -319,8 +320,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(ioRef.current){ ioRef.current.disconnect(); ioRef.current=null; }
     if(!el) return;
     const io=new IntersectionObserver(function(es){
-      if(es[0].isIntersecting) setVisible(function(v){ return v<filtLen.current ? v+CONFIG.PAGE_SIZE*2 : v; });
-    },{rootMargin:"600px"});
+      if(es[0].isIntersecting) setVisible(function(v){ return v<filtLen.current ? v+CONFIG.PAGE_SIZE*5 : v; });
+    },{rootMargin:"2000px"});
     io.observe(el); ioRef.current=io;
   },[]);
   useEffect(function(){ return function(){ if(ioRef.current) ioRef.current.disconnect(); }; },[]);

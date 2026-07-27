@@ -1033,6 +1033,29 @@ function FeedbackPanel({state, set, showToast, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.12.1", d:"27 jul 2026",
+   t:{es:"Ajustes solo desde Resumen, y sin topes al abrir o bajar la lista",
+      en:"Settings only from Home, and no more stops when opening or scrolling",
+      ca:"Ajustos només des de Resum, i sense topalls en obrir o baixar la llista"},
+   items:{
+   es:[
+    "⚙️ Ajustes ya no se abre desde el borde de las otras pestañas: solo desde Resumen, deslizando a la derecha.",
+    "⚙️ Y al llegar a Resumen ya puedes abrir Ajustes al momento: antes hacía falta un segundo intento si venías de otra pestaña.",
+    "👤 Abrir el perfil, cerrarlo y volver a abrirlo seguido ya responde a la primera: se había quedado sordo un instante al tercer gesto.",
+    "📜 En Gastos, bajar la lista a toda velocidad ya no se para a medias: carga con más margen por delante.",
+   ],
+   en:[
+    "⚙️ Settings no longer opens from the edge of other tabs: only from Home, by swiping right.",
+    "⚙️ And once you are on Home you can open Settings right away: before, coming from another tab needed a second try.",
+    "👤 Opening the profile, closing it and opening it again in a row now responds the first time: the third gesture used to go deaf for a moment.",
+    "📜 In Expenses, scrolling the list flat out no longer stalls halfway: it loads with more room ahead.",
+   ],
+   ca:[
+    "⚙️ Els ajustos ja no s'obren des de la vora de les altres pestanyes: només des de Resum, fent lliscar a la dreta.",
+    "⚙️ I en arribar a Resum ja pots obrir Ajustos al moment: abans calia un segon intent si venies d'una altra pestanya.",
+    "👤 Obrir el perfil, tancar-lo i tornar-lo a obrir seguit ja respon a la primera: el tercer gest s'havia quedat sord un instant.",
+    "📜 A Despeses, baixar la llista a tota velocitat ja no s'atura a mitges: carrega amb més marge per davant.",
+   ]}},
   {v:"4.12.0", d:"26 jul 2026",
    t:{es:"Más rápida al cambiar de pestaña, y los ingresos del banco ya se apuntan",
       en:"Faster when switching tabs, and money coming in now gets recorded",

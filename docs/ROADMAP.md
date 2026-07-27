@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-27 · **v4.12.0** — **APROBADA en el móvil y en producción** («funciona» + «todas las pestañas van increíblemente fluidísimas»). Causa del tirón: la `transition` CSS del carrusel juddeaba a 120 Hz al soltar; asentamiento por `requestAnimationFrame` → 0 saltos. APK **35** (icono/splash nativos; OTA no los lleva — si aún no está instalada, ofrecerla). Ver `docs/LAG-DESLIZAR.md`.
+> Estado a 2026-07-27 · **v4.12.1** — en **beta**: Ajustes solo desde Resumen (sin borde en el resto), sin stopper al abrir Ajustes/perfil al momento, y Gastos baja sin parones (centinela 2.000 px / +60). Producción sigue en **4.12.0** (APK 35) hasta que apruebe esta beta.
+>
+> Anterior: 2026-07-27 · **v4.12.0** — **APROBADA en el móvil y en producción** («funciona» + «todas las pestañas van increíblemente fluidísimas»). Causa del tirón: la `transition` CSS del carrusel juddeaba a 120 Hz al soltar; asentamiento por `requestAnimationFrame` → 0 saltos. APK **35** (icono/splash nativos; OTA no los lleva — si aún no está instalada, ofrecerla). Ver `docs/LAG-DESLIZAR.md`.
 >
 > Anterior: 2026-07-26 · **v4.11.0** — **APROBADA en el móvil y promocionada a producción** («aprobado, todo funciona a las mil maravillas» — cuarta beta, 4.11.0.10, con la APK 34 puesta). Primera versión que recorre el circuito entero como estaba pensado: se publica en `beta`, la prueba él en su móvil, la rechaza dos veces con el panel de revisión, y sube cuando la aprueba. **el splash existía en el HTML y no lo veía nadie**: estaba dentro de `#root` y `ReactDOM.createRoot()` vacía su contenedor al montar, así que React se lo llevaba por delante (medido: fuera del DOM a los 150 ms); y React/ReactDOM/supabase iban en el `<head>`, bloqueando el parser, así que el navegador no tenía nada que pintar hasta ejecutar ~600 KB — el negro del vídeo. Ahora es hermano de `#root`, los scripts van después, con mínimo de 520 ms en pantalla y dos rAF antes de montar. **Corrección a la 4.10.0:** el patrimonio no venía mal, es una animación que cuenta hasta la cifra final. **Bienes separado de «Tus cuentas»** como bloque ordenable propio. **Perfil: cerrar = abrir al revés** — una sola curva y un solo umbral para los dos sentidos (iban con números distintos y el de abrir pedía casi el triple de arrastre), y candado durante la animación para que un dedo puesto a medias no la corte en seco. E2E 62 → 72. **Tercera vuelta (2026-07-26): el fallo del perfil era OTRO y por fin se ha reproducido** — con el panel scrolleado (`scrollTop=220`, lo normal) el arrastre solo scrollea y no cierra; ninguna prueba lo veía porque todas empezaban con el perfil arriba del todo. Además `e.preventDefault()` **nunca funcionó**: React ata `onTouchMove` en modo pasivo, así que el navegador se quedaba el gesto (los listeners van ya a mano con `{passive:false}`, y `touchcancel` cuenta como final). Ahora la franja de arriba es asa y, tirando desde el medio, el cierre toma el relevo cuando el scroll llega al tope. **⚠ Pendiente APK 34**: el arreglo de las notis duplicadas es Java (`Notif.idFor`, ids estables — el id salía del reloj y cada aviso se apilaba en vez de sustituir). **Lleva mezclada la 4.10.2**: sin ella este bundle no se puede ni descargar. **Segunda vuelta (2026-07-26): la rechazó desde el móvil, 3 ok / 2 fallos, los dos del perfil** — unificar los umbrales dobló el de cerrar (52 → 94 px) y el candado de la animación se activaba también en el rebote y en un toque suelto, dejando la app sorda medio segundo al segundo intento. Curva compartida sí, umbral no (`PROF_TH_OPEN`/`PROF_TH_CLOSE`). Y dos del canal, que estrenaba móvil: el bundle se sellaba con un número distinto del que anunciaba el manifiesto (**la misma beta ofrecida en bucle**, ahora `MC_STAMP_VERSION` + el workflow no publica si no cuadran) y **apagar la beta no devolvía a producción** (`_mcApplyChannelBundle`: cambiar de canal instala en la dirección que sea).
 >
@@ -28,9 +30,9 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.12.0** (producción) |
+| Web / OTA (`VERSION`) | **4.12.1** (beta) · producción en `main` = **4.12.0** |
 | APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. |
-| Anterior | **4.11.0 / 34** (release `v4.11.0`, la que corre en producción). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
+| Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
 
 ## Pendiente / limitaciones conocidas
@@ -58,11 +60,11 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> ✅ **4.12.0 en producción** (aprobada 2026-07-27): tirón al soltar el dedo cerrado (asentamiento por rAF).
-> Expediente: **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**.
+> ✅ **4.12.1 en beta** — Ajustes solo desde Resumen; sin stoppers al abrir Ajustes/perfil; Gastos sin parón al bajar. Producción = **4.12.0**.
+> Expediente del tirón cerrado: **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**.
 
-1. Dejar reposar un día en uso real (él + familia) y anotar si queda algún tirón suelto.
-2. **Una beta cada vez** cuando vuelva el siguiente cambio visible.
+1. Probar en el móvil la checklist de esta beta (Ajustes, perfil ×3, scroll Gastos).
+2. Si OK → Promote beta → `main`.
 
 ### Abierto, con lo medido
 

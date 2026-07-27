@@ -1678,7 +1678,6 @@ function App(){
     // con el de cuando se construyó la página y, si coincidiera con el destino, este `return`
     // temprano se tragaría el salto: «Ver más → Gastos» sin hacer nada.
     if(i<0||i>=tabIds.length||i===tabRef.current) return;
-    lastTabAt.current=Date.now();   // ver el «stopper» en onMove: encadenar deslizadas no debe abrir Ajustes
     /* TODO EN LA MISMA TRANSICIÓN, Y ESTO ERA EL LAG QUE ÉL SEGUÍA NOTANDO (2026-07-27).
        `revealNav()` y los `prepMount*` son `setState` URGENTES, mientras que el cambio de pestaña
        iba en `startTransition`: React los atiende en carriles distintos, así que al soltar el dedo
@@ -1712,7 +1711,6 @@ function App(){
   const startX=useRef(0), startY=useRef(0), startT=useRef(0), dx=useRef(0), axis=useRef(null), dragging=useRef(false), trackRef=useRef(null);
   const trackW=useRef(0);   // ancho del carrusel, medido al empezar el gesto (ver onMove)
   const prepped=useRef(0);    // qué vecina se ha premontado ya EN ESTE gesto (ver onMove)
-  const lastTabAt=useRef(0);   // cuándo se cambió de pestaña por última vez (ver el «stopper» en onMove)
   /* EL CARRUSEL SE MUEVE EN PÍXELES, NO EN PORCENTAJES — y esto valía la mitad del lag.
      Iba con `translateX(-100%)`, y un porcentaje en un `transform` se resuelve contra el ancho
      del propio elemento, o sea que **hay que consultar el layout para saber a cuántos píxeles
@@ -1836,7 +1834,6 @@ function App(){
      gesto horizontal y `setShowDots(false)` 1,1 s después—: DOS re-renders completos de App por
      cada pasada de dedo entre pestañas, para no pintar absolutamente nada. Retirado 2026-07-26. */
   const drawerW=function(){ return window.innerWidth||360; };
-  const EDGE_OPEN=52;
   const onStart=(e)=>{
     if(e.touches&&e.touches.length>1) return;
     if(drawerOpen||profileOpen) return;
@@ -1874,10 +1871,8 @@ function App(){
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
     startY.current=e.touches?e.touches[0].clientY:e.clientY;
-    // En Inicio, swipe a la derecha abre Ajustes desde toda la pantalla (no solo el borde).
-    // En el resto de tabs, el borde sigue valiendo (feedback 2026-07-17).
-    // No montar Settings/Perfil en touchstart: cada toque en Inicio montaba el árbol pesado
-    // a mitad de gesto → drag lento a ~3 fps (vídeo 2026-07-18). Contenido al soltar/abrir.
+    // Ajustes SOLO desde Resumen (feedback 2026-07-27): el borde en el resto de pestañas
+    // pillaba gestos normales. No montar Settings/Perfil en touchstart (vídeo 2026-07-18).
   };
   const onMove=(e)=>{
     if(!dragging.current||drawerOpen||profileOpen) return;
@@ -1895,19 +1890,13 @@ function App(){
       if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
       axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
       if(axis.current==="x"){
-        /* EL «STOPPER» (rechazos .19 y .23: «hay un stopper o algo que no permite deslizar de
-           manera seguida y rápida»). Reproducido midiendo: tres arrastres encadenados dan
-           `gastos → inicio → ninguna`, y que no haya pestaña activa significa que se abrió el
-           cajón. La causa es esta línea: en Inicio, un desliz a la derecha abre Ajustes DESDE
-           TODA LA PANTALLA (se hizo así a propósito el 17/7). Está bien cuando es un gesto
-           deliberado, pero encadenando deslizadas hacia atrás llegas a Inicio y **la siguiente
-           te planta Ajustes en la cara** — que es exactamente lo que se siente como un tope.
-           Solución: el atajo de pantalla completa solo cuenta si el dedo no viene de estar
-           cambiando de pestaña hace nada. Si acabas de cambiar (<450 ms), en Inicio manda el
-           borde, como en el resto de pestañas: sigues pudiendo abrir Ajustes desde la franja
-           izquierda, pero una deslizada de más ya no te saca de donde estás. */
-        const encadenando=(Date.now()-lastTabAt.current)<450;
-        const openSettings = ddx>0 && ((tab===0 && !encadenando) || startX.current < EDGE_OPEN);
+        /* AJUSTES SOLO DESDE RESUMEN (feedback 2026-07-27). El borde (`EDGE_OPEN`) en el resto
+           de pestañas pillaba gestos normales y era un coñazo. Y el candado de 450 ms tras
+           cambiar de pestaña («encadenando») era el stopper al llegar a Resumen y querer abrir
+           Ajustes al momento: el primer desliz no contaba y hacía falta el segundo. Ahora:
+           Resumen + desliz a la derecha = Ajustes, sin espera; en cualquier otra pestaña ese
+           gesto es solo cambio de tab (o nada). */
+        const openSettings = ddx>0 && tab===0;
         if(openSettings){
           gestureMode.current="drawer";
           setDrawerMounted(true);   // por si el idle aún no ha premontado (1ª vez sin negro)
@@ -1926,9 +1915,18 @@ function App(){
         const pageEl=pages&&pages[tab];
         const atTop=!pageEl||pageEl.scrollTop<=2;
         const fromAv=!!(e.target&&e.target.closest&&e.target.closest(".v4-avatar"));
-        // Mismo candado que al cerrar: si el panel se está yendo (o viniendo), este dedo no
-        // arranca un gesto nuevo — cortaría la animación en vuelo y el panel daría un salto.
-        if((atTop||fromAv) && !profBusy.current){
+        /* ABRIR el perfil ignora el candado si el panel ya está cerrado (feedback 2026-07-27).
+           El candado evita cortar una animación EN VUELO con `.dragging` (= salto). Tras cerrar,
+           `profMarkBusy` aguantaba 500 ms y el tercer gesto (abrir otra vez) se tragaba. Cerrar
+           en caliente ya se dejaba; reabrir con el panel cerrado también — y si la CSS del cierre
+           aún corre, se cancela limpia ANTES de enganchar (sin saltar a medias). */
+        if((atTop||fromAv) && (!profBusy.current || !profileOpen)){
+          if(profBusy.current && profileRef.current){
+            const el=profileRef.current;
+            el.classList.remove("dragging");
+            el.style.transform=""; el.style.opacity=""; el.style.borderRadius="";
+            profClearBusy();
+          }
           gestureMode.current="profile";
           setProfileMounted(true);
           profileGrab();   // mismo enganche que el cierre: velo y radio fijos, panel opaco

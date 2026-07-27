@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.12.1] — 2026-07-27
+### Ajustes solo desde Resumen, sin stoppers al abrir perfil/ajustes, y Gastos baja sin parones
+
+#### Ajustes: fuera el borde en el resto de pestañas, y fuera el candado de 450 ms
+El borde izquierdo (`EDGE_OPEN=52`) abría Ajustes desde Gastos/Plan/Cartera y pillaba gestos normales. Y el candado de 450 ms tras cambiar de pestaña («encadenando») —pensado para que una deslizada de más al llegar a Resumen no abriera Ajustes— era justo el stopper al ir Gastos → Resumen → Ajustes rápido: el primer desliz no contaba. Ahora `openSettings = ddx>0 && tab===0` sin espera ni borde. E2E: borde en Gastos no abre; en Resumen abre al momento.
+
+#### Perfil: abrir → cerrar → abrir otra vez sin stopper
+El cierre ponía `profMarkBusy` 500 ms y el tercer gesto (reabrir) se tragaba mientras el candado vivía. Cerrar en caliente ya se dejaba; abrir con el panel ya cerrado también (`!profBusy || !profileOpen`). Guardián en `e2e/perfil-simetria.spec.mjs`.
+
+#### Gastos: la lista ya no se para al bajar rapidísimo
+El centinela pedía la siguiente tanda con 600 px / +24 filas y aún se notaba el tope. Ahora 2.000 px de antelación y +60 por tanda (la primera sigue en 12).
+
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
