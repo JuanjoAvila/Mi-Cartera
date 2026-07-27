@@ -6,7 +6,43 @@
 >
 > Estado: beta **4.12.0.33** en el canal de pruebas. Producción (`main`) sigue en 4.11.0.
 
-## 0. CÓMO ACABÓ: no era rendimiento, era un candado que no se soltaba (2026-07-27, noche)
+## 0. CÓMO ACABÓ: no era rendimiento, era que UN TERCIO DE SUS DESLIZADAS NO CONTABA
+
+**Su repro, el que hay que probar, con sus palabras:** «estar **arriba del todo en Gastos**,
+moverte **rápido** por Deudas, y luego deslizarte a Gastos: **ahí se pierde la fluidez de golpe**».
+
+Medido con su dedo en su móvil (CDP), apuntando **dónde está el carrusel en cada frame**:
+
+| | antes | después |
+|---|---|---|
+| Arrastres que vuelven a la pestaña de la que salen | **6 de 18** | **0** |
+| Gestos que el navegador cancela (`touchcancel`) | **174 de 185** | **0 de 99** |
+
+**No era lentitud.** Los frames salían a 120/s y el movimiento del carrusel no tenía un solo salto
+(64 frames en 530 ms, sin huecos). Lo que fallaba es que **el gesto no llegaba a contar**: deslizas,
+el carrusel arranca y se vuelve. Eso es su «hay un stopper», su «se pierde la fluidez de golpe» y su
+«a veces sí y a veces no».
+
+**La causa:** React ata `onTouchMove` al contenedor raíz **en modo pasivo**, y ahí
+`preventDefault()` no hace nada. Sin poder decir «este gesto es mío», el navegador se lo queda para
+scrollear en cuanto huele movimiento vertical — y viniendo de mover **rápido** por Deudas, con la
+inercia viva, lo huele casi siempre. Por eso justo ese repro y no otro. **El mismo agujero se había
+arreglado en el perfil el 18/7 y a las pestañas no se les aplicó nunca** (el comentario que lo
+explica lleva meses tres pantallas más arriba en el mismo fichero).
+
+**El arreglo:** los toques de `.viewport` se registran a mano con `{passive:false}` y el arrastre
+horizontal hace `preventDefault()`. Como un listener nativo se dispara ANTES que los de React, el
+`stopPropagation` de `stopSwipe` ya no llegaba: esas zonas se marcan con `data-noswipe` y se miran
+en `onStart`, junto con cualquier elemento con scroll horizontal propio (las filas de chips), que
+antes se salvaban de rebote porque el navegador nos quitaba el gesto igualmente.
+
+⚠ **CÓMO MEDIR ESTO, que es la lección:** los frames no valen. Cuatro instrumentos daban verde
+(deltas de `rAF`, veredicto de frames de Chromium, perfil de movimiento con dedo sintético,
+imágenes de lo pintado) mientras él veía el fallo. Lo que lo cazó fue **contar cuántos arrastres
+acaban en la pestaña de la que salieron** y **cuántos gestos acaban en `touchcancel`**. Si el
+síntoma es «no responde», mide **si el gesto cuenta**, no cuánto tarda.
+
+## 0 bis. Y antes de eso: un candado que no se soltaba (misma noche)
 
 **La app no iba lenta: se quedaba bloqueada.** Por eso un día entero de medir rendimiento no dio con
 ello, y por eso ningún banco de pruebas lo reprodujo jamás.
