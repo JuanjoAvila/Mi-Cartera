@@ -9,8 +9,10 @@ metadata:
   node_type: memory
   type: project
   originSessionId: e1dc0ffc-f316-4885-bf7c-1e694f8b4d24
-  modified: 2026-07-26T17:42:44.847Z
+  modified: 2026-07-27T18:14:02.259Z
 ---
+
+**★ EL «LAG» AL DESLIZAR NO ERA LAG: LA APP SE QUEDABA BLOQUEADA (2026-07-27 noche, beta .35).** Cuatro rechazos suyos y dos días midiendo rendimiento para nada, porque el fallo no era de rendimiento. Cuando el navegador decide que un arrastre es SUYO (lo normal en cuanto acaba scrolleando) manda `touchcancel` y **`touchend` no llega nunca**; `.viewport` no lo escuchaba, así que la página se quedaba con `touch-action:none` y el carrusel plantado entre dos pestañas. Medido en SU móvil por CDP: **174 de 185 gestos suyos acabaron cancelados**, **0 tareas largas de JS**, y tras uno cancelado dos deslizadas reales dejaron el scroll clavado (473→473→473) hasta que un gesto acabó limpio (→820). Ningún banco lo pilló porque **un gesto sintético siempre acaba con `touchend`**. Arreglado en e398eae (`onTouchCancel` + soltar las cuatro páginas + red de seguridad en `onStart` + fuera el `touchAction` inútil) con e2e que falla sin el arreglo. Expediente en `docs/LAG-DESLIZAR.md` §0; cómo se midió, en [[depurar-webview-en-su-movil]]. **Pendiente: su veredicto de la .35.**
 
 **★ CANAL BETA: DOS causas, no una (2026-07-25).** La 4.10.1 arregló la CSP (dominio nuevo del redirect) y **el canal siguió roto**: los assets de las Releases de GitHub **no mandan CORS** en ninguno de los dos saltos (`curl -H "Origin: https://localhost"` → ni ACAO en github.com ni en release-assets), así que el `fetch` de la WebView los tira igual — MISMO síntoma que la CSP. Fix en **v4.10.2** (commit ece8ff6, main): el manifiesto lo pide Android (`CapacitorHttp`, como el login de MyInvestor) y `mcFetchManifest` cae a estable **solo con 404**; cualquier otro fallo va al toast y a `app_events`. Guardián: `tests/updates.test.mjs` ejecuta el trozo REAL del monolito en un `vm`. Dato: el `bundle.zip` de la beta tenía `downloadCount: 0` — nunca se había bajado. ⚠ Igual que la 4.10.1, esto NO puede viajar por beta: va a `main` porque es el mecanismo que arregla. `beta` lleva el merge (25a27e6).
 
