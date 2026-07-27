@@ -59,8 +59,28 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
      Cambié un tirón de 203 ms al entrar por un peaje en CADA deslizada: mal negocio.
      `display:none` NO pinta, NO calcula estilo y NO hace layout, y React conserva el estado del
      componente igual, que era lo único que se quería conservar: lo caro es MONTARLO, y eso ya se
-     paga una vez en un hueco libre. */
-  const oculto={height:0,overflow:"hidden",visibility:"hidden",pointerEvents:"none"};
+     paga una vez en un hueco libre.
+
+     SEGUNDA VUELTA, 2026-07-27 — y aquí el que se equivocó fui yo. La solución que quedó fue
+     `visibility:hidden` SIEMPRE + `content-visibility:hidden` solo mientras el dedo arrastra, con
+     la idea de que el recálculo cayera después del `touchend`. Él lo siguió notando: «vas a
+     deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible el lag». Y tenía
+     razón: ese peaje no desaparecía, solo se movía tres milisegundos más allá.
+
+     Medidas de HOY (CPU x12, medianas de 5), que es lo que manda porque el premontaje y el que las
+     páginas ya no cuelguen del render de App han cambiado el terreno:
+
+       | cómo se esconden          | entrar en Plan | abrir Deudas | salir de Plan |
+       | visibility:hidden (antes) |     162 ms     |    198 ms    |    185 ms     |
+       | content-visibility SIEMPRE|      90 ms     |    148 ms    |    182 ms     |
+       | display:none              |      74 ms     |    253 ms    |    176 ms     |
+
+     Gana `content-visibility:hidden` puesto SIEMPRE: casi tan barato como `display:none` al entrar
+     y MUCHO mejor al abrir un segmento (148 vs 253), porque a diferencia de `display:none`
+     conserva el estado ya renderizado y solo tiene que volver a pintarlo. Y no era medible antes
+     de tener el resto arreglado, que es justo por qué esta decisión se re-mide en vez de heredarse.
+     Al ponerse siempre, sobra la regla especial de `.track.dragging` que había en shell.html. */
+  const oculto={height:0,overflow:"hidden",contentVisibility:"hidden",pointerEvents:"none"};
   const capa=function(id,hijo){
     if(!segMounted[id]) return null;
     return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);

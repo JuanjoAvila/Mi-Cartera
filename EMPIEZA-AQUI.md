@@ -69,7 +69,7 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy (2026-07-26, tanda de noche):** `VERSION` = **4.12.0** en rama `beta`, lista para que la
+**Hoy (2026-07-27):** `VERSION` = **4.12.0** en rama `beta`, lista para que la
 re-pruebe en el móvil. Producción (`main`) sigue en **4.11.0**. Además de los bloqueos de los
 rechazos .17/.18, esta tanda cierra dos de las tres cosas que quedaban abiertas:
 
@@ -78,6 +78,12 @@ rechazos .17/.18, esta tanda cierra dos de las tres cosas que quedaban abiertas:
   de `App`. Todas las hipótesis descartadas están en el `CHANGELOG` **con su número**.
 - **La APK ya puede pasar de la 34 a la 35**: `beta.yml` no subía `apk.json` a la release `beta`,
   así que el móvil en canal de pruebas leía el manifiesto de producción y se callaba.
+- **Mañana del 27, con su prueba delante:** APK aprobada por él. Deudas seguía mal y **no era lo que**
+  **parecía**: no es «salir de Deudas», es **Plan entero** (58 ms saliendo de Gastos contra 187 entrando
+  en Plan). Sus tres segmentos se ocultaban con `visibility:hidden`, que sigue pintando. Ahora llevan
+  `content-visibility:hidden` siempre: **entrar en Plan 162 → 89 ms**.
+- **El perfil se queda como está** (~175 ms). No es JS. Todas las palancas CSS están medidas y
+  descartadas: el siguiente tramo pide enseñar MENOS panel al abrir, no pintarlo más rápido.
 - **Sigue abierto**: «Gastos se queda a medio pintar». **No se ha reproducido** — está medido en el
   `CHANGELOG` y en `docs/ROADMAP.md` («Abierto, con lo medido»). No lo toques a ciegas.
 

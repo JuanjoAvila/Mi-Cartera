@@ -328,7 +328,10 @@
      pintado; al soltar vuelven y recuperan su layout. Ese recálculo cae DESPUÉS del touchend, que
      es tiempo que no le quita un frame al dedo (AGENTS §7 bis). Resultado: 0 ms al entrar y ~80
      al deslizar, en vez de tener que elegir. */
-  .track.dragging [data-seg][aria-hidden="true"]{content-visibility:hidden;}
+  /* La regla que vivía aquí (`content-visibility:hidden` SOLO mientras el dedo arrastra) se ha
+     retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
+     estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
+     durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
@@ -12610,8 +12613,28 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
      Cambié un tirón de 203 ms al entrar por un peaje en CADA deslizada: mal negocio.
      `display:none` NO pinta, NO calcula estilo y NO hace layout, y React conserva el estado del
      componente igual, que era lo único que se quería conservar: lo caro es MONTARLO, y eso ya se
-     paga una vez en un hueco libre. */
-  const oculto={height:0,overflow:"hidden",visibility:"hidden",pointerEvents:"none"};
+     paga una vez en un hueco libre.
+
+     SEGUNDA VUELTA, 2026-07-27 — y aquí el que se equivocó fui yo. La solución que quedó fue
+     `visibility:hidden` SIEMPRE + `content-visibility:hidden` solo mientras el dedo arrastra, con
+     la idea de que el recálculo cayera después del `touchend`. Él lo siguió notando: «vas a
+     deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible el lag». Y tenía
+     razón: ese peaje no desaparecía, solo se movía tres milisegundos más allá.
+
+     Medidas de HOY (CPU x12, medianas de 5), que es lo que manda porque el premontaje y el que las
+     páginas ya no cuelguen del render de App han cambiado el terreno:
+
+       | cómo se esconden          | entrar en Plan | abrir Deudas | salir de Plan |
+       | visibility:hidden (antes) |     162 ms     |    198 ms    |    185 ms     |
+       | content-visibility SIEMPRE|      90 ms     |    148 ms    |    182 ms     |
+       | display:none              |      74 ms     |    253 ms    |    176 ms     |
+
+     Gana `content-visibility:hidden` puesto SIEMPRE: casi tan barato como `display:none` al entrar
+     y MUCHO mejor al abrir un segmento (148 vs 253), porque a diferencia de `display:none`
+     conserva el estado ya renderizado y solo tiene que volver a pintarlo. Y no era medible antes
+     de tener el resto arreglado, que es justo por qué esta decisión se re-mide en vez de heredarse.
+     Al ponerse siempre, sobra la regla especial de `.track.dragging` que había en shell.html. */
+  const oculto={height:0,overflow:"hidden",contentVisibility:"hidden",pointerEvents:"none"};
   const capa=function(id,hijo){
     if(!segMounted[id]) return null;
     return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
@@ -14775,7 +14798,11 @@ function App(){
   };
   // startTransition: la animación del track va primero; React monta la pestaña en segundo plano.
   const goTab=function(i){
-    if(i<0||i>=tabIds.length||i===tab) return;
+    // `tabRef` y no `tab`: este cierre viaja dentro de las páginas memoizadas (ver `contenidos`
+    // más abajo), que a propósito NO se rehacen al cambiar de pestaña. Leyendo `tab` se quedaría
+    // con el de cuando se construyó la página y, si coincidiera con el destino, este `return`
+    // temprano se tragaría el salto: «Ver más → Gastos» sin hacer nada.
+    if(i<0||i>=tabIds.length||i===tabRef.current) return;
     lastTabAt.current=Date.now();   // ver el «stopper» en onMove: encadenar deslizadas no debe abrir Ajustes
     revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
     prepMountTab(i);
@@ -15070,7 +15097,9 @@ function App(){
   const cancelSwipe=function(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
-    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform=trackX(tab); }
+    // `tabRef` por lo mismo que en `goTab`: con el `tab` de cuando se construyó la página, cancelar
+    // el gesto devolvería el carrusel a la pestaña equivocada.
+    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform=trackX(tabRef.current); }
     if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
     freezeShell(false);
     setSettingsProgress(drawerOpen?1:0);
@@ -15170,18 +15199,39 @@ function App(){
      ⚠ Las dependencias son TODO lo que leen estas páginas y los cierres que les pasamos, no solo
      lo que se ve en las props: si añades una prop que dependa de otro estado de App, añádelo aquí
      o la pestaña se quedará con un valor viejo. Fuera quedan a propósito los estados de las capas
-     de encima (perfil, cajón, toast, barra inferior, pills de update), que es justo el ahorro. */
-  const paginas=useMemo(function(){
-    return tabIds.map(function(id,i){
-      var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
-      var show=live||!!mountedTabs[id];
-      return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
-        show ? pageFor(id) : null
-      );
-    });
+     de encima (perfil, cajón, toast, barra inferior, pills de update), que es justo el ahorro.
+
+     Y `tab` TAMPOCO ES DEPENDENCIA — segunda vuelta, 2026-07-27. Con `tab` dentro, cambiar de
+     pestaña seguía reconstruyendo las cuatro páginas, y eso es exactamente lo que él siguió
+     notando: «vas a deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible».
+     Medido a x12: entrar en Deudas 172 ms, moverse dentro 0 ms (eso ya estaba), **deslizar fuera
+     219 ms**. Al quedar fuera, cambiar de pestaña solo re-renderiza los cuatro `div` de arriba
+     (que sí necesitan `tab` para la clase `page-live`); React ve el MISMO elemento hijo por
+     referencia y se salta el subárbol entero. De ahí que el mapa de abajo ya no vaya memoizado:
+     cuatro `createElement` de un `div` no cuestan nada, y lo caro es lo que cuelga de ellos.
+     El precio de sacar `tab` son los cierres que lo leían (`goTab`, `cancelSwipe`): ahora leen
+     `tabRef`, con el porqué escrito en cada uno. */
+  const contenidos=useMemo(function(){
+    var out={};
+    tabIds.forEach(function(id){ if(id!=="gastos") out[id]=pageFor(id); });
+    return out;
     // eslint-disable-next-line
-  },[state, totals, tab, tabIds.join("|"), mountedTabs, mountNeighbors, syncing, syncStatus,
-     gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  /* Gastos aparte porque es la ÚNICA que necesita saber si es la pestaña activa (`active`, que
+     le sirve para decidir cuándo hacer su trabajo caro). Va en su propio memo para que ese dato
+     no arrastre a las otras tres: así entrar o salir de Gastos re-renderiza Gastos y nada más. */
+  const gastosActiva=tabIds[tab]==="gastos";
+  const contenidoGastos=useMemo(function(){
+    return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
+    // eslint-disable-next-line
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosActiva]);
+  const paginas=tabIds.map(function(id,i){
+    var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
+    var show=live||!!mountedTabs[id];
+    return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
+      show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
+    );
+  });
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
   if(state.onboarded===false) return React.createElement(React.Fragment,null,

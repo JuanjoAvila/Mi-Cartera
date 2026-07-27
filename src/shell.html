@@ -328,7 +328,10 @@
      pintado; al soltar vuelven y recuperan su layout. Ese recálculo cae DESPUÉS del touchend, que
      es tiempo que no le quita un frame al dedo (AGENTS §7 bis). Resultado: 0 ms al entrar y ~80
      al deslizar, en vez de tener que elegir. */
-  .track.dragging [data-seg][aria-hidden="true"]{content-visibility:hidden;}
+  /* La regla que vivía aquí (`content-visibility:hidden` SOLO mientras el dedo arrastra) se ha
+     retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
+     estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
+     durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}

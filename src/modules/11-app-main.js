@@ -1654,7 +1654,11 @@ function App(){
   };
   // startTransition: la animación del track va primero; React monta la pestaña en segundo plano.
   const goTab=function(i){
-    if(i<0||i>=tabIds.length||i===tab) return;
+    // `tabRef` y no `tab`: este cierre viaja dentro de las páginas memoizadas (ver `contenidos`
+    // más abajo), que a propósito NO se rehacen al cambiar de pestaña. Leyendo `tab` se quedaría
+    // con el de cuando se construyó la página y, si coincidiera con el destino, este `return`
+    // temprano se tragaría el salto: «Ver más → Gastos» sin hacer nada.
+    if(i<0||i>=tabIds.length||i===tabRef.current) return;
     lastTabAt.current=Date.now();   // ver el «stopper» en onMove: encadenar deslizadas no debe abrir Ajustes
     revealNav();   // cambiar de pestaña siempre muestra la barra (petición 2026-07-17)
     prepMountTab(i);
@@ -1949,7 +1953,9 @@ function App(){
   const cancelSwipe=function(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
-    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform=trackX(tab); }
+    // `tabRef` por lo mismo que en `goTab`: con el `tab` de cuando se construyó la página, cancelar
+    // el gesto devolvería el carrusel a la pestaña equivocada.
+    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform=trackX(tabRef.current); }
     if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
     freezeShell(false);
     setSettingsProgress(drawerOpen?1:0);
@@ -2049,18 +2055,39 @@ function App(){
      ⚠ Las dependencias son TODO lo que leen estas páginas y los cierres que les pasamos, no solo
      lo que se ve en las props: si añades una prop que dependa de otro estado de App, añádelo aquí
      o la pestaña se quedará con un valor viejo. Fuera quedan a propósito los estados de las capas
-     de encima (perfil, cajón, toast, barra inferior, pills de update), que es justo el ahorro. */
-  const paginas=useMemo(function(){
-    return tabIds.map(function(id,i){
-      var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
-      var show=live||!!mountedTabs[id];
-      return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
-        show ? pageFor(id) : null
-      );
-    });
+     de encima (perfil, cajón, toast, barra inferior, pills de update), que es justo el ahorro.
+
+     Y `tab` TAMPOCO ES DEPENDENCIA — segunda vuelta, 2026-07-27. Con `tab` dentro, cambiar de
+     pestaña seguía reconstruyendo las cuatro páginas, y eso es exactamente lo que él siguió
+     notando: «vas a deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible».
+     Medido a x12: entrar en Deudas 172 ms, moverse dentro 0 ms (eso ya estaba), **deslizar fuera
+     219 ms**. Al quedar fuera, cambiar de pestaña solo re-renderiza los cuatro `div` de arriba
+     (que sí necesitan `tab` para la clase `page-live`); React ve el MISMO elemento hijo por
+     referencia y se salta el subárbol entero. De ahí que el mapa de abajo ya no vaya memoizado:
+     cuatro `createElement` de un `div` no cuestan nada, y lo caro es lo que cuelga de ellos.
+     El precio de sacar `tab` son los cierres que lo leían (`goTab`, `cancelSwipe`): ahora leen
+     `tabRef`, con el porqué escrito en cada uno. */
+  const contenidos=useMemo(function(){
+    var out={};
+    tabIds.forEach(function(id){ if(id!=="gastos") out[id]=pageFor(id); });
+    return out;
     // eslint-disable-next-line
-  },[state, totals, tab, tabIds.join("|"), mountedTabs, mountNeighbors, syncing, syncStatus,
-     gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  /* Gastos aparte porque es la ÚNICA que necesita saber si es la pestaña activa (`active`, que
+     le sirve para decidir cuándo hacer su trabajo caro). Va en su propio memo para que ese dato
+     no arrastre a las otras tres: así entrar o salir de Gastos re-renderiza Gastos y nada más. */
+  const gastosActiva=tabIds[tab]==="gastos";
+  const contenidoGastos=useMemo(function(){
+    return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
+    // eslint-disable-next-line
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosActiva]);
+  const paginas=tabIds.map(function(id,i){
+    var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
+    var show=live||!!mountedTabs[id];
+    return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
+      show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
+    );
+  });
 
   if(locked) return React.createElement(LockScreen,{onUnlock:function(){ setLocked(false); }});
   if(state.onboarded===false) return React.createElement(React.Fragment,null,

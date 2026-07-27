@@ -101,6 +101,13 @@ test("entrar por primera vez en cada pestaña no bloquea el hilo principal", asy
     await expect(page.locator(`[data-seg="${seg}"]`), `el segmento «${seg}» de Plan no se ha montado por adelantado`).toHaveCount(1);
   }
   expect(await page.locator('[data-seg="deudas"]').isVisible(), "Deudas debería estar montado pero NO visible").toBe(false);
+
+  // Y montado no basta: los segmentos que NO se ven tienen que estar fuera del pintado. Con
+  // `visibility:hidden` seguían participando en estilo, capas y pintado, y eso se pagaba en CADA
+  // entrada y salida de Plan — medido el 2026-07-27: entrar en Plan 162 ms con `visibility:hidden`
+  // contra 89 con `content-visibility:hidden` (la tabla con los tres candidatos, en 14-v4-screens.js).
+  const cv = await page.locator('[data-seg="deudas"]').evaluate((el) => getComputedStyle(el).contentVisibility);
+  expect(cv, "el segmento oculto de Plan tiene que estar fuera del pintado (content-visibility:hidden)").toBe("hidden");
 });
 
 /* EL CASO QUE QUEDABA TRAS EL PREMOUNT (rechazo 4.12.0.17): scrollear dentro de Deudas/Metas

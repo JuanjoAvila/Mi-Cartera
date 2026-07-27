@@ -5,6 +5,54 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
+#### Deudas, segunda vuelta: no era «salir de Deudas», era PLAN entero (2026-07-27)
+Su veredicto por la mañana: la APK aprobada, el perfil «ha mejorado una barbaridad» pero aún no del todo, y **Deudas igual** — «vas a deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible el lag… y ahora se nota más porque va la app ultra fluida».
+
+Lo primero fue partir su frase en tres medidas, porque «Deudas va lento» puede ser cualquiera de tres cosas (CPU x12, 1.200 gastos, 6 deudas, 6 metas):
+
+| | antes de esta tanda |
+|---|---|
+| entrar en Deudas | 183 ms |
+| moverse DENTRO de Deudas | **0 ms** (esto ya estaba arreglado) |
+| deslizar fuera | 259 ms |
+
+Y luego, la pregunta que lo cambió todo: **¿es Plan o es deslizar?** Midiendo el mismo gesto saliendo de cada pestaña:
+
+| gesto | bloqueo |
+|---|---|
+| Gastos → Inicio | **58 ms** |
+| Plan → Gastos | 156 ms |
+| Cartera → **Plan** | **187 ms** |
+
+O sea: no es salir de Deudas, es que **cualquier gesto que involucre Plan cuesta el triple**. Plan lleva sus tres segmentos (Recibos, Deudas, Metas) montados a la vez, y estaban ocultos con `visibility:hidden`, que **sigue participando en estilo, capas y pintado**. La 4.12.0 ya lo sabía y lo compensaba poniendo `content-visibility:hidden` **solo mientras el dedo arrastra**, para que el recálculo cayera después del `touchend`. Ese era el error: el peaje no desaparecía, se aplazaba tres milisegundos — justo al soltar, que es donde él lo notaba.
+
+Re-medidos hoy los tres candidatos, porque el terreno ha cambiado (premontaje + páginas fuera del render de `App`):
+
+| cómo se esconden los segmentos | entrar en Plan | abrir Deudas | salir de Plan |
+|---|---|---|---|
+| `visibility:hidden` (lo que había) | 162 ms | 198 ms | 185 ms |
+| **`content-visibility:hidden` siempre** | **90 ms** | **148 ms** | 182 ms |
+| `display:none` | 74 ms | 253 ms | 176 ms |
+
+Gana `content-visibility:hidden` puesto **siempre**: casi tan barato como `display:none` al entrar y mucho mejor al abrir un segmento (148 contra 253), porque conserva el estado ya renderizado en vez de tirarlo. Verificado después del cambio: **entrar en Plan 162 → 89 ms**. Sobra, y se retira, la regla especial de `.track.dragging` en `shell.html`.
+
+#### Y `tab` deja de ser dependencia de las páginas
+El `useMemo` de anoche dejaba `tab` dentro, así que **cambiar de pestaña seguía reconstruyendo las cuatro páginas**. Ahora las páginas se memoizan sin `tab` y lo único que se rehace al deslizar son los cuatro `div` contenedores (que sí necesitan `tab` para la clase `page-live`); React ve el mismo elemento hijo por referencia y se salta el subárbol. Gastos va en su propio memo porque es la única que necesita saber si es la pestaña activa. **Entrar en Deudas: 183 → 108 ms.**
+
+El precio, y queda escrito al lado de cada uno: `goTab` y `cancelSwipe` leían `tab` desde dentro de esas páginas y ahora leen `tabRef`. Con el valor viejo, `goTab` se habría tragado un salto («Ver más → Gastos» sin hacer nada) y `cancelSwipe` habría devuelto el carrusel a la pestaña equivocada.
+
+#### Lo que se probó y NO era, con su número
+Que no lo repita nadie, incluido yo:
+- `content-visibility` de los segmentos solo al arrastrar → quitarlo: 257 vs 236 ms. Nada.
+- `content-visibility:auto` de `.page` → quitarlo: 252 vs 236. Nada.
+- `will-change` del `.track` → quitarlo: 212 vs 236. Ruido.
+- Que cambiar de pestaña no re-renderice Gastos (`active` fijo): 275 vs 236. Nada.
+- **En el perfil**, `content-visibility:auto` en sus tarjetas: parecía ganar con 5 pasadas (171 vs 215) y con **9 intercaladas salió PEOR** (229 vs 166). Descartado — y sirve de recordatorio de por qué en esta máquina no vale medir a la primera.
+
+**El perfil se queda como está.** Tras lo de anoche (339 → 175 ms) el JS propio de la app no llega al 1 % al abrirlo: lo que queda es trabajo del navegador para hacer visible una pantalla de ~1.680 px, y hoy no he encontrado ninguna palanca que lo baje de verdad. Él lo describe como «a puntito, le queda nada»; lo honesto es decir que para el siguiente tramo hace falta rediseñar qué se enseña al abrir, no otra propiedad CSS.
+
+Guardián nuevo en `e2e/rendimiento-tabs.spec.mjs`: el segmento oculto de Plan tiene que tener `content-visibility: hidden` computado. Estructural, que es lo que aguanta en CI.
+
 #### Abrir el perfil: la causa NO era la animación, y esto se midió antes de tocar nada
 Él, tras probar la .28: «lo del perfil está arreglado para salir, ahora es inmediato, pero para entrar sigue pasando lo mismo». La sesión anterior dejó anotada una hipótesis razonable —se escala un panel de ~1.680 px desde 0,12 hasta 1 y el navegador lo re-rasteriza mientras crece, 482 `RasterTask` y 278 `Paint`— y la conclusión de que había que **rediseñar cómo crece el panel**. Era falsa, y bastó un experimento para tumbarla:
 
