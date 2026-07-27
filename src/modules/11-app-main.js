@@ -1750,17 +1750,84 @@ function App(){
     appShellRef.current.classList.toggle("nav-sin-blur", !!off);
   };
   const navSinBlurTrasTransicion=function(){
-    // Respaldo por tiempo y no `transitionend`: si el destino es la misma pestaña no hay
-    // transición ninguna, y el evento no llegaría nunca (el candado del perfil ya tropezó con esto).
+    // Respaldo por tiempo: si el asentamiento rAF se cancela a mitad, el desenfoque no se queda.
     if(navBlurT.current) clearTimeout(navBlurT.current);
     navBlurT.current=setTimeout(function(){
       navBlurT.current=0;
       if(appShellRef.current) appShellRef.current.classList.remove("nav-sin-blur");
-    }, 480);   // 420 de la transición del track + margen
+    }, 480);
   };
   useEffect(function(){ return function(){ if(navBlurT.current) clearTimeout(navBlurT.current); }; },[]);
   const trackAnchoAhora=function(){ return (trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360; };
   const trackX=function(i){ return "translate3d("+(-i*(trackW.current||trackAnchoAhora()))+"px,0,0)"; };
+  /* ASENTAR EL CARRUSEL CON rAF, NO CON transition CSS — 2026-07-27, medido en SU móvil.
+     La transition de 0,42 s producía exactamente este ritmo al soltar el dedo:
+       25 8 25 8 25 8 … (trece veces) → 60 Hz a trompicones durante todo el asentamiento.
+     El arrastre con el dedo iba a 8,3 ms clavados (120 Hz). WAAPI igual de malo; acortar la
+     transition a 0,18 s dejaba 6 saltos (proporcional). Con rAF escribiendo transform: **0
+     saltos**, cuatro veces seguidas. Herramienta: tools/movil/ab-waapi.mjs / huecos.mjs.
+     Curva = la misma cubic-bezier(.32,.72,0,1) que tenía el CSS (feedback 2026-07-17). */
+  const settleRaf=useRef(0);
+  const settleGen=useRef(0);
+  const settleTo=useRef(-1);
+  const trackPxAhora=function(){
+    const el=trackRef.current; if(!el) return 0;
+    const cur=getComputedStyle(el).transform;
+    if(!cur||cur==="none") return 0;
+    const m=cur.match(/matrix\([^,]+,[^,]+,[^,]+,[^,]+,\s*(-?[\d.]+)/);
+    return m?parseFloat(m[1]):0;
+  };
+  const easeTrack=function(x){
+    // Resuelve Y de cubic-bezier(.32,.72,0,1) para progreso X ∈ [0,1].
+    var lo=0, hi=1, t=x, i, u, bx;
+    for(i=0;i<10;i++){
+      t=(lo+hi)/2; u=1-t;
+      bx=3*u*u*t*0.32 + 3*u*t*t*0 + t*t*t;
+      if(bx<x) lo=t; else hi=t;
+    }
+    u=1-t;
+    return 3*u*u*t*0.72 + 3*u*t*t*1 + t*t*t;
+  };
+  const asentarTrack=function(i){
+    const el=trackRef.current; if(!el) return;
+    if(settleRaf.current && settleTo.current===i) return;   // ya vamos ahí: no reiniciar
+    if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
+    const gen=++settleGen.current;
+    settleTo.current=i;
+    el.classList.remove("dragging");
+    const toX=-(i*(trackW.current||trackAnchoAhora()));
+    if(document.documentElement.classList.contains("reduce-motion")){
+      el.style.transform="translate3d("+toX+"px,0,0)";
+      settleTo.current=-1;
+      navSinBlur(false);
+      return;
+    }
+    const fromX=trackPxAhora();
+    if(Math.abs(fromX-toX)<0.5){
+      el.style.transform="translate3d("+toX+"px,0,0)";
+      settleTo.current=-1;
+      navSinBlurTrasTransicion();
+      return;
+    }
+    const t0=performance.now();
+    const dur=420;
+    const step=function(now){
+      if(gen!==settleGen.current) return;
+      const p=Math.min(1,(now-t0)/dur);
+      const x=fromX+(toX-fromX)*easeTrack(p);
+      el.style.transform="translate3d("+x+"px,0,0)";
+      if(p<1){ settleRaf.current=requestAnimationFrame(step); }
+      else {
+        settleRaf.current=0; settleTo.current=-1;
+        el.style.transform="translate3d("+toX+"px,0,0)";
+        navSinBlur(false);
+      }
+    };
+    settleRaf.current=requestAnimationFrame(step);
+  };
+  useEffect(function(){
+    return function(){ if(settleRaf.current) cancelAnimationFrame(settleRaf.current); };
+  },[]);
   /* Aquí vivían revealDots()/hideDotsSoon(), que encendían y apagaban el indicador de puntitos
      del swipe. Ese indicador se lo llevó por delante el rediseño v4: `.app.v4 .dots` está oculto
      con `display:none !important` y ningún módulo crea ya el elemento (comprobado buscando
@@ -1949,9 +2016,8 @@ function App(){
         setDrawerOpen(open);
         setSettingsProgress(open?1:0);
       } else {
-        if(trackRef.current) trackRef.current.classList.remove("dragging");
-        // El desenfoque NO vuelve al soltar: el carrusel sigue moviéndose 0,42 s con la
-        // transición, y ahí es donde más se nota. Vuelve cuando todo ha parado.
+        // El desenfoque NO vuelve al soltar: el carrusel sigue moviéndose 0,42 s, y ahí es
+        // donde más se nota. `asentarTrack` lo apaga al terminar; el timer es el respaldo.
         navSinBlurTrasTransicion();
         freezeShell(false);   // suelta el scroll que congelamos al fijar el eje horizontal
         const w=trackRef.current?trackRef.current.offsetWidth:360;
@@ -1963,8 +2029,11 @@ function App(){
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
+        // Asentar YA (rAF), no esperar al setState: si no, el carrusel se queda un frame
+        // plantado donde lo soltó el dedo. goTab dispara el useEffect de `tab`, que vuelve a
+        // llamar asentarTrack con el mismo destino → no-op (ver settleTo).
         if(nt!==tab) goTab(nt);
-        else if(trackRef.current) trackRef.current.style.transform=trackX(tab);
+        asentarTrack(nt);
       }
     }
     gestureMode.current=null;
@@ -2029,14 +2098,21 @@ function App(){
       el.removeEventListener("touchcancel", c);
     };
   },[]);
-  useEffect(()=>{ if(trackRef.current&&!dragging.current) trackRef.current.style.transform=trackX(tab); },[tab]);
+  // Toque en la barra inferior (y cualquier setTab que no venga del gesto): mismo asentamiento
+  // por rAF. Si el gesto ya lo arrancó hacia este índice, asentarTrack no reinicia.
+  useEffect(function(){ if(!dragging.current) asentarTrack(tab); },[tab]);
   // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
   // píxel no. Si cambia el ancho (rotación, teclado, barra del navegador), se tira la medida
   // cacheada y se vuelve a colocar el carrusel. Fuera del gesto, para no medir con el dedo puesto.
   useEffect(function(){
     const alRedimensionar=function(){
       trackW.current=0;
-      if(trackRef.current&&!dragging.current) trackRef.current.style.transform=trackX(tab);
+      if(trackRef.current&&!dragging.current){
+        // Snap sin animar: el ancho nuevo cambia el destino en px; animar desde el viejo salta.
+        if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
+        settleTo.current=-1;
+        trackRef.current.style.transform=trackX(tab);
+      }
     };
     window.addEventListener("resize",alRedimensionar);
     window.addEventListener("orientationchange",alRedimensionar);
@@ -2122,8 +2198,9 @@ function App(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
     // `tabRef` por lo mismo que en `goTab`: con el `tab` de cuando se construyó la página, cancelar
-    // el gesto devolvería el carrusel a la pestaña equivocada.
-    if(trackRef.current){ trackRef.current.classList.remove("dragging"); trackRef.current.style.transform=trackX(tabRef.current); }
+    // el gesto devolvería el carrusel a la pestaña equivocada. Asentar por rAF (no snap a pelo):
+    // si no, el dedo ve un salto seco cuando el navegador se lleva el gesto.
+    asentarTrack(tabRef.current);
     if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
     freezeShell(false);
     setSettingsProgress(drawerOpen?1:0);

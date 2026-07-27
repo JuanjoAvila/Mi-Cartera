@@ -20,6 +20,7 @@ const steps = [
   ["memoria-espejo", ["node", "scripts/sync-memoria.mjs", "--check"]],
   ["security", ["node", "tests/security.test.mjs"]],
   ["gastos-active-bus", ["node", "tests/gastos-active-bus.test.mjs"]],
+  ["track-asentar-raf", ["node", "tests/track-asentar-raf.test.mjs"]],
   ["edge-sintaxis", ["node", "tests/edge-sintaxis.test.mjs"]],
   ["presupuesto-rendimiento", ["node", "tests/presupuesto-rendimiento.test.mjs"]],
   ["finance-core", ["node", "tests/finance-core.test.mjs"]],

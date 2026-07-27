@@ -2404,7 +2404,14 @@ function applyReduceMotion(on){ try{ document.documentElement.classList.toggle("
 function applyContrast(on){ try{ document.documentElement.classList.toggle("hi-contrast", !!on); }catch(e){} }
 // Temática de temporada (Mundial, Halloween, Navidad…): re-tinta acentos decorativos y activa
 // una capa ambiental animada. data-season en <html>; "" o "none" = sin temática.
-function applySeason(season){ try{ document.documentElement.setAttribute("data-season", (season&&season!=="none")?season:""); }catch(e){} }
+// ⚠ Hay que QUITAR el atributo, no dejarlo en "". `html[data-season]` casa con presencia, así
+// que `data-season=""` encendía fabpulse/seasonglow sin temática (medido en su móvil 2026-07-27).
+function applySeason(season){
+  try{
+    if(season&&season!=="none") document.documentElement.setAttribute("data-season", season);
+    else document.documentElement.removeAttribute("data-season");
+  }catch(e){}
+}
 function applyA11y(s){
   applyTextSize(textSizeOf(s));
   applyReduceMotion(!!(s&&s.settings&&s.settings.reduceMotion));

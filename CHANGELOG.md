@@ -5,6 +5,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
+#### Séptima vuelta: el tirón era el ASENTAMIENTO CSS a 120 Hz (no el arrastre, no React)
+Él lo describía perfecto y se midió mal otra vez: «**se pierde la fluidez de golpe**». Con la métrica correcta —huecos entre frames **presentados** por el compositor, no deltas de `requestAnimationFrame` ni `% DROPPED`— la secuencia de un deslice en su móvil (120 Hz) es:
+
+```
+… 8 8 8 8 …   ← arrastre con el dedo, impecable
+25 8 25 8 25 8 … (×13)   ← al soltar, 0,42 s exactos
+… 8 8 8 8 …   ← al acabar, impecable otra vez
+```
+
+Eso es el batido 60/120: la `transition: transform .42s` del `.track` pelea con la pantalla. WAAPI igual (13 saltos). Acortar a 0,18 s deja 6 (proporcional). **Asentar escribiendo `transform` desde `requestAnimationFrame`: 0 saltos, cuatro veces seguidas** (`tools/movil/ab-waapi.mjs`). Mismo easing `cubic-bezier(.32,.72,0,1)`, misma duración. `.track{transition:none}` permanente; si vuelve la CSS, vuelve el judder.
+
+Lección de las varas (para no repetir el camino): rAF vive en el hilo principal y el desliz va en el compositor → rAF puede ir a 8,3 ms con la pantalla a trompicones; `% DROPPED` da 33 % hasta en reposo (el compositor pide 183/s y la pantalla presenta 122). Lo que cuenta es el **hueco entre presentaciones**.
+
+De paso: `applySeason("")` dejaba `data-season=""` y `html[data-season]` encendía `fabpulse` (anima `box-shadow` → repintado permanente). No era ESTE tirón (A/B intercalado: 14 saltos con o sin él), pero estaba mal; ahora se quita el atributo.
+
+⚠ La sexta vuelta (bus de `active`) **se queda**: era un re-render medido de verdad. **No era** lo que él seguía notando. Guardián del asentamiento: `tests/track-asentar-raf.test.mjs`.
+
 #### Sexta vuelta: Deudas→Gastos no era el gesto, era RE-PINTAR Gastos al llegar
 Él lo había dicho con la pista perfecta y se midió mal: **hacia Cartera va fluidísimo; hacia Gastos, no.** Un lag que depende del sentido no puede ser el carrusel (es idéntico): tiene que ser el destino. En su móvil, con la beta .42 cargada y un contador inyectado sobre `Expenses`:
 
@@ -14,6 +31,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 | Plan/Deudas → **Cartera** | **0** |
 
 La prop `active` de Expenses viajaba en el `useMemo` de Gastos (`gastosActiva`). Cada entrada a Gastos **reconstruía el árbol entero** encima de la animación del carrusel. El expediente ya lo había anotado («dejar `active` fijo quita la asimetría, pero no vale») y se descartó mal: **sí vale** enterarse sin re-render. `mcSetGastosActive` / `mcOnGastosActive` (bus en `00-core.js`): heavyOk y el reset de chips siguen avisados; el árbol de Gastos no se toca. Guardián: `tests/gastos-active-bus.test.mjs`.
+
+⚠ **Veredicto suyo tras la .43: «sigue falla».** El re-render era real y el bus lo quita, pero **no era la causa del tirón que él siente**. La séptima vuelta es la que apunta a eso.
 
 #### Quinta vuelta: el banco de pruebas no reproducía su fallo, y ese era el problema de verdad
 «Sigue exactamente igual, no hay manera.» Y con razón: hasta aquí yo medía **tareas largas** en un contenedor, y su síntoma —tirones al deslizar— no aparecía en esa métrica. Al reproducir sus dos casos, la diferencia era 190 contra 174 ms: ruido. **Estaba optimizando contra un espejo que no enseñaba el fallo**, y de ahí que dos tandas seguidas no le llegaran.

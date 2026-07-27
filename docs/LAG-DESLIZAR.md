@@ -7,61 +7,50 @@
 > Estado: beta **4.12.0** en el canal de pruebas (el sufijo `.N` lo pone el workflow). Producción
 > (`main`) sigue en 4.11.0.
 
-## ⚠ CAUSA BUENA DEL «DEUDAS → GASTOS» (2026-07-27 noche, Cursor)
+## ⚠ CAUSA BUENA (7ª vuelta, 2026-07-27 noche): el ASENTAMIENTO CSS a 120 Hz
 
-**Medido en SU móvil** (CDP + contador inyectado sobre `Expenses`, beta .42):
+**Medido en SU móvil** (huecos entre frames *presentados* por el compositor, beta .43):
 
-| gesto | re-renders de Expenses |
+```
+arrastre con el dedo:   8 8 8 8 8 …          ← 120 Hz, impecable
+al soltar (0,42 s):     25 8 25 8 25 8 …×13  ← judder 60/120
+al acabar:              8 8 8 8 …            ← 120 Hz otra vez
+```
+
+Eso es **exactamente** su frase («se pierde la fluidez de golpe»). La `transition: transform .42s`
+del `.track` pelea con la pantalla de 120 Hz. A/B en el mismo banco:
+
+| asentamiento | saltos >12,5 ms |
 |---|---|
-| Deudas → **Gastos** | **+1** (`active: true`) |
-| Deudas → **Cartera** | **0** |
+| CSS transition (como estaba) | **14, 14, 13, 14** |
+| WAAPI (`element.animate`) | 13, 13, 13, 13 |
+| CSS acortada a 0,18 s | 7, 6, 6, 5 |
+| **`requestAnimationFrame` escribiendo transform** | **0, 0, 0, 0** |
 
-Eso es exactamente su asimetría («hacia Cartera fluidísimo; hacia Gastos no»). La prop `active` de
-Gastos iba en el `useMemo` → **cada aterrizaje reconstruía Gastos entero** encima del carrusel.
-El expediente ya lo había visto («dejar `active` fijo quita la asimetría») y lo descartó mal.
-Arreglo: bus `mcSetGastosActive` / `mcOnGastosActive` — se entera sin re-render.
+Arreglo: `asentarTrack` en `11-app-main.js` + `.track{transition:none}`. Misma curva, misma
+duración. Guardián: `tests/track-asentar-raf.test.mjs`. Herramientas: `tools/movil/huecos.mjs`,
+`ab-waapi.mjs`, `banco.mjs`.
 
-Los arreglos de §0 y §0 bis (gesto cancelado / `preventDefault`) **se quedan**: eran fallos reales
-medidos. Pero **no eran** lo que él seguía notando tras la .38.
+### Las varas que mentían (no las uses)
 
-**Cómo verificar:** Mis bancos / Ajustes → versión beta nueva; repro de siempre (Gastos arriba →
-Deudas, moverte, deslizar a Gastos). Tiene que ir como hacia Cartera.
+| vara | por qué engaña |
+|---|---|
+| Tareas largas | el judder no es JS bloqueando |
+| Deltas de `rAF` > 32 ms | umbral de 60 Hz en una pantalla de 120 Hz |
+| Deltas de `rAF` > 12,5 ms | rAF es hilo principal; el desliz va en el compositor |
+| `%` de frames `DROPPED` | 33 % hasta en reposo (el compositor pide 183/s, la pantalla presenta 122) |
+| Re-renders de Expenses | real (+1 vs 0 hacia Cartera) y parcheado con bus, **pero él dijo «sigue» tras la .43** |
 
-**Herramienta:** `tools/movil/medir-renders.mjs` (parchea `Expenses`, cuenta renders al deslizar).
+**Cómo verificar:** Mis bancos / Ajustes → versión beta nueva; repro de siempre. Al **soltar** el
+dedo tiene que seguir fluido, no «perderse».
 
 ---
 
-## ⚠ ESTADO AL CERRAR LA NOCHE DEL 27 (antes del hallazgo de arriba)
+## ⚠ Lo que YA está arreglado y NO era su tirón (no deshacer)
 
-Su veredicto de la beta **4.12.0.38**, con todo lo de abajo puesto: **«sigue exactamente igual que
-cuando comenzamos»**.
-
-O sea: los dos fallos de §0 y §0 bis eran **reales y están medidos antes/después en su móvil**, pero
-**NINGUNO era la causa de lo que él siente**. No los deshagas —son correctos y hay guardianes que los
-protegen— pero **no los des por la solución**.
-
-**Lo que él nota sigue sin explicación, y sigue siendo esto, literal:**
-
-> «estar **arriba del todo en Gastos**, moverte **rápido** por Deudas, y luego deslizarte a Gastos:
-> **ahí se pierde la fluidez de golpe**.»
-
-**Lo que ya está descartado CON NÚMEROS, en su móvil y con su dedo (no lo repitas):**
-
-| medida | caso malo suyo | veredicto |
-|---|---|---|
-| Tareas largas de JavaScript | **0** en 38 s de uso | el hilo principal no es |
-| Frames perdidos (`rAF`) | 9-12 en 60 s, el peor de 33 ms | no son frames perdidos |
-| Frames caídos según Chromium, solo en el desliz de vuelta | **0,75 %** vs **0,99 %** en su caso «fluido» | **no hay diferencia entre su caso malo y el bueno** |
-| Movimiento del carrusel frame a frame | 64 frames en 530 ms, sin un salto, igual en los dos casos | el carrusel se mueve perfecto |
-| Gestos cancelados por el navegador | 174/185 **→ 0/99** tras el arreglo | arreglado, y aun así él lo sigue notando |
-| Arrastres que vuelven a la misma pestaña | 6/18 **→ 0** | arreglado, y aun así lo sigue notando |
-
-**Por dónde seguiría yo, en este orden y con este porqué:** *(actualizado: el punto 1 de la lista
-vieja —animaciones `rise`/`v4bar`— queda por debajo del hallazgo del `active`; no lo priorices.)*
-
-1. ~~Lo que pasa DESPUÉS de aterrizar~~ → **era el re-render de Expenses por `active`** (arriba).
-2. **`useDeferredValue(state.expenses)`** en `04-tab-gastos.js`: sospecha viva menor.
-3. **Y si vuelve:** vídeo suyo a cámara lenta del repro.
+- §0 / §0 bis: gestos cancelados / `preventDefault` — fallos reales, guardianes puestos.
+- 6ª vuelta: bus `mcOnGastosActive` — quitaba un re-render medido; él lo rechazó como solución.
+- `navSinBlur`, `goTab` en una sola `startTransition`, etc. — mejoras medidas; se quedan.
 
 **Las herramientas están en [`tools/movil/`](../tools/movil/) con su README.** Su móvil tiene puesta
 una APK compilada en casa con la inspección abierta (misma firma, mismos datos); la del CI no la

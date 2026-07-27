@@ -33,20 +33,27 @@ No hacen falta dependencias: el `WebSocket` es el nativo de Node 22+.
 | `fluidez.mjs` | dónde está el carrusel **en cada frame**: huecos, parones y saltos, con el scroll y la barra al lado | si el síntoma es «se mueve raro» o «pierde fluidez» |
 | `frames.mjs` | frames perdidos (deltas de `rAF`) con el contexto de cada uno | para descartar que el hilo principal tenga la culpa |
 | `frames-ab.mjs` | A/B intercalado con el **veredicto de frames de Chromium** (`PipelineReporter`), solo en la ventana del desliz | para comparar dos variantes; edita la lista `CONF` con los parches CSS a probar |
+| `huecos.mjs` | **métrica buena**: huecos entre frames *presentados* (no rAF, no `% DROPPED`) | si el síntoma es «se pierde la fluidez al soltar» |
+| `banco.mjs` / `ab-waapi.mjs` | banco sintético que SÍ reproduce el judder del asentamiento + A/B de cómo asentar | iterar sin su dedo cuando el fallo es la transition CSS |
+| `en-vivo.mjs` | graba SUS gestos con umbral de SU refresco (120 Hz → malo >12,5 ms, no 32) | cuando haga falta su dedo de verdad |
 
-## Las cuatro trampas, todas pagadas ya
+## Las trampas, todas pagadas ya
 
 1. **`dumpsys gfxinfo` MIENTE en una app WebView**: daba 112 fps y un frame malo en 33 s con la
    pantalla congelada. Una WebView pinta siempre su último fotograma y Android lo cuenta como bueno.
 2. **Grabar una traza de Chromium provoca el tirón que buscas**: con `Tracing` puesto salen frames
-   de 90 ms donde con un medidor ligero no sale ninguno. Y 9 s de traza son 100 MB.
+   de 90 ms donde con un medidor ligero no sale ninguno. Y 9 s de traza son 100 MB. (Para atribuir
+   QUÉ trabaja sí vale; para tiempos, no.)
 3. **Los huecos del screencast no son parones**: si solo se mueve un `transform` (compositor), no
    se genera fotograma nuevo y parece que la pantalla está quieta.
-4. **`adb shell input swipe` NO reproduce su caso.** No deja la inercia viva como su dedo, y un
-   gesto sintético siempre acaba con un `touchend` limpio. **Su repro exige su dedo.**
+4. **`adb shell input swipe` NO reproduce el caso del scroll+inercia.** Pero SÍ reproduce el
+   judder del asentamiento CSS (34 frames perdidos clavados). El banco `banco.mjs` arranca fuera
+   de la franja de Ajustes (`EDGE_OPEN`=52 px).
+5. **`rAF` no ve el compositor.** El desliz va por `transform`; si el frame se cae al componer,
+   rAF sigue a 8,3 ms. **`% DROPPED` tampoco**: 33 % en reposo es normal (pide 183/s, presenta 122).
+6. **Umbral de 32 ms es de 60 Hz.** Su móvil va a 120 (frame = 8,3 ms). Un salto de 16,6 ms ya se ve.
 
 ## Y la regla que lo resume
 
-**Si el síntoma es «no responde», mide si el gesto CUENTA, no cuánto tarda.** Cuatro instrumentos
-de frames daban verde mientras él veía el fallo; lo que lo cazó fue contar cuántos arrastres
-acababan en la pestaña de la que salieron.
+**Si el síntoma es «no responde», mide si el gesto CUENTA.** **Si el síntoma es «se pierde la
+fluidez», mide huecos entre frames presentados** (`huecos.mjs`), no rAF ni tareas largas.
