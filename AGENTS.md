@@ -230,8 +230,15 @@ Lección de la 4.8.0, tras el enésimo «cuanto más tiempo uso la app, más len
   `useMemo(..., [state])` no acierta jamás. Depende de las porciones concretas que leas — y si el
   cálculo usa funciones auxiliares, incluye también lo que lean ellas (ver el comentario de deps
   en el `totals` de `11-app-main.js`).
-- **Fechas:** `parseDate` cachea; para comparar y ordenar usa `dateMs()`, que no crea objetos.
-  Nunca construyas `Date` dentro de un filtro que recorre el histórico.
+- **Fechas:** `parseDate` cachea los MILISEGUNDOS, pero **devuelve un `Date` NUEVO en cada
+  llamada**. Para comparar y ordenar usa `dateMs()`, que no crea objetos, y nunca construyas
+  `Date` dentro de un filtro que recorre el histórico.
+  **Y nunca pases un `Date` como prop a un componente con `React.memo`**: la comparación
+  superficial falla siempre por esa prop y el memo queda de adorno. Pasa el número y construye el
+  `Date` dentro, en la línea que lo formatea. Así estuvo `MovRow` desde siempre —las doce filas de
+  Gastos se repintaban en CADA re-render— y no lo cazó nadie hasta perfilar un gesto concreto
+  (2026-07-27): se cuidó que el callback fuera estable con `useCallback` y la fecha se coló por
+  debajo. La regla vale para cualquier objeto nuevo por render (arrays y objetos literales igual).
 - **En un portátil los problemas de rendimiento del móvil NO SE VEN.** Medir el lag que él ve
   daba **cero tareas largas** hasta estrangular la CPU por CDP: `page.context().newCDPSession(page)`
   → `Emulation.setCPUThrottlingRate({rate:6})`. Con eso, «entrar en Deudas y Metas» pasó de

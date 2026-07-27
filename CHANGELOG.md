@@ -5,6 +5,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
+#### Tercera vuelta: el lag dependía de la DIRECCIÓN, y eso destapó un memo roto desde siempre
+Su prueba, y el dato que lo resolvió: «se ha arreglado lo de las deudas en dirección hacia Cartera, va fluidísimo; ahora falta hacia Gastos». **Un lag que depende del sentido no puede ser el gesto** —es idéntico en los dos—: tiene que ser el destino. Medido saliendo de Deudas: hacia Gastos 165 ms, hacia Cartera 127. Y el perfilador puso nombre al culpable: **`MovRow`, las filas de movimientos, era la función más cara de la app durante ese desliz (2,5-3,4 %)**.
+
+**La causa, y llevaba ahí desde siempre:** `parseDate` cachea los milisegundos pero devuelve `new Date(ms)` — **un objeto nuevo en cada llamada**. Esa fecha viajaba como prop a `MovRow`, así que la comparación superficial de `React.memo` fallaba SIEMPRE por esa prop, aunque el gasto fuera idéntico: **cualquier re-render de Gastos repintaba las doce filas**. El `openDetail` sí se cuidó en su día con un `useCallback` (el comentario está justo al lado); la fecha se coló por debajo y dejó el memo de adorno.
+
+Ahora a la fila le llega el **número** (`ms`) y el `Date` se construye dentro, que es la única línea que lo usa. **Comprobado en el perfilador, que es lo que no engaña: `MovRow` pasa de 2,5 % a no aparecer.** Y no afecta solo a este gesto — afecta a CADA re-render de Gastos: escribir en el buscador, cambiar un filtro, que entre un gasto del banco.
+
+⚠ **Sobre los milisegundos, con honestidad:** la asimetría 165/127 que motivó todo esto se midió tres veces y en una cuarta pasada no se reprodujo (164 contra 159): en esta máquina el ruido se come diferencias de ese tamaño. Por eso la prueba que vale aquí es la del perfilador —el trabajo desaparece, no «sale un número más bajo»— y por eso el guardián que se deja es estructural.
+
+**Dos intentos que NO se quedan, con su número:** dejar `active` fijo en Gastos (quita la asimetría pero haría que Gastos hiciera su trabajo caro en el arranque) y retrasar el aviso de «ya eres la pestaña activa» 460 ms hasta que pare el carrusel (**empeoró**: 239 contra 165, porque paga dos re-renders en vez de uno).
+
 #### Deudas, segunda vuelta: no era «salir de Deudas», era PLAN entero (2026-07-27)
 Su veredicto por la mañana: la APK aprobada, el perfil «ha mejorado una barbaridad» pero aún no del todo, y **Deudas igual** — «vas a deudas, te mueves dentro de deudas y luego deslizas a otra tab, es horrible el lag… y ahora se nota más porque va la app ultra fluida».
 

@@ -82,7 +82,11 @@ rechazos .17/.18, esta tanda cierra dos de las tres cosas que quedaban abiertas:
   **parecía**: no es «salir de Deudas», es **Plan entero** (58 ms saliendo de Gastos contra 187 entrando
   en Plan). Sus tres segmentos se ocultaban con `visibility:hidden`, que sigue pintando. Ahora llevan
   `content-visibility:hidden` siempre: **entrar en Plan 162 → 89 ms**.
-- **El perfil se queda como está** (~175 ms). No es JS. Todas las palancas CSS están medidas y
+- **Y la tercera vuelta:** el lag dependía de la DIRECCIÓN (hacia Gastos sí, hacia Cartera no), y eso
+  destapó que **`parseDate` devuelve un `Date` nuevo cada vez**, lo que rompía el `React.memo` de las
+  filas de Gastos desde siempre. Si pasas una fecha como prop, pasa el NÚMERO.
+- **El perfil se queda como está** (~175 ms), y él lo ha dado por bueno: «me conformo, no quiero
+  cambiar diseño». No lo toques. No es JS. Todas las palancas CSS están medidas y
   descartadas: el siguiente tramo pide enseñar MENOS panel al abrir, no pintarlo más rápido.
 - **Sigue abierto**: «Gastos se queda a medio pintar». **No se ha reproducido** — está medido en el
   `CHANGELOG` y en `docs/ROADMAP.md` («Abierto, con lo medido»). No lo toques a ciegas.

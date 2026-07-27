@@ -333,15 +333,24 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const l10nKey=CURLANG+"|"+DISP.sym;
 
   const shown=filtered.slice(0,visible);
+  /* A LA FILA SE LE PASA EL NÚMERO, NO EL `Date` (2026-07-27, y esto llevaba roto desde siempre).
+     `parseDate` cachea los MILISEGUNDOS pero devuelve `new Date(ms)`: un objeto NUEVO en cada
+     llamada. Como la fecha viajaba a `MovRow` como prop, la comparación superficial de
+     `React.memo` fallaba SIEMPRE por esa prop —da igual que el gasto sea idéntico—, así que
+     cualquier re-render de Gastos repintaba las doce filas. Se cuidó que `onOpen` fuera estable
+     (ahí al lado está el comentario) y la fecha se coló por debajo.
+     Se vio saliendo de Deudas hacia Gastos: el perfilador ponía `MovRow` como la función más cara
+     de la app en ese gesto. Con un número, la comparación acierta y la fila solo se rehace cuando
+     cambia de verdad; el `Date` se construye DENTRO, que es donde se usa para formatear. */
   const groups=[]; let last=null;
   shown.forEach(function(e){
-    const d=parseDate(e.date), k=dayKey(d);
+    const ms=dateMs(e.date), d=new Date(ms), k=dayKey(d);
     if(k!==last){
       const today=dayKey(new Date()), yesterday=new Date(); yesterday.setDate(yesterday.getDate()-1);
       const label=k===today?t("g_today"):k===dayKey(yesterday)?t("g_yesterday"):d.toLocaleDateString(loc(),{weekday:"long",day:"numeric",month:"short"});
       groups.push({sep:label}); last=k;
     }
-    groups.push({e:e,d:d});
+    groups.push({e:e,ms:ms});
   });
 
   const addExpense=()=>{
@@ -497,7 +506,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, d:g.d, onOpen:openDetail, l10n:l10nKey}); }),
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
@@ -522,7 +531,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, d, onOpen}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen}){
+  // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
+  // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
+  const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);
