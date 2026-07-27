@@ -88,6 +88,11 @@ rechazos .17/.18, esta tanda cierra dos de las tres cosas que quedaban abiertas:
 - **El perfil se queda como está** (~175 ms), y él lo ha dado por bueno: «me conformo, no quiero
   cambiar diseño». No lo toques. No es JS. Todas las palancas CSS están medidas y
   descartadas: el siguiente tramo pide enseñar MENOS panel al abrir, no pintarlo más rápido.
+- ⚠ **SIGUE ABIERTO el lag al deslizar de Deudas a Gastos.** Todo lo que se ha probado (y lo mucho
+  que NO ha funcionado, con su número), el método de medida y lo siguiente que haría está en
+  **[`docs/LAG-DESLIZAR.md`](docs/LAG-DESLIZAR.md)**. **Léelo antes de tocar nada de rendimiento**:
+  te ahorra repetir ocho experimentos ya hechos. Aviso gordo de ahí: **el banco de pruebas no
+  reproducía su fallo** durante dos tandas enteras, y por eso dos arreglos «medidos» no le llegaron.
 - **Sigue abierto**: «Gastos se queda a medio pintar». **No se ha reproducido** — está medido en el
   `CHANGELOG` y en `docs/ROADMAP.md` («Abierto, con lo medido»). No lo toques a ciegas.
 

@@ -58,6 +58,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
+> ⚠ **El lag al deslizar de Deudas a Gastos sigue abierto.** El expediente completo —lo probado, lo
+> descartado con su número, las trampas de medir y lo siguiente que haría— está en
+> **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**. Léelo antes de tocar rendimiento.
+
 1. **Instalar la APK 35 desde el móvil.** Es lo primero: **el icono nuevo depende de ella** y no viaja por OTA. Ya se puede — la release `beta` publica su propio `apk.json` desde esta tanda. Si algo fallara, Ajustes → «Buscar actualización» dice ahora el motivo (qué canal ha leído, qué número ofrece y cuál llevas puesto): ese texto ES el diagnóstico.
 2. **Re-probar en el móvil** la beta 4.12.0 con el panel de revisión. Checklist clave: **abrir el perfil** (lo de esta tanda); scroll en Deudas/Metas → deslizar; banco caído → banner en Cartera y rojo en Mis bancos; TR desconectado; cerrar perfil en caliente; Ajustes muestra web + app.
 3. **Si aprueba: promocionar a producción** (`promote-beta.yml`) y publicar la APK 35 como release de producción.
