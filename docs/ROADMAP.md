@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-27 · **v4.12.0** — en `beta`. **Causa REAL del tirón al soltar el dedo** (noche del 27, Cursor, 7ª vuelta): la `transition` CSS de 0,42 s del carrusel produce 14 saltos 25/8 ms en su pantalla de 120 Hz (el arrastre iba perfecto). Asentamiento por `requestAnimationFrame` → **0 saltos** medidos. El bus de `active` de la 6ª vuelta se queda (era un re-render real) pero no era lo que él notaba. **Pendiente su veredicto**. Producción sigue en **4.11.0**. APK **35**. Ver `docs/LAG-DESLIZAR.md`.
+> Estado a 2026-07-27 · **v4.12.0** — **APROBADA en el móvil y en producción** («funciona» + «todas las pestañas van increíblemente fluidísimas»). Causa del tirón: la `transition` CSS del carrusel juddeaba a 120 Hz al soltar; asentamiento por `requestAnimationFrame` → 0 saltos. APK **35** (icono/splash nativos; OTA no los lleva — si aún no está instalada, ofrecerla). Ver `docs/LAG-DESLIZAR.md`.
 >
 > Anterior: 2026-07-26 · **v4.11.0** — **APROBADA en el móvil y promocionada a producción** («aprobado, todo funciona a las mil maravillas» — cuarta beta, 4.11.0.10, con la APK 34 puesta). Primera versión que recorre el circuito entero como estaba pensado: se publica en `beta`, la prueba él en su móvil, la rechaza dos veces con el panel de revisión, y sube cuando la aprueba. **el splash existía en el HTML y no lo veía nadie**: estaba dentro de `#root` y `ReactDOM.createRoot()` vacía su contenedor al montar, así que React se lo llevaba por delante (medido: fuera del DOM a los 150 ms); y React/ReactDOM/supabase iban en el `<head>`, bloqueando el parser, así que el navegador no tenía nada que pintar hasta ejecutar ~600 KB — el negro del vídeo. Ahora es hermano de `#root`, los scripts van después, con mínimo de 520 ms en pantalla y dos rAF antes de montar. **Corrección a la 4.10.0:** el patrimonio no venía mal, es una animación que cuenta hasta la cifra final. **Bienes separado de «Tus cuentas»** como bloque ordenable propio. **Perfil: cerrar = abrir al revés** — una sola curva y un solo umbral para los dos sentidos (iban con números distintos y el de abrir pedía casi el triple de arrastre), y candado durante la animación para que un dedo puesto a medias no la corte en seco. E2E 62 → 72. **Tercera vuelta (2026-07-26): el fallo del perfil era OTRO y por fin se ha reproducido** — con el panel scrolleado (`scrollTop=220`, lo normal) el arrastre solo scrollea y no cierra; ninguna prueba lo veía porque todas empezaban con el perfil arriba del todo. Además `e.preventDefault()` **nunca funcionó**: React ata `onTouchMove` en modo pasivo, así que el navegador se quedaba el gesto (los listeners van ya a mano con `{passive:false}`, y `touchcancel` cuenta como final). Ahora la franja de arriba es asa y, tirando desde el medio, el cierre toma el relevo cuando el scroll llega al tope. **⚠ Pendiente APK 34**: el arreglo de las notis duplicadas es Java (`Notif.idFor`, ids estables — el id salía del reloj y cada aviso se apilaba en vez de sustituir). **Lleva mezclada la 4.10.2**: sin ella este bundle no se puede ni descargar. **Segunda vuelta (2026-07-26): la rechazó desde el móvil, 3 ok / 2 fallos, los dos del perfil** — unificar los umbrales dobló el de cerrar (52 → 94 px) y el candado de la animación se activaba también en el rebote y en un toque suelto, dejando la app sorda medio segundo al segundo intento. Curva compartida sí, umbral no (`PROF_TH_OPEN`/`PROF_TH_CLOSE`). Y dos del canal, que estrenaba móvil: el bundle se sellaba con un número distinto del que anunciaba el manifiesto (**la misma beta ofrecida en bucle**, ahora `MC_STAMP_VERSION` + el workflow no publica si no cuadran) y **apagar la beta no devolvía a producción** (`_mcApplyChannelBundle`: cambiar de canal instala en la dirección que sea).
 >
@@ -28,7 +28,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.12.0** (en `beta`; asentamiento del carrusel por rAF, pendiente su OK; producción = 4.11.0) |
+| Web / OTA (`VERSION`) | **4.12.0** (producción) |
 | APK (`versionName` / `versionCode`) | **4.12.0** / **35** compilada y publicada como prerelease `v4.12.0-beta35`. Trae el **icono y el splash nativos** de la marca, que son ficheros del APK y no viajan por OTA. Verificada antes de subirla: firma `CN=Mi Cartera` (misma clave que la 34, se instala encima sin desinstalar ni perder datos) y bundle sellado `4.12.0`, no `dev`. Cuando la 4.12.0 se apruebe y se promocione, esta misma APK se publica como release de producción. `build.gradle` se sube A LA VEZ que se compila, nunca antes — `apk.json` apuntando a una release que no existe es el incidente de 4.9.2. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`, la que corre en producción). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → `Mi-Cartera-4.12.0.apk` |
@@ -58,14 +58,12 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> ✅ **Causa del tirón al soltar el dedo** (noche del 27, 7ª vuelta): la `transition` CSS del
-> carrusel juddea a 120 Hz (14 saltos 25/8 ms). Asentamiento por rAF → 0 saltos. Expediente +
-> métrica buena: **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**. **Falta su veredicto.**
+> ✅ **4.12.0 en producción** (aprobada 2026-07-27): tirón al soltar el dedo cerrado (asentamiento por rAF).
+> Expediente: **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**.
 
-1. **Probar en el móvil** la beta nueva: Gastos arriba → Deudas (moverte) → deslizar a Gastos. Al soltar tiene que seguir fluido (no «perderse de golpe»).
-2. **Si aprueba: promocionar a producción** (`promote-beta.yml`) y publicar la APK 35 como release de producción.
-3. Si rechaza, el informe del panel dice qué falla — y la compilación/APK con las que lo probó.
-4. **Una beta cada vez.** Esa noche salieron seis seguidas (.22 a .27): cada push le vuelve a pedir actualizar y acabó sin saber qué estaba probando.
+1. **Si la APK 35 aún no está instalada** en el móvil (icono/splash nativos), ofrecerla / instalarla encima.
+2. Dejar reposar un día en uso real (él + familia) y anotar si queda algún tirón suelto.
+3. **Una beta cada vez** cuando vuelva el siguiente cambio visible.
 
 ### Abierto, con lo medido
 
