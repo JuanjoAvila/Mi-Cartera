@@ -1691,6 +1691,41 @@ function App(){
      Se usa en TODAS las escrituras del track, no solo en la del arrastre: si unas fueran en `%` y
      otras en píxeles, la transición al soltar interpolaría entre dos listas de funciones
      distintas y el navegador caería a interpolar matrices. */
+  /* LA BARRA DE ABAJO DESENFOCA LO QUE PASA POR DETRÁS, Y ESO SE PAGA EN CADA FRAME (2026-07-27).
+     Su repro, que es el que lo destapó: «cuando en Gastos estás ARRIBA DEL TODO… vas a Deudas, te
+     mueves, y vuelves a Gastos: hay lag. Si en Gastos estabas abajo, no hay nada de lag, va ultra
+     fluido». La diferencia entre los dos casos es que al bajar en una lista **la barra inferior se
+     esconde**, y una barra escondida no tiene nada que desenfocar.
+
+     `.botnav` lleva `backdrop-filter: blur(16px)`: el navegador tiene que recalcular el desenfoque
+     cada vez que cambia lo que hay detrás — y al deslizar entre pestañas, detrás se mueve la app
+     entera. Medido: la barra se repinta 47 veces en un solo gesto. Y acotado con el tope teórico:
+
+       barra visible, con desenfoque (como estaba)   181 ms
+       barra visible, SIN desenfoque                 145 ms
+       barra fuera del pintado (tope teórico)        141 ms
+
+     O sea que el coste de la barra durante un desliz es CASI TODO su desenfoque, y quitarlo se
+     lleva prácticamente el máximo posible. Como el diseño no se toca (petición suya), se apaga
+     solo mientras hay movimiento y vuelve al terminar: exactamente lo que ya se hace con el velo
+     del perfil, que tampoco desenfoca durante el arrastre. A 0,42 s de transición nadie ve la
+     diferencia; lo que sí se nota es el tirón. */
+  const navBlurT=useRef(0);
+  const navSinBlur=function(off){
+    if(navBlurT.current){ clearTimeout(navBlurT.current); navBlurT.current=0; }
+    if(!appShellRef.current) return;
+    appShellRef.current.classList.toggle("nav-sin-blur", !!off);
+  };
+  const navSinBlurTrasTransicion=function(){
+    // Respaldo por tiempo y no `transitionend`: si el destino es la misma pestaña no hay
+    // transición ninguna, y el evento no llegaría nunca (el candado del perfil ya tropezó con esto).
+    if(navBlurT.current) clearTimeout(navBlurT.current);
+    navBlurT.current=setTimeout(function(){
+      navBlurT.current=0;
+      if(appShellRef.current) appShellRef.current.classList.remove("nav-sin-blur");
+    }, 480);   // 420 de la transición del track + margen
+  };
+  useEffect(function(){ return function(){ if(navBlurT.current) clearTimeout(navBlurT.current); }; },[]);
   const trackAnchoAhora=function(){ return (trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360; };
   const trackX=function(i){ return "translate3d("+(-i*(trackW.current||trackAnchoAhora()))+"px,0,0)"; };
   /* Aquí vivían revealDots()/hideDotsSoon(), que encendían y apagaban el indicador de puntitos
@@ -1758,6 +1793,7 @@ function App(){
         } else {
           gestureMode.current="tab";
           if(trackRef.current) trackRef.current.classList.add("dragging");
+          navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
           // Congela el scroll de la página: sin esto, el momentum vertical de Deudas/Metas
           // pelea con el translateX del track (mismo patrón que el perfil, 2026-07-18).
           freezeShell(true,"tab");
@@ -1846,6 +1882,9 @@ function App(){
         setSettingsProgress(open?1:0);
       } else {
         if(trackRef.current) trackRef.current.classList.remove("dragging");
+        // El desenfoque NO vuelve al soltar: el carrusel sigue moviéndose 0,42 s con la
+        // transición, y ahí es donde más se nota. Vuelve cuando todo ha parado.
+        navSinBlurTrasTransicion();
         freezeShell(false);   // suelta el scroll que congelamos al fijar el eje horizontal
         const w=trackRef.current?trackRef.current.offsetWidth:360;
         const dist=dx.current;

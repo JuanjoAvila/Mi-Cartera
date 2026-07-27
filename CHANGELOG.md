@@ -5,6 +5,29 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.12.0] — 2026-07-26
 ### Las pestañas dejan de congelar la app, y el banco ya trae los ingresos
 
+#### Cuarta vuelta: la barra de abajo desenfoca, y eso se paga EN CADA FRAME
+Su repro, que es el que resolvió esto y que ninguna medida mía habría encontrado sola:
+
+> «Cuando en Gastos está **arriba del todo** —esto es importante— y luego entras en Deudas, te mueves, y vuelves a Gastos: hay lag y se ralentiza todo. En cambio si en Gastos **bajas** sin ver la parte de arriba, vuelves a Deudas, te mueves, y deslizas otra vez a Gastos: no hay nada de lag, va ultra fluido.»
+
+Lo que cambia entre los dos casos no es Gastos: **es que al bajar en una lista la barra inferior se esconde**. Y una barra escondida no tiene nada que desenfocar. `.botnav` lleva `backdrop-filter: blur(16px)`, que el navegador recalcula **cada vez que cambia lo que hay detrás** — y deslizando entre pestañas, detrás se mueve la app entera. En la traza se ve sin ambigüedad: **la barra se repinta 47 veces en un solo gesto**.
+
+Acotado con el tope teórico, que es lo que convierte una sospecha en un dato:
+
+| | bloqueo por gesto |
+|---|---|
+| barra visible, con desenfoque (como estaba) | 181 ms |
+| barra visible, **sin** desenfoque | **145 ms** |
+| barra **fuera del pintado** (tope teórico) | 141 ms |
+
+O sea: el coste de la barra durante un desliz **es casi todo su desenfoque**, y quitarlo se lleva prácticamente el máximo posible. Y explica el «a veces sí y a veces no» que traía loco a cualquiera: dependía de si la barra estaba visible en ese momento.
+
+**El diseño no se toca** (petición suya explícita). El desenfoque se apaga solo mientras hay movimiento y vuelve al parar — exactamente lo que ya se hacía con el velo del perfil desde la 4.9.0, que tampoco desenfoca durante el arrastre. A 0,42 s de transición nadie ve la diferencia; el tirón sí se veía. A/B intercalado contra la beta publicada, con su repro exacto: **180 → 157 ms**, y con la dispersión mucho más apretada (143-210 contra 126-301).
+
+Detalle de fontanería: la vuelta del desenfoque va por temporizador y no por `transitionend`, porque si el desliz no llega al umbral el carrusel no transiciona y el evento no llegaría nunca — el candado del perfil ya tropezó con eso en la 4.11.0.
+
+Guardián: `e2e/swipe-pestanas.spec.mjs` comprueba que la clase está puesta CON EL DEDO PUESTO y que se quita sola después (si se quedara, el diseño cambiaría de verdad).
+
 #### Tercera vuelta: el lag dependía de la DIRECCIÓN, y eso destapó un memo roto desde siempre
 Su prueba, y el dato que lo resolvió: «se ha arreglado lo de las deudas en dirección hacia Cartera, va fluidísimo; ahora falta hacia Gastos». **Un lag que depende del sentido no puede ser el gesto** —es idéntico en los dos—: tiene que ser el destino. Medido saliendo de Deudas: hacia Gastos 165 ms, hacia Cartera 127. Y el perfilador puso nombre al culpable: **`MovRow`, las filas de movimientos, era la función más cara de la app durante ese desliz (2,5-3,4 %)**.
 

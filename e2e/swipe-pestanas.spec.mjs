@@ -123,3 +123,39 @@ test("la pestaña que entra se pinta de verdad, no llega en blanco", async ({ pa
   await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("inicio");
   await expect(page.locator(".v4-hero")).toBeVisible();
 });
+
+/* EL DESENFOQUE DE LA BARRA SE APAGA MIENTRAS EL CARRUSEL SE MUEVE (2026-07-27).
+ *
+ * Su repro fue el que lo destapó: «en Gastos ARRIBA DEL TODO vas a Deudas, te mueves y vuelves:
+ * hay lag; si en Gastos estabas abajo, va ultra fluido». Lo que cambia entre los dos casos es que
+ * al bajar en una lista la barra inferior SE ESCONDE — y una barra escondida no desenfoca nada.
+ * `.botnav` lleva `backdrop-filter`, que el navegador recalcula en cada frame en que cambia lo que
+ * hay detrás; deslizando, detrás se mueve la app entera (medido: 47 repintados de la barra en un
+ * solo gesto). Acotado: 181 ms con desenfoque, 145 sin él, 141 con la barra fuera del pintado —
+ * o sea que el coste de la barra es CASI TODO el desenfoque.
+ *
+ * Se comprueba estructuralmente, no por tiempo: que la clase esté puesta MIENTRAS se arrastra y
+ * que se quite sola después (si se quedara puesta, el diseño cambiaría de verdad, que es justo lo
+ * que él pidió no tocar). */
+test("al deslizar, la barra deja de desenfocar; al parar, vuelve", async ({ page }) => {
+  await seedLoggedInDashboard(page);
+  await page.goto("/");
+  await appLista(page);
+  const cdp = await page.context().newCDPSession(page);
+  const shell = page.locator(".app-shell");
+
+  await expect(shell, "en reposo la barra tiene que desenfocar (el diseño no se toca)").not.toHaveClass(/nav-sin-blur/);
+
+  // Arrastre a medias: se dispara el gesto y se comprueba SIN soltar.
+  const W = page.viewportSize().width;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: W - 40, y: 200 }] });
+  for (let i = 1; i <= 8; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: W - 40 - i * 30, y: 200 }] });
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await expect(shell, "con el dedo puesto, el desenfoque tiene que estar apagado").toHaveClass(/nav-sin-blur/);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+
+  // Y vuelve solo cuando el carrusel ha parado (la transición dura 0,42 s).
+  await expect(shell, "el desenfoque tiene que volver al terminar la transición").not.toHaveClass(/nav-sin-blur/, { timeout: 5_000 });
+});

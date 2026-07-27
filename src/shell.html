@@ -349,6 +349,11 @@
        de golpe se sentía «brusco» (feedback 2026-07-18). Ahora se desliza y desvanece con calma. */
     transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .4s ease;will-change:transform,opacity;}
   .botnav.botnav-hidden{transform:translateY(120%);opacity:0;pointer-events:none;}
+  /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
+     11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
+     detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
+     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar. */
+  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;}
   .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
