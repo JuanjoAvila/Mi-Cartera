@@ -199,7 +199,15 @@ test("un gesto que el navegador cancela no deja la app bloqueada", async ({ page
     };
   });
 
-  // Su repro: entrar, MOVERSE dentro (el candado caro solo se pone si hubo scroll hace nada)…
+  // Su repro: entrar, MOVERSE dentro (el candado caro solo se pone si hubo scroll hace nada).
+  // Se espera a que la lista sea de verdad más alta que la pantalla: en el CI las filas tardan
+  // más en pintarse y scrollear antes de tiempo no movía nada (fallo del 27/7).
+  await expect(page.locator("button.v4-mov").first()).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => page.evaluate(() => {
+    const ps = [...document.querySelectorAll(".page")];
+    const p = ps.find((el) => Math.abs(el.getBoundingClientRect().left) < 50) || ps[0];
+    return p.scrollHeight > p.clientHeight + 100;
+  }), { timeout: 15_000 }).toBe(true);
   await page.evaluate(() => {
     const ps = [...document.querySelectorAll(".page")];
     const p = ps.find((el) => Math.abs(el.getBoundingClientRect().left) < 50) || ps[0];
