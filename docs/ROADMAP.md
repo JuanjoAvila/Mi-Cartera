@@ -29,9 +29,9 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | Qué | Valor |
 |-----|--------|
 | Web / OTA (`VERSION`) | **4.12.0** (producción) |
-| APK (`versionName` / `versionCode`) | **4.12.0** / **35** compilada y publicada como prerelease `v4.12.0-beta35`. Trae el **icono y el splash nativos** de la marca, que son ficheros del APK y no viajan por OTA. Verificada antes de subirla: firma `CN=Mi Cartera` (misma clave que la 34, se instala encima sin desinstalar ni perder datos) y bundle sellado `4.12.0`, no `dev`. Cuando la 4.12.0 se apruebe y se promocione, esta misma APK se publica como release de producción. `build.gradle` se sube A LA VEZ que se compila, nunca antes — `apk.json` apuntando a una release que no existe es el incidente de 4.9.2. |
+| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`, la que corre en producción). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
-| `public/apk.json` | **35** / 4.12.0 → `Mi-Cartera-4.12.0.apk` |
+| `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
 
 ## Pendiente / limitaciones conocidas
 
@@ -61,9 +61,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 > ✅ **4.12.0 en producción** (aprobada 2026-07-27): tirón al soltar el dedo cerrado (asentamiento por rAF).
 > Expediente: **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**.
 
-1. **Si la APK 35 aún no está instalada** en el móvil (icono/splash nativos), ofrecerla / instalarla encima.
-2. Dejar reposar un día en uso real (él + familia) y anotar si queda algún tirón suelto.
-3. **Una beta cada vez** cuando vuelva el siguiente cambio visible.
+1. Dejar reposar un día en uso real (él + familia) y anotar si queda algún tirón suelto.
+2. **Una beta cada vez** cuando vuelva el siguiente cambio visible.
 
 ### Abierto, con lo medido
 
