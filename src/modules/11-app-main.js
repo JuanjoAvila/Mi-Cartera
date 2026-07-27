@@ -1776,6 +1776,22 @@ function App(){
     // Sheets portaleados desde una tab (editar gasto): el DOM está en body pero el árbol
     // React burbujea hasta aquí — sin esto, scroll de chips mueve las tabs (2026-07-17).
     if(document.documentElement.classList.contains("sheet-open")) return;
+    /* ZONAS QUE NO SON NUESTRAS. Los toques se escuchan a mano (ver el efecto de más abajo), y un
+       listener nativo en `.viewport` se dispara ANTES que los de React, así que el
+       `stopPropagation` de `stopSwipe` ya no llegaría a tiempo: hay que mirarlo aquí.
+         · `[data-noswipe]`: buscador y rango de fechas de Gastos, que lo piden explícitamente.
+         · cualquier cosa con scroll horizontal propio (las filas de chips): el dedo es del
+           navegador, no nuestro. Antes esto «funcionaba» de rebote —el navegador se quedaba el
+           gesto porque no podíamos impedírselo— y ahora que sí podemos hay que ser explícitos. */
+    const t=e.target;
+    if(t&&t.closest&&t.closest("[data-noswipe]")) return;
+    for(let el=t; el&&el!==document.body; el=el.parentElement){
+      if(el.classList&&el.classList.contains("page")) break;
+      if(el.scrollWidth>el.clientWidth+4){
+        const ox=getComputedStyle(el).overflowX;
+        if(ox==="auto"||ox==="scroll") return;
+      }
+    }
     /* RED DE SEGURIDAD. `touchcancel` cubre el caso conocido, pero un gesto también puede morirse
        sin avisar de ninguna manera: si la app se va a segundo plano con el dedo puesto, no llega
        ni `touchend` ni `touchcancel` y el candado se queda. Soltar siempre antes de empezar no
@@ -1886,6 +1902,18 @@ function App(){
     if(tab===tabIds.length-1&&dx.current<0) off=-tab*100+(dx.current/w)*100*0.28;
     else if(tab===0&&dx.current>0) off=-tab*100;
     if(trackRef.current) trackRef.current.style.transform="translate3d("+(off*w/100)+"px,0,0)";
+    /* ESTE `preventDefault` ES EL QUE FALTABA, Y ES TODO EL PROBLEMA (2026-07-27).
+       Sin él, el navegador considera que el gesto es SUYO en cuanto huele scroll: se lo lleva,
+       manda `touchcancel` y el arrastre de pestañas se queda a medias. Medido en su móvil:
+       **174 de 185 gestos suyos acabaron cancelados**, y **6 de cada 18 arrastres del carrusel
+       volvían a la pestaña de la que salieron** — o sea, deslizaba y no pasaba nada. Eso es su
+       «hay un stopper» y su «se pierde la fluidez de golpe»: no es que fuera lento, es que un
+       tercio de sus deslizadas no contaban.
+       Con el eje ya declarado horizontal, el gesto es nuestro y hay que decirlo. Ojo: solo
+       funciona porque los listeners se registran a mano con `{passive:false}` (ver el efecto de
+       abajo) — exactamente el mismo agujero que se arregló en el perfil el 18/7 y que aquí se
+       quedó sin arreglar. */
+    if(e.cancelable) e.preventDefault();
     /* Y ESTO SE PEDÍA EN CADA `touchmove`. `prepMountTab` acaba en un `setMountedTabs` que
        devuelve el MISMO objeto si la pestaña ya estaba montada, así que React se ahorra el
        re-render… pero no se ahorra la llamada, ni la comprobación, ni el trabajo de programar la
@@ -1974,6 +2002,33 @@ function App(){
     navSinBlur(false);
     cancelSwipe();
   };
+  /* LOS TOQUES DE LAS PESTAÑAS, A MANO Y CON `{passive:false}` — el mismo arreglo que necesitó el
+     perfil el 18/7 y que aquí nunca se aplicó. React ata `onTouchMove` al contenedor raíz en modo
+     PASIVO, y en un listener pasivo `preventDefault()` no hace nada: solo deja un aviso en consola
+     que ningún test mira. Resultado, medido en su móvil: el navegador se quedaba uno de cada tres
+     arrastres para scrollear, mandaba `touchcancel`, y la deslizada no cambiaba de pestaña.
+     Con el listener a mano el gesto es nuestro de verdad. `touchcancel` sigue atado (`onCancel`)
+     porque el sistema —una noti, el borde de la pantalla— también puede llevárselo. */
+  const viewportRef=useRef(null);
+  const gestRef=useRef({});
+  gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
+  useEffect(function(){
+    const el=viewportRef.current; if(!el) return undefined;
+    const s=function(e){ gestRef.current.s(e); };
+    const m=function(e){ gestRef.current.m(e); };
+    const t=function(e){ gestRef.current.e(e); };
+    const c=function(e){ gestRef.current.c(e); };
+    el.addEventListener("touchstart", s, {passive:true});
+    el.addEventListener("touchmove", m, {passive:false});
+    el.addEventListener("touchend", t, {passive:true});
+    el.addEventListener("touchcancel", c, {passive:true});
+    return function(){
+      el.removeEventListener("touchstart", s);
+      el.removeEventListener("touchmove", m);
+      el.removeEventListener("touchend", t);
+      el.removeEventListener("touchcancel", c);
+    };
+  },[]);
   useEffect(()=>{ if(trackRef.current&&!dragging.current) trackRef.current.style.transform=trackX(tab); },[tab]);
   // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
   // píxel no. Si cambia el ancho (rotación, teclado, barra del navegador), se tira la medida
@@ -2059,7 +2114,9 @@ function App(){
     // deps: si la app arranca en el candado o el onboarding, la tabbar aún no existe en el
     // primer montaje y los listeners no se instalarían nunca; al desbloquear se re-ejecuta.
   },[locked, state.onboarded]);
-  const stopSwipe={ onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
+  // `data-noswipe` además del stopPropagation: los toques de las pestañas van por listener nativo
+  // y ese se dispara antes que los de React (ver `onStart`).
+  const stopSwipe={ "data-noswipe":"1", onTouchStart:(e)=>e.stopPropagation(), onTouchMove:(e)=>e.stopPropagation() };
   // Cancela el gesto de tabs/ajustes a mitad (chips de Gastos: scroll interno sin cambiar de pestaña).
   const cancelSwipe=function(){
     if(!dragging.current) return;
@@ -2244,7 +2301,7 @@ function App(){
       onClick:function(){ mcExitSandbox(); location.reload(); }},
       "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
-      React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd,onTouchCancel:onCancel},
+      React.createElement("div",{className:"viewport",ref:viewportRef},
         React.createElement("div",{className:"track",ref:trackRef}, paginas)
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},

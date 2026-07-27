@@ -189,9 +189,11 @@ test("un gesto que el navegador cancela no deja la app bloqueada", async ({ page
 
   // Mirando TODAS las páginas, no solo la que se ve: con el carrusel a medio arrastrar, la
   // congelada y la que asoma no son la misma, y el candado se quedaba en la de detrás.
+  // La página de Gastos por ÍNDICE, no por posición en pantalla: con el carrusel a mitad de
+  // transición el rect engaña y se acababa midiendo la página de al lado.
   const pagina = () => page.evaluate(() => {
     const ps = [...document.querySelectorAll(".page")];
-    const p = ps.find((el) => Math.abs(el.getBoundingClientRect().left) < 50) || ps[0];
+    const p = ps[1];
     return {
       top: Math.round(p.scrollTop), alto: p.scrollHeight,
       bloqueo: ps.map((el) => el.style.touchAction || "").filter(Boolean).join(","),
@@ -204,15 +206,10 @@ test("un gesto que el navegador cancela no deja la app bloqueada", async ({ page
   // más en pintarse y scrollear antes de tiempo no movía nada (fallo del 27/7).
   await expect(page.locator("button.v4-mov").first()).toBeVisible({ timeout: 15_000 });
   await expect.poll(() => page.evaluate(() => {
-    const ps = [...document.querySelectorAll(".page")];
-    const p = ps.find((el) => Math.abs(el.getBoundingClientRect().left) < 50) || ps[0];
+    const p = document.querySelectorAll(".page")[1];
     return p.scrollHeight > p.clientHeight + 100;
   }), { timeout: 15_000 }).toBe(true);
-  await page.evaluate(() => {
-    const ps = [...document.querySelectorAll(".page")];
-    const p = ps.find((el) => Math.abs(el.getBoundingClientRect().left) < 50) || ps[0];
-    p.scrollTop = 300;
-  });
+  await page.evaluate(() => { document.querySelectorAll(".page")[1].scrollTop = 300; });
   await page.waitForTimeout(60);
   expect((await pagina()).top, "la lista tiene que poder scrollear para que la prueba valga").toBeGreaterThan(0);
 
