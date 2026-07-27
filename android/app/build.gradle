@@ -8,6 +8,11 @@ if (localPropsFile.exists()) {
     localPropsFile.withInputStream { localProps.load(it) }
 }
 def ingestUrl = localProps.getProperty('MICARTERA_INGEST_URL', '')
+// Inspección de la WebView (chrome://inspect / CDP por adb). Se enciende SOLO poniendo
+// MICARTERA_WEBDEBUG=1 en local.properties, que no va al repo: así una APK compilada aquí para
+// depurar en su móvil se puede mirar por dentro, y la que publica el CI nunca lleva el socket
+// abierto. Ver docs/LAG-DESLIZAR.md §0 — sin esto no hay forma de medir el lag donde ocurre.
+def webDebug = localProps.getProperty('MICARTERA_WEBDEBUG', '0') == '1'
 
 android {
     namespace "com.micartera.app"
@@ -22,6 +27,7 @@ android {
         versionCode 35
         versionName "4.12.0"
         buildConfigField "String", "INGEST_URL", "\"${ingestUrl}\""
+        buildConfigField "boolean", "WEB_DEBUG", "${webDebug}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

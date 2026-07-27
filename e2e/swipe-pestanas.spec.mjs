@@ -159,3 +159,79 @@ test("al deslizar, la barra deja de desenfocar; al parar, vuelve", async ({ page
   // Y vuelve solo cuando el carrusel ha parado (la transición dura 0,42 s).
   await expect(shell, "el desenfoque tiene que volver al terminar la transición").not.toHaveClass(/nav-sin-blur/, { timeout: 5_000 });
 });
+
+/* EL GESTO QUE EL NAVEGADOR SE LLEVA — el «tirón» de verdad (2026-07-27, medido en su móvil).
+ *
+ * Cuando el navegador decide que un arrastre es suyo (lo normal en cuanto acaba scrolleando la
+ * lista) manda `touchcancel` y NO manda `touchend`. `.viewport` no escuchaba `touchcancel`, así
+ * que en ese camino no se soltaba nada: la página se quedaba con el candado de scroll puesto y el
+ * carrusel plantado a medio camino. Traducido a lo que él veía: deslizas y no se mueve nada, y
+ * cuando por fin un gesto termina bien, se suelta todo de golpe y la pantalla pega el salto.
+ *
+ * En su móvil, 174 de 185 gestos reales terminaron cancelados. En un banco de pruebas no salía
+ * NUNCA, porque un gesto sintético siempre acaba con un `touchend` limpio — por eso hay que
+ * mandar el `touchCancel` a mano, que es justo lo que hace esta prueba.
+ *
+ * Se comprueba lo que le dolía: que después de un gesto cancelado la lista SIGUE moviéndose. */
+test("un gesto que el navegador cancela no deja la app bloqueada", async ({ page }) => {
+  await seedLoggedInDashboard(page, {
+    expenses: Array.from({ length: 40 }, (_, i) => ({
+      id: "m" + i, date: new Date(Date.now() - i * 36e5).toISOString(),
+      amount: 5 + i, merchant: "Comercio " + i, category: "super", source: "manual",
+    })),
+  });
+  await page.goto("/");
+  await appLista(page);
+  const cdp = await page.context().newCDPSession(page);
+
+  await deslizar(page, cdp, "siguiente");
+  await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("gastos");
+
+  // Mirando TODAS las páginas, no solo la que se ve: con el carrusel a medio arrastrar, la
+  // congelada y la que asoma no son la misma, y el candado se quedaba en la de detrás.
+  const pagina = () => page.evaluate(() => {
+    const ps = [...document.querySelectorAll(".page")];
+    const p = ps.find((el) => Math.abs(el.getBoundingClientRect().left) < 50) || ps[0];
+    return {
+      top: Math.round(p.scrollTop), alto: p.scrollHeight,
+      bloqueo: ps.map((el) => el.style.touchAction || "").filter(Boolean).join(","),
+      overflow: ps.map((el) => el.style.overflow || "").filter(Boolean).join(","),
+    };
+  });
+
+  // Su repro: entrar, MOVERSE dentro (el candado caro solo se pone si hubo scroll hace nada)…
+  await page.evaluate(() => {
+    const ps = [...document.querySelectorAll(".page")];
+    const p = ps.find((el) => Math.abs(el.getBoundingClientRect().left) < 50) || ps[0];
+    p.scrollTop = 300;
+  });
+  await page.waitForTimeout(60);
+  expect((await pagina()).top, "la lista tiene que poder scrollear para que la prueba valga").toBeGreaterThan(0);
+
+  // …y deslizar. Pero el navegador se lleva el gesto a mitad: llega `touchcancel`, no `touchend`.
+  const W = page.viewportSize().width;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: W - 40, y: 200 }] });
+  for (let i = 1; i <= 6; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: W - 40 - i * 24, y: 200 }] });
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+  await page.waitForTimeout(200);
+
+  const tras = await pagina();
+  expect(tras.bloqueo, "la página se quedó con touch-action puesto: el dedo ya no la mueve").toBe("");
+  expect(tras.overflow, "la página se quedó con overflow:hidden: el scroll está muerto").toBe("");
+  await expect(page.locator(".track"), "el carrusel se quedó en modo arrastre").not.toHaveClass(/dragging/);
+  await expect(page.locator(".app-shell"), "el desenfoque de la barra no volvió").not.toHaveClass(/nav-sin-blur/, { timeout: 5_000 });
+
+  // Y lo que de verdad importa: la lista se sigue moviendo con el dedo.
+  const antes = (await pagina()).top;
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 180, y: 500 }] });
+  for (let i = 1; i <= 10; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: 180, y: 500 - i * 30 }] });
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await expect.poll(() => pagina().then((p) => p.top), { timeout: 5_000 })
+    .not.toBe(antes);
+});

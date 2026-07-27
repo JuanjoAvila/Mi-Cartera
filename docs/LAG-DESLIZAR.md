@@ -1,10 +1,61 @@
-# El lag al deslizar entre pestañas — expediente abierto
+# El lag al deslizar entre pestañas — expediente
 
 > **Léete esto entero antes de tocar una línea.** Es el registro de una cacería de un día completo
 > (2026-07-26 y 27) con **todo lo que se probó y NO funcionó, con su número**. La mitad del valor de
 > este documento es evitarte repetir ocho experimentos que ya están hechos.
 >
-> Estado al cerrar: beta **4.12.0.33** en el canal de pruebas. Producción (`main`) sigue en 4.11.0.
+> Estado: beta **4.12.0.33** en el canal de pruebas. Producción (`main`) sigue en 4.11.0.
+
+## 0. CÓMO ACABÓ: no era rendimiento, era un candado que no se soltaba (2026-07-27, noche)
+
+**La app no iba lenta: se quedaba bloqueada.** Por eso un día entero de medir rendimiento no dio con
+ello, y por eso ningún banco de pruebas lo reprodujo jamás.
+
+Cuando el navegador decide que un arrastre es **suyo** (lo normal en cuanto el gesto acaba
+scrolleando la lista), se lo lleva y avisa con **`touchcancel`** — y entonces **`touchend` ya no
+llega nunca**. `.viewport` solo escuchaba `onTouchStart/onTouchMove/onTouchEnd`, así que por ese
+camino no se ejecutaba nada de lo que suelta el gesto: ni `freezeShell(false)`, ni quitar
+`.dragging`, ni devolver el carrusel a su sitio. La página se quedaba con **`touch-action:none`** (y
+con `overflow:hidden` si venías de scrollear) y el carrusel **plantado a medio camino**.
+
+Lo que se siente con eso puesto es exactamente lo que él lleva describiendo desde la .17: deslizas y
+**no se mueve nada**; insistes; en cuanto un gesto termina bien se suelta todo de golpe y la pantalla
+**pega el salto**. Y como el desbloqueo depende de que el siguiente gesto acabe limpio, sale «a
+veces sí y a veces no».
+
+**Medido en SU móvil, por CDP, la noche del 27** (no en un contenedor):
+
+| | |
+|---|---|
+| Gestos suyos que acabaron en `touchcancel` | **174 de 185** |
+| Tareas largas de JavaScript en 38 s de uso | **0** |
+| Tras un gesto cancelado: dos deslizadas reales | scroll **473 → 473 → 473** (muerto) |
+| Después de un gesto que acaba bien | **473 → 820** (revive) |
+| Carrusel tras el gesto cancelado | `translate3d(-463px…)` — **entre dos pestañas**, ni una ni otra |
+
+Esa última fila es, con toda probabilidad, el «**Gastos se queda a medio pintar / desvaído**» del §6:
+no era el pintado, era el carrusel parado a mitad de camino enseñando dos pantallas a la vez.
+
+**El arreglo** (`11-app-main.js`): `onTouchCancel` en `.viewport` (→ `onCancel`, que reutiliza
+`cancelSwipe`) y en Ajustes (`drawerCancel`); `freezeShell(false)` suelta **las cuatro** páginas, no
+solo la activa; red de seguridad en `onStart` por si un gesto muere sin avisar de ninguna manera (la
+app se va a segundo plano con el dedo puesto); y **fuera `pageEl.style.touchAction="none"`**, que no
+servía para nada —el navegador fija `touch-action` en el `touchstart`, cambiarlo con el dedo puesto
+no afecta al gesto en curso— salvo para dejar la app muerta. Guardián:
+`e2e/swipe-pestanas.spec.mjs` › «un gesto que el navegador cancela no deja la app bloqueada»
+(comprobado que falla sin el arreglo).
+
+**El método que lo encontró, que es lo que hay que heredar:** se compiló un APK igual al suyo (misma
+firma, mismos datos) con `WebView.setWebContentsDebuggingEnabled(true)` en `MainActivity` **después
+de `super.onCreate()`** —antes no vale: Capacitor lo apaga en release, `Bridge.java:599`— y se
+inspeccionó su WebView por `adb` + CDP mientras él usaba la app. Dos avisos por el camino:
+
+- **`dumpsys gfxinfo` MIENTE en una app WebView**: daba 112 fps y un solo frame malo en 33 s. Una
+  WebView pinta siempre su último fotograma disponible, así que Android cuenta frames perfectos con
+  contenido congelado. Para el ojo del usuario solo valen los deltas de `rAF` **dentro** de la página.
+- **Grabar una traza de Chromium provoca el tirón que buscas**: con `Tracing` puesto salían frames de
+  90 ms donde con un medidor ligero no salía ninguno. Medir primero con `rAF`; la traza, solo para
+  mirar una ventana concreta y sabiendo que suma ruido.
 
 ## 1. Qué dice él, con sus palabras
 

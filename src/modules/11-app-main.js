@@ -850,10 +850,19 @@ function App(){
              Congelar hacía falta de verdad (el momentum vertical peleaba con el translateX del
              track), pero solo cuando hay momentum VIVO. Si scrolleaste, paraste y luego deslizas
              —que es el caso normal— no hay nada contra lo que pelear. Así que el candado caro se
-             pone solo si hubo scroll en los últimos 200 ms; el resto de las veces basta con
-             `touch-action`, que no es propiedad de layout y no cuesta ni un repintado. */
+             pone solo si hubo scroll en los últimos 200 ms.
+
+             ⚠ AQUÍ VIVÍA `pageEl.style.touchAction="none"`, Y NO SERVÍA PARA NADA — salvo para
+             dejar la app muerta. El navegador decide qué puede hacer con un gesto **en el
+             `touchstart`**, mirando el `touch-action` de ese momento; cambiarlo con el dedo ya
+             puesto no afecta al gesto en curso (así lo dice la especificación y así se comporta
+             Chromium). O sea que como freno del momentum era decorativo. Lo que sí hacía era
+             quedarse puesto: si el gesto no acababa en `touchend` —y no acaba casi nunca, ver
+             `onCancel`—, la página se quedaba con `touch-action:none` y **el dedo dejaba de mover
+             la lista** hasta el siguiente gesto que terminara bien. Medido en su móvil por CDP el
+             2026-07-27: gesto cortado → dos deslizadas reales sin mover un píxel (scroll 473 →
+             473 → 473) → un gesto limpio → vuelve a ir (473 → 820). Eso es el «tirón». */
           const conMomentum=(Date.now()-lastScrollAt.current)<200;
-          pageEl.style.touchAction="none";
           if(conMomentum){
             pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
             pageEl.style.overflow="hidden";
@@ -863,10 +872,14 @@ function App(){
     } else {
       appShellRef.current.classList.remove("gesture-freeze","dragging","profile-gesturing");
       if(trackRef.current){
-        const pageEl=trackRef.current.children[tabRef.current];
-        if(pageEl){
-          pageEl.style.overflow="";
-          pageEl.style.touchAction="";
+        /* Se sueltan TODAS las páginas, no solo la activa. Si el gesto cambió de pestaña,
+           `tabRef` ya apunta a la nueva y la que se congeló se quedaba con el candado puesto
+           para siempre. Son cuatro elementos: barato y no deja rincones. */
+        const pgs=trackRef.current.children;
+        for(let i=0;i<pgs.length;i++){
+          const pageEl=pgs[i]; if(!pageEl||!pageEl.style) continue;
+          if(pageEl.style.overflow) pageEl.style.overflow="";
+          if(pageEl.style.touchAction) pageEl.style.touchAction="";   // limpia el de versiones viejas
           const y=parseFloat(pageEl.dataset.mcLockY);
           if(!isNaN(y)) try{ pageEl.scrollTop=y; }catch(e){}
           delete pageEl.dataset.mcLockY;
@@ -996,6 +1009,12 @@ function App(){
     setDrawerOpen(!(closeProg>0.35 || flick));
     setSettingsProgress(!(closeProg>0.35 || flick)?1:0);
     dAx.current=null;
+  };
+  // El navegador se lleva el gesto (ver `onCancel`): Ajustes se queda como estaba, sin decidir.
+  const drawerCancel=function(){
+    if(!dDrag.current) return; dDrag.current=false; dAx.current=null; dDX.current=0;
+    if(drawerRef.current){ drawerRef.current.classList.remove("dragging"); drawerRef.current.style.transform=""; }
+    freezeShell(false);
   };
   // Cerrar perfil tirando ABAJO (arriba→abajo): misma escala al avatar en reversa.
   // Abrir ya es pull-down desde Inicio; cerrar «tira hacia atrás» el mismo gesto (feedback 2026-07-17).
@@ -1757,6 +1776,13 @@ function App(){
     // Sheets portaleados desde una tab (editar gasto): el DOM está en body pero el árbol
     // React burbujea hasta aquí — sin esto, scroll de chips mueve las tabs (2026-07-17).
     if(document.documentElement.classList.contains("sheet-open")) return;
+    /* RED DE SEGURIDAD. `touchcancel` cubre el caso conocido, pero un gesto también puede morirse
+       sin avisar de ninguna manera: si la app se va a segundo plano con el dedo puesto, no llega
+       ni `touchend` ni `touchcancel` y el candado se queda. Soltar siempre antes de empezar no
+       cuesta nada (son cuatro `style.x=""` y quitar clases) y garantiza que NINGÚN dedo se
+       encuentre la app bloqueada por el gesto anterior. Si algún día vuelve a haber una fuga,
+       aquí se cura sola. */
+    if(dragging.current) onCancel();
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
     // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
@@ -1915,6 +1941,38 @@ function App(){
     }
     gestureMode.current=null;
     axis.current=null;
+  };
+  /* EL GESTO QUE NO ACABA EN `touchend` — y aquí estaba el «tirón» de verdad, cuatro rechazos.
+     Cuando el navegador decide que un gesto es SUYO (lo normal: cualquier arrastre que acabe
+     scrolleando la lista) se lleva el dedo y avisa con `touchcancel`. **`touchend` ya no llega
+     nunca.** Y `.viewport` solo tenía `onTouchStart/onTouchMove/onTouchEnd`, así que en ese
+     camino no se ejecutaba NADA de lo que suelta el gesto: ni `freezeShell(false)`, ni quitar
+     `.dragging` del track, ni devolver el carrusel a su sitio, ni encender otra vez el
+     desenfoque de la barra. Con el dedo real pasa constantemente — en su móvil, **174 de 185
+     gestos terminaron cancelados** (medido por CDP el 2026-07-27).
+
+     Lo que se sentía: la app se quedaba con la página bloqueada y el carrusel plantado a medio
+     camino. Deslizas y no se mueve nada; insistes; en cuanto un gesto termina bien, se suelta
+     todo de golpe y la pantalla PEGA EL SALTO. Es exactamente su «hay un stopper», su «no se
+     mueve y luego va a trompicones» y su «a veces sí y a veces no» — y explica por qué un día
+     entero de medir rendimiento no lo encontró: **la app no iba lenta, iba bloqueada**. Ningún
+     banco de pruebas lo reprodujo porque un gesto sintético siempre termina con un `touchend`
+     limpio; solo un dedo de verdad hace que el navegador se lleve el gesto.
+
+     El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
+  const onCancel=function(){
+    if(!dragging.current) return;
+    if(gestureMode.current==="profile"){
+      profileRelease();
+      setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba
+      pDY.current=0;
+      dragging.current=false; axis.current=null; gestureMode.current=null;
+      freezeShell(false);
+      return;
+    }
+    // El desenfoque vuelve YA (no como al soltar): aquí no hay transición del carrusel que proteger.
+    navSinBlur(false);
+    cancelSwipe();
   };
   useEffect(()=>{ if(trackRef.current&&!dragging.current) trackRef.current.style.transform=trackX(tab); },[tab]);
   // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
@@ -2186,7 +2244,7 @@ function App(){
       onClick:function(){ mcExitSandbox(); location.reload(); }},
       "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
-      React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd},
+      React.createElement("div",{className:"viewport",onTouchStart:onStart,onTouchMove:onMove,onTouchEnd:onEnd,onTouchCancel:onCancel},
         React.createElement("div",{className:"track",ref:trackRef}, paginas)
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
@@ -2229,7 +2287,10 @@ function App(){
       ref:drawerRef,
       onTouchStart:drawerOpen?drawerStart:undefined,
       onTouchMove:drawerOpen?drawerMove:undefined,
-      onTouchEnd:drawerOpen?drawerEnd:undefined
+      onTouchEnd:drawerOpen?drawerEnd:undefined,
+      // Mismo agujero que en las pestañas (ver `onCancel`): si el navegador se lleva el gesto,
+      // `touchend` no llega y Ajustes se quedaba con el candado y a medio arrastrar.
+      onTouchCancel:drawerOpen?drawerCancel:undefined
     },
       React.createElement("div",{className:"settings-push-h"},
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
