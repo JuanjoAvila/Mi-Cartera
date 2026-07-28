@@ -38,7 +38,11 @@ t("debtBalance: financiación con balloon se liquida entera al llegar al último
 
 t("debtLeft: financiación 4 cuotas recién creada", () => {
   const now = new Date();
-  const d = { value: 400, monthly: 100, months: 4, day: 28, asOf: ymAbs(now.getFullYear(), now.getMonth()) };
+  // ⚠ El día de cobro se calcula, NO se pone a 28. `debtPaidCount` suma una cuota en cuanto el
+  // día de cobro ya ha pasado este mes, así que con `day:28` esta prueba fallaba los días 28, 29,
+  // 30 y 31 de cada mes — cuatro días al mes en los que el despliegue a producción se caía sin
+  // que nada estuviera roto (pasó el 2026-07-28). Con «mañana» nunca ha pasado todavía.
+  const d = { value: 400, monthly: 100, months: 4, day: now.getDate() + 1, asOf: ymAbs(now.getFullYear(), now.getMonth()) };
   assert.equal(ctx.debtLeft(d), 4);
 });
 
