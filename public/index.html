@@ -256,8 +256,20 @@
   /* Temáticas de temporada: capa ambiental con PROFUNDIDAD (3 capas parallax) y movimiento
      orgánico (deriva lateral + giro + pulso de escala) — estilo Revolut, no una caída plana. */
   .season-fx{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;}
+  /* LA NEVADA SE CORTA SOLA (petición suya 2026-07-28: «haz que se corte en algún momento»).
+     Era `infinite`, o sea 18 piezas moviéndose para siempre: bonito el primer minuto y un
+     repintado permanente el resto del día. Con dos vueltas cada pieza cae, se va por abajo y ahí
+     se queda (`forwards`), así que la capa acaba quieta y deja de costar nada.
+     Y no se pierde: cada cambio de pestaña lanza una racha nueva — ver la clase `.b` justo
+     debajo. Deslizar es lo que la trae de vuelta, que era lo otro que pidió («alguna animación
+     chula si deslizas»). */
   .season-fx span{position:absolute;top:-12vh;will-change:transform;
-    animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);animation-iteration-count:infinite;}
+    animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);
+    animation-iteration-count:2;animation-fill-mode:forwards;}
+  /* RACHA AL DESLIZAR. Dos nombres de keyframes IDÉNTICOS y una clase que alterna entre ellos:
+     cambiar `animation-name` es la única forma fiable de reiniciar una animación CSS sin tocar
+     los 18 nodos uno a uno. Una llamada a `classList.toggle` y vuelven a caer todas. */
+  .season-fx.b span{animation-name:seasonfallb;}
   /* Capas de profundidad: lejos = pequeña, desenfocada y lenta; cerca = grande, nítida, sombra. */
   .season-fx .sfx-l0{filter:blur(1.4px) drop-shadow(0 1px 2px rgba(0,0,0,.18));}
   .season-fx .sfx-l1{filter:blur(.4px) drop-shadow(0 2px 4px rgba(0,0,0,.22));}
@@ -270,10 +282,27 @@
     80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
     100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
   }
+  /* El gemelo de `seasonfall`, palabra por palabra. Existe solo para poder alternar el nombre y
+     reiniciar la caída (ver `.season-fx.b span`). Si tocas una, toca la otra. */
+  @keyframes seasonfallb{
+    0%{transform:translate3d(0,-14vh,0) rotate(0deg) scale(.85);}
+    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15)) scale(1);}
+    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55)) scale(1.06);}
+    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
+    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
+  }
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
-  html[data-season] .botnav-fab{animation:fabpulse 3.4s ease-in-out infinite;}
-  @keyframes fabpulse{0%,100%{box-shadow:0 14px 28px -8px rgba(0,0,0,.35), 0 0 0 0 rgba(255,255,255,.0), inset 0 1px 0 rgba(255,255,255,.35);}50%{box-shadow:0 16px 32px -6px rgba(0,0,0,.4), 0 0 22px 2px rgba(255,255,255,.22), inset 0 1px 0 rgba(255,255,255,.45);}}
+  /* EL HALO DEL + AHORA ES UN ANILLO, NO UNA SOMBRA (2026-07-28). `fabpulse` animaba
+     `box-shadow`, y una sombra que cambia obliga al navegador a REPINTAR la barra en cada frame,
+     para siempre. Un anillo en `::after` que solo mueve `opacity` y `transform` lo hace el
+     compositor: mismo guiño, cero repintado. Él quería justo esto — «deja más decoración como el
+     botón + que me encanta, pero que sea sutil». */
+  html[data-season] .botnav-fab{position:relative;}
+  html[data-season] .botnav-fab::after{content:"";position:absolute;inset:-5px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.4);pointer-events:none;opacity:0;
+    animation:fabaro 3.8s ease-in-out infinite;}
+  @keyframes fabaro{0%,100%{opacity:0;transform:scale(.84);}45%{opacity:.45;transform:scale(1.04);}}
   html[data-season="mundial"] .botnav-fab{background:linear-gradient(160deg,#E63946,#F1C40F);}
   html[data-season="halloween"] .botnav-fab{background:linear-gradient(160deg,#F0862B,#7A3FA0);}
   html[data-season="navidad"] .botnav-fab{background:linear-gradient(160deg,#D64550,#2E9E5B);}
@@ -290,7 +319,50 @@
   html[data-season="invierno"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
   html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
   @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
-  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab{animation:none;} }
+  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
+  /* ===== Importar una hoja de gastos (Excel/CSV) ===== */
+  .hoja-pasos{margin:0 0 18px;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.6;}
+  .hoja-pasos li{margin-bottom:7px;}
+  .hoja-err{background:color-mix(in srgb, var(--coral) 14%, transparent);border:1px solid var(--coral);
+    color:var(--text);border-radius:14px;padding:11px 13px;font-size:13px;line-height:1.5;margin-bottom:14px;}
+  .hoja-map{margin-bottom:13px;}
+  .hoja-map-lbl{font-size:12.5px;font-weight:800;color:var(--muted);margin-bottom:5px;}
+  .hoja-req{color:var(--coral);}
+  .hoja-sel{width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--line);
+    border-radius:12px;padding:11px 12px;font-size:14px;font-family:'Manrope',sans-serif;}
+  /* El marcador del reparto: los dos números que resumen todo el import de un vistazo. */
+  .hoja-marc{display:flex;gap:10px;margin-bottom:14px;}
+  .hoja-marc-c{flex:1;border-radius:18px;padding:14px 12px;text-align:center;border:1px solid var(--line-soft);background:var(--sur);}
+  .hoja-marc-c b{display:block;font-family:'Fraunces',Georgia,serif;font-size:34px;font-weight:550;line-height:1.1;font-variant-numeric:tabular-nums;}
+  .hoja-marc-c span{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted-2);margin-top:3px;}
+  .hoja-marc-ok{border-color:var(--mint-dim);} .hoja-marc-ok b{color:var(--mint);}
+  .hoja-marc-dup b{color:var(--muted-2);}
+  /* LAS FILAS ENTRAN CONTANDO, UNA DETRÁS DE OTRA (petición suya 2026-07-28: «que si pillara
+     alguna cosa duplicada que dijera de forma guapa con alguna animación o algo el descarte y lo
+     que se queda»). Las que entran llegan desde la derecha y en verde; las repetidas se quedan
+     apagadas y tachadas, que es lo que se hace con lo que se descarta. El retraso lo lleva el
+     JS —una por tick— porque así el conteo se ve aunque la lista sea larga. */
+  .hoja-fila{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:14px;margin-bottom:7px;
+    border:1px solid var(--line-soft);background:var(--sur);font-size:13.5px;
+    opacity:0;transform:translateX(14px);}
+  .hoja-fila.dentro{animation:hojaentra .34s cubic-bezier(.32,.72,0,1) both;}
+  @keyframes hojaentra{from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:none;}}
+  .hoja-fila-ic{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;}
+  .hoja-fila-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hoja-fila-eu{flex:0 0 auto;font-weight:800;font-variant-numeric:tabular-nums;}
+  .hoja-fila-ok{border-color:var(--mint-dim);}
+  .hoja-fila-ok .hoja-fila-ic{background:var(--mint);color:var(--on-mint);}
+  .hoja-fila-dup{opacity:0;}
+  .hoja-fila-dup.dentro{animation:hojaentra .34s cubic-bezier(.32,.72,0,1) both;}
+  .hoja-fila-dup .hoja-fila-ic{background:var(--surface-2);color:var(--muted-2);}
+  .hoja-fila-dup .hoja-fila-tx,.hoja-fila-dup .hoja-fila-eu{color:var(--muted-2);text-decoration:line-through;}
+  .hoja-fin{text-align:center;padding:26px 0 10px;}
+  .hoja-fin-ic{font-size:46px;line-height:1;margin-bottom:12px;animation:mclpop .5s cubic-bezier(.32,.72,0,1) both;}
+  @media (prefers-reduced-motion:reduce){
+    .hoja-fila,.hoja-fila.dentro,.hoja-fila-dup,.hoja-fila-dup.dentro{opacity:1;transform:none;animation:none !important;}
+    .hoja-fin-ic{animation:none !important;}
+  }
+
   /* Ayuda contextual "?" */
   .helpq{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
   .helpq:active{color:var(--mint);border-color:var(--mint-dim);}
@@ -336,7 +408,11 @@
      retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
      estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
      durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
+  /* `overscroll-behavior-y:none` (era `contain`): además de no encadenar el scroll al padre,
+     apaga el FOGONAZO de borde de la WebView. Desde 4.13.0 el final de la lista lo dibujamos
+     nosotros con el rebote elástico (ver `reb` en 11-app-main.js), y las dos cosas a la vez
+     —nuestro estirón y el destello de Chromium— se pisaban. */
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:none;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
@@ -363,6 +439,36 @@
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
   .botnav-ind span{width:34px;height:3px;border-radius:3px;background:var(--mint);display:block;}
   .botnav-ind.hide{opacity:0;}
+  /* LA RAYITA RODEA EL + EN VEZ DE ATRAVESARLO (petición suya 2026-07-28, con foto: «la rayita
+     que rula al ir de tab en tab que cuando llegue al + en vez de atravesarlo que lo rodee»).
+     Yendo de Gastos a Plan el indicador pasa por el hueco del FAB, y como es `position:absolute`
+     pinta POR ENCIMA del botón: se le veía cruzar la cara del +. Ahora salta por arriba.
+     Geometría (coordenadas de .botnav-row): el FAB va de y=-28 a y=+30 (58px de alto con
+     margin-top:-26px, centrado en una fila de ~54). El indicador vive en top:-9. Subirlo 26px lo
+     deja en -35, siete píxeles por encima del borde del botón — lo justo para librarlo sin
+     despegarse de la barra. El estrechón de scaleX es lo que lo hace parecer un salto y no una
+     traslación: la línea se encoge al despegar y se estira al aterrizar.
+     El transform del salto va en el SPAN a propósito: el translateX horizontal lo escribe React
+     en el contenedor, y dos transforms en el mismo nodo se pisan. */
+  .botnav-ind.rodea span{animation:indrodear .44s cubic-bezier(.4,0,.2,1);}
+  @keyframes indrodear{
+    0%,100%{transform:translateY(0) scaleX(1);}
+    50%{transform:translateY(-26px) scaleX(.5);}
+  }
+  /* Iconos de la barra con su propia animación al activarse (petición suya 2026-07-28: «iconos
+     de las tabs cuando estás en la tab que tengan una animación cuqui»). Una por pestaña, que
+     pegue con lo que hace cada una: Inicio da un saltito, Gastos peina sus rayas, Plan marca la
+     casilla y Cartera sube como su flecha.
+     SOLO AL ENTRAR, nunca en bucle: una animación infinita aquí es repintado permanente en la
+     barra, que es justo lo que se quitó del halo del FAB por costar frames (4.12.0). */
+  .botnav-tab.active svg{animation:tabpop .5s cubic-bezier(.32,.72,0,1);}
+  .botnav-tab.active[data-tour="gastos"] svg{animation:tabpeina .52s cubic-bezier(.32,.72,0,1);}
+  .botnav-tab.active[data-tour="plan"] svg{animation:tabmarca .54s cubic-bezier(.32,.72,0,1);}
+  .botnav-tab.active[data-tour="cartera"] svg{animation:tabsube .52s cubic-bezier(.32,.72,0,1);}
+  @keyframes tabpop{0%{transform:none;}34%{transform:translateY(-4px) scale(1.16);}68%{transform:translateY(1px) scale(.97);}100%{transform:none;}}
+  @keyframes tabpeina{0%{transform:none;}30%{transform:translateX(3px) scaleX(.82);}62%{transform:translateX(-2px) scaleX(1.08);}100%{transform:none;}}
+  @keyframes tabmarca{0%{transform:none;}30%{transform:rotate(-9deg) scale(1.14);}64%{transform:rotate(5deg) scale(.98);}100%{transform:none;}}
+  @keyframes tabsube{0%{transform:none;}34%{transform:translateY(-5px) scale(1.12);}70%{transform:translateY(2px) scale(.98);}100%{transform:none;}}
   .botnav-tab{flex:1;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     color:var(--muted-2);font-size:11px;font-weight:700;transition:color .2s;padding:0;background:none;border:none;}
   .botnav-tab.active{color:var(--mint);}
@@ -618,7 +724,7 @@
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.v4-avatar.pulling,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.botnav-ind span,.botnav-tab svg,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.v4-avatar.pulling,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
   }
 
   /* «Gestionar recibos» y «Herramientas de inversión» viven en un sheet v4 pero por dentro
@@ -1078,8 +1184,15 @@
     display:grid;place-items:center;color:var(--mint,#5FD08A);box-shadow:0 26px 60px -30px var(--mint,#5FD08A);
     animation:mclpop .5s cubic-bezier(.32,.72,0,1) both;}
   #mc-load .mcl-mark svg{width:52px;height:52px;display:block;}
+  /* EL NOMBRE NO SE ENSEÑA HASTA QUE ESTÁ SU TIPOGRAFÍA (2026-07-28). Con `font-display:swap`
+     el navegador pinta «Mi Cartera» en Georgia al momento y la CAMBIA a Fraunces cuando la
+     fuente carga: en un arranque en frío ese cambio de forma se ve, y es lo primero que enseña
+     la app. Feedback suyo: «antes aparece algo raro en vez de aparecer el icono». Ahora el icono
+     entra solo y el nombre se suma cuando puede hacerlo bien (tope de 500 ms en `mcl-fuente`,
+     abajo: si la fuente se atasca, mejor Georgia que un hueco). */
   #mc-load .mcl-name{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:560;letter-spacing:-.3px;color:var(--text,#EAF2EC);
-    animation:mclpop .5s .07s cubic-bezier(.32,.72,0,1) both;}
+    opacity:0;}
+  #mc-load .mcl-name.lista{animation:mclpop .42s cubic-bezier(.32,.72,0,1) both;}
   /* SIN BARRA DE CARGA (2026-07-26). Había una barra indeterminada debajo del nombre; fuera, por
      petición desde el móvil: «quitar lo de la barra de carga al abrir la app, el resto de apps no
      lo tienen; el tiempo ese que se queda el logo está bien». Una barra que no mide nada solo
@@ -1089,7 +1202,9 @@
     color:var(--mint,#5FD08A);text-decoration:underline;padding:8px 12px;cursor:pointer;}
   @keyframes mclpop{from{opacity:0;transform:translateY(9px) scale(.94);}to{opacity:1;transform:none;}}
   @media (prefers-reduced-motion:reduce){
-    #mc-load .mcl-mark,#mc-load .mcl-name{animation:none !important;}
+    #mc-load .mcl-mark{animation:none !important;}
+    #mc-load .mcl-name{animation:none !important;}
+    #mc-load .mcl-name.lista{opacity:1;}
   }
 </style>
 </head>
@@ -1101,6 +1216,18 @@
      cuando nosotros decidimos. -->
 <div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
 <div id="root"></div>
+<script id="mcl-fuente">/* Ver el comentario de `.mcl-name`: el nombre espera a Fraunces para no cambiar
+   de forma a la vista. Va aquí, pegado al splash y antes de los scripts pesados, para que la
+   petición de la fuente salga cuanto antes. El tope evita que un fallo de red deje la marca coja. */
+(function(){
+  var n=document.querySelector("#mc-load .mcl-name"); if(!n) return;
+  var ver=function(){ n.classList.add("lista"); };
+  setTimeout(ver,500);
+  try{
+    if(document.fonts&&document.fonts.load) document.fonts.load("560 27px Fraunces").then(ver,ver);
+    else ver();
+  }catch(e){ ver(); }
+})();</script>
 
 
 <!-- LOS SCRIPTS PESADOS VAN AQUÍ, DESPUÉS DEL SPLASH, NO EN EL <head> (2026-07-25).
@@ -3136,6 +3263,37 @@ Object.assign(LANG.es,{
   bi_usd_hint:"Los importes del CSV se leen en €. Cuidado al mapear a posiciones en $ (marcadas).",
   bi_apply:"Aplicar a {n} posiciones", bi_apply_hint:"Al aplicar: participaciones y coste se re-anclan al extracto (verdad del bróker) y el valor se recalcula con el último precio conocido. Justo después, los precios en vivo se actualizan solos por ticker.",
   bi_done:"✓ {n} posiciones re-ancladas con el extracto",
+  /* Importar una hoja de cálculo con gastos (petición 2026-07-28: la hoja de su madre). */
+  ih_title:"Importar una hoja de gastos",
+  ih_intro:"¿Llevas tus gastos en un Excel? Súbelo y los paso a la app. Da igual cómo se llamen tus columnas ni en qué orden estén: te propongo qué es cada una y lo corriges si me equivoco.",
+  ih_steps:["Vale un Excel (.xlsx) o un CSV. Si tu fichero es .xls antiguo, ábrelo y haz «Guardar como» → .xlsx.","Que haya una columna con la fecha, otra con el concepto y otra con el importe. Lo demás es opcional.","Lo miras antes de guardar: te enseño lo que entra y lo que ya tenías apuntado."],
+  ih_pick:"Elegir el fichero",
+  ih_leyendo:"Leyendo…",
+  ih_privacidad:"El fichero se lee en tu móvil. No se sube a ningún sitio.",
+  ih_err_xls:"Ese es un .xls de los antiguos y no lo sé leer. Ábrelo y haz «Guardar como» → .xlsx (o descárgalo como CSV).",
+  ih_err_zip:"No parece un Excel válido. Prueba a abrirlo y volver a guardarlo como .xlsx.",
+  ih_err_vacio:"He abierto el fichero pero no he encontrado ninguna fila con datos.",
+  ih_err_leer:"No he podido leer el fichero. Si puedes, guárdalo como CSV y prueba otra vez.",
+  ih_leidas:"{n} filas leídas. Dime qué es cada columna:",
+  ih_c_fecha:"Fecha", ih_c_concepto:"Concepto", ih_c_importe:"Importe", ih_c_categoria:"Categoría", ih_c_banco:"Cuenta o tarjeta",
+  ih_sin:"— no la tengo —",
+  ih_signo:"¿Qué hay en la columna del importe?",
+  ih_signo_gastos:"Todo son gastos", ih_signo_auto:"Gastos e ingresos mezclados",
+  ih_signo_hint:"Si en tu hoja los ingresos van con un menos delante (o en negativo), elige «gastos e ingresos mezclados» y los separo yo.",
+  ih_faltan:"Me faltan la fecha, el concepto o el importe: sin esas tres no puedo apuntar nada.",
+  ih_ver:"Ver qué va a entrar",
+  ih_entran:"entran nuevos", ih_repes:"ya los tenías",
+  ih_malas:"{n} filas no las he podido leer (sin fecha o sin importe) y se quedan fuera.",
+  ih_y_mas:"…y {n} más",
+  ih_y_mas_dup:"…y {n} repetidos más",
+  ih_dup_hint:"Los repetidos se descartan solos: son apuntes con el mismo día, el mismo importe y el mismo concepto que algo que ya tenías. Tu histórico no se toca.",
+  ih_guardar:"Guardar los {n} nuevos",
+  ih_nada:"No hay nada nuevo que guardar",
+  ih_volver:"‹ Cambiar las columnas",
+  ih_ok:"✓ {n} gastos importados",
+  ih_fin_t:"¡Listo!",
+  ih_fin_s:"{n} gastos nuevos en tu histórico. Ya los ves en Gastos, y cuentan en tus totales.",
+  ih_fin_ok:"Ver mis gastos",
   bi_rev_title:"Importar de Revolut (CSV)", bi_rev_steps_btn:"Cómo exportar el CSV de Revolut",
   bi_rev_steps:["Abre la app de Revolut → pestaña «Invest».","«More» (Más) → «Documents» (Documentos).","«Cuenta de corretaje» → «Extracto de cuenta». NO cojas el de «Pérdidas y Ganancias»: ese solo trae lo que ya vendiste.","¿Tienes oro o plata? Vuelve atrás y repite con «Materias primas» → «Extracto de cuenta». Van en un extracto APARTE: sin él, tus metales no entran.","¿Y saber cuánto ganas con ellos? Hace falta un TERCERO: el extracto de tu cuenta NORMAL de Revolut (la de euros, fuera de Invest). Ahí están los € que pusiste en cada conversión; el de Materias primas solo trae onzas.","Formato «Excel», desde la apertura de la cuenta hasta hoy → «Get statement».","En el móvil ábrelo con Google Sheets → «Hacer una copia» y descárgalo como CSV (o guárdalo/compártelo y súbelo aquí).","Súbelos abajo todos a la vez, o de uno en uno: los voy juntando. Se procesa en tu móvil, no se sube a ningún sitio."],
 });
@@ -3158,6 +3316,36 @@ Object.assign(LANG.en,{
   bi_usd_hint:"CSV amounts are read as €. Careful mapping to $ positions (marked).",
   bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth) and value is rescaled to the last known price. Right after, live prices refresh automatically by ticker.",
   bi_done:"✓ {n} positions re-anchored to the statement",
+  ih_title:"Import an expenses sheet",
+  ih_intro:"Keeping your expenses in a spreadsheet? Upload it and I'll bring them in. It doesn't matter what your columns are called or what order they're in: I'll guess what each one is and you fix me if I'm wrong.",
+  ih_steps:["Excel (.xlsx) or CSV both work. If yours is an old .xls, open it and «Save as» → .xlsx.","You need a column with the date, one with the description and one with the amount. The rest is optional.","You check it before saving: I show you what's coming in and what you already had."],
+  ih_pick:"Choose the file",
+  ih_leyendo:"Reading…",
+  ih_privacidad:"The file is read on your phone. It is never uploaded anywhere.",
+  ih_err_xls:"That's an old .xls and I can't read it. Open it and «Save as» → .xlsx (or download it as CSV).",
+  ih_err_zip:"That doesn't look like a valid Excel file. Try opening it and saving it again as .xlsx.",
+  ih_err_vacio:"I opened the file but found no rows with data in it.",
+  ih_err_leer:"I couldn't read the file. If you can, save it as CSV and try again.",
+  ih_leidas:"{n} rows read. Tell me what each column is:",
+  ih_c_fecha:"Date", ih_c_concepto:"Description", ih_c_importe:"Amount", ih_c_categoria:"Category", ih_c_banco:"Account or card",
+  ih_sin:"— I don't have it —",
+  ih_signo:"What's in the amount column?",
+  ih_signo_gastos:"All expenses", ih_signo_auto:"Expenses and income mixed",
+  ih_signo_hint:"If income comes with a minus sign (or as a negative) in your sheet, pick «expenses and income mixed» and I'll split them.",
+  ih_faltan:"I'm missing the date, the description or the amount: without those three I can't record anything.",
+  ih_ver:"See what's coming in",
+  ih_entran:"new ones", ih_repes:"already had",
+  ih_malas:"{n} rows I couldn't read (no date or no amount) and they stay out.",
+  ih_y_mas:"…and {n} more",
+  ih_y_mas_dup:"…and {n} more duplicates",
+  ih_dup_hint:"Duplicates are dropped on their own: same day, same amount and same description as something you already had. Your history is not touched.",
+  ih_guardar:"Save the {n} new ones",
+  ih_nada:"Nothing new to save",
+  ih_volver:"‹ Change the columns",
+  ih_ok:"✓ {n} expenses imported",
+  ih_fin_t:"All done!",
+  ih_fin_s:"{n} new expenses in your history. You can see them in Expenses, and they count towards your totals.",
+  ih_fin_ok:"See my expenses",
   bi_rev_title:"Import from Revolut (CSV)", bi_rev_steps_btn:"How to export the Revolut CSV",
   bi_rev_steps:["Open the Revolut app → «Invest» tab.","«More» → «Documents».","«Brokerage account» → «Account statement». Do NOT take the «Profit and Loss» one: it only lists what you already sold.","Got gold or silver? Go back and repeat with «Commodities» → «Account statement». They live in a SEPARATE statement: without it your metals don't come in.","And to know how much you're making on them? A THIRD one is needed: the statement of your NORMAL Revolut account (the euro one, outside Invest). That's where the € you put into each conversion live; the Commodities one only carries ounces.","Format «Excel», from account opening to today → «Get statement».","On the phone open it with Google Sheets → «Make a copy» and download as CSV (or save/share it and upload here).","Upload them all at once below, or one at a time: I keep merging them. Processed on your phone, never uploaded."],
 });
@@ -3180,6 +3368,36 @@ Object.assign(LANG.ca,{
   bi_usd_hint:"Els imports del CSV es llegeixen en €. Compte en mapar a posicions en $ (marcades).",
   bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker) i el valor es recalcula amb l'últim preu conegut. Just després, els preus en viu s'actualitzen sols per ticker.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
+  ih_title:"Importar un full de despeses",
+  ih_intro:"Portes les despeses en un Excel? Puja'l i les passo a l'app. Tant se val com es diguin les teves columnes ni en quin ordre estiguin: et proposo què és cadascuna i ho corregeixes si m'equivoco.",
+  ih_steps:["Serveix un Excel (.xlsx) o un CSV. Si el teu fitxer és .xls antic, obre'l i fes «Anomena i desa» → .xlsx.","Cal una columna amb la data, una altra amb el concepte i una altra amb l'import. La resta és opcional.","Ho mires abans de desar: t'ensenyo el que entra i el que ja tenies apuntat."],
+  ih_pick:"Triar el fitxer",
+  ih_leyendo:"Llegint…",
+  ih_privacidad:"El fitxer es llegeix al teu mòbil. No es puja enlloc.",
+  ih_err_xls:"Aquest és un .xls dels antics i no el sé llegir. Obre'l i fes «Anomena i desa» → .xlsx (o baixa'l com a CSV).",
+  ih_err_zip:"No sembla un Excel vàlid. Prova d'obrir-lo i tornar-lo a desar com a .xlsx.",
+  ih_err_vacio:"He obert el fitxer però no hi he trobat cap fila amb dades.",
+  ih_err_leer:"No he pogut llegir el fitxer. Si pots, desa'l com a CSV i torna-ho a provar.",
+  ih_leidas:"{n} files llegides. Digues-me què és cada columna:",
+  ih_c_fecha:"Data", ih_c_concepto:"Concepte", ih_c_importe:"Import", ih_c_categoria:"Categoria", ih_c_banco:"Compte o targeta",
+  ih_sin:"— no la tinc —",
+  ih_signo:"Què hi ha a la columna de l'import?",
+  ih_signo_gastos:"Tot són despeses", ih_signo_auto:"Despeses i ingressos barrejats",
+  ih_signo_hint:"Si al teu full els ingressos porten un menys al davant (o en negatiu), tria «despeses i ingressos barrejats» i els separo jo.",
+  ih_faltan:"Em falten la data, el concepte o l'import: sense aquests tres no puc apuntar res.",
+  ih_ver:"Veure què entrarà",
+  ih_entran:"entren nous", ih_repes:"ja els tenies",
+  ih_malas:"{n} files no les he pogut llegir (sense data o sense import) i es queden fora.",
+  ih_y_mas:"…i {n} més",
+  ih_y_mas_dup:"…i {n} repetits més",
+  ih_dup_hint:"Els repetits es descarten sols: són apunts amb el mateix dia, el mateix import i el mateix concepte que alguna cosa que ja tenies. El teu històric no es toca.",
+  ih_guardar:"Desar els {n} nous",
+  ih_nada:"No hi ha res nou per desar",
+  ih_volver:"‹ Canviar les columnes",
+  ih_ok:"✓ {n} despeses importades",
+  ih_fin_t:"Fet!",
+  ih_fin_s:"{n} despeses noves al teu històric. Ja les veus a Despeses, i compten als teus totals.",
+  ih_fin_ok:"Veure les meves despeses",
   bi_rev_title:"Importa de Revolut (CSV)", bi_rev_steps_btn:"Com exportar el CSV de Revolut",
   bi_rev_steps:["Obre l'app de Revolut → pestanya «Invest».","«More» (Més) → «Documents».","«Compte de corretatge» → «Extracte de compte». NO agafis el de «Pèrdues i Guanys»: aquell només porta el que ja has venut.","Tens or o plata? Torna enrere i repeteix amb «Matèries primeres» → «Extracte de compte». Van en un extracte A PART: sense ell, els teus metalls no entren.","I saber quant hi guanyes? Cal un TERCER: l'extracte del teu compte NORMAL de Revolut (el d'euros, fora d'Invest). Allà hi ha els € que vas posar a cada conversió; el de Matèries primeres només porta unces.","Format «Excel», des de l'obertura del compte fins avui → «Get statement».","Al mòbil obre'l amb Google Sheets → «Fes una còpia» i descarrega'l com a CSV (o desa'l/comparteix-lo i puja'l aquí).","Puja'ls a sota tots alhora, o d'un en un: els vaig ajuntant. Es processa al teu mòbil, no es puja enlloc."],
 });
@@ -5551,21 +5769,45 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
   const [shownNet,setShownNet]=useState(0);
   const [budgetOpen,setBudgetOpen]=useState(false);
   const rafRef=useRef(0);
+  const shownRef=useRef(0);      // último valor pintado, para encadenar sin volver a cero
+  const primeraRef=useRef(true); // la cuenta desde 0 es solo la de la entrada
   // Count-up 950 ms (SPEC §3 / §10). Reduced-motion → valor directo.
   useEffect(function(){
     const target=tt.netWorth||0;
     cancelAnimationFrame(rafRef.current);
     const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-    if(reduce){ setShownNet(target); return; }
-    const start=0, t0=performance.now(), dur=950;
-    const ease=function(x){ return 1-Math.pow(1-x,3); };
-    const step=function(now){
-      const p=Math.min(1,(now-t0)/dur);
-      setShownNet(start+(target-start)*ease(p));
-      if(p<1) rafRef.current=requestAnimationFrame(step);
+    if(reduce){ shownRef.current=target; setShownNet(target); return undefined; }
+    let cancelado=false;
+    const arrancar=function(){
+      if(cancelado) return;
+      /* De DÓNDE cuenta: la primera vez desde 0 (la entrada, que es la que él echaba de menos);
+         después, desde lo que hubiera puesto. Volver a 0 cada vez que cambia el patrimonio
+         —apuntar un gasto, que entre una sincronización— convertía una animación bonita de
+         bienvenida en un parpadeo del número a media faena. */
+      const start=primeraRef.current?0:shownRef.current;
+      primeraRef.current=false;
+      const t0=performance.now(), dur=950;
+      const ease=function(x){ return 1-Math.pow(1-x,3); };
+      const step=function(now){
+        const p=Math.min(1,(now-t0)/dur);
+        const v=start+(target-start)*ease(p);
+        shownRef.current=v;
+        setShownNet(v);
+        if(p<1) rafRef.current=requestAnimationFrame(step);
+      };
+      rafRef.current=requestAnimationFrame(step);
     };
-    rafRef.current=requestAnimationFrame(step);
-    return function(){ cancelAnimationFrame(rafRef.current); };
+    /* NO SE CUENTA DETRÁS DEL SPLASH (2026-07-28). La cortina de entrada se queda puesta hasta
+       que ha llegado el primer dato bueno de la nube (~1,3 s), y esto arrancaba al montar: para
+       cuando él veía la pantalla, la cuenta había terminado y el número aparecía ya puesto. Su
+       feedback: «eso molaba mucho y se perdió». No se perdió, se gastaba a puerta cerrada. */
+    if(window.__mcSplashGone || !document.getElementById("mc-load")){ arrancar(); return function(){ cancelado=true; cancelAnimationFrame(rafRef.current); }; }
+    window.addEventListener("mc-splash-gone", arrancar, {once:true});
+    return function(){
+      cancelado=true;
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("mc-splash-gone", arrancar);
+    };
   },[tt.netWorth]);
 
   const nameGuess=(function(){
@@ -9896,6 +10138,594 @@ function Achievements({state, totals}){
 }
 
 /* ============================================================
+   IMPORTAR UNA HOJA DE CÁLCULO CON GASTOS (Excel o CSV)
+   ============================================================
+
+   POR QUÉ EXISTE (petición suya 2026-07-28): «poder importar ya excels formados con gastos,
+   recibos y demás, porque mi madre tiene un Excel y amigos míos igual y me preguntaron si habría
+   alguna opción para importarlo de una manera que lo pillara guay».
+
+   Son hojas HECHAS A MANO, no extractos de banco: cada una tiene sus columnas, en su orden, con
+   sus nombres y en el idioma que sea. Así que aquí no hay un formato que reconocer — hay que
+   ADIVINAR y dejar que la persona corrija. Ese es todo el diseño: proponemos el mapeo, se ve una
+   previsualización con datos de verdad, y no se toca nada hasta que dice que sí (AGENTS §9: los
+   importadores nunca pisan a ciegas).
+
+   .XLSX SIN NINGUNA LIBRERÍA. La regla de la casa es cero dependencias y cero CDNs, y un .xlsx
+   es un ZIP con XML dentro, así que se abre a mano: se lee el directorio central del ZIP, se
+   descomprime con `DecompressionStream("deflate-raw")` —que es una API del navegador, no un
+   paquete— y el XML lo parsea el `DOMParser` que ya trae. Cuesta ~120 líneas y evita meter 400 KB
+   de SheetJS en un bundle que va justo de presupuesto.
+
+   Y TODO PASA EN EL MÓVIL. El fichero no se sube a ningún sitio, igual que los CSV de Revolut. */
+
+/* ---------- ZIP: lo mínimo para sacar ficheros de un .xlsx ---------- */
+
+/** Lee el directorio central y devuelve {nombre: Uint8Array} de las entradas que pidas.
+ *  Solo se descomprime lo que hace falta (una hoja y las cadenas), no el ZIP entero: un Excel
+ *  con años de gastos trae miniaturas, estilos y temas que aquí no pintan nada. */
+function zipAbrir(buf, quiere){
+  const d=new DataView(buf), u8=new Uint8Array(buf);
+  // El fin del directorio central (EOCD, firma 0x06054b50) vive al final, detrás de un comentario
+  // de hasta 64 KB. Se busca hacia atrás, que es como está pensado el formato.
+  let eocd=-1;
+  for(let i=u8.length-22; i>=0 && i>u8.length-66000; i--){
+    if(d.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+  }
+  if(eocd<0) return Promise.reject(new Error("no-zip"));
+  const nEnt=d.getUint16(eocd+10,true);
+  let p=d.getUint32(eocd+16,true);
+  const tareas=[];
+  for(let i=0;i<nEnt && p+46<=u8.length;i++){
+    if(d.getUint32(p,true)!==0x02014b50) break;
+    const metodo=d.getUint16(p+10,true);
+    const compLen=d.getUint32(p+20,true);
+    const nomLen=d.getUint16(p+28,true), extLen=d.getUint16(p+30,true), comLen=d.getUint16(p+32,true);
+    const local=d.getUint32(p+42,true);
+    const nombre=new TextDecoder().decode(u8.subarray(p+46,p+46+nomLen));
+    p+=46+nomLen+extLen+comLen;
+    if(!quiere(nombre)) continue;
+    // La cabecera LOCAL repite nombre y extra con longitudes propias: las del directorio central
+    // NO sirven para saltar hasta los datos (el campo extra suele diferir).
+    const lNom=d.getUint16(local+26,true), lExt=d.getUint16(local+28,true);
+    const ini=local+30+lNom+lExt;
+    const datos=u8.subarray(ini, ini+compLen);
+    tareas.push(zipInflar(datos, metodo).then(function(txt){ return [nombre, txt]; }));
+  }
+  return Promise.all(tareas).then(function(pares){
+    const out={};
+    pares.forEach(function(par){ out[par[0]]=par[1]; });
+    return out;
+  });
+}
+/** metodo 0 = guardado tal cual · 8 = deflate crudo (el que usa siempre Excel). */
+function zipInflar(datos, metodo){
+  if(metodo===0) return Promise.resolve(new TextDecoder().decode(datos));
+  if(typeof DecompressionStream==="undefined") return Promise.reject(new Error("sin-inflate"));
+  // `slice` y no `subarray`: el stream se queda con el búfer y una vista sobre el ZIP entero le
+  // daría de más.
+  const blob=new Blob([datos.slice()]);
+  return new Response(blob.stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+}
+
+/* ---------- XLSX: de XML a una tabla de texto ---------- */
+
+/** "BC12" → 54 (índice de columna, base 0). */
+function xlsxCol(ref){
+  let n=0;
+  for(let i=0;i<ref.length;i++){
+    const c=ref.charCodeAt(i);
+    if(c<65||c>90) break;
+    n=n*26+(c-64);
+  }
+  return n-1;
+}
+/** Serial de Excel → ISO. El origen es 1899-12-30 y NO 1900-01-01: Excel arrastra desde Lotus el
+ *  bug de creerse que 1900 fue bisiesto, y restar dos días es la forma estándar de compensarlo. */
+function xlsxFecha(n){
+  const ms=Date.UTC(1899,11,30)+Math.round(n*86400000);
+  const d=new Date(ms);
+  return isNaN(d.getTime())?null:d;
+}
+/** Saca las filas de la primera hoja con datos. Devuelve {filas:[[celda,…],…], hoja:"Nombre"}.
+ *  Las celdas salen como TEXTO menos las fechas, que salen ya como Date: el formato de fecha solo
+ *  se sabe aquí (en la hoja es un número suelto) y perderlo obligaría a adivinarlo después. */
+function xlsxTabla(sheetXml, compartidas, fechaCols){
+  const doc=new DOMParser().parseFromString(sheetXml,"application/xml");
+  const filas=[];
+  const nodos=doc.getElementsByTagName("row");
+  for(let i=0;i<nodos.length;i++){
+    const fila=[], celdas=nodos[i].getElementsByTagName("c");
+    for(let j=0;j<celdas.length;j++){
+      const c=celdas[j];
+      const ref=c.getAttribute("r")||"", tipo=c.getAttribute("t")||"", estilo=c.getAttribute("s");
+      const col=ref?xlsxCol(ref):j;
+      let v=null;
+      if(tipo==="inlineStr"){
+        const is=c.getElementsByTagName("t");
+        v=is.length?is[0].textContent:"";
+      } else {
+        const vs=c.getElementsByTagName("v");
+        const crudo=vs.length?vs[0].textContent:"";
+        if(tipo==="s") v=compartidas[parseInt(crudo,10)]||"";
+        else if(tipo==="b") v=crudo==="1"?"1":"0";
+        else if(crudo===""){ v=""; }
+        else if(fechaCols[estilo]) v=xlsxFecha(parseFloat(crudo));
+        else v=crudo;
+      }
+      fila[col]=v==null?"":v;
+    }
+    // Se conservan las filas vacías intermedias fuera: una hoja de casa tiene huecos de sobra y
+    // colarlos como gastos en blanco es ruido en la previsualización.
+    if(fila.some(function(x){ return x instanceof Date || String(x||"").trim()!==""; })) filas.push(fila);
+  }
+  return filas;
+}
+/** Qué estilos son fechas. `numFmtId` 14-22 y 45-47 son los formatos de fecha/hora de fábrica; los
+ *  personalizados se reconocen porque su código lleva d/m/y (o el "aaaa" español). */
+function xlsxEstilosFecha(stylesXml){
+  const marcados={};
+  if(!stylesXml) return marcados;
+  const doc=new DOMParser().parseFromString(stylesXml,"application/xml");
+  const fmtFecha={};
+  const fmts=doc.getElementsByTagName("numFmt");
+  for(let i=0;i<fmts.length;i++){
+    const id=fmts[i].getAttribute("numFmtId"), code=(fmts[i].getAttribute("formatCode")||"").toLowerCase();
+    if(/[dmya]/.test(code) && !/^[#0.,\s%]*$/.test(code)) fmtFecha[id]=true;
+  }
+  const xfs=doc.getElementsByTagName("cellXfs")[0];
+  if(!xfs) return marcados;
+  const hijos=xfs.getElementsByTagName("xf");
+  for(let i=0;i<hijos.length;i++){
+    const id=hijos[i].getAttribute("numFmtId")||"0";
+    const n=parseInt(id,10);
+    if((n>=14&&n<=22)||(n>=45&&n<=47)||fmtFecha[id]) marcados[String(i)]=true;
+  }
+  return marcados;
+}
+function xlsxCompartidas(xml){
+  if(!xml) return [];
+  const doc=new DOMParser().parseFromString(xml,"application/xml");
+  const sis=doc.getElementsByTagName("si"), out=[];
+  for(let i=0;i<sis.length;i++){
+    // Un `si` puede venir troceado en varios `t` (trozos con formatos distintos dentro de la
+    // misma celda): se pegan, que es lo que se ve en Excel.
+    const ts=sis[i].getElementsByTagName("t");
+    let s="";
+    for(let j=0;j<ts.length;j++) s+=ts[j].textContent;
+    out.push(s);
+  }
+  return out;
+}
+
+/* ---------- CSV ---------- */
+
+/** CSV/TSV con comillas y saltos de línea dentro de celda. Separador: el que más aparezca en la
+ *  primera línea, entre `;` `,` y tabulador — un Excel español exporta con `;` y uno inglés con
+ *  `,`, y acertar solo con uno de los dos es medio importador. */
+function csvTabla(txt){
+  txt=String(txt||"").replace(/^﻿/,"");
+  const prim=(txt.split(/\r?\n/)[0]||"");
+  const cand=[";",",","\t"];
+  let sep=";", mejor=-1;
+  cand.forEach(function(s){ const n=prim.split(s).length; if(n>mejor){ mejor=n; sep=s; } });
+  const filas=[]; let fila=[], cel="", enComillas=false;
+  for(let i=0;i<txt.length;i++){
+    const ch=txt[i];
+    if(enComillas){
+      if(ch==='"'){ if(txt[i+1]==='"'){ cel+='"'; i++; } else enComillas=false; }
+      else cel+=ch;
+    } else if(ch==='"') enComillas=true;
+    else if(ch===sep){ fila.push(cel); cel=""; }
+    else if(ch==="\n"){ fila.push(cel); cel=""; filas.push(fila); fila=[]; }
+    else if(ch!=="\r") cel+=ch;
+  }
+  if(cel!==""||fila.length){ fila.push(cel); filas.push(fila); }
+  return filas.filter(function(f){ return f.some(function(x){ return String(x||"").trim()!==""; }); });
+}
+
+/* ---------- Leer el fichero que sea ---------- */
+
+/** Devuelve {filas, tipo}. Acepta .xlsx y .csv/.tsv/.txt. Los .xls VIEJOS (formato binario de
+ *  Office 97) no: son otro formato completamente distinto, y decirlo claro vale más que fallar
+ *  con «no he podido leerlo» — el arreglo es «Guardar como → .xlsx», que se hace en dos toques. */
+function hojaLeer(file){
+  const nom=(file&&file.name||"").toLowerCase();
+  if(/\.xls$/.test(nom)) return Promise.reject(new Error("xls-viejo"));
+  if(/\.xlsx$/.test(nom)||/\.xlsm$/.test(nom)){
+    return file.arrayBuffer().then(function(buf){
+      return zipAbrir(buf,function(n){
+        return n==="xl/sharedStrings.xml" || n==="xl/styles.xml" || /^xl\/worksheets\/sheet\d+\.xml$/.test(n);
+      });
+    }).then(function(fich){
+      const hojas=Object.keys(fich).filter(function(n){ return /worksheets/.test(n); }).sort();
+      if(!hojas.length) throw new Error("sin-hojas");
+      const compartidas=xlsxCompartidas(fich["xl/sharedStrings.xml"]);
+      const fechaCols=xlsxEstilosFecha(fich["xl/styles.xml"]);
+      // La primera hoja QUE TENGA DATOS: en las hojas de casa la primera suele ser una portada o
+      // un resumen con fórmulas, y quedarse con ella deja el importador mirando a una pared.
+      let mejor=[];
+      hojas.forEach(function(h){
+        const t=xlsxTabla(fich[h], compartidas, fechaCols);
+        if(t.length>mejor.length) mejor=t;
+      });
+      return { filas:mejor, tipo:"xlsx" };
+    });
+  }
+  return file.text().then(function(txt){ return { filas:csvTabla(txt), tipo:"csv" }; });
+}
+
+/* ---------- Adivinar qué es cada columna ---------- */
+
+/* Los nombres que se ven de verdad en hojas de gastos caseras, en los tres idiomas de la app y
+   en inglés (medio mundo pone las cabeceras en inglés aunque escriba en español). Sin tildes: se
+   comparan normalizados. */
+const HOJA_PISTAS={
+  fecha:   ["fecha","data","date","dia","día","fec","when","fecha operacion","fecha valor"],
+  concepto:["concepto","descripcion","descripción","descripcio","description","detalle","comercio","establecimiento","merchant","gasto","que","qué","nombre","name","memo","referencia","texto"],
+  importe: ["importe","cantidad","cuantia","cuantía","total","amount","precio","euros","eur","€","coste","gasto","valor","cargo","monto"],
+  categoria:["categoria","categoría","categories","category","tipo","type","grupo","clase","concepto2"],
+  banco:   ["banco","cuenta","account","bank","tarjeta","medio","forma de pago","metodo","método","pago"],
+};
+function hojaNorm(s){
+  return String(s==null?"":s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim();
+}
+/** ¿La primera fila son cabeceras? Lo es si casi ninguna celda parece un número o una fecha.
+ *  Sin esto, una hoja sin cabeceras pierde su primera línea de gastos sin decir nada. */
+function hojaTieneCabecera(filas){
+  if(!filas.length) return false;
+  const f=filas[0];
+  let datos=0, con=0;
+  f.forEach(function(c){
+    const s=String(c==null?"":c).trim();
+    if(!s) return;
+    con++;
+    if(c instanceof Date || revoAmt(s)!=null || !isNaN(Date.parse(s))) datos++;
+  });
+  return con>0 && datos<=con/2;
+}
+/** Propone {fecha,concepto,importe,categoria,banco} → índice de columna (o -1).
+ *  Primero por el nombre de la cabecera; lo que quede sin casar, por lo que CONTIENEN las
+ *  columnas. Una hoja sin cabeceras se resuelve entera por contenido. */
+function hojaAdivinar(filas){
+  const map={fecha:-1,concepto:-1,importe:-1,categoria:-1,banco:-1};
+  if(!filas.length) return map;
+  const hayCab=hojaTieneCabecera(filas);
+  const nCols=filas.reduce(function(m,f){ return Math.max(m,f.length); },0);
+  const usada={};
+  if(hayCab){
+    const cab=filas[0];
+    Object.keys(HOJA_PISTAS).forEach(function(campo){
+      for(let c=0;c<nCols;c++){
+        if(usada[c]) continue;
+        const h=hojaNorm(cab[c]);
+        if(!h) continue;
+        const pega=HOJA_PISTAS[campo].some(function(p){ return h===p || h.indexOf(p)===0; });
+        if(pega){ map[campo]=c; usada[c]=true; return; }
+      }
+    });
+  }
+  const cuerpo=filas.slice(hayCab?1:0, (hayCab?1:0)+40);
+  const puntua=function(test){
+    let mejor=-1, mejorN=0;
+    for(let c=0;c<nCols;c++){
+      if(usada[c]) continue;
+      let n=0, con=0;
+      cuerpo.forEach(function(f){
+        const v=f[c];
+        if(v==null||String(v).trim()==="") return;
+        con++; if(test(v)) n++;
+      });
+      if(con>=2 && n>=con*0.7 && n>mejorN){ mejorN=n; mejor=c; }
+    }
+    return mejor;
+  };
+  if(map.fecha<0){
+    map.fecha=puntua(function(v){ return v instanceof Date || (typeof v==="string" && /\d{1,4}[\/\-.]\d{1,2}[\/\-.]\d{1,4}/.test(v)); });
+    if(map.fecha>=0) usada[map.fecha]=true;
+  }
+  if(map.importe<0){
+    map.importe=puntua(function(v){ return !(v instanceof Date) && revoAmt(String(v))!=null; });
+    if(map.importe>=0) usada[map.importe]=true;
+  }
+  if(map.concepto<0){
+    // El concepto es la columna de texto más «hablada»: la que tiene celdas más largas.
+    let mejor=-1, mejorLen=0;
+    for(let c=0;c<nCols;c++){
+      if(usada[c]) continue;
+      let suma=0, con=0;
+      cuerpo.forEach(function(f){
+        const v=f[c];
+        if(v instanceof Date || v==null || String(v).trim()==="") return;
+        if(revoAmt(String(v))!=null && String(v).trim().length<12) return;   // eso es un número
+        con++; suma+=String(v).trim().length;
+      });
+      const media=con?suma/con:0;
+      if(con>=2 && media>mejorLen){ mejorLen=media; mejor=c; }
+    }
+    map.concepto=mejor;
+    if(mejor>=0) usada[mejor]=true;
+  }
+  return map;
+}
+
+/* ---------- De la tabla a gastos ---------- */
+
+/** Fecha desde una celda. Un .xlsx ya la trae como Date; un CSV la trae escrita y ahí manda el
+ *  formato de aquí: 3/4 es el 3 de abril, no el 4 de marzo. `Date.parse` haría lo contrario. */
+function hojaFecha(v){
+  if(v instanceof Date) return v;
+  const s=String(v==null?"":v).trim();
+  if(!s) return null;
+  const m=s.match(/^(\d{1,4})[\/\-.](\d{1,2})[\/\-.](\d{1,4})/);
+  if(m){
+    let a=parseInt(m[1],10), b=parseInt(m[2],10), c=parseInt(m[3],10);
+    let dia,mes,anio;
+    if(m[1].length===4){ anio=a; mes=b; dia=c; }                 // ISO 2026-07-28
+    else { dia=a; mes=b; anio=c; if(anio<100) anio+=anio<70?2000:1900; }
+    const d=new Date(anio,mes-1,dia,12,0,0);                     // mediodía: sin sustos de huso
+    return isNaN(d.getTime())?null:d;
+  }
+  const p=Date.parse(s);
+  return isNaN(p)?null:new Date(p);
+}
+/** Filas + mapeo → gastos listos para el estado. `signo` dice cómo leer los importes de la hoja:
+ *    "auto"    = el signo que traiga (negativo = ingreso, como dentro de la app)
+ *    "gastos"  = todo son gastos, aunque venga sin signo (el caso de la hoja de su madre)
+ *  El resultado NO se guarda: va a la previsualización. */
+function hojaAGastos(filas, map, opts){
+  opts=opts||{};
+  const desde=hojaTieneCabecera(filas)?1:0;
+  const out=[], malas=[];
+  for(let i=desde;i<filas.length;i++){
+    const f=filas[i];
+    const fecha=map.fecha>=0?hojaFecha(f[map.fecha]):null;
+    const impCel=map.importe>=0?f[map.importe]:null;
+    const imp=impCel instanceof Date?null:revoAmt(String(impCel==null?"":impCel));
+    const concepto=map.concepto>=0?String(f[map.concepto]==null?"":f[map.concepto]).trim():"";
+    if(imp==null||!isFinite(imp)||imp===0){ malas.push({fila:i+1, por:"importe"}); continue; }
+    if(!fecha){ malas.push({fila:i+1, por:"fecha"}); continue; }
+    // Dentro de la app un gasto es POSITIVO y un ingreso NEGATIVO (al revés que un extracto).
+    const monto=opts.signo==="gastos" ? Math.abs(imp) : (opts.invertir? -imp : imp);
+    const catHoja=map.categoria>=0?hojaNorm(f[map.categoria]):"";
+    const merchant=concepto||(monto<0?"Ingreso":"Gasto");
+    out.push({
+      id:uid(),
+      date:fecha.toISOString(),
+      merchant:merchant,
+      amount:monto,
+      category: monto<0 ? "ingreso" : hojaCategoria(catHoja, merchant),
+      bank: map.banco>=0 ? String(f[map.banco]==null?"":f[map.banco]).trim() : "",
+      source:"hoja",
+    });
+  }
+  return {gastos:out, malas:malas};
+}
+/** La categoría escrita en la hoja, si se parece a una de las nuestras; si no, la de siempre por
+ *  comercio. No se inventa ninguna: las categorías son las que hay en CAT. */
+function hojaCategoria(cruda, merchant){
+  if(cruda){
+    for(const k in CAT){
+      if(hojaNorm(k)===cruda) return k;
+      const lab=hojaNorm(typeof t==="function"?t("cat_"+k):"");
+      if(lab && lab===cruda) return k;
+    }
+  }
+  return autoCategory(merchant);
+}
+
+/* ---------- Duplicados ---------- */
+
+/** Dos apuntes son el mismo si coinciden DÍA, IMPORTE al céntimo y el comercio normalizado.
+ *  Ni más fino ni más grueso, y las dos cosas se probaron mentalmente contra hojas de verdad:
+ *    · sin el comercio, dos cafés de 1,20 € el mismo día se comerían el uno al otro;
+ *    · con la hora, no casaría nada (una hoja de casa no lleva hora y el banco sí).
+ *  El comercio se compara sin tildes, sin mayúsculas y sin dobles espacios porque la misma tienda
+ *  se escribe de tres maneras entre la hoja y lo que manda el banco. */
+function hojaClave(g){
+  const d=parseDate(g.date);
+  const dia=isNaN(d.getTime())?String(g.date).slice(0,10):
+    d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  const com=hojaNorm(g.merchant).replace(/\s+/g," ");
+  return dia+"|"+Math.round(Math.abs(g.amount)*100)+"|"+com;
+}
+/** Separa lo que entra de lo que ya estaba. Mira contra el histórico Y contra el propio fichero
+ *  (una hoja de casa repite filas: se copian y se pegan meses enteros). */
+function hojaDuplicados(nuevos, existentes){
+  const vistos={};
+  (existentes||[]).forEach(function(g){ vistos[hojaClave(g)]=g; });
+  const altas=[], dupes=[];
+  nuevos.forEach(function(g){
+    const k=hojaClave(g);
+    if(vistos[k]) dupes.push({gasto:g, contra:vistos[k]});
+    else { vistos[k]=g; altas.push(g); }
+  });
+  return {altas:altas, dupes:dupes};
+}
+
+/* ---------- La pantalla ---------- */
+
+/* Cuatro pasos, y ninguno se puede saltar: elegir fichero → decir qué es cada columna → ver el
+   reparto entre lo que entra y lo que ya tenías → guardar. El paso 3 es el que él pidió con
+   nombre y apellidos: «que si pillara alguna cosa duplicada que dijera de forma guapa con alguna
+   animación o algo el descarte y lo que se queda». */
+function SheetImport({state, set, onClose, showToast}){
+  useBackClose(true, onClose);
+  const [paso,setPaso]=useState(0);          // 0 fichero · 1 columnas · 2 reparto · 3 hecho
+  const [filas,setFilas]=useState(null);
+  const [map,setMap]=useState({fecha:-1,concepto:-1,importe:-1,categoria:-1,banco:-1});
+  const [signo,setSigno]=useState("gastos"); // hoja de casa: todo son gastos aunque no lleven signo
+  const [err,setErr]=useState("");
+  const [leyendo,setLeyendo]=useState(false);
+  const [reparto,setReparto]=useState(null); // {altas, dupes, malas}
+  const [revelado,setRevelado]=useState(0);  // cuántas tarjetas del reparto han entrado ya
+  const fileRef=useRef(null);
+
+  const nCols=(filas||[]).reduce(function(m,f){ return Math.max(m,f.length); },0);
+  const hayCab=filas?hojaTieneCabecera(filas):false;
+  const cabDe=function(c){
+    const h=hayCab?String(filas[0][c]==null?"":filas[0][c]).trim():"";
+    return h||("Columna "+(c+1));
+  };
+  const ejemploDe=function(c){
+    const cuerpo=(filas||[]).slice(hayCab?1:0);
+    for(let i=0;i<cuerpo.length;i++){
+      const v=cuerpo[i][c];
+      if(v instanceof Date) return v.toLocaleDateString(loc());
+      const s=String(v==null?"":v).trim();
+      if(s) return s.length>22?s.slice(0,22)+"…":s;
+    }
+    return "—";
+  };
+
+  const cargar=function(file){
+    if(!file) return;
+    setErr(""); setLeyendo(true);
+    hojaLeer(file).then(function(r){
+      if(!r.filas.length) throw new Error("vacio");
+      setFilas(r.filas);
+      setMap(hojaAdivinar(r.filas));
+      setPaso(1);
+    }).catch(function(e){
+      const m=(e&&e.message)||String(e);
+      setErr(m==="xls-viejo"?t("ih_err_xls"):m==="no-zip"?t("ih_err_zip"):m==="vacio"?t("ih_err_vacio"):t("ih_err_leer"));
+      try{ cloud.logEvent("error","import hoja: "+m.slice(0,120)); }catch(_){}
+    }).finally(function(){ setLeyendo(false); });
+  };
+
+  const calcular=function(){
+    const r=hojaAGastos(filas, map, {signo:signo});
+    const d=hojaDuplicados(r.gastos, state.expenses||[]);
+    setReparto({altas:d.altas, dupes:d.dupes, malas:r.malas});
+    setRevelado(0);
+    setPaso(2);
+  };
+  /* El reparto entra CONTANDO, no de golpe: cada tarjeta aparece con un pelín de retraso sobre
+     la anterior. Es lo que convierte «se descartan 34» en algo que se entiende de un vistazo —y
+     es literalmente lo que pidió. Se corta a las 14: pasado eso ya no informa, solo hace esperar. */
+  useEffect(function(){
+    if(paso!==2||!reparto) return undefined;
+    const tot=Math.min(14, reparto.altas.length+reparto.dupes.length);
+    if(revelado>=tot) return undefined;
+    const id=setTimeout(function(){ setRevelado(function(n){ return n+1; }); }, revelado===0?90:52);
+    return function(){ clearTimeout(id); };
+  },[paso,reparto,revelado]);
+
+  const guardar=function(){
+    if(!reparto||!reparto.altas.length){ onClose(); return; }
+    const limpios=reparto.altas.map(function(g){
+      // `bank` de la hoja es texto libre («Visa», «la de mi madre»): se queda en el concepto como
+      // apunte y NO se convierte en un banco de la app, que tiene entidades cerradas.
+      const o={id:g.id,date:g.date,merchant:g.merchant,amount:g.amount,category:g.category,source:"hoja"};
+      if(g.bank) o.note=g.bank;
+      return o;
+    });
+    set(function(s){
+      return Object.assign({},s,{expenses:(s.expenses||[]).concat(limpios)});
+    });
+    setPaso(3);
+    showToast(tf("ih_ok",{n:limpios.length}));
+  };
+
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",
+    padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+
+  return React.createElement("div",{style:wrap,className:"hoja-import"}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("v4_back")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 6px"}}, t("ih_title")),
+
+    paso===0 && React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:16}}, t("ih_intro")),
+      React.createElement("ol",{className:"hoja-pasos"},
+        t("ih_steps").map(function(s,i){ return React.createElement("li",{key:i}, s); })),
+      err && React.createElement("div",{className:"hoja-err"}, err),
+      React.createElement("button",{type:"button",className:"v4-cta",disabled:leyendo,
+        onClick:function(){ if(fileRef.current) fileRef.current.click(); }},
+        leyendo?t("ih_leyendo"):t("ih_pick")),
+      React.createElement("input",{ref:fileRef,type:"file",style:{display:"none"},
+        accept:".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        onChange:function(e){ cargar(e.target.files&&e.target.files[0]); e.target.value=""; }}),
+      React.createElement("div",{className:"hint",style:{marginTop:12}}, t("ih_privacidad"))
+    ),
+
+    paso===1 && filas && React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.55,marginBottom:14}},
+        tf("ih_leidas",{n:filas.length-(hayCab?1:0)})),
+      ["fecha","concepto","importe","categoria","banco"].map(function(campo){
+        return React.createElement("div",{key:campo,className:"hoja-map"},
+          React.createElement("div",{className:"hoja-map-lbl"},
+            t("ih_c_"+campo),
+            (campo==="fecha"||campo==="concepto"||campo==="importe")
+              ? React.createElement("span",{className:"hoja-req"}," *") : null),
+          React.createElement("select",{className:"hoja-sel",value:String(map[campo]),
+            onChange:function(e){ const v=parseInt(e.target.value,10); setMap(function(m){ return Object.assign({},m,{[campo]:v}); }); }},
+            React.createElement("option",{value:"-1"}, t("ih_sin")),
+            (function(){ const o=[]; for(let c=0;c<nCols;c++) o.push(React.createElement("option",{key:c,value:String(c)}, cabDe(c)+" · "+ejemploDe(c))); return o; })()
+          ));
+      }),
+      React.createElement("div",{className:"hoja-map"},
+        React.createElement("div",{className:"hoja-map-lbl"}, t("ih_signo")),
+        React.createElement("div",{style:{display:"flex",gap:8}},
+          [["gastos",t("ih_signo_gastos")],["auto",t("ih_signo_auto")]].map(function(o){
+            const on=signo===o[0];
+            return React.createElement("button",{key:o[0],type:"button",className:"chip"+(on?" on":""),
+              onClick:function(){ setSigno(o[0]); }}, o[1]);
+          }))),
+      React.createElement("div",{className:"hint",style:{margin:"4px 0 14px"}}, t("ih_signo_hint")),
+      (map.fecha<0||map.concepto<0||map.importe<0)
+        ? React.createElement("div",{className:"hoja-err"}, t("ih_faltan"))
+        : null,
+      React.createElement("button",{type:"button",className:"v4-cta",
+        disabled:map.fecha<0||map.concepto<0||map.importe<0, onClick:calcular}, t("ih_ver"))
+    ),
+
+    paso===2 && reparto && React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"hoja-marc"},
+        React.createElement("div",{className:"hoja-marc-c hoja-marc-ok"},
+          React.createElement("b",null, String(reparto.altas.length)),
+          React.createElement("span",null, t("ih_entran"))),
+        React.createElement("div",{className:"hoja-marc-c hoja-marc-dup"},
+          React.createElement("b",null, String(reparto.dupes.length)),
+          React.createElement("span",null, t("ih_repes")))),
+      reparto.malas.length>0 && React.createElement("div",{className:"hint",style:{marginBottom:10}},
+        tf("ih_malas",{n:reparto.malas.length})),
+      React.createElement("div",{style:{marginTop:6}},
+        reparto.altas.slice(0,8).map(function(g,i){
+          return React.createElement("div",{key:"a"+g.id,
+            className:"hoja-fila hoja-fila-ok"+(i<revelado?" dentro":"")},
+            React.createElement("span",{className:"hoja-fila-ic"},"✓"),
+            React.createElement("span",{className:"hoja-fila-tx"}, g.merchant),
+            React.createElement("span",{className:"hoja-fila-eu"}, eur(Math.abs(g.amount))));
+        }),
+        reparto.altas.length>8 && React.createElement("div",{className:"hint",style:{margin:"2px 0 10px"}},
+          tf("ih_y_mas",{n:reparto.altas.length-8})),
+        reparto.dupes.slice(0,6).map(function(d,i){
+          return React.createElement("div",{key:"d"+d.gasto.id,
+            className:"hoja-fila hoja-fila-dup"+((i+reparto.altas.slice(0,8).length)<revelado?" dentro":"")},
+            React.createElement("span",{className:"hoja-fila-ic"},"↺"),
+            React.createElement("span",{className:"hoja-fila-tx"}, d.gasto.merchant),
+            React.createElement("span",{className:"hoja-fila-eu"}, eur(Math.abs(d.gasto.amount))));
+        }),
+        reparto.dupes.length>6 && React.createElement("div",{className:"hint",style:{margin:"2px 0 10px"}},
+          tf("ih_y_mas_dup",{n:reparto.dupes.length-6}))),
+      React.createElement("div",{className:"hint",style:{margin:"10px 0 14px"}}, t("ih_dup_hint")),
+      React.createElement("button",{type:"button",className:"v4-cta",disabled:!reparto.altas.length,onClick:guardar},
+        reparto.altas.length?tf("ih_guardar",{n:reparto.altas.length}):t("ih_nada")),
+      React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:10},
+        onClick:function(){ setPaso(1); }}, t("ih_volver"))
+    ),
+
+    paso===3 && React.createElement("div",{className:"hoja-fin"},
+      React.createElement("div",{className:"hoja-fin-ic"},"🎉"),
+      React.createElement("div",{className:"serif",style:{fontSize:21,marginBottom:6}}, t("ih_fin_t")),
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:16}},
+        tf("ih_fin_s",{n:reparto?reparto.altas.length:0})),
+      React.createElement("button",{type:"button",className:"v4-cta",onClick:onClose}, t("ih_fin_ok")))
+  ));
+}
+/* ============================================================
    APP
    ============================================================ */
 /* Mini-tutorial por pestaña: la primera vez que se abre una pestaña sale desplegado
@@ -10593,9 +11423,30 @@ function betaChecklist(version){
   // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
   return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
 }
+/* ¿LO QUE LLEVO PUESTO YA ESTÁ EN PRODUCCIÓN? (petición suya 2026-07-28)
+   «Ponme que cuando suba algo a prod, la beta no haya nada para aprobar porque lógicamente ya lo
+   hice para que subiera prod». Y es verdad: promocionar ES la aprobación. Pero el panel solo
+   miraba la versión que corre en el móvil, así que después de subir la 4.12.1 a producción
+   seguía enseñando su checklist entera como si faltara por probar.
+
+   Se compara la base de lo que corre (4.12.1.3 → 4.12.1) contra lo que sirve Pages. Si producción
+   ya va por ahí o más allá, esto está aprobado por definición. `null` mientras se pregunta o si
+   la red falla: en la duda se sigue preguntando, que es el lado seguro. */
+function useYaEnProd(){
+  const [prod,setProd]=useState(null);
+  useEffect(function(){
+    if(!window._mcProdVersion) return;
+    let vivo=true;
+    window._mcProdVersion().then(function(v){ if(vivo) setProd(v||null); });
+    return function(){ vivo=false; };
+  },[]);
+  if(!prod||!window._mcNewerVer) return null;
+  return !window._mcNewerVer(mcVerBase(CONFIG.APP_VERSION), prod) ? prod : false;
+}
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
   const pack=betaChecklist(CONFIG.APP_VERSION);
+  const yaEnProd=useYaEnProd();
   // La clave va por la COMPILACIÓN (4.12.0.17), no por la versión base (4.12.0). Petición suya
   // 2026-07-26: «cuando me subas una nueva versión con el fix de eso, que se resetee y se ponga
   // vacío». Con la clave por versión base, la beta siguiente heredaba las cruces y los comentarios
@@ -10723,8 +11574,18 @@ function BetaReviewPanel({onClose, showToast}){
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
       "v"+CONFIG.APP_VERSION+(apkCode?" · APK "+apkCode:"")+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
-      "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
-    heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+      yaEnProd
+        ? "Esta versión ya la subiste tú, así que no hay nada que aprobar. La checklist se queda abajo por si quieres repasar algo."
+        : "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+    // YA ESTÁ EN PRODUCCIÓN → no se pide veredicto (2026-07-28). Promocionar ES aprobar: pedirle
+    // que apruebe otra vez lo que él mismo subió hace horas es ruido, y encima ruido que parece
+    // trabajo pendiente cada vez que abre Ajustes.
+    yaEnProd && React.createElement("div",{style:{fontSize:13,lineHeight:1.55,marginBottom:14,padding:"12px 14px",borderRadius:14,
+      background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--mint-dim)"}},
+      React.createElement("b",null,"✅ Ya está en producción"),
+      React.createElement("div",{style:{color:"var(--muted)",marginTop:4}},
+        "La v"+yaEnProd+" es la que tienen ahora tu padre y tu pareja. Esta beta ya pasó por aquí.")),
+    heredados.current>0 && !yaEnProd && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
       background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
       "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
       " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
@@ -10755,8 +11616,10 @@ function BetaReviewPanel({onClose, showToast}){
       );
     }),
 
-    // Veredicto
-    sent
+    // Veredicto. Con la versión ya en producción no se pide ninguno: no hay nada que decidir.
+    yaEnProd
+      ? null
+      : sent
       ? React.createElement("div",{style:{marginTop:16,padding:"14px 16px",borderRadius:16,
           border:"1px solid "+(sent==="approved"?"var(--mint)":"var(--coral)"),background:"var(--sur)"}},
           React.createElement("div",{style:{fontWeight:800,fontSize:14.5,marginBottom:6}},
@@ -11531,6 +12394,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [events,setEvents]=useState(null);
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
   const [betaOpen,setBetaOpen]=useState(false);  // pantalla «Revisar la beta» (solo en canal beta)
+  const [hojaOpen,setHojaOpen]=useState(false);  // importar una hoja de gastos (Excel/CSV)
+  const yaEnProd=useYaEnProd();                  // lo que corre ya lo sirve Pages → nada que aprobar
   const loadEvents=function(){
     cloud.adminEvents(200).then(function(rows){
       setEvents(rows||[]);
@@ -11936,9 +12801,13 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
-    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
+    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar excel hoja csv gastos",null,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
-      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
+      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); }),
+      // Importar una hoja de gastos vive aquí y no en «Mis bancos» (donde está el CSV de Revolut)
+      // porque no es una sincronización: es traerse un histórico de fuera, como restaurar una
+      // copia. Y es lo que va a buscar quien llegue con el Excel de su madre.
+      row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); })
     ),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
@@ -12060,6 +12929,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
               const pack=betaChecklist(CONFIG.APP_VERSION);
               const done=store.get("_betaReview_"+pack.v)||{};
               const n=Object.keys(done).length, tot=pack.items.length;
+              // Con la versión ya subida a producción la fila deja de cantar «3/8» — ese contador
+              // se leía como trabajo pendiente cada vez que abría Ajustes, y no lo era (2026-07-28).
+              if(yaEnProd) return row("betarev","🔍","Revisar esta beta","✅ ya en producción", function(){ setBetaOpen(true); });
               return row("betarev","🔍","Revisar esta beta", tot?(n+"/"+tot):null, function(){ setBetaOpen(true); });
             })(),
             (function(){
@@ -12089,6 +12961,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       )
     ),
     betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
+    hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHojaOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 
@@ -15098,6 +15971,13 @@ function App(){
     // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
     // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
     trackW.current=(trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360;
+    /* Las medidas del REBOTE, también aquí y por lo mismo: `scrollHeight`/`clientHeight` fuerzan
+       recálculo de layout, y en un `touchmove` eso son ~35 reflows por arrastre (la lección que
+       costó los rechazos .17→.23, arriba en `onMove`). El alto del contenido no cambia mientras
+       el dedo está puesto, así que se mide una vez y en el móvil solo se lee `scrollTop`. */
+    const pgs=trackRef.current&&trackRef.current.children;
+    const pg=pgs&&pgs[tab];
+    reb.current={ el:pg||null, tope:pg?Math.max(0,pg.scrollHeight-pg.clientHeight):0, dir:0, ancla:0 };
     prepped.current=0;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
@@ -15173,6 +16053,34 @@ function App(){
       if(e.cancelable) e.preventDefault();
       return;
     }
+    /* El rebote, con el eje ya declarado vertical y el perfil descartado (ver `reb` arriba). */
+    if(axis.current==="y" && !document.documentElement.classList.contains("reduce-motion")){
+      const b=reb.current, pg=b.el;
+      if(pg){
+        const st=pg.scrollTop;
+        // `dir` = hacia dónde se estira: -1 abajo (dedo subiendo), +1 arriba (dedo bajando).
+        let dir=0;
+        if(st>=b.tope-1 && ddy<0) dir=-1;
+        else if(st<=0 && ddy>0 && tab!==0) dir=1;
+        if(dir){
+          // El ancla se fija al TOCAR el tope, no al empezar el gesto: si venías scrolleando
+          // media pantalla, el estirón tiene que contar desde el final, no desde tu dedo.
+          if(b.dir!==dir){ b.dir=dir; b.ancla=ddy; }
+          const crudo=Math.max(0,(ddy-b.ancla)*dir);
+          // Resistencia asintótica: cede mucho al principio y casi nada al final, que es lo que
+          // hace que se sienta elástico y no como un panel suelto.
+          const d=REB_MAX*(1-1/(crudo/REB_MAX+1));
+          pg.style.transition="";
+          pg.style.transform="translate3d(0,"+(d*dir).toFixed(1)+"px,0)";
+          // Solo se le quita el gesto al navegador cuando de verdad estamos estirando: por
+          // debajo de eso el scroll tiene que seguir siendo suyo o se nota agarrotado.
+          if(crudo>2 && e.cancelable) e.preventDefault();
+          return;
+        }
+        if(b.dir) soltarRebote();
+      }
+      return;
+    }
     if(axis.current!=="x") return;
     dx.current=ddx;
     if(gestureMode.current==="drawer"){
@@ -15220,6 +16128,7 @@ function App(){
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
+    if(reb.current.dir) soltarRebote();   // el estirón vuelve a su sitio al levantar el dedo
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
       const dist=pDY.current;
@@ -15288,6 +16197,9 @@ function App(){
      El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
   const onCancel=function(){
     if(!dragging.current) return;
+    // Un gesto cancelado (noti, borde de pantalla, app a segundo plano) no puede dejar la página
+    // estirada para siempre: mismo criterio que la red de seguridad de `onStart`.
+    if(reb.current.dir) soltarRebote();
     if(gestureMode.current==="profile"){
       profileRelease();
       setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba
@@ -15308,6 +16220,64 @@ function App(){
      Con el listener a mano el gesto es nuestro de verdad. `touchcancel` sigue atado (`onCancel`)
      porque el sistema —una noti, el borde de la pantalla— también puede llevárselo. */
   const viewportRef=useRef(null);
+  /* LA RAYITA SALTA POR ENCIMA DEL + (petición suya 2026-07-28). Solo cuando el cambio de
+     pestaña CRUZA el hueco del FAB —slots: 0 Inicio · 1 Gastos · 2 el + · 3 Plan · 4 Cartera—,
+     que es el único caso en que el indicador le pasa por la cara. Entre contiguas se desliza
+     como siempre.
+     Sin `useState` A PROPÓSITO: esto corre en cada cambio de pestaña, y un estado aquí son dos
+     repintados de la app entera por gesto — exactamente el tipo de trabajo atado al momento en
+     que el usuario toca que costó siete vueltas sacar del carrusel (ver CHANGELOG 4.12.0). La
+     clase se pone y se quita sobre el nodo y React ni se entera. */
+  /* REBOTE AL LLEGAR AL FINAL DE UNA PESTAÑA (petición suya 2026-07-28: «la animación esa chula
+     de las settings de perfil y settings normales que si bajas abajo del todo hace como efecto
+     rebote, eso lo hacen la mayoría de apps y me flipa muchísimo, ¿lo podrías aplicar para cada
+     pestaña?»).
+
+     No sale gratis del navegador: la WebView de Android no hace rubber-band, hace un fogonazo de
+     borde. Así que el rebote se dibuja a mano — se mueve la página con `transform` mientras el
+     dedo insiste, y se suelta con una curva al levantarlo.
+
+     DÓNDE NO (sus dos avisos, textuales): «con cuidado de no aplicarlo cuando esté arriba del
+     todo para abrir el perfil o cuando deslice hacia el lado para abrir las settings».
+       · De lado: no hay nada que hacer, el eje ya está decidido antes de llegar aquí — si el
+         gesto es horizontal esto ni se mira.
+       · Arriba del todo: el rebote de ARRIBA se apaga en Resumen (tab 0), que es donde el tirón
+         hacia abajo abre el perfil. En el resto de pestañas arriba no compite con nada y sí lo
+         tiene. Abajo lo tienen las cuatro: ahí no hay ningún gesto que estorbar. */
+  const reb=useRef({el:null,tope:0,dir:0,ancla:0});
+  const REB_MAX=88;   // px de tope, asintótico: por mucho que tires, no se despega más
+  const soltarRebote=function(){
+    const b=reb.current, el=b&&b.el;
+    b.dir=0;
+    if(!el) return;
+    // Curva de vuelta: la misma familia que usa el asentamiento del carrusel, para que la app
+    // entera se mueva con el mismo idioma.
+    el.style.transition="transform .34s cubic-bezier(.32,.72,0,1)";
+    el.style.transform="";
+    setTimeout(function(){ if(el.style) el.style.transition=""; },360);
+  };
+  const indRef=useRef(null);
+  const tabPrevRef=useRef(tab);
+  useEffect(function(){
+    const antes=tabPrevRef.current; tabPrevRef.current=tab;
+    const el=indRef.current;
+    if(!el || antes===tab || ((antes<=1)===(tab<=1))) return undefined;
+    el.classList.remove("rodea");
+    void el.offsetWidth;   // reinicia la animación si encadena dos saltos seguidos
+    el.classList.add("rodea");
+    const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);
+    return function(){ clearTimeout(id); };
+  },[tab]);
+  /* RACHA DE TEMPORADA AL CAMBIAR DE PESTAÑA (petición suya 2026-07-28: «alguna animación chula
+     si deslizas»). Las piezas ya no caen en bucle —se cortan solas tras dos vueltas, ver
+     `.season-fx span` en el shell— así que esto es lo que las trae de vuelta: alternar la clase
+     cambia el nombre de los keyframes y las 18 arrancan de cero otra vez.
+     Por el DOM y no por estado, como el salto de la rayita: un `setState` aquí repinta la app
+     entera en cada deslizada. Un `classList.toggle` no cuesta ni un frame. */
+  useEffect(function(){
+    const fx=document.querySelector(".season-fx");
+    if(fx) fx.classList.toggle("b");
+  },[tab]);
   const gestRef=useRef({});
   gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
   useEffect(function(){
@@ -15616,7 +16586,7 @@ function App(){
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
-          React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),
+          React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),ref:indRef,
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
             React.createElement("span",null)
           ),
@@ -15766,6 +16736,29 @@ function mcFetchManifest(name){
     throw new Error("beta/"+name+": "+((e&&e.message)||e));
   });
 }
+
+/* QUÉ VERSIÓN SIRVE PRODUCCIÓN AHORA MISMO (2026-07-28).
+   Siempre desde Pages (`_mcOtaBASE`), pase lo que pase con el canal: producción ES `main`, y el
+   móvil en beta también tiene derecho a saber por dónde va el resto de la familia.
+
+   Existe por una petición suya: «cuando suba algo a prod, la beta no haya nada para aprobar
+   porque lógicamente ya lo hice para que subiera prod». El panel de revisión no tenía forma de
+   saberlo —solo miraba la versión que lleva puesta— así que seguía pidiendo que aprobara una
+   beta que él mismo había promocionado horas antes. Con esto, el panel compara y se calla.
+
+   Se cachea en memoria (no en localStorage) para no pedirlo en cada apertura del panel; una
+   sesión de app es un intervalo perfectamente razonable para este dato. Falla en silencio a
+   `null` = «no se sabe», que la UI trata como «sigue preguntando»: quedarse callado por un fallo
+   de red sería peor que preguntar de más. */
+var _mcProdVerCache=null;
+window._mcProdVersion=function(){
+  if(_mcProdVerCache) return _mcProdVerCache;
+  _mcProdVerCache=mcGetJson(_mcOtaBASE+"version.json?ts="+Date.now())
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(v){ return (v&&v.version)?String(v.version):null; })
+    .catch(function(){ return null; });
+  return _mcProdVerCache;
+};
 
 /* CAMBIAR DE CANAL NO ES «ACTUALIZAR»: ES INSTALAR LO QUE TOCA EN EL CANAL NUEVO.
    El OTA solo va hacia ADELANTE (`_mcNewerVer`), así que apagar la beta dejaba el móvil con el
@@ -16130,14 +17123,31 @@ mcScheduleIdle(function(){ mcLoadSentryDeferred(); }, 1800);
      lee como un fallo, no como una pantalla de entrada. Medio segundo es lo que tarda el ojo en
      registrar una marca; menos, y da igual haberla puesto. */
   var t0=Date.now(), MINIMO=520, ESPERA_NUBE=1800, TOPE_DURO=8000, fuera=false;
+  /* SE AVISA DE QUE LA CORTINA SE LEVANTA (2026-07-28). El contador del patrimonio de Inicio
+     arrancaba al montar React, o sea DETRÁS del splash: cuando él veía la pantalla la cuenta ya
+     había terminado y el número aparecía puesto. Su feedback: «la animación que ya existía pero
+     no da tiempo que salga, de los números de patrimonio sumando de manera suave, eso molaba
+     mucho y se perdió». No se perdió — se gastaba a puerta cerrada. Con este aviso, la cuenta
+     empieza cuando hay alguien mirando. */
+  function avisar(){
+    window.__mcSplashGone=true;
+    try{ window.dispatchEvent(new Event("mc-splash-gone")); }catch(e){}
+  }
   function quitar(){
     if(fuera) return; fuera=true;
-    var l=document.getElementById("mc-load"); if(!l) return;
+    var l=document.getElementById("mc-load"); if(!l){ avisar(); return; }
     requestAnimationFrame(function(){ requestAnimationFrame(function(){
-      l.style.transition="opacity .22s ease";
+      /* La marca se va CRECIENDO un pelín, no solo desvaneciéndose: la app que hay debajo entra
+         con sus tarjetas subiendo (`.rise`), y una cortina que solo baja la opacidad se lee como
+         un corte. Creciendo parece que te deja pasar. */
+      l.style.transition="opacity .26s ease, transform .26s cubic-bezier(.32,.72,0,1)";
       l.style.opacity="0";
+      l.style.transform="scale(1.04)";
       l.style.pointerEvents="none";
-      setTimeout(function(){ try{ l.remove(); }catch(e){} },240);
+      // El aviso va con la cortina ya en marcha, no al acabar de quitarla: así el contador y el
+      // fundido corren a la vez y el número se ve subir desde el primer frame visible.
+      avisar();
+      setTimeout(function(){ try{ l.remove(); }catch(e){} },280);
     }); });
   }
   var t=setInterval(function(){

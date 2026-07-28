@@ -696,9 +696,30 @@ function betaChecklist(version){
   // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
   return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
 }
+/* ¿LO QUE LLEVO PUESTO YA ESTÁ EN PRODUCCIÓN? (petición suya 2026-07-28)
+   «Ponme que cuando suba algo a prod, la beta no haya nada para aprobar porque lógicamente ya lo
+   hice para que subiera prod». Y es verdad: promocionar ES la aprobación. Pero el panel solo
+   miraba la versión que corre en el móvil, así que después de subir la 4.12.1 a producción
+   seguía enseñando su checklist entera como si faltara por probar.
+
+   Se compara la base de lo que corre (4.12.1.3 → 4.12.1) contra lo que sirve Pages. Si producción
+   ya va por ahí o más allá, esto está aprobado por definición. `null` mientras se pregunta o si
+   la red falla: en la duda se sigue preguntando, que es el lado seguro. */
+function useYaEnProd(){
+  const [prod,setProd]=useState(null);
+  useEffect(function(){
+    if(!window._mcProdVersion) return;
+    let vivo=true;
+    window._mcProdVersion().then(function(v){ if(vivo) setProd(v||null); });
+    return function(){ vivo=false; };
+  },[]);
+  if(!prod||!window._mcNewerVer) return null;
+  return !window._mcNewerVer(mcVerBase(CONFIG.APP_VERSION), prod) ? prod : false;
+}
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
   const pack=betaChecklist(CONFIG.APP_VERSION);
+  const yaEnProd=useYaEnProd();
   // La clave va por la COMPILACIÓN (4.12.0.17), no por la versión base (4.12.0). Petición suya
   // 2026-07-26: «cuando me subas una nueva versión con el fix de eso, que se resetee y se ponga
   // vacío». Con la clave por versión base, la beta siguiente heredaba las cruces y los comentarios
@@ -826,8 +847,18 @@ function BetaReviewPanel({onClose, showToast}){
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
       "v"+CONFIG.APP_VERSION+(apkCode?" · APK "+apkCode:"")+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
-      "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
-    heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+      yaEnProd
+        ? "Esta versión ya la subiste tú, así que no hay nada que aprobar. La checklist se queda abajo por si quieres repasar algo."
+        : "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+    // YA ESTÁ EN PRODUCCIÓN → no se pide veredicto (2026-07-28). Promocionar ES aprobar: pedirle
+    // que apruebe otra vez lo que él mismo subió hace horas es ruido, y encima ruido que parece
+    // trabajo pendiente cada vez que abre Ajustes.
+    yaEnProd && React.createElement("div",{style:{fontSize:13,lineHeight:1.55,marginBottom:14,padding:"12px 14px",borderRadius:14,
+      background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--mint-dim)"}},
+      React.createElement("b",null,"✅ Ya está en producción"),
+      React.createElement("div",{style:{color:"var(--muted)",marginTop:4}},
+        "La v"+yaEnProd+" es la que tienen ahora tu padre y tu pareja. Esta beta ya pasó por aquí.")),
+    heredados.current>0 && !yaEnProd && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
       background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
       "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
       " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
@@ -858,8 +889,10 @@ function BetaReviewPanel({onClose, showToast}){
       );
     }),
 
-    // Veredicto
-    sent
+    // Veredicto. Con la versión ya en producción no se pide ninguno: no hay nada que decidir.
+    yaEnProd
+      ? null
+      : sent
       ? React.createElement("div",{style:{marginTop:16,padding:"14px 16px",borderRadius:16,
           border:"1px solid "+(sent==="approved"?"var(--mint)":"var(--coral)"),background:"var(--sur)"}},
           React.createElement("div",{style:{fontWeight:800,fontSize:14.5,marginBottom:6}},
@@ -1634,6 +1667,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [events,setEvents]=useState(null);
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
   const [betaOpen,setBetaOpen]=useState(false);  // pantalla «Revisar la beta» (solo en canal beta)
+  const [hojaOpen,setHojaOpen]=useState(false);  // importar una hoja de gastos (Excel/CSV)
+  const yaEnProd=useYaEnProd();                  // lo que corre ya lo sirve Pages → nada que aprobar
   const loadEvents=function(){
     cloud.adminEvents(200).then(function(rows){
       setEvents(rows||[]);
@@ -2039,9 +2074,13 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
-    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
+    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar excel hoja csv gastos",null,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
-      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
+      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); }),
+      // Importar una hoja de gastos vive aquí y no en «Mis bancos» (donde está el CSV de Revolut)
+      // porque no es una sincronización: es traerse un histórico de fuera, como restaurar una
+      // copia. Y es lo que va a buscar quien llegue con el Excel de su madre.
+      row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); })
     ),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
@@ -2163,6 +2202,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
               const pack=betaChecklist(CONFIG.APP_VERSION);
               const done=store.get("_betaReview_"+pack.v)||{};
               const n=Object.keys(done).length, tot=pack.items.length;
+              // Con la versión ya subida a producción la fila deja de cantar «3/8» — ese contador
+              // se leía como trabajo pendiente cada vez que abría Ajustes, y no lo era (2026-07-28).
+              if(yaEnProd) return row("betarev","🔍","Revisar esta beta","✅ ya en producción", function(){ setBetaOpen(true); });
               return row("betarev","🔍","Revisar esta beta", tot?(n+"/"+tot):null, function(){ setBetaOpen(true); });
             })(),
             (function(){
@@ -2192,6 +2234,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       )
     ),
     betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
+    hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHojaOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 

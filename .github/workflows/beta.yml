@@ -39,9 +39,40 @@ jobs:
 
       # El número de la beta se calcula ANTES de sellar: el bundle tiene que llevar dentro
       # exactamente la misma versión que va a anunciar el manifiesto (ver más abajo).
+      #
+      # EL SUFIJO CUENTA COMPILACIONES DE ESTA VERSIÓN, NO RUNS DEL REPO (2026-07-28).
+      # Antes era `${GITHUB_RUN_NUMBER}`, que es un contador GLOBAL del workflow y nunca se
+      # reinicia: la 4.12.1 se anunciaba como «4.12.1.52» aunque fuera su primera compilación.
+      # Su queja: «sale la versión 4.12.0.52, resetea ese 52 que no tiene sentido». Y tenía razón:
+      # el 52 no dice nada de la beta que llevas puesta, solo cuántas veces se ha lanzado esto
+      # desde que existe.
+      #
+      # El sufijo NO se puede quitar del todo, y conviene tenerlo escrito para no volver a
+      # intentarlo: `_mcNewerVer` compara número a número, así que una beta que se llamara igual
+      # que la estable (4.12.1 == 4.12.1) NO se vería como nueva y el móvil no la descargaría
+      # jamás. Hace falta un número más, y lo que se arregla es de dónde sale.
+      #
+      # De dónde sale ahora: del título de la propia release `beta`, que ya dice cuál fue la
+      # última («Beta 4.12.1.3»). Misma versión base → +1; versión base nueva → empieza en 1.
+      # Sin estado que mantener en ningún sitio y se recompone solo si alguien borra la release.
       - name: Número de esta beta
         id: num
-        run: echo "beta=$(cat VERSION | tr -d '[:space:]').${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BASE=$(cat VERSION | tr -d '[:space:]')
+          PREV=$(gh release view beta --json name -q .name 2>/dev/null || echo "")
+          # «Beta 4.12.1.3» → 4.12.1.3 ; cualquier otra cosa (release recién creada, título a
+          # mano) cae al else y arranca de cero, que es lo correcto: no sabemos qué había.
+          PREV_VER=$(printf '%s' "$PREV" | sed -n 's/^Beta \([0-9][0-9.]*\)$/\1/p')
+          N=1
+          if [ -n "$PREV_VER" ]; then
+            PREV_BASE=$(printf '%s' "$PREV_VER" | cut -d. -f1-3)
+            PREV_N=$(printf '%s' "$PREV_VER" | cut -d. -f4)
+            if [ "$PREV_BASE" = "$BASE" ] && [ -n "$PREV_N" ]; then N=$((PREV_N + 1)); fi
+          fi
+          echo "anterior=«$PREV» · esta=$BASE.$N"
+          echo "beta=$BASE.$N" >> "$GITHUB_OUTPUT"
 
       - name: Ensamblar y sellar
         env:

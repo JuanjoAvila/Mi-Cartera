@@ -1867,6 +1867,13 @@ function App(){
     // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
     // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
     trackW.current=(trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360;
+    /* Las medidas del REBOTE, también aquí y por lo mismo: `scrollHeight`/`clientHeight` fuerzan
+       recálculo de layout, y en un `touchmove` eso son ~35 reflows por arrastre (la lección que
+       costó los rechazos .17→.23, arriba en `onMove`). El alto del contenido no cambia mientras
+       el dedo está puesto, así que se mide una vez y en el móvil solo se lee `scrollTop`. */
+    const pgs=trackRef.current&&trackRef.current.children;
+    const pg=pgs&&pgs[tab];
+    reb.current={ el:pg||null, tope:pg?Math.max(0,pg.scrollHeight-pg.clientHeight):0, dir:0, ancla:0 };
     prepped.current=0;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
@@ -1942,6 +1949,34 @@ function App(){
       if(e.cancelable) e.preventDefault();
       return;
     }
+    /* El rebote, con el eje ya declarado vertical y el perfil descartado (ver `reb` arriba). */
+    if(axis.current==="y" && !document.documentElement.classList.contains("reduce-motion")){
+      const b=reb.current, pg=b.el;
+      if(pg){
+        const st=pg.scrollTop;
+        // `dir` = hacia dónde se estira: -1 abajo (dedo subiendo), +1 arriba (dedo bajando).
+        let dir=0;
+        if(st>=b.tope-1 && ddy<0) dir=-1;
+        else if(st<=0 && ddy>0 && tab!==0) dir=1;
+        if(dir){
+          // El ancla se fija al TOCAR el tope, no al empezar el gesto: si venías scrolleando
+          // media pantalla, el estirón tiene que contar desde el final, no desde tu dedo.
+          if(b.dir!==dir){ b.dir=dir; b.ancla=ddy; }
+          const crudo=Math.max(0,(ddy-b.ancla)*dir);
+          // Resistencia asintótica: cede mucho al principio y casi nada al final, que es lo que
+          // hace que se sienta elástico y no como un panel suelto.
+          const d=REB_MAX*(1-1/(crudo/REB_MAX+1));
+          pg.style.transition="";
+          pg.style.transform="translate3d(0,"+(d*dir).toFixed(1)+"px,0)";
+          // Solo se le quita el gesto al navegador cuando de verdad estamos estirando: por
+          // debajo de eso el scroll tiene que seguir siendo suyo o se nota agarrotado.
+          if(crudo>2 && e.cancelable) e.preventDefault();
+          return;
+        }
+        if(b.dir) soltarRebote();
+      }
+      return;
+    }
     if(axis.current!=="x") return;
     dx.current=ddx;
     if(gestureMode.current==="drawer"){
@@ -1989,6 +2024,7 @@ function App(){
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
+    if(reb.current.dir) soltarRebote();   // el estirón vuelve a su sitio al levantar el dedo
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
       const dist=pDY.current;
@@ -2057,6 +2093,9 @@ function App(){
      El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
   const onCancel=function(){
     if(!dragging.current) return;
+    // Un gesto cancelado (noti, borde de pantalla, app a segundo plano) no puede dejar la página
+    // estirada para siempre: mismo criterio que la red de seguridad de `onStart`.
+    if(reb.current.dir) soltarRebote();
     if(gestureMode.current==="profile"){
       profileRelease();
       setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba
@@ -2077,6 +2116,64 @@ function App(){
      Con el listener a mano el gesto es nuestro de verdad. `touchcancel` sigue atado (`onCancel`)
      porque el sistema —una noti, el borde de la pantalla— también puede llevárselo. */
   const viewportRef=useRef(null);
+  /* LA RAYITA SALTA POR ENCIMA DEL + (petición suya 2026-07-28). Solo cuando el cambio de
+     pestaña CRUZA el hueco del FAB —slots: 0 Inicio · 1 Gastos · 2 el + · 3 Plan · 4 Cartera—,
+     que es el único caso en que el indicador le pasa por la cara. Entre contiguas se desliza
+     como siempre.
+     Sin `useState` A PROPÓSITO: esto corre en cada cambio de pestaña, y un estado aquí son dos
+     repintados de la app entera por gesto — exactamente el tipo de trabajo atado al momento en
+     que el usuario toca que costó siete vueltas sacar del carrusel (ver CHANGELOG 4.12.0). La
+     clase se pone y se quita sobre el nodo y React ni se entera. */
+  /* REBOTE AL LLEGAR AL FINAL DE UNA PESTAÑA (petición suya 2026-07-28: «la animación esa chula
+     de las settings de perfil y settings normales que si bajas abajo del todo hace como efecto
+     rebote, eso lo hacen la mayoría de apps y me flipa muchísimo, ¿lo podrías aplicar para cada
+     pestaña?»).
+
+     No sale gratis del navegador: la WebView de Android no hace rubber-band, hace un fogonazo de
+     borde. Así que el rebote se dibuja a mano — se mueve la página con `transform` mientras el
+     dedo insiste, y se suelta con una curva al levantarlo.
+
+     DÓNDE NO (sus dos avisos, textuales): «con cuidado de no aplicarlo cuando esté arriba del
+     todo para abrir el perfil o cuando deslice hacia el lado para abrir las settings».
+       · De lado: no hay nada que hacer, el eje ya está decidido antes de llegar aquí — si el
+         gesto es horizontal esto ni se mira.
+       · Arriba del todo: el rebote de ARRIBA se apaga en Resumen (tab 0), que es donde el tirón
+         hacia abajo abre el perfil. En el resto de pestañas arriba no compite con nada y sí lo
+         tiene. Abajo lo tienen las cuatro: ahí no hay ningún gesto que estorbar. */
+  const reb=useRef({el:null,tope:0,dir:0,ancla:0});
+  const REB_MAX=88;   // px de tope, asintótico: por mucho que tires, no se despega más
+  const soltarRebote=function(){
+    const b=reb.current, el=b&&b.el;
+    b.dir=0;
+    if(!el) return;
+    // Curva de vuelta: la misma familia que usa el asentamiento del carrusel, para que la app
+    // entera se mueva con el mismo idioma.
+    el.style.transition="transform .34s cubic-bezier(.32,.72,0,1)";
+    el.style.transform="";
+    setTimeout(function(){ if(el.style) el.style.transition=""; },360);
+  };
+  const indRef=useRef(null);
+  const tabPrevRef=useRef(tab);
+  useEffect(function(){
+    const antes=tabPrevRef.current; tabPrevRef.current=tab;
+    const el=indRef.current;
+    if(!el || antes===tab || ((antes<=1)===(tab<=1))) return undefined;
+    el.classList.remove("rodea");
+    void el.offsetWidth;   // reinicia la animación si encadena dos saltos seguidos
+    el.classList.add("rodea");
+    const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);
+    return function(){ clearTimeout(id); };
+  },[tab]);
+  /* RACHA DE TEMPORADA AL CAMBIAR DE PESTAÑA (petición suya 2026-07-28: «alguna animación chula
+     si deslizas»). Las piezas ya no caen en bucle —se cortan solas tras dos vueltas, ver
+     `.season-fx span` en el shell— así que esto es lo que las trae de vuelta: alternar la clase
+     cambia el nombre de los keyframes y las 18 arrancan de cero otra vez.
+     Por el DOM y no por estado, como el salto de la rayita: un `setState` aquí repinta la app
+     entera en cada deslizada. Un `classList.toggle` no cuesta ni un frame. */
+  useEffect(function(){
+    const fx=document.querySelector(".season-fx");
+    if(fx) fx.classList.toggle("b");
+  },[tab]);
   const gestRef=useRef({});
   gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
   useEffect(function(){
@@ -2385,7 +2482,7 @@ function App(){
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
-          React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),
+          React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),ref:indRef,
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
             React.createElement("span",null)
           ),

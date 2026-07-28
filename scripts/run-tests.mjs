@@ -32,6 +32,7 @@ const steps = [
   ["debts", ["node", "tests/debts.test.mjs"]],
   ["ingest-classify", ["node", "tests/ingest-classify.test.mjs"]],
   ["revo-golden", ["node", "tests/revo-golden.test.mjs"]],
+  ["import-hoja", ["node", "tests/import-hoja.test.mjs"]],
   ["revo-metales-coste", ["node", "tests/revo-metales-coste.test.mjs"]],
   ["parsers-revolut", ["node", "tests/parsers/revolut.test.mjs"]],
   ["motor-debt", ["node", "tests/motor-debt.test.mjs"]],

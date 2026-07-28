@@ -256,8 +256,20 @@
   /* Temáticas de temporada: capa ambiental con PROFUNDIDAD (3 capas parallax) y movimiento
      orgánico (deriva lateral + giro + pulso de escala) — estilo Revolut, no una caída plana. */
   .season-fx{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;}
+  /* LA NEVADA SE CORTA SOLA (petición suya 2026-07-28: «haz que se corte en algún momento»).
+     Era `infinite`, o sea 18 piezas moviéndose para siempre: bonito el primer minuto y un
+     repintado permanente el resto del día. Con dos vueltas cada pieza cae, se va por abajo y ahí
+     se queda (`forwards`), así que la capa acaba quieta y deja de costar nada.
+     Y no se pierde: cada cambio de pestaña lanza una racha nueva — ver la clase `.b` justo
+     debajo. Deslizar es lo que la trae de vuelta, que era lo otro que pidió («alguna animación
+     chula si deslizas»). */
   .season-fx span{position:absolute;top:-12vh;will-change:transform;
-    animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);animation-iteration-count:infinite;}
+    animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);
+    animation-iteration-count:2;animation-fill-mode:forwards;}
+  /* RACHA AL DESLIZAR. Dos nombres de keyframes IDÉNTICOS y una clase que alterna entre ellos:
+     cambiar `animation-name` es la única forma fiable de reiniciar una animación CSS sin tocar
+     los 18 nodos uno a uno. Una llamada a `classList.toggle` y vuelven a caer todas. */
+  .season-fx.b span{animation-name:seasonfallb;}
   /* Capas de profundidad: lejos = pequeña, desenfocada y lenta; cerca = grande, nítida, sombra. */
   .season-fx .sfx-l0{filter:blur(1.4px) drop-shadow(0 1px 2px rgba(0,0,0,.18));}
   .season-fx .sfx-l1{filter:blur(.4px) drop-shadow(0 2px 4px rgba(0,0,0,.22));}
@@ -270,10 +282,27 @@
     80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
     100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
   }
+  /* El gemelo de `seasonfall`, palabra por palabra. Existe solo para poder alternar el nombre y
+     reiniciar la caída (ver `.season-fx.b span`). Si tocas una, toca la otra. */
+  @keyframes seasonfallb{
+    0%{transform:translate3d(0,-14vh,0) rotate(0deg) scale(.85);}
+    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15)) scale(1);}
+    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55)) scale(1.06);}
+    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
+    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
+  }
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
-  html[data-season] .botnav-fab{animation:fabpulse 3.4s ease-in-out infinite;}
-  @keyframes fabpulse{0%,100%{box-shadow:0 14px 28px -8px rgba(0,0,0,.35), 0 0 0 0 rgba(255,255,255,.0), inset 0 1px 0 rgba(255,255,255,.35);}50%{box-shadow:0 16px 32px -6px rgba(0,0,0,.4), 0 0 22px 2px rgba(255,255,255,.22), inset 0 1px 0 rgba(255,255,255,.45);}}
+  /* EL HALO DEL + AHORA ES UN ANILLO, NO UNA SOMBRA (2026-07-28). `fabpulse` animaba
+     `box-shadow`, y una sombra que cambia obliga al navegador a REPINTAR la barra en cada frame,
+     para siempre. Un anillo en `::after` que solo mueve `opacity` y `transform` lo hace el
+     compositor: mismo guiño, cero repintado. Él quería justo esto — «deja más decoración como el
+     botón + que me encanta, pero que sea sutil». */
+  html[data-season] .botnav-fab{position:relative;}
+  html[data-season] .botnav-fab::after{content:"";position:absolute;inset:-5px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.4);pointer-events:none;opacity:0;
+    animation:fabaro 3.8s ease-in-out infinite;}
+  @keyframes fabaro{0%,100%{opacity:0;transform:scale(.84);}45%{opacity:.45;transform:scale(1.04);}}
   html[data-season="mundial"] .botnav-fab{background:linear-gradient(160deg,#E63946,#F1C40F);}
   html[data-season="halloween"] .botnav-fab{background:linear-gradient(160deg,#F0862B,#7A3FA0);}
   html[data-season="navidad"] .botnav-fab{background:linear-gradient(160deg,#D64550,#2E9E5B);}
@@ -290,7 +319,50 @@
   html[data-season="invierno"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
   html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
   @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
-  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab{animation:none;} }
+  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
+  /* ===== Importar una hoja de gastos (Excel/CSV) ===== */
+  .hoja-pasos{margin:0 0 18px;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.6;}
+  .hoja-pasos li{margin-bottom:7px;}
+  .hoja-err{background:color-mix(in srgb, var(--coral) 14%, transparent);border:1px solid var(--coral);
+    color:var(--text);border-radius:14px;padding:11px 13px;font-size:13px;line-height:1.5;margin-bottom:14px;}
+  .hoja-map{margin-bottom:13px;}
+  .hoja-map-lbl{font-size:12.5px;font-weight:800;color:var(--muted);margin-bottom:5px;}
+  .hoja-req{color:var(--coral);}
+  .hoja-sel{width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--line);
+    border-radius:12px;padding:11px 12px;font-size:14px;font-family:'Manrope',sans-serif;}
+  /* El marcador del reparto: los dos números que resumen todo el import de un vistazo. */
+  .hoja-marc{display:flex;gap:10px;margin-bottom:14px;}
+  .hoja-marc-c{flex:1;border-radius:18px;padding:14px 12px;text-align:center;border:1px solid var(--line-soft);background:var(--sur);}
+  .hoja-marc-c b{display:block;font-family:'Fraunces',Georgia,serif;font-size:34px;font-weight:550;line-height:1.1;font-variant-numeric:tabular-nums;}
+  .hoja-marc-c span{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted-2);margin-top:3px;}
+  .hoja-marc-ok{border-color:var(--mint-dim);} .hoja-marc-ok b{color:var(--mint);}
+  .hoja-marc-dup b{color:var(--muted-2);}
+  /* LAS FILAS ENTRAN CONTANDO, UNA DETRÁS DE OTRA (petición suya 2026-07-28: «que si pillara
+     alguna cosa duplicada que dijera de forma guapa con alguna animación o algo el descarte y lo
+     que se queda»). Las que entran llegan desde la derecha y en verde; las repetidas se quedan
+     apagadas y tachadas, que es lo que se hace con lo que se descarta. El retraso lo lleva el
+     JS —una por tick— porque así el conteo se ve aunque la lista sea larga. */
+  .hoja-fila{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:14px;margin-bottom:7px;
+    border:1px solid var(--line-soft);background:var(--sur);font-size:13.5px;
+    opacity:0;transform:translateX(14px);}
+  .hoja-fila.dentro{animation:hojaentra .34s cubic-bezier(.32,.72,0,1) both;}
+  @keyframes hojaentra{from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:none;}}
+  .hoja-fila-ic{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;}
+  .hoja-fila-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hoja-fila-eu{flex:0 0 auto;font-weight:800;font-variant-numeric:tabular-nums;}
+  .hoja-fila-ok{border-color:var(--mint-dim);}
+  .hoja-fila-ok .hoja-fila-ic{background:var(--mint);color:var(--on-mint);}
+  .hoja-fila-dup{opacity:0;}
+  .hoja-fila-dup.dentro{animation:hojaentra .34s cubic-bezier(.32,.72,0,1) both;}
+  .hoja-fila-dup .hoja-fila-ic{background:var(--surface-2);color:var(--muted-2);}
+  .hoja-fila-dup .hoja-fila-tx,.hoja-fila-dup .hoja-fila-eu{color:var(--muted-2);text-decoration:line-through;}
+  .hoja-fin{text-align:center;padding:26px 0 10px;}
+  .hoja-fin-ic{font-size:46px;line-height:1;margin-bottom:12px;animation:mclpop .5s cubic-bezier(.32,.72,0,1) both;}
+  @media (prefers-reduced-motion:reduce){
+    .hoja-fila,.hoja-fila.dentro,.hoja-fila-dup,.hoja-fila-dup.dentro{opacity:1;transform:none;animation:none !important;}
+    .hoja-fin-ic{animation:none !important;}
+  }
+
   /* Ayuda contextual "?" */
   .helpq{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
   .helpq:active{color:var(--mint);border-color:var(--mint-dim);}
@@ -336,7 +408,11 @@
      retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
      estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
      durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
+  /* `overscroll-behavior-y:none` (era `contain`): además de no encadenar el scroll al padre,
+     apaga el FOGONAZO de borde de la WebView. Desde 4.13.0 el final de la lista lo dibujamos
+     nosotros con el rebote elástico (ver `reb` en 11-app-main.js), y las dos cosas a la vez
+     —nuestro estirón y el destello de Chromium— se pisaban. */
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:none;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
@@ -363,6 +439,36 @@
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
   .botnav-ind span{width:34px;height:3px;border-radius:3px;background:var(--mint);display:block;}
   .botnav-ind.hide{opacity:0;}
+  /* LA RAYITA RODEA EL + EN VEZ DE ATRAVESARLO (petición suya 2026-07-28, con foto: «la rayita
+     que rula al ir de tab en tab que cuando llegue al + en vez de atravesarlo que lo rodee»).
+     Yendo de Gastos a Plan el indicador pasa por el hueco del FAB, y como es `position:absolute`
+     pinta POR ENCIMA del botón: se le veía cruzar la cara del +. Ahora salta por arriba.
+     Geometría (coordenadas de .botnav-row): el FAB va de y=-28 a y=+30 (58px de alto con
+     margin-top:-26px, centrado en una fila de ~54). El indicador vive en top:-9. Subirlo 26px lo
+     deja en -35, siete píxeles por encima del borde del botón — lo justo para librarlo sin
+     despegarse de la barra. El estrechón de scaleX es lo que lo hace parecer un salto y no una
+     traslación: la línea se encoge al despegar y se estira al aterrizar.
+     El transform del salto va en el SPAN a propósito: el translateX horizontal lo escribe React
+     en el contenedor, y dos transforms en el mismo nodo se pisan. */
+  .botnav-ind.rodea span{animation:indrodear .44s cubic-bezier(.4,0,.2,1);}
+  @keyframes indrodear{
+    0%,100%{transform:translateY(0) scaleX(1);}
+    50%{transform:translateY(-26px) scaleX(.5);}
+  }
+  /* Iconos de la barra con su propia animación al activarse (petición suya 2026-07-28: «iconos
+     de las tabs cuando estás en la tab que tengan una animación cuqui»). Una por pestaña, que
+     pegue con lo que hace cada una: Inicio da un saltito, Gastos peina sus rayas, Plan marca la
+     casilla y Cartera sube como su flecha.
+     SOLO AL ENTRAR, nunca en bucle: una animación infinita aquí es repintado permanente en la
+     barra, que es justo lo que se quitó del halo del FAB por costar frames (4.12.0). */
+  .botnav-tab.active svg{animation:tabpop .5s cubic-bezier(.32,.72,0,1);}
+  .botnav-tab.active[data-tour="gastos"] svg{animation:tabpeina .52s cubic-bezier(.32,.72,0,1);}
+  .botnav-tab.active[data-tour="plan"] svg{animation:tabmarca .54s cubic-bezier(.32,.72,0,1);}
+  .botnav-tab.active[data-tour="cartera"] svg{animation:tabsube .52s cubic-bezier(.32,.72,0,1);}
+  @keyframes tabpop{0%{transform:none;}34%{transform:translateY(-4px) scale(1.16);}68%{transform:translateY(1px) scale(.97);}100%{transform:none;}}
+  @keyframes tabpeina{0%{transform:none;}30%{transform:translateX(3px) scaleX(.82);}62%{transform:translateX(-2px) scaleX(1.08);}100%{transform:none;}}
+  @keyframes tabmarca{0%{transform:none;}30%{transform:rotate(-9deg) scale(1.14);}64%{transform:rotate(5deg) scale(.98);}100%{transform:none;}}
+  @keyframes tabsube{0%{transform:none;}34%{transform:translateY(-5px) scale(1.12);}70%{transform:translateY(2px) scale(.98);}100%{transform:none;}}
   .botnav-tab{flex:1;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     color:var(--muted-2);font-size:11px;font-weight:700;transition:color .2s;padding:0;background:none;border:none;}
   .botnav-tab.active{color:var(--mint);}
@@ -618,7 +724,7 @@
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.v4-avatar.pulling,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.botnav-ind span,.botnav-tab svg,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.v4-avatar.pulling,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
   }
 
   /* «Gestionar recibos» y «Herramientas de inversión» viven en un sheet v4 pero por dentro
@@ -1078,8 +1184,15 @@
     display:grid;place-items:center;color:var(--mint,#5FD08A);box-shadow:0 26px 60px -30px var(--mint,#5FD08A);
     animation:mclpop .5s cubic-bezier(.32,.72,0,1) both;}
   #mc-load .mcl-mark svg{width:52px;height:52px;display:block;}
+  /* EL NOMBRE NO SE ENSEÑA HASTA QUE ESTÁ SU TIPOGRAFÍA (2026-07-28). Con `font-display:swap`
+     el navegador pinta «Mi Cartera» en Georgia al momento y la CAMBIA a Fraunces cuando la
+     fuente carga: en un arranque en frío ese cambio de forma se ve, y es lo primero que enseña
+     la app. Feedback suyo: «antes aparece algo raro en vez de aparecer el icono». Ahora el icono
+     entra solo y el nombre se suma cuando puede hacerlo bien (tope de 500 ms en `mcl-fuente`,
+     abajo: si la fuente se atasca, mejor Georgia que un hueco). */
   #mc-load .mcl-name{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:560;letter-spacing:-.3px;color:var(--text,#EAF2EC);
-    animation:mclpop .5s .07s cubic-bezier(.32,.72,0,1) both;}
+    opacity:0;}
+  #mc-load .mcl-name.lista{animation:mclpop .42s cubic-bezier(.32,.72,0,1) both;}
   /* SIN BARRA DE CARGA (2026-07-26). Había una barra indeterminada debajo del nombre; fuera, por
      petición desde el móvil: «quitar lo de la barra de carga al abrir la app, el resto de apps no
      lo tienen; el tiempo ese que se queda el logo está bien». Una barra que no mide nada solo
@@ -1089,7 +1202,9 @@
     color:var(--mint,#5FD08A);text-decoration:underline;padding:8px 12px;cursor:pointer;}
   @keyframes mclpop{from{opacity:0;transform:translateY(9px) scale(.94);}to{opacity:1;transform:none;}}
   @media (prefers-reduced-motion:reduce){
-    #mc-load .mcl-mark,#mc-load .mcl-name{animation:none !important;}
+    #mc-load .mcl-mark{animation:none !important;}
+    #mc-load .mcl-name{animation:none !important;}
+    #mc-load .mcl-name.lista{opacity:1;}
   }
 </style>
 </head>
@@ -1101,6 +1216,18 @@
      cuando nosotros decidimos. -->
 <div id="mc-load"><div class="mcl-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.7" y="5.6" width="18.6" height="12.8" rx="3.4"/><path d="M21.3 9.8h-3a2.2 2.2 0 0 0 0 4.4h3"/><circle cx="18.1" cy="12" r=".95" fill="currentColor" stroke="none"/></svg></div><div class="mcl-name">Mi Cartera</div><button class="mcl-retry" id="mcl-retry" type="button">Está tardando demasiado · reintentar</button></div>
 <div id="root"></div>
+<script id="mcl-fuente">/* Ver el comentario de `.mcl-name`: el nombre espera a Fraunces para no cambiar
+   de forma a la vista. Va aquí, pegado al splash y antes de los scripts pesados, para que la
+   petición de la fuente salga cuanto antes. El tope evita que un fallo de red deje la marca coja. */
+(function(){
+  var n=document.querySelector("#mc-load .mcl-name"); if(!n) return;
+  var ver=function(){ n.classList.add("lista"); };
+  setTimeout(ver,500);
+  try{
+    if(document.fonts&&document.fonts.load) document.fonts.load("560 27px Fraunces").then(ver,ver);
+    else ver();
+  }catch(e){ ver(); }
+})();</script>
 
 
 <!-- LOS SCRIPTS PESADOS VAN AQUÍ, DESPUÉS DEL SPLASH, NO EN EL <head> (2026-07-25).
@@ -1432,14 +1559,31 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
      lee como un fallo, no como una pantalla de entrada. Medio segundo es lo que tarda el ojo en
      registrar una marca; menos, y da igual haberla puesto. */
   var t0=Date.now(), MINIMO=520, ESPERA_NUBE=1800, TOPE_DURO=8000, fuera=false;
+  /* SE AVISA DE QUE LA CORTINA SE LEVANTA (2026-07-28). El contador del patrimonio de Inicio
+     arrancaba al montar React, o sea DETRÁS del splash: cuando él veía la pantalla la cuenta ya
+     había terminado y el número aparecía puesto. Su feedback: «la animación que ya existía pero
+     no da tiempo que salga, de los números de patrimonio sumando de manera suave, eso molaba
+     mucho y se perdió». No se perdió — se gastaba a puerta cerrada. Con este aviso, la cuenta
+     empieza cuando hay alguien mirando. */
+  function avisar(){
+    window.__mcSplashGone=true;
+    try{ window.dispatchEvent(new Event("mc-splash-gone")); }catch(e){}
+  }
   function quitar(){
     if(fuera) return; fuera=true;
-    var l=document.getElementById("mc-load"); if(!l) return;
+    var l=document.getElementById("mc-load"); if(!l){ avisar(); return; }
     requestAnimationFrame(function(){ requestAnimationFrame(function(){
-      l.style.transition="opacity .22s ease";
+      /* La marca se va CRECIENDO un pelín, no solo desvaneciéndose: la app que hay debajo entra
+         con sus tarjetas subiendo (`.rise`), y una cortina que solo baja la opacidad se lee como
+         un corte. Creciendo parece que te deja pasar. */
+      l.style.transition="opacity .26s ease, transform .26s cubic-bezier(.32,.72,0,1)";
       l.style.opacity="0";
+      l.style.transform="scale(1.04)";
       l.style.pointerEvents="none";
-      setTimeout(function(){ try{ l.remove(); }catch(e){} },240);
+      // El aviso va con la cortina ya en marcha, no al acabar de quitarla: así el contador y el
+      // fundido corren a la vez y el número se ve subir desde el primer frame visible.
+      avisar();
+      setTimeout(function(){ try{ l.remove(); }catch(e){} },280);
     }); });
   }
   var t=setInterval(function(){
