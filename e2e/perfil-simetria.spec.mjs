@@ -168,7 +168,10 @@ test.describe("con el panel scrolleado", () => {
   });
 });
 
-test("tocar mientras la animación se va NO la corta a medias", async ({ page }) => {
+test("reabrir el perfil mientras aún cierra: abre limpio, sin salto a medias", async ({ page }) => {
+  // Antes el candado de 500 ms ignoraba el tercer gesto (stopper). Ahora reabrir con el panel
+  // ya cerrado cancela la CSS del cierre y engancha de limpio — sin `.dragging` encima de la
+  // transition a medias (que era el «vuelve loco» original).
   const cdp = await app(page);
   const panel = page.locator(".profile-pull");
 
@@ -176,17 +179,12 @@ test("tocar mientras la animación se va NO la corta a medias", async ({ page })
   await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
   await page.waitForTimeout(700);
 
-  // Cerrar de un tirón y, SIN esperar, volver a poner el dedo encima y arrastrar.
   await arrastrar(cdp, page, 200, 6, 45);
-  const durante = await arrastrar(cdp, page, 200, 4, 40);
-
-  // Ese segundo gesto tiene que ser ignorado: nada de `.dragging` ni de estilos inline.
+  await expect(panel).not.toHaveClass(/open/, { timeout: 3_000 });
+  // SIN esperar al candado: reabrir al momento.
+  await arrastrar(cdp, page, 200, 6, 45);
+  await expect(panel, "reabrir durante/tras el cierre tiene que funcionar").toHaveClass(/open/, { timeout: 3_000 });
   await expect(panel).not.toHaveClass(/dragging/);
-  const inline = await panel.evaluate((el) => el.style.transform);
-  expect(inline, `el gesto intruso escribió transform="${inline}"`).toBe("");
-  // Y el panel acaba donde tenía que acabar: cerrado, sin quedarse a medio camino.
-  await expect(panel).toHaveCSS("visibility", "hidden", { timeout: 3_000 });
-  expect(durante.length).toBeGreaterThan(0);
 });
 
 test("abrir y cerrar al momento: el candado NO deja sorda la app medio segundo", async ({ page }) => {
@@ -204,4 +202,21 @@ test("abrir y cerrar al momento: el candado NO deja sorda la app medio segundo",
   await arrastrar(cdp, page, 200, 6, 45);
   await expect(panel, "cerrar en caliente tras abrir tiene que funcionar").not.toHaveClass(/open/, { timeout: 3_000 });
   await expect(panel).toHaveCSS("visibility", "hidden", { timeout: 3_000 });
+});
+
+/* Abrir → cerrar → abrir OTRA VEZ al momento (feedback 4.12.1). El cierre ponía profBusy 500 ms
+ * y el tercer gesto se tragaba: hacía falta el segundo swipe. Abrir con el panel ya cerrado
+ * ignora el candado. */
+test("abrir, cerrar y volver a abrir al momento: sin stopper", async ({ page }) => {
+  const cdp = await app(page);
+  const panel = page.locator(".profile-pull");
+
+  await arrastrar(cdp, page, 200, 6, 45);
+  await expect(panel).toHaveClass(/open/, { timeout: 3_000 });
+  await page.waitForTimeout(80);
+  await arrastrar(cdp, page, 200, 6, 45);
+  await expect(panel).not.toHaveClass(/open/, { timeout: 3_000 });
+  // SIN esperar a que acabe el candado de 500 ms.
+  await arrastrar(cdp, page, 200, 6, 45);
+  await expect(panel, "el tercer gesto tiene que abrir otra vez").toHaveClass(/open/, { timeout: 3_000 });
 });

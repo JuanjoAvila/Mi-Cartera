@@ -55,9 +55,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      # ⚠ `git checkout beta` A SECAS NO VALE: la release rodante de pruebas crea un **tag**
+      # llamado `beta`, así que el nombre es ambiguo y git se queda con el TAG. Esto estuvo
+      # ejecutando los tests contra un árbol de hace semanas (detectado el 2026-07-28: la
+      # promoción fallaba por una prueba que ya estaba arreglada en la rama). O sea que la red de
+      # seguridad no miraba lo que se iba a publicar. `-B ... origin/beta` es inequívoco.
       - name: Tests
         run: |
-          git checkout beta
+          git checkout -B beta origin/beta
+          git log -1 --oneline
           npm ci
           npx playwright install chromium --with-deps
           node scripts/run-tests.mjs

@@ -25,11 +25,9 @@ const pestanaActiva = (page) =>
     return b ? b.getAttribute("data-tour") : null;
   });
 
-/** Arrastre lateral real. Dos detalles que NO son arbitrarios:
- *  · `y=200`: más abajo hay zonas que se tragan el gesto queriendo (`stopSwipe` en los chips de
- *    Gastos y en el gráfico de Inicio).
- *  · el gesto hacia atrás empieza en `x=80`, fuera de la franja de borde (`EDGE_OPEN`=52 px):
- *    arrancando pegado al borde izquierdo lo que se abre es AJUSTES, no la pestaña anterior. */
+/** Arrastre lateral real. `y=200`: más abajo hay zonas que se tragan el gesto (`stopSwipe` en
+ *  chips de Gastos / gráfico de Inicio). Desde 4.12.1 Ajustes solo abre en Resumen: en el resto
+ *  de pestañas da igual arrancar pegado al borde. */
 async function deslizar(page, cdp, sentido, { y = 200, pasos = 16, x0 = null } = {}) {
   const W = page.viewportSize().width;
   const [a, b] = sentido === "siguiente" ? [W - 40, 40] : [x0 != null ? x0 : 80, W - 40];
@@ -64,15 +62,11 @@ test("deslizar recorre las cuatro pestañas, ida y vuelta", async ({ page }) => 
   }
 });
 
-/* EL «STOPPER» (rechazos 4.12.0.19 y .23: «hay un stopper o algo que no permite deslizar de
- * manera seguida y rápida»). No era un freno: encadenando deslizadas hacia atrás llegas a Inicio,
- * y ALLÍ un desliz a la derecha abre Ajustes desde toda la pantalla (atajo puesto el 17/7). O sea
- * que la deslizada de más te sacaba de la app en vez de no hacer nada.
- *
- * Se ve en que `.botnav-tab.active` desaparece: el `active` se pinta con
- * `tab===0 && !drawerOpen && !profileOpen`, así que si no hay ninguna activa es que se abrió el
- * cajón. Esa es la comprobación, y es estructural: nada de milisegundos, nada de flaky. */
-test("encadenar deslizadas hasta el principio NO abre Ajustes", async ({ page }) => {
+/* AJUSTES SOLO DESDE RESUMEN (4.12.1). El borde en Gastos/Plan/Cartera era un coñazo; y el
+ * candado de 450 ms tras cambiar de pestaña era el stopper al llegar a Resumen y querer abrir
+ * Ajustes al momento. Ahora: en Gastos el borde NO abre nada; en Resumen el desliz abre YA,
+ * sin esperar. */
+test("desde Gastos el borde NO abre Ajustes", async ({ page }) => {
   await seedLoggedInDashboard(page);
   await page.goto("/");
   await appLista(page);
@@ -81,18 +75,28 @@ test("encadenar deslizadas hasta el principio NO abre Ajustes", async ({ page })
   await deslizar(page, cdp, "siguiente");
   await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("gastos");
 
-  // Dos hacia atrás SIN pausa: la primera lleva a Inicio, la segunda es la que sobra.
-  await deslizar(page, cdp, "anterior");
-  await deslizar(page, cdp, "anterior");
-
-  await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("inicio");
-  expect(await page.locator(".drawer.open, .app-shell.gesture-freeze").count(),
-    "la deslizada de más abrió Ajustes: eso es el «stopper»").toBe(0);
-
-  // Y el atajo deliberado SIGUE funcionando: parado en Inicio, tirar desde el borde abre Ajustes.
-  await page.waitForTimeout(700);   // ya no se está encadenando nada
+  // Pegado al borde izquierdo: antes abría Ajustes; ahora es un cambio de pestaña (o nada).
   await deslizar(page, cdp, "anterior", { x0: 10 });
+  await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("inicio");
+  expect(await page.locator(".drawer.open").count(),
+    "el borde en Gastos abrió Ajustes").toBe(0);
+});
+
+test("en Resumen, Ajustes abre al momento tras llegar de Gastos", async ({ page }) => {
+  await seedLoggedInDashboard(page);
+  await page.goto("/");
+  await appLista(page);
+  const cdp = await page.context().newCDPSession(page);
+
+  await deslizar(page, cdp, "siguiente");
+  await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("gastos");
+  await deslizar(page, cdp, "anterior");
+  await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("inicio");
+
+  // SIN pausa: el candado de 450 ms era justo lo que bloqueaba este gesto.
+  await deslizar(page, cdp, "anterior");
   await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe(null);
+  await expect(page.locator(".settings-push.open")).toHaveCount(1);
 });
 
 test("la pestaña que entra se pinta de verdad, no llega en blanco", async ({ page }) => {
