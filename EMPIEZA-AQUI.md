@@ -29,6 +29,17 @@ tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versi�
 5. **En un portátil no se ven los problemas de rendimiento del móvil.** Cero tareas largas hasta
    estrangular la CPU x6 por CDP. Método completo y trampas en `AGENTS.md` §7 y §7 bis.
 
+> **Atajo para las cinco de golpe: `npm run salud`** (desde 4.13.0). Contesta en veinte segundos
+> lo que si no se comprueba a mano: si los cuatro sitios donde vive la versión cuadran, si la APK
+> anunciada existe de verdad, **qué sirve producción ahora mismo** (preguntándole a Pages, no
+> leyendo el repo), si la beta va por delante o por detrás, y qué commits hay en `beta` sin
+> promocionar. Empieza por ahí antes de tocar nada.
+
+> **Y si los e2e no arrancan por el navegador** («Executable doesn't exist at …»), no lances
+> `npx playwright install`: en los entornos con Chromium ya instalado se apunta al que hay con
+> `PLAYWRIGHT_CHROMIUM_PATH=/ruta/al/chrome` (la config lo lee). Instalar otro se come el disco y
+> tarda diez minutos para nada.
+
 ## 3. Cómo se publica
 
 | Quieres… | Haces |
