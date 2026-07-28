@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-27 · **v4.12.1** — en **beta**: Ajustes solo desde Resumen (sin borde en el resto), sin stopper al abrir Ajustes/perfil al momento, y Gastos baja sin parones (centinela 2.000 px / +60). Producción sigue en **4.12.0** (APK 35) hasta que apruebe esta beta.
+> Estado a 2026-07-28 · **v4.13.0** — en **beta**: **importar una hoja de gastos** (Excel o CSV, con los duplicados descartados solos y el reparto enseñado contando), **rebote** al final de las cuatro pestañas, la **rayita rodea el +**, iconos de la barra con su gracia, temporadas que se cortan solas, y el **contador del patrimonio** vuelve a verse al abrir. Producción va por **4.12.1** (APK 35).
+>
+> Anterior: 2026-07-27 · **v4.12.1** — **APROBADA y en producción** (promocionada el 28/7). Ajustes solo desde Resumen, sin stopper al abrir Ajustes/perfil, y Gastos baja sin parones. Los dos puntos que quedaban del expediente del tirón los cerró él desde el móvil: «lo del tirón al deslizar arregladísimo» y «lo del perfil también va ultra fluido, sin stoppers».
 >
 > Anterior: 2026-07-27 · **v4.12.0** — **APROBADA en el móvil y en producción** («funciona» + «todas las pestañas van increíblemente fluidísimas»). Causa del tirón: la `transition` CSS del carrusel juddeaba a 120 Hz al soltar; asentamiento por `requestAnimationFrame` → 0 saltos. APK **35** (icono/splash nativos; OTA no los lleva — si aún no está instalada, ofrecerla). Ver `docs/LAG-DESLIZAR.md`.
 >
@@ -30,7 +32,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.12.1** (beta) · producción en `main` = **4.12.0** |
+| Web / OTA (`VERSION`) | **4.13.0** (beta) · producción en `main` = **4.12.1** |
 | APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
@@ -60,11 +62,17 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> ✅ **4.12.1 en beta** — Ajustes solo desde Resumen; sin stoppers al abrir Ajustes/perfil; Gastos sin parón al bajar. Producción = **4.12.0**.
-> Expediente del tirón cerrado: **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)**.
+> ✅ **4.13.0 en beta** — importar hojas de gastos, rebote en las pestañas, la rayita rodeando el +, iconos animados, temporadas que paran, contador del patrimonio visible otra vez. Producción = **4.12.1**.
+> **Expediente del tirón CERRADO de verdad** (2026-07-28, suyo desde el móvil): «lo del tirón al deslizar arregladísimo» y «lo del perfil también va ultra fluido, sin stoppers». Histórico en **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)** — se deja por lo que enseña sobre cómo medir, no porque quede nada que arreglar.
 
-1. Probar en el móvil la checklist de esta beta (Ajustes, perfil ×3, scroll Gastos).
+1. Probar en el móvil la checklist de esta beta (sobre todo el importador con un Excel de verdad).
 2. Si OK → Promote beta → `main`.
+
+### Pendiente de respuesta suya
+
+| Qué | Por qué hace falta preguntarlo |
+|-----|-------------------------------|
+| **Lo raro del arranque** | Pidió quitar «algo raro que aparece antes del icono». Se ha arreglado lo que **sí** se puede arreglar por OTA y estaba mal: el nombre del splash cambiaba de forma a media carga (fallback de Georgia → Fraunces). Si lo que él ve es ANTES de eso —con la app cerrada del todo— entonces es el **splash NATIVO**, que no viaja por OTA: `styles.xml` usa `Theme.SplashScreen` con solo `android:background`, sin `windowSplashScreenBackground` ni `windowSplashScreenAnimatedIcon`, así que Android 12+ mete su propia pantalla antes. Arreglarlo es nativo → **APK nueva**. No se ha tocado sin confirmarlo. |
 
 ### Abierto, con lo medido
 
@@ -85,15 +93,15 @@ existe se deja anotado con su prueba: si mañana alguien vuelve a proponerlo, aq
 | Beta cerrada con 10-20 amigos | **A medias.** Hay canal beta + panel de revisión (`docs/TESTING.md`), pero es de **un solo móvil**: el suyo. | Que la beta la puedan recibir otros: APK firmado repartible, alta de probador sin ser `is_admin`, y que los veredictos de varios convivan en el panel. |
 | Feedback dentro de la app | **Ya está.** Ajustes → App → «Enviar sugerencia» (4.1.0) + `betaReport` del panel de beta. | — |
 | Crash reporting | **Ya está.** Sentry en producción ([SENTRY.md](SENTRY.md)) + `app_events` propio, con `window.onerror` y `unhandledrejection` enganchados. | — |
-| Analytics de uso | **No.** `app_events` solo guarda errores y un `ping` al abrir. | Saber **qué pantallas se usan** (no quién): contador por pestaña/acción, agregado y sin datos personales. **Hacerlo ya, no cuando haya usuarios**: el histórico de uso no se recupera hacia atrás. |
-| Rate limiting | **A medias.** Migración `0019` + `_shared/ratelimit.ts`, aplicado en `ingest` y `myinvestor-connect` (4.10.0). | Extenderlo al resto de funciones (`prices`, `categorize`, `bank-*`) o dejar por escrito por qué no hace falta. |
-| Validar TODO lo que entra | **Sin auditar.** | Pasada por las diez Edge Functions: tipos, tamaños y rangos de cada campo del `body`, con test que mande basura y espere un 400 (no un 500). |
-| Logs sin información sensible | **A medias.** `guard-privacy` vigila el cliente. | Auditar qué acaba en `app_events` y en Sentry (mensajes de error con importes, correos o IBAN) y limpiarlo en origen. |
+| Analytics de uso | **HECHO (4.13.0).** `cloud.logUso(etiqueta)` con **vocabulario cerrado** (`USO_OK` en 00-core): pestañas y acciones, agregado y sin un solo dato personal. Instrumentadas las cuatro pestañas y el importador. | Una vista SQL que agregue `kind='use'` por etiqueta y semana. El dato ya se está guardando, que era lo que no se recuperaba hacia atrás. |
+| Rate limiting | **A medias.** Migración `0019` + `_shared/ratelimit.ts`, aplicado en `ingest` y `myinvestor-connect` (4.10.0). Documentado como hueco #7 en [AMENAZAS.md](AMENAZAS.md). | Extenderlo al resto de funciones (`prices`, `categorize`, `bank-*`) o dejar por escrito por qué no hace falta. |
+| Validar TODO lo que entra | **Sin auditar** — es el único hueco en ROJO de [AMENAZAS.md](AMENAZAS.md) (#8) y la tarea que sale primera de allí. | Pasada por las diez Edge Functions: tipos, tamaños y rangos de cada campo del `body`, con test que mande basura y espere un 400 (no un 500). |
+| Logs sin información sensible | **A medias.** `guard-privacy` vigila el cliente; las métricas nuevas nacen cerradas (`USO_OK`). Hueco #9 de [AMENAZAS.md](AMENAZAS.md). | Auditar qué acaba en `app_events` y en Sentry (mensajes de error con importes, correos o IBAN) y limpiarlo en origen. |
 | Virtualización de listas | **Ya está.** La lista pagina — `e2e/rendimiento.spec.mjs`: 3.000 movimientos no son 3.000 nodos. | — |
 | Memoización / no repetir trabajo | **Ya está** (4.8.0): estado partido, `totals` con dependencias reales, `parseDate` cacheado, filas en `React.memo`, presupuesto de rendimiento en `npm test`. | — |
 | Lógica financiera independiente de React | **A medias.** La lógica pura se extrae y se testea sin React (`scripts/load-pure-logic.mjs`, 15 suites), pero convive en el mismo fichero que la UI. | Separar de verdad los servicios (cartera, movimientos, dividendos, precios) a módulos sin un solo `React.createElement`, y que la UI solo los llame. Sin prisa: es refactor, no arreglo. |
 | Módulos por dominio, no por número | **No.** `src/modules/` va numerado por orden de ensamblado (`00-core`, `06-sync-brokers`, `10-app-components`…). | Reagrupar por dominio cuando duela — hoy 15 ficheros se siguen; el riesgo real es `10`/`11`, que son los que crecen sin parar. |
-| Importadores PDF/CSV | **CSV sí** (Revolut, con parsers y golden tests). **PDF no.** | Importar extractos en PDF (los bancos que no dan CSV). |
+| Importadores PDF/CSV | **CSV y EXCEL sí.** Revolut (con golden tests) y, desde la 4.13.0, cualquier **hoja de gastos casera** en .xlsx o CSV, con mapeo de columnas y duplicados descartados solos. El .xlsx se lee sin librería (ZIP + `DecompressionStream`). **PDF no.** | Importar extractos en PDF (los bancos que no dan CSV). |
 | Sistema de backups | **A medias.** Export JSON a mano + estado en Supabase. | Copia automática periódica y **restaurar probado de verdad** (un backup que no se ha restaurado nunca no es un backup). |
 | Sincronización bancaria con adapters | **A medias.** Cada banco/bróker tiene su módulo, pero sin interfaz común. | Interfaz única (conectar / sincronizar / desconectar / estado) para que añadir un banco no toque la UI. Enlaza con Enable Banking. |
 | Play Store, cobrar, gestor fiscal | Ya estaba en el plan (ver «Solo si lo pides» y la nota de freemium). | Antes de cobrar un euro: **hablar con un gestor**. La consulta es barata comparada con regularizar tarde. |
@@ -108,10 +116,10 @@ queda escrito para no volver a discutirlas.
 | Propuesta | Veredicto | Qué falta (tarea) |
 |-----------|-----------|-------------------|
 | **Métricas funcionales** (usuarios activos, syncs OK/KO, imports, tiempo medio de sync, bancos más usados, errores por banco, funciones más usadas) | **Repetido** — es la fila «Analytics de uso». Lo nuevo es la lista de qué medir. **Más barato de lo que parece**: `Core.logEvent(kind,message,detail)` (`00-core.js`) ya existe con RLS solo-admin, tope de 20/sesión y dedupe. | Un `kind` nuevo (`use`) + una vista SQL agregada. **Agregado y anónimo**: son datos financieros, `guard-privacy` vigila el cliente. Instrumentar **ahora** aunque haya 3 usuarios: el histórico de uso no se recupera hacia atrás. |
-| **Health check** (versiones, migraciones pendientes, última release, errores 24h/7d, último backup) | **Sí, pero como script**, no como pantalla. Con 3 usuarios una pantalla es un producto más que mantener; el precedente bueno es `scripts/errores.mjs`. | `npm run salud`: alineación `VERSION`/`package.json`/`apk.json`/APK, migraciones sin aplicar, última release, recuento de `app_events` por severidad a 24 h y 7 días. |
-| **ADR** (`docs/adr/`, una página por decisión) | **Sí.** Encaja con la casa y dentro de dos años nadie recordará los porqués. | Solo **retro** y solo decisiones que costaron dinero: Supabase vs Firebase, monolito HTML + módulos numerados, cero CDNs de terceros, OTA propio vs Capgo, Capacitor. **No** un ADR por cambio. |
-| **Threat model** (XSS, inyección, token robado, noti falsa, replay, función pública, acceso indebido) con ✅ mitigado / ⚠ pendiente | **Sí**, y es el más útil de los suyos porque no es papel: alimenta dos filas ya pendientes de esta misma tabla. | Una página que cruce cada amenaza con lo que ya hay (CSP, RLS, token de ingest de 256 bits en cabecera con comparación en tiempo constante, CORS con lista blanca, rate limit, `state` de OAuth de un solo uso) y marque los huecos → **validar la entrada de las diez Edge Functions** y **auditar los logs**. |
-| **Observabilidad** (duración de Edge Functions, consultas SQL más caras, tiempo de carga) | **A medias, y la mayor parte NO se construye.** Las duraciones de Edge Functions y el SQL caro ya los da el panel de Supabase (Logs + Query Performance); rehacerlo es trabajo tirado. | Solo lo que Supabase **no** puede ver porque pasa en el móvil: duración de una sincronización y de un import, como `logEvent('perf', …)`. Sale gratis si se hace junto a las métricas funcionales. |
+| **Health check** (versiones, migraciones pendientes, última release, errores 24h/7d, último backup) | **HECHO (4.13.0).** `npm run salud` — script, no pantalla, por lo que ya estaba escrito aquí. | Nada. Da alineación de versiones + APK viva, qué sirve Pages **de verdad**, si la beta va por delante o por detrás, commits sin promocionar, migraciones y errores a 24 h / 7 días. |
+| **ADR** (`docs/adr/`, una página por decisión) | **HECHO (4.13.0).** [`docs/adr/`](adr/) con las cinco: Supabase, monolito, cero CDNs, OTA propio y Capacitor. | Nada. Cada una dice qué se descartó y qué haría cambiar de opinión; la del OTA lleva pegada la lección de las dos causas con el mismo síntoma. |
+| **Threat model** (XSS, inyección, token robado, noti falsa, replay, función pública, acceso indebido) con ✅ mitigado / ⚠ pendiente | **HECHO (4.13.0).** [`docs/AMENAZAS.md`](AMENAZAS.md): 13 amenazas cruzadas con lo que ya hay. | Lo que sale de ahí, por orden: **validar la entrada de las diez Edge Functions** (la única en rojo), **auditar `app_events`/Sentry**, y **extender el rate limit**. |
+| **Observabilidad** (duración de Edge Functions, consultas SQL más caras, tiempo de carga) | **A medias, y la mayor parte NO se construye.** Las duraciones de Edge Functions y el SQL caro ya los da el panel de Supabase (Logs + Query Performance); rehacerlo es trabajo tirado. | **HECHO (4.13.0):** `cloud.logPerf` mide justo eso —lo que pasa en el móvil— redondeado a medio segundo. Las duraciones de Edge Functions y el SQL caro se siguen mirando en el panel de Supabase, que ya los da. |
 | **Feature flags** por usuario | **No ahora.** Ya hay dos ejes de gating: el canal beta y `profiles.is_admin`. Meter flags en el monolito = ramas de código muertas conviviendo en los ficheros que ya crecen sin parar (`10`/`11`). | Se recupera **el día que la beta tenga varios móviles** (fila «Beta cerrada» de arriba). Entonces sí es una maravilla; antes, no. |
 | **Tercer canal «Experimental»** (Experimental/Beta/Stable) | **No.** Repite la fila «Beta cerrada» y multiplica por tres la matriz de release (OTA + manifiesto + APK), que es exactamente la que reventó dos veces seguidas en 4.10.1 y 4.10.2. | Lo que falta no es un canal más: son **más móviles en el que ya existe**. |
 | **«Operations Dashboard» como tarea única** | **Dividido a propósito.** Son tres cosas distintas (salud + métricas + observabilidad) con costes muy diferentes. | Con 3 usuarios, el 90 % del valor está en el script de salud + la vista SQL de métricas. La pantalla, si algún día compensa. |
@@ -161,4 +169,4 @@ Muestra gasto del mes vs presupuesto + saldo de la cuenta diaria.
 3. **Cada release:** alinear `VERSION` + `package.json` + `CHANGELOG` + `RELEASE_NOTES` + APK (`build.gradle` + `apk.json` + release GitHub) + `docs/ROADMAP.md`  
 4. Preparación Play Store (cuando quieras)
 
-Ver [CHANGELOG.md](../CHANGELOG.md) · [ARQUITECTURA.md](ARQUITECTURA.md) · [TESTING.md](TESTING.md) · [SENTRY.md](SENTRY.md) · [HOGAR.md](HOGAR.md) · [CATEGORIZE.md](CATEGORIZE.md) · [AGENTS.md](../AGENTS.md)
+Ver [CHANGELOG.md](../CHANGELOG.md) · [ARQUITECTURA.md](ARQUITECTURA.md) · [AMENAZAS.md](AMENAZAS.md) · [ADR](adr/) · [TESTING.md](TESTING.md) · [SENTRY.md](SENTRY.md) · [HOGAR.md](HOGAR.md) · [CATEGORIZE.md](CATEGORIZE.md) · [AGENTS.md](../AGENTS.md)

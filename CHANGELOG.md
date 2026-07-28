@@ -2,6 +2,175 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.13.0] — 2026-07-28
+### Importar una hoja de gastos, rebote en las pestañas y la rayita rodeando el +
+
+Tanda de su lista del 2026-07-28, con la app ya pulida («ahora que está tan pulida quería nuevas
+cosas»). Los dos puntos que traía como pendientes —el tirón al deslizar y el stopper del perfil—
+los cerró él mismo desde el móvil: «arregladísimo» los dos.
+
+#### Importar una hoja de gastos (Excel o CSV) — la petición nueva
+
+> «Poder importar ya excels formados con gastos, recibos y demás, porque mi madre tiene un Excel y
+> amigos míos igual y me preguntaron si habría alguna opción para importarlo de una manera que lo
+> pillara guay.»
+
+Lo que llega **no son extractos de banco**: son hojas hechas a mano, cada una con sus columnas, en
+su orden, con sus nombres y en el idioma que sea. No hay formato que reconocer — hay que **adivinar
+y dejar corregir**, que es todo el diseño de la pantalla: se propone qué es cada columna, se
+previsualiza con datos de verdad y no se toca nada hasta que dice que sí (AGENTS §9).
+
+El mapeo va en dos pasadas: primero por el **nombre de la cabecera** (con las pistas en es/en/ca,
+normalizadas sin tildes) y lo que quede sin casar, por **lo que contienen las columnas** — así una
+hoja sin cabeceras también se resuelve. Detectar si hay cabecera importa: sin eso, una hoja que
+empieza directamente por datos perdía su primera línea de gastos sin decir nada.
+
+**El .xlsx se abre SIN LIBRERÍA.** Un .xlsx es un ZIP con XML dentro, así que se lee el directorio
+central a mano y se descomprime con `DecompressionStream("deflate-raw")`, que es una API del
+navegador y no un paquete. Son ~120 líneas contra los ~400 KB de SheetJS, en un bundle que ya va al
+96 % del presupuesto — y la regla de cero dependencias sigue en pie. Solo se descomprime la hoja y
+las cadenas, no el ZIP entero.
+
+Dos trampas del formato, anotadas porque no se ven leyendo el código:
+- **Las fechas son números.** Serial de Excel con origen 1899-12-30, no 1900-01-01: Excel arrastra
+  desde Lotus el bug de creerse que 1900 fue bisiesto. Si eso se descuadra, **todas** las fechas de
+  un import salen corridas dos días y no lo nota nadie hasta ver el histórico raro.
+- **La cabecera local del ZIP no es la del directorio central.** El campo `extra` suele diferir, así
+  que saltar hasta los datos con las longitudes del central da basura.
+
+Y en un CSV, el separador se detecta: un Excel español exporta con `;` y uno inglés con `,`.
+Acertar solo con uno es medio importador.
+
+#### El criterio de duplicado, que es lo que él pidió ver
+
+> «Que si pillara alguna cosa duplicada que dijera de forma guapa con alguna animación o algo el
+> descarte y lo que se queda.»
+
+Dos apuntes son el mismo si coinciden **día, importe al céntimo y comercio normalizado** (sin
+tildes, sin mayúsculas, sin dobles espacios). Ni más fino ni más grueso, y las dos alternativas se
+descartaron con casos concretos, no de memoria:
+- **sin el comercio**, dos cafés de 1,20 € del mismo día se comerían el uno al otro;
+- **con la hora**, no casaría nada: una hoja de casa no lleva hora y el banco sí.
+
+Se mira contra el histórico **y contra el propio fichero**, porque una hoja de casa repite filas:
+se copian y se pegan meses enteros.
+
+El reparto entra **contando**, una tarjeta detrás de otra (90 ms la primera, 52 ms las siguientes,
+cortado a 14): lo que entra llega desde la derecha en verde, lo repetido se queda apagado y tachado.
+Pasadas 14 la animación ya no informa, solo hace esperar.
+
+#### Rebote al llegar al final, en las cuatro pestañas
+
+> «La animación esa chula de las settings de perfil y settings normales que si bajas abajo del todo
+> hace como efecto rebote, eso lo hacen la mayoría de apps y me flipa muchísimo, ¿lo podrías aplicar
+> para cada pestaña?»
+
+No sale gratis del navegador: la WebView de Android **no hace rubber-band**, hace un fogonazo de
+borde. Así que el estirón se dibuja a mano —`transform` mientras el dedo insiste, con resistencia
+asintótica a 88 px— y se suelta con la misma curva que usa el asentamiento del carrusel.
+`overscroll-behavior-y` pasa de `contain` a `none` para que el destello de Chromium no se pise con
+el nuestro.
+
+Sus dos avisos, respetados literalmente:
+- **De lado** no aplica: el eje ya está decidido antes de llegar ahí, así que abrir Ajustes no se
+  toca.
+- **Arriba del todo** el rebote se apaga **en Resumen**, que es donde el tirón hacia abajo abre el
+  perfil. En el resto de pestañas arriba no compite con nada y sí lo tiene.
+
+Las medidas del scroll (`scrollHeight`/`clientHeight`) se leen **una vez en el `touchstart`**, no en
+cada `touchmove`: leerlas en el bucle son ~35 reflows por arrastre, que es exactamente el
+layout-thrashing que costó los rechazos .17 → .23 de la 4.12.0.
+
+#### La rayita rodea el + en vez de atravesarlo
+
+> «La rayita que rula al ir de tab en tab que cuando llegue al + en vez de atravesarlo que lo rodee
+> con la animación suave.»
+
+Yendo de Gastos a Plan el indicador pasa por el hueco del FAB, y como es `position:absolute` pinta
+**por encima** del botón: se le veía cruzar la cara del +. Ahora salta por arriba.
+
+La geometría, para no tener que volver a medirla: en coordenadas de `.botnav-row` el FAB va de
+y=−28 a y=+30 (58 px de alto con `margin-top:-26px`), y el indicador vive en `top:-9`. Subirlo 26 px
+lo deja en −35, siete por encima del borde del botón. El estrechón de `scaleX` es lo que lo hace
+parecer un salto y no una traslación. El transform del salto va en el `span` porque el `translateX`
+horizontal lo escribe React en el contenedor y dos transforms en el mismo nodo se pisan.
+
+**Sin estado de React**, y esto no es un detalle: un `setState` por cambio de pestaña son dos
+repintados de la app entera **por gesto** — justo el tipo de trabajo atado al momento en que el
+usuario toca que costó siete vueltas sacar del carrusel. La clase se pone y se quita sobre el nodo.
+
+#### Iconos de la barra, temporadas que se cortan, y el arranque
+
+- **Iconos**: una animación por pestaña al activarse (Inicio salta, Gastos peina sus rayas, Plan
+  marca la casilla, Cartera sube como su flecha). **Solo al entrar, nunca en bucle**: infinita ahí
+  es repintado permanente en la barra.
+- **Temporadas**: las piezas caían `infinite`; ahora dan **dos vueltas y paran** (`forwards`). No se
+  pierde nada porque cada cambio de pestaña lanza una racha nueva — deslizar es lo que las trae de
+  vuelta, que era lo otro que pidió. El reinicio va alternando entre dos keyframes idénticos
+  (`seasonfall`/`seasonfallb`): cambiar `animation-name` es la única forma fiable de reiniciar una
+  animación CSS sin tocar los 18 nodos uno a uno.
+- **El halo del +** pasa de animar `box-shadow` —que obliga a repintar la barra cada frame, para
+  siempre— a un anillo en `::after` que solo mueve `opacity` y `transform`, o sea compositor puro.
+  Mismo guiño, cero repintado. Él quería justo eso: «deja más decoración como el botón + que me
+  encanta, pero que sea sutil».
+- **El splash** ya no cambia de forma a media carga: el nombre esperaba a que `font-display:swap`
+  hiciera el cambio de Georgia a Fraunces a la vista. Ahora espera a la fuente (tope de 500 ms) y
+  el icono entra solo. Y la cortina se va creciendo un pelín, no solo desvaneciéndose.
+- **El contador del patrimonio** arrancaba al montar React, o sea **detrás del splash**: cuando él
+  veía la pantalla la cuenta ya había terminado. Su feedback: «eso molaba mucho y se perdió». No se
+  había perdido — se gastaba a puerta cerrada. Ahora espera al evento `mc-splash-gone`. Y ya no
+  vuelve a cero en cada cambio: la primera vez cuenta desde 0 (la entrada), después encadena desde
+  donde estuviera.
+
+#### Canal beta: el sufijo y el veredicto
+
+- **El número.** Salía de `GITHUB_RUN_NUMBER`, un contador **global** del workflow que no se
+  reinicia jamás: la 4.12.1 se anunciaba como «4.12.1.52» siendo su primera compilación. Su queja:
+  «resetea ese 52 que no tiene sentido». Ahora cuenta compilaciones **de esa versión**, leyendo el
+  título de la propia release (`Beta 4.13.0.3` → +1; versión base nueva → empieza en 1). Sin estado
+  que mantener y se recompone solo.
+  ⚠ El sufijo **no se puede quitar**, y queda escrito para no volver a intentarlo: `_mcNewerVer`
+  compara número a número, así que una beta que se llamara igual que la estable no se vería como
+  nueva y el móvil no la descargaría nunca.
+- **El veredicto.** «Cuando suba algo a prod, la beta no haya nada para aprobar porque lógicamente
+  ya lo hice para que subiera prod» — y es verdad: promocionar **es** aprobar. El panel ahora
+  pregunta a Pages qué versión sirve producción (`_mcProdVersion`) y, si ya va por ahí o más allá,
+  se calla: sin botones de veredicto y con la fila de Ajustes diciendo «✅ ya en producción» en vez
+  de un «3/8» que se leía como trabajo pendiente. Si la red falla, sigue preguntando: en la duda,
+  el lado seguro.
+
+#### De la review externa: métricas, salud, amenazas y ADR
+
+- **Métricas de uso** (`cloud.logUso`) con **vocabulario cerrado** en `USO_OK`. Se hace ahora por el
+  motivo que ya estaba escrito en el ROADMAP: el histórico de uso no se recupera hacia atrás. Lo que
+  viaja es una etiqueta de una lista fija y nada más — ni importes, ni comercios, ni texto libre.
+  Con etiqueta libre, el primer `logUso("gasto en "+comercio)` escrito con buena intención se lleva
+  el nombre de una tienda a la nube. Añadir una métrica es añadir una línea a la lista, donde se ve
+  en el diff.
+- **Observabilidad** (`cloud.logPerf`): solo lo que Supabase **no** puede ver porque pasa en el
+  móvil (cuánto tarda un import, una sincronización). Redondeado a medio segundo: la diferencia
+  entre 3,1 s y 3,4 s no cambia ninguna decisión y menos precisión es menos huella.
+- **`npm run salud`**: alineación de versiones, qué sirve Pages de verdad, si la beta va por delante
+  o por detrás, commits sin promocionar, migraciones y recuento de errores a 24 h / 7 días. Script y
+  no pantalla, por lo decidido en la review: con tres usuarios una pantalla es un producto más que
+  mantener.
+- **[`docs/AMENAZAS.md`](docs/AMENAZAS.md)**: 13 amenazas cruzadas con lo que ya hay, y tres huecos
+  marcados que pasan a ser tareas con nombre — validar la entrada de las diez Edge Functions (la
+  única en rojo), auditar qué acaba en `app_events`/Sentry, y extender el rate limit.
+- **[`docs/adr/`](docs/adr/)**: cinco decisiones que costaron dinero, escritas a posteriori
+  (Supabase, el monolito, cero CDNs, el OTA propio, Capacitor). Cada una dice qué se descartó y qué
+  haría cambiar de opinión. La del OTA lleva pegada la lección de las dos causas con el mismo
+  síntoma.
+
+#### Guardianes
+
+- `tests/import-hoja.test.mjs` — el criterio de duplicado con sus casos límite, el mapeo con y sin
+  cabeceras, las fechas de aquí (3/4 es abril, no marzo) y el serial de Excel.
+- `e2e/import-hoja.spec.mjs` — construye un **.xlsx de verdad** en la propia página (bytes reales,
+  ZIP con método 0) y lo mete por el mismo input que usaría ella. La mitad que solo existe en un
+  navegador —descomprimir y `DOMParser`— no la puede cubrir un unitario, y es justo la que decide si
+  el Excel se abre o no.
+
 ## [4.12.1] — 2026-07-27
 ### Ajustes solo desde Resumen, sin stoppers al abrir perfil/ajustes, y Gastos baja sin parones
 

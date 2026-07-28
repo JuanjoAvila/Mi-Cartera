@@ -421,6 +421,7 @@ function SheetImport({state, set, onClose, showToast}){
   const [reparto,setReparto]=useState(null); // {altas, dupes, malas}
   const [revelado,setRevelado]=useState(0);  // cuántas tarjetas del reparto han entrado ya
   const fileRef=useRef(null);
+  const t0Ref=useRef(0);   // cuándo empezó el import, para medir lo que tarda en un móvil de verdad
 
   const nCols=(filas||[]).reduce(function(m,f){ return Math.max(m,f.length); },0);
   const hayCab=filas?hojaTieneCabecera(filas):false;
@@ -441,7 +442,7 @@ function SheetImport({state, set, onClose, showToast}){
 
   const cargar=function(file){
     if(!file) return;
-    setErr(""); setLeyendo(true);
+    setErr(""); setLeyendo(true); t0Ref.current=Date.now();
     hojaLeer(file).then(function(r){
       if(!r.filas.length) throw new Error("vacio");
       setFilas(r.filas);
@@ -486,6 +487,9 @@ function SheetImport({state, set, onClose, showToast}){
     });
     setPaso(3);
     showToast(tf("ih_ok",{n:limpios.length}));
+    // Cuántas veces se usa el importador y cuánto tarda de verdad en un móvil: lo que Supabase no
+    // puede ver porque pasa aquí. Sin el fichero, sin las filas y sin los importes.
+    try{ cloud.logUso("import_hoja"); cloud.logPerf("import_hoja", Date.now()-t0Ref.current); }catch(e){}
   };
 
   const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",

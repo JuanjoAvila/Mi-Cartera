@@ -137,6 +137,20 @@ const MERCHANT_OVERRIDES = {};
 // Se puebla desde state.catOverrides al cargar. Tiene prioridad sobre las keywords.
 let USER_OVERRIDES = {};
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
+/* EL VOCABULARIO CERRADO DE LAS MÉTRICAS DE USO (ver `cloud.logUso`, más abajo).
+   Todo lo que se puede medir está en esta lista y en ningún otro sitio. Es a propósito: con una
+   etiqueta libre, el primer `logUso("gasto en "+comercio)` que alguien escriba con buena
+   intención se lleva el nombre de una tienda a una tabla de la nube, y esto es una app de
+   finanzas de una familia (AGENTS §9). Añadir una métrica es añadir una línea AQUÍ, donde se ve
+   en el diff y se puede discutir antes de que viaje nada. */
+const USO_OK=[
+  // Pantallas: cuáles se usan de verdad y cuáles sobran.
+  "tab_inicio","tab_gastos","tab_plan","tab_cartera",
+  "abre_perfil","abre_ajustes","abre_hogar","abre_novedades",
+  // Acciones: qué hace la gente, no con qué.
+  "apunta_gasto","apunta_ingreso","crea_meta","crea_deuda","amortiza","edita_presupuesto",
+  "sync_bancos","sync_brokers","import_hoja","import_csv","export_backup","informe_mes",
+];
 const KW = {
   // "pan" y "cine" ANTES que "bares": panadería/pastelería y Kinepolis no deben caer en bares.
   pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano"],
@@ -650,6 +664,36 @@ const cloud = (function(){
         });
       }catch(e){}
     },
+    /* MÉTRICAS DE USO — qué pantallas se usan, NUNCA quién ni con cuánto dinero.
+       Pendiente desde la review del 2026-07-25 y hecho ahora por el motivo que ya estaba escrito
+       en el ROADMAP: «el histórico de uso no se recupera hacia atrás». Con tres usuarios parece
+       que no urge, y es justo al revés — el día que haya treinta, los seis meses anteriores no
+       se pueden reconstruir.
+
+       LO QUE SE MANDA es una etiqueta de un vocabulario CERRADO (`USO_OK`) y nada más. Ni el
+       importe, ni el comercio, ni el banco, ni el texto que haya escrito. Si mañana alguien
+       quiere medir algo nuevo, tiene que añadir su etiqueta aquí — que es exactamente la puerta
+       que se quiere: se ve en el diff y se puede discutir. Un `logEvent('use', loQueSea)` libre
+       acabaría llevándose el nombre de un comercio a la primera de cambio.
+
+       Comparte el tope de 20/sesión y el dedupe de `logEvent`, así que una pantalla cuenta UNA
+       vez por sesión: se mide cuántas sesiones tocan cada cosa, no cuántas veces se toca. Para lo
+       que sirve esto —saber qué sobra y qué falta— es la medida buena, y además es la barata. */
+    logUso(que){
+      if(USO_OK.indexOf(que)<0) return;   // vocabulario cerrado: lo que no está, no viaja
+      return this.logEvent('use', que);
+    },
+    /* Cuánto tardan las cosas que Supabase NO puede ver porque pasan en el móvil: una
+       sincronización, un import. Las duraciones de las Edge Functions y el SQL caro ya los da su
+       panel (Logs + Query Performance) y rehacerlos sería trabajo tirado — esto es solo el hueco
+       que queda. Se redondea a medio segundo: la diferencia entre 3,1 s y 3,4 s no cambia
+       ninguna decisión, y menos precisión es menos huella. */
+    logPerf(que, ms){
+      if(USO_OK.indexOf(que)<0) return;
+      const s=Math.round(Number(ms||0)/500)/2;
+      if(!isFinite(s)||s<0) return;
+      return this.logEvent('perf', que+" "+s.toFixed(1)+"s");
+    },
     // Sugerencias/errores del popup de Novedades → app_events con kind 'feedback'.
     // A diferencia de logEvent, NO comparte el tope de 20/sesión ni el dedupe (un feedback
     // no puede perderse en silencio) y FALLA visible (el caller avisa si no se pudo enviar).
@@ -791,7 +835,7 @@ const cloud = (function(){
 const CLOUD_WRITES=[
   "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
   "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
-  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","feedback","betaReport",
+  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","logUso","logPerf","feedback","betaReport",
   "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
 ];
 (function(){

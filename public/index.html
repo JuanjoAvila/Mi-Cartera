@@ -1680,6 +1680,20 @@ const MERCHANT_OVERRIDES = {};
 // Se puebla desde state.catOverrides al cargar. Tiene prioridad sobre las keywords.
 let USER_OVERRIDES = {};
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
+/* EL VOCABULARIO CERRADO DE LAS MÉTRICAS DE USO (ver `cloud.logUso`, más abajo).
+   Todo lo que se puede medir está en esta lista y en ningún otro sitio. Es a propósito: con una
+   etiqueta libre, el primer `logUso("gasto en "+comercio)` que alguien escriba con buena
+   intención se lleva el nombre de una tienda a una tabla de la nube, y esto es una app de
+   finanzas de una familia (AGENTS §9). Añadir una métrica es añadir una línea AQUÍ, donde se ve
+   en el diff y se puede discutir antes de que viaje nada. */
+const USO_OK=[
+  // Pantallas: cuáles se usan de verdad y cuáles sobran.
+  "tab_inicio","tab_gastos","tab_plan","tab_cartera",
+  "abre_perfil","abre_ajustes","abre_hogar","abre_novedades",
+  // Acciones: qué hace la gente, no con qué.
+  "apunta_gasto","apunta_ingreso","crea_meta","crea_deuda","amortiza","edita_presupuesto",
+  "sync_bancos","sync_brokers","import_hoja","import_csv","export_backup","informe_mes",
+];
 const KW = {
   // "pan" y "cine" ANTES que "bares": panadería/pastelería y Kinepolis no deben caer en bares.
   pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano"],
@@ -2193,6 +2207,36 @@ const cloud = (function(){
         });
       }catch(e){}
     },
+    /* MÉTRICAS DE USO — qué pantallas se usan, NUNCA quién ni con cuánto dinero.
+       Pendiente desde la review del 2026-07-25 y hecho ahora por el motivo que ya estaba escrito
+       en el ROADMAP: «el histórico de uso no se recupera hacia atrás». Con tres usuarios parece
+       que no urge, y es justo al revés — el día que haya treinta, los seis meses anteriores no
+       se pueden reconstruir.
+
+       LO QUE SE MANDA es una etiqueta de un vocabulario CERRADO (`USO_OK`) y nada más. Ni el
+       importe, ni el comercio, ni el banco, ni el texto que haya escrito. Si mañana alguien
+       quiere medir algo nuevo, tiene que añadir su etiqueta aquí — que es exactamente la puerta
+       que se quiere: se ve en el diff y se puede discutir. Un `logEvent('use', loQueSea)` libre
+       acabaría llevándose el nombre de un comercio a la primera de cambio.
+
+       Comparte el tope de 20/sesión y el dedupe de `logEvent`, así que una pantalla cuenta UNA
+       vez por sesión: se mide cuántas sesiones tocan cada cosa, no cuántas veces se toca. Para lo
+       que sirve esto —saber qué sobra y qué falta— es la medida buena, y además es la barata. */
+    logUso(que){
+      if(USO_OK.indexOf(que)<0) return;   // vocabulario cerrado: lo que no está, no viaja
+      return this.logEvent('use', que);
+    },
+    /* Cuánto tardan las cosas que Supabase NO puede ver porque pasan en el móvil: una
+       sincronización, un import. Las duraciones de las Edge Functions y el SQL caro ya los da su
+       panel (Logs + Query Performance) y rehacerlos sería trabajo tirado — esto es solo el hueco
+       que queda. Se redondea a medio segundo: la diferencia entre 3,1 s y 3,4 s no cambia
+       ninguna decisión, y menos precisión es menos huella. */
+    logPerf(que, ms){
+      if(USO_OK.indexOf(que)<0) return;
+      const s=Math.round(Number(ms||0)/500)/2;
+      if(!isFinite(s)||s<0) return;
+      return this.logEvent('perf', que+" "+s.toFixed(1)+"s");
+    },
     // Sugerencias/errores del popup de Novedades → app_events con kind 'feedback'.
     // A diferencia de logEvent, NO comparte el tope de 20/sesión ni el dedupe (un feedback
     // no puede perderse en silencio) y FALLA visible (el caller avisa si no se pudo enviar).
@@ -2334,7 +2378,7 @@ const cloud = (function(){
 const CLOUD_WRITES=[
   "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
   "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
-  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","feedback","betaReport",
+  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","logUso","logPerf","feedback","betaReport",
   "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
 ];
 (function(){
@@ -10560,6 +10604,7 @@ function SheetImport({state, set, onClose, showToast}){
   const [reparto,setReparto]=useState(null); // {altas, dupes, malas}
   const [revelado,setRevelado]=useState(0);  // cuántas tarjetas del reparto han entrado ya
   const fileRef=useRef(null);
+  const t0Ref=useRef(0);   // cuándo empezó el import, para medir lo que tarda en un móvil de verdad
 
   const nCols=(filas||[]).reduce(function(m,f){ return Math.max(m,f.length); },0);
   const hayCab=filas?hojaTieneCabecera(filas):false;
@@ -10580,7 +10625,7 @@ function SheetImport({state, set, onClose, showToast}){
 
   const cargar=function(file){
     if(!file) return;
-    setErr(""); setLeyendo(true);
+    setErr(""); setLeyendo(true); t0Ref.current=Date.now();
     hojaLeer(file).then(function(r){
       if(!r.filas.length) throw new Error("vacio");
       setFilas(r.filas);
@@ -10625,6 +10670,9 @@ function SheetImport({state, set, onClose, showToast}){
     });
     setPaso(3);
     showToast(tf("ih_ok",{n:limpios.length}));
+    // Cuántas veces se usa el importador y cuánto tarda de verdad en un móvil: lo que Supabase no
+    // puede ver porque pasa aquí. Sin el fichero, sin las filas y sin los importes.
+    try{ cloud.logUso("import_hoja"); cloud.logPerf("import_hoja", Date.now()-t0Ref.current); }catch(e){}
   };
 
   const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",
@@ -11793,6 +11841,44 @@ function FeedbackPanel({state, set, showToast, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.13.0", d:"28 jul 2026",
+   t:{es:"Trae tus gastos desde un Excel, y la app se mueve como te gusta",
+      en:"Bring your expenses in from a spreadsheet, and the app moves the way you like",
+      ca:"Porta les teves despeses des d'un Excel, i l'app es mou com t'agrada"},
+   items:{
+   es:[
+    "📗 ¿Llevas tus gastos en un Excel? Ahora se pueden traer a la app: Ajustes → Copia de seguridad → «Importar una hoja de gastos». Vale un Excel o un CSV, da igual cómo se llamen tus columnas.",
+    "🔍 Te propongo qué es cada columna y lo corriges si me equivoco. Antes de guardar nada ves exactamente lo que va a entrar.",
+    "♻️ Lo repetido se descarta solo: si un gasto ya lo tenías apuntado, no entra dos veces. Se te enseña cuántos entran y cuántos se quedan fuera.",
+    "🎯 Al llegar al final de cualquier pestaña la lista rebota, como en el resto de la app.",
+    "✨ La rayita de la barra de abajo ya no atraviesa el botón +: lo salta por encima.",
+    "🐣 Los iconos de la barra hacen su gracia al entrar en cada pestaña.",
+    "💰 Al abrir la app vuelves a ver tu dinero subiendo hasta la cifra: la animación estaba, pero se gastaba antes de que la vieras.",
+    "🚀 Y la pantalla de entrada ya no cambia de forma a media carga.",
+    "🍂 Las animaciones de temporada paran solas al rato en vez de caer sin fin, y vuelven a arrancar cada vez que cambias de pestaña.",
+   ],
+   en:[
+    "📗 Keeping your expenses in a spreadsheet? You can now bring them in: Settings → Backup → «Import an expenses sheet». Excel or CSV both work, whatever your columns are called.",
+    "🔍 I guess what each column is and you fix me if I am wrong. Before anything is saved you see exactly what is coming in.",
+    "♻️ Duplicates are dropped on their own: an expense you already had does not go in twice. You are shown how many come in and how many stay out.",
+    "🎯 Reaching the end of any tab now bounces, like everywhere else in the app.",
+    "✨ The little bar underneath the tabs no longer crosses through the + button: it hops over it.",
+    "🐣 The tab icons do their thing when you land on each one.",
+    "💰 Opening the app you can see your money counting up to the figure again: the animation was there, it just played before you could see it.",
+    "🚀 And the opening screen no longer changes shape halfway through loading.",
+    "🍂 Seasonal animations stop by themselves after a while instead of falling forever, and start again every time you change tab.",
+   ],
+   ca:[
+    "📗 Portes les teves despeses en un Excel? Ara es poden portar a l'app: Ajustos → Còpia de seguretat → «Importar un full de despeses». Serveix un Excel o un CSV, tant se val com es diguin les teves columnes.",
+    "🔍 Et proposo què és cada columna i ho corregeixes si m'equivoco. Abans de desar res veus exactament el que entrarà.",
+    "♻️ El repetit es descarta sol: si una despesa ja la tenies apuntada, no entra dues vegades. Se t'ensenya quantes entren i quantes es queden fora.",
+    "🎯 En arribar al final de qualsevol pestanya la llista rebota, com a la resta de l'app.",
+    "✨ La ratlleta de la barra de sota ja no travessa el botó +: el salta per sobre.",
+    "🐣 Les icones de la barra fan la seva gràcia en entrar a cada pestanya.",
+    "💰 En obrir l'app tornes a veure els teus diners pujant fins a la xifra: l'animació hi era, però es gastava abans que la veiessis.",
+    "🚀 I la pantalla d'entrada ja no canvia de forma a mitja càrrega.",
+    "🍂 Les animacions de temporada paren soles al cap d'una estona en lloc de caure sense fi, i tornen a arrencar cada cop que canvies de pestanya.",
+   ]}},
   {v:"4.12.1", d:"27 jul 2026",
    t:{es:"Ajustes solo desde Resumen, y sin topes al abrir o bajar la lista",
       en:"Settings only from Home, and no more stops when opening or scrolling",
@@ -16278,6 +16364,12 @@ function App(){
     const fx=document.querySelector(".season-fx");
     if(fx) fx.classList.toggle("b");
   },[tab]);
+  /* Métricas de uso: qué pestañas se usan de verdad. Una etiqueta cerrada y nada más — ni qué hay
+     dentro, ni cuánto dinero, ni cuándo. El dedupe de `logEvent` hace que cada pestaña cuente una
+     vez por sesión, que es la medida que sirve para decidir qué sobra. Ver `USO_OK` en 00-core. */
+  useEffect(function(){
+    try{ cloud.logUso("tab_"+(tabIds[tab]||"inicio")); }catch(e){}
+  },[tab, tabIds]);
   const gestRef=useRef({});
   gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
   useEffect(function(){

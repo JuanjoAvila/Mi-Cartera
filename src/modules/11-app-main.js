@@ -2174,6 +2174,12 @@ function App(){
     const fx=document.querySelector(".season-fx");
     if(fx) fx.classList.toggle("b");
   },[tab]);
+  /* Métricas de uso: qué pestañas se usan de verdad. Una etiqueta cerrada y nada más — ni qué hay
+     dentro, ni cuánto dinero, ni cuándo. El dedupe de `logEvent` hace que cada pestaña cuente una
+     vez por sesión, que es la medida que sirve para decidir qué sobra. Ver `USO_OK` en 00-core. */
+  useEffect(function(){
+    try{ cloud.logUso("tab_"+(tabIds[tab]||"inicio")); }catch(e){}
+  },[tab, tabIds]);
   const gestRef=useRef({});
   gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
   useEffect(function(){
