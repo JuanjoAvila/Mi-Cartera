@@ -53,21 +53,25 @@ test("no se puede aprobar con cosas sin probar ni con fallos marcados", async ({
   const panel = page.locator(".beta-review");
   await expect(panel).toBeVisible();
 
-  const aprobar = panel.getByRole("button", { name: /Aprobar esta beta/i });
-  const items = panel.locator(".beta-item");
+  /* Desde 4.13.0 hay un botón por TANDA, no uno para toda la beta, así que la regla se comprueba
+     dentro de una: es la misma puerta, solo que ahora hay varias. Que un fallo en una tanda no
+     bloquee a las otras lo prueba el test de más abajo. */
+  const tanda = panel.locator(".beta-tanda").first();
+  const aprobar = tanda.getByRole("button", { name: /Aprobar esta (beta|tanda)/i });
+  const items = tanda.locator(".beta-item");
   const n = await items.count();
   expect(n).toBeGreaterThan(0);
 
   // 1) Recién abierto: nada probado → aprobar deshabilitado.
   await expect(aprobar).toBeDisabled();
-  await expect(panel).toContainText(/Te quedan .* por probar/i);
+  await expect(tanda).toContainText(/Te quedan .* por probar/i);
 
   // 2) Todo bien menos uno marcado como que falla → sigue deshabilitado, y sale el aviso.
   for (let i = 0; i < n; i++) await items.nth(i).getByRole("button", { name: /Va bien/i }).click();
   await expect(aprobar).toBeEnabled();                       // todo ok → sí se puede
   await items.nth(0).getByRole("button", { name: /Falla/i }).click();
   await expect(aprobar).toBeDisabled();                      // uno roto → no se puede
-  await expect(panel).toContainText(/arréglalo antes de aprobar/i);
+  await expect(tanda).toContainText(/arréglalo antes de aprobar/i);
 
   // Y al marcar que falla aparece el campo para decir QUÉ falla (que es el valor real de esto).
   await expect(items.nth(0).locator("input")).toBeVisible();
@@ -118,7 +122,7 @@ test("con producción por DETRÁS, la beta sigue pidiendo veredicto", async ({ p
   await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });   // una beta sellada de verdad
   const panel = await conProduccionEn(page, "0.0.1");
   await expect(panel).toBeVisible();
-  await expect(panel.getByRole("button", { name: /Aprobar esta beta/i })).toBeVisible();
+  await expect(panel.locator(".beta-tanda").first().getByRole("button", { name: /Aprobar esta (beta|tanda)/i })).toBeVisible();
   await expect(panel).not.toContainText(/Ya está en producción/i);
 });
 
@@ -129,7 +133,7 @@ test("con producción ya en esta versión, no se pide ningún veredicto", async 
   const panel = await conProduccionEn(page, "999.0.0");
   await expect(panel).toBeVisible();
   await expect(panel).toContainText(/Ya está en producción/i);
-  await expect(panel.getByRole("button", { name: /Aprobar esta beta/i })).toHaveCount(0);
+  await expect(panel.getByRole("button", { name: /Aprobar esta (beta|tanda)/i })).toHaveCount(0);
 });
 
 test("una versión sin sellar («dev») NO se da por aprobada sola", async ({ page }) => {
@@ -139,7 +143,7 @@ test("una versión sin sellar («dev») NO se da por aprobada sola", async ({ pa
   await page.evaluate(() => { CONFIG.APP_VERSION = "dev"; });
   const panel = await conProduccionEn(page, "4.12.1");
   await expect(panel).toBeVisible();
-  await expect(panel.getByRole("button", { name: /Aprobar esta beta/i })).toBeVisible();
+  await expect(panel.locator(".beta-tanda").first().getByRole("button", { name: /Aprobar esta (beta|tanda)/i })).toBeVisible();
 });
 
 test("el progreso sobrevive a cerrar la app (se prueba durante días)", async ({ page }) => {
@@ -252,4 +256,84 @@ test("✓ y «no lo puedo probar» se heredan entre compilaciones; los ✗ no", 
   await expect(panel.locator(".beta-item").nth(2).locator("input")).toHaveCount(0);
   // El progreso cuenta los dos heredados.
   await expect(panel).toContainText("2/");
+});
+
+/* VARIAS BETAS A LA VEZ, APROBABLES POR SEPARADO (petición suya 2026-07-29: «que se pudieran
+ * implementar varias betas a la vez y que me des la opción de aprobarlas por separado pero que
+ * estén juntas»).
+ *
+ * Lo que hay que blindar es que las tandas sean INDEPENDIENTES de verdad: un fallo en una no
+ * puede bloquear a las otras, porque ese es todo el motivo de que existan. Y que una versión SIN
+ * tandas siga comportándose exactamente como antes — hay 69 versiones de histórico detrás. */
+
+test("una versión sin tandas declaradas sigue siendo una sola checklist", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  const r = await page.evaluate(() => {
+    const p = betaChecklist("4.8.0");        // del histórico: no declara tandas
+    return { n: p.tandas.length, id: p.tandas[0].id, items: p.tandas[0].items.length, total: p.items.length };
+  });
+  expect(r.n).toBe(1);
+  expect(r.id).toBe("todo");
+  expect(r.items).toBe(r.total);             // la tanda implícita lo lleva todo
+});
+
+test("la versión en curso declara varias tandas y se reparten TODOS los puntos", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  const r = await page.evaluate(() => {
+    const p = betaChecklist(CONFIG.APP_VERSION);
+    return {
+      n: p.tandas.length,
+      ids: p.tandas.map((t) => t.id),
+      suma: p.tandas.reduce((a, t) => a + t.items.length, 0),
+      titulos: p.tandas.every((t) => !!t.t),
+    };
+  });
+  expect(r.n).toBeGreaterThan(1);
+  expect(new Set(r.ids).size, "los ids de tanda no se pueden repetir").toBe(r.n);
+  expect(r.suma).toBeGreaterThan(0);
+  expect(r.titulos, "cada tanda necesita un título: es lo que él lee en el móvil").toBe(true);
+});
+
+test("un fallo en una tanda NO bloquea aprobar las otras", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });
+  const panel = await conProduccionEn(page, "0.0.1");
+  await expect(panel).toBeVisible();
+
+  const tandas = panel.locator(".beta-tanda");
+  const n = await tandas.count();
+  expect(n, "esta versión tiene que traer varias tandas para que el test signifique algo").toBeGreaterThan(1);
+
+  const primera = tandas.nth(0), segunda = tandas.nth(1);
+  const aprobar = (t) => t.getByRole("button", { name: /Aprobar esta tanda/i });
+
+  // La PRIMERA se marca entera como que va bien → su botón se habilita.
+  const it1 = primera.locator(".beta-item");
+  for (let i = 0; i < (await it1.count()); i++) {
+    await it1.nth(i).getByRole("button", { name: /Va bien/i }).click();
+  }
+  await expect(aprobar(primera)).toBeEnabled();
+
+  // Y en la SEGUNDA se marca un fallo. Lo que importa: la primera sigue aprobable.
+  await segunda.locator(".beta-item").nth(0).getByRole("button", { name: /Falla/i }).click();
+  await expect(aprobar(segunda)).toBeDisabled();
+  await expect(aprobar(primera)).toBeEnabled();
+  await expect(segunda).toContainText(/arréglalo antes de aprobar/i);
+});
+
+test("cada tanda lleva su cuenta propia, no la de la beta entera", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });
+  const panel = await conProduccionEn(page, "0.0.1");
+  const primera = panel.locator(".beta-tanda").nth(0);
+  const total = await primera.locator(".beta-item").count();
+
+  await expect(primera.locator(".beta-tanda-n")).toHaveText("0/" + total);
+  await primera.locator(".beta-item").nth(0).getByRole("button", { name: /Va bien/i }).click();
+  await expect(primera.locator(".beta-tanda-n")).toHaveText("1/" + total);
+
+  // Marcar en la primera no puede mover el contador de la segunda.
+  const segunda = panel.locator(".beta-tanda").nth(1);
+  const total2 = await segunda.locator(".beta-item").count();
+  await expect(segunda.locator(".beta-tanda-n")).toHaveText("0/" + total2);
 });

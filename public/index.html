@@ -320,6 +320,17 @@
   html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
   @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
   @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
+  /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
+  .beta-tanda{margin:0 0 22px;padding-top:2px;}
+  .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
+  .beta-tanda-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 10px;}
+  .beta-tanda-t{font-family:'Fraunces',Georgia,serif;font-size:17px;font-weight:560;line-height:1.25;}
+  .beta-tanda-n{flex:0 0 auto;font-size:11.5px;font-weight:800;color:var(--muted-2);background:var(--surface-2);
+    border-radius:20px;padding:4px 10px;white-space:nowrap;}
+  .beta-tanda-n.ok{color:var(--on-mint);background:var(--mint);}
+  .beta-tanda-n.ko{color:#fff;background:var(--coral);}
+  .beta-veredicto{margin-top:14px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--sur);}
+
   /* ===== Importar una hoja de gastos (Excel/CSV) ===== */
   .hoja-pasos{margin:0 0 18px;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.6;}
   .hoja-pasos li{margin-bottom:7px;}
@@ -11469,7 +11480,25 @@ function betaChecklist(version){
     : null;
   // El panel de revisión es la consola privada del dueño y va SIN traducir (como «Actividad»),
   // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
-  return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
+  if(!notes) return { v:base, t:"", items:[], tandas:[] };
+  return { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es"), tandas:betaTandas(notes) };
+}
+/* LAS TANDAS DE UNA VERSIÓN — varias betas a la vez, cada una con su veredicto.
+   Petición suya 2026-07-29: «que se pudieran implementar varias betas a la vez y que me des la
+   opción de aprobarlas por separado pero que estén juntas». Es como trabaja él: varias cosas en
+   vuelo, se prueban en la MISMA app —una sola instalación, un solo bundle— y cada una sube cuando
+   está lista, sin esperar a la que va con retraso.
+
+   Si una versión no declara tandas se devuelve UNA sola con todo dentro, y el panel se comporta
+   exactamente como antes. Eso hace que las 69 versiones del histórico sigan funcionando y que
+   declarar tandas sea opcional: una tanda pequeña no necesita ceremonia. */
+function betaTandas(notes){
+  if(notes && notes.tandas && notes.tandas.length){
+    return notes.tandas.map(function(g){
+      return { id:String(g.id), t:rnT(g.t,"es"), items:rnItems(g,"es") };
+    });
+  }
+  return [{ id:"todo", t:"", items:rnItems(notes,"es") }];
 }
 /* ¿LO QUE LLEVO PUESTO YA ESTÁ EN PRODUCCIÓN? (petición suya 2026-07-28)
    «Ponme que cuando suba algo a prod, la beta no haya nada para aprobar porque lógicamente ya lo
@@ -11555,7 +11584,9 @@ function BetaReviewPanel({onClose, showToast}){
   const [marks,setMarks]=useState(function(){ return Object.assign(heredarOk(), store.get(storeKey)||{}); });
   const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
   const [busy,setBusy]=useState(false);
-  const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  // Veredicto POR TANDA: {idTanda: "approved"|"rejected"}. Antes era uno solo para toda la beta,
+  // y con varias cosas en vuelo eso obliga a esperar a la más lenta para subir la más rápida.
+  const [sent,setSent]=useState(function(){ return store.get(storeKey+"_v") || {}; });
   // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
   // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
   const heredados=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, n=0;
@@ -11573,6 +11604,24 @@ function BetaReviewPanel({onClose, showToast}){
   };
   const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
 
+  /* Las tandas comparten la numeración GLOBAL de los puntos (`marks` va por índice), así que
+     cada tanda solo necesita saber qué índices son suyos. Se hace así y no con claves por tanda
+     porque el guardado y la herencia de ✓ entre compilaciones ya van por ese índice y por el
+     TEXTO del punto: cambiarlo habría tirado a la basura todo lo que ya tiene probado. */
+  const grupos=(function(){
+    var out=[], i=0;
+    (pack.tandas||[]).forEach(function(g){
+      var idx=g.items.map(function(){ return i++; });
+      out.push({ id:g.id, t:g.t, items:g.items, idx:idx });
+    });
+    return out;
+  })();
+  const cuenta=function(idx){
+    var r={ok:0,ko:0,na:0};
+    idx.forEach(function(i){ var m=marks[i]; if(m==="ok")r.ok++; else if(m==="ko")r.ko++; else if(m==="na")r.na++; });
+    r.pend=idx.length-r.ok-r.ko-r.na;
+    return r;
+  };
   const total=pack.items.length;
   const ok=pack.items.filter(function(_,i){ return marks[i]==="ok"; }).length;
   const ko=pack.items.filter(function(_,i){ return marks[i]==="ko"; }).length;
@@ -11596,22 +11645,37 @@ function BetaReviewPanel({onClose, showToast}){
       if(info&&info.versionCode!=null) setApkCode(String(info.versionCode));
     }).catch(function(){});
   },[]);
-  const enviar=function(verdict){
+  /* EL VEREDICTO ES DE UNA TANDA, NO DE LA BETA ENTERA.
+     El parte lleva el `id` de la tanda para que quien promociona sepa QUÉ subir: con varias cosas
+     en vuelo, «aprobada» a secas no dice nada. `scripts/errores.mjs --kind=beta` las enseña una
+     por línea. Cuando una versión no declara tandas, el id es "todo" y el parte queda igual que
+     siempre — el histórico de veredictos se sigue leyendo sin cambiar nada. */
+  const enviar=function(g, verdict){
     if(busy) return;
     setBusy(true);
-    const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
+    const c=cuenta(g.idx);
+    const fallos=g.idx.map(function(i,j){ return marks[i]==="ko" ? {item:g.items[j].slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
     const conApk=CONFIG.APP_VERSION+(apkCode?" (APK "+apkCode+")":"");
+    const etiq=g.t?(" ["+g.id+"] "+g.t):"";
     const payload={
       verdict:verdict, version:CONFIG.APP_VERSION, apk:apkCode, notas:pack.v,
-      probados:ok, fallos:ko, sinProbar:pend, noProbable:na, heredados:heredados.current,
-      noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
+      tanda:g.id, tandaTitulo:g.t||null,
+      probados:c.ok, fallos:c.ko, sinProbar:c.pend, noProbable:c.na, heredados:heredados.current,
+      noProbables:g.idx.map(function(i,j){ return marks[i]==="na" ? g.items[j].slice(0,140) : null; }).filter(Boolean),
       detalle:fallos,
-      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+conApk+
-        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+(na?" / "+na+" no probable(s)":"")+
+      summary:(verdict==="approved" ? "✅ APROBADA " : "⛔ RECHAZADA ")+conApk+etiq+
+        " · "+c.ok+" ok / "+c.ko+" fallo(s) / "+c.pend+" sin probar"+(c.na?" / "+c.na+" no probable(s)":"")+
         (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
     };
     cloud.betaReport(payload)
-      .then(function(){ setSent(verdict); showToast(verdict==="approved"?"✅ Aprobada · queda registrado":"⛔ Enviado · no se sube"); })
+      .then(function(){
+        setSent(function(p){
+          const n=Object.assign({},p); n[g.id]=verdict;
+          store.set(storeKey+"_v",n);   // sobrevive a cerrar la app: probar lleva días
+          return n;
+        });
+        showToast(verdict==="approved"?"✅ Aprobada · queda registrado":"⛔ Enviado · no se sube");
+      })
       .catch(function(e){ showToast("✕ No se pudo enviar: "+((e&&e.message)||e)); })
       .finally(function(){ setBusy(false); });
   };
@@ -11656,47 +11720,62 @@ function BetaReviewPanel({onClose, showToast}){
     pack.items.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)"}},
       "Esta versión no trae notas, así que no hay checklist. Prueba lo que hayas tocado."),
 
-    pack.items.map(function(it,i){
-      const m=marks[i];
-      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
-        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
-        React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
-        React.createElement("div",{style:{display:"flex",gap:8}},
-          React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
-          React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
-        React.createElement("button",{type:"button",style:Object.assign({},btn(m==="na","var(--muted-2)"),{marginTop:8,width:"100%"}),
-          onClick:function(){ mark(i,"na"); }}, "— No lo puedo probar"),
-        m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
-          placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
-          onChange:function(e){ setNote(i,e.target.value); }})
+    /* UNA SECCIÓN POR TANDA, cada una con su veredicto (petición suya 2026-07-29).
+       El punto de todo esto: que una tanda lista pueda subir HOY sin esperar a la que todavía
+       tiene un fallo. Antes el botón era uno solo para la beta entera, así que un punto rojo en
+       cualquier sitio bloqueaba lo demás — que es justo lo que le pasa en el trabajo cuando una
+       rama se queda atrás y arrastra a las otras. */
+    grupos.map(function(g){
+      const c=cuenta(g.idx);
+      const v=sent[g.id];
+      const listo=c.pend===0 && c.ko===0;
+      return React.createElement("div",{key:g.id,className:"beta-tanda"},
+        g.t && React.createElement("div",{className:"beta-tanda-h"},
+          React.createElement("span",{className:"beta-tanda-t"}, g.t),
+          React.createElement("span",{className:"beta-tanda-n"+(v==="approved"?" ok":v==="rejected"?" ko":"")},
+            v==="approved" ? "✅ aprobada" : v==="rejected" ? "⛔ rechazada" : (c.ok+c.ko+c.na)+"/"+g.idx.length)),
+        g.idx.map(function(i,j){
+          const it=g.items[j], m=marks[i];
+          return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
+            borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
+            React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
+            React.createElement("div",{style:{display:"flex",gap:8}},
+              React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
+              React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
+            React.createElement("button",{type:"button",style:Object.assign({},btn(m==="na","var(--muted-2)"),{marginTop:8,width:"100%"}),
+              onClick:function(){ mark(i,"na"); }}, "— No lo puedo probar"),
+            m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
+              placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
+              onChange:function(e){ setNote(i,e.target.value); }})
+          );
+        }),
+        // El veredicto de ESTA tanda. Con la versión ya en producción no se pide ninguno.
+        yaEnProd ? null
+        : v ? React.createElement("div",{className:"beta-veredicto",style:{borderColor:v==="approved"?"var(--mint)":"var(--coral)"}},
+            React.createElement("div",{style:{fontWeight:800,fontSize:14,marginBottom:5}},
+              v==="approved" ? "✅ Aprobada" : "⛔ Rechazada"),
+            React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.5}},
+              v==="approved"
+                ? "Queda registrado con su nombre («"+g.id+"»). Para subir SOLO lo aprobado: Actions → «Promocionar beta a producción», poniendo "+(grupos.length>1?"las tandas que quieras en «tandas»":"SUBIR")+"."
+                : "Queda registrado con lo que falla. Esta tanda no sube; las demás pueden seguir su camino."),
+            React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:10},
+              onClick:function(){ setSent(function(p){ const n=Object.assign({},p); delete n[g.id]; store.set(storeKey+"_v",n); return n; }); }},
+              "↺ Cambiar de opinión"))
+        : React.createElement(React.Fragment,null,
+            c.ko>0 && React.createElement("button",{type:"button",className:"v4-danger",style:{marginTop:6},disabled:busy,
+              onClick:function(){ enviar(g,"rejected"); }}, busy?"Enviando…":("⛔ Reportar "+c.ko+" fallo(s) · no subir")),
+            React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,opacity:listo?1:0.45},
+              disabled:busy||!listo,onClick:function(){ enviar(g,"approved"); }},
+              busy?"Enviando…":(g.t?"✅ Aprobar esta tanda":"✅ Aprobar esta beta")),
+            !listo && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",textAlign:"center",marginTop:8,lineHeight:1.5}},
+              c.ko>0 ? "Hay algo marcado como que falla: arréglalo antes de aprobar."
+                     : "Te quedan "+c.pend+" cosa(s) por probar.")
+          )
       );
     }),
 
-    // Veredicto. Con la versión ya en producción no se pide ninguno: no hay nada que decidir.
-    yaEnProd
-      ? null
-      : sent
-      ? React.createElement("div",{style:{marginTop:16,padding:"14px 16px",borderRadius:16,
-          border:"1px solid "+(sent==="approved"?"var(--mint)":"var(--coral)"),background:"var(--sur)"}},
-          React.createElement("div",{style:{fontWeight:800,fontSize:14.5,marginBottom:6}},
-            sent==="approved" ? "✅ Beta aprobada" : "⛔ Beta rechazada"),
-          React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.5}},
-            sent==="approved"
-              ? "Queda registrado (Actividad → filtro «beta»). Para subirla a producción: dile a Claude «sube la beta», o lanza el workflow «Promocionar beta a producción» en GitHub → Actions. La app no puede hacer un merge de git ella sola."
-              : "Queda registrado con lo que falla. No la subas hasta arreglarlo."))
-      : React.createElement(React.Fragment,null,
-          ko>0 && React.createElement("button",{type:"button",className:"v4-danger",style:{marginTop:6},disabled:busy,
-            onClick:function(){ enviar("rejected"); }}, busy?"Enviando…":("⛔ Reportar "+ko+" fallo(s) · no subir")),
-          React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,opacity:(pend>0||ko>0)?0.45:1},
-            disabled:busy||pend>0||ko>0,onClick:function(){ enviar("approved"); }},
-            busy?"Enviando…":"✅ Aprobar esta beta"),
-          (pend>0||ko>0) && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",textAlign:"center",marginTop:8,lineHeight:1.5}},
-            ko>0 ? "Hay algo marcado como que falla: arréglalo antes de aprobar."
-                 : "Te quedan "+pend+" cosa(s) por probar.")
-        ),
-
     React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:14},
-      onClick:function(){ store.del(storeKey); store.del(storeKey+"_n"); setMarks({}); setNotes({}); setSent(null); }},
+      onClick:function(){ store.del(storeKey); store.del(storeKey+"_n"); store.del(storeKey+"_v"); setMarks({}); setNotes({}); setSent({}); }},
       "↺ Empezar la revisión de cero")
   ));
 }
@@ -11853,6 +11932,33 @@ var RELEASE_NOTES=[
    t:{es:"Trae tus gastos desde un Excel, y la app se mueve como te gusta",
       en:"Bring your expenses in from a spreadsheet, and the app moves the way you like",
       ca:"Porta les teves despeses des d'un Excel, i l'app es mou com t'agrada"},
+   /* TANDAS: varias betas a la vez, aprobables por separado (petición suya 2026-07-29: «que se
+      pudieran implementar varias betas a la vez y que me des la opción de aprobarlas por separado
+      pero que estén juntas»). Solo las ve ÉL, en el panel de revisión; la familia sigue viendo
+      `items` de corrido en Novedades, que es una lista de novedades y no un parte de trabajo. */
+   tandas:[
+    {id:"import", t:"📗 Importar hojas de gastos", items:[
+      "Ajustes → Copia de seguridad → «Importar una hoja de gastos» abre la pantalla.",
+      "Un Excel (.xlsx) tuyo o de tu madre se lee y propone solo qué es cada columna.",
+      "Un CSV también entra, con punto y coma o con coma.",
+      "Antes de guardar ves el reparto: cuántos entran y cuántos ya los tenías.",
+      "Lo repetido se descarta solo y no ensucia el histórico.",
+      "Al guardar, los gastos nuevos salen en Gastos y cuentan en los totales.",
+    ]},
+    {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
+      "Al llegar al final de una pestaña la lista rebota y vuelve sola.",
+      "En Resumen, tirar hacia abajo estando arriba SIGUE abriendo el perfil (el rebote no estorba).",
+      "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
+      "La rayita de abajo salta POR ENCIMA del botón + al ir de Gastos a Plan.",
+      "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
+    ]},
+    {id:"arranque", t:"🚀 Arranque y temporadas", items:[
+      "Al abrir la app el patrimonio sube contando hasta la cifra, y da tiempo a verlo.",
+      "La pantalla de entrada ya no cambia de forma a media carga.",
+      "Con una temática puesta, las piezas caen un rato y paran solas.",
+      "Al cambiar de pestaña vuelven a caer.",
+    ]},
+   ],
    items:{
    es:[
     "📗 ¿Llevas tus gastos en un Excel? Ahora se pueden traer a la app: Ajustes → Copia de seguridad → «Importar una hoja de gastos». Vale un Excel o un CSV, da igual cómo se llamen tus columnas.",

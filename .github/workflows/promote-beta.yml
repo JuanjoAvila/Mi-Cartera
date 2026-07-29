@@ -19,6 +19,10 @@ on:
         description: 'Escribe SUBIR para confirmar (la verá tu padre y tu pareja)'
         required: true
         default: ''
+      tandas:
+        description: 'Qué tandas subir, separadas por comas (p. ej. import,gestos). Vacío = la beta entera.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -72,12 +76,38 @@ jobs:
           npx playwright install chromium --with-deps
           node scripts/run-tests.mjs
 
-      - name: Mergear beta → main
+      # SUBIR SOLO LAS TANDAS APROBADAS (petición suya 2026-07-29: «que se pudieran implementar
+      # varias betas a la vez y que me des la opción de aprobarlas por separado»).
+      #
+      # Con `tandas` vacío se sube `beta` entera, que es como ha funcionado siempre y sigue siendo
+      # lo normal cuando solo hay una cosa en vuelo.
+      #
+      # Con tandas, cada una vive en su rama `tanda/<id>` y aquí se mergean SOLO las que él ha
+      # aprobado en el panel. Eso es lo que permite que una tanda lista suba hoy sin esperar a la
+      # que todavía tiene un fallo — que es el problema real que esto viene a resolver.
+      #
+      # ⚠ Si pides una tanda cuya rama no existe, esto PARA. Subir «lo que haya» cuando falta una
+      # rama es exactamente el fallo silencioso que ya costó dos promociones a medias.
+      - name: Mergear a main lo aprobado
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout main
-          git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
+          TANDAS="$(echo '${{ inputs.tandas }}' | tr -d '[:space:]')"
+          if [ -z "$TANDAS" ]; then
+            git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
+          else
+            echo "$TANDAS" | tr ',' '\n' | while read -r T; do
+              [ -n "$T" ] || continue
+              git rev-parse --verify "refs/remotes/origin/tanda/$T" >/dev/null 2>&1 || {
+                echo "::error::no existe la rama tanda/$T · no se sube nada a medias"; exit 1; }
+            done
+            for T in $(echo "$TANDAS" | tr ',' ' '); do
+              [ -n "$T" ] || continue
+              echo "→ tanda/$T"
+              git merge --no-ff "origin/tanda/$T" -m "Promocionar tanda «$T» a producción (probada y aprobada en el móvil)"
+            done
+          fi
           git push origin main
 
       # ⚠ ESTE PASO NO SOBRA: un push hecho con el GITHUB_TOKEN del propio workflow **NO dispara
@@ -95,7 +125,9 @@ jobs:
       # versión nueva. Una promoción que no llega a Pages no es una promoción.
       - name: Comprobar que producción ya sirve la versión nueva
         run: |
-          VERSION=$(git show origin/beta:VERSION | tr -d '[:space:]')
+          # La versión que tiene que servir Pages es la de LO QUE SE ACABA DE SUBIR, no la de
+          # `beta`: promocionando por tandas, `beta` puede ir por delante de lo aprobado.
+          VERSION=$(git show main:VERSION | tr -d '[:space:]')
           echo "Esperando a que Pages sirva $VERSION…"
           LIVE=""
           for i in $(seq 1 40); do

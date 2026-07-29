@@ -255,3 +255,55 @@ Además de la checklist automática del panel (sale de `RELEASE_NOTES`), convien
    Si solo sale la web, la APK es anterior a la 35.
 6. **Panel de revisión:** los ✓ de una compilación anterior con el mismo texto de nota llegan
    heredados; los ✗ no.
+
+## Varias betas a la vez (tandas) — desde 4.13.0
+
+Petición suya del 2026-07-29: **«que se pudieran implementar varias betas a la vez y que me des la
+opción de aprobarlas por separado pero que estén juntas»**. O sea, como se trabaja en una empresa:
+varias cosas en vuelo, todas probándose en la misma instalación, y cada una sube cuando está lista
+sin esperar a la que va con retraso.
+
+### Cómo se declara una tanda
+
+En la entrada de `RELEASE_NOTES` de la versión, junto a `items` (que es lo que ve la familia en
+Novedades y **no cambia**), se añade `tandas`, que **solo la ve él** en el panel de revisión:
+
+```js
+{v:"4.13.0", d:"28 jul 2026", t:{es:"…",en:"…",ca:"…"},
+ tandas:[
+   {id:"import", t:"📗 Importar hojas de gastos", items:["…qué probar…","…"]},
+   {id:"gestos", t:"🎯 Rebote y barra de abajo",  items:["…","…"]},
+ ],
+ items:{es:[…],en:[…],ca:[…]}}
+```
+
+Reglas:
+- **El `id` es el que viaja al parte y al workflow.** Corto, sin espacios, estable.
+- Los `items` de una tanda son **qué probar**, no qué se ha hecho: se leen desde el móvil con la
+  app delante. El `CHANGELOG` es para el porqué.
+- **Las tandas son opcionales.** Sin ellas, el panel se comporta exactamente como antes (una sola
+  checklist, un solo veredicto con id `todo`). Las 69 versiones del histórico siguen funcionando.
+
+### Cómo se aprueba
+
+Cada tanda tiene en el panel **su propio contador y su propio botón**. Un fallo marcado en una NO
+bloquea a las demás — que es todo el motivo de que existan. Cada veredicto se manda por separado y
+lleva su `id`, así que `node scripts/errores.mjs --kind=beta` enseña una línea por tanda.
+
+### Cómo se sube solo lo aprobado
+
+Para que una tanda pueda subir sola, tiene que vivir en **su propia rama `tanda/<id>`**, y `beta`
+ser la mezcla de todas. Entonces:
+
+```
+Actions → «Promocionar beta a producción»
+  confirmar: SUBIR
+  tandas:    import,gestos      ← solo estas dos se mergean a main
+```
+
+Con `tandas` **vacío** se sube `beta` entera, que es lo de siempre y sigue siendo lo normal cuando
+solo hay una cosa en vuelo.
+
+⚠ Si pides una tanda cuya rama no existe, el workflow **para** y no sube nada. Subir «lo que haya»
+cuando falta una rama es el fallo silencioso que ya costó dos promociones a medias.
+

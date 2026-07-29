@@ -320,6 +320,17 @@
   html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
   @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
   @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
+  /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
+  .beta-tanda{margin:0 0 22px;padding-top:2px;}
+  .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
+  .beta-tanda-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 10px;}
+  .beta-tanda-t{font-family:'Fraunces',Georgia,serif;font-size:17px;font-weight:560;line-height:1.25;}
+  .beta-tanda-n{flex:0 0 auto;font-size:11.5px;font-weight:800;color:var(--muted-2);background:var(--surface-2);
+    border-radius:20px;padding:4px 10px;white-space:nowrap;}
+  .beta-tanda-n.ok{color:var(--on-mint);background:var(--mint);}
+  .beta-tanda-n.ko{color:#fff;background:var(--coral);}
+  .beta-veredicto{margin-top:14px;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:var(--sur);}
+
   /* ===== Importar una hoja de gastos (Excel/CSV) ===== */
   .hoja-pasos{margin:0 0 18px;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.6;}
   .hoja-pasos li{margin-bottom:7px;}

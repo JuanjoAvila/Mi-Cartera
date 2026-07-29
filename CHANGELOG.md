@@ -162,6 +162,29 @@ usuario toca que costó siete vueltas sacar del carrusel. La clase se pone y se 
   haría cambiar de opinión. La del OTA lleva pegada la lección de las dos causas con el mismo
   síntoma.
 
+#### Varias betas a la vez, aprobables por separado
+
+> «Que se pudieran implementar varias betas a la vez y que me des la opción de aprobarlas por
+> separado pero que estén juntas. Así ya trabajo 100 % como mi trabajo.»
+
+Una versión puede declarar **tandas** en sus notas: cada una con su `id`, su título y sus puntos a
+probar. En el panel, cada tanda tiene **su contador y su botón** — un fallo en una no bloquea a las
+demás, que es el problema real (una rama con un fallo arrastraba a todas las que ya estaban listas).
+Cada veredicto viaja con su `id`, así que el parte dice QUÉ subir y no solo «aprobada».
+
+Detalle de implementación que importa para no romper lo que ya tiene probado: los puntos siguen
+numerados **globalmente**, porque el guardado y la herencia de ✓ entre compilaciones van por ese
+índice y por el TEXTO del punto. Cambiar el esquema de claves habría tirado a la basura todo lo
+aprobado en betas anteriores. Las tandas solo agrupan índices.
+
+**Sin tandas declaradas, todo se comporta como antes** (una checklist, un veredicto con id `todo`):
+las 69 versiones del histórico siguen funcionando y declarar tandas es opcional.
+
+Y el workflow de promoción acepta ahora `tandas: import,gestos` para mergear **solo esas** ramas
+`tanda/<id>` a `main`. Vacío = la beta entera, como siempre. Si pides una tanda cuya rama no
+existe, para: subir «lo que haya» es el fallo silencioso que ya costó dos promociones a medias.
+Flujo completo en [docs/TESTING.md](docs/TESTING.md).
+
 #### Guardianes
 
 - `tests/import-hoja.test.mjs` — el criterio de duplicado con sus casos límite, el mapeo con y sin
