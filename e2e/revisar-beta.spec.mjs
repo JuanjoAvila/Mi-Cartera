@@ -84,6 +84,64 @@ test("no se puede aprobar con cosas sin probar ni con fallos marcados", async ({
   await expect(aprobar).toBeEnabled();
 });
 
+/* ¿YA ESTÁ EN PRODUCCIÓN? — y el NaN que casi lo estropea.
+ *
+ * Petición suya (2026-07-28): «cuando suba algo a prod, la beta no haya nada para aprobar porque
+ * lógicamente ya lo hice para que subiera prod». Promocionar ES aprobar.
+ *
+ * ⚠ ESTE TEST EXISTE POR UN FALLO QUE SOLO SE VIO EN CI. En local, la petición a Pages no sale
+ * (no hay red hacia fuera), así que `_mcProdVersion` devolvía `null` y la rama nueva NO se
+ * ejecutaba nunca: los 94 tests pasaban en verde sin haberla tocado. En CI sí sale, y allí el
+ * bundle todavía va sin sellar (`APP_VERSION:"dev"`, porque los tests corren ANTES de
+ * `stamp-version`). `_mcNewerVer` compara con `parseInt`, `parseInt("dev")` es `NaN`, y `NaN`
+ * pierde todas las comparaciones → la app se declaraba «ya en producción» y escondía el veredicto
+ * entero. La misma trampa del NaN que en la 4.9.2 dejó un móvil sin actualizarse nunca.
+ *
+ * Por eso aquí se FIJA la versión de producción con un doble, en vez de depender de la red: así
+ * el caso se prueba igual en el portátil que en CI. */
+async function conProduccionEn(page, version) {
+  await page.evaluate((v) => { window._mcProdVersion = () => Promise.resolve(v); }, version);
+  const host = "e2e-beta-prod-" + Math.random().toString(36).slice(2, 7);
+  await page.evaluate((id) => {
+    const h = document.createElement("div");
+    h.id = id;
+    document.body.appendChild(h);
+    ReactDOM.createRoot(h).render(
+      React.createElement(BetaReviewPanel, { onClose: () => {}, showToast: () => {} }),
+    );
+  }, host);
+  return page.locator(".beta-review");
+}
+
+test("con producción por DETRÁS, la beta sigue pidiendo veredicto", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });   // una beta sellada de verdad
+  const panel = await conProduccionEn(page, "0.0.1");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("button", { name: /Aprobar esta beta/i })).toBeVisible();
+  await expect(panel).not.toContainText(/Ya está en producción/i);
+});
+
+test("con producción ya en esta versión, no se pide ningún veredicto", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  // Sellada, y producción por delante: producción ya pasó por aquí.
+  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });
+  const panel = await conProduccionEn(page, "999.0.0");
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText(/Ya está en producción/i);
+  await expect(panel.getByRole("button", { name: /Aprobar esta beta/i })).toHaveCount(0);
+});
+
+test("una versión sin sellar («dev») NO se da por aprobada sola", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  // El bundle del repo va con APP_VERSION "dev" hasta que `stamp-version` corre. Con el NaN
+  // suelto, esto escondía el veredicto en TODAS las betas que se probaran sin sellar.
+  await page.evaluate(() => { CONFIG.APP_VERSION = "dev"; });
+  const panel = await conProduccionEn(page, "4.12.1");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("button", { name: /Aprobar esta beta/i })).toBeVisible();
+});
+
 test("el progreso sobrevive a cerrar la app (se prueba durante días)", async ({ page }) => {
   await abrirRevisionBeta(page);
   await page.evaluate(() => {

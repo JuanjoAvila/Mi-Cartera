@@ -11489,7 +11489,15 @@ function useYaEnProd(){
     return function(){ vivo=false; };
   },[]);
   if(!prod||!window._mcNewerVer) return null;
-  return !window._mcNewerVer(mcVerBase(CONFIG.APP_VERSION), prod) ? prod : false;
+  const base=mcVerBase(CONFIG.APP_VERSION);
+  /* UNA VERSIÓN QUE NO SE PUEDE COMPARAR NO DA NADA POR APROBADO (2026-07-28, cazado en CI).
+     `_mcNewerVer` compara con `parseInt`, y `parseInt("dev")` es `NaN`, que PIERDE todas las
+     comparaciones: sin este guardo, un bundle sin sellar (`APP_VERSION:"dev"` — el que hay en el
+     repo hasta que `stamp-version` corre) contestaba «ya está en producción» y escondía el
+     veredicto entero. Es exactamente la misma trampa del NaN que en la 4.9.2 dejó un móvil sin
+     recibir una actualización nunca más. En la duda, se sigue preguntando. */
+  if(!/^\d+\.\d+\.\d+$/.test(base)) return null;
+  return !window._mcNewerVer(base, prod) ? prod : false;
 }
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
