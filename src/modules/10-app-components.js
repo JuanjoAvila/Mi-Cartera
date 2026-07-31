@@ -256,6 +256,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   const [cands,setCands]=useState(null);
   const [sel,setSel]=useState({});       // índice -> bool
   const [dest,setDest]=useState({});     // índice -> "gasto"|"recibo"|"ingreso"
+  const [dupRecibo,setDupRecibo]=useState({});   // índice -> true (misma factura, otro mes del histórico)
   const [importing,setImporting]=useState(false);
   useBackClose(true, onClose);
   const kOf=function(dt,am,mc){ return String(dt).slice(0,10)+"|"+am+"|"+(mc||""); };
@@ -292,6 +293,11 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
       });
       out.sort(function(a,b){ return b.date.localeCompare(a.date); });
       setCands(out);
+      // Duplicados de recibo DENTRO del propio lote (2026-07-31): 3 meses de histórico traen la
+      // MISMA factura recurrente 3 veces — sin esto, "aceptar todo" crea 3 Fijos idénticos que se
+      // cobran los 3 cada mes para siempre. Ver dedupeHistRecibos (08-motor-bank.js).
+      const dup=dedupeHistRecibos(out);
+      setDupRecibo(dup);
       const s0={}, d0={};
       out.forEach(function(x,i){
         d0[i]=defDest(x);
@@ -300,6 +306,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
         if(d0[i]==="recibo"){
           const fk=(x.merchant||"").toLowerCase()+"|"+x.amount+"|"+x.ent;
           if(fixNames[fk]) s0[i]=false;   // ya tienes ese fijo
+          else if(dup[i]) s0[i]=false;    // misma factura ya contada por otro mes del histórico
         }
       });
       setSel(s0); setDest(d0);
@@ -375,7 +382,8 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
               React.createElement("span",{style:{width:20,height:20,borderRadius:6,border:"2px solid "+(on?"var(--mint)":"var(--muted-2)"),background:on?"var(--mint)":"transparent",color:"#06120C",fontWeight:900,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, on?"✓":""),
               React.createElement("div",{style:{flex:1,minWidth:0}},
                 React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, x.merchant),
-                React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, " · ", entOf(x.ent).label, isIn?"":(x.card?"":" · "+t("bp_hist_notcard")))),
+                React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, " · ", entOf(x.ent).label, isIn?"":(x.card?"":" · "+t("bp_hist_notcard"))),
+                !!dupRecibo[i] && React.createElement("div",{style:{fontSize:11,color:"var(--mint)",marginTop:1}}, "↺ "+t("bp_hist_dup"))),
               React.createElement("span",{style:{fontWeight:800,fontSize:14,flexShrink:0,color:isIn?"var(--mint)":"var(--text)"}}, (isIn?"+":"")+eur(x.amount))
             ),
             on && React.createElement("div",{style:{display:"flex",gap:6,marginTop:8,flexWrap:"wrap",paddingLeft:31}},
@@ -431,11 +439,24 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
   // TR llega como focus «trade_republic» → abre su tarjeta de bróker (br:tr), no una fila OB.
   const focusRef=useRef(null);
+  const trFocusRef=useRef(null);   // tarjeta de TR (bróker): vive DEBAJO de la lista de bancos OB
   useEffect(function(){
     if(!focusAspsp) return;
     if(focusAspsp==="trade_republic" || focusAspsp==="tr"){
       setOpenBank("br:tr");
-      return;
+      // La tarjeta de TR solo se pinta si el chip «Trade Republic» está encendido (línea ~653).
+      // Si venías a reconectar y el chip estaba apagado (settings.brokersOn desactualizado), la
+      // tarjeta ni existía: el deep-link aterrizaba en una lista vacía, sin fallo visible ni
+      // forma de saber por qué (2026-07-31). Reconectar SIEMPRE implica que la quieres ver.
+      if(brokersOn.indexOf("trade_republic")<0){
+        set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{brokersOn:brokersOn.concat(["trade_republic"])})}); });
+      }
+      // Sin esto, el padre aterrizaba en Mis bancos (arriba del todo) con la tarjeta de TR YA
+      // abierta pero fuera de pantalla —tenía que bajar él mismo a buscarla entre los bancos OB—
+      // y de ahí «le doy y no me lleva a Trade Republic» (2026-07-31). Mismo patrón que el resto
+      // de bancos (más abajo), solo que la tarjeta de TR no tiene fila en `links`.
+      const tm=setTimeout(function(){ try{ trFocusRef.current && trFocusRef.current.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
+      return function(){ clearTimeout(tm); };
     }
     if(!links || !links.length) return;
     // El banco al que venías a arreglar llega ABIERTO: si el acordeón lo dejara plegado, el
@@ -457,12 +478,16 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   // (invalid_request de Enable Banking — 2026-07-26).
   const connect=function(name,country){
     if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; }
+    // Trade Republic ya tiene su integración nativa (tarjeta bróker más abajo); conectarlo aquí
+    // duplicaría el mismo banco por dos caminos distintos (2026-07-31, ver bankConnectOnce).
+    if(bankConnectBlocked(name)){ showToast("⚠ "+t("bank_error_tr_native")); return; }
     setBusy(name); showToast(t("bank_connecting"));
     set(function(s){ return Object.assign({},s,{hasBankLink:true}); });
     bankConnectOnce(name, country||"ES").then(function(d){ location.href=d.url; })
       .catch(function(e){
         setBusy("");
         if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
+        if(e&&e.code==="tr_native"){ showToast("⚠ "+t("bank_error_tr_native")); return; }
         showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
       });
   };
@@ -520,13 +545,16 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       React.createElement("div",{style:{marginTop:12}},
         shown.slice(0,80).map(function(a){
           const isC=!!connected[(a.name||"").toLowerCase()];
-          return React.createElement("button",{key:a.name+a.country,disabled:!!busy,onClick:function(){ connect(a.name,a.country); },
+          const isBlocked=bankConnectBlocked(a.name);
+          return React.createElement("button",{key:a.name+a.country,disabled:!!busy||isBlocked,onClick:function(){ if(isBlocked){ showToast("⚠ "+t("bank_error_tr_native")); return; } connect(a.name,a.country); },
             className:"v4-mov",
-            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)",marginBottom:8,cursor:busy?"default":"pointer",opacity:busy&&busy!==a.name?0.5:1,textAlign:"left"}},
+            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)",marginBottom:8,cursor:busy?"default":(isBlocked?"not-allowed":"pointer"),opacity:isBlocked?0.5:(busy&&busy!==a.name?0.5:1),textAlign:"left"}},
             logoBox(a),
             React.createElement("div",{style:{flex:1,minWidth:0}},
               React.createElement("div",{className:"nm"}, a.name),
-              isC? React.createElement("div",{className:"meta",style:{color:"var(--mint)"}}, "✓ "+t("bp_already")) : (a.beta? React.createElement("div",{className:"meta"}, "beta") : null)),
+              isC? React.createElement("div",{className:"meta",style:{color:"var(--mint)"}}, "✓ "+t("bp_already"))
+                : (isBlocked? React.createElement("div",{className:"meta"}, "🔒 "+t("bp_brokers"))
+                : (a.beta? React.createElement("div",{className:"meta"}, "beta") : null))),
             React.createElement("span",{style:{color:"var(--muted-2)",fontWeight:800,fontSize:18}}, busy===a.name?"…":"›")
           );
         })
@@ -650,8 +678,9 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.45,marginBottom:8}}, t("bp_which")),
         React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8}}, chips));
     })(),
-    brokersOn.indexOf("trade_republic")>=0 && React.createElement(TRSync,{state:state,set:set,totals:totals,
-      open:openBank==="br:tr", onToggle:function(){ setOpenBank(openBank==="br:tr"?"":"br:tr"); }}),
+    brokersOn.indexOf("trade_republic")>=0 && React.createElement("div",{ref:trFocusRef},
+      React.createElement(TRSync,{state:state,set:set,totals:totals,
+        open:openBank==="br:tr", onToggle:function(){ setOpenBank(openBank==="br:tr"?"":"br:tr"); }})),
     brokersOn.indexOf("myinvestor")>=0 && React.createElement(MyInvestorSync,{state:state,set:set,
       open:openBank==="br:mi", onToggle:function(){ setOpenBank(openBank==="br:mi"?"":"br:mi"); }}),
     brokersOn.indexOf("revolut")>=0 && React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices,
@@ -1119,6 +1148,56 @@ function FeedbackPanel({state, set, showToast, onClose}){
         React.createElement("div",{style:{flex:1,overflowWrap:"anywhere"}}, React.createElement("span",{style:{color:"var(--muted-2)"}},"v"+n.v+" · "+new Date(n.date).toLocaleDateString(loc(),{day:"2-digit",month:"2-digit"})+" — "), n.text),
         React.createElement("button",{className:"ex-del",title:"🗑",onClick:function(){ delNote(n.id); }},"🗑")); })
     )
+  ));
+}
+
+/* ============================================================
+   🕐 COPIAS AUTOMÁTICAS — restaurar un día de `state_backups` (2026-07-31).
+   La copia diaria YA SE ESCRIBÍA sola (backupState, 11-app-main.js) desde hace tiempo, pero era
+   de solo escritura: nadie podía MIRARLA ni restaurarla desde la app. Se echó en falta de verdad
+   con un desastre real de importación (cuenta a -9k una semana entera, reconectando el banco una
+   y otra vez sin arreglarlo): con esto habría sido un «Restaurar ayer» y listo, en vez de limpiar
+   a mano gasto a gasto. Reutiliza el MISMO camino que ya prueba `doImport` del JSON manual
+   (mcSaveRaw + set + askConfirm de dos pasos): restaurar un día es la misma operación peligrosa
+   que restaurar un fichero, solo que el fichero lo trae la nube en vez de tu disco.
+   ============================================================ */
+function AutoBackupsPanel({state, set, showToast, uid, onClose}){
+  useBackClose(true, onClose);
+  const [days,setDays]=useState(null);     // null = cargando
+  const [busy,setBusy]=useState("");
+  useEffect(function(){
+    cloud.listBackupDays(uid).then(function(rows){ setDays(rows||[]); })
+      .catch(function(e){ setDays([]); showToast("⚠ "+((e&&e.message)||e)); });
+  },[uid]);
+  const restore=function(day){
+    askConfirm({ title:tf("bk_auto_confirm",{day:day}), sub:t("st_confirm_import_sub"), ok:t("st_confirm_import_ok"), danger:true })
+      .then(function(yes){
+        if(!yes) return;
+        setBusy(day);
+        cloud.getBackup(uid, day).then(function(data){
+          if(!data || !data.accounts){ showToast("✕ "+t("st_badfile")); return; }
+          mcSaveRaw(mcStateKey(), data); set(function(){ return data; });
+          showToast(t("st_imported")); onClose();
+        }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setBusy(""); });
+      });
+  };
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const dayRow={display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"12px 14px",borderRadius:12,border:"1px solid var(--line)",marginBottom:8};
+  const fmtDay=function(d){ try{ return new Date(d+"T12:00:00").toLocaleDateString(loc(),{weekday:"short",day:"2-digit",month:"short"}); }catch(e){ return d; } };
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 4px"}}, t("bk_auto_title")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}}, t("bk_auto_hint")),
+    days===null && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,padding:"18px 2px"}}, t("bp_loading")),
+    days!==null && days.length===0 && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,padding:"18px 2px"}}, t("bk_auto_none")),
+    days!==null && days.map(function(d){
+      return React.createElement("div",{key:d,style:dayRow},
+        React.createElement("div",{style:{fontWeight:700,fontSize:14,textTransform:"capitalize"}}, fmtDay(d)),
+        React.createElement("button",{className:"btn btn-ghost",disabled:!!busy,onClick:function(){ restore(d); }}, busy===d?"…":t("st_confirm_import_ok"))
+      );
+    })
   ));
 }
 
@@ -1809,6 +1888,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
   const [betaOpen,setBetaOpen]=useState(false);  // pantalla «Revisar la beta» (solo en canal beta)
   const [hojaOpen,setHojaOpen]=useState(false);  // importar una hoja de gastos (Excel/CSV)
+  const [autoBackOpen,setAutoBackOpen]=useState(false);  // copias automáticas diarias (state_backups)
   const yaEnProd=useYaEnProd();                  // lo que corre ya lo sirve Pages → nada que aprobar
   const loadEvents=function(){
     cloud.adminEvents(200).then(function(rows){
@@ -2221,7 +2301,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       // Importar una hoja de gastos vive aquí y no en «Mis bancos» (donde está el CSV de Revolut)
       // porque no es una sincronización: es traerse un histórico de fuera, como restaurar una
       // copia. Y es lo que va a buscar quien llegue con el Excel de su madre.
-      row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); })
+      row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); }),
+      // Copia AUTOMÁTICA diaria (ya se escribía sola; esto la hace visible y restaurable — 2026-07-31).
+      cloud.enabled() && uid && row("autoback","🕐",t("bk_auto_title"),null,function(){ setAutoBackOpen(true); })
     ),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
@@ -2376,6 +2458,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
     hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHojaOpen(false); }}), document.body),
+    autoBackOpen && ReactDOM.createPortal(React.createElement(AutoBackupsPanel,{state:state,set:set,showToast:showToast,uid:uid,onClose:function(){ setAutoBackOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 

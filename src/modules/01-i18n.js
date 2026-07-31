@@ -1391,6 +1391,7 @@ Object.assign(LANG.es,{
   au_forgot:"¿Olvidaste tu contraseña?", au_reset_title:"Recuperar contraseña", au_reset_send:"Enviar email de recuperación", au_reset_sent:"📩 Si el email existe, te hemos enviado un enlace para cambiarla.", au_need_email:"Pon tu email", au_newpass_title:"Nueva contraseña", au_newpass_save:"Guardar contraseña", au_pass_changed:"✓ Contraseña actualizada", au_pass_short:"Mínimo 6 caracteres", au_back:"← Volver",
   au_need:"Pon email y contraseña", au_signedin:"✓ Sesión iniciada", au_created:"✓ Cuenta creada", au_signedout:"Sesión cerrada", au_bio_dis:"Huella desactivada", au_bio_en:"✓ Huella activada",
   st_budget_saved:"✓ Presupuesto guardado", st_backup_dl:"✓ Backup descargado", st_imported:"✓ Datos importados", st_badfile:"El archivo no parece un backup válido", st_confirm_import:"¿Restaurar esta copia de seguridad?", st_confirm_import_sub:"Reemplazará TODOS tus datos actuales por los del archivo. Esto no se puede deshacer.", st_confirm_import_ok:"Restaurar",
+  bk_auto_title:"Copias automáticas", bk_auto_hint:"Cada día se guarda una copia completa de tus datos en la nube (se conservan los últimos 30 días). Si algo se descuadra —una importación que salió mal, un banco que se lió—, puedes volver a cómo estaba ese día.", bk_auto_none:"Aún no hay copias guardadas (la primera se hace sola en cuanto abras la app un día entero).", bk_auto_confirm:"¿Restaurar la copia del {day}?",
 });
 Object.assign(LANG.en,{
   inv_total:"Total invested", inv_save:"Save", inv_cancel:"Cancel", inv_prices:"USD prices", inv_pricing:"Prices…", inv_editmanual:"Edit manually",
@@ -1458,6 +1459,7 @@ Object.assign(LANG.en,{
   au_forgot:"Forgot your password?", au_reset_title:"Reset password", au_reset_send:"Send recovery email", au_reset_sent:"📩 If the email exists, we've sent you a link to change it.", au_need_email:"Enter your email", au_newpass_title:"New password", au_newpass_save:"Save password", au_pass_changed:"✓ Password updated", au_pass_short:"At least 6 characters", au_back:"← Back",
   au_need:"Enter email and password", au_signedin:"✓ Signed in", au_created:"✓ Account created", au_signedout:"Signed out", au_bio_dis:"Fingerprint off", au_bio_en:"✓ Fingerprint on",
   st_budget_saved:"✓ Budget saved", st_backup_dl:"✓ Backup downloaded", st_imported:"✓ Data imported", st_badfile:"The file doesn't look like a valid backup", st_confirm_import:"Restore this backup?", st_confirm_import_sub:"It will replace ALL your current data with the file's. This can't be undone.", st_confirm_import_ok:"Restore",
+  bk_auto_title:"Automatic backups", bk_auto_hint:"A full copy of your data is saved to the cloud every day (the last 30 days are kept). If something goes wrong — a bad import, a bank that got tangled up —, you can go back to how things were that day.", bk_auto_none:"No backups saved yet (the first one happens on its own once you've had the app open a full day).", bk_auto_confirm:"Restore the {day} backup?",
 });
 Object.assign(LANG.ca,{
   inv_total:"Total invertit", inv_save:"Desa", inv_cancel:"Cancel·la", inv_prices:"Preus USD", inv_pricing:"Preus…", inv_editmanual:"Edita a mà",
@@ -1525,6 +1527,7 @@ Object.assign(LANG.ca,{
   au_forgot:"Has oblidat la contrasenya?", au_reset_title:"Recupera la contrasenya", au_reset_send:"Envia email de recuperació", au_reset_sent:"📩 Si l'email existeix, t'hem enviat un enllaç per canviar-la.", au_need_email:"Posa el teu email", au_newpass_title:"Nova contrasenya", au_newpass_save:"Desa la contrasenya", au_pass_changed:"✓ Contrasenya actualitzada", au_pass_short:"Mínim 6 caràcters", au_back:"← Torna",
   au_need:"Posa email i contrasenya", au_signedin:"✓ Sessió iniciada", au_created:"✓ Compte creat", au_signedout:"Sessió tancada", au_bio_dis:"Empremta desactivada", au_bio_en:"✓ Empremta activada",
   st_budget_saved:"✓ Pressupost desat", st_backup_dl:"✓ Còpia descarregada", st_imported:"✓ Dades importades", st_badfile:"El fitxer no sembla una còpia vàlida", st_confirm_import:"Restaurar aquesta còpia de seguretat?", st_confirm_import_sub:"Substituirà TOTES les teves dades actuals per les del fitxer. Això no es pot desfer.", st_confirm_import_ok:"Restaura",
+  bk_auto_title:"Còpies automàtiques", bk_auto_hint:"Cada dia es desa una còpia completa de les teves dades al núvol (es conserven els últims 30 dies). Si alguna cosa es descuadra —una importació que ha sortit malament, un banc que s'ha embolicat—, pots tornar a com estava aquell dia.", bk_auto_none:"Encara no hi ha còpies desades (la primera es fa sola quan hagis tingut l'app oberta un dia sencer).", bk_auto_confirm:"Restaurar la còpia del {day}?",
 });
 
 /* ---- Metas de ahorro (#15) ---- */
@@ -1632,6 +1635,7 @@ Object.assign(LANG.es,{
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
   bank_error_invalid:"Ese permiso ya se usó o caducó · vuelve a pulsar Reconectar y termina solo esa autorización",
   bank_error_busy:"Ya hay una autorización en marcha · termínala antes de abrir otra",
+  bank_error_tr_native:"Trade Republic ya se conecta desde «Bancos → Trade Republic» (posiciones + efectivo, en vivo). Conectarlo también aquí duplicaría tus movimientos y podía descuadrar Gastos — por eso está bloqueado en este buscador.",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
   // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
@@ -1654,6 +1658,7 @@ Object.assign(LANG.en,{
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
   bank_error_invalid:"That permission was already used or expired · tap Reconnect again and finish only that one authorization",
   bank_error_busy:"An authorization is already in progress · finish it before opening another",
+  bank_error_tr_native:"Trade Republic already connects from “Banks → Trade Republic” (positions + cash, live). Connecting it here too would duplicate your transactions and could throw off Expenses — that's why it's blocked in this picker.",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
   bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
@@ -1672,6 +1677,7 @@ Object.assign(LANG.ca,{
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
   bank_error_invalid:"Aquest permís ja s'ha usat o ha caducat · torna a prémer Reconnecta i acaba només aquesta autorització",
   bank_error_busy:"Ja hi ha una autorització en marxa · acaba-la abans d'obrir-ne una altra",
+  bank_error_tr_native:"Trade Republic ja es connecta des de «Bancs → Trade Republic» (posicions + efectiu, en viu). Connectar-lo també aquí duplicaria els teus moviments i podia descuadrar Despeses — per això està bloquejat en aquest cercador.",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
   bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
@@ -1741,7 +1747,7 @@ Object.assign(LANG.es,{
   bp_manage:"Gestionar mis bancos", bp_close:"Ajustes", bp_back:"Mis bancos",
   bp_empty:"Aún no has conectado ningún banco.", bp_add:"Conectar un banco",
   bp_expbanks:"También apuntar gastos de tarjeta de…", bp_expbanks_hint:"Sus compras con tarjeta entrarán solas en Gastos.", bp_expbanks_none:"Conecta un banco Open Banking para poder importar sus compras con tarjeta a Gastos.",
-  bp_hist_btn:"Importar histórico", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae movimientos de los últimos meses de: {banks}. Elige cuáles y si van a Gastos, Recibos o Ingresos. Tarjeta→Gasto, recibo→Recibos, crédito→Ingreso (puedes cambiarlo).", bp_hist_nodaily:"Conecta un banco Open Banking (o márcalo en «También apuntar gastos de tarjeta»). Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay movimientos nuevos en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos · marca y elige destino", bp_hist_notcard:"no es tarjeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importados", bp_hist_as_gasto:"🛒 Gasto", bp_hist_as_recibo:"🧾 Recibo", bp_hist_as_ingreso:"💰 Ingreso", bp_hist_recibo:"Recibo", bp_hist_done_g:"✓ {n} en Gastos", bp_hist_done_i:"✓ {n} ingresos", bp_hist_done_r:"✓ {n} recibos",
+  bp_hist_btn:"Importar histórico", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae movimientos de los últimos meses de: {banks}. Elige cuáles y si van a Gastos, Recibos o Ingresos. Tarjeta→Gasto, recibo→Recibos, crédito→Ingreso (puedes cambiarlo).", bp_hist_nodaily:"Conecta un banco Open Banking (o márcalo en «También apuntar gastos de tarjeta»). Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay movimientos nuevos en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos · marca y elige destino", bp_hist_notcard:"no es tarjeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importados", bp_hist_as_gasto:"🛒 Gasto", bp_hist_as_recibo:"🧾 Recibo", bp_hist_as_ingreso:"💰 Ingreso", bp_hist_recibo:"Recibo", bp_hist_done_g:"✓ {n} en Gastos", bp_hist_done_i:"✓ {n} ingresos", bp_hist_done_r:"✓ {n} recibos", bp_hist_dup:"ya detectado como recibo mensual · se cuenta una sola vez",
   bp_summary_n:"{n} conectado(s)", bp_summary_exp:"⚠ {n} caducado(s) — reconéctalo", bp_summary_none:"Ningún banco conectado todavía",
   bp_summary_tr_dead:"⚠ Trade Republic desconectado",
   st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
@@ -1766,7 +1772,7 @@ Object.assign(LANG.en,{
   bp_manage:"Manage my banks", bp_close:"Settings", bp_back:"My banks",
   bp_empty:"You haven't connected any bank yet.", bp_add:"Connect a bank",
   bp_expbanks:"Also log card spending from…", bp_expbanks_hint:"Their card purchases will land in Spending on their own.", bp_expbanks_none:"Connect an Open Banking bank to import its card purchases into Spending.",
-  bp_hist_btn:"Import history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months from: {banks}. Pick which ones and whether they go to Spending, Bills or Income. Card→Spending, bill→Bills, credit→Income (you can change it).", bp_hist_nodaily:"Connect an Open Banking bank (or tick it under “Also log card spending”). Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new transactions in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions · check and pick destination", bp_hist_notcard:"not a card purchase", bp_hist_import:"Import {n}", bp_hist_done:"✓ {n} imported", bp_hist_as_gasto:"🛒 Spend", bp_hist_as_recibo:"🧾 Bill", bp_hist_as_ingreso:"💰 Income", bp_hist_recibo:"Bill", bp_hist_done_g:"✓ {n} in Spending", bp_hist_done_i:"✓ {n} income", bp_hist_done_r:"✓ {n} bills",
+  bp_hist_btn:"Import history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months from: {banks}. Pick which ones and whether they go to Spending, Bills or Income. Card→Spending, bill→Bills, credit→Income (you can change it).", bp_hist_nodaily:"Connect an Open Banking bank (or tick it under “Also log card spending”). Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new transactions in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions · check and pick destination", bp_hist_notcard:"not a card purchase", bp_hist_import:"Import {n}", bp_hist_done:"✓ {n} imported", bp_hist_as_gasto:"🛒 Spend", bp_hist_as_recibo:"🧾 Bill", bp_hist_as_ingreso:"💰 Income", bp_hist_recibo:"Bill", bp_hist_done_g:"✓ {n} in Spending", bp_hist_done_i:"✓ {n} income", bp_hist_done_r:"✓ {n} bills", bp_hist_dup:"already detected as a monthly bill · counted once",
   bp_summary_n:"{n} connected", bp_summary_exp:"⚠ {n} expired — reconnect it", bp_summary_none:"No bank connected yet",
   bp_summary_tr_dead:"⚠ Trade Republic disconnected",
   st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
@@ -1791,7 +1797,7 @@ Object.assign(LANG.ca,{
   bp_manage:"Gestiona els meus bancs", bp_close:"Ajustos", bp_back:"Els meus bancs",
   bp_empty:"Encara no has connectat cap banc.", bp_add:"Connecta un banc",
   bp_expbanks:"També apuntar despeses de targeta de…", bp_expbanks_hint:"Les seves compres amb targeta entraran soles a Despeses.", bp_expbanks_none:"Connecta un banc Open Banking per poder importar-ne les compres amb targeta a Despeses.",
-  bp_hist_btn:"Importar històric", bp_hist_title:"Importar històric", bp_hist_sub:"Porta moviments dels últims mesos de: {banks}. Tria quins i si van a Despeses, Rebuts o Ingressos. Targeta→Despesa, rebut→Rebuts, crèdit→Ingrés (ho pots canviar).", bp_hist_nodaily:"Connecta un banc Open Banking (o marca'l a «També apuntar despeses de targeta»). Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha moviments nous en aquest període (o ja estan tots apuntats). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments · marca i tria destinació", bp_hist_notcard:"no és targeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importats", bp_hist_as_gasto:"🛒 Despesa", bp_hist_as_recibo:"🧾 Rebut", bp_hist_as_ingreso:"💰 Ingrés", bp_hist_recibo:"Rebut", bp_hist_done_g:"✓ {n} a Despeses", bp_hist_done_i:"✓ {n} ingressos", bp_hist_done_r:"✓ {n} rebuts",
+  bp_hist_btn:"Importar històric", bp_hist_title:"Importar històric", bp_hist_sub:"Porta moviments dels últims mesos de: {banks}. Tria quins i si van a Despeses, Rebuts o Ingressos. Targeta→Despesa, rebut→Rebuts, crèdit→Ingrés (ho pots canviar).", bp_hist_nodaily:"Connecta un banc Open Banking (o marca'l a «També apuntar despeses de targeta»). Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha moviments nous en aquest període (o ja estan tots apuntats). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments · marca i tria destinació", bp_hist_notcard:"no és targeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importats", bp_hist_as_gasto:"🛒 Despesa", bp_hist_as_recibo:"🧾 Rebut", bp_hist_as_ingreso:"💰 Ingrés", bp_hist_recibo:"Rebut", bp_hist_done_g:"✓ {n} a Despeses", bp_hist_done_i:"✓ {n} ingressos", bp_hist_done_r:"✓ {n} rebuts", bp_hist_dup:"ja detectat com a rebut mensual · es compta una sola vegada",
   bp_summary_n:"{n} connectat(s)", bp_summary_exp:"⚠ {n} caducat(s) — reconnecta'l", bp_summary_none:"Cap banc connectat encara",
   bp_summary_tr_dead:"⚠ Trade Republic desconnectat",
   st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
@@ -1959,15 +1965,18 @@ function nominaYaEntro(now){                                        // ¿ya pas�
 function accRole(a){ return (a&&a.role) || (a&&a.spendFrom ? "diario" : "fijos"); }
 function accDaily(a){ const r=accRole(a); return r==="diario"||r==="ambos"; }   // gasto variable sale de aquí
 /* Bancos cuyas compras con tarjeta Open Banking entran en Gastos. Independiente del
-   spendFrom único (presupuesto/round-up). Por defecto = ent de la cuenta diaria. */
+   spendFrom único (presupuesto/round-up). Por defecto = ent de la cuenta diaria, y la cuenta
+   diaria SIEMPRE entra aunque `expenseBanks` ya tenga otros bancos guardados (bug 2026-07-31:
+   cambiar de banco de gasto diario —Patrimonio → rol «Gasto diario»— no tocaba `expenseBanks`
+   si ya tenía algo de antes, así que el banco nuevo se quedaba conectado pero sus compras nunca
+   entraban en Gastos: `expenseBankEnts` seguía devolviendo solo el banco viejo para siempre). */
 function expenseBankEnts(s){
+  const out=[];
   const raw=s&&s.settings&&s.settings.expenseBanks;
-  if(Array.isArray(raw)&&raw.length){
-    const out=[]; raw.forEach(function(e){ if(e&&out.indexOf(e)<0) out.push(e); });
-    if(out.length) return out;
-  }
+  if(Array.isArray(raw)) raw.forEach(function(e){ if(e&&out.indexOf(e)<0) out.push(e); });
   const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
-  return (daily&&daily.ent)? [daily.ent] : [];
+  if(daily&&daily.ent&&out.indexOf(daily.ent)<0) out.push(daily.ent);
+  return out;
 }
 // Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
 // despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si

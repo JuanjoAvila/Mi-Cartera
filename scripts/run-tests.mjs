@@ -33,6 +33,7 @@ const steps = [
   ["ingest-classify", ["node", "tests/ingest-classify.test.mjs"]],
   ["revo-golden", ["node", "tests/revo-golden.test.mjs"]],
   ["import-hoja", ["node", "tests/import-hoja.test.mjs"]],
+  ["hist-import-dup", ["node", "tests/hist-import-dup.test.mjs"]],
   ["revo-metales-coste", ["node", "tests/revo-metales-coste.test.mjs"]],
   ["parsers-revolut", ["node", "tests/parsers/revolut.test.mjs"]],
   ["motor-debt", ["node", "tests/motor-debt.test.mjs"]],
@@ -60,6 +61,7 @@ console.log("\n── ingest-deno ──");
 const denoTests = [
   "supabase/functions/ingest/ingest.test.ts",
   "supabase/functions/_shared/crypto.test.ts",
+  "supabase/functions/_shared/enablebanking.test.ts",
   "supabase/functions/delete-account/delete-account.test.ts",
 ];
 for (const testFile of denoTests) {

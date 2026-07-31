@@ -74,7 +74,15 @@ export async function ebApi(jwt: string, path: string, init: { method?: string; 
 // Convención del cliente: amount POSITIVO = gasto, NEGATIVO = ingreso.
 // deno-lint-ignore no-explicit-any
 export function mapTransaction(t: any) {
-  const amt = Number(t?.transaction_amount?.amount || 0);
+  // Math.abs: la spec Berlin Group/PSD2 dice que `transaction_amount.amount` es MAGNITUD sin
+  // signo (la dirección va aparte, en `credit_debit_indicator`) — pero no todos los ASPSPs la
+  // cumplen a rajatabla. Si alguno manda el importe YA firmado (negativo en un cargo), aplicar el
+  // signo del indicador SIN pasar antes por abs() dobla el signo: un gasto real sale negativo y,
+  // por la convención del cliente (positivo=gasto, negativo=ingreso), se apunta como ingreso. Es
+  // el fallo que vivió el usuario nada más conectar un ASPSP nuevo: «todos los gastos del mes
+  // contados como ingresos» (2026-07-31). abs() hace el mapeo depender SOLO del indicador,
+  // exactamente igual para los bancos que sí cumplen la spec (su amt ya es positivo).
+  const amt = Math.abs(Number(t?.transaction_amount?.amount || 0));
   const isCredit = t?.credit_debit_indicator === "CRDT";
   const remit = Array.isArray(t?.remittance_information)
     ? t.remittance_information.join(" ")

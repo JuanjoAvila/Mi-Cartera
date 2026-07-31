@@ -535,6 +535,21 @@ const cloud = (function(){
       const cutoff=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
       try{ await sb.from('state_backups').delete().eq('user_id',uid).lt('day',cutoff); }catch(e){}
     },
+    // Días con copia automática disponible (más reciente primero). Solo lectura: la copia ya
+    // se escribe sola cada día (backupState); esto es lo que faltaba para poder MIRARLAS y
+    // restaurar una, en vez de que vivan escritas pero invisibles (2026-07-31).
+    async listBackupDays(uid){
+      if(!sb || !uid) return [];
+      const {data,error}=await sb.from('state_backups').select('day').eq('user_id',uid).order('day',{ascending:false}).limit(30);
+      if(error) throw error;
+      return (data||[]).map(function(r){ return r.day; });
+    },
+    async getBackup(uid, day){
+      if(!sb || !uid || !day) return null;
+      const {data,error}=await sb.from('state_backups').select('data').eq('user_id',uid).eq('day',day).maybeSingle();
+      if(error) throw error;
+      return data ? data.data : null;
+    },
     // ---- Open Banking (Enable Banking) · Capa 2 ----
     // Genera el enlace de login del banco (la Edge Function guarda el 'pending').
     async bankConnect(aspsp_name, country){
@@ -1047,7 +1062,25 @@ const bio = {
    aunque el banco diga «Operación realizada correctamente». Un candado compartido por Cartera y
    Mis bancos evita gastar el permiso dos veces. */
 var _bankConnectBusy=null;
+/* Trade Republic YA tiene integración nativa propia (posiciones + efectivo, `06-sync-brokers.js`),
+   con su propio `ent` ("trade_republic") en todo el motor (Patrimonio, Gastos, re-anclaje…). Enable
+   Banking ha empezado a listarlo como ASPSP normal (marcado "beta" por ELLOS, 2026-07-28: así lo
+   vio el usuario en el buscador) — pero el resto de la app da por hecho que TR nunca llega por aquí
+   ("TR no está en Open Banking" está escrito en medio código, incluido `bankIssuesOf`). Conectarlo
+   por este camino hace que sus movimientos entren con la semántica de una cuenta corriente normal
+   (¿asientos de bróker con signo de cuenta de pagos? sin poder verificarlo con datos reales de
+   Enable Banking) y con el MISMO ent que ya usa el puente nativo → colisión de doble fuente para
+   el mismo banco. Bloqueado aquí (el único punto por el que pasa CUALQUIER conexión) hasta que se
+   diseñe a propósito, no a la primera vez que alguien lo prueba sin saber que existía. */
+function bankConnectBlocked(aspsp_name){
+  return entFromAspsp(aspsp_name)==="trade_republic";
+}
 function bankConnectOnce(aspsp_name, country){
+  if(bankConnectBlocked(aspsp_name)){
+    const err=new Error("tr_native");
+    err.code="tr_native";
+    return Promise.reject(err);
+  }
   if(_bankConnectBusy){
     const err=new Error("busy");
     err.code="busy";

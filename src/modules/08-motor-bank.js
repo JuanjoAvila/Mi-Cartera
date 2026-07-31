@@ -353,6 +353,33 @@ function importObExpenses(s, txs){
   return add.length? add : null;
 }
 
+/* IMPORTAR HISTÓRICO — duplicados de RECIBO dentro del propio lote (2026-07-31, caso real: -9k
+   en Revolut de golpe). Un recibo recurrente (alquiler, seguro, suscripción…) aparece UNA VEZ POR
+   MES en 3 meses de extracto: son 3 movimientos reales y distintos en el banco, pero la MISMA
+   factura. `BankHistoryImport` ya evita duplicar contra un Fijo que YA EXISTE (`fixNames`), pero
+   nada evitaba duplicar ENTRE los propios candidatos del lote — así que "aceptar todo" con 3
+   meses de histórico creaba 3 Fijos idénticos para la misma factura, y cada uno se cobra TODOS
+   LOS MESES en el motor (`monthNetForAccount`): una factura duplicada 3 veces resta su importe 3
+   veces cada mes, para siempre, hasta que alguien lo note y las borre a mano.
+   Clave: comercio normalizado + importe + banco (misma que `histReciboDupKey`). `cands` ya viene
+   ordenado por fecha descendente (más reciente primero) — nos quedamos con esa y marcamos como
+   duplicado el resto. Solo mira candidatos con `kind:"out"` y `card:false` (los que `defDest`
+   manda a "recibo"; tarjeta e ingresos son gasto/ingreso real cada vez, no se tocan). */
+function histReciboDupKey(x){
+  const norm=String((x&&x.merchant)||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+  return norm+"|"+((x&&x.amount)||0)+"|"+((x&&x.ent)||"");
+}
+function dedupeHistRecibos(cands){
+  const dup={};
+  const seen={};
+  (cands||[]).forEach(function(x,i){
+    if(!x || x.kind!=="out" || x.card) return;
+    const k=histReciboDupKey(x);
+    if(seen[k]==null) seen[k]=i; else dup[i]=true;
+  });
+  return dup;
+}
+
 /* Bancos que NO están sirviendo datos, con el motivo, para el banner «Reconectar» y la noti.
 
    Antes solo se listaban los `expired`. Se quedaban fuera los enlaces rotos sin cuentas
