@@ -41,6 +41,7 @@ const steps = [
   ["onboarding", ["node", "tests/onboarding.test.mjs"]],
   ["expense-bank", ["node", "tests/expense-bank.test.mjs"]],
   ["tr-open-banking", ["node", "tests/tr-open-banking.test.mjs"]],
+  ["huella-bundle", ["node", "tests/huella-bundle.test.mjs"]],
   ["expense-note", ["node", "tests/expense-note.test.mjs"]],
   ["bank-connect-once", ["node", "tests/bank-connect-once.test.mjs"]],
   ["inv-dashboard", ["node", "tests/inv-dashboard.test.mjs"]],

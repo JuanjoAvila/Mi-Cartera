@@ -256,35 +256,27 @@
   /* Temáticas de temporada: capa ambiental con PROFUNDIDAD (3 capas parallax) y movimiento
      orgánico (deriva lateral + giro + pulso de escala) — estilo Revolut, no una caída plana. */
   .season-fx{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;}
-  /* LA NEVADA SE CORTA SOLA (petición suya 2026-07-28: «haz que se corte en algún momento»).
-     Era `infinite`, o sea 18 piezas moviéndose para siempre: bonito el primer minuto y un
-     repintado permanente el resto del día. Con dos vueltas cada pieza cae, se va por abajo y ahí
-     se queda (`forwards`), así que la capa acaba quieta y deja de costar nada.
-     Y no se pierde: cada cambio de pestaña lanza una racha nueva — ver la clase `.b` justo
-     debajo. Deslizar es lo que la trae de vuelta, que era lo otro que pidió («alguna animación
-     chula si deslizas»). */
+  /* UNA SOLA CAÍDA, AL PRINCIPIO, Y SE ACABÓ (rechazo suyo del 29/7 y del 1/8).
+     Historia corta de tres intentos: era `infinite` → se cortó a DOS vueltas y se añadió una
+     racha nueva en cada cambio de pestaña. Y eso seguía sin ser lo que quería:
+       · «que caigan solo al principio y muchísimo menos tiempo»
+       · «que al cambiar de tab no sigan cayendo»
+       · «va bien pero no quiero eso. Solo quiero que pase al principio»
+     Así que: UNA vuelta (`iteration-count:1`), duraciones a la mitad larga (en el JS: ~4-7 s en
+     vez de 9-20) y CERO rachas al deslizar — la clase `.b` y su keyframe gemelo han desaparecido,
+     igual que el `useEffect` que la alternaba en cada `tab`. La capa cae una vez al abrir, se
+     posa y se queda quieta para siempre: coste cero el resto del día.
+     Lo que él SÍ quiere de la temática está en la ambientación fija de más abajo (el anillo del
+     botón + y los halos), no en cosas moviéndose. */
   .season-fx span{position:absolute;top:-12vh;will-change:transform;
     animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);
-    animation-iteration-count:2;animation-fill-mode:forwards;}
-  /* RACHA AL DESLIZAR. Dos nombres de keyframes IDÉNTICOS y una clase que alterna entre ellos:
-     cambiar `animation-name` es la única forma fiable de reiniciar una animación CSS sin tocar
-     los 18 nodos uno a uno. Una llamada a `classList.toggle` y vuelven a caer todas. */
-  .season-fx.b span{animation-name:seasonfallb;}
+    animation-iteration-count:1;animation-fill-mode:forwards;}
   /* Capas de profundidad: lejos = pequeña, desenfocada y lenta; cerca = grande, nítida, sombra. */
   .season-fx .sfx-l0{filter:blur(1.4px) drop-shadow(0 1px 2px rgba(0,0,0,.18));}
   .season-fx .sfx-l1{filter:blur(.4px) drop-shadow(0 2px 4px rgba(0,0,0,.22));}
   .season-fx .sfx-l2{filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));}
   /* --sway (deriva px) y --spin (giro) los pone cada pieza en JS → cada una cae distinto. */
   @keyframes seasonfall{
-    0%{transform:translate3d(0,-14vh,0) rotate(0deg) scale(.85);}
-    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15)) scale(1);}
-    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55)) scale(1.06);}
-    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
-    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
-  }
-  /* El gemelo de `seasonfall`, palabra por palabra. Existe solo para poder alternar el nombre y
-     reiniciar la caída (ver `.season-fx.b span`). Si tocas una, toca la otra. */
-  @keyframes seasonfallb{
     0%{transform:translate3d(0,-14vh,0) rotate(0deg) scale(.85);}
     15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15)) scale(1);}
     50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55)) scale(1.06);}
@@ -319,7 +311,30 @@
   html[data-season="invierno"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
   html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
   @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
-  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
+  /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29, repetida el
+     1/8: «decora el resto de la app de esa temática como hiciste con el botón + que está chulo»
+     · «que haya ambientación como la del botón +»).
+     El trato de esta tanda es ese: se quita lo que se mueve (las piezas cayendo, que él no
+     quiere más que al principio) y a cambio la temática se queda PUESTA en sitios fijos. Todo lo
+     de aquí es color plano y quieto: no anima nada, así que no repinta nada — al revés que la
+     capa que cae, que costaba frames todo el rato.
+     ⚠ NO SE TOCAN `--mint` NI `--coral`: pintan importes y saldos, y teñir el dinero de naranja
+     en Halloween es exactamente el tipo de gracia que hace dudar de una app de finanzas. Solo
+     se tiñen adornos: el halo de abajo, el borde superior de la barra y la rayita activa. */
+  /* El halo de abajo se construye con `--season-tinte` y no copiando el degradado de `::before`:
+     `background:inherit` en un ::after NO hereda el degradado del ::before hermano —son cajas
+     distintas— y habría salido transparente. */
+  html[data-season]::after{content:"";position:fixed;bottom:0;left:0;right:0;height:20vh;z-index:1;pointer-events:none;
+    background:radial-gradient(130% 95% at 50% 125%, color-mix(in srgb, var(--season-tinte,transparent) 16%, transparent), transparent 68%);}
+  html[data-season] .botnav{border-top:1px solid var(--season-tinte,var(--line-soft));}
+  html[data-season] .botnav-ind span{background:var(--season-tinte,var(--mint));}
+  html[data-season="mundial"]{--season-tinte:#F1C40F;}
+  html[data-season="halloween"]{--season-tinte:#F0862B;}
+  html[data-season="navidad"]{--season-tinte:#D64550;}
+  html[data-season="verano"]{--season-tinte:#FFB347;}
+  html[data-season="invierno"]{--season-tinte:#7FB5E8;}
+  html[data-season="pascua"]{--season-tinte:#F7C6D9;}
+  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
   /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
   .beta-tanda{margin:0 0 22px;padding-top:2px;}
   .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
@@ -460,7 +475,23 @@
      despegarse de la barra. El estrechón de scaleX es lo que lo hace parecer un salto y no una
      traslación: la línea se encoge al despegar y se estira al aterrizar.
      El transform del salto va en el SPAN a propósito: el translateX horizontal lo escribe React
-     en el contenedor, y dos transforms en el mismo nodo se pisan. */
+     en el contenedor, y dos transforms en el mismo nodo se pisan.
+
+     ⚠ Y LOS DOS EJES TIENEN QUE IR ACOMPASADOS, QUE ES LO QUE FALLABA (rechazo suyo del 29/7 y
+     del 1/8: «hace animación en diagonal, no sigue el recorrido del +» · «sigue pasando lo mismo,
+     la atraviesa de manera ahora diagonal»).
+     El salto vertical dura .44s y el desplazamiento horizontal iba en .32s CON MUELLE. Dos
+     duraciones distintas y dos curvas distintas en el mismo movimiento: el punto más alto (50%
+     de .44s = 220 ms) caía cuando el horizontal ya había recorrido el ~70% —o sea, PASADO el
+     botón—, así que la línea subía en diagonal por encima del + en vez de arquearse sobre él. Y
+     el muelle, que se pasa de largo y vuelve, remataba el bandazo.
+     Mientras salta, el contenedor usa la MISMA duración y la MISMA curva que el span. Con eso el
+     50% del salto coincide exactamente con la mitad del recorrido horizontal, y la mitad del
+     recorrido de Gastos a Plan es justo el hueco del + (cinco huecos del 20%: el FAB es el de en
+     medio). El arco pasa por encima del botón por definición, no por casualidad.
+     El muelle sigue puesto para los saltos normales entre pestañas vecinas, que no llevan
+     `rodea` y ahí sí queda bien. */
+  .botnav-ind.rodea{transition:transform .44s cubic-bezier(.4,0,.2,1),opacity .2s;}
   .botnav-ind.rodea span{animation:indrodear .44s cubic-bezier(.4,0,.2,1);}
   @keyframes indrodear{
     0%,100%{transform:translateY(0) scaleX(1);}
@@ -1584,17 +1615,35 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
     if(fuera) return; fuera=true;
     var l=document.getElementById("mc-load"); if(!l){ avisar(); return; }
     requestAnimationFrame(function(){ requestAnimationFrame(function(){
-      /* La marca se va CRECIENDO un pelín, no solo desvaneciéndose: la app que hay debajo entra
-         con sus tarjetas subiendo (`.rise`), y una cortina que solo baja la opacidad se lee como
-         un corte. Creciendo parece que te deja pasar. */
-      l.style.transition="opacity .26s ease, transform .26s cubic-bezier(.32,.72,0,1)";
-      l.style.opacity="0";
-      l.style.transform="scale(1.04)";
+      /* EL LOGO SE VA ANTES QUE LA CORTINA (2026-08-01, cazado en SU vídeo).
+         Todo se desvanecía a la vez, y eso deja ~260 ms en los que la cortina —un color plano—
+         ya es casi transparente mientras el logo —verde brillante sobre fondo oscuro— se sigue
+         viendo perfectamente. Resultado: el escudo y «Mi Cartera» flotando ENCIMA del panel ya
+         pintado, con el saludo, el patrimonio y la barra de abajo debajo. Se ven las dos
+         pantallas a la vez y se lee como que la app «cambia de forma a media carga», que es
+         exactamente lo que él lleva rechazando desde el 29/7.
+         Orden nuevo: primero se va lo que se ve (130 ms), y solo cuando el logo ya no está se
+         retira el fondo. Nunca hay un frame con el logo sobre la app. */
+      var dentro=l.querySelectorAll(".mcl-mark,.mcl-name,.mcl-retry");
+      for(var i=0;i<dentro.length;i++){
+        dentro[i].style.transition="opacity .13s linear, transform .13s cubic-bezier(.32,.72,0,1)";
+        dentro[i].style.opacity="0";
+        dentro[i].style.transform="scale(.965)";
+      }
       l.style.pointerEvents="none";
-      // El aviso va con la cortina ya en marcha, no al acabar de quitarla: así el contador y el
-      // fundido corren a la vez y el número se ve subir desde el primer frame visible.
-      avisar();
-      setTimeout(function(){ try{ l.remove(); }catch(e){} },280);
+      setTimeout(function(){
+        /* Y la cortina se va CRECIENDO un pelín, no solo desvaneciéndose: la app que hay debajo
+           entra con sus tarjetas subiendo (`.rise`), y un fondo que solo baja la opacidad se lee
+           como un corte. Creciendo parece que te deja pasar. */
+        l.style.transition="opacity .2s ease, transform .2s cubic-bezier(.32,.72,0,1)";
+        l.style.opacity="0";
+        l.style.transform="scale(1.04)";
+        // El aviso va con la cortina ya en marcha, no al acabar de quitarla: así el contador del
+        // patrimonio y el fundido corren a la vez y el número se ve subir desde el primer frame
+        // visible. Va AQUÍ y no con el logo: 130 ms antes todavía no hay nadie mirando.
+        avisar();
+        setTimeout(function(){ try{ l.remove(); }catch(e){} },220);
+      },130);
     }); });
   }
   var t=setInterval(function(){

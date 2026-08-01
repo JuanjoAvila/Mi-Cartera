@@ -1301,17 +1301,18 @@ var RELEASE_NOTES=[
       "Al guardar, los gastos nuevos salen en Gastos y cuentan en los totales.",
     ]},
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
-      "Al llegar al final de una pestaña la lista rebota y vuelve sola.",
+      "El rebote al final de una pestaña ahora se siente COMO EL DE AJUSTES: cede más al tirar y vuelve igual de suave (misma curva y mismo tiempo, .42s). Tíralo en Gastos y compáralo abriendo Ajustes.",
       "En Resumen, tirar hacia abajo estando arriba SIGUE abriendo el perfil (el rebote no estorba).",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
-      "La rayita de abajo salta POR ENCIMA del botón + al ir de Gastos a Plan.",
+      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal (iban a destiempo: el salto duraba .44s y el desplazamiento .32s con muelle).",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
     ]},
     {id:"arranque", t:"🚀 Arranque y temporadas", items:[
       "Al abrir la app el patrimonio sube contando hasta la cifra, y da tiempo a verlo.",
-      "La pantalla de entrada ya no cambia de forma a media carga.",
-      "Con una temática puesta, las piezas caen un rato y paran solas.",
-      "Al cambiar de pestaña vuelven a caer.",
+      "Al abrir la app, el logo «Mi Cartera» ya NO se queda flotando encima del panel pintado: se va antes que el fondo, así que nunca se ven las dos pantallas a la vez.",
+      "Con una temática puesta, las piezas caen UNA sola vez y muy poco (unos segundos, no un minuto).",
+      "Al cambiar de pestaña ya NO vuelven a caer. Solo al abrir la app.",
+      "Y la temática se sigue notando con la app quieta: el aro del botón +, un halo arriba, otro abajo y la rayita de la barra en el color de la temporada.",
     ]},
     /* TANDA AÑADIDA 2026-08-01 tras el aviso «gastos como ingresos» + destrozo de -9k en Revolut
        (ver CHANGELOG). No sube VERSION porque la ronda ya estaba abierta en 4.13.0 — mismo patrón
@@ -1324,6 +1325,14 @@ var RELEASE_NOTES=[
       "Ajustes → Copia de seguridad → «Copias automáticas»: se ve la lista de los últimos días guardados y se puede restaurar uno.",
       "Cambiar el banco de gasto diario en Patrimonio → Editar hace que sus compras entren en Gastos — antes se quedaba pegado al banco anterior para siempre.",
       "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
+    ]},
+    /* TANDA AÑADIDA 2026-08-01 con el aviso de actualización en bucle. Va aparte de `bancos`
+       porque no toca la app: es del canal de pruebas, y él tiene que poder aprobarla o tumbarla
+       sin arrastrar lo demás — que es justo para lo que existen las tandas. */
+    {id:"canal", t:"🔔 El aviso de actualizar, que salía sin parar", items:[
+      "Ya no te avisa de una actualización cuando la app no ha cambiado. Antes cada commit publicaba beta nueva, aunque fuera de documentación: el 1 de agosto te llegaron ocho en un día.",
+      "Cuando SÍ haya cambios de verdad, el aviso tiene que seguir llegando igual de rápido. Eso es lo que hay que mirar: que no se haya pasado de frenada y ahora no avise nunca.",
+      "El número de la beta sigue subiendo de uno en uno (4.13.0.9 → .10), sin saltos ni huecos.",
     ]},
    ],
    items:{

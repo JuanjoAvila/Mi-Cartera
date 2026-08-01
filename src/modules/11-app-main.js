@@ -1963,9 +1963,21 @@ function App(){
           // media pantalla, el estirón tiene que contar desde el final, no desde tu dedo.
           if(b.dir!==dir){ b.dir=dir; b.ancla=ddy; }
           const crudo=Math.max(0,(ddy-b.ancla)*dir);
-          // Resistencia asintótica: cede mucho al principio y casi nada al final, que es lo que
-          // hace que se sienta elástico y no como un panel suelto.
-          const d=REB_MAX*(1-1/(crudo/REB_MAX+1));
+          /* LA MISMA CURVA QUE AJUSTES Y EL PERFIL, LITERALMENTE LA MISMA FUNCIÓN (2026-08-01).
+             Rechazo suyo dos veces: «hace el rebote pero no igual que las settings... y las
+             settings de profile» · «sí lo hace, pero no de la misma forma que lo hace settings y
+             settings de perfil». Y era verdad, eran dos elásticos distintos:
+               · aquí, una asintótica `1-1/(x/M+1)` que arranca pegada al dedo y se endurece;
+               · en Ajustes/perfil, `profResist` = potencia de 0,86 sobre la altura de pantalla,
+                 que cede MÁS al principio y se aplana antes.
+             En números, con su móvil (850 px de alto) y 50 px de tirón: la vieja daba 32 px de
+             estirón y esta da 52. Por eso el suyo se sentía corto y agarrotado al lado del panel.
+             Se reusa `profResist` en vez de copiarle la fórmula, para que no puedan volver a
+             separarse: si algún día se afina el tacto del perfil, el rebote va detrás solo.
+             El divisor sí es propio (`REB_DIV`) y tiene que serlo: el perfil recorre la pantalla
+             entera y esto son 110 px, así que la normalización no puede ser la misma o el rebote
+             saldría rígido. Lo que se comparte es la CURVA, que es lo que se nota con el dedo. */
+          const d=REB_MAX*profResist(crudo*(PROF_DIV/REB_DIV));
           pg.style.transition="";
           pg.style.transform="translate3d(0,"+(d*dir).toFixed(1)+"px,0)";
           // Solo se le quita el gesto al navegador cuando de verdad estamos estirando: por
@@ -2141,20 +2153,35 @@ function App(){
          hacia abajo abre el perfil. En el resto de pestañas arriba no compite con nada y sí lo
          tiene. Abajo lo tienen las cuatro: ahí no hay ningún gesto que estorbar. */
   const reb=useRef({el:null,tope:0,dir:0,ancla:0});
-  const REB_MAX=88;   // px de tope, asintótico: por mucho que tires, no se despega más
+  const REB_MAX=110;    // px de tope: por mucho que tires, no se despega más (era 88, se sentía corto)
+  /* Cuánto tirón hace falta para llegar al tope, como fracción de la altura de pantalla. Es lo
+     ÚNICO que no se comparte con el perfil (`PROF_DIV`=0.52): allí el gesto recorre la pantalla
+     entera y aquí son 110 px, así que normalizar igual dejaría el rebote rígido. La curva sí es
+     la misma —ver `profResist` en el rebote— que es lo que se nota con el dedo. */
+  const REB_DIV=0.14;
   const soltarRebote=function(){
     const b=reb.current, el=b&&b.el;
     b.dir=0;
     if(!el) return;
-    // Curva de vuelta: la misma familia que usa el asentamiento del carrusel, para que la app
-    // entera se mueva con el mismo idioma.
-    el.style.transition="transform .34s cubic-bezier(.32,.72,0,1)";
+    /* Y LA VUELTA, EXACTAMENTE LA DE AJUSTES: `.42s cubic-bezier(.32,.72,0,1)`, la misma línea
+       que `.settings-push/.settings-slide` en el shell. Estaba en .34s — un 20% más rápida— y
+       ese es el otro medio motivo de que no se sintiera igual: mismo dibujo, distinto tempo. */
+    el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
     el.style.transform="";
-    setTimeout(function(){ if(el.style) el.style.transition=""; },360);
+    setTimeout(function(){ if(el.style) el.style.transition=""; },440);
   };
   const indRef=useRef(null);
   const tabPrevRef=useRef(tab);
-  useEffect(function(){
+  /* ⚠ `useLayoutEffect` Y NO `useEffect`, y esta vez importa de verdad (2026-08-01).
+     La clase `rodea` es la que acompasa los dos ejes del salto: le cambia al CONTENEDOR la
+     duración y la curva para que casen con las del span (ver `.botnav-ind.rodea` en el shell).
+     Con `useEffect` la clase llega DESPUÉS de pintar, o sea después de que React haya escrito el
+     `translateX` nuevo — y para entonces el navegador ya ha arrancado la transición horizontal
+     con el muelle de .32s. Cambiar `transition` a una transición ya en marcha no la re-negocia:
+     sigue con lo que empezó. Resultado: el arreglo del acompasado no se aplicaría NUNCA en el
+     único movimiento para el que existe. `useLayoutEffect` corre antes del pintado, así que la
+     clase y el `translateX` entran en el mismo frame y la transición nace ya acompasada. */
+  useLayoutEffect(function(){
     const antes=tabPrevRef.current; tabPrevRef.current=tab;
     const el=indRef.current;
     if(!el || antes===tab || ((antes<=1)===(tab<=1))) return undefined;
@@ -2164,16 +2191,13 @@ function App(){
     const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);
     return function(){ clearTimeout(id); };
   },[tab]);
-  /* RACHA DE TEMPORADA AL CAMBIAR DE PESTAÑA (petición suya 2026-07-28: «alguna animación chula
-     si deslizas»). Las piezas ya no caen en bucle —se cortan solas tras dos vueltas, ver
-     `.season-fx span` en el shell— así que esto es lo que las trae de vuelta: alternar la clase
-     cambia el nombre de los keyframes y las 18 arrancan de cero otra vez.
-     Por el DOM y no por estado, como el salto de la rayita: un `setState` aquí repinta la app
-     entera en cada deslizada. Un `classList.toggle` no cuesta ni un frame. */
-  useEffect(function(){
-    const fx=document.querySelector(".season-fx");
-    if(fx) fx.classList.toggle("b");
-  },[tab]);
+  /* AQUÍ HABÍA UNA RACHA DE TEMPORADA EN CADA CAMBIO DE PESTAÑA, Y LA QUITÓ ÉL.
+     Se puso el 28/7 leyendo «alguna animación chula si deslizas», y la rechazó dos veces seguidas
+     con las palabras más claras que se pueden dar: «que al cambiar de tab no sigan cayendo» y «va
+     bien pero no quiero eso. Solo quiero que pase al principio». Queda escrito para que a nadie
+     le parezca una buena idea reponerlo: la caída es del ARRANQUE y de nada más. La temática se
+     nota el resto del tiempo en la ambientación fija (anillo del + y halos), que es lo que sí le
+     gusta — «como hiciste con el botón + que está chulo». */
   /* Métricas de uso: qué pestañas se usan de verdad. Una etiqueta cerrada y nada más — ni qué hay
      dentro, ni cuánto dinero, ni cuándo. El dedupe de `logEvent` hace que cada pestaña cuente una
      vez por sesión, que es la medida que sirve para decidir qué sobra. Ver `USO_OK` en 00-core. */
@@ -2463,8 +2487,17 @@ function App(){
             const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
             const left=Math.round(rnd(12.9898)*98);
             const sz=[13,18,25][layer]+Math.round(rnd(4.1)*4);
-            const dur=[16,12,9][layer]+rnd(7.7)*4;             // lejos = más lento (parallax)
-            const delay=-(rnd(3.3)*dur);
+            /* MUCHÍSIMO MÁS CORTO (rechazo suyo del 29/7: «muchísimo menos tiempo»). Era
+               [16,12,9]+0-4 s por DOS vueltas = entre 18 y 40 segundos de cosas cayendo cada vez
+               que abría la app o tocaba una pestaña. Ahora una sola vuelta de 4-7 s, así que la
+               capa entera se posa antes de los 8 s y no vuelve a moverse. Sigue habiendo parallax
+               —lejos más lento que cerca—, solo que en un tercio del tiempo. */
+            const dur=[7,5.5,4.5][layer]+rnd(7.7)*1.6;         // lejos = más lento (parallax)
+            /* Retraso POSITIVO y corto. Con el negativo de antes, media capa empezaba a mitad de
+               la caída y, con una sola vuelta, esas piezas se perdían la entrada por arriba: se
+               veían aparecer ya por el medio de la pantalla. Escalonarlas hacia delante hace que
+               entren todas desde arriba, unas detrás de otras, y que aun así acabe pronto. */
+            const delay=rnd(3.3)*1.1;
             const sway=(6+Math.round(rnd(5.5)*18))*(rnd(9.1)>0.5?1:-1);   // deriva lateral px
             const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
             const op=[0.5,0.72,0.9][layer];

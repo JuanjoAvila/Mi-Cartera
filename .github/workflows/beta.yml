@@ -91,11 +91,37 @@ jobs:
       # beta para siempre — «todo el maldito rato sale para actualizar» (2026-07-26).
       - name: Empaquetar bundle OTA de beta
         id: pack
+        env:
+          GH_TOKEN: ${{ github.token }}   # el resumen del «no ha cambiado» lee el título de la release
         run: |
           BETA="${{ steps.num.outputs.beta }}"
+
+          # ¿HA CAMBIADO LA APP DE VERDAD? (2026-08-01)
+          # Antes se publicaba en CADA push, así que un commit de documentación le subía el número
+          # de beta y su móvil le avisaba de una actualización que no traía nada. Ese día se le
+          # lanzaron OCHO, cinco en una hora, una de ellas un `docs(memoria)`: «me pide actualizar
+          # todo el maldito rato». No se filtra por rutas —se olvida una carpeta y vuelve— sino
+          # comparando EL RESULTADO: la huella del bundle compilado, con el sello normalizado
+          # (`scripts/huella-bundle.mjs`). Si es la misma que la publicada, no hay nada que ofrecer
+          # y esto termina sin tocar la release: el número NO se gasta, así que el siguiente cambio
+          # de verdad se lleva el que tocaba y no quedan huecos.
+          HUELLA=$(node scripts/huella-bundle.mjs)
+          PREV_HUELLA=$(curl -sL "https://github.com/$GITHUB_REPOSITORY/releases/download/beta/version.json" \
+            | sed -n 's/.*"src":"\([^"]*\)".*/\1/p')
+          echo "huella de esta compilación: $HUELLA · publicada: «${PREV_HUELLA:-ninguna}»"
+          if [ -n "$PREV_HUELLA" ] && [ "$HUELLA" = "$PREV_HUELLA" ]; then
+            echo "publicar=no" >> "$GITHUB_OUTPUT"
+            echo "### 🟰 La app no ha cambiado · beta NO republicada" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "El bundle compilado es idéntico al que ya está en el canal, así que su móvil no" >> $GITHUB_STEP_SUMMARY
+            echo "recibe ningún aviso de actualización. Sigue publicada la **$(gh release view beta --json name -q .name)**." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+          echo "publicar=si" >> "$GITHUB_OUTPUT"
+
           (cd public && zip -qr ../bundle.zip .)
-          printf '{"version":"%s","url":"https://github.com/%s/releases/download/beta/bundle.zip","channel":"beta"}\n' \
-            "$BETA" "$GITHUB_REPOSITORY" > version.json
+          printf '{"version":"%s","src":"%s","url":"https://github.com/%s/releases/download/beta/bundle.zip","channel":"beta"}\n' \
+            "$BETA" "$HUELLA" "$GITHUB_REPOSITORY" > version.json
           # El manifiesto de la APK va TAMBIÉN al canal (2026-07-26). Antes solo se subían el bundle
           # y version.json, así que en un móvil en beta `mcFetchManifest("apk.json")` daba 404, caía
           # a producción y leía el número de PRODUCCIÓN. Efecto: con la 34 puesta y la 35 anunciada
@@ -120,6 +146,7 @@ jobs:
       # Release fija `beta`: siempre la misma etiqueta y las mismas URLs de descarga, así la app no
       # tiene que descubrir nada. Marcada como prerelease para que no salga como «última versión».
       - name: Publicar en la release `beta`
+        if: steps.pack.outputs.publicar == 'si'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -131,6 +158,7 @@ jobs:
           gh release edit beta --title "Beta ${{ steps.pack.outputs.beta }}"
 
       - name: Resumen
+        if: steps.pack.outputs.publicar == 'si'
         run: |
           echo "### 🚧 Beta publicada: ${{ steps.pack.outputs.beta }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

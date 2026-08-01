@@ -1,7 +1,7 @@
 /* ============================================================
    MI CARTERA v3 — fuente JSX (se compila con runtime clásico)
    ============================================================ */
-const { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } = React;
+const { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useDeferredValue } = React;
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
