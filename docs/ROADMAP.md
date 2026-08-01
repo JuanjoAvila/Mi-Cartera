@@ -1,6 +1,17 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-28 · **v4.13.0** — en **beta**: **importar una hoja de gastos** (Excel o CSV, con los duplicados descartados solos y el reparto enseñado contando), **rebote** al final de las cuatro pestañas, la **rayita rodea el +**, iconos de la barra con su gracia, temporadas que se cortan solas, y el **contador del patrimonio** vuelve a verse al abrir. Producción va por **4.12.1** (APK 35).
+> Estado a 2026-08-01 · **v4.13.0** — en **beta**: **el arranque YA está en producción como 4.12.3**
+> (2026-08-01, primera vez que se sube por feature y no por tanda entera: el nombre ya no cambia
+> de forma a media carga —`font-display:swap`, la causa real de «algo raro antes del icono»—, el
+> patrimonio vuelve a contar hasta la cifra visible, el logo se va antes que el fondo, y las
+> temporadas caen UNA vez y paran). Sigue en `beta`, pendiente de su turno cada una por separado:
+> **importar una hoja de gastos** (Excel o CSV, duplicados descartados solos), **gestos** —rebote
+> rechazado dos veces, «no es el efecto ola»— y **bancos** —TR por Open Banking rechazado, «da
+> error»; el sync del banco de gasto diario, arreglado, pendiente de su prueba.
+>
+> Anterior: 2026-07-28 · **v4.13.0 (primera versión)** — la ronda completa tal como se commiteó
+> (mezclada, sin ramas `tanda/<id>`; por eso el arranque se tuvo que separar A MANO en vez de con
+> `cherry-pick`). Producción iba por **4.12.1** (APK 35).
 >
 > Anterior: 2026-07-27 · **v4.12.1** — **APROBADA y en producción** (promocionada el 28/7). Ajustes solo desde Resumen, sin stopper al abrir Ajustes/perfil, y Gastos baja sin parones. Los dos puntos que quedaban del expediente del tirón los cerró él desde el móvil: «lo del tirón al deslizar arregladísimo» y «lo del perfil también va ultra fluido, sin stoppers».
 >
@@ -32,8 +43,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.13.0** (beta) · producción en `main` = **4.12.1** |
-| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. |
+| Web / OTA (`VERSION`) | **4.13.0** (beta) · producción en `main` = **4.12.3** (el arranque de esta ronda, subido solo) |
+| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.12.3: llegó por OTA sobre esta misma APK. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
 

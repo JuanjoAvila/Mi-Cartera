@@ -1377,6 +1377,10 @@ var RELEASE_NOTES=[
     ]},
    ],
    items:{
+   /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación): esa parte de
+      la ronda se promocionó SOLA a producción como 4.12.3 (2026-08-01, primera vez que se sube
+      por feature y no por tanda entera) y ya se lo contó a la familia ahí. Repetirlo aquí cuando
+      el resto de la 4.13.0 (import/gestos/bancos) se apruebe sería la misma novedad dos veces. */
    es:[
     "🏦 Arreglado un lío gordo con Trade Republic: al conectarlo desde el buscador de bancos, algunos gastos se apuntaban al revés (contados como si fueran ingresos). Ya está bien, y además ahora puedes conectarlo por ahí para que tus compras se apunten solas: el saldo lo sigue dando su tarjeta de siempre.",
     "🧾 Al traer el histórico de un banco, una factura que se repite varios meses ya no se duplica: se cuenta una sola vez.",
@@ -1389,9 +1393,6 @@ var RELEASE_NOTES=[
     "🎯 Al llegar al final de cualquier pestaña la lista rebota, como en el resto de la app.",
     "✨ La rayita de la barra de abajo ya no atraviesa el botón +: lo salta por encima.",
     "🐣 Los iconos de la barra hacen su gracia al entrar en cada pestaña.",
-    "💰 Al abrir la app vuelves a ver tu dinero subiendo hasta la cifra: la animación estaba, pero se gastaba antes de que la vieras.",
-    "🚀 Y la pantalla de entrada ya no cambia de forma a media carga.",
-    "🍂 Las animaciones de temporada paran solas al rato en vez de caer sin fin, y vuelven a arrancar cada vez que cambias de pestaña.",
    ],
    en:[
     "🏦 Fixed a big mess with Trade Republic: connecting it from the bank search would sometimes log expenses backwards (counted as income). That's sorted, and you can now connect it there so your purchases log themselves: the balance still comes from its usual card.",
@@ -1405,9 +1406,6 @@ var RELEASE_NOTES=[
     "🎯 Reaching the end of any tab now bounces, like everywhere else in the app.",
     "✨ The little bar underneath the tabs no longer crosses through the + button: it hops over it.",
     "🐣 The tab icons do their thing when you land on each one.",
-    "💰 Opening the app you can see your money counting up to the figure again: the animation was there, it just played before you could see it.",
-    "🚀 And the opening screen no longer changes shape halfway through loading.",
-    "🍂 Seasonal animations stop by themselves after a while instead of falling forever, and start again every time you change tab.",
    ],
    ca:[
     "🏦 Arreglat un embolic gros amb Trade Republic: en connectar-lo des del cercador de bancs, algunes despeses s'apuntaven al revés (comptades com si fossin ingressos). Ja està bé, i a més ara el pots connectar per aquí perquè les teves compres s'apuntin soles: el saldo el continua donant la seva targeta de sempre.",
@@ -1421,9 +1419,29 @@ var RELEASE_NOTES=[
     "🎯 En arribar al final de qualsevol pestanya la llista rebota, com a la resta de l'app.",
     "✨ La ratlleta de la barra de sota ja no travessa el botó +: el salta per sobre.",
     "🐣 Les icones de la barra fan la seva gràcia en entrar a cada pestanya.",
-    "💰 En obrir l'app tornes a veure els teus diners pujant fins a la xifra: l'animació hi era, però es gastava abans que la veiessis.",
-    "🚀 I la pantalla d'entrada ja no canvia de forma a mitja càrrega.",
-    "🍂 Les animacions de temporada paren soles al cap d'una estona en lloc de caure sense fi, i tornen a arrencar cada cop que canvies de pestanya.",
+   ]}},
+  {v:"4.12.3", d:"1 ago 2026",
+   t:{es:"Un arranque más limpio, y tu dinero subiendo hasta la cifra otra vez",
+      en:"A cleaner start-up, and your money counting up again",
+      ca:"Un arrencada més neta, i els teus diners pujant fins a la xifra un altre cop"},
+   items:{
+   es:[
+    "🚀 Al abrir la app, el nombre «Mi Cartera» ya no cambia de forma nada más aparecer: espera a estar listo del todo antes de mostrarse.",
+    "💰 Y al abrir la app vuelves a ver tu dinero subiendo hasta la cifra: la animación estaba, pero se gastaba antes de que la vieses.",
+    "🍂 Si tienes puesta una tematica de temporada, las piezas caen un momento al principio y paran solas — antes duraban mucho más y volvían a caer cada vez que cambiabas de pestaña.",
+    "🎨 Con una temática puesta, ahora también se nota en el resto de la app (bordes y detalles), no solo en el botón central.",
+   ],
+   en:[
+    "🚀 Opening the app, the «Mi Cartera» name no longer changes shape right after appearing: it waits until it is fully ready before showing.",
+    "💰 And opening the app you can see your money counting up to the figure again: the animation was there, it just played before you could see it.",
+    "🍂 If you have a seasonal theme on, the pieces fall for a moment at the start and then stop on their own — they used to last much longer and fall again every time you switched tabs.",
+    "🎨 With a theme on, it now shows in the rest of the app too (borders and small details), not just the centre button.",
+   ],
+   ca:[
+    "🚀 En obrir l'app, el nom «Mi Cartera» ja no canvia de forma just en aparèixer: espera a estar del tot llest abans de mostrar-se.",
+    "💰 I en obrir l'app tornes a veure els teus diners pujant fins a la xifra: l'animació hi era, però es gastava abans que la veiessis.",
+    "🍂 Si tens posada una temàtica de temporada, les peces cauen un moment al principi i paren soles — abans duraven molt més i tornaven a caure cada cop que canviaves de pestanya.",
+    "🎨 Amb una temàtica posada, ara també es nota a la resta de l'app (vores i detalls), no només al botó central.",
    ]}},
   {v:"4.12.1", d:"27 jul 2026",
    t:{es:"Ajustes solo desde Resumen, y sin topes al abrir o bajar la lista",

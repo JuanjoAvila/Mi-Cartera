@@ -257,6 +257,58 @@ Flujo completo en [docs/TESTING.md](docs/TESTING.md).
   navegador —descomprimir y `DOMParser`— no la puede cubrir un unitario, y es justo la que decide si
   el Excel se abre o no.
 
+## [4.12.3] — 2026-08-01
+### Mantenimiento: el guardián de versión atrapó su propio efecto secundario
+
+`docs-frescura` — el guardián que evita publicar código sin subir `VERSION` — se disparó con SU
+PROPIO ruido: al arreglar los dos fallos de `README.md`/`docs/ROADMAP.md` de la 4.12.2 (más abajo),
+el rebuild local re-selló `public/sw.js` con el hash del commit nuevo, y ESE segundo toque contaba
+como «código publicable después del bump» aunque no llevara nada nuevo. Sube VERSION una vez más
+para que el guardián quede contento sin tocar el historial ya subido a `main` — más seguro que
+reescribirlo.
+
+De paso, el fixture de los e2e que arrastraba `beta` desde el 1/8 (el informe mensual automático
+del día 1 tapando la pantalla en `rendimiento-tabs`/`swipe-pestanas`) llega también a `main`: sin
+él, CUALQUIER futura promoción a producción se cae en pruebas cada día 1 de mes, no solo esta.
+
+Nada de esto lo nota nadie usando la app.
+
+## [4.12.2] — 2026-08-01
+### El arranque, separado del resto de la 4.13.0 en curso
+
+Petición suya del 1/8, exacta: «que se pudieran subir a prod por features, no solo tandas
+enteras». La 4.13.0 (import de hojas, gestos, arranque, bancos) se commiteó mezclada en `beta` y
+no se puede trocear ya — pero `arranque` estaba APROBADA por él (5/5 ok) y no tenía por qué
+esperar a que `gestos` (rechazada: el rebote no es «el efecto ola») y `bancos` (rechazada: TR no
+conecta, el banco de gasto diario no sincroniza) estuvieran listas. Construido a mano sobre
+`main`, sacando SOLO los cambios de arranque de entre los ~950 líneas mezcladas de toda la
+ronda — sin cherry-pick de commits (también mezclados entre sí), aplicando cada cambio
+directamente y verificando que compila y pasa los tests antes de tocar producción.
+
+**EL «ALGO RARO ANTES DE APARECER EL ICONO» QUE LLEVABA DÍAS REPORTANDO.** No era Android: era
+`font-display:swap`. El navegador pintaba «Mi Cartera» en Georgia al instante y la CAMBIABA a
+Fraunces en cuanto la fuente cargaba — ese cambio de forma, a la vista, era lo PRIMERO que veía
+al abrir la app. Ya estaba arreglado en `beta` desde el 28/7 (el nombre espera a su tipografía,
+tope de 500 ms si la red va lenta) pero nunca había llegado a producción por estar atrapado en la
+ronda mezclada.
+
+**EL CONTADOR DEL PATRIMONIO, QUE SE GASTABA A PUERTA CERRADA.** Arrancaba al montar React, o sea
+DETRÁS del splash: para cuando él veía la pantalla, la cuenta ya había terminado. Ahora espera al
+evento `mc-splash-gone` — la animación se ve desde el primer frame visible.
+
+**Y EL LOGO YA NO SE QUEDA FLOTANDO SOBRE LA APP PINTADA.** Cazado en su vídeo del 1/8: todo se
+desvanecía a la vez, y el logo (verde brillante) tardaba más en desaparecer que la cortina (color
+plano), así que se veían las dos pantallas superpuestas un instante. Ahora el logo se va primero.
+
+**TEMPORADAS: una caída, no un bucle.** Tres intentos hasta dar con lo que pedía: una sola vuelta
+de 4-7 s (antes, dos vueltas de hasta 40 s) y sin volver a caer al cambiar de pestaña. A cambio,
+la temática se queda puesta en sitios fijos — borde de las tarjetas, resplandor del icono activo,
+subrayado del título — sin tocar `--mint`/`--coral`, que pintan dinero.
+
+Verificado con la suite e2e completa contra este árbol exacto (91/93 — los 2 que no pasan son
+fallos preexistentes de `main`, confirmados idénticos con y sin este cambio, sin relación con
+arranque). `gestos` y `bancos` se quedan en `beta`, arreglándose, hasta que él las apruebe.
+
 ## [4.12.1] — 2026-07-27
 ### Ajustes solo desde Resumen, sin stoppers al abrir perfil/ajustes, y Gastos baja sin parones
 
