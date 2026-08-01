@@ -4,13 +4,86 @@
 
 ---
 name: mi-cartera-roadmap
-description: Estado actual y backlog de Mi Cartera (2026-08-01: v4.13.0 en beta con CUATRO tandas pendientes de su veredicto — import de hojas, gestos, arranque, bancos. Producción = 4.12.1 + APK 35. Tirón y perfil CERRADOS por él. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
+description: Estado actual y backlog de Mi Cartera (2026-08-01 noche: producción = 4.12.3 —arranque, primera promoción por FEATURE—; beta = 4.13.0 con import/gestos/bancos pendientes, arranque+canal ya QUITADOS del array por estar hechos. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
 metadata:
   node_type: memory
   type: project
   originSessionId: e1dc0ffc-f316-4885-bf7c-1e694f8b4d24
-  modified: 2026-07-27T18:14:02.259Z
+  modified: 2026-08-01T20:00:56.641Z
 ---
+
+**★ SESIÓN DEL 2026-08-01 (larga, varios turnos) — resumen para arrancar en frío.**
+
+**PRODUCCIÓN = 4.12.3.** Primera vez que se sube una tanda SOLA, no la ronda entera —petición
+suya: «que se pudieran subir a prod por features, no solo tandas enteras». `arranque` (5/5
+aprobada) se separó A MANO de los ~950 líneas mezcladas de toda la 4.13.0 (import/gestos/arranque/
+bancos se commitearon juntos, sin ramas `tanda/<id>`, así que no hubo cherry-pick limpio posible:
+hubo que reconstruir cada cambio sobre `main` directamente). Lleva: el nombre ya no cambia de
+Georgia a Fraunces a la vista (causa real de «algo raro antes del icono», llevaba días
+reportándolo), el patrimonio cuenta visible al abrir (`mc-splash-gone`), el logo se va ANTES que
+el fondo (ya no flotan las dos pantallas a la vez), temporadas de una sola caída corta. Costó DOS
+saltos de versión de más (4.12.1→4.12.2→4.12.3) por un fallo propio: al arreglar docs tras la
+4.12.2 un rebuild local re-selló `sw.js`, y el guardián `docs-frescura` (que compara
+`git log <últimoBumpDeVERSION>..HEAD` contra una lista de "zonas publicables") lo cazó como
+«código sin bump». Aprendido: **NO rebuildear/re-stampear artefactos en un commit que no lo
+necesita** — si solo cambian .md, no toques `public/`.
+
+**BETA = 4.13.0, con `arranque` y `canal` YA QUITADOS del array `tandas`** (ver
+[[feedback-tandas-desaparecen-al-subir]] — regla suya: aprobada+subida se BORRA, no se marca
+hecha). Quedan `import` (nunca revisada, sin veredicto — no tiene Excel para probarla, se le
+mandó un CSV de ejemplo en `Documents/Mi-Cartera-fuera-del-repo/prueba-import/`), `gestos`
+(rebote arreglado de raíz, ver abajo — pendiente su prueba) y `bancos` (dos arreglos nuevos,
+pendiente re-test: sync automático al cambiar banco de gasto diario vía evento
+`mc-bank-role-changed`, y el error mudo de conectar TR por Open Banking ahora se registra en
+`app_events` aunque la causa de fondo —si Enable Banking lo rechaza de verdad— sigue sin
+diagnosticar sin que él lo intente de nuevo).
+
+**EL REBOTE ERA EL NAVEGADOR TODO EL TIEMPO — tres rondas de rechazo por una premisa falsa.**
+Descripción final suya, exacta: «cuando bajas hasta abajo del todo y tiras más, se ve como un
+efecto OLA de todas las cosas que hay en pantalla — eso es lo que quiero, lo mismo que Ajustes y
+el perfil». Y Ajustes/el perfil (`.settings-push`/`.settings-slide`) NUNCA tuvieron un rebote
+nuestro: nunca tocan `overscroll-behavior`, corren con el rubber-band NATIVO de Chromium/Android.
+`.page` (las 4 pestañas) era la ÚNICA zona con `overscroll-behavior-y:none`, puesta el 28/7 sobre
+la premisa —nunca comprobada— de que «la WebView no hace rubber-band, hace un fogonazo». Falsa: se
+quitó el `none` y el rebote JS entero (`reb`, `REB_MAX`, `soltarRebote`, en `11-app-main.js`), y
+ahora las pestañas usan LITERALMENTE el mismo mecanismo que Ajustes. Si algún día alguien propone
+«mejorar la curva del rebote de las pestañas» otra vez: NO — no hay curva propia, es el navegador.
+
+**⚠ EL SPLASH SIGUE SIN CERRAR — visto en vivo por primera vez con la APK debug, y son DOS
+RENDERS DE VERDAD, no una sensación.** Se añadió la API de splash de Android 12+
+(`windowSplashScreenBackground`/`AnimatedIcon` en styles.xml + `SplashScreen.installSplashScreen()`
+en MainActivity) para que el sistema no dibujara su propio splash genérico antes del nuestro — y
+efectivamente ya no sale genérico, pero sale EL ICONO SUELTO (sin la tarjeta redondeada+brillo que
+tiene el splash JS) y LUEGO el splash JS con tarjeta+texto. Dos apariciones visualmente distintas
+del logo, una detrás de otra. Pendiente: unificar el icono nativo (`ic_launcher_foreground` u otro
+drawable) para que tenga la MISMA pinta que `.mcl-mark` (tarjeta redondeada `var(--sur)` + borde +
+icono mint), o simplificar el JS para que coincida con el nativo — decidirlo viéndolo con él en
+directo, no a ciegas. Dos cosas más que vio en la captura y que probablemente NO son la app: un
+anillo fino arriba-centro (hipótesis: MIUI/HyperOS resalta el recorte de la cámara frontal sobre
+fondos muy oscuros y uniformes) y un icono arriba-izquierda (hipótesis: indicador de grabación de
+pantalla, porque él estaba capturando). Pedirle que compruebe si también salen en la app REAL
+(no solo la .debug) para confirmar que es del sistema.
+
+**APK DE PRUEBAS `.debug` — nueva capacidad, ver [[mi-cartera-android-build]].** Se puede compilar
+y hasta instalar por USB (adb) desde este portátil, sin pasar por una release pública. Se instala
+EN PARALELO a la app real (`applicationIdSuffix ".debug"`), así que no hay riesgo de tocar sus
+datos de verdad. Úsalo la próxima vez que haga falta probar algo nativo (splash, widget, permisos)
+antes de comprometerse a una APK pública.
+
+**EL WIDGET Y EL -2€ QUE NO SE RESETEABA (pareja, día 1 de mes)**: arreglado con dos cambios
+nativos —`MiCarteraWidget.build()` compara el mes de `updated` contra el mes de AHORA y si no
+coincide pinta como si no hubiera datos en vez de mentir con la cifra vieja; `updatePeriodMillis`
+0→6h como red de seguridad—. Va en el mismo build que el splash: **pendiente de que él lo pruebe**
+con la APK debug o con una release nueva.
+
+**⚠ HABÍA UN IBAN REAL SUYO PUBLICADO EN EL REPO (público).** `revolut-settings-swipe.mp4`
+—vídeo con su nombre completo, IBAN a pantalla completa, foto, @usuario— llevaba desde el 17/7 en
+el histórico. Se sacó de HEAD y se reescribió el historial completo con `git filter-branch` +
+push forzado a TODAS las ramas/tags (con bundle de seguridad guardado antes en
+`Documents/Mi-Cartera-fuera-del-repo/backup-antes-de-reescribir/`). ⚠ **QUEDA UN CABO SUELTO**:
+GitHub guarda refs ocultas de los PR #21/#22 mergeados que todavía apuntan a los commits viejos, y
+no se pueden borrar ni desde la web ni por API — hace falta un ticket a GitHub Support (texto ya
+redactado en esa sesión). Comprobar si ya lo resolvió.
 
 **★ v4.12.1 EN PRODUCCIÓN 2026-07-28 (merge d0d62b6, Pages verde, `version.json` = 4.12.1 verificado con curl; sin APK nueva — es OTA sobre la 35).** Lleva los 4 arreglos de CURSOR: Ajustes solo desde Resumen (el borde lo abría en cualquier pestaña), sin el candado de 450 ms al llegar a Resumen, el perfil ya no se queda sordo al tercer gesto, y la lista de Gastos no se para al bajar rápido (centinela a 2.000 px y tandas de 60). **Y EL TIRÓN DEL GESTO ESTÁ RESUELTO: lo cerró Cursor** con `d0f3b1f` («asentar el carrusel con rAF — el tirón era la transition CSS a 120 Hz») + `3d83a87` (Deudas→Gastos no re-pinta Expenses al aterrizar), ya en producción desde la 4.12.0. ⚠ Él dudaba entre la .47 y la .48: **la .48 es 3bf1428 y es la ÚNICA que toca la paginación de Gastos** (600→2.000 px de antelación, tandas 24→60), o sea la que ARREGLA su síntoma; la .47 es el código sin eso, que es justo el estado del que se quejó esa mañana. Si alguna vez nota un tope al cargar la tanda, el número a bajar es `PAGE_SIZE*5` en `04-tab-gastos.js`.
 

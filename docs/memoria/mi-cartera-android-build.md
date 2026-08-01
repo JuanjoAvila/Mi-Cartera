@@ -8,6 +8,7 @@ description: Cómo generar e instalar la APK firmada de Mi Cartera localmente (b
 metadata:
   type: project
   originSessionId: c5f21067-5c4f-487a-88db-7ba95d66abb5
+  modified: 2026-08-01T19:59:57.853Z
 ---
 
 Receta para generar la APK firmada de Mi Cartera desde este entorno (Windows, Git Bash), usada por primera vez para alpha8 (2026-07-07). Ver [[mi-cartera-deploy]] para el deploy web/Supabase (eso va por CI; esto es 100% local).
@@ -38,3 +39,12 @@ export PATH="$JAVA_HOME/bin:$PATH"
 **Compartir con terceros (pareja/amigos):** copiar la APK generada a la raíz del proyecto (o cualquier sitio) y pasarla por WhatsApp/Drive/USB; el receptor la abre y la instala (Android pedirá permitir "orígenes desconocidos" la primera vez). El repo tiene `*.apk` en `.gitignore` (añadido 2026-07-07) — nunca se comitea el binario.
 
 **Solo Java compila offline, no lo confundas con "build completo":** en sesiones anteriores se validó únicamente `./gradlew :app:compileDebugJavaWithJavac --offline` (rápido, solo detecta errores de sintaxis/tipos Java) antes de tener claro el flujo de `assembleRelease` end-to-end. Ahora que se ha hecho el build+firma+instalación completos con éxito (alpha8), ese es el camino ya probado para cualquier tanda que incluya cambios nativos.
+
+**APK `.debug` INSTALABLE EN PARALELO A LA REAL (añadido 2026-08-01) — la vía para que pruebe cambios nativos SIN esperar a una release pública.** `android/app/build.gradle` tiene un bloque `debug { applicationIdSuffix ".debug"; versionNameSuffix "-debug" }`, y `android/app/src/debug/res/values/strings.xml` pone el nombre visible a «Mi Cartera (debug)». Sin el sufijo, `assembleDebug` genera el MISMO `applicationId` que producción pero firmado con la llave de debug (auto-generada, distinta a la de release): Android rechaza esa instalación a menos que se DESINSTALE primero la app real, con riesgo de perder lo que no esté en la nube. Con el sufijo, `adb install -r` mete una app APARTE (`com.micartera.app.debug`) que convive con la real sin tocarla, con sus propios datos. Receta corta (no hace falta versión ni firma release):
+```bash
+cd "E:/Mi cartera" && node scripts/build-www.mjs && npx cap sync android
+cd android && JAVA_HOME="/c/Program Files/Android/Android Studio/jbr" ./gradlew assembleDebug --offline
+adb install -r "E:/Mi cartera/android/app/build/outputs/apk/debug/app-debug.apk"
+```
+`adb.exe` en `C:\\Users\\<usuario>\AppData\Local\Android\Sdk\platform-tools\adb.exe`; `aapt.exe` (para verificar `applicationId`/versión de una APK ya compilada) en `...\Sdk\build-tools\34.0.0\aapt.exe`. Este día el USB fue estable y `adb install -r` funcionó a la primera — si algún día vuelve a fallar, ver los quirks de arriba (push+pm install, MSYS_NO_PATHCONV).
+**Solo para pruebas suyas, nunca para publicar**: sigue sin llevar el keystore de release.
