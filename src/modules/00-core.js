@@ -1062,25 +1062,25 @@ const bio = {
    aunque el banco diga «Operación realizada correctamente». Un candado compartido por Cartera y
    Mis bancos evita gastar el permiso dos veces. */
 var _bankConnectBusy=null;
-/* Trade Republic YA tiene integración nativa propia (posiciones + efectivo, `06-sync-brokers.js`),
-   con su propio `ent` ("trade_republic") en todo el motor (Patrimonio, Gastos, re-anclaje…). Enable
-   Banking ha empezado a listarlo como ASPSP normal (marcado "beta" por ELLOS, 2026-07-28: así lo
-   vio el usuario en el buscador) — pero el resto de la app da por hecho que TR nunca llega por aquí
-   ("TR no está en Open Banking" está escrito en medio código, incluido `bankIssuesOf`). Conectarlo
-   por este camino hace que sus movimientos entren con la semántica de una cuenta corriente normal
-   (¿asientos de bróker con signo de cuenta de pagos? sin poder verificarlo con datos reales de
-   Enable Banking) y con el MISMO ent que ya usa el puente nativo → colisión de doble fuente para
-   el mismo banco. Bloqueado aquí (el único punto por el que pasa CUALQUIER conexión) hasta que se
-   diseñe a propósito, no a la primera vez que alguien lo prueba sin saber que existía. */
-function bankConnectBlocked(aspsp_name){
-  return entFromAspsp(aspsp_name)==="trade_republic";
-}
+/* TRADE REPUBLIC POR OPEN BANKING: CONVIVE, NO SE BLOQUEA (2026-08-01).
+   El 31/7 esto se cerró a cal y canto —`bankConnectBlocked`— tras el susto de «todos los gastos
+   del mes contados como ingresos» al conectar TR desde el buscador de bancos. Pero bloquear no era
+   arreglar, y él lo dijo con razón: «en vez de mirar qué hacer, porque quizás pueden convivir
+   ambas integraciones... no me dio opción».
+
+   Y conviven. Repasado el código entero, el susto tenía dos causas SEPARADAS:
+   · La de verdad era `mapTransaction`: faltaba un `Math.abs()` antes de aplicar el signo del
+     `credit_debit_indicator`, así que un ASPSP que manda el importe YA firmado doblaba el signo.
+     Eso está arreglado en `enablebanking.ts` y no dependía de este bloqueo para nada.
+   · La otra es real pero pequeña y tiene dueño claro: el SALDO. El puente nativo re-ancla la
+     cuenta TR con `availableCash`; Open Banking re-anclaría la misma cuenta con su propio saldo y
+     otra fórmula → bailaría según cuál sincronizara la última.
+
+   Reparto: el puente nativo manda en el saldo y las posiciones (`saldoLoMandaPuenteNativo`, en
+   08-motor-bank.js), y Open Banking aporta los MOVIMIENTOS — que es lo que se ganaba y nadie
+   estaba mirando: las compras con la tarjeta de TR entrando solas en Gastos en vez de a mano.
+   Los movimientos van deduplicados por `ext_id`, así que no hay doble conteo posible. */
 function bankConnectOnce(aspsp_name, country){
-  if(bankConnectBlocked(aspsp_name)){
-    const err=new Error("tr_native");
-    err.code="tr_native";
-    return Promise.reject(err);
-  }
   if(_bankConnectBusy){
     const err=new Error("busy");
     err.code="busy";

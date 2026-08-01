@@ -65,6 +65,28 @@ function promoteObAccount(s, totals, key, role, id){
 //   van a state.obAccounts como SALDOS PUROS que suman al patrimonio, SIN tocar el motor
 //   (cero riesgo de doble conteo con fijos/flows/round-up).
 // · La cuenta de gasto (spendFrom / Trade Republic) NUNCA la toca el banco (fuera de Open Banking).
+/* ¿EL SALDO DE ESTE BANCO LO MANDA UN PUENTE NATIVO? (2026-08-01)
+   Trade Republic es el único caso: su integración propia (`06-sync-brokers.js`) re-ancla la cuenta
+   TR con el `availableCash` que da el puente, y además le pone las posiciones. Desde que Enable
+   Banking lista TR como ASPSP normal, TR puede llegar TAMBIÉN por Open Banking — y ahí está el
+   ÚNICO choque real entre las dos integraciones: las dos escribirían el mismo `value` con fórmulas
+   distintas, así que el saldo bailaría según cuál sincronizara la última. Los movimientos no
+   chocan (van deduplicados por `ext_id`), y las posiciones solo las trae el puente.
+
+   Así que no se bloquea la conexión: se reparte el trabajo. El puente nativo manda en el SALDO y
+   las posiciones; Open Banking aporta los MOVIMIENTOS, que es justo lo que faltaba —las compras
+   con la tarjeta de TR entrando solas en Gastos, en vez de a mano.
+
+   Solo aplica si el puente está encendido: quien tenga TR ÚNICAMENTE por Open Banking (nadie hoy,
+   pero es gratis dejarlo bien) sigue recibiendo su saldo por el camino normal. */
+function saldoLoMandaPuenteNativo(s, ent){
+  if(ent!=="trade_republic") return false;
+  const pref=(s&&s.settings||{}).brokersOn;
+  if(Array.isArray(pref)) return pref.indexOf("trade_republic")>=0;
+  // Sin preferencia guardada, el chip se deduce de si hay inversiones de ese bróker (misma regla
+  // que la pantalla de bancos): tener posiciones de TR ES tener el puente en marcha.
+  return (s&&s.investments||[]).some(function(i){ return i && i.ent==="trade_republic"; });
+}
 // Función PURA: {state, changed, synced:[{ent,bal}], obAccounts:[]}.
 function applyBankBalances(s, links){
   if(!s || !Array.isArray(links) || !links.length) return { state:s, changed:false, synced:[], obAccounts:(s&&s.obAccounts)||[] };
@@ -81,6 +103,11 @@ function applyBankBalances(s, links){
       return;
     }
     const ent=entFromAspsp(lk && lk.aspsp);
+    // TR por Open Banking: su saldo ya lo pone el puente nativo. Se sale ANTES de tocar `accounts`
+    // y `obAccounts` —ni re-ancla ni crea cuenta extra, que sería doble conteo en Patrimonio— y
+    // sus movimientos siguen su camino, que van por `flattenBankTx`/`importObExpenses` y no por
+    // aquí. Ver `saldoLoMandaPuenteNativo`.
+    if(saldoLoMandaPuenteNativo(s, ent)) return;
     // Si este banco al final no aporta NINGUNA cuenta utilizable (todas ok:false o sin saldo),
     // conserva las que ya tenía marcadas rancias, igual que un banco caído: reconstruir
     // obAccounts sin él las esfumaría en silencio (caso CaixaBank 2026-07-11, segunda variante).

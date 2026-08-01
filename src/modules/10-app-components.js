@@ -478,16 +478,12 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   // (invalid_request de Enable Banking — 2026-07-26).
   const connect=function(name,country){
     if(!cloud.enabled()||!uid){ showToast(t("bp_need_login")); return; }
-    // Trade Republic ya tiene su integración nativa (tarjeta bróker más abajo); conectarlo aquí
-    // duplicaría el mismo banco por dos caminos distintos (2026-07-31, ver bankConnectOnce).
-    if(bankConnectBlocked(name)){ showToast("⚠ "+t("bank_error_tr_native")); return; }
     setBusy(name); showToast(t("bank_connecting"));
     set(function(s){ return Object.assign({},s,{hasBankLink:true}); });
     bankConnectOnce(name, country||"ES").then(function(d){ location.href=d.url; })
       .catch(function(e){
         setBusy("");
         if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
-        if(e&&e.code==="tr_native"){ showToast("⚠ "+t("bank_error_tr_native")); return; }
         showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
       });
   };
@@ -545,15 +541,17 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       React.createElement("div",{style:{marginTop:12}},
         shown.slice(0,80).map(function(a){
           const isC=!!connected[(a.name||"").toLowerCase()];
-          const isBlocked=bankConnectBlocked(a.name);
-          return React.createElement("button",{key:a.name+a.country,disabled:!!busy||isBlocked,onClick:function(){ if(isBlocked){ showToast("⚠ "+t("bank_error_tr_native")); return; } connect(a.name,a.country); },
+          // TR ya no se bloquea: se avisa de QUÉ va a aportar por aquí (los movimientos) para que
+          // nadie crea que está conectando el bróker por segunda vez. Ver `bankConnectOnce`.
+          const esTR=entFromAspsp(a.name)==="trade_republic";
+          return React.createElement("button",{key:a.name+a.country,disabled:!!busy,onClick:function(){ connect(a.name,a.country); },
             className:"v4-mov",
-            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)",marginBottom:8,cursor:busy?"default":(isBlocked?"not-allowed":"pointer"),opacity:isBlocked?0.5:(busy&&busy!==a.name?0.5:1),textAlign:"left"}},
+            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)",marginBottom:8,cursor:busy?"default":"pointer",opacity:(busy&&busy!==a.name)?0.5:1,textAlign:"left"}},
             logoBox(a),
             React.createElement("div",{style:{flex:1,minWidth:0}},
               React.createElement("div",{className:"nm"}, a.name),
               isC? React.createElement("div",{className:"meta",style:{color:"var(--mint)"}}, "✓ "+t("bp_already"))
-                : (isBlocked? React.createElement("div",{className:"meta"}, "🔒 "+t("bp_brokers"))
+                : (esTR? React.createElement("div",{className:"meta"}, t("bp_tr_ob"))
                 : (a.beta? React.createElement("div",{className:"meta"}, "beta") : null))),
             React.createElement("span",{style:{color:"var(--muted-2)",fontWeight:800,fontSize:18}}, busy===a.name?"…":"›")
           );
@@ -1319,7 +1317,8 @@ var RELEASE_NOTES=[
        (ver CHANGELOG). No sube VERSION porque la ronda ya estaba abierta en 4.13.0 — mismo patrón
        que 401214e/a8730a9, que tampoco bumpearon. Se promociona junto al resto cuando él diga. */
     {id:"bancos", t:"🏦 Bancos: los bugs gordos de esta semana", items:[
-      "Buscar «Trade Republic» en Conectar banco lo bloquea con un aviso — ya no se puede conectar por ahí (colisiona con su tarjeta propia y era la causa de los gastos contados como ingresos).",
+      "Conectar «Trade Republic» desde Conectar banco ya se puede: trae sus MOVIMIENTOS a Gastos y el saldo lo sigue poniendo su tarjeta de bróker de siempre. Ni se descuadra el patrimonio ni se apunta nada dos veces.",
+      "Y lo de «todos los gastos del mes contados como ingresos» al conectarlo: comprueba que un gasto de TR sale como gasto, no en verde.",
       "Importar histórico: una factura que sale varias veces en 3 meses de extracto ya no se marca como recibo repetido — solo cuenta una (antes creaba un Fijo por cada mes que aparecía).",
       "Reconectar Trade Republic desde el aviso de Cartera lleva directo a su tarjeta, con scroll — antes aterrizaba en Mis bancos con la tarjeta abierta pero fuera de pantalla.",
       "Ajustes → Copia de seguridad → «Copias automáticas»: se ve la lista de los últimos días guardados y se puede restaurar uno.",
@@ -1329,7 +1328,7 @@ var RELEASE_NOTES=[
    ],
    items:{
    es:[
-    "🏦 Arreglado un lío gordo con Trade Republic: al conectarlo desde el buscador de bancos, algunos gastos se apuntaban al revés (contados como si fueran ingresos). Ese camino queda bloqueado con un aviso — Trade Republic sigue conectándose igual que siempre, desde su propia tarjeta.",
+    "🏦 Arreglado un lío gordo con Trade Republic: al conectarlo desde el buscador de bancos, algunos gastos se apuntaban al revés (contados como si fueran ingresos). Ya está bien, y además ahora puedes conectarlo por ahí para que tus compras se apunten solas: el saldo lo sigue dando su tarjeta de siempre.",
     "🧾 Al traer el histórico de un banco, una factura que se repite varios meses ya no se duplica: se cuenta una sola vez.",
     "🔌 Reconectar Trade Republic desde el aviso de Cartera ahora te lleva directo a su tarjeta.",
     "💾 Nuevo: Ajustes → Copia de seguridad → «Copias automáticas». Cada día se guarda una copia entera de tus datos, y ahora puedes verla y volver a un día anterior si algo se descuadra.",
@@ -1345,7 +1344,7 @@ var RELEASE_NOTES=[
     "🍂 Las animaciones de temporada paran solas al rato en vez de caer sin fin, y vuelven a arrancar cada vez que cambias de pestaña.",
    ],
    en:[
-    "🏦 Fixed a big mess with Trade Republic: connecting it from the bank search would sometimes log expenses backwards (counted as income). That path is now blocked with a warning — Trade Republic still connects the same way as always, from its own card.",
+    "🏦 Fixed a big mess with Trade Republic: connecting it from the bank search would sometimes log expenses backwards (counted as income). That's sorted, and you can now connect it there so your purchases log themselves: the balance still comes from its usual card.",
     "🧾 When bringing in a bank's history, a bill that repeats across several months no longer gets duplicated: it's counted once.",
     "🔌 Reconnecting Trade Republic from the Portfolio banner now takes you straight to its card.",
     "💾 New: Settings → Backup → «Automatic backups». A full copy of your data is saved every day, and now you can see it and go back to an earlier day if something gets out of sync.",
@@ -1361,7 +1360,7 @@ var RELEASE_NOTES=[
     "🍂 Seasonal animations stop by themselves after a while instead of falling forever, and start again every time you change tab.",
    ],
    ca:[
-    "🏦 Arreglat un embolic gros amb Trade Republic: en connectar-lo des del cercador de bancs, algunes despeses s'apuntaven al revés (comptades com si fossin ingressos). Aquest camí queda bloquejat amb un avís — Trade Republic es continua connectant igual que sempre, des de la seva pròpia targeta.",
+    "🏦 Arreglat un embolic gros amb Trade Republic: en connectar-lo des del cercador de bancs, algunes despeses s'apuntaven al revés (comptades com si fossin ingressos). Ja està bé, i a més ara el pots connectar per aquí perquè les teves compres s'apuntin soles: el saldo el continua donant la seva targeta de sempre.",
     "🧾 En portar l'històric d'un banc, una factura que es repeteix diversos mesos ja no es duplica: es compta una sola vegada.",
     "🔌 Reconnectar Trade Republic des de l'avís de Cartera ara et porta directe a la seva targeta.",
     "💾 Nou: Ajustos → Còpia de seguretat → «Còpies automàtiques». Cada dia es desa una còpia sencera de les teves dades, i ara la pots veure i tornar a un dia anterior si alguna cosa es descuadra.",

@@ -1638,7 +1638,9 @@ Object.assign(LANG.es,{
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
   bank_error_invalid:"Ese permiso ya se usó o caducó · vuelve a pulsar Reconectar y termina solo esa autorización",
   bank_error_busy:"Ya hay una autorización en marcha · termínala antes de abrir otra",
-  bank_error_tr_native:"Trade Republic ya se conecta desde «Bancos → Trade Republic» (posiciones + efectivo, en vivo). Conectarlo también aquí duplicaría tus movimientos y podía descuadrar Gastos — por eso está bloqueado en este buscador.",
+  /* Antes esto era el aviso de un BLOQUEO. Desde el 2026-08-01 TR sí se puede conectar aquí y las
+     dos integraciones conviven, así que el texto explica el reparto en vez de cerrar la puerta. */
+  bp_tr_ob:"suma tus movimientos (el saldo lo sigue dando el bróker)",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
   // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
@@ -1661,7 +1663,7 @@ Object.assign(LANG.en,{
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
   bank_error_invalid:"That permission was already used or expired · tap Reconnect again and finish only that one authorization",
   bank_error_busy:"An authorization is already in progress · finish it before opening another",
-  bank_error_tr_native:"Trade Republic already connects from “Banks → Trade Republic” (positions + cash, live). Connecting it here too would duplicate your transactions and could throw off Expenses — that's why it's blocked in this picker.",
+  bp_tr_ob:"adds your transactions (the balance still comes from the broker)",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
   bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
@@ -1680,7 +1682,7 @@ Object.assign(LANG.ca,{
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
   bank_error_invalid:"Aquest permís ja s'ha usat o ha caducat · torna a prémer Reconnecta i acaba només aquesta autorització",
   bank_error_busy:"Ja hi ha una autorització en marxa · acaba-la abans d'obrir-ne una altra",
-  bank_error_tr_native:"Trade Republic ja es connecta des de «Bancs → Trade Republic» (posicions + efectiu, en viu). Connectar-lo també aquí duplicaria els teus moviments i podia descuadrar Despeses — per això està bloquejat en aquest cercador.",
+  bp_tr_ob:"suma els teus moviments (el saldo el continua donant el bróker)",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
   bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
