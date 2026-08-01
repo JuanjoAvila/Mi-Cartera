@@ -508,7 +508,19 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement("div",{className:"v4-gastos-list",style:{marginTop:14}},
       React.createElement("div",{className:"v4-gastos-list-body"},
         shown.length===0
-          ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
+          ? (function(){
+              // "No hay gastos aquí · cambia el filtro" asustaba a principio de mes/ciclo, cuando
+              // lo normal es no haber gastado nada todavía: no falta nada, no hay que "cambiar
+              // el filtro" (feedback 2026-08-01). Solo si hay histórico real en OTRO período y
+              // no hay ningún filtro activo (búsqueda/categoría/banco) es "vacío por normal";
+              // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
+              const sinFiltros=!q.trim() && !sel.length && !bankSel.length;
+              const hayHistorico=(expensesDef||[]).length>0;
+              const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
+              return React.createElement("div",{className:"empty"},
+                React.createElement("div",{className:"ttl"}, esVacioNormal?t("g_empty_period_t"):t("g_empty_t")),
+                esVacioNormal?t("g_empty_period_d"):t("g_empty_d"));
+            })()
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
               : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),

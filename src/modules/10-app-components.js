@@ -1251,9 +1251,25 @@ var RELEASE_NOTES=[
       "Con una temática puesta, las piezas caen un rato y paran solas.",
       "Al cambiar de pestaña vuelven a caer.",
     ]},
+    /* TANDA AÑADIDA 2026-08-01 tras el aviso «gastos como ingresos» + destrozo de -9k en Revolut
+       (ver CHANGELOG). No sube VERSION porque la ronda ya estaba abierta en 4.13.0 — mismo patrón
+       que 401214e/a8730a9, que tampoco bumpearon. Se promociona junto al resto cuando él diga. */
+    {id:"bancos", t:"🏦 Bancos: los bugs gordos de esta semana", items:[
+      "Buscar «Trade Republic» en Conectar banco lo bloquea con un aviso — ya no se puede conectar por ahí (colisiona con su tarjeta propia y era la causa de los gastos contados como ingresos).",
+      "Importar histórico: una factura que sale varias veces en 3 meses de extracto ya no se marca como recibo repetido — solo cuenta una (antes creaba un Fijo por cada mes que aparecía).",
+      "Reconectar Trade Republic desde el aviso de Cartera lleva directo a su tarjeta, con scroll — antes aterrizaba en Mis bancos con la tarjeta abierta pero fuera de pantalla.",
+      "Ajustes → Copia de seguridad → «Copias automáticas»: se ve la lista de los últimos días guardados y se puede restaurar uno.",
+      "Cambiar el banco de gasto diario en Patrimonio → Editar hace que sus compras entren en Gastos — antes se quedaba pegado al banco anterior para siempre.",
+      "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
+    ]},
    ],
    items:{
    es:[
+    "🏦 Arreglado un lío gordo con Trade Republic: al conectarlo desde el buscador de bancos, algunos gastos se apuntaban al revés (contados como si fueran ingresos). Ese camino queda bloqueado con un aviso — Trade Republic sigue conectándose igual que siempre, desde su propia tarjeta.",
+    "🧾 Al traer el histórico de un banco, una factura que se repite varios meses ya no se duplica: se cuenta una sola vez.",
+    "🔌 Reconectar Trade Republic desde el aviso de Cartera ahora te lleva directo a su tarjeta.",
+    "💾 Nuevo: Ajustes → Copia de seguridad → «Copias automáticas». Cada día se guarda una copia entera de tus datos, y ahora puedes verla y volver a un día anterior si algo se descuadra.",
+    "🛒 Si cambias tu banco de gasto diario, sus compras ya aparecen en Gastos sin pasos de más.",
     "📗 ¿Llevas tus gastos en un Excel? Ahora se pueden traer a la app: Ajustes → Copia de seguridad → «Importar una hoja de gastos». Vale un Excel o un CSV, da igual cómo se llamen tus columnas.",
     "🔍 Te propongo qué es cada columna y lo corriges si me equivoco. Antes de guardar nada ves exactamente lo que va a entrar.",
     "♻️ Lo repetido se descarta solo: si un gasto ya lo tenías apuntado, no entra dos veces. Se te enseña cuántos entran y cuántos se quedan fuera.",
@@ -1265,6 +1281,11 @@ var RELEASE_NOTES=[
     "🍂 Las animaciones de temporada paran solas al rato en vez de caer sin fin, y vuelven a arrancar cada vez que cambias de pestaña.",
    ],
    en:[
+    "🏦 Fixed a big mess with Trade Republic: connecting it from the bank search would sometimes log expenses backwards (counted as income). That path is now blocked with a warning — Trade Republic still connects the same way as always, from its own card.",
+    "🧾 When bringing in a bank's history, a bill that repeats across several months no longer gets duplicated: it's counted once.",
+    "🔌 Reconnecting Trade Republic from the Portfolio banner now takes you straight to its card.",
+    "💾 New: Settings → Backup → «Automatic backups». A full copy of your data is saved every day, and now you can see it and go back to an earlier day if something gets out of sync.",
+    "🛒 If you change your daily-spending bank, its purchases now show up in Expenses with no extra steps.",
     "📗 Keeping your expenses in a spreadsheet? You can now bring them in: Settings → Backup → «Import an expenses sheet». Excel or CSV both work, whatever your columns are called.",
     "🔍 I guess what each column is and you fix me if I am wrong. Before anything is saved you see exactly what is coming in.",
     "♻️ Duplicates are dropped on their own: an expense you already had does not go in twice. You are shown how many come in and how many stay out.",
@@ -1276,6 +1297,11 @@ var RELEASE_NOTES=[
     "🍂 Seasonal animations stop by themselves after a while instead of falling forever, and start again every time you change tab.",
    ],
    ca:[
+    "🏦 Arreglat un embolic gros amb Trade Republic: en connectar-lo des del cercador de bancs, algunes despeses s'apuntaven al revés (comptades com si fossin ingressos). Aquest camí queda bloquejat amb un avís — Trade Republic es continua connectant igual que sempre, des de la seva pròpia targeta.",
+    "🧾 En portar l'històric d'un banc, una factura que es repeteix diversos mesos ja no es duplica: es compta una sola vegada.",
+    "🔌 Reconnectar Trade Republic des de l'avís de Cartera ara et porta directe a la seva targeta.",
+    "💾 Nou: Ajustos → Còpia de seguretat → «Còpies automàtiques». Cada dia es desa una còpia sencera de les teves dades, i ara la pots veure i tornar a un dia anterior si alguna cosa es descuadra.",
+    "🛒 Si canvies el teu banc de despesa diària, les seves compres ja apareixen a Despeses sense passos de més.",
     "📗 Portes les teves despeses en un Excel? Ara es poden portar a l'app: Ajustos → Còpia de seguretat → «Importar un full de despeses». Serveix un Excel o un CSV, tant se val com es diguin les teves columnes.",
     "🔍 Et proposo què és cada columna i ho corregeixes si m'equivoco. Abans de desar res veus exactament el que entrarà.",
     "♻️ El repetit es descarta sol: si una despesa ja la tenies apuntada, no entra dues vegades. Se t'ensenya quantes entren i quantes es queden fora.",
