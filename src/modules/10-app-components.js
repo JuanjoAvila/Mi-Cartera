@@ -1033,6 +1033,29 @@ function FeedbackPanel({state, set, showToast, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.12.2", d:"1 ago 2026",
+   t:{es:"Un arranque más limpio, y tu dinero subiendo hasta la cifra otra vez",
+      en:"A cleaner start-up, and your money counting up again",
+      ca:"Un arrencada més neta, i els teus diners pujant fins a la xifra un altre cop"},
+   items:{
+   es:[
+    "🚀 Al abrir la app, el nombre «Mi Cartera» ya no cambia de forma nada más aparecer: espera a estar listo del todo antes de mostrarse.",
+    "💰 Y al abrir la app vuelves a ver tu dinero subiendo hasta la cifra: la animación estaba, pero se gastaba antes de que la vieses.",
+    "🍂 Si tienes puesta una tematica de temporada, las piezas caen un momento al principio y paran solas — antes duraban mucho más y volvían a caer cada vez que cambiabas de pestaña.",
+    "🎨 Con una temática puesta, ahora también se nota en el resto de la app (bordes y detalles), no solo en el botón central.",
+   ],
+   en:[
+    "🚀 Opening the app, the «Mi Cartera» name no longer changes shape right after appearing: it waits until it is fully ready before showing.",
+    "💰 And opening the app you can see your money counting up to the figure again: the animation was there, it just played before you could see it.",
+    "🍂 If you have a seasonal theme on, the pieces fall for a moment at the start and then stop on their own — they used to last much longer and fall again every time you switched tabs.",
+    "🎨 With a theme on, it now shows in the rest of the app too (borders and small details), not just the centre button.",
+   ],
+   ca:[
+    "🚀 En obrir l'app, el nom «Mi Cartera» ja no canvia de forma just en aparèixer: espera a estar del tot llest abans de mostrar-se.",
+    "💰 I en obrir l'app tornes a veure els teus diners pujant fins a la xifra: l'animació hi era, però es gastava abans que la veiessis.",
+    "🍂 Si tens posada una temàtica de temporada, les peces cauen un moment al principi i paren soles — abans duraven molt més i tornaven a caure cada cop que canviaves de pestanya.",
+    "🎨 Amb una temàtica posada, ara també es nota a la resta de l'app (vores i detalls), no només al botó central.",
+   ]}},
   {v:"4.12.1", d:"27 jul 2026",
    t:{es:"Ajustes solo desde Resumen, y sin topes al abrir o bajar la lista",
       en:"Settings only from Home, and no more stops when opening or scrolling",
