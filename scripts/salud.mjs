@@ -87,8 +87,29 @@ else {
   if (live && base === live.version) ok("la beta ya está en producción · no hay nada pendiente de aprobar");
   else if (live) info(`la beta (${base}) va por delante de producción (${live.version}) · pendiente de su veredicto`);
 }
-// Y lo que hay en la rama sin publicar: el hueco donde se pierde el trabajo terminado.
-git("fetch", "origin", "+refs/heads/beta:refs/remotes/origin/beta", "main");
+/* ¿SE PUEDE SUBIR ESTA RONDA POR TANDAS, O SOLO ENTERA? (2026-08-01)
+   Declarar `tandas` en las notas parte la checklist de su móvil, pero NO crea ninguna rama — y el
+   workflow de promoción mergea `tanda/<id>`. Si las tandas se han commiteado mezcladas en `beta`
+   (le pasó en la 4.13.0), pedir `-f tandas=import` PARA en seco... después de que él haya
+   aprobado, que es el peor momento para enterarse. Esto lo dice antes, y aquí, que es donde se
+   mira el estado. La regla completa, en docs/TESTING.md. */
+git("fetch", "origin", "+refs/heads/beta:refs/remotes/origin/beta", "main", "+refs/heads/tanda/*:refs/remotes/origin/tanda/*");
+try {
+  const idx = fs.readFileSync("src/modules/10-app-components.js", "utf8");
+  const bloque = idx.slice(idx.indexOf("var RELEASE_NOTES=["));
+  const decl = [...bloque.slice(0, bloque.indexOf("items:{")).matchAll(/\{id:"([a-z0-9_-]+)"/g)].map((m) => m[1]);
+  if (decl.length > 1) {
+    const ramas = (git("branch", "-r", "--list", "origin/tanda/*") || "").split("\n").filter(Boolean)
+      .map((l) => l.trim().replace("origin/tanda/", ""));
+    const faltan = decl.filter((d) => !ramas.includes(d));
+    if (!faltan.length) ok(`las ${decl.length} tandas tienen su rama · se pueden subir por separado`);
+    else {
+      info(`esta ronda declara ${decl.length} tandas (${decl.join(", ")}) y NO todas tienen rama \`tanda/<id>\``);
+      info(`   sin rama: ${faltan.join(", ")} → esta ronda solo se puede subir ENTERA (\`tandas\` vacío)`);
+      info(`   para trocear la SIGUIENTE: \`git switch -c tanda/<id> main\` antes del primer commit`);
+    }
+  }
+} catch (e) { /* si las notas cambian de forma, esto informa de menos, nunca rompe la salud */ }
 const pend = git("log", "refs/remotes/origin/main..refs/remotes/origin/beta", "--oneline");
 if (pend) { info(`commits en \`beta\` que \`main\` no tiene:`); pend.split("\n").forEach((l) => console.log(`      ${l}`)); }
 else info("`beta` y `main` están al día");
