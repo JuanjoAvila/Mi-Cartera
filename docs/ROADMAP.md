@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-01 · **v4.12.2** — EN PRODUCCIÓN: el arranque de la 4.13.0, subido SOLO (no la ronda entera: primera vez que se promociona por feature, no por tanda). El nombre ya no cambia de forma a media carga (`font-display:swap` → espera a Fraunces: era la causa real de «algo raro antes del icono»), el patrimonio vuelve a contar hasta la cifra visible, el logo se va antes que el fondo (no más las dos pantallas superpuestas), y las temporadas caen UNA vez y paran, con la temática puesta también fuera del botón +. `beta` sigue con el resto de la 4.13.0 (import de hojas, gestos —el rebote no es «el efecto ola»—, bancos —TR y el sync del banco de gasto diario) esperando su turno, cada una por separado.
+> Estado a 2026-08-01 · **v4.12.3** — EN PRODUCCIÓN: el arranque de la 4.13.0, subido SOLO (no la ronda entera: primera vez que se promociona por feature, no por tanda). El nombre ya no cambia de forma a media carga (`font-display:swap` → espera a Fraunces: era la causa real de «algo raro antes del icono»), el patrimonio vuelve a contar hasta la cifra visible, el logo se va antes que el fondo (no más las dos pantallas superpuestas), y las temporadas caen UNA vez y paran, con la temática puesta también fuera del botón +. La 4.12.3 es solo mantenimiento encima (el guardián de versión se disparó con su propio rebuild + el fixture del día 1 llega a `main`). `beta` sigue con el resto de la 4.13.0 (import de hojas, gestos —el rebote no es «el efecto ola»—, bancos —TR y el sync del banco de gasto diario) esperando su turno, cada una por separado.
 >
 > Anterior: 2026-07-27 · **v4.12.1** — Ajustes solo desde Resumen (sin borde en el resto), sin stopper al abrir Ajustes/perfil al momento, y Gastos baja sin parones (centinela 2.000 px / +60).
 >
@@ -32,8 +32,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.12.2** (producción, `main`) · `beta` va por delante con el resto de la 4.13.0 |
-| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.12.2: llega por OTA sobre esta misma APK. |
+| Web / OTA (`VERSION`) | **4.12.3** (producción, `main`) · `beta` va por delante con el resto de la 4.13.0 |
+| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.12.3: llega por OTA sobre esta misma APK. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
 

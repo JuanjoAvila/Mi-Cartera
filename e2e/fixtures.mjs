@@ -92,6 +92,20 @@ export async function seedLoggedInDashboard(page, overrides = {}) {
         localStorage.setItem("_coach_" + id, "1")
       );
     } catch (e) {}
+    // Informe mensual automático (11-app-main.js): sale solo a los 3s si el DÍA REAL es 1, y sin
+    // esto se cuela por encima de cualquier test que tarde >=3s en interactuar — exactamente el
+    // día 1 de cada mes, que es cuando nadie lo está mirando hasta que CI lo pilla (2026-08-01:
+    // rendimiento-tabs, swipe-pestanas y la búsqueda de Gastos fallaron los tres a la vez, todos
+    // con el mismo "tabsheet-back"/"Ahora no" tapando la pantalla — no es un bug del código, es
+    // que ningún fixture lo silenciaba). Se marca como "ya visto este mes" con la MISMA clave que
+    // usa la app (`_mr<año>-<mes>`), así el popup no vuelve a colarse en ningún test futuro.
+    try {
+      const d = new Date();
+      localStorage.setItem(
+        "_mr" + d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0"),
+        "1"
+      );
+    } catch (e) {}
   }, overrides);
 }
 

@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.12.3] — 2026-08-01
+### Mantenimiento: el guardián de versión atrapó su propio efecto secundario
+
+`docs-frescura` — el guardián que evita publicar código sin subir `VERSION` — se disparó con SU
+PROPIO ruido: al arreglar los dos fallos de `README.md`/`docs/ROADMAP.md` de la 4.12.2 (más abajo),
+el rebuild local re-selló `public/sw.js` con el hash del commit nuevo, y ESE segundo toque contaba
+como «código publicable después del bump» aunque no llevara nada nuevo. Sube VERSION una vez más
+para que el guardián quede contento sin tocar el historial ya subido a `main` — más seguro que
+reescribirlo.
+
+De paso, el fixture de los e2e que arrastraba `beta` desde el 1/8 (el informe mensual automático
+del día 1 tapando la pantalla en `rendimiento-tabs`/`swipe-pestanas`) llega también a `main`: sin
+él, CUALQUIER futura promoción a producción se cae en pruebas cada día 1 de mes, no solo esta.
+
+Nada de esto lo nota nadie usando la app.
+
 ## [4.12.2] — 2026-08-01
 ### El arranque, separado del resto de la 4.13.0 en curso
 

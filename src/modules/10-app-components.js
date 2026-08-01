@@ -1033,7 +1033,7 @@ function FeedbackPanel({state, set, showToast, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.12.2", d:"1 ago 2026",
+  {v:"4.12.3", d:"1 ago 2026",
    t:{es:"Un arranque más limpio, y tu dinero subiendo hasta la cifra otra vez",
       en:"A cleaner start-up, and your money counting up again",
       ca:"Un arrencada més neta, i els teus diners pujant fins a la xifra un altre cop"},
