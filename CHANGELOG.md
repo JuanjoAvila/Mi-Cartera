@@ -2,6 +2,39 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-01 (segunda vuelta)
+### El rebote de las pestañas era el navegador todo el tiempo, y una tanda subida se queda del todo fuera de beta
+
+Tercer intento del rebote, y esta vez con la descripción exacta: «cuando bajas hasta abajo del
+todo y tiras más, se ve como un efecto OLA de todas las cosas que hay en pantalla — eso es lo que
+quiero, lo mismo que Ajustes y el perfil».
+
+**Y AJUSTES/EL PERFIL NUNCA TUVIERON UN REBOTE NUESTRO.** Se comprobó el CSS: `.settings-push` y
+`.settings-slide` jamás tocaron `overscroll-behavior` — corren con el valor por defecto del
+navegador, que en su Android SÍ hace rubber-band de verdad. `.page` (las cuatro pestañas) era la
+ÚNICA zona con `overscroll-behavior-y:none`, puesta el 28/7 a propósito para dejar sitio a un
+rebote JS hecho a mano — sobre la premisa de que «la WebView no hace rubber-band, hace un
+fogonazo». Esa premisa era la raíz de tres rondas de rechazo: no importaba cuánto se afinara la
+curva, seguía siendo UN EFECTO DISTINTO por diseño.
+
+Quitado entero: `reb`, `REB_MAX`, `REB_DIV`, `soltarRebote`, la rama completa en `onMove` — y el
+`overscroll-behavior-y:none` de `.page`. Las cuatro pestañas pasan a comportarse EXACTAMENTE como
+Ajustes y el perfil, porque ahora es literalmente el mismo mecanismo del navegador, no una copia.
+
+**UNA TANDA APROBADA Y SUBIDA SE QUITA DE `tandas`, NO SE MARCA COMO HECHA.** Regla suya, textual:
+«si sube algo en prod, se quita de beta para probar porque ya está listo... conforme apruebe la
+tanda sube y desaparece». `arranque` (aprobada 5/5, ya en producción como 4.12.3) y `canal`
+(aprobada 3/3, su arreglo vive en `beta.yml` y ya está activo) seguían apareciendo en el panel como
+si quedara algo pendiente — eso fue lo que hizo dudar si de verdad estaba hecho. Las dos se han
+QUITADO del array, no comentado ni marcado: lo que hicieron queda en el CHANGELOG y en
+`docs/ROADMAP.md`, que es donde se consulta el histórico.
+
+**APK DE PRUEBAS INSTALABLE EN PARALELO.** Pidió una vía para probar cambios nativos (el splash de
+Android 12+, el widget) sin esperar a una release pública ni arriesgar la app real. `assembleDebug`
+con `applicationIdSuffix ".debug"` la instala como `com.micartera.app.debug` — una app aparte en el
+móvil, con su propio nombre («Mi Cartera (debug)») y sus propios datos, conviviendo con la de
+producción sin tocarla.
+
 ## [Sin publicar] — 2026-08-01
 ### Repaso de la ronda 4.13.0: el panel de tandas contaba mal, y la promoción por tandas prometía algo que no podía hacer
 

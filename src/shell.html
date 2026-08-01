@@ -445,11 +445,14 @@
      retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
      estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
      durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
-  /* `overscroll-behavior-y:none` (era `contain`): además de no encadenar el scroll al padre,
-     apaga el FOGONAZO de borde de la WebView. Desde 4.13.0 el final de la lista lo dibujamos
-     nosotros con el rebote elástico (ver `reb` en 11-app-main.js), y las dos cosas a la vez
-     —nuestro estirón y el destello de Chromium— se pisaban. */
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;overscroll-behavior-y:none;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
+  /* SIN `overscroll-behavior-y` (2026-08-01, tercer intento del rebote). Durante 4.13.0 llevaba
+     `none`, puesto a propósito para dejar sitio a un rebote elástico dibujado a mano — y ESE
+     rebote es justo lo que él rechazó tres veces seguidas por no parecerse a Ajustes/el perfil.
+     La razón: Ajustes y el perfil (`.settings-push`/`.settings-slide`, más abajo) NUNCA tuvieron
+     ese override, así que corren con el rebote NATIVO del navegador — el "efecto ola" que él
+     describe y que quiere en las cuatro pestañas también. Quitando el `none` de aquí, `.page`
+     pasa a comportarse EXACTAMENTE igual que esos dos sitios: mismo mecanismo, no una imitación. */
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 

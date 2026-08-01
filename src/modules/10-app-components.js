@@ -1342,19 +1342,18 @@ var RELEASE_NOTES=[
       "Al guardar, los gastos nuevos salen en Gastos y cuentan en los totales.",
     ]},
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
-      "El rebote al final de una pestaña ahora se siente COMO EL DE AJUSTES: cede más al tirar y vuelve igual de suave (misma curva y mismo tiempo, .42s). Tíralo en Gastos y compáralo abriendo Ajustes.",
+      "El rebote al final de una pestaña ahora es EL MISMO mecanismo que Ajustes y el perfil (no una imitación con curva propia — se quitó el bloqueo que impedía al navegador hacer lo suyo). Tíralo en Gastos y compáralo abriendo Ajustes: tiene que sentirse idéntico, es literalmente el mismo efecto.",
       "En Resumen, tirar hacia abajo estando arriba SIGUE abriendo el perfil (el rebote no estorba).",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal. Iba a destiempo dos veces: primero salto y desplazamiento con curvas distintas, y luego un reflow forzado que arrancaba la transición con las reglas viejas un instante antes de tiempo.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
     ]},
-    {id:"arranque", t:"🚀 Arranque y temporadas", items:[
-      "Al abrir la app el patrimonio sube contando hasta la cifra, y da tiempo a verlo.",
-      "Al abrir la app, el logo «Mi Cartera» ya NO se queda flotando encima del panel pintado: se va antes que el fondo, así que nunca se ven las dos pantallas a la vez.",
-      "Con una temática puesta, las piezas caen UNA sola vez y muy poco (unos segundos, no un minuto).",
-      "Al cambiar de pestaña ya NO vuelven a caer. Solo al abrir la app.",
-      "Y la temática se sigue notando con la app quieta: el aro del botón +, un halo arriba, otro abajo y la rayita de la barra en el color de la temporada.",
-    ]},
+    /* ⚠ AQUÍ VIVÍA LA TANDA `arranque` — y SE QUITA DEL TODO, no se marca «hecha» (2026-08-01,
+       regla suya, textual: «si sube algo en prod, se quita de beta para probar porque ya está
+       listo... conforme apruebe la tanda sube y desaparece»). La aprobó (5/5 ok) el 1/8 y se
+       promocionó sola a producción como 4.12.3 el mismo día — seguir enseñándola aquí como si
+       quedara algo pendiente es exactamente el ruido que haría dudar de si ya está hecho o no.
+       Su checklist de verdad, en el CHANGELOG de la 4.12.3 y en docs/ROADMAP.md. */
     /* TANDA AÑADIDA 2026-08-01 tras el aviso «gastos como ingresos» + destrozo de -9k en Revolut
        (ver CHANGELOG). No sube VERSION porque la ronda ya estaba abierta en 4.13.0 — mismo patrón
        que 401214e/a8730a9, que tampoco bumpearon. Se promociona junto al resto cuando él diga. */
@@ -1367,14 +1366,9 @@ var RELEASE_NOTES=[
       "Cambiar el banco de gasto diario en Patrimonio → Editar hace que sus compras entren en Gastos — antes se quedaba pegado al banco anterior para siempre.",
       "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
     ]},
-    /* TANDA AÑADIDA 2026-08-01 con el aviso de actualización en bucle. Va aparte de `bancos`
-       porque no toca la app: es del canal de pruebas, y él tiene que poder aprobarla o tumbarla
-       sin arrastrar lo demás — que es justo para lo que existen las tandas. */
-    {id:"canal", t:"🔔 El aviso de actualizar, que salía sin parar", items:[
-      "Ya no te avisa de una actualización cuando la app no ha cambiado. Antes cada commit publicaba beta nueva, aunque fuera de documentación: el 1 de agosto te llegaron ocho en un día.",
-      "Cuando SÍ haya cambios de verdad, el aviso tiene que seguir llegando igual de rápido. Eso es lo que hay que mirar: que no se haya pasado de frenada y ahora no avise nunca.",
-      "El número de la beta sigue subiendo de uno en uno (4.13.0.9 → .10), sin saltos ni huecos.",
-    ]},
+    /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
+       .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de
+       pruebas en sí, así que aprobado = hecho, sin paso intermedio que esperar. */
    ],
    items:{
    /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación): esa parte de

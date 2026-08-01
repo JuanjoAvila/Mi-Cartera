@@ -1883,13 +1883,6 @@ function App(){
     // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
     // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
     trackW.current=(trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360;
-    /* Las medidas del REBOTE, también aquí y por lo mismo: `scrollHeight`/`clientHeight` fuerzan
-       recálculo de layout, y en un `touchmove` eso son ~35 reflows por arrastre (la lección que
-       costó los rechazos .17→.23, arriba en `onMove`). El alto del contenido no cambia mientras
-       el dedo está puesto, así que se mide una vez y en el móvil solo se lee `scrollTop`. */
-    const pgs=trackRef.current&&trackRef.current.children;
-    const pg=pgs&&pgs[tab];
-    reb.current={ el:pg||null, tope:pg?Math.max(0,pg.scrollHeight-pg.clientHeight):0, dir:0, ancla:0 };
     prepped.current=0;
     pDY.current=0; pT.current=Date.now();
     startX.current=e.touches?e.touches[0].clientX:e.clientX;
@@ -1965,46 +1958,22 @@ function App(){
       if(e.cancelable) e.preventDefault();
       return;
     }
-    /* El rebote, con el eje ya declarado vertical y el perfil descartado (ver `reb` arriba). */
-    if(axis.current==="y" && !document.documentElement.classList.contains("reduce-motion")){
-      const b=reb.current, pg=b.el;
-      if(pg){
-        const st=pg.scrollTop;
-        // `dir` = hacia dónde se estira: -1 abajo (dedo subiendo), +1 arriba (dedo bajando).
-        let dir=0;
-        if(st>=b.tope-1 && ddy<0) dir=-1;
-        else if(st<=0 && ddy>0 && tab!==0) dir=1;
-        if(dir){
-          // El ancla se fija al TOCAR el tope, no al empezar el gesto: si venías scrolleando
-          // media pantalla, el estirón tiene que contar desde el final, no desde tu dedo.
-          if(b.dir!==dir){ b.dir=dir; b.ancla=ddy; }
-          const crudo=Math.max(0,(ddy-b.ancla)*dir);
-          /* LA MISMA CURVA QUE AJUSTES Y EL PERFIL, LITERALMENTE LA MISMA FUNCIÓN (2026-08-01).
-             Rechazo suyo dos veces: «hace el rebote pero no igual que las settings... y las
-             settings de profile» · «sí lo hace, pero no de la misma forma que lo hace settings y
-             settings de perfil». Y era verdad, eran dos elásticos distintos:
-               · aquí, una asintótica `1-1/(x/M+1)` que arranca pegada al dedo y se endurece;
-               · en Ajustes/perfil, `profResist` = potencia de 0,86 sobre la altura de pantalla,
-                 que cede MÁS al principio y se aplana antes.
-             En números, con su móvil (850 px de alto) y 50 px de tirón: la vieja daba 32 px de
-             estirón y esta da 52. Por eso el suyo se sentía corto y agarrotado al lado del panel.
-             Se reusa `profResist` en vez de copiarle la fórmula, para que no puedan volver a
-             separarse: si algún día se afina el tacto del perfil, el rebote va detrás solo.
-             El divisor sí es propio (`REB_DIV`) y tiene que serlo: el perfil recorre la pantalla
-             entera y esto son 110 px, así que la normalización no puede ser la misma o el rebote
-             saldría rígido. Lo que se comparte es la CURVA, que es lo que se nota con el dedo. */
-          const d=REB_MAX*profResist(crudo*(PROF_DIV/REB_DIV));
-          pg.style.transition="";
-          pg.style.transform="translate3d(0,"+(d*dir).toFixed(1)+"px,0)";
-          // Solo se le quita el gesto al navegador cuando de verdad estamos estirando: por
-          // debajo de eso el scroll tiene que seguir siendo suyo o se nota agarrotado.
-          if(crudo>2 && e.cancelable) e.preventDefault();
-          return;
-        }
-        if(b.dir) soltarRebote();
-      }
-      return;
-    }
+    /* ⚠ AQUÍ HABÍA UN REBOTE CASERO, Y SE QUITÓ ENTERO (2026-08-01, tercer intento, por fin con
+       la descripción exacta: «cuando bajas hasta abajo del todo y tiras más, se ve como un
+       efecto OLA de todas las cosas que hay en pantalla — eso es lo que quiero, lo mismo que
+       Ajustes y el perfil»).
+       Y Ajustes/el perfil (`.settings-push`/`.settings-slide`) NUNCA tuvieron un rebote nuestro:
+       ese "efecto ola" que él ve ahí es el rebote NATIVO de Chromium/Android — el navegador
+       estira TODO el contenido de la pantalla como una goma cuando llegas al final y sigues
+       tirando. `.page` (las cuatro pestañas) es la ÚNICA zona con `overscroll-behavior-y:none`
+       en toda la app, puesto a propósito el 28/7 para que un rebote JS propio no se pisara con
+       el nativo. Ese rebote propio es justo lo que él llevaba tres rondas rechazando por no
+       parecerse — porque es OTRO efecto, con otra física, por diseño.
+       La solución no era afinar la curva una cuarta vez: era dejar que el navegador haga aquí
+       LO MISMO que ya hace en Ajustes y en el perfil. Sin JS, sin `reb`, sin `REB_MAX` — el
+       `overscroll-behavior-y:none` de `.page` también se ha quitado (ver shell.html), así que
+       las cuatro pestañas se comportan exactamente como los otros dos sitios que él pone como
+       referencia, porque ahora es LITERALMENTE el mismo mecanismo. */
     if(axis.current!=="x") return;
     dx.current=ddx;
     if(gestureMode.current==="drawer"){
@@ -2052,7 +2021,6 @@ function App(){
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
-    if(reb.current.dir) soltarRebote();   // el estirón vuelve a su sitio al levantar el dedo
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
       const dist=pDY.current;
@@ -2121,9 +2089,6 @@ function App(){
      El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
   const onCancel=function(){
     if(!dragging.current) return;
-    // Un gesto cancelado (noti, borde de pantalla, app a segundo plano) no puede dejar la página
-    // estirada para siempre: mismo criterio que la red de seguridad de `onStart`.
-    if(reb.current.dir) soltarRebote();
     if(gestureMode.current==="profile"){
       profileRelease();
       setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba
@@ -2152,40 +2117,12 @@ function App(){
      repintados de la app entera por gesto — exactamente el tipo de trabajo atado al momento en
      que el usuario toca que costó siete vueltas sacar del carrusel (ver CHANGELOG 4.12.0). La
      clase se pone y se quita sobre el nodo y React ni se entera. */
-  /* REBOTE AL LLEGAR AL FINAL DE UNA PESTAÑA (petición suya 2026-07-28: «la animación esa chula
-     de las settings de perfil y settings normales que si bajas abajo del todo hace como efecto
-     rebote, eso lo hacen la mayoría de apps y me flipa muchísimo, ¿lo podrías aplicar para cada
-     pestaña?»).
-
-     No sale gratis del navegador: la WebView de Android no hace rubber-band, hace un fogonazo de
-     borde. Así que el rebote se dibuja a mano — se mueve la página con `transform` mientras el
-     dedo insiste, y se suelta con una curva al levantarlo.
-
-     DÓNDE NO (sus dos avisos, textuales): «con cuidado de no aplicarlo cuando esté arriba del
-     todo para abrir el perfil o cuando deslice hacia el lado para abrir las settings».
-       · De lado: no hay nada que hacer, el eje ya está decidido antes de llegar aquí — si el
-         gesto es horizontal esto ni se mira.
-       · Arriba del todo: el rebote de ARRIBA se apaga en Resumen (tab 0), que es donde el tirón
-         hacia abajo abre el perfil. En el resto de pestañas arriba no compite con nada y sí lo
-         tiene. Abajo lo tienen las cuatro: ahí no hay ningún gesto que estorbar. */
-  const reb=useRef({el:null,tope:0,dir:0,ancla:0});
-  const REB_MAX=110;    // px de tope: por mucho que tires, no se despega más (era 88, se sentía corto)
-  /* Cuánto tirón hace falta para llegar al tope, como fracción de la altura de pantalla. Es lo
-     ÚNICO que no se comparte con el perfil (`PROF_DIV`=0.52): allí el gesto recorre la pantalla
-     entera y aquí son 110 px, así que normalizar igual dejaría el rebote rígido. La curva sí es
-     la misma —ver `profResist` en el rebote— que es lo que se nota con el dedo. */
-  const REB_DIV=0.14;
-  const soltarRebote=function(){
-    const b=reb.current, el=b&&b.el;
-    b.dir=0;
-    if(!el) return;
-    /* Y LA VUELTA, EXACTAMENTE LA DE AJUSTES: `.42s cubic-bezier(.32,.72,0,1)`, la misma línea
-       que `.settings-push/.settings-slide` en el shell. Estaba en .34s — un 20% más rápida— y
-       ese es el otro medio motivo de que no se sintiera igual: mismo dibujo, distinto tempo. */
-    el.style.transition="transform .42s cubic-bezier(.32,.72,0,1)";
-    el.style.transform="";
-    setTimeout(function(){ if(el.style) el.style.transition=""; },440);
-  };
+  /* AQUÍ VIVÍA EL REBOTE CASERO DE LAS PESTAÑAS, Y SE QUITÓ ENTERO EL 2026-08-01 — leer el
+     comentario en `onMove` (más arriba, donde estaba la rama que lo dibujaba) para el porqué:
+     la premisa de origen («la WebView no hace rubber-band, solo un fogonazo de borde») era la
+     causa de que tres rondas de retoques nunca se pareciesen a Ajustes/el perfil — esos dos
+     sitios NUNCA tuvieron rebote nuestro, corren con el `overscroll-behavior` por defecto del
+     navegador, y ESE es el efecto que él pedía copiar. `.page` ya no lo bloquea (shell.html). */
   const indRef=useRef(null);
   const tabPrevRef=useRef(tab);
   /* ⚠ `useLayoutEffect` Y NO `useEffect`, y esta vez importa de verdad (2026-08-01).

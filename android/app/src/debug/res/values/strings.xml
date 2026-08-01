@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo para el buildType `debug` (Android mezcla esto SOBRE src/main/res, no lo sustituye
+     entero): el nombre que se ve en el cajón de apps para no confundirla con la de verdad,
+     instalada aparte gracias al applicationIdSuffix ".debug" en build.gradle. -->
+<resources>
+    <string name="app_name">Mi Cartera (debug)</string>
+</resources>

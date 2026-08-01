@@ -57,6 +57,19 @@ android {
                 signingConfig signingConfigs.release
             }
         }
+        /* «SOLO PARA MÍ, EN BETA» — una APK de pruebas instalable EN PARALELO a la real
+           (2026-08-01: pidió una vía para probar cambios nativos sin esperar a la release
+           pública). Sin `applicationIdSuffix` esto habría sido `com.micartera.app` a secas —
+           el MISMO id que la app de producción, firmada con OTRA llave (la de debug de Android,
+           auto-generada) — así que instalarla habría exigido DESINSTALAR la real primero
+           (Android rechaza una actualización con firma distinta al mismo id). Con el sufijo,
+           Android la trata como una app aparte: las dos conviven en el móvil, cada una con sus
+           propios datos. `.debug` en el nombre visible para que no se confunda con la de
+           siempre en la lista de apps. */
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
     }
 }
 

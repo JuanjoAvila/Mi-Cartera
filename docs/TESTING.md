@@ -307,6 +307,20 @@ Cada tanda tiene en el panel **su propio contador y su propio botón**. Un fallo
 bloquea a las demás — que es todo el motivo de que existan. Cada veredicto se manda por separado y
 lleva su `id`, así que `node scripts/errores.mjs --kind=beta` enseña una línea por tanda.
 
+### Una tanda aprobada Y SUBIDA se QUITA de `tandas`, no se marca como hecha
+
+Regla suya, textual (2026-08-01): **«si sube algo en prod, se quita de beta para probar porque ya
+está listo — es como una especie de backlog: conforme apruebe la tanda sube y desaparece; si algo
+falla se queda hasta que esté todo aprobado por mí»**.
+
+Cuando una tanda se aprueba Y se promociona (a `main`, o su arreglo ya vive activo aunque no haya
+«producción» que tocar, como `canal`), su bloque entero **se borra** del array `tandas` de esa
+entrada de `RELEASE_NOTES` — no se deja ahí con un comentario de «ya hecha», porque eso es
+exactamente lo que le hizo dudar si de verdad estaba hecho o no («no se reflejaba en las pruebas
+de la beta»). El bloque `{id:...}` desaparece del código; lo que hizo esa tanda queda documentado
+en el CHANGELOG y en `docs/ROADMAP.md`, que es donde se consulta el HISTÓRICO — `tandas` es solo
+la cola de lo que **queda** por revisar, nunca un registro de lo ya cerrado.
+
 ### Cómo se sube solo lo aprobado
 
 > ⚠⚠ **LA RAMA SE DECIDE ANTES DE ESCRIBIR NADA, NO AL FINAL.** Declarar `tandas` en las notas
