@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-07-27 · **v4.12.1** — en **beta**: Ajustes solo desde Resumen (sin borde en el resto), sin stopper al abrir Ajustes/perfil al momento, y Gastos baja sin parones (centinela 2.000 px / +60). Producción sigue en **4.12.0** (APK 35) hasta que apruebe esta beta.
+> Estado a 2026-08-01 · **v4.12.2** — EN PRODUCCIÓN: el arranque de la 4.13.0, subido SOLO (no la ronda entera: primera vez que se promociona por feature, no por tanda). El nombre ya no cambia de forma a media carga (`font-display:swap` → espera a Fraunces: era la causa real de «algo raro antes del icono»), el patrimonio vuelve a contar hasta la cifra visible, el logo se va antes que el fondo (no más las dos pantallas superpuestas), y las temporadas caen UNA vez y paran, con la temática puesta también fuera del botón +. `beta` sigue con el resto de la 4.13.0 (import de hojas, gestos —el rebote no es «el efecto ola»—, bancos —TR y el sync del banco de gasto diario) esperando su turno, cada una por separado.
+>
+> Anterior: 2026-07-27 · **v4.12.1** — Ajustes solo desde Resumen (sin borde en el resto), sin stopper al abrir Ajustes/perfil al momento, y Gastos baja sin parones (centinela 2.000 px / +60).
 >
 > Anterior: 2026-07-27 · **v4.12.0** — **APROBADA en el móvil y en producción** («funciona» + «todas las pestañas van increíblemente fluidísimas»). Causa del tirón: la `transition` CSS del carrusel juddeaba a 120 Hz al soltar; asentamiento por `requestAnimationFrame` → 0 saltos. APK **35** (icono/splash nativos; OTA no los lleva — si aún no está instalada, ofrecerla). Ver `docs/LAG-DESLIZAR.md`.
 >
@@ -30,8 +32,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.12.1** (beta) · producción en `main` = **4.12.0** |
-| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. |
+| Web / OTA (`VERSION`) | **4.12.2** (producción, `main`) · `beta` va por delante con el resto de la 4.13.0 |
+| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.12.2: llega por OTA sobre esta misma APK. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
 
