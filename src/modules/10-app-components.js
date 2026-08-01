@@ -808,8 +808,19 @@ function BetaReviewPanel({onClose, showToast}){
      · si reescribimos la nota, ha cambiado lo que se prueba → vuelve a preguntarse;
      · si la nota es idéntica, es literalmente lo mismo que ya probó → viene marcado;
      · y si se reordenan las notas, no se cruzan los cables (con índices, sí).
-     Los ✗ no se heredan NUNCA, ni sus comentarios. */
+
+     ⚠ Y LOS ✗ TAMBIÉN SE HEREDAN, CON SU COMENTARIO (2026-08-01). Antes NO, con este argumento:
+     «las cruces son justo lo que se acaba de arreglar, así que vuelven a preguntarse». El
+     argumento es falso: el panel no tiene ni idea de si la compilación nueva ha tocado ese punto
+     o no. Y el precio de equivocarse lo paga él SIEMPRE — la 4.13.0 sacó cinco compilaciones en
+     tres días y cada una le borraba los tres fallos que acababa de escribir a mano, con sus
+     notas. Sus palabras: «ya he repetido los mensajes 3 veces, estoy hasta los cojones».
+     Ahora un ✗ heredado vuelve marcado, con su texto, y con un aviso de que viene de la
+     compilación anterior: si el arreglo ha llegado, lo pone en ✓ de un toque; si no, ya está
+     escrito y puede rechazar sin volver a teclear. Perder trabajo suyo es el fallo caro; que una
+     cruz sobreviva de más se arregla con un dedo. */
   const okKey="_betaReviewOk";
+  const notaKey="_betaReviewNotas";   // {texto del punto: comentario} — sobrevive a la compilación
   const heredarOk=function(){
     var prev=store.get(okKey);
     /* RESCATE DE LO YA APROBADO (2026-07-26 noche). La lista aparte se estrena en esta versión,
@@ -832,34 +843,59 @@ function BetaReviewPanel({onClose, showToast}){
       store.set(okKey,prev);
     }
     var m={};
-    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na") m[i]=v; });
+    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na"||v==="ko") m[i]=v; });
     return m;
+  };
+  /* Los comentarios de los ✗ heredados, por el mismo camino y con la misma clave (el TEXTO del
+     punto). Van aparte de `okKey` para no cambiarle la forma a lo que ya está guardado en su
+     móvil: allí los valores son "ok"/"na"/"ko" y aquí son strings largos. */
+  const heredarNotas=function(){
+    var prev=store.get(notaKey)||{};
+    var n={};
+    pack.items.forEach(function(it,i){ if(prev[it]) n[i]=prev[it]; });
+    return n;
   };
   // {i: "ok" | "ko" | "na"} + notas de los que fallan. Lo heredado va DEBAJO de lo marcado en esta
   // compilación: si ya has tocado algo aquí, manda lo tuyo. (Con `||` en vez de mezcla, haber
   // marcado una sola casilla en esta beta apagaba la herencia entera.)
   const [marks,setMarks]=useState(function(){ return Object.assign(heredarOk(), store.get(storeKey)||{}); });
-  const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
+  const [notes,setNotes]=useState(function(){ return Object.assign(heredarNotas(), store.get(storeKey+"_n")||{}); });
   const [busy,setBusy]=useState(false);
   // Veredicto POR TANDA: {idTanda: "approved"|"rejected"}. Antes era uno solo para toda la beta,
   // y con varias cosas en vuelo eso obliga a esperar a la más lenta para subir la más rápida.
   const [sent,setSent]=useState(function(){ return store.get(storeKey+"_v") || {}; });
   // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
   // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
-  const heredados=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, n=0;
-    Object.keys(h).forEach(function(i){ if(propias[i]===undefined) n++; }); return n; })());
+  // Se separan los ✓/«no probable» de los ✗: el aviso de arriba no puede decir «los diste por
+  // buenos» de una cruz, y las cruces heredadas además se señalan una a una (viene de antes →
+  // compruébalo), que es la diferencia entre ahorrarle trabajo y mentirle.
+  const heredadas=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, buenos=0, ko={};
+    Object.keys(h).forEach(function(i){ if(propias[i]!==undefined) return; if(h[i]==="ko") ko[i]=true; else buenos++; });
+    return {buenos:buenos, ko:ko, nKo:Object.keys(ko).length}; })());
+  const heredados=useRef(heredadas.current.buenos);
   const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
   const recordarOk=function(m){
     var prev=store.get(okKey)||{};
     pack.items.forEach(function(it,i){
-      if(m[i]==="ok"||m[i]==="na") prev[it]=m[i]; else delete prev[it];
+      if(m[i]==="ok"||m[i]==="na"||m[i]==="ko") prev[it]=m[i]; else delete prev[it];
     });
     store.set(okKey,prev);
   };
-  const mark=function(i,v){
-    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m); return m; });
+  // El comentario de un ✗ se guarda por TEXTO en cuanto se escribe, no al enviar el veredicto:
+  // si Android mata la app a media frase (pasa), lo escrito sigue ahí en la compilación siguiente.
+  const recordarNota=function(i,txt){
+    var prev=store.get(notaKey)||{};
+    var it=pack.items[i]; if(it==null) return;
+    if(txt&&txt.trim()) prev[it]=txt; else delete prev[it];
+    store.set(notaKey,prev);
   };
-  const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
+  const mark=function(i,v){
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m);
+      // Quitar el ✗ se lleva su comentario: si ya no falla, la nota es ruido en el parte siguiente.
+      if(m[i]!=="ko") recordarNota(i,"");
+      return m; });
+  };
+  const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); recordarNota(i,txt); return n; }); };
 
   /* Las tandas comparten la numeración GLOBAL de los puntos (`marks` va por índice), así que
      cada tanda solo necesita saber qué índices son suyos. Se hace así y no con claves por tanda
@@ -962,10 +998,14 @@ function BetaReviewPanel({onClose, showToast}){
       React.createElement("b",null,"✅ Ya está en producción"),
       React.createElement("div",{style:{color:"var(--muted)",marginTop:4}},
         "La v"+yaEnProd+" es la que tienen ahora tu padre y tu pareja. Esta beta ya pasó por aquí.")),
-    heredados.current>0 && !yaEnProd && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+    (heredados.current>0||heredadas.current.nKo>0) && !yaEnProd && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
       background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
-      "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
-      " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
+      heredados.current>0 && React.createElement("div",null,
+        "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
+        " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
+      heredadas.current.nKo>0 && React.createElement("div",{style:{marginTop:heredados.current>0?7:0,color:"var(--coral)"}},
+        "✗ "+heredadas.current.nKo+(heredadas.current.nKo===1?" fallo que marcaste antes sigue aquí, con lo que escribiste":" fallos que marcaste antes siguen aquí, con lo que escribiste")+
+        ". No hace falta que lo vuelvas a teclear: si esta compilación lo arregla, tócalo y ponlo en ✓.")),
 
     // Progreso
     React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
@@ -996,6 +1036,10 @@ function BetaReviewPanel({onClose, showToast}){
           return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
             borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
             React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
+            // Una cruz que viene de la compilación anterior se dice, para que no parezca que la
+            // acaba de poner él ni que el panel se inventa fallos. El comentario sigue debajo.
+            m==="ko" && heredadas.current.ko[i] && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:-4,marginBottom:9}},
+              "↩ lo marcaste en la compilación anterior · compruébalo y ponlo en ✓ si ya va"),
             React.createElement("div",{style:{display:"flex",gap:8}},
               React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
               React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),

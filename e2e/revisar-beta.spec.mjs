@@ -209,16 +209,18 @@ test("?canal=estable devuelve el móvil al canal de todos", async ({ page }) => 
   await expect.poll(() => page.evaluate(() => mcChannel())).toBe("stable");
 });
 
-test("✓ y «no lo puedo probar» se heredan entre compilaciones; los ✗ no", async ({ page }) => {
-  // Petición 2026-07-26: lo que ya dio por bueno no se vuelve a preguntar si el texto del punto
-  // no ha cambiado. Los fallos SÍ se resetean (son justo lo que se acaba de arreglar).
+test("✓, «no lo puedo probar» Y los ✗ con su comentario se heredan entre compilaciones", async ({ page }) => {
+  /* Petición 2026-07-26: lo que ya dio por bueno no se vuelve a preguntar si el texto del punto no
+     ha cambiado. Y desde el 2026-08-01, los ✗ TAMBIÉN se heredan con su comentario.
+     El motivo del cambio, con sus palabras: «ya he repetido los mensajes 3 veces, estoy hasta los
+     cojones». La 4.13.0 sacó cinco compilaciones en tres días y cada una le borraba los fallos que
+     acababa de escribir a mano — el panel no sabe si la compilación nueva ha tocado ese punto, así
+     que resetear la cruz es apostar SU trabajo a que sí. */
   await abrirRevisionBeta(page);
   await page.evaluate(() => {
     const items = betaChecklist(CONFIG.APP_VERSION).items;
-    store.set("_betaReviewOk", { [items[0]]: "ok", [items[1]]: "na" });
-    // Compilación anterior: un fallo que NO debe reaparecer.
-    store.set("_betaReview_" + CONFIG.APP_VERSION + ".99", { 0: "ok", 2: "ko" });
-    store.set("_betaReview_" + CONFIG.APP_VERSION + ".99_n", { 2: "era un fallo viejo" });
+    store.set("_betaReviewOk", { [items[0]]: "ok", [items[1]]: "na", [items[2]]: "ko" });
+    store.set("_betaReviewNotas", { [items[2]]: "sigue pasando igual" });
     try { localStorage.removeItem("_betaReview_" + CONFIG.APP_VERSION); } catch (e) {}
     try { localStorage.removeItem("_betaReview_" + CONFIG.APP_VERSION + "_n"); } catch (e) {}
   });
@@ -242,20 +244,54 @@ test("✓ y «no lo puedo probar» se heredan entre compilaciones; los ✗ no", 
     // Más fiable: la clave de herencia + que esta compilación no tenga store propio aún.
     return {
       okKey: store.get("_betaReviewOk"),
+      notas: store.get("_betaReviewNotas"),
       propia: store.get("_betaReview_" + CONFIG.APP_VERSION),
       items: betaChecklist(CONFIG.APP_VERSION).items.slice(0, 3),
     };
   });
   expect(marks.okKey[marks.items[0]]).toBe("ok");
   expect(marks.okKey[marks.items[1]]).toBe("na");
+  expect(marks.okKey[marks.items[2]], "el ✗ sobrevive a la compilación").toBe("ko");
+  expect(marks.notas[marks.items[2]], "y su comentario también").toBe("sigue pasando igual");
   expect(marks.propia, "esta compilación empieza sin marcas propias").toBeFalsy();
-  // El ✗ de .99 no está en okKey (solo viajan ok/na).
-  expect(Object.values(marks.okKey || {})).not.toContain("ko");
 
-  // Y en la UI: el 3.º punto NO pide nota de fallo (no heredó el ✗).
-  await expect(panel.locator(".beta-item").nth(2).locator("input")).toHaveCount(0);
-  // El progreso cuenta los dos heredados.
-  await expect(panel).toContainText("2/");
+  // Y en la UI, que es lo que él ve: el 3.º punto vuelve con su casilla de comentario RELLENA,
+  // avisado de que viene de antes. Lo que le ahorra es no volver a teclearlo.
+  const tercero = panel.locator(".beta-item").nth(2);
+  await expect(tercero.locator("input")).toHaveValue("sigue pasando igual");
+  await expect(tercero).toContainText(/lo marcaste en la compilación anterior/i);
+  await expect(panel).toContainText(/fallo que marcaste antes sigue aquí/i);
+  // El progreso cuenta los tres heredados (dos buenos + la cruz).
+  await expect(panel).toContainText("3/");
+});
+
+test("quitar un ✗ heredado se lleva su comentario (no reaparece en la siguiente)", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  await page.evaluate(() => {
+    const items = betaChecklist(CONFIG.APP_VERSION).items;
+    store.set("_betaReviewOk", { [items[0]]: "ko" });
+    store.set("_betaReviewNotas", { [items[0]]: "esto fallaba" });
+    try { localStorage.removeItem("_betaReview_" + CONFIG.APP_VERSION); } catch (e) {}
+    try { localStorage.removeItem("_betaReview_" + CONFIG.APP_VERSION + "_n"); } catch (e) {}
+  });
+  await page.evaluate(() => {
+    const host = document.createElement("div");
+    host.id = "e2e-beta2";
+    document.body.appendChild(host);
+    ReactDOM.createRoot(host).render(
+      React.createElement(BetaReviewPanel, { onClose: () => {}, showToast: () => {} }),
+    );
+  });
+  const panel = page.locator(".beta-review");
+  await expect(panel).toBeVisible();
+  // Esta compilación lo arregla → lo pone en ✓.
+  await panel.locator(".beta-item").nth(0).getByRole("button", { name: /Va bien/i }).click();
+  const r = await page.evaluate(() => {
+    const items = betaChecklist(CONFIG.APP_VERSION).items;
+    return { estado: (store.get("_betaReviewOk") || {})[items[0]], nota: (store.get("_betaReviewNotas") || {})[items[0]] };
+  });
+  expect(r.estado).toBe("ok");
+  expect(r.nota, "si ya no falla, la nota no puede seguir viajando al parte").toBeFalsy();
 });
 
 /* VARIAS BETAS A LA VEZ, APROBABLES POR SEPARADO (petición suya 2026-07-29: «que se pudieran
