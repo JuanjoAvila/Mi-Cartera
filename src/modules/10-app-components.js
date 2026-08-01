@@ -724,7 +724,21 @@ function betaChecklist(version){
   // El panel de revisión es la consola privada del dueño y va SIN traducir (como «Actividad»),
   // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
   if(!notes) return { v:base, t:"", items:[], tandas:[] };
-  return { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es"), tandas:betaTandas(notes) };
+  /* ⚠ LA CHECKLIST SON LOS PUNTOS DE LAS TANDAS, NO LOS DE NOVEDADES (2026-08-01).
+     `items` de una versión es lo que lee LA FAMILIA en Novedades: otra redacción, otro número de
+     líneas (la 4.13.0 tiene 14 ahí y 21 repartidos en tandas). El panel numera los puntos
+     GLOBALMENTE y todo lo demás va por ese índice —`marks`, el progreso, y sobre todo la lista de
+     ✓ heredados, que casa por el TEXTO del punto—, así que si la lista plana no es exactamente la
+     concatenación de las tandas, los índices se cruzan: el panel enseña «Un CSV también entra» y
+     guarda ese ✓ bajo el texto de una nota de bancos, y los puntos que sobran (del 14 al 20) se
+     guardan bajo `undefined` y no se heredan nunca. Aplanar aquí lo deja alineado por
+     construcción. Sin tandas declaradas, `betaTandas` devuelve una sola con `rnItems` dentro, así
+     que esto da EXACTAMENTE la misma lista de siempre y las 69 versiones del histórico no se
+     enteran. */
+  var tandas=betaTandas(notes);
+  var planos=[];
+  tandas.forEach(function(g){ planos=planos.concat(g.items); });
+  return { v:notes.v, t:rnT(notes.t,"es"), items:planos, tandas:tandas };
 }
 /* LAS TANDAS DE UNA VERSIÓN — varias betas a la vez, cada una con su veredicto.
    Petición suya 2026-07-29: «que se pudieran implementar varias betas a la vez y que me des la
@@ -998,8 +1012,14 @@ function BetaReviewPanel({onClose, showToast}){
             React.createElement("div",{style:{fontWeight:800,fontSize:14,marginBottom:5}},
               v==="approved" ? "✅ Aprobada" : "⛔ Rechazada"),
             React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.5}},
+              /* El texto NO promete trocear la subida (2026-08-01). Antes decía «poniendo las
+                 tandas que quieras en «tandas»», y eso solo funciona si cada tanda nació en su
+                 rama `tanda/<id>`: si la ronda se commiteó mezclada —la 4.13.0, sin ir más
+                 lejos—, el workflow PARA y él se queda mirando un error después de haber
+                 aprobado. Aquí se dice lo que sí es verdad siempre: queda registrado con su
+                 nombre. Cómo se sube es del otro lado (docs/TESTING.md). */
               v==="approved"
-                ? "Queda registrado con su nombre («"+g.id+"»). Para subir SOLO lo aprobado: Actions → «Promocionar beta a producción», poniendo "+(grupos.length>1?"las tandas que quieras en «tandas»":"SUBIR")+"."
+                ? "Queda registrado con su nombre («"+g.id+"»), así que quien la suba sabe exactamente qué subir."
                 : "Queda registrado con lo que falla. Esta tanda no sube; las demás pueden seguir su camino."),
             React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:10},
               onClick:function(){ setSent(function(p){ const n=Object.assign({},p); delete n[g.id]; store.set(storeKey+"_v",n); return n; }); }},

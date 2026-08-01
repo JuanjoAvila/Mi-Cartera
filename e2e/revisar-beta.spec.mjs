@@ -285,13 +285,27 @@ test("la versión en curso declara varias tandas y se reparten TODOS los puntos"
       n: p.tandas.length,
       ids: p.tandas.map((t) => t.id),
       suma: p.tandas.reduce((a, t) => a + t.items.length, 0),
+      total: p.items.length,
       titulos: p.tandas.every((t) => !!t.t),
+      /* Los índices GLOBALES tienen que caer sobre el mismo texto que la tanda enseña: es lo que
+         usan `marks`, el progreso y la herencia de ✓ (que casa por TEXTO). Si esto se desalinea,
+         el panel enseña un punto y guarda su ✓ bajo otro, en silencio. */
+      alineados: (() => {
+        let i = 0;
+        return p.tandas.every((g) => g.items.every((it) => p.items[i++] === it));
+      })(),
     };
   });
   expect(r.n).toBeGreaterThan(1);
   expect(new Set(r.ids).size, "los ids de tanda no se pueden repetir").toBe(r.n);
   expect(r.suma).toBeGreaterThan(0);
   expect(r.titulos, "cada tanda necesita un título: es lo que él lee en el móvil").toBe(true);
+  /* EL FALLO DEL 2026-08-01, BLINDADO. Este test decía «se reparten TODOS los puntos» y solo
+     comprobaba `suma > 0`, así que no vio que la 4.13.0 tenía 21 puntos en tandas contra 14 en la
+     lista plana: sobraban 7 índices sin texto detrás y los otros 14 apuntaban a la nota
+     equivocada. Comparar los dos números Y el texto es lo que de verdad prueba el título. */
+  expect(r.suma, "la lista plana del panel TIENE que ser la concatenación de las tandas").toBe(r.total);
+  expect(r.alineados, "cada índice global tiene que caer sobre el texto que enseña su tanda").toBe(true);
 });
 
 test("un fallo en una tanda NO bloquea aprobar las otras", async ({ page }) => {

@@ -53,7 +53,10 @@ jobs:
         run: |
           git fetch origin main beta
           if [ -z "$(git log origin/main..origin/beta --oneline)" ]; then
-            echo "::error::`beta` no tiene nada que `main` no tenga ya. Nada que promocionar."
+            # Comillas SIMPLES a propósito: dentro de comillas dobles los acentos graves son
+            # sustitución de comandos, así que «`beta`» intentaba EJECUTAR `beta` y el mensaje
+            # llegaba mutilado justo el día que hacía falta leerlo (venía así desde el 24/7).
+            echo '::error::la rama beta no tiene nada que main no tenga ya. Nada que promocionar.'
             exit 1
           fi
           echo "### Se va a subir a producción" >> $GITHUB_STEP_SUMMARY
@@ -88,19 +91,32 @@ jobs:
       #
       # ⚠ Si pides una tanda cuya rama no existe, esto PARA. Subir «lo que haya» cuando falta una
       # rama es exactamente el fallo silencioso que ya costó dos promociones a medias.
+      #
+      # ⚠⚠ Y LA RAMA HAY QUE CREARLA ANTES DE ESCRIBIR EL CÓDIGO, no después. Declarar tandas en
+      # las notas NO crea ninguna rama: si las cuatro tandas se han commiteado mezcladas encima de
+      # `beta` (le pasó a la 4.13.0), ya no hay forma limpia de separarlas y esa ronda solo puede
+      # subir ENTERA. La regla completa, en docs/TESTING.md.
       - name: Mergear a main lo aprobado
+        env:
+          # Por `env` y no interpolado dentro del script: `'${{ inputs.tandas }}'` mete el texto
+          # que él escriba DENTRO de la comilla simple, así que un apóstrofo o un `$(…)` en la
+          # casilla se convierte en shell ejecutable en un workflow con permiso de escritura.
+          TANDAS_IN: ${{ inputs.tandas }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout main
-          TANDAS="$(echo '${{ inputs.tandas }}' | tr -d '[:space:]')"
+          TANDAS="$(printf '%s' "$TANDAS_IN" | tr -d '[:space:]')"
           if [ -z "$TANDAS" ]; then
             git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
           else
             echo "$TANDAS" | tr ',' '\n' | while read -r T; do
               [ -n "$T" ] || continue
               git rev-parse --verify "refs/remotes/origin/tanda/$T" >/dev/null 2>&1 || {
-                echo "::error::no existe la rama tanda/$T · no se sube nada a medias"; exit 1; }
+                echo "::error::no existe la rama tanda/$T · no se sube nada a medias."
+                echo "::error::Ramas de tanda que SÍ existen: $(git branch -r --list 'origin/tanda/*' --format='%(refname:lstrip=4)' | tr '\n' ' ')"
+                echo "::error::Si esta ronda se commiteó mezclada en beta, no se puede trocear: déjalo vacío y sube la beta entera."
+                exit 1; }
             done
             for T in $(echo "$TANDAS" | tr ',' ' '); do
               [ -n "$T" ] || continue

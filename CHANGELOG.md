@@ -2,6 +2,69 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-01
+### Repaso de la ronda 4.13.0: el panel de tandas contaba mal, y la promoción por tandas prometía algo que no podía hacer
+
+Revisión del trabajo hecho desde el móvil los días 28/7 → 1/8 (nueve commits). El grueso está bien
+y con la suite en verde; esto es lo que no lo estaba.
+
+#### El panel de revisión numeraba los puntos contra la lista equivocada
+
+`betaChecklist` devolvía como checklist los `items` de la versión —**lo que lee la familia en
+Novedades**— mientras el panel pintaba los puntos de las **tandas**, que son otra redacción y otro
+número de líneas. En la 4.13.0: **21 puntos repartidos en cuatro tandas contra 14 en Novedades**.
+Como todo el panel va por un índice global (`marks`, el progreso, el guardado y sobre todo la lista
+de ✓ heredados entre compilaciones, que casa por el **texto** del punto), los dos números
+desalineados hacían tres cosas a la vez, todas en silencio:
+
+- el progreso decía **`x/14`** cuando había 21 cosas que probar — podía llegar a 14/14 con una
+  tanda entera sin tocar;
+- un ✓ puesto en «Un CSV también entra» se guardaba bajo el texto de una nota de bancos, así que la
+  promesa de «lo que ya diste por bueno no se vuelve a preguntar» dejaba de valer en cuanto se
+  reescribiera cualquiera de las dos notas;
+- los puntos del 14 al 20 —la tanda **`bancos` casi entera, la de los bugs de dinero real**— se
+  guardaban bajo `undefined` y **no se heredaban nunca**.
+
+Arreglado en `betaChecklist`: cuando hay tandas, la checklist **es la concatenación de sus puntos**.
+Sin tandas, `betaTandas` ya devuelve una sola con `rnItems` dentro, así que aplanar da exactamente
+la misma lista y las 69 versiones del histórico no se enteran.
+
+**Por qué no lo vio el guardián.** El test se llama «se reparten TODOS los puntos» y solo
+comprobaba `suma > 0`. Ahora compara la suma **contra la longitud de la checklist** y además que
+cada índice global caiga sobre el texto que su tanda enseña — que es lo que el título decía.
+
+#### Promocionar por tandas pedía ramas que nadie había creado
+
+El workflow mergea `origin/tanda/<id>`, pero **declarar tandas en las notas no crea ninguna rama**,
+y las cuatro de la 4.13.0 se commitearon mezcladas encima de `beta` (`import` + `gestos` +
+`arranque` viajan en un mismo commit). O sea que `-f tandas=import` habría parado en seco después
+de que él aprobara. **Esta ronda solo puede subir entera.** Se arregla lo que se puede arreglar:
+
+- el panel ya no le dice que ponga nombres de tanda en el workflow — dice lo único cierto siempre,
+  que el veredicto queda registrado con su nombre;
+- el error del workflow ahora lista **qué ramas `tanda/*` existen de verdad** y dice qué hacer;
+- la regla, en `docs/TESTING.md` y `EMPIEZA-AQUI.md`: **`git switch -c tanda/<id> main` antes del
+  primer commit**, o esa ronda no se puede trocear.
+
+#### Dos cosas más del workflow de promoción
+
+- **Inyección de shell**: `'${{ inputs.tandas }}'` metía el texto de la casilla dentro de una
+  comilla simple, así que un apóstrofo (o un `$(…)`) escrito ahí se convertía en shell ejecutable
+  en un job con permiso de escritura. Ahora entra por `env:`.
+- **El mensaje de «nada que promocionar» llegaba mutilado** desde el 24/7: dentro de comillas
+  dobles los acentos graves son sustitución de comandos, así que «\`beta\`» intentaba **ejecutar**
+  `beta`. Comillas simples.
+
+#### Y el espejo de la memoria, que iba a perderse
+
+`docs/memoria/` se genera **en un solo sentido** (memoria del PC → repo), pero el Claude del móvil
+no puede tocar la memoria del PC: escribe directo en el espejo. Tres bloques de esta ronda —las
+tandas, el «52» del canal de pruebas y lo hecho de la review externa— solo existían ahí, y el
+siguiente `npm run memoria` desde el portátil los habría borrado. Recuperados a mano antes de
+sincronizar; la trampa queda escrita en la memoria para no repetirla.
+
+---
+
 ## [4.13.0] — 2026-07-28
 ### Importar una hoja de gastos, rebote en las pestañas y la rayita rodeando el +
 

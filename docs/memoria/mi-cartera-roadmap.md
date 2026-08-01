@@ -4,7 +4,7 @@
 
 ---
 name: mi-cartera-roadmap
-description: Estado actual y backlog de Mi Cartera (2026-07-28: v4.13.0 en beta — importar hojas de gastos, rebote en pestañas, rayita rodeando el +, métricas/salud/amenazas/ADR. Producción = 4.12.1. Tirón y perfil CERRADOS por él. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
+description: Estado actual y backlog de Mi Cartera (2026-08-01: v4.13.0 en beta con CUATRO tandas pendientes de su veredicto — import de hojas, gestos, arranque, bancos. Producción = 4.12.1 + APK 35. Tirón y perfil CERRADOS por él. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
 metadata:
   node_type: memory
   type: project

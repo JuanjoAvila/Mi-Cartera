@@ -283,6 +283,13 @@ Reglas:
   app delante. El `CHANGELOG` es para el porqué.
 - **Las tandas son opcionales.** Sin ellas, el panel se comporta exactamente como antes (una sola
   checklist, un solo veredicto con id `todo`). Las 69 versiones del histórico siguen funcionando.
+- ⚠ **`items` y `tandas` son dos listas distintas y no tienen por qué parecerse**: `items` es lo
+  que lee la familia en Novedades, y los puntos de las tandas son lo que él prueba. El panel
+  aplana las tandas y esa lista aplanada ES la checklist (`betaChecklist`). **No toques ese
+  aplanado**: el progreso, los ✓ heredados entre compilaciones y el guardado van todos por el
+  índice global que sale de ahí. Si alguien vuelve a usar `items` como checklist, el panel enseña
+  un punto y guarda su ✓ bajo el texto de otro, sin avisar (pasó en la 4.13.0: 21 puntos en tandas
+  contra 14 en Novedades). Lo vigila `e2e/revisar-beta.spec.mjs`.
 
 ### Cómo se aprueba
 
@@ -291,6 +298,16 @@ bloquea a las demás — que es todo el motivo de que existan. Cada veredicto se
 lleva su `id`, así que `node scripts/errores.mjs --kind=beta` enseña una línea por tanda.
 
 ### Cómo se sube solo lo aprobado
+
+> ⚠⚠ **LA RAMA SE DECIDE ANTES DE ESCRIBIR NADA, NO AL FINAL.** Declarar `tandas` en las notas
+> **no crea ninguna rama**: solo parte la checklist del móvil en secciones. Si las tandas se
+> commitean mezcladas encima de `beta` —que es lo que pasó en la 4.13.0, con `import` + `gestos` +
+> `arranque` en un mismo commit—, **ya no se pueden trocear**: cortarlas a posteriori con
+> `cherry-pick` sobre los mismos ficheros es justo la promoción a medias que este mecanismo existe
+> para evitar. Esa ronda solo puede subir ENTERA (`tandas` vacío).
+>
+> Así que si la ronda va a tener tandas de verdad: **`git switch -c tanda/<id> main` para cada una
+> antes del primer commit**, y `beta` se mantiene como la mezcla (`git merge` de todas).
 
 Para que una tanda pueda subir sola, tiene que vivir en **su propia rama `tanda/<id>`**, y `beta`
 ser la mezcla de todas. Entonces:
