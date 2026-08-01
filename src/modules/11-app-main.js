@@ -2360,8 +2360,17 @@ function App(){
             const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
             const left=Math.round(rnd(12.9898)*98);
             const sz=[13,18,25][layer]+Math.round(rnd(4.1)*4);
-            const dur=[16,12,9][layer]+rnd(7.7)*4;             // lejos = más lento (parallax)
-            const delay=-(rnd(3.3)*dur);
+            /* MUCHÍSIMO MÁS CORTO (rechazo suyo del 29/7: «muchísimo menos tiempo»). Era
+               [16,12,9]+0-4 s por DOS vueltas = entre 18 y 40 segundos de cosas cayendo cada vez
+               que abría la app o tocaba una pestaña. Ahora una sola vuelta de 4-7 s, así que la
+               capa entera se posa antes de los 8 s y no vuelve a moverse. Sigue habiendo parallax
+               —lejos más lento que cerca—, solo que en un tercio del tiempo. */
+            const dur=[7,5.5,4.5][layer]+rnd(7.7)*1.6;         // lejos = más lento (parallax)
+            /* Retraso POSITIVO y corto. Con el negativo de antes, media capa empezaba a mitad de
+               la caída y, con una sola vuelta, esas piezas se perdían la entrada por arriba: se
+               veían aparecer ya por el medio de la pantalla. Escalonarlas hacia delante hace que
+               entren todas desde arriba, unas detrás de otras, y que aun así acabe pronto. */
+            const delay=rnd(3.3)*1.1;
             const sway=(6+Math.round(rnd(5.5)*18))*(rnd(9.1)>0.5?1:-1);   // deriva lateral px
             const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
             const op=[0.5,0.72,0.9][layer];

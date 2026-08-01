@@ -11,21 +11,45 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
   const [shownNet,setShownNet]=useState(0);
   const [budgetOpen,setBudgetOpen]=useState(false);
   const rafRef=useRef(0);
+  const shownRef=useRef(0);      // último valor pintado, para encadenar sin volver a cero
+  const primeraRef=useRef(true); // la cuenta desde 0 es solo la de la entrada
   // Count-up 950 ms (SPEC §3 / §10). Reduced-motion → valor directo.
   useEffect(function(){
     const target=tt.netWorth||0;
     cancelAnimationFrame(rafRef.current);
     const reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
-    if(reduce){ setShownNet(target); return; }
-    const start=0, t0=performance.now(), dur=950;
-    const ease=function(x){ return 1-Math.pow(1-x,3); };
-    const step=function(now){
-      const p=Math.min(1,(now-t0)/dur);
-      setShownNet(start+(target-start)*ease(p));
-      if(p<1) rafRef.current=requestAnimationFrame(step);
+    if(reduce){ shownRef.current=target; setShownNet(target); return undefined; }
+    let cancelado=false;
+    const arrancar=function(){
+      if(cancelado) return;
+      /* De DÓNDE cuenta: la primera vez desde 0 (la entrada, que es la que él echaba de menos);
+         después, desde lo que hubiera puesto. Volver a 0 cada vez que cambia el patrimonio
+         —apuntar un gasto, que entre una sincronización— convertía una animación bonita de
+         bienvenida en un parpadeo del número a media faena. */
+      const start=primeraRef.current?0:shownRef.current;
+      primeraRef.current=false;
+      const t0=performance.now(), dur=950;
+      const ease=function(x){ return 1-Math.pow(1-x,3); };
+      const step=function(now){
+        const p=Math.min(1,(now-t0)/dur);
+        const v=start+(target-start)*ease(p);
+        shownRef.current=v;
+        setShownNet(v);
+        if(p<1) rafRef.current=requestAnimationFrame(step);
+      };
+      rafRef.current=requestAnimationFrame(step);
     };
-    rafRef.current=requestAnimationFrame(step);
-    return function(){ cancelAnimationFrame(rafRef.current); };
+    /* NO SE CUENTA DETRÁS DEL SPLASH (2026-07-28). La cortina de entrada se queda puesta hasta
+       que ha llegado el primer dato bueno de la nube (~1,3 s), y esto arrancaba al montar: para
+       cuando él veía la pantalla, la cuenta había terminado y el número aparecía ya puesto. Su
+       feedback: «eso molaba mucho y se perdió». No se perdió, se gastaba a puerta cerrada. */
+    if(window.__mcSplashGone || !document.getElementById("mc-load")){ arrancar(); return function(){ cancelado=true; cancelAnimationFrame(rafRef.current); }; }
+    window.addEventListener("mc-splash-gone", arrancar, {once:true});
+    return function(){
+      cancelado=true;
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("mc-splash-gone", arrancar);
+    };
   },[tt.netWorth]);
 
   const nameGuess=(function(){
