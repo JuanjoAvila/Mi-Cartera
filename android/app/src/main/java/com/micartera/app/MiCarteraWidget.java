@@ -71,6 +71,29 @@ public class MiCarteraWidget extends AppWidgetProvider {
         boolean hasAfford = p.contains("afford");
         double afford = p.getFloat("afford", 0f);
 
+        /* EL MES CAMBIA Y EL WIDGET NO SE ENTERA (2026-08-01, feedback de su pareja: sale -2 €
+           el día 1 y no se resetea hasta que gasta más de lo que le sobró el mes anterior).
+           `updatePeriodMillis=0` (a propósito, por batería) significa que ESTE `build()` solo se
+           ejecuta cuando algo empuja datos nuevos — abrir la app o una notificación de TR
+           procesada. Si ninguna de las dos pasa justo al empezar el mes, `spent`/`afford` se
+           quedan con el ÚLTIMO número del mes ANTERIOR (aquí, -2 €: más ingresado que gastado en
+           los últimos días de julio) mostrado como si fuera de este mes — no está mal calculado,
+           está MAL FECHADO.
+           No hay forma de recalcular AQUÍ el gasto real del mes nuevo (los datos viven en el
+           almacenamiento de la WebView, no accesible desde este provider sin abrir la app) — pero
+           SÍ se sabe que un número de un mes distinto no puede seguir enseñándose como si fuera de
+           HOY. Se compara el mes de `updated` contra el mes de AHORA; si no coinciden, se pinta
+           como si no hubiera datos todavía (0 €, sin "puedes gastar") en vez de mentir con la
+           cifra vieja. En cuanto la app empuje el dato real del mes nuevo, esto se sustituye solo. */
+        boolean mesDistinto = false;
+        if (updated > 0) {
+            Calendar cUpd = Calendar.getInstance(); cUpd.setTimeInMillis(updated);
+            Calendar cNow = Calendar.getInstance();
+            mesDistinto = cUpd.get(Calendar.MONTH) != cNow.get(Calendar.MONTH)
+                    || cUpd.get(Calendar.YEAR) != cNow.get(Calendar.YEAR);
+        }
+        if (mesDistinto) { spent = 0; hasAfford = false; }
+
         RemoteViews rv = new RemoteViews(ctx.getPackageName(), R.layout.widget_micartera);
         rv.setTextViewText(R.id.w_amount, eur0(spent));
         rv.setTextColor(R.id.w_amount, (budget > 0 && spent > budget) ? CORAL : MINT);

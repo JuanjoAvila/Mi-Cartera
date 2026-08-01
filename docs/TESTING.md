@@ -263,6 +263,16 @@ opción de aprobarlas por separado pero que estén juntas»**. O sea, como se tr
 varias cosas en vuelo, todas probándose en la misma instalación, y cada una sube cuando está lista
 sin esperar a la que va con retraso.
 
+> ⚠ **LA GRANULARIDAD POR DEFECTO ES UNA FUNCIONALIDAD = UNA TANDA** (aclarado 2026-08-01: «por
+> features, por cada cosa que haya, a no ser que sea un pack por dependencias — eso sí sería una
+> tanda de varias cosas»). No es «cuatro cosas grandes, cada una su tanda»: es **cada punto que se
+> pueda subir SOLO, sube solo**. Varias cosas comparten tanda ÚNICAMENTE cuando de verdad dependen
+> entre sí (p. ej. una migración de datos + la pantalla que la necesita: subir una sin la otra
+> rompe algo). En la duda, más tandas pequeñas, no menos.
+
+Y para lo que ni siquiera esto cubre —una ronda que se commiteó mezclada, sin tandas, y hay un
+arreglo urgente ahí dentro— está el **parche por commits sueltos**, más abajo.
+
 ### Cómo se declara una tanda
 
 En la entrada de `RELEASE_NOTES` de la versión, junto a `items` (que es lo que ve la familia en

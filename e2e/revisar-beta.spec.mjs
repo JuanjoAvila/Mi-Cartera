@@ -387,3 +387,41 @@ test("cada tanda lleva su cuenta propia, no la de la beta entera", async ({ page
   const total2 = await segunda.locator(".beta-item").count();
   await expect(segunda.locator(".beta-tanda-n")).toHaveText("0/" + total2);
 });
+
+/* EL «0/26» DE AJUSTES CUANDO YA HABÍA MARCADO COSAS (bug suyo, 2026-08-01: «me sale revisar
+ * esta beta 0/26 cuando ya he aceptado o rechazado cosas, me tendría que salir conforme voy
+ * poniendo»). La fila de Ajustes leía `_betaReview_`+versión BASE («4.13.0»), una clave que el
+ * panel NUNCA escribe — el panel siempre guarda por COMPILACIÓN exacta («4.13.0.11»). La fila
+ * leía aire y enseñaba 0 pasara lo que pasara. `betaMarksCount` es la función que ahora usan LOS
+ * DOS sitios (fila y panel), así que blindar la función blinda a ambos a la vez. */
+test("betaMarksCount cuenta lo marcado en ESTA compilación (no la versión base)", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.11"; });
+  const r0 = await page.evaluate(() => betaMarksCount(betaChecklist(CONFIG.APP_VERSION)));
+  expect(r0.n, "arranca en 0 sin nada marcado").toBe(0);
+  expect(r0.tot).toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    const items = betaChecklist(CONFIG.APP_VERSION).items;
+    // Esto es EXACTAMENTE lo que escribe `save()` dentro del panel al marcar un punto: por
+    // índice, bajo la clave de la COMPILACIÓN completa — la que la fila vieja no leía.
+    store.set("_betaReview_" + CONFIG.APP_VERSION, { 0: "ok", 1: "ko", 2: "na" });
+    void items;
+  });
+  const r1 = await page.evaluate(() => betaMarksCount(betaChecklist(CONFIG.APP_VERSION)));
+  expect(r1.n, "la fila tiene que contar los 3 marcados, no seguir en 0").toBe(3);
+});
+
+test("betaMarksCount hereda lo aprobado de una compilación anterior, aunque cambie el número", async ({ page }) => {
+  await abrirRevisionBeta(page);
+  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.10"; });
+  await page.evaluate(() => {
+    const items = betaChecklist(CONFIG.APP_VERSION).items;
+    store.set("_betaReviewOk", { [items[0]]: "ok", [items[1]]: "ko" });
+  });
+  // Compilación NUEVA, mismo texto de puntos (import/bancos no se reescribieron esta ronda):
+  // la cuenta tiene que seguir viendo esos dos marcados, heredados por TEXTO.
+  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.11"; });
+  const r = await page.evaluate(() => betaMarksCount(betaChecklist(CONFIG.APP_VERSION)));
+  expect(r.n).toBeGreaterThanOrEqual(2);
+});

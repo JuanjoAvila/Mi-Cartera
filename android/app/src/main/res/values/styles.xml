@@ -23,5 +23,17 @@
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <!-- ⚠ MITIGA, NO GARANTIZA CERRAR, lo que lleva reportando varias veces: «hace un efecto
+             raro antes de aparecer el icono, como apagado». `windowDisablePreview` le dice a
+             Android que NO use una miniatura/"starting window" auto-generada al reanudar la app
+             desde el selector de apps o el multitarea — sin esto, Android puede enseñar un
+             FOTOGRAMA VIEJO cacheado (con el atenuado/scrim que pinta el propio sistema durante
+             la animación de "entrar" en la app) antes de que la WebView vuelva a pintar de
+             verdad, que es justo el aspecto "apagado" que describe.
+             Dicho esto: en MIUI/HyperOS (su móvil) el selector de apps tiene SU PROPIA animación
+             de transición, ajena a esta app — ese atenuado puede venir de ahí y no ser 100 %
+             evitable desde el código. Esto es el mejor mango disponible desde Android; si sigue
+             pasando después de la APK nueva, es la animación del sistema operativo, no la app. -->
+        <item name="android:windowDisablePreview">true</item>
     </style>
 </resources>

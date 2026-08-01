@@ -11696,6 +11696,39 @@ function betaTandas(notes){
   }
   return [{ id:"todo", t:"", items:rnItems(notes,"es") }];
 }
+/* CUENTA COMPARTIDA DE LA REVISIÓN — la MISMA lógica que usa el panel para heredar ✓/✗ entre
+   compilaciones, extraída para que la fila de Ajustes cuente exactamente lo mismo que el panel
+   (2026-08-01, bug suyo: «me sale revisar esta beta 0/26 cuando ya he aceptado o rechazado
+   cosas»). La fila llevaba TODO ESTE TIEMPO leyendo `_betaReview_`+pack.v —la versión BASE, tipo
+   "4.13.0"— mientras el panel SIEMPRE ha guardado (y sigue guardando) por la COMPILACIÓN exacta,
+   `_betaReview_`+CONFIG.APP_VERSION, tipo "4.13.0.11". Esa clave base no la escribe nadie, así
+   que la fila leía aire y enseñaba 0 pasara lo que pasara. Con `_betaReviewOk` (que sí es la
+   fuente de verdad persistente, por TEXTO del punto) la fila cuenta lo mismo que ve el panel al
+   abrirse. Ver `heredarOk` dentro de `BetaReviewPanel` — es la misma lógica de rescate. */
+function betaMarksCount(pack){
+  var okKey="_betaReviewOk";
+  var prev=store.get(okKey);
+  if(!prev){
+    prev={};
+    try{
+      var pre="_betaReview_"+mcVerBase(CONFIG.APP_VERSION);
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(!k||k.indexOf(pre)!==0||k.slice(-2)==="_n") continue;
+        var vieja=store.get(k)||{};
+        pack.items.forEach(function(it,j){ if(vieja[j]==="ok"||vieja[j]==="na"||vieja[j]==="ko") prev[it]=vieja[j]; });
+      }
+    }catch(e){}
+  }
+  // Lo marcado en ESTA compilación manda sobre lo heredado (mismo criterio que el panel).
+  var propias=store.get("_betaReview_"+CONFIG.APP_VERSION)||{};
+  var n=0;
+  pack.items.forEach(function(it,i){
+    var v=propias[i]!==undefined ? propias[i] : prev[it];
+    if(v==="ok"||v==="na"||v==="ko") n++;
+  });
+  return { n:n, tot:pack.items.length };
+}
 /* ¿LO QUE LLEVO PUESTO YA ESTÁ EN PRODUCCIÓN? (petición suya 2026-07-28)
    «Ponme que cuando suba algo a prod, la beta no haya nada para aprobar porque lógicamente ya lo
    hice para que subiera prod». Y es verdad: promocionar ES la aprobación. Pero el panel solo
@@ -13462,12 +13495,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
             // Solo tiene sentido estando en beta — en estable no hay nada que aprobar.
             beta && (function(){
               const pack=betaChecklist(CONFIG.APP_VERSION);
-              const done=store.get("_betaReview_"+pack.v)||{};
-              const n=Object.keys(done).length, tot=pack.items.length;
+              const c=betaMarksCount(pack);
               // Con la versión ya subida a producción la fila deja de cantar «3/8» — ese contador
               // se leía como trabajo pendiente cada vez que abría Ajustes, y no lo era (2026-07-28).
               if(yaEnProd) return row("betarev","🔍","Revisar esta beta","✅ ya en producción", function(){ setBetaOpen(true); });
-              return row("betarev","🔍","Revisar esta beta", tot?(n+"/"+tot):null, function(){ setBetaOpen(true); });
+              return row("betarev","🔍","Revisar esta beta", c.tot?(c.n+"/"+c.tot):null, function(){ setBetaOpen(true); });
             })(),
             (function(){
               // La bandera CRUDA: Ajustes pinta el estado que tendrá la PRÓXIMA sesión, que es lo
