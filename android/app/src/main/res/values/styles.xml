@@ -22,18 +22,27 @@
 
 
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <!-- ⚠⚠ LA CAUSA DE VERDAD, encontrada el 2026-08-01 tras su pushback («Revolut no le pasa
+             lo mismo, así que no es cosa de Android» — y tenía razón, no era el sistema operativo
+             en general, era ESTA APP). `androidx.core:core-splashscreen` está en build.gradle,
+             pero `SplashScreen.installSplashScreen()` NUNCA se llamaba en MainActivity, y aquí
+             solo se ponía `android:background` — un atributo LEGACY que el sistema de splash de
+             Android 12+ (`Theme.SplashScreen`, el mismo parent de este tema) NO lee. Sin
+             `windowSplashScreenBackground`/`windowSplashScreenAnimatedIcon`, Android 12+ dibuja
+             SU PROPIO splash genérico (color y icono derivados por defecto, sin nuestro diseño)
+             durante el arranque, y SOLO DESPUÉS entra el bundle web con el splash de verdad
+             (`#mc-load` en shell.html) — dos pantallas de splash seguidas, y la primera no es la
+             nuestra. Eso es el «algo raro antes de aparecer el icono, como apagado» que llevaba
+             reportando desde hace días: no es un efecto, es un SPLASH DISTINTO que no controlamos.
+             Revolut/TR no lo tienen porque configuraron estos atributos; aquí no se habían tocado.
+             `android:background` se queda como red de seguridad para el Android<12 que sirve el
+             `minSdkVersion` (23): ahí SÍ se sigue leyendo (comportamiento clásico de windowBackground). -->
         <item name="android:background">@drawable/splash</item>
-        <!-- ⚠ MITIGA, NO GARANTIZA CERRAR, lo que lleva reportando varias veces: «hace un efecto
-             raro antes de aparecer el icono, como apagado». `windowDisablePreview` le dice a
-             Android que NO use una miniatura/"starting window" auto-generada al reanudar la app
-             desde el selector de apps o el multitarea — sin esto, Android puede enseñar un
-             FOTOGRAMA VIEJO cacheado (con el atenuado/scrim que pinta el propio sistema durante
-             la animación de "entrar" en la app) antes de que la WebView vuelva a pintar de
-             verdad, que es justo el aspecto "apagado" que describe.
-             Dicho esto: en MIUI/HyperOS (su móvil) el selector de apps tiene SU PROPIA animación
-             de transición, ajena a esta app — ese atenuado puede venir de ahí y no ser 100 %
-             evitable desde el código. Esto es el mejor mango disponible desde Android; si sigue
-             pasando después de la APK nueva, es la animación del sistema operativo, no la app. -->
+        <item name="windowSplashScreenBackground">@color/colorPrimary</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <!-- Sigue siendo una mitigación honesta, no una garantía, para el resto de lo reportado:
+             el atenuado al REANUDAR desde el multitarea (no al ARRANCAR en frío) puede seguir
+             siendo la animación propia del selector de apps de MIUI/HyperOS, ajena a esta app. -->
         <item name="android:windowDisablePreview">true</item>
     </style>
 </resources>

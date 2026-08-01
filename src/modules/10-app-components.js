@@ -484,7 +484,15 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       .catch(function(e){
         setBusy("");
         if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
-        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+        const msg=(e&&e.message)||String(e);
+        showToast("⚠ "+t("bank_error")+": "+msg);
+        /* ANTES ESTE FALLO ERA MUDO: solo un toast, que se lee y se olvida. La conexión de TR
+           por Open Banking rechazada (2026-08-01: «da error») no dejó NINGÚN rastro en
+           app_events — no había forma de saber, sin estar delante de su móvil en ese instante,
+           si el fallo era del código, de un aviso legítimo de Enable Banking (TR sigue en
+           "beta" por SU lado) o de la sesión. Ahora sí queda escrito: `errores.mjs --kind=error`
+           lo enseña la próxima vez, con el banco y el mensaje real de Enable Banking. */
+        try{ cloud.logEvent("error","bankConnect "+name+": "+msg.slice(0,180)); }catch(_){}
       });
   };
   // Issues de la última sync: pinta rojo aunque bank_links.status siga en «active»

@@ -77,6 +77,11 @@ function Wealth({state, set, totals, v4Embed, parte}){
     // los extras. En un extra, «Gasto diario» = expenseBanks + dailyOnlyBanks (recibos fuera);
     // «Todo» = expenseBanks sin dailyOnly (recibos y gasto diario a la vez).
     const pickRole=function(a,r){
+      // Pide un sync en cuanto se suelta el bloque `set` (React agrupa el estado, el evento no
+      // tiene por qué esperar a eso): el banco nuevo puede llevar días sin sincronizar porque
+      // hasta ahora no era «suyo» — sin esto sus compras de esta semana se quedan sin traer hasta
+      // que alguien pulse «Sincronizar» a mano (2026-08-01, ver 11-app-main.js).
+      try{ window.dispatchEvent(new CustomEvent("mc-bank-role-changed")); }catch(e){}
       set(function(s){
         const patchSet=function(ns,patch){ return Object.assign({},ns,{settings:Object.assign({},ns.settings,patch)}); };
         const drop=function(list,e){ const i=list.indexOf(e); if(i>=0) list.splice(i,1); return list; };

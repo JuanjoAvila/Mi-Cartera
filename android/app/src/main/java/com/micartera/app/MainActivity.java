@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
+import androidx.core.splashscreen.SplashScreen;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
@@ -17,6 +18,13 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        /* ACTIVA de verdad la librería de compatibilidad del splash (2026-08-01). Estaba en
+           build.gradle desde el principio pero nunca se llamaba — sin esto, el tema
+           `Theme.SplashScreen` de styles.xml no coordina su comportamiento con esta Activity y
+           en versiones antiguas de Android (< 12, minSdk 23) el splash "de verdad" no siempre se
+           encadena bien con el primer pintado. Tiene que ir ANTES de super.onCreate(), que es
+           justo cuando la librería necesita enganchar la ventana. */
+        SplashScreen.installSplashScreen(this);
         registerPlugin(MiCarteraPlugin.class);       // antes de super.onCreate (así lo pide Capacitor)
         registerPlugin(TradeRepublicPlugin.class);   // puente TR (beta)
         super.onCreate(savedInstanceState);

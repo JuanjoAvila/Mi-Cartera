@@ -744,6 +744,22 @@ function App(){
     window.addEventListener("mc-open-banks",h);
     return function(){ window.removeEventListener("mc-open-banks",h); };
   },[]);
+  /* RESYNC AUTOMÁTICO AL CAMBIAR EL ROL DE UN BANCO (2026-08-01, su rechazo de la tanda
+     `bancos`: «cambiar el banco de gasto diario... sigue sin salir en gastos es absurdo»).
+     `pickRole` (07-tab-patri-fijos.js) escribe el rol nuevo en `state.accounts`/`settings` al
+     instante — y `expenseBankEnts` YA lo ve (se recalcula fresco cada vez, no hay caché) — pero
+     eso solo decide qué banco CUENTA la próxima vez que se sincroniza. El banco nuevo puede
+     llevar DÍAS sin sincronizar porque antes no era «suyo»: sus compras de esta semana existen
+     en Enable Banking pero no en `state.expenses` hasta que algo pida `cloud.bankSync()`, y
+     cambiar un rol no lo pedía. El usuario ve el cambio hecho en Patrimonio y espera ver sus
+     compras en Gastos — no un tercer paso de «ahora sincroniza a mano». */
+  useEffect(function(){
+    // `runBankSync` lee `sessionRef`/`bankSyncing` (refs, siempre al día) y no cierra sobre
+    // estado obsoleto, así que referenciarla aquí con deps vacías es seguro.
+    const h=function(){ runBankSync(); };
+    window.addEventListener("mc-bank-role-changed",h);
+    return function(){ window.removeEventListener("mc-bank-role-changed",h); };
+  },[]);
   // Hogar y gastos compartidos: sacado de Ajustes (2026-07-18: «es una funcionalidad de la app,
   // no un ajuste»). Se abre desde Cartera (dinero compartido) por evento, como Mis bancos.
   const [sharedOpen,setSharedOpen]=useState(false);   // SharedPanel gestiona su propio useBackClose
