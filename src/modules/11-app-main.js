@@ -2185,8 +2185,23 @@ function App(){
     const antes=tabPrevRef.current; tabPrevRef.current=tab;
     const el=indRef.current;
     if(!el || antes===tab || ((antes<=1)===(tab<=1))) return undefined;
-    el.classList.remove("rodea");
-    void el.offsetWidth;   // reinicia la animación si encadena dos saltos seguidos
+    /* ⚠ EL `offsetWidth` FORZADO ERA EL BUG DE VERDAD, no solo el `useEffect` (2026-08-01, su
+       vídeo de las 12:11 — «sigue siendo diagonal, mira el video»). En el caso normal (un salto
+       suelto, que es el 99% de las veces) "rodea" NO está puesta todavía. Quitarla igualmente y
+       forzar `el.offsetWidth` justo ahí OBLIGA al navegador a recalcular estilos EN ESE INSTANTE:
+       ve el `translateX` ya nuevo (React lo escribió antes de que este efecto corra) pero
+       TODAVÍA sin "rodea", así que aplica la transición BASE (.32s, el muelle) y arranca la
+       transición con esa curva un instante — luego "rodea" entra y cambia la duración de una
+       transición YA EMPEZADA, que no se re-negocia desde cero. Ese primer instante con la curva
+       equivocada es justo lo que se ve como un tirón en diagonal.
+       Ahora el reflow SOLO se fuerza si "rodea" YA estaba puesta (dos saltos por encima del +
+       en menos de 460 ms, encadenados) — ahí sí hace falta para que el span reinicie su
+       animación. En el caso normal, un `add` directo entra en el MISMO commit que el
+       `translateX`, sin ningún recálculo de estilos entre medias que pueda ver el estado viejo. */
+    if(el.classList.contains("rodea")){
+      el.classList.remove("rodea");
+      void el.offsetWidth;
+    }
     el.classList.add("rodea");
     const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);
     return function(){ clearTimeout(id); };

@@ -328,6 +328,17 @@
     background:radial-gradient(130% 95% at 50% 125%, color-mix(in srgb, var(--season-tinte,transparent) 16%, transparent), transparent 68%);}
   html[data-season] .botnav{border-top:1px solid var(--season-tinte,var(--line-soft));}
   html[data-season] .botnav-ind span{background:var(--season-tinte,var(--mint));}
+  /* MÁS AMBIENTACIÓN, NO SOLO EN LA BARRA (petición suya 1/8, repetida: «ponle más ambientación
+     a la app no solo en la barra que ya está bien»). Tres sitios más, todos DECORACIÓN pura —
+     borde, resplandor, subrayado— nunca relleno ni texto, y NUNCA en `--mint`/`--coral` (pintan
+     dinero: teñir un gasto de naranja en Halloween es la típica gracia que hace dudar de una
+     app de finanzas):
+       · el borde de arriba de cada tarjeta (`.card`, genérica en toda la app), un hilo fino;
+       · el icono de la pestaña activa, con un resplandor detrás en vez de recolorearlo;
+       · el título serif de cada pantalla, con un guiño de color en el subrayado. */
+  html[data-season] .card{border-top:2px solid color-mix(in srgb, var(--season-tinte,transparent) 55%, var(--line-soft));}
+  html[data-season] .botnav-tab.active svg{filter:drop-shadow(0 0 5px var(--season-tinte,transparent));}
+  html[data-season] .serif{text-decoration:underline;text-decoration-color:color-mix(in srgb, var(--season-tinte,transparent) 45%, transparent);text-decoration-thickness:2px;text-underline-offset:6px;}
   html[data-season="mundial"]{--season-tinte:#F1C40F;}
   html[data-season="halloween"]{--season-tinte:#F0862B;}
   html[data-season="navidad"]{--season-tinte:#D64550;}

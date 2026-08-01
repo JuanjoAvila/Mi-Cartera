@@ -111,8 +111,17 @@ try {
   }
 } catch (e) { /* si las notas cambian de forma, esto informa de menos, nunca rompe la salud */ }
 const pend = git("log", "refs/remotes/origin/main..refs/remotes/origin/beta", "--oneline");
-if (pend) { info(`commits en \`beta\` que \`main\` no tiene:`); pend.split("\n").forEach((l) => console.log(`      ${l}`)); }
-else info("`beta` y `main` están al día");
+if (pend) {
+  info(`commits en \`beta\` que \`main\` no tiene:`);
+  pend.split("\n").forEach((l) => console.log(`      ${l}`));
+  /* PARA COPIAR DIRECTO AL WORKFLOW (2026-08-01): «Promocionar beta a producción» acepta un
+     parche por commits sueltos (`commits`, cherry-pick) cuando una ronda no se puede trocear por
+     tandas. La lista de arriba ya tiene los hashes; esto solo recuerda el orden (del más VIEJO al
+     más nuevo, que es como hay que pegarlos) y dónde se pega. */
+  const hashes = pend.split("\n").map((l) => l.split(" ")[0]).reverse().join(",");
+  info(`   para un parche urgente con solo alguno de estos: Actions → «Promocionar beta a producción»`);
+  info(`   → \`commits\`: ${hashes}  (quita los que no quieras, del más viejo al más nuevo)`);
+} else info("`beta` y `main` están al día");
 
 /* ---------- 4. Migraciones ---------- */
 console.log("\nBase de datos");

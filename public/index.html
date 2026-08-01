@@ -328,6 +328,17 @@
     background:radial-gradient(130% 95% at 50% 125%, color-mix(in srgb, var(--season-tinte,transparent) 16%, transparent), transparent 68%);}
   html[data-season] .botnav{border-top:1px solid var(--season-tinte,var(--line-soft));}
   html[data-season] .botnav-ind span{background:var(--season-tinte,var(--mint));}
+  /* MÁS AMBIENTACIÓN, NO SOLO EN LA BARRA (petición suya 1/8, repetida: «ponle más ambientación
+     a la app no solo en la barra que ya está bien»). Tres sitios más, todos DECORACIÓN pura —
+     borde, resplandor, subrayado— nunca relleno ni texto, y NUNCA en `--mint`/`--coral` (pintan
+     dinero: teñir un gasto de naranja en Halloween es la típica gracia que hace dudar de una
+     app de finanzas):
+       · el borde de arriba de cada tarjeta (`.card`, genérica en toda la app), un hilo fino;
+       · el icono de la pestaña activa, con un resplandor detrás en vez de recolorearlo;
+       · el título serif de cada pantalla, con un guiño de color en el subrayado. */
+  html[data-season] .card{border-top:2px solid color-mix(in srgb, var(--season-tinte,transparent) 55%, var(--line-soft));}
+  html[data-season] .botnav-tab.active svg{filter:drop-shadow(0 0 5px var(--season-tinte,transparent));}
+  html[data-season] .serif{text-decoration:underline;text-decoration-color:color-mix(in srgb, var(--season-tinte,transparent) 45%, transparent);text-decoration-thickness:2px;text-underline-offset:6px;}
   html[data-season="mundial"]{--season-tinte:#F1C40F;}
   html[data-season="halloween"]{--season-tinte:#F0862B;}
   html[data-season="navidad"]{--season-tinte:#D64550;}
@@ -12234,7 +12245,7 @@ var RELEASE_NOTES=[
       "El rebote al final de una pestaña ahora se siente COMO EL DE AJUSTES: cede más al tirar y vuelve igual de suave (misma curva y mismo tiempo, .42s). Tíralo en Gastos y compáralo abriendo Ajustes.",
       "En Resumen, tirar hacia abajo estando arriba SIGUE abriendo el perfil (el rebote no estorba).",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
-      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal (iban a destiempo: el salto duraba .44s y el desplazamiento .32s con muelle).",
+      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal. Iba a destiempo dos veces: primero salto y desplazamiento con curvas distintas, y luego un reflow forzado que arrancaba la transición con las reglas viejas un instante antes de tiempo.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
     ]},
     {id:"arranque", t:"🚀 Arranque y temporadas", items:[
@@ -16814,8 +16825,23 @@ function App(){
     const antes=tabPrevRef.current; tabPrevRef.current=tab;
     const el=indRef.current;
     if(!el || antes===tab || ((antes<=1)===(tab<=1))) return undefined;
-    el.classList.remove("rodea");
-    void el.offsetWidth;   // reinicia la animación si encadena dos saltos seguidos
+    /* ⚠ EL `offsetWidth` FORZADO ERA EL BUG DE VERDAD, no solo el `useEffect` (2026-08-01, su
+       vídeo de las 12:11 — «sigue siendo diagonal, mira el video»). En el caso normal (un salto
+       suelto, que es el 99% de las veces) "rodea" NO está puesta todavía. Quitarla igualmente y
+       forzar `el.offsetWidth` justo ahí OBLIGA al navegador a recalcular estilos EN ESE INSTANTE:
+       ve el `translateX` ya nuevo (React lo escribió antes de que este efecto corra) pero
+       TODAVÍA sin "rodea", así que aplica la transición BASE (.32s, el muelle) y arranca la
+       transición con esa curva un instante — luego "rodea" entra y cambia la duración de una
+       transición YA EMPEZADA, que no se re-negocia desde cero. Ese primer instante con la curva
+       equivocada es justo lo que se ve como un tirón en diagonal.
+       Ahora el reflow SOLO se fuerza si "rodea" YA estaba puesta (dos saltos por encima del +
+       en menos de 460 ms, encadenados) — ahí sí hace falta para que el span reinicie su
+       animación. En el caso normal, un `add` directo entra en el MISMO commit que el
+       `translateX`, sin ningún recálculo de estilos entre medias que pueda ver el estado viejo. */
+    if(el.classList.contains("rodea")){
+      el.classList.remove("rodea");
+      void el.offsetWidth;
+    }
     el.classList.add("rodea");
     const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);
     return function(){ clearTimeout(id); };

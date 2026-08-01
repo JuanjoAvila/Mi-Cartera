@@ -324,3 +324,34 @@ solo hay una cosa en vuelo.
 ⚠ Si pides una tanda cuya rama no existe, el workflow **para** y no sube nada. Subir «lo que haya»
 cuando falta una rama es el fallo silencioso que ya costó dos promociones a medias.
 
+## Un parche urgente, cuando ni siquiera hay tandas — desde 4.13.0
+
+Petición suya del 2026-08-01: **«se han implementado montonazo de cosas y hay cosas urgentes para
+subir a prod por bugs gordos para mi pareja y mi padre y no se puede subir esos parches»**. Las
+tandas resuelven esto SI la ronda nació troceada desde el primer commit — pero si no (la 4.13.0 se
+commiteó mezclada), no hay rama que mergear y toca esperar a que TODO esté listo, que es
+exactamente lo que no puede pasar con un bug gordo delante de la familia.
+
+La vía de emergencia: **`commits`**, cherry-pick de los commits exactos que hacen falta, sin tocar
+el resto de `beta`.
+
+```
+Actions → «Promocionar beta a producción»
+  confirmar: SUBIR
+  commits:   a1b2c3d,e4f5061      ← del más VIEJO al más nuevo (el orden importa)
+  version:   4.12.2                ← opcional; vacío = sube el PATCH de lo que hay en prod
+```
+
+`npm run salud` ya te da la lista de commits pendientes en el orden correcto para pegar, cuando
+los hay.
+
+Reglas:
+- **No se puede usar a la vez que `tandas`.** Son dos formas de trocear la misma cosa; mezclarlas
+  no tiene un significado claro y el workflow para si intentas las dos.
+- El número de versión **tiene que ser mayor** que el que ya hay en `main` — si pides uno igual o
+  menor, para: bajarle la versión a la gente es peor que no subir nada.
+- Si un commit **no aplica limpio** (conflicto), el workflow para y te dice el comando exacto para
+  resolverlo a mano en tu portátil. No intenta adivinar cómo fusionar.
+- Esto **no sube `VERSION` de `beta`**, sube un PATCH nuevo sobre lo que ya hay en producción — la
+  ronda grande sigue en `beta` esperando su turno, intacta.
+

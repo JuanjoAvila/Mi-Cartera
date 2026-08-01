@@ -1304,7 +1304,7 @@ var RELEASE_NOTES=[
       "El rebote al final de una pestaña ahora se siente COMO EL DE AJUSTES: cede más al tirar y vuelve igual de suave (misma curva y mismo tiempo, .42s). Tíralo en Gastos y compáralo abriendo Ajustes.",
       "En Resumen, tirar hacia abajo estando arriba SIGUE abriendo el perfil (el rebote no estorba).",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
-      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal (iban a destiempo: el salto duraba .44s y el desplazamiento .32s con muelle).",
+      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal. Iba a destiempo dos veces: primero salto y desplazamiento con curvas distintas, y luego un reflow forzado que arrancaba la transición con las reglas viejas un instante antes de tiempo.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
     ]},
     {id:"arranque", t:"🚀 Arranque y temporadas", items:[
