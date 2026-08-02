@@ -256,32 +256,49 @@
   /* Temáticas de temporada: capa ambiental con PROFUNDIDAD (3 capas parallax) y movimiento
      orgánico (deriva lateral + giro + pulso de escala) — estilo Revolut, no una caída plana. */
   .season-fx{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;}
-  /* UNA SOLA CAÍDA, AL PRINCIPIO, Y SE ACABÓ (rechazo suyo del 29/7 y del 1/8).
-     Historia corta de tres intentos: era `infinite` → se cortó a DOS vueltas y se añadió una
-     racha nueva en cada cambio de pestaña. Y eso seguía sin ser lo que quería:
-       · «que caigan solo al principio y muchísimo menos tiempo»
-       · «que al cambiar de tab no sigan cayendo»
-       · «va bien pero no quiero eso. Solo quiero que pase al principio»
-     Así que: UNA vuelta (`iteration-count:1`), duraciones a la mitad larga (en el JS: ~4-7 s en
-     vez de 9-20) y CERO rachas al deslizar — la clase `.b` y su keyframe gemelo han desaparecido,
-     igual que el `useEffect` que la alternaba en cada `tab`. La capa cae una vez al abrir, se
-     posa y se queda quieta para siempre: coste cero el resto del día.
-     Lo que él SÍ quiere de la temática está en la ambientación fija de más abajo (el anillo del
-     botón + y los halos), no en cosas moviéndose. */
-  .season-fx span{position:absolute;top:-12vh;will-change:transform;
+  /* UNA SOLA CAÍDA AL ABRIR, Y UNA RÁFAGA CORTA AL CAMBIAR DE PESTAÑA (2026-08-02, petición de
+     la pareja transmitida por él). Historial de por qué esto es delicado: él mismo rechazó DOS
+     veces (29/7 y 1/8) que la animación se repitiera al cambiar de tab —«que al cambiar de tab
+     no sigan cayendo», «solo quiero que pase al principio»—, pero aquello era la caída LARGA
+     repitiéndose sin parar. Esto es distinto a propósito: una ráfaga CORTA que SUBE (no cae,
+     para no confundirse con el arranque) y solo se dispara al tocar una pestaña de verdad — si
+     te quedas quieto en la misma, no pasa nada. Si vuelve a no gustar, el epoch (`seasonEpoch`
+     en 11-app-main.js) es el sitio para volver a apagarlo.
+     `iteration-count:1` + `fill-mode:forwards`: una vuelta, se posa y se desvanece (ver el
+     100% de cada keyframe), coste cero el resto del tiempo. */
+  .season-fx span{position:absolute;top:-12vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);
     animation-iteration-count:1;animation-fill-mode:forwards;}
+  .season-fx.rising span{animation-name:seasonrise;}
   /* Capas de profundidad: lejos = pequeña, desenfocada y lenta; cerca = grande, nítida, sombra. */
   .season-fx .sfx-l0{filter:blur(1.4px) drop-shadow(0 1px 2px rgba(0,0,0,.18));}
   .season-fx .sfx-l1{filter:blur(.4px) drop-shadow(0 2px 4px rgba(0,0,0,.22));}
   .season-fx .sfx-l2{filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));}
-  /* --sway (deriva px) y --spin (giro) los pone cada pieza en JS → cada una cae distinto. */
+  /* --sway (deriva px) y --spin (giro) los pone cada pieza en JS → cada una cae distinto.
+     SIN `scale()` (quitado 2026-08-02, feedback de la pareja: «cae a cortes a partir de cierto
+     punto»). `filter` + `transform:scale()` a la vez obliga a muchos motores a re-rasterizar el
+     desenfoque/sombra en CADA frame en el que cambia el tamaño, en vez de solo recolocar una
+     capa ya pintada — con 18 piezas a la vez es de sobra para notarse en un móvil de gama media.
+     `translate3d`+`rotate` sí son solo composición (GPU, sin repintar). */
   @keyframes seasonfall{
-    0%{transform:translate3d(0,-14vh,0) rotate(0deg) scale(.85);}
-    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15)) scale(1);}
-    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55)) scale(1.06);}
-    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
-    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
+    0%{transform:translate3d(0,-14vh,0) rotate(0deg);opacity:0;}
+    8%{opacity:var(--op,.7);}
+    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15));}
+    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55));}
+    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85));opacity:var(--op,.7);}
+    /* Se desvanece justo antes de posarse (no solo se sale del viewport): así, si el rebote
+       nativo estira temporalmente el visual viewport durante el overscroll, no queda ninguna
+       pieza "aparcada" visible fuera de la pantalla normal — feedback 2026-08-01. */
+    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg));opacity:0;}
+  }
+  /* Sube desde el suelo, con la misma deriva lateral que la caída pero de abajo arriba —el
+     «viento» que pidió la pareja— y sale por arriba desvanecida, nunca se posa a media pantalla. */
+  @keyframes seasonrise{
+    0%{transform:translate3d(0,112vh,0) rotate(0deg);opacity:0;}
+    10%{opacity:var(--op,.7);}
+    45%{transform:translate3d(calc(var(--sway,10px)*-1),56vh,0) rotate(calc(var(--spin,180deg)*.4));}
+    78%{transform:translate3d(calc(var(--sway,10px)*.7),8vh,0) rotate(calc(var(--spin,180deg)*.78));opacity:var(--op,.7);}
+    100%{transform:translate3d(0,-16vh,0) rotate(var(--spin,360deg));opacity:0;}
   }
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */

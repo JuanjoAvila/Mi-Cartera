@@ -11,6 +11,34 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ebApi, ebConfig, jsonResp, makeJWT, mapTransaction } from "../_shared/enablebanking.ts";
 import { withCors } from "../_shared/cors.ts";
 
+// Diagnóstico del «Movimiento» sin comercio ni concepto que salía como ingreso siendo un gasto
+// (feedback 2026-08-01, Trade Republic por Open Banking). `mapTransaction` solo tiene el
+// `credit_debit_indicator` del banco para decidir el signo — si un ASPSP lo manda mal para
+// ciertos movimientos, no hay forma de arreglarlo sin ver el payload real. Mejor registrar el
+// caso ambiguo (sin remesa ni nombre de contraparte) que adivinar el signo y arriesgarse a
+// invertir un ingreso de verdad para otro banco que sí cumple la spec.
+// deno-lint-ignore no-explicit-any
+async function logObAmbiguous(admin: any, userId: string, aspsp: string, raw: any[]) {
+  try {
+    // deno-lint-ignore no-explicit-any
+    const sospechosos = (raw || []).filter((t: any) => {
+      const remit = Array.isArray(t?.remittance_information) ? t.remittance_information.join(" ") : (t?.remittance_information || "");
+      const nombre = t?.debtor?.name || t?.creditor?.name || "";
+      return !remit && !nombre;
+    }).slice(0, 5).map((t: any) => ({
+      amt: t?.transaction_amount?.amount, ind: t?.credit_debit_indicator,
+      code: t?.bank_transaction_code?.description || t?.bank_transaction_code || null, status: t?.status,
+    }));
+    if (!sospechosos.length) return;
+    await admin.from("app_events").insert({
+      user_id: userId, email: null, kind: "error",
+      message: `OB (${aspsp}): ${sospechosos.length} movimiento(s) sin comercio ni concepto — payload para revisar el signo`,
+      detail: JSON.stringify(sospechosos).slice(0, 2000),
+      app_version: "edge", platform: "server",
+    });
+  } catch (_) { /* best-effort: nunca rompe el sync */ }
+}
+
 Deno.serve(withCors(async (req: Request) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -115,6 +143,7 @@ Deno.serve(withCors(async (req: Request) => {
           const transactions = (tx.transactions || []).map((t: any) => mapTransaction(t));
           acctOut.push({ uid, iban: ac.iban || null, name: ac.name || null, currency: ac.currency || null, ok: true, balances, count: transactions.length, transactions });
           anyAcctOk = true;
+          logObAmbiguous(admin, user.id, link.aspsp_name, tx.transactions || []);
         } catch (err) {
           const msg = String((err as Error)?.message || err);
           // CADUCIDAD REAL vs FALLO TRANSITORIO (feedback 2026-07-17: «se me caen cada dos por

@@ -410,7 +410,7 @@ function hojaDuplicados(nuevos, existentes){
    reparto entre lo que entra y lo que ya tenías → guardar. El paso 3 es el que él pidió con
    nombre y apellidos: «que si pillara alguna cosa duplicada que dijera de forma guapa con alguna
    animación o algo el descarte y lo que se queda». */
-function SheetImport({state, set, onClose, showToast}){
+function SheetImport({state, set, onClose, showToast, goGastos}){
   useBackClose(true, onClose);
   const [paso,setPaso]=useState(0);          // 0 fichero · 1 columnas · 2 reparto · 3 hecho
   const [filas,setFilas]=useState(null);
@@ -587,6 +587,9 @@ function SheetImport({state, set, onClose, showToast}){
       React.createElement("div",{className:"serif",style:{fontSize:21,marginBottom:6}}, t("ih_fin_t")),
       React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:16}},
         tf("ih_fin_s",{n:reparto?reparto.altas.length:0})),
-      React.createElement("button",{type:"button",className:"v4-cta",onClick:onClose}, t("ih_fin_ok")))
+      // Ir directo a Gastos con el filtro en "Todo": lo importado suele traer fechas de fuera
+      // del mes en curso, y "Este mes" (el filtro por defecto) las tapaba en silencio — parecía
+      // que el import no había hecho nada (feedback 2026-08-01).
+      React.createElement("button",{type:"button",className:"v4-cta",onClick:function(){ onClose(); if(goGastos) goGastos(); }}, t("ih_fin_ok")))
   ));
 }

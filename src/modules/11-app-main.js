@@ -7,6 +7,18 @@ function App(){
   const [mountedTabs,setMountedTabs]=useState(function(){ return {}; });
   const [mountNeighbors,setMountNeighbors]=useState(false);
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
+  // Ráfaga de temporada al cambiar de pestaña (petición pareja 2026-08-02, ver el porqué largo
+  // en shell.html junto a @keyframes seasonrise). Cambiar `seasonEpoch` fuerza remontar
+  // `.season-fx` (va en su `key`), que es lo único que reinicia una animación CSS con
+  // fill-mode:forwards. Se salta el primer montaje (esa ya la dispara la caída de apertura).
+  const [seasonEpoch,setSeasonEpoch]=useState(0);
+  const seasonFirstTab=useRef(true);
+  useEffect(function(){
+    if(seasonFirstTab.current){ seasonFirstTab.current=false; return; }
+    const season=stateRef.current.settings&&stateRef.current.settings.season;
+    const reduceMo=!!(stateRef.current.settings&&stateRef.current.settings.reduceMotion);
+    if(season && season!=="none" && !reduceMo) setSeasonEpoch(function(e){ return e+1; });
+  },[tab]);
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
   // Nav inferior que se esconde al bajar y reaparece al subir (estilo Revolut, petición 2026-07-17).
@@ -35,6 +47,12 @@ function App(){
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){ revealNav(); return; }                 // arriba del todo → siempre visible
+    // Abajo del todo → siempre escondida (simétrico al caso de arriba). Sin esto, si llegabas al
+    // final sin un tramo de bajada sostenida (>56 px seguidos) la barra se quedaba visible y TAPABA
+    // el rebote nativo por debajo (z-index de la barra por encima) — parecía que «no se reproduce
+    // la ola en Gastos», pero solo estaba oculta detrás (feedback pareja + él, 2026-08-02).
+    const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
+    if(max>0 && y>=max-4){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } return; }
     if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
     if(dy>0 && y>56){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } }  // bajando → esconder
     else if(dy<0){ revealNav(); }                     // subiendo → mostrar
@@ -43,6 +61,7 @@ function App(){
   const trashRef=useRef(null);
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
   const [gotoExp,setGotoExp]=useState(null);               // punto 5: gasto a enfocar al tocar la noti ({amount,merchant,ts})
+  const [gastosForceAll,setGastosForceAll]=useState(0);    // al importar una hoja, aterrizar en Gastos con el filtro en "Todo" (si no, "Este mes" tapa lo importado)
   const [planGoto,setPlanGoto]=useState(null);             // segmento de Plan a forzar desde «Ver plan» ({id,ts})
   const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
   const [toast,setToast]=useState(null);
@@ -2373,7 +2392,7 @@ function App(){
       onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
     // Sin prop `active`: ver `mcOnGastosActive` — si viaja por props, entrar en Gastos
     // reconstruye el árbol entero encima del gesto (asimetría Deudas→Gastos vs →Cartera).
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },forceAllTs:gastosForceAll});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
@@ -2420,7 +2439,7 @@ function App(){
   const contenidoGastos=useMemo(function(){
     return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
     // eslint-disable-next-line
-  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosForceAll]);
   // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
   useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
   const paginas=tabIds.map(function(id,i){
@@ -2445,7 +2464,7 @@ function App(){
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonFx=(season && season!=="none" && !reduceMo && SEASON_FX[season])
-    ? React.createElement("div",{className:"season-fx","data-season":season,"aria-hidden":"true"},
+    ? React.createElement("div",{key:"sfx"+seasonEpoch,className:"season-fx"+(seasonEpoch>0?" rising":""),"data-season":season,"aria-hidden":"true"},
         (function(){
           const pool=SEASON_FX[season], N=18, out=[];
           for(let i=0;i<N;i++){
@@ -2470,8 +2489,8 @@ function App(){
             const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
             const op=[0.5,0.72,0.9][layer];
             out.push(React.createElement("span",{key:i,className:"sfx-l"+layer,
-              style:{left:left+"vw",fontSize:sz+"px",opacity:op,animationDuration:dur+"s",animationDelay:delay+"s",
-                "--sway":sway+"px","--spin":spin+"deg"}}, em));
+              style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
+                "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
           }
           return out;
         })())
@@ -2536,7 +2555,8 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus,
+        goGastos:function(){ setDrawerOpen(false); setGastosForceAll(Date.now()); const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     /* Los gestos NO van por props de React (ver el efecto `profileOpen` de arriba): React registra

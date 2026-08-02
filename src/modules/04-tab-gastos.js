@@ -35,8 +35,11 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, forceAllTs}){
   const [preset,setPreset]=useState("month");
+  // Tras importar una hoja: salta a "Todo" — lo importado suele traer fechas fuera del mes en
+  // curso, y "Este mes" las tapaba en silencio (feedback 2026-08-01).
+  useEffect(function(){ if(forceAllTs) setPreset("all"); },[forceAllTs]);
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
   const [bankSel,setBankSel]=useState([]); // ents o "_manual"; [] = todos los bancos

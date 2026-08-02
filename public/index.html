@@ -256,32 +256,49 @@
   /* Temáticas de temporada: capa ambiental con PROFUNDIDAD (3 capas parallax) y movimiento
      orgánico (deriva lateral + giro + pulso de escala) — estilo Revolut, no una caída plana. */
   .season-fx{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;}
-  /* UNA SOLA CAÍDA, AL PRINCIPIO, Y SE ACABÓ (rechazo suyo del 29/7 y del 1/8).
-     Historia corta de tres intentos: era `infinite` → se cortó a DOS vueltas y se añadió una
-     racha nueva en cada cambio de pestaña. Y eso seguía sin ser lo que quería:
-       · «que caigan solo al principio y muchísimo menos tiempo»
-       · «que al cambiar de tab no sigan cayendo»
-       · «va bien pero no quiero eso. Solo quiero que pase al principio»
-     Así que: UNA vuelta (`iteration-count:1`), duraciones a la mitad larga (en el JS: ~4-7 s en
-     vez de 9-20) y CERO rachas al deslizar — la clase `.b` y su keyframe gemelo han desaparecido,
-     igual que el `useEffect` que la alternaba en cada `tab`. La capa cae una vez al abrir, se
-     posa y se queda quieta para siempre: coste cero el resto del día.
-     Lo que él SÍ quiere de la temática está en la ambientación fija de más abajo (el anillo del
-     botón + y los halos), no en cosas moviéndose. */
-  .season-fx span{position:absolute;top:-12vh;will-change:transform;
+  /* UNA SOLA CAÍDA AL ABRIR, Y UNA RÁFAGA CORTA AL CAMBIAR DE PESTAÑA (2026-08-02, petición de
+     la pareja transmitida por él). Historial de por qué esto es delicado: él mismo rechazó DOS
+     veces (29/7 y 1/8) que la animación se repitiera al cambiar de tab —«que al cambiar de tab
+     no sigan cayendo», «solo quiero que pase al principio»—, pero aquello era la caída LARGA
+     repitiéndose sin parar. Esto es distinto a propósito: una ráfaga CORTA que SUBE (no cae,
+     para no confundirse con el arranque) y solo se dispara al tocar una pestaña de verdad — si
+     te quedas quieto en la misma, no pasa nada. Si vuelve a no gustar, el epoch (`seasonEpoch`
+     en 11-app-main.js) es el sitio para volver a apagarlo.
+     `iteration-count:1` + `fill-mode:forwards`: una vuelta, se posa y se desvanece (ver el
+     100% de cada keyframe), coste cero el resto del tiempo. */
+  .season-fx span{position:absolute;top:-12vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);
     animation-iteration-count:1;animation-fill-mode:forwards;}
+  .season-fx.rising span{animation-name:seasonrise;}
   /* Capas de profundidad: lejos = pequeña, desenfocada y lenta; cerca = grande, nítida, sombra. */
   .season-fx .sfx-l0{filter:blur(1.4px) drop-shadow(0 1px 2px rgba(0,0,0,.18));}
   .season-fx .sfx-l1{filter:blur(.4px) drop-shadow(0 2px 4px rgba(0,0,0,.22));}
   .season-fx .sfx-l2{filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));}
-  /* --sway (deriva px) y --spin (giro) los pone cada pieza en JS → cada una cae distinto. */
+  /* --sway (deriva px) y --spin (giro) los pone cada pieza en JS → cada una cae distinto.
+     SIN `scale()` (quitado 2026-08-02, feedback de la pareja: «cae a cortes a partir de cierto
+     punto»). `filter` + `transform:scale()` a la vez obliga a muchos motores a re-rasterizar el
+     desenfoque/sombra en CADA frame en el que cambia el tamaño, en vez de solo recolocar una
+     capa ya pintada — con 18 piezas a la vez es de sobra para notarse en un móvil de gama media.
+     `translate3d`+`rotate` sí son solo composición (GPU, sin repintar). */
   @keyframes seasonfall{
-    0%{transform:translate3d(0,-14vh,0) rotate(0deg) scale(.85);}
-    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15)) scale(1);}
-    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55)) scale(1.06);}
-    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85)) scale(.97);}
-    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg)) scale(.9);}
+    0%{transform:translate3d(0,-14vh,0) rotate(0deg);opacity:0;}
+    8%{opacity:var(--op,.7);}
+    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15));}
+    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55));}
+    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85));opacity:var(--op,.7);}
+    /* Se desvanece justo antes de posarse (no solo se sale del viewport): así, si el rebote
+       nativo estira temporalmente el visual viewport durante el overscroll, no queda ninguna
+       pieza "aparcada" visible fuera de la pantalla normal — feedback 2026-08-01. */
+    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg));opacity:0;}
+  }
+  /* Sube desde el suelo, con la misma deriva lateral que la caída pero de abajo arriba —el
+     «viento» que pidió la pareja— y sale por arriba desvanecida, nunca se posa a media pantalla. */
+  @keyframes seasonrise{
+    0%{transform:translate3d(0,112vh,0) rotate(0deg);opacity:0;}
+    10%{opacity:var(--op,.7);}
+    45%{transform:translate3d(calc(var(--sway,10px)*-1),56vh,0) rotate(calc(var(--spin,180deg)*.4));}
+    78%{transform:translate3d(calc(var(--sway,10px)*.7),8vh,0) rotate(calc(var(--spin,180deg)*.78));opacity:var(--op,.7);}
+    100%{transform:translate3d(0,-16vh,0) rotate(var(--spin,360deg));opacity:0;}
   }
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
@@ -1609,7 +1626,7 @@ const CONFIG = {
   // --- Supabase (Fase 1). La anon key es pública por diseño (va protegida con RLS). ---
   SUPABASE_URL: "https://sfyfjagbnhbplrljpbvh.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmeWZqYWdibmhicGxybGpwYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NzYyODAsImV4cCI6MjA5NzM1MjI4MH0.umMHOZanC4aRSBqiNAjsegyXxcZ-Q-g2oTQtS1JXzZk",
-  APP_VERSION: "4.13.0",          // lo sella el CI en cada deploy (scripts/stamp-version.mjs)
+  APP_VERSION: "dev",          // lo sella el CI en cada deploy (scripts/stamp-version.mjs)
   SENTRY_DSN: "",              // opcional: inyectar SENTRY_DSN en CI (scripts/build-app.mjs)
 };
 
@@ -6210,8 +6227,11 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
-function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus}){
+function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, forceAllTs}){
   const [preset,setPreset]=useState("month");
+  // Tras importar una hoja: salta a "Todo" — lo importado suele traer fechas fuera del mes en
+  // curso, y "Este mes" las tapaba en silencio (feedback 2026-08-01).
+  useEffect(function(){ if(forceAllTs) setPreset("all"); },[forceAllTs]);
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
   const [bankSel,setBankSel]=useState([]); // ents o "_manual"; [] = todos los bancos
@@ -10767,7 +10787,7 @@ function hojaDuplicados(nuevos, existentes){
    reparto entre lo que entra y lo que ya tenías → guardar. El paso 3 es el que él pidió con
    nombre y apellidos: «que si pillara alguna cosa duplicada que dijera de forma guapa con alguna
    animación o algo el descarte y lo que se queda». */
-function SheetImport({state, set, onClose, showToast}){
+function SheetImport({state, set, onClose, showToast, goGastos}){
   useBackClose(true, onClose);
   const [paso,setPaso]=useState(0);          // 0 fichero · 1 columnas · 2 reparto · 3 hecho
   const [filas,setFilas]=useState(null);
@@ -10944,7 +10964,10 @@ function SheetImport({state, set, onClose, showToast}){
       React.createElement("div",{className:"serif",style:{fontSize:21,marginBottom:6}}, t("ih_fin_t")),
       React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:16}},
         tf("ih_fin_s",{n:reparto?reparto.altas.length:0})),
-      React.createElement("button",{type:"button",className:"v4-cta",onClick:onClose}, t("ih_fin_ok")))
+      // Ir directo a Gastos con el filtro en "Todo": lo importado suele traer fechas de fuera
+      // del mes en curso, y "Este mes" (el filtro por defecto) las tapaba en silencio — parecía
+      // que el import no había hecho nada (feedback 2026-08-01).
+      React.createElement("button",{type:"button",className:"v4-cta",onClick:function(){ onClose(); if(goGastos) goGastos(); }}, t("ih_fin_ok")))
   ));
 }
 /* ============================================================
@@ -12930,7 +12953,7 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks, goBanksFocus}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks, goBanksFocus, goGastos}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
@@ -13556,7 +13579,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       )
     ),
     betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
-    hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHojaOpen(false); }}), document.body),
+    hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,goGastos:goGastos,onClose:function(){ setHojaOpen(false); }}), document.body),
     autoBackOpen && ReactDOM.createPortal(React.createElement(AutoBackupsPanel,{state:state,set:set,showToast:showToast,uid:uid,onClose:function(){ setAutoBackOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
@@ -14707,6 +14730,18 @@ function App(){
   const [mountedTabs,setMountedTabs]=useState(function(){ return {}; });
   const [mountNeighbors,setMountNeighbors]=useState(false);
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
+  // Ráfaga de temporada al cambiar de pestaña (petición pareja 2026-08-02, ver el porqué largo
+  // en shell.html junto a @keyframes seasonrise). Cambiar `seasonEpoch` fuerza remontar
+  // `.season-fx` (va en su `key`), que es lo único que reinicia una animación CSS con
+  // fill-mode:forwards. Se salta el primer montaje (esa ya la dispara la caída de apertura).
+  const [seasonEpoch,setSeasonEpoch]=useState(0);
+  const seasonFirstTab=useRef(true);
+  useEffect(function(){
+    if(seasonFirstTab.current){ seasonFirstTab.current=false; return; }
+    const season=stateRef.current.settings&&stateRef.current.settings.season;
+    const reduceMo=!!(stateRef.current.settings&&stateRef.current.settings.reduceMotion);
+    if(season && season!=="none" && !reduceMo) setSeasonEpoch(function(e){ return e+1; });
+  },[tab]);
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
   // Nav inferior que se esconde al bajar y reaparece al subir (estilo Revolut, petición 2026-07-17).
@@ -14735,6 +14770,12 @@ function App(){
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){ revealNav(); return; }                 // arriba del todo → siempre visible
+    // Abajo del todo → siempre escondida (simétrico al caso de arriba). Sin esto, si llegabas al
+    // final sin un tramo de bajada sostenida (>56 px seguidos) la barra se quedaba visible y TAPABA
+    // el rebote nativo por debajo (z-index de la barra por encima) — parecía que «no se reproduce
+    // la ola en Gastos», pero solo estaba oculta detrás (feedback pareja + él, 2026-08-02).
+    const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
+    if(max>0 && y>=max-4){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } return; }
     if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
     if(dy>0 && y>56){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } }  // bajando → esconder
     else if(dy<0){ revealNav(); }                     // subiendo → mostrar
@@ -14743,6 +14784,7 @@ function App(){
   const trashRef=useRef(null);
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
   const [gotoExp,setGotoExp]=useState(null);               // punto 5: gasto a enfocar al tocar la noti ({amount,merchant,ts})
+  const [gastosForceAll,setGastosForceAll]=useState(0);    // al importar una hoja, aterrizar en Gastos con el filtro en "Todo" (si no, "Este mes" tapa lo importado)
   const [planGoto,setPlanGoto]=useState(null);             // segmento de Plan a forzar desde «Ver plan» ({id,ts})
   const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
   const [toast,setToast]=useState(null);
@@ -17073,7 +17115,7 @@ function App(){
       onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
     // Sin prop `active`: ver `mcOnGastosActive` — si viaja por props, entrar en Gastos
     // reconstruye el árbol entero encima del gesto (asimetría Deudas→Gastos vs →Cartera).
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },forceAllTs:gastosForceAll});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
@@ -17120,7 +17162,7 @@ function App(){
   const contenidoGastos=useMemo(function(){
     return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
     // eslint-disable-next-line
-  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosForceAll]);
   // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
   useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
   const paginas=tabIds.map(function(id,i){
@@ -17145,7 +17187,7 @@ function App(){
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonFx=(season && season!=="none" && !reduceMo && SEASON_FX[season])
-    ? React.createElement("div",{className:"season-fx","data-season":season,"aria-hidden":"true"},
+    ? React.createElement("div",{key:"sfx"+seasonEpoch,className:"season-fx"+(seasonEpoch>0?" rising":""),"data-season":season,"aria-hidden":"true"},
         (function(){
           const pool=SEASON_FX[season], N=18, out=[];
           for(let i=0;i<N;i++){
@@ -17170,8 +17212,8 @@ function App(){
             const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
             const op=[0.5,0.72,0.9][layer];
             out.push(React.createElement("span",{key:i,className:"sfx-l"+layer,
-              style:{left:left+"vw",fontSize:sz+"px",opacity:op,animationDuration:dur+"s",animationDelay:delay+"s",
-                "--sway":sway+"px","--spin":spin+"deg"}}, em));
+              style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
+                "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
           }
           return out;
         })())
@@ -17236,7 +17278,8 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus,
+        goGastos:function(){ setDrawerOpen(false); setGastosForceAll(Date.now()); const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     /* Los gestos NO van por props de React (ver el efecto `profileOpen` de arriba): React registra
