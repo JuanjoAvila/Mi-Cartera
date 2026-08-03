@@ -7,18 +7,6 @@ function App(){
   const [mountedTabs,setMountedTabs]=useState(function(){ return {}; });
   const [mountNeighbors,setMountNeighbors]=useState(false);
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
-  // Ráfaga de temporada al cambiar de pestaña (petición pareja 2026-08-02, ver el porqué largo
-  // en shell.html junto a @keyframes seasonrise). Cambiar `seasonEpoch` fuerza remontar
-  // `.season-fx` (va en su `key`), que es lo único que reinicia una animación CSS con
-  // fill-mode:forwards. Se salta el primer montaje (esa ya la dispara la caída de apertura).
-  const [seasonEpoch,setSeasonEpoch]=useState(0);
-  const seasonFirstTab=useRef(true);
-  useEffect(function(){
-    if(seasonFirstTab.current){ seasonFirstTab.current=false; return; }
-    const season=stateRef.current.settings&&stateRef.current.settings.season;
-    const reduceMo=!!(stateRef.current.settings&&stateRef.current.settings.reduceMotion);
-    if(season && season!=="none" && !reduceMo) setSeasonEpoch(function(e){ return e+1; });
-  },[tab]);
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
   // Nav inferior que se esconde al bajar y reaparece al subir (estilo Revolut, petición 2026-07-17).
@@ -2457,46 +2445,10 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // Capa ambiental de temporada: solo si hay temática y no está «reducir animaciones».
-  // Estilo «Revolut» (2026-07-18): 3 capas de profundidad (lejos/medio/cerca) con distinto tamaño,
-  // opacidad, desenfoque y velocidad → parallax; y movimiento ORGÁNICO (deriva lateral + giro +
-  // pulso de escala) en vez de una caída recta y sosa. ~18 piezas repartidas.
-  const season=(state.settings&&state.settings.season)||"";
-  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
-  const seasonFx=(season && season!=="none" && !reduceMo && SEASON_FX[season])
-    ? React.createElement("div",{key:"sfx"+seasonEpoch,className:"season-fx"+(seasonEpoch>0?" rising":""),"data-season":season,"aria-hidden":"true"},
-        (function(){
-          const pool=SEASON_FX[season], N=18, out=[];
-          for(let i=0;i<N;i++){
-            const layer=i%3;                                   // 0=lejos, 1=medio, 2=cerca
-            const em=pool[i%pool.length];
-            // reparto pseudo-aleatorio pero estable (sin saltos entre renders)
-            const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
-            const left=Math.round(rnd(12.9898)*98);
-            const sz=[13,18,25][layer]+Math.round(rnd(4.1)*4);
-            /* MUCHÍSIMO MÁS CORTO (rechazo suyo del 29/7: «muchísimo menos tiempo»). Era
-               [16,12,9]+0-4 s por DOS vueltas = entre 18 y 40 segundos de cosas cayendo cada vez
-               que abría la app o tocaba una pestaña. Ahora una sola vuelta de 4-7 s, así que la
-               capa entera se posa antes de los 8 s y no vuelve a moverse. Sigue habiendo parallax
-               —lejos más lento que cerca—, solo que en un tercio del tiempo. */
-            const dur=[7,5.5,4.5][layer]+rnd(7.7)*1.6;         // lejos = más lento (parallax)
-            /* Retraso POSITIVO y corto. Con el negativo de antes, media capa empezaba a mitad de
-               la caída y, con una sola vuelta, esas piezas se perdían la entrada por arriba: se
-               veían aparecer ya por el medio de la pantalla. Escalonarlas hacia delante hace que
-               entren todas desde arriba, unas detrás de otras, y que aun así acabe pronto. */
-            const delay=rnd(3.3)*1.1;
-            const sway=(6+Math.round(rnd(5.5)*18))*(rnd(9.1)>0.5?1:-1);   // deriva lateral px
-            const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
-            const op=[0.5,0.72,0.9][layer];
-            out.push(React.createElement("span",{key:i,className:"sfx-l"+layer,
-              style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
-                "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
-          }
-          return out;
-        })())
-    : null;
+  // La capa ambiental de temporada (piezas cayendo/subiendo) SE QUITÓ del todo (2026-08-03): el
+  // detalle por temática ahora vive incrustado en cada sección, en CSS puro (ver `--season-ico`
+  // y el badge sobre `.v4-title`/`.v4-inicio-hi` en shell.html). Nada que montar ni disparar aquí.
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
-    seasonFx,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",
