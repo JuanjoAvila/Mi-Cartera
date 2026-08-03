@@ -74,7 +74,15 @@ export async function ebApi(jwt: string, path: string, init: { method?: string; 
 // Convención del cliente: amount POSITIVO = gasto, NEGATIVO = ingreso.
 // deno-lint-ignore no-explicit-any
 export function mapTransaction(t: any) {
-  const amt = Number(t?.transaction_amount?.amount || 0);
+  // Math.abs: la spec Berlin Group/PSD2 dice que `transaction_amount.amount` es MAGNITUD sin
+  // signo (la dirección va aparte, en `credit_debit_indicator`) — pero no todos los ASPSPs la
+  // cumplen a rajatabla. Si alguno manda el importe YA firmado (negativo en un cargo), aplicar el
+  // signo del indicador SIN pasar antes por abs() dobla el signo: un gasto real sale negativo y,
+  // por la convención del cliente (positivo=gasto, negativo=ingreso), se apunta como ingreso. Es
+  // el fallo que vivió el usuario nada más conectar un ASPSP nuevo: «todos los gastos del mes
+  // contados como ingresos» (2026-07-31). abs() hace el mapeo depender SOLO del indicador,
+  // exactamente igual para los bancos que sí cumplen la spec (su amt ya es positivo).
+  const amt = Math.abs(Number(t?.transaction_amount?.amount || 0));
   const isCredit = t?.credit_debit_indicator === "CRDT";
   const remit = Array.isArray(t?.remittance_information)
     ? t.remittance_information.join(" ")
@@ -96,7 +104,12 @@ export function mapTransaction(t: any) {
     amount: isCredit ? -amt : amt,
     merchant: String(merchant).trim().slice(0, 80),
     note: note.slice(0, 160),
-    card: /TARJ|TARJETA|COMPRA TARJ/i.test(haystack),  // best-effort: compra con tarjeta
+    // best-effort: compra con tarjeta. Solo texto en español lo detectaba (TARJ/TARJETA); un
+    // ASPSP que informa en inglés (Trade Republic, Revolut…) no lo mencionaba nunca y el cargo
+    // se perdía en silencio (petición 2026-08-03). Con la cuenta de gasto diario esto ya no
+    // decide si el cargo cuenta (ver `importObExpenses`), pero sigue usándose para los bancos
+    // EXTRA de settings.expenseBanks, así que merece detectarse bien en cualquier idioma.
+    card: /TARJ|TARJETA|COMPRA TARJ|\bCARD\b|\bPOS\b|\bDEBIT CARD\b|\bCARD PAYMENT\b|\bPURCHASE\b/i.test(haystack),
     status: t?.status || "",
   };
 }
