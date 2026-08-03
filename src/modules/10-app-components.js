@@ -1468,9 +1468,11 @@ var RELEASE_NOTES=[
     ]},
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
       "El rebote al final de una pestaña ahora es EL MISMO mecanismo que Ajustes y el perfil (no una imitación con curva propia — se quitó el bloqueo que impedía al navegador hacer lo suyo). Tíralo en Gastos y compáralo abriendo Ajustes: tiene que sentirse idéntico, es literalmente el mismo efecto.",
+      "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido) en vez de con la misma calma de cuando bajas leyendo la lista — antes se quedaba deslizándose todavía por encima de la ola mientras esta ya estaba en marcha, que es el «se queda atascado un momento y luego es muy raro» del vídeo. Pruébalo en Gastos con bastantes movimientos: tira hasta el fondo y suelta.",
       "En Resumen, tirar hacia abajo estando arriba SIGUE abriendo el perfil (el rebote no estorba).",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal. Iba a destiempo dos veces: primero salto y desplazamiento con curvas distintas, y luego un reflow forzado que arrancaba la transición con las reglas viejas un instante antes de tiempo.",
+      "Y ese arco AGUANTA a velocidad alta: cambia de pestaña varias veces seguidas y rápido (sin esperar a que asiente la anterior) — antes, a partir de la segunda vez, la rayita dejaba de arquear y volvía a cruzar el + en línea recta; una clase se quedaba pegada de un salto a otro y desordenaba cuál llevaba el arco de verdad.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
     ]},
     /* TANDA AÑADIDA 2026-08-03 (petición suya: «cuando deslices de arriba a abajo se pase a

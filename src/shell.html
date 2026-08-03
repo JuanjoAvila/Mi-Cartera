@@ -477,6 +477,17 @@
        de golpe se sentía «brusco» (feedback 2026-07-18). Ahora se desliza y desvanece con calma. */
     transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .4s ease;will-change:transform,opacity;}
   .botnav.botnav-hidden{transform:translateY(120%);opacity:0;pointer-events:none;}
+  /* ESCONDIDO RÁPIDO (2026-08-03, bug «rebote raro»/«se queda atascado»): cuando el motivo de
+     esconder la barra es «hemos llegado al final de la lista» (no un scroll normal hacia abajo),
+     la barra tiene que APARTARSE YA, no con la calma de 0,55 s de más arriba. El rebote NATIVO (la
+     "ola") empieza a la vez y tarda ~0,2-0,3 s en asentarse — mucho menos que la barra. Con la
+     misma duración de siempre, la barra se ve deslizándose/desvaneciéndose TODAVÍA por encima de
+     la ola mientras esta ya está en marcha: dos animaciones a ritmos distintos compitiendo por el
+     mismo trozo de pantalla, que es justo lo que él describió («se queda atascado un momento y
+     luego sí que hace la ola, pero es muy raro»). Misma transform/opacity de destino que
+     `.botnav-hidden` (no cambia el diseño, solo cuánto tarda en llegar); el escondido por scroll
+     normal (bajar leyendo la lista) sigue con su calma de siempre — eso nunca fue el problema. */
+  .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1),opacity .12s ease;}
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
