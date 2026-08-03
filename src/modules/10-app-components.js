@@ -257,7 +257,23 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   const [sel,setSel]=useState({});       // índice -> bool
   const [dest,setDest]=useState({});     // índice -> "gasto"|"recibo"|"ingreso"
   const [dupRecibo,setDupRecibo]=useState({});   // índice -> true (misma factura, otro mes del histórico)
+  const [dupExist,setDupExist]=useState({});     // índice -> el gasto/ingreso YA guardado con el que coincide
   const [importing,setImporting]=useState(false);
+  /* FILTROS (rediseño 3/8, petición suya: «me parece anticuada comparada con el import de Excel»,
+     más un bug real que reportó: «seleccioné Trade Republic y salían también movimientos de Banco
+     Sabadell»). Investigado: esta pantalla NUNCA tuvo filtro de banco — se buscaba y se importaba
+     SIEMPRE de todos los bancos de `allowList` a la vez (Trade Republic incluido desde que admite
+     Open Banking solo para sus movimientos), sin forma de acotar a uno. `bankFilter` vacío = todos
+     (mismo patrón que el filtro de banco de la pestaña Gastos); con bancos dentro, solo esos se ven
+     Y SE IMPORTAN — el filtro no es cosmético: `doImport` recorre `visible`, nunca `cands` entero,
+     así que un banco fuera del filtro no puede colarse en el alta aunque su fila siguiera marcada
+     por debajo (para combinar selecciones de varios filtros en una sola importación, basta volver
+     a «Todos los bancos» antes de pulsar Importar: los `sel` de cada fila se conservan siempre,
+     solo cambia qué se VE y qué CUENTA en cada momento). */
+  const [bankFilter,setBankFilter]=useState([]);
+  const [tipoFilter,setTipoFilter]=useState("all");   // "all" | "gasto" | "ingreso"
+  const [mesFilter,setMesFilter]=useState("all");     // "all" | "YYYY-MM"
+  const [revelado,setRevelado]=useState(0);           // filas ya "entradas" (animación, como el import de Excel)
   useBackClose(true, onClose);
   const kOf=function(dt,am,mc){ return String(dt).slice(0,10)+"|"+am+"|"+(mc||""); };
   const defDest=function(x){
@@ -268,11 +284,14 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   const search=function(){
     if(!allowList.length){ showToast(t("bp_hist_nodaily")); return; }
     setLoading(true); setCands(null);
+    setBankFilter([]); setTipoFilter("all"); setMesFilter("all"); setRevelado(0);
     const d=new Date(); d.setMonth(d.getMonth()-months); const dateFrom=d.toISOString().slice(0,10);
     cloud.bankSyncHistory(dateFrom).then(function(res){
       const links=(res&&res.links)||[];
+      // Dedup CIERTO por ext_id: el mismo apunte que el sync diario ya trajo solo. No hay
+      // ambigüedad —es literalmente el mismo movimiento del banco— así que se descarta aquí, en
+      // silencio: enseñarlo solo ensuciaría la lista con lo que ya entró cada día sin que hiciera falta.
       const seen={}; (state.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
-      const keys={}; (state.expenses||[]).forEach(function(e){ keys[kOf(e.date,e.amount,e.merchant)]=1; });
       const fixNames={}; (state.fixed||[]).forEach(function(f){ fixNames[(f.name||"").toLowerCase()+"|"+(f.amount||0)+"|"+(f.account||"")]=1; });
       const out=[], uniq={};
       links.forEach(function(lk){
@@ -284,8 +303,6 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
             const isIn=am<0;
             const abs=Math.abs(am);
             if(tx.ext_id && seen[tx.ext_id]) return;
-            if(!isIn && keys[kOf(dt,abs,tx.merchant)]) return;
-            if(isIn && keys[kOf(dt,-abs,tx.merchant)]) return;
             const k=(tx.ext_id||"")+"|"+(isIn?"in":"out")+"|"+kOf(dt,abs,tx.merchant); if(uniq[k]) return; uniq[k]=1;
             out.push({ id:tx.ext_id||null, date:dt, amount:abs, merchant:tx.merchant||(isIn?t("cat_ingreso"):"Compra"), note:tx.note||"", card:!!tx.card, ent:ent, kind:isIn?"in":"out" });
           });
@@ -298,11 +315,18 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
       // cobran los 3 cada mes para siempre. Ver dedupeHistRecibos (08-motor-bank.js).
       const dup=dedupeHistRecibos(out);
       setDupRecibo(dup);
+      // Duplicados contra lo que YA TIENES guardado (2026-08-03, mismo criterio y misma idea de UI
+      // que el import de Excel): antes esto se descartaba en silencio con una clave sin normalizar
+      // el comercio — ahora la fila se queda en la lista, tachada, para COMPARAR en vez de
+      // desaparecer sin explicación. Ver histCandExisting (08-motor-bank.js).
+      const dExist=histCandExisting(out, state.expenses||[]);
+      setDupExist(dExist);
       const s0={}, d0={};
       out.forEach(function(x,i){
         d0[i]=defDest(x);
         // Pre-marca: tarjeta/ingreso sí; recibo (no tarjeta) también — es lo que evita teclear fijos.
         s0[i]=true;
+        if(dExist[i]) s0[i]=false;      // ya está guardado con ese mismo día/importe/comercio
         if(d0[i]==="recibo"){
           const fk=(x.merchant||"").toLowerCase()+"|"+x.amount+"|"+x.ent;
           if(fixNames[fk]) s0[i]=false;   // ya tienes ese fijo
@@ -314,12 +338,46 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   };
   const toggle=function(i){ setSel(function(p){ const n=Object.assign({},p); n[i]=!n[i]; return n; }); };
   const setDestI=function(i,d){ setDest(function(p){ const n=Object.assign({},p); n[i]=d; return n; }); setSel(function(p){ const n=Object.assign({},p); n[i]=true; return n; }); };
-  const selCount=cands? cands.filter(function(x,i){ return sel[i]; }).length : 0;
+  const toggleBankFilter=function(ent){
+    setBankFilter(function(p){ const i=p.indexOf(ent); if(i>=0) return p.filter(function(e){ return e!==ent; }); return p.concat([ent]); });
+  };
+  // Meses realmente presentes en el lote (no `months`): si el banco solo dio 47 días de verdad, un
+  // filtro de mes que saliera vacío no serviría de nada.
+  const monthsPresent=(function(){
+    const vistos={}; const out=[];
+    (cands||[]).forEach(function(x){ const k=x.date.slice(0,7); if(!vistos[k]){ vistos[k]=1; out.push(k); } });
+    return out.sort().reverse();
+  })();
+  const monthLbl=function(k){ const p=k.split("-"); return monthShort(parseInt(p[1],10)-1)+" "+p[0]; };
+  const passFilter=function(x){
+    if(bankFilter.length && bankFilter.indexOf(x.ent)<0) return false;
+    if(tipoFilter==="gasto" && x.kind==="in") return false;
+    if(tipoFilter==="ingreso" && x.kind!=="in") return false;
+    if(mesFilter!=="all" && x.date.slice(0,7)!==mesFilter) return false;
+    return true;
+  };
+  // Lo que se VE es lo que se IMPORTA: `visible` (no `cands`) manda tanto en el contador como en
+  // `doImport`. Es la garantía de que el filtro de banco arregla de raíz el bug que reportó.
+  const visible=cands? cands.map(function(x,i){ return {x:x,i:i}; }).filter(function(o){ return passFilter(o.x); }) : [];
+  const selCount=visible.filter(function(o){ return sel[o.i]; }).length;
+  const repCount=visible.filter(function(o){ return dupRecibo[o.i]||dupExist[o.i]; }).length;
+  const nuevosCount=visible.length-repCount;
+  // Las filas entran contando, una detrás de otra — mismo efecto que el import de Excel (petición
+  // suya 2026-07-28, aplicada aquí también por consistencia). El tope evita una espera eterna si
+  // el histórico trae decenas de movimientos: pasado el tope, el resto aparece de golpe al acabar.
+  useEffect(function(){
+    if(!cands) return undefined;
+    const tope=Math.min(24, cands.length);
+    if(revelado>=tope) return undefined;
+    const tm=setTimeout(function(){ setRevelado(function(n){ return n+1; }); }, revelado===0?90:34);
+    return function(){ clearTimeout(tm); };
+  },[cands,revelado]);
   const doImport=function(){
     if(!cands || !selCount) return;
     setImporting(true);
     const expAdds=[], fixAdds=[];
-    cands.forEach(function(x,i){
+    visible.forEach(function(o){
+      const i=o.i, x=o.x;
       if(!sel[i]) return;
       const d=dest[i]||defDest(x);
       if(d==="recibo"){
@@ -363,7 +421,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
     return React.createElement("button",{key:id,type:"button",onClick:function(e){ e.stopPropagation(); setDestI(i,id); },
       style:{padding:"4px 9px",borderRadius:999,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"rgba(95,208,138,.18)":"transparent",color:on?"var(--mint)":"var(--muted)",fontWeight:800,fontSize:11,cursor:"pointer"}}, label);
   };
-  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+  return React.createElement("div",{style:wrap,className:"hist-import"}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("bp_close")),
     React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px"}}, t("bp_hist_title")),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}},
@@ -373,17 +431,58 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
       React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:800,fontSize:14,cursor:"pointer"},disabled:loading,onClick:search}, loading?t("bp_hist_searching"):t("bp_hist_search")),
       cands!==null && cands.length===0 && !loading && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,textAlign:"center",padding:"20px 0"}}, t("bp_hist_none")),
       cands!==null && cands.length>0 && React.createElement("div",{style:{marginTop:14}},
-        React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginBottom:8}}, tf("bp_hist_found",{n:cands.length})),
-        cands.map(function(x,i){
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginBottom:8}}, tf("bp_hist_found",{n:visible.length})),
+        /* FILTROS: banco (solo si hay más de uno entre los que se buscó — con uno solo no aporta
+           nada elegirlo), tipo (gasto/ingreso) y mes (solo si el lote trae más de uno). Mismo
+           patrón visual `.v4-chip`/`.v4-chips` que el resto de la app (Gastos ya filtra así por
+           banco/categoría) — coherencia en vez de reinventar un control nuevo para esta pantalla. */
+        allowList.length>1 && React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(bankFilter.length===0?" on":""),onClick:function(){ setBankFilter([]); }}, t("g_allbanks")),
+          allowList.map(function(ent){
+            const on=bankFilter.indexOf(ent)>=0;
+            return React.createElement("button",{key:ent,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBankFilter(ent); }}, entOf(ent).label);
+          })
+        ),
+        React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          [["all",t("bp_hist_f_all")],["gasto",t("bp_hist_f_gastos")],["ingreso",t("bp_hist_f_ingresos")]].map(function(o){
+            const on=tipoFilter===o[0];
+            return React.createElement("button",{key:o[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ setTipoFilter(o[0]); }}, o[1]);
+          })
+        ),
+        monthsPresent.length>1 && React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(mesFilter==="all"?" on":""),onClick:function(){ setMesFilter("all"); }}, t("bp_hist_f_allmonths")),
+          monthsPresent.map(function(k){
+            const on=mesFilter===k;
+            return React.createElement("button",{key:k,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ setMesFilter(k); }}, monthLbl(k));
+          })
+        ),
+        /* Marcador nuevos/repetidos, mismas clases `.hoja-marc*` que el import de Excel (2026-07-28):
+           de un vistazo, cuánto de lo que ves es de verdad nuevo y cuánto ya lo tenías apuntado. */
+        React.createElement("div",{className:"hoja-marc",style:{marginTop:4}},
+          React.createElement("div",{className:"hoja-marc-c hoja-marc-ok"},
+            React.createElement("b",null, String(nuevosCount)),
+            React.createElement("span",null, t("bp_hist_nuevos"))),
+          repCount>0 && React.createElement("div",{className:"hoja-marc-c hoja-marc-dup"},
+            React.createElement("b",null, String(repCount)),
+            React.createElement("span",null, t("bp_hist_repes")))
+        ),
+        visible.length===0
+          ? React.createElement("div",{style:{color:"var(--muted)",fontSize:13,textAlign:"center",padding:"16px 0"}}, t("bp_hist_nofilter"))
+          : React.createElement(React.Fragment,null,
+          visible.map(function(o,vi){
+          const i=o.i, x=o.x;
           const on=!!sel[i];
           const isIn=x.kind==="in";
-          return React.createElement("div",{key:i,style:{border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)14":"var(--surface)",borderRadius:12,marginBottom:7,padding:"10px 12px"}},
+          const isDup=!!(dupRecibo[i]||dupExist[i]);
+          const dentro=vi<revelado;
+          return React.createElement("div",{key:i,className:"hist-fila"+(dentro?" dentro":""),style:{border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)14":"var(--surface)",borderRadius:12,marginBottom:7,padding:"10px 12px"}},
             React.createElement("button",{type:"button",onClick:function(){ toggle(i); },style:{display:"flex",alignItems:"center",gap:11,width:"100%",background:"none",border:"none",color:"inherit",cursor:"pointer",textAlign:"left",padding:0}},
               React.createElement("span",{style:{width:20,height:20,borderRadius:6,border:"2px solid "+(on?"var(--mint)":"var(--muted-2)"),background:on?"var(--mint)":"transparent",color:"#06120C",fontWeight:900,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, on?"✓":""),
               React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, x.merchant),
+                React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",textDecoration:(!on&&isDup)?"line-through":"none",color:(!on&&isDup)?"var(--muted-2)":undefined}}, x.merchant),
                 React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, " · ", entOf(x.ent).label, isIn?"":(x.card?"":" · "+t("bp_hist_notcard"))),
-                !!dupRecibo[i] && React.createElement("div",{style:{fontSize:11,color:"var(--mint)",marginTop:1}}, "↺ "+t("bp_hist_dup"))),
+                dupRecibo[i] ? React.createElement("div",{style:{fontSize:11,color:"var(--mint)",marginTop:1}}, "↺ "+t("bp_hist_dup"))
+                  : (dupExist[i] ? React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, "🗐 "+t("bp_hist_dupexist")) : null)),
               React.createElement("span",{style:{fontWeight:800,fontSize:14,flexShrink:0,color:isIn?"var(--mint)":"var(--text)"}}, (isIn?"+":"")+eur(x.amount))
             ),
             on && React.createElement("div",{style:{display:"flex",gap:6,marginTop:8,flexWrap:"wrap",paddingLeft:31}},
@@ -394,6 +493,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
           );
         }),
         React.createElement("button",{style:Object.assign({},bigBtn,{opacity:(selCount&&!importing)?1:0.5}),disabled:!selCount||importing,onClick:doImport}, tf("bp_hist_import",{n:selCount}))
+        )
       )
     )
   ));
@@ -1364,6 +1464,9 @@ var RELEASE_NOTES=[
       "NUEVO: en Gastos, el filtro de banco arranca ya marcado en tu banco de gasto diario en vez de «Todos» — cámbialo a mano si quieres ver todo mezclado.",
       "NUEVO: un ingreso ya se apunta venga de CUALQUIER banco enlazado, no solo el de gasto diario — para que «Mi ciclo» encuentre tu nómina aunque caiga en otra cuenta.",
       "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
+      "Importar histórico: arreglado el bug que reportaste — «seleccioné Trade Republic y salían también movimientos de Banco Sabadell». Ahora hay chips para elegir banco(s), y lo que ves con el filtro puesto es EXACTAMENTE lo que se importa (antes se buscaba y se importaba siempre de todos los bancos a la vez, sin forma de acotar a uno).",
+      "Importar histórico: nuevos filtros de tipo (Gastos/Ingresos) y de mes, para no ver los 3 meses de golpe mezclados.",
+      "Importar histórico: rediseñado con la misma idea que el import de Excel — contador de nuevos/repetidos, filas que entran animadas, y lo que ya tienes guardado (mismo día+importe+comercio) se ve tachado en la lista en vez de desaparecer sin explicación.",
     ]},
     /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
        .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de

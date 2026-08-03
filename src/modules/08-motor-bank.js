@@ -435,6 +435,34 @@ function dedupeHistRecibos(cands){
   return dup;
 }
 
+/* IMPORTAR HISTÓRICO — duplicados contra lo que YA GUARDASTE (2026-08-03, petición suya: que esta
+   pantalla compare como el import de Excel en vez de esconder gastos sin explicar por qué faltan).
+   `dedupeHistRecibos` de arriba compara candidatos ENTRE SÍ (misma factura repetida en 3 meses de
+   extracto); esto compara cada candidato contra `state.expenses`, con el MISMO criterio que usa el
+   import de Excel (`hojaClave`, 15-import-hoja.js): día + importe (con el signo de dentro de la
+   app: gasto positivo, ingreso negativo) + comercio normalizado. El ext_id exacto (mismo apunte
+   literal que ya trajo el sync diario) se sigue filtrando ANTES, en `BankHistoryImport.search()`,
+   en silencio — no hay ambigüedad ahí. Aquí solo entran los que coinciden "por casualidad de
+   datos" sin ext_id, que es donde de verdad hace falta que el usuario VEA la comparación en vez de
+   fiarse de un descarte mudo. */
+function histCandDupKey(dt, amountSigned, merchant){
+  const dia=String(dt||"").slice(0,10);
+  const norm=String(merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+  return dia+"|"+Math.round(amountSigned*100)+"|"+norm;
+}
+function histCandExisting(cands, expenses){
+  const porClave={};
+  (expenses||[]).forEach(function(e){ porClave[histCandDupKey(e.date, e.amount, e.merchant)]=e; });
+  const out={};
+  (cands||[]).forEach(function(x,i){
+    if(!x) return;
+    const signed = x.kind==="in" ? -Math.abs(x.amount) : Math.abs(x.amount);
+    const found=porClave[histCandDupKey(x.date, signed, x.merchant)];
+    if(found) out[i]=found;
+  });
+  return out;
+}
+
 /* Bancos que NO están sirviendo datos, con el motivo, para el banner «Reconectar» y la noti.
 
    Antes solo se listaban los `expired`. Se quedaban fuera los enlaces rotos sin cuentas

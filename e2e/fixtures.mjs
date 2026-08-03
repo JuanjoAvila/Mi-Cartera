@@ -9,6 +9,13 @@ export async function seedLoggedInDashboard(page, overrides = {}) {
     // y se saca antes de mezclarlo para no sembrarlo como si fuera un campo de la cartera.
     const cloudRows = overrides.__cloudRows || {};
     delete overrides.__cloudRows;
+    // Respuestas de `supabase.functions.invoke(nombre, …)` por nombre de función Edge (p.ej.
+    // "bank-sync", que sirve tanto el sync diario como el histórico). Solo datos JSON —nada de
+    // funciones— porque `overrides` viaja serializado a `page.addInitScript`. Sin entrada para
+    // ese nombre, se mantiene la respuesta genérica de siempre (compatibilidad con los tests que
+    // ya había, que no miran el resultado de ninguna función).
+    const cloudFns = overrides.__cloudFns || {};
+    delete overrides.__cloudFns;
     const mockClient = () => {
       let tabla = "";
       const chain = {
@@ -34,7 +41,7 @@ export async function seedLoggedInDashboard(page, overrides = {}) {
           signOut: async () => {},
         },
         from: (t) => { tabla = t; return chain; },
-        functions: { invoke: async () => ({ data: {}, error: null }) },
+        functions: { invoke: async (nombre) => cloudFns[nombre] || { data: {}, error: null } },
       };
     };
 
