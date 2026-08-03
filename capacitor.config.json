@@ -2,6 +2,7 @@
   "appId": "com.micartera.app",
   "appName": "Mi Cartera",
   "webDir": "www",
+  "backgroundColor": "#0A1310",
   "server": {
     "androidScheme": "https"
   },

@@ -4,4 +4,8 @@
     <color name="colorPrimaryDark">#0A1310</color>
     <color name="colorAccent">#5FD08A</color>
     <color name="status_bar_bg">#0A1310</color>
+    <!-- Mismo verde que la variable CSS "sur" (tarjeta de .mcl-mark): fondo del icono del splash
+         del sistema, que por defecto solo enseña la capa "foreground" del icono (el trazo, SIN la
+         tarjeta redondeada) — sin esto se ve un icono suelto sobre un color plano, "pelado". -->
+    <color name="mcSplashCard">#14261E</color>
 </resources>

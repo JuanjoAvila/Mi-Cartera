@@ -12,7 +12,13 @@
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">@null</item>
+        <!-- ⚠ ERA `android:background`@null (2026-08-03, fogonazo NEGRO cazado en vídeo real entre
+             el splash del sistema y el de la web). Ese atributo no es el que pinta el fondo de
+             VENTANA — el correcto es `android:windowBackground`; con @null, en el hueco entre que
+             se retira el splash y que la WebView pinta su primer frame (el CSS del que habla el
+             comentario de abajo) no hay NADA detrás, sale negro puro del sistema. Con un color aquí
+             (el mismo fondo que la web) ese hueco, si lo hay, se ve del color correcto en vez de negro. -->
+        <item name="android:windowBackground">@color/colorPrimary</item>
         <!-- Edge-to-edge: la WebView pinta bajo status/nav; el color lo pone el CSS (bg + safe-area). -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -38,8 +44,29 @@
              `android:background` se queda como red de seguridad para el Android<12 que sirve el
              `minSdkVersion` (23): ahí SÍ se sigue leyendo (comportamiento clásico de windowBackground). -->
         <item name="android:background">@drawable/splash</item>
+        <!-- ⚠⚠ EL FOGONAZO NEGRO ERA ESTO (2026-08-03, encontrado tras el vídeo real). MainActivity
+             NUNCA cambia de tema — no hay `setTheme()` ni `postSplashScreenTheme` en ningún sitio —
+             así que este es el ÚNICO tema que aplica durante TODO el arranque, también DESPUÉS de
+             que se retire la vista del splash. `windowSplashScreenBackground` solo pinta mientras esa
+             vista especial existe; en cuanto se quita (nuestro `setOnExitAnimationListener` la quita
+             al instante), lo que queda visible es el fondo de VENTANA normal — y aquí no había
+             ninguno (`android:background` es un atributo legado que Android 12+ no usa para esto).
+             Poniendo `android:windowBackground` aquí, el hueco entre que se va el splash y que la
+             WebView pinta se ve del color correcto, no negro. (El intento anterior de arreglarlo en
+             `AppTheme.NoActionBar` no hacía nada: ese tema nunca se llega a aplicar.) -->
+        <item name="android:windowBackground">@color/colorPrimary</item>
         <item name="windowSplashScreenBackground">@color/colorPrimary</item>
+        <!-- El icono real de la app (ic_launcher_foreground) YA ES esta misma tarjeta+cartera
+             menta — mismo dibujo que `.mcl-mark` en el splash web. Se intentó sustituirlo por un
+             AnimatedVectorDrawable propio (seis variantes, 2026-08-02) para ver si Android lo
+             enseñaba más pequeño/con texto: el sistema lo ignoró las seis veces y siguió mostrando
+             este mismo icono. Como de todas formas es nuestra marca, se deja el de verdad. -->
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <!-- Sin esto, este slot SOLO enseña la capa "foreground" del icono adaptativo (el trazo
+             verde, sin la tarjeta redondeada de fondo que sí lleva el icono compuesto del launcher)
+             — "el logo soso", su descripción exacta viendo el vídeo. Con el mismo verde de la
+             tarjeta web detrás, el icono del sistema deja de verse pelado. -->
+        <item name="windowSplashScreenIconBackgroundColor">@color/mcSplashCard</item>
         <!-- Sigue siendo una mitigación honesta, no una garantía, para el resto de lo reportado:
              el atenuado al REANUDAR desde el multitarea (no al ARRANCAR en frío) puede seguir
              siendo la animación propia del selector de apps de MIUI/HyperOS, ajena a esta app. -->

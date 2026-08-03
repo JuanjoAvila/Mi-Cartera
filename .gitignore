@@ -40,3 +40,6 @@ test-results/
 *.mp4
 *.mov
 *.webm
+# Scratch de depuración nativa local (logcat, capturas sueltas de adb screencap, fotogramas
+# extraídos con ffmpeg) — herramientas de sesión, no artefactos del repo.
+/.gradle-local/
