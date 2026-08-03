@@ -1033,6 +1033,26 @@ function FeedbackPanel({state, set, showToast, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.12.4", d:"3 ago 2026",
+   t:{es:"Trae tus gastos desde un Excel",
+      en:"Bring your expenses in from a spreadsheet",
+      ca:"Porta les teves despeses des d'un Excel"},
+   items:{
+   es:[
+    "📗 ¿Llevas tus gastos en un Excel? Ahora se pueden traer a la app: Ajustes → Copia de seguridad → «Importar una hoja de gastos». Vale un Excel o un CSV, da igual cómo se llamen tus columnas.",
+    "🔍 Te propongo qué es cada columna y lo corriges si me equivoco. Antes de guardar nada ves exactamente lo que va a entrar.",
+    "♻️ Lo repetido se descarta solo: si un gasto ya lo tenías apuntado, no entra dos veces. Se te enseña cuántos entran y cuántos se quedan fuera.",
+   ],
+   en:[
+    "📗 Keeping your expenses in a spreadsheet? You can now bring them in: Settings → Backup → «Import an expenses sheet». Excel or CSV both work, whatever your columns are called.",
+    "🔍 I guess what each column is and you fix me if I am wrong. Before anything is saved you see exactly what is coming in.",
+    "♻️ Duplicates are dropped on their own: an expense you already had does not go in twice. You are shown how many come in and how many stay out.",
+   ],
+   ca:[
+    "📗 Portes les teves despeses en un Excel? Ara es poden portar a l'app: Ajustos → Còpia de seguretat → «Importar un full de despeses». Serveix un Excel o un CSV, tant se val com es diguin les teves columnes.",
+    "🔍 Et proposo què és cada columna i ho corregeixes si m'equivoco. Abans de desar res veus exactament el que entrarà.",
+    "♻️ El repetit es descarta sol: si una despesa ja la tenies apuntada, no entra dues vegades. Se t'ensenya quantes entren i quantes es queden fora.",
+   ]}},
   {v:"4.12.3", d:"1 ago 2026",
    t:{es:"Un arranque más limpio, y tu dinero subiendo hasta la cifra otra vez",
       en:"A cleaner start-up, and your money counting up again",
@@ -1600,13 +1620,14 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks, goBanksFocus}){
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks, goBanksFocus, goGastos}){
   const [budget,setBudget]=useState(String(state.budget||0));
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
   const [privOpen,setPrivOpen]=useState(false);    // política de privacidad DENTRO de la app (no _blank)
   const [sharedOpen,setSharedOpen]=useState(false);// Hogar + gastos compartidos (sin tab propia en v4)
   const [fbOpen,setFbOpen]=useState(false);        // sugerencias (mudadas fuera de Novedades, 2026-07-18)
+  const [hojaOpen,setHojaOpen]=useState(false);    // importar una hoja de gastos (Excel/CSV), 2026-07-28
   const [bioOn,setBioOn]=useState(bio.enabled());  // candado con huella (volvió a Ajustes, 2026-07-18)
   const toggleBio=function(){
     if(bioOn){ bio.disable(); setBioOn(false); showToast(t("au_bio_dis")); return; }
@@ -2062,10 +2083,12 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
-    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar",null,
+    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar hoja excel csv gastos",null,
       row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
-      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); })
+      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); }),
+      row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); })
     ),
+    hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHojaOpen(false); },goGastos:goGastos}), document.body),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
       // Huella y cerrar sesión volvieron aquí (2026-07-18): con el rediseño solo existían

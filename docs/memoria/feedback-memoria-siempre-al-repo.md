@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 88b46dc0-6f86-43d6-b0f3-4bda81906a3c
-  modified: 2026-07-26T19:31:26.574Z
+  modified: 2026-08-01T08:22:23.913Z
 ---
 
 **Nada que necesite una sesión para no meter la pata puede vivir SOLO en mi memoria local.** Todo
@@ -26,6 +26,13 @@ frío.
 **How to apply:**
 - `npm run memoria` tras escribir memoria. `npm test` lo vigila (paso `memoria-espejo`), y en una
   máquina sin memoria local (el CI) sale en verde sin hacer nada.
+- ⚠⚠ **EL ESPEJO VA EN UN SOLO SENTIDO Y EL MÓVIL ESCRIBE EN EL ESPEJO** (2026-08-01). El Claude
+  del móvil no puede tocar esta carpeta —vive en el PC—, así que escribe directo en
+  `docs/memoria/*.md`, el fichero que dice «NO EDITAR A MANO». Si al volver al PC lanzas
+  `npm run memoria` sin mirar, **le pisas todo lo que aprendió**. Antes de sincronizar:
+  `npm run memoria -- --check`, y si sale desfasado, **lee el diff del espejo y trae a mano lo que
+  falte aquí** — luego ya sincronizas. Pasó de verdad: tres bloques de la 4.13.0 (las tandas, el
+  «52» del canal, lo hecho de la review externa) solo existían en el espejo.
 - ⚠ **El repo es PÚBLICO**: `scripts/sync-memoria.mjs` tacha IBAN, correos, teléfonos y rutas de
   Windows, y **aborta sin escribir** si algo sensible sobrevive al filtro. Había un IBAN real en
   [[mi-cartera-escalado]]. Tipo de dato nuevo → filtro nuevo.

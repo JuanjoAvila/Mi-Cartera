@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.12.4] — 2026-08-03
+### Importar una hoja de gastos (Excel/CSV), separado del resto de la 4.13.0 en curso
+
+Misma receta que la 4.12.2 (arranque): la tanda `import` de la 4.13.0 —aprobada por él en el móvil,
+6/6 ok, sin fallos— se saca a mano de entre los commits mezclados de `beta` (import + gestos +
+bancos juntos) y se aplica sola sobre `main`, sin arrastrar `gestos` ni `bancos`, que siguen
+rechazadas y en beta.
+
+Trae: Ajustes → Copia de seguridad → «Importar una hoja de gastos» (Excel .xlsx o CSV, detecta
+columnas solo y las corriges si se equivoca, previsualización con reparto nuevos/repetidos antes de
+guardar, deduplicado contra el histórico y dentro del propio fichero). El lector de .xlsx es propio
+(sin librería: un .xlsx es un zip, se lee el directorio central a mano y se descomprime con
+`DecompressionStream`), para no crecer el bundle.
+
 ## [4.12.3] — 2026-08-01
 ### Mantenimiento: el guardián de versión atrapó su propio efecto secundario
 

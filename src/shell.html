@@ -346,6 +346,49 @@
   html[data-season="invierno"]{--season-tinte:#7FB5E8;}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;}
   @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
+
+  /* ===== Importar una hoja de gastos (Excel/CSV) ===== */
+  .hoja-pasos{margin:0 0 18px;padding-left:20px;color:var(--muted);font-size:13.5px;line-height:1.6;}
+  .hoja-pasos li{margin-bottom:7px;}
+  .hoja-err{background:color-mix(in srgb, var(--coral) 14%, transparent);border:1px solid var(--coral);
+    color:var(--text);border-radius:14px;padding:11px 13px;font-size:13px;line-height:1.5;margin-bottom:14px;}
+  .hoja-map{margin-bottom:13px;}
+  .hoja-map-lbl{font-size:12.5px;font-weight:800;color:var(--muted);margin-bottom:5px;}
+  .hoja-req{color:var(--coral);}
+  .hoja-sel{width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--line);
+    border-radius:12px;padding:11px 12px;font-size:14px;font-family:'Manrope',sans-serif;}
+  /* El marcador del reparto: los dos números que resumen todo el import de un vistazo. */
+  .hoja-marc{display:flex;gap:10px;margin-bottom:14px;}
+  .hoja-marc-c{flex:1;border-radius:18px;padding:14px 12px;text-align:center;border:1px solid var(--line-soft);background:var(--sur);}
+  .hoja-marc-c b{display:block;font-family:'Fraunces',Georgia,serif;font-size:34px;font-weight:550;line-height:1.1;font-variant-numeric:tabular-nums;}
+  .hoja-marc-c span{display:block;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted-2);margin-top:3px;}
+  .hoja-marc-ok{border-color:var(--mint-dim);} .hoja-marc-ok b{color:var(--mint);}
+  .hoja-marc-dup b{color:var(--muted-2);}
+  /* LAS FILAS ENTRAN CONTANDO, UNA DETRÁS DE OTRA (petición suya 2026-07-28: «que si pillara
+     alguna cosa duplicada que dijera de forma guapa con alguna animación o algo el descarte y lo
+     que se queda»). Las que entran llegan desde la derecha y en verde; las repetidas se quedan
+     apagadas y tachadas, que es lo que se hace con lo que se descarta. El retraso lo lleva el
+     JS —una por tick— porque así el conteo se ve aunque la lista sea larga. */
+  .hoja-fila{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:14px;margin-bottom:7px;
+    border:1px solid var(--line-soft);background:var(--sur);font-size:13.5px;
+    opacity:0;transform:translateX(14px);}
+  .hoja-fila.dentro{animation:hojaentra .34s cubic-bezier(.32,.72,0,1) both;}
+  @keyframes hojaentra{from{opacity:0;transform:translateX(14px);}to{opacity:1;transform:none;}}
+  .hoja-fila-ic{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;}
+  .hoja-fila-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .hoja-fila-eu{flex:0 0 auto;font-weight:800;font-variant-numeric:tabular-nums;}
+  .hoja-fila-ok{border-color:var(--mint-dim);}
+  .hoja-fila-ok .hoja-fila-ic{background:var(--mint);color:var(--on-mint);}
+  .hoja-fila-dup{opacity:0;}
+  .hoja-fila-dup.dentro{animation:hojaentra .34s cubic-bezier(.32,.72,0,1) both;}
+  .hoja-fila-dup .hoja-fila-ic{background:var(--surface-2);color:var(--muted-2);}
+  .hoja-fila-dup .hoja-fila-tx,.hoja-fila-dup .hoja-fila-eu{color:var(--muted-2);text-decoration:line-through;}
+  .hoja-fin{text-align:center;padding:26px 0 10px;}
+  .hoja-fin-ic{font-size:46px;line-height:1;margin-bottom:12px;animation:mclpop .5s cubic-bezier(.32,.72,0,1) both;}
+  @media (prefers-reduced-motion:reduce){
+    .hoja-fila,.hoja-fila.dentro,.hoja-fila-dup,.hoja-fila-dup.dentro{opacity:1;transform:none;animation:none !important;}
+    .hoja-fin-ic{animation:none !important;}
+  }
   /* Ayuda contextual "?" */
   .helpq{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
   .helpq:active{color:var(--mint);border-color:var(--mint-dim);}

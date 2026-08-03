@@ -44,6 +44,7 @@ function App(){
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
   const [gotoExp,setGotoExp]=useState(null);               // punto 5: gasto a enfocar al tocar la noti ({amount,merchant,ts})
   const [planGoto,setPlanGoto]=useState(null);             // segmento de Plan a forzar desde «Ver plan» ({id,ts})
+  const [gastosForceAll,setGastosForceAll]=useState(0);    // tras importar una hoja: salta a "Todo" en Gastos
   const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
   const [toast,setToast]=useState(null);
   const [syncing,setSyncing]=useState(false);
@@ -2278,7 +2279,7 @@ function App(){
       onGoPlan:function(seg){ if(seg) setPlanGoto({id:seg,ts:Date.now()}); const i=tabIds.indexOf("plan"); if(i>=0) goTabTop(i); }});
     // Sin prop `active`: ver `mcOnGastosActive` — si viaja por props, entrar en Gastos
     // reconstruye el árbol entero encima del gesto (asimetría Deudas→Gastos vs →Cartera).
-    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); }});
+    if(id==="gastos") return React.createElement(Expenses,{state:state,set:set,onSync:onSync,syncing:syncing,syncStatus:syncStatus,showToast:showToast,stopSwipe:stopSwipe,cancelSwipe:cancelSwipe,focusExp:gotoExp,clearFocus:function(){ setGotoExp(null); },forceAllTs:gastosForceAll});
     if(id==="plan") return React.createElement(PlanTab,{state:state,set:set,totals:totals,showToast:showToast,simple:simple,gotoSeg:planGoto,clearGoto:function(){ setPlanGoto(null); }});
     // El «Sincronizar» de Cartera actualiza TODO lo conectado: Open Banking + TR + MyInvestor
     // (petición 2026-07-18: «que también sincronice Trade Republic y MyInvestor»).
@@ -2441,7 +2442,7 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus,goGastos:function(){ setDrawerOpen(false); setGastosForceAll(Date.now()); const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     /* Los gestos NO van por props de React (ver el efecto `profileOpen` de arriba): React registra

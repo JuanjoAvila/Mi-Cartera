@@ -136,6 +136,13 @@ const MERCHANT_OVERRIDES = {};
 // Overrides PERSONALES del usuario (comercio→categoría), que aprende al recategorizar a mano.
 // Se puebla desde state.catOverrides al cargar. Tiene prioridad sobre las keywords.
 let USER_OVERRIDES = {};
+/* EL VOCABULARIO CERRADO DE LAS MÉTRICAS DE USO (ver `cloud.logUso`, más abajo).
+   Todo lo que se puede medir está en esta lista y en ningún otro sitio. Es a propósito: con una
+   etiqueta libre, el primer `logUso("gasto en "+comercio)` que alguien escriba con buena
+   intención se lleva el nombre de una tienda a una tabla de la nube, y esto es una app de
+   finanzas de una familia. Añadir una métrica es añadir una línea AQUÍ, donde se ve en el diff y
+   se puede discutir antes de que viaje nada. */
+const USO_OK=["import_hoja"];
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
 const KW = {
   // "pan" y "cine" ANTES que "bares": panadería/pastelería y Kinepolis no deben caer en bares.
@@ -650,6 +657,26 @@ const cloud = (function(){
         });
       }catch(e){}
     },
+    /* MÉTRICAS DE USO — qué se usa de verdad, NUNCA quién ni con cuánto dinero.
+       LO QUE SE MANDA es una etiqueta de un vocabulario CERRADO (`USO_OK`) y nada más. Ni el
+       importe, ni el comercio, ni el banco, ni el texto que haya escrito. Si mañana alguien
+       quiere medir algo nuevo, tiene que añadir su etiqueta a `USO_OK` — que es exactamente la
+       puerta que se quiere: se ve en el diff y se puede discutir. Un `logEvent('use', loQueSea)`
+       libre acabaría llevándose el nombre de un comercio a la primera de cambio.
+
+       Comparte el tope de 20/sesión y el dedupe de `logEvent`. */
+    logUso(que){
+      if(USO_OK.indexOf(que)<0) return;   // vocabulario cerrado: lo que no está, no viaja
+      return this.logEvent('use', que);
+    },
+    /* Cuánto tardan las cosas que Supabase NO puede ver porque pasan en el móvil (un import, una
+       sincronización). Se redondea a medio segundo: menos precisión es menos huella. */
+    logPerf(que, ms){
+      if(USO_OK.indexOf(que)<0) return;
+      const s=Math.round(Number(ms||0)/500)/2;
+      if(!isFinite(s)||s<0) return;
+      return this.logEvent('perf', que+" "+s.toFixed(1)+"s");
+    },
     // Sugerencias/errores del popup de Novedades → app_events con kind 'feedback'.
     // A diferencia de logEvent, NO comparte el tope de 20/sesión ni el dedupe (un feedback
     // no puede perderse en silencio) y FALLA visible (el caller avisa si no se pudo enviar).
@@ -791,7 +818,7 @@ const cloud = (function(){
 const CLOUD_WRITES=[
   "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
   "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
-  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","feedback","betaReport",
+  "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","logUso","logPerf","feedback","betaReport",
   "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
 ];
 (function(){
