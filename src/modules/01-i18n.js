@@ -842,6 +842,15 @@ Object.assign(LANG.es,{
   coach_patri:["Tu foto completa: cuentas, inversiones y bienes, todo sumado.","Al editar una cuenta, elige su rol: «Recibos» = fijos/cuotas; «Gasto diario» = compras del día a día (solo una); «Todo» = ambas cosas. Si el día a día va con OTRO banco, márcalo en Ajustes → Bancos.","Lo conectado (banco/bróker) se refresca solo; lo manual se edita tocándolo."],
   coach_debt:["El pendiente baja solo cada mes con lo que amortizas; cuando te llegue el saldo real del banco, edítalo y se re-ancla.","💸 «Amortizar» adelanta pago: baja el pendiente y acorta el plazo (misma cuota, menos meses).","💡 En «¿Cuándo amortizar?» pones el interés de la deuda y te digo cuánto ahorras y si te compensa."],
   coach_compartido:["Grupos para gastos a medias (viaje, casa, cena): añade personas y apunta quién pagó qué.","La app calcula el reparto y quién debe a quién."],
+  // Tutorial de gestos, anclado a Ajustes (petición 2026-08-03): la primera vez que se abre el
+  // panel sale desplegado; sigue el mismo mecanismo que TabCoach (coach-card/coach-pill + localStorage).
+  // ⚠ Texto de cierre DISTINTO al de coach_ok/wn_close a propósito: el cajón de Ajustes se
+  // premonta oculto en idle (11-app-main.js) para que el gesto de borde no vea un panel negro
+  // vacío la 1ª vez, así que este botón vive en el DOM (oculto) desde antes de abrir Ajustes. Si
+  // compartiera texto con «¡Entendido!»/«Got it!» (Novedades, TabCoach…), cualquier test que
+  // cierre esos popups con un selector genérico por texto podría toparse con este en su lugar.
+  coach_gestos_title:"Cómo moverte con gestos", coach_gestos_btn:"¿Cómo van los gestos?", coach_gestos_ok:"¡Genial, gracias!",
+  coach_gestos:["👉 Ajustes: desde Inicio, desliza desde el borde izquierdo hacia dentro de la pantalla.","👤 Tu perfil: estando arriba del todo en Inicio, tira hacia abajo.","↔️ Cambiar de pestaña: desliza a los lados entre Inicio, Gastos, Plan y Cartera (o toca los iconos de abajo)."],
 });
 Object.assign(LANG.en,{
   coach_btn:"How does this work?", coach_title:"Tips for “{tab}”", coach_ok:"Got it!",
@@ -854,6 +863,8 @@ Object.assign(LANG.en,{
   coach_patri:["Your full picture: accounts, investments and assets, all added up.","When editing an account, pick its role: “Bills” = fixed/instalments; “Daily spending” = day-to-day (only one); “Everything” = both. If day-to-day is on ANOTHER bank, tick it in Settings → Banks.","Connected stuff (bank/broker) refreshes itself; manual entries are edited by tapping."],
   coach_debt:["The outstanding drops by itself each month by what you amortise; when the bank's real balance arrives, edit it and it re-anchors.","💸 “Pay down” makes an early payment: the balance drops and the term shortens (same instalment, fewer months).","💡 In “When to pay down?” set the debt's interest and I'll tell you what you save and whether it's worth it."],
   coach_compartido:["Groups for shared expenses (trip, house, dinner): add people and log who paid what.","The app works out the split and who owes whom."],
+  coach_gestos_title:"How to move around with gestures", coach_gestos_btn:"How do the gestures work?", coach_gestos_ok:"Nice, thanks!",
+  coach_gestos:["👉 Settings: from Home, swipe in from the left edge of the screen.","👤 Your profile: while at the very top of Home, pull down.","↔️ Switch tabs: swipe sideways between Home, Spending, Plan and Portfolio (or tap the icons below)."],
 });
 Object.assign(LANG.ca,{
   coach_btn:"Com va això?", coach_title:"Trucs de «{tab}»", coach_ok:"Entesos!",
@@ -866,6 +877,8 @@ Object.assign(LANG.ca,{
   coach_patri:["La teva foto completa: comptes, inversions i béns, tot sumat.","En editar un compte, tria el rol: «Rebuts» = fixos/quotes; «Despesa diària» = compres del dia a dia (només un); «Tot» = les dues coses. Si el dia a dia va amb UN ALTRE banc, marca'l a Ajustos → Bancs.","El que està connectat (banc/bròker) es refresca sol; el manual s'edita tocant-lo."],
   coach_debt:["El pendent baixa sol cada mes amb el que amortitzes; quan t'arribi el saldo real del banc, edita'l i es re-ancora.","💸 «Amortitza» avança pagament: baixa el pendent i s'escurça el termini (mateixa quota, menys mesos).","💡 A «Quan amortitzar?» poses l'interès del deute i et dic quant estalvies i si et compensa."],
   coach_compartido:["Grups per a despeses a mitges (viatge, casa, sopar): afegeix persones i apunta qui va pagar què.","L'app calcula el repartiment i qui deu a qui."],
+  coach_gestos_title:"Com moure't amb gestos", coach_gestos_btn:"Com van els gestos?", coach_gestos_ok:"Genial, gràcies!",
+  coach_gestos:["👉 Ajustos: des d'Inici, llisca des de la vora esquerra cap endins de la pantalla.","👤 El teu perfil: estant a dalt de tot a Inici, estira cap avall.","↔️ Canviar de pestanya: llisca als costats entre Inici, Despeses, Pla i Cartera (o toca les icones de sota)."],
 });
 /* Sincronización Trade Republic (beta · nativa en Android) */
 Object.assign(LANG.es,{
