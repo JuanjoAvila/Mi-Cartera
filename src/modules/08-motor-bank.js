@@ -396,9 +396,15 @@ function importObExpenses(s, txs){
     if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
+    // Aporte automático a inversión (2026-08-03): el importe EXACTO que el usuario configuró en
+    // `monthlyInvest` (p.ej. 50€/mes a un fondo) no es un gasto — es dinero que sale del efectivo
+    // camino de la inversión. Solo se reconoce el importe FIJO que él mismo puso (dato conocido, no
+    // una suposición sobre lo que manda el banco, que no manda nada). Round-up/cashback (variables)
+    // siguen entrando como gasto normal — el usuario los pasa a mano a "Inversión" desde la ficha.
+    const esAporteInv = esDiario && daily && daily.monthlyInvest>0 && Math.abs(tx.amount-daily.monthlyInvest)<0.01;
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
       merchant:tx.merchant||"Compra", amount:tx.amount,
-      category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+      category: esAporteInv ? "inversion" : autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
@@ -481,6 +487,47 @@ function applyReserva(state, income, plan, bankEnt){
 // mirando, para que lo apartado se note de verdad en "lo que puedes gastar".
 function reservedSince(state, fromMs){
   return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
+}
+
+/* CATEGORÍA "INVERSIÓN" (2026-08-03): round-up/cashback/aporte automático de un bróker que llega
+   como movimiento REAL de Open Banking — dinero que sale del efectivo pero no es gasto ni ingreso,
+   va a un fondo. Mismo cálculo de "comprar participaciones" que ya usaba `reconcileTR` (01-i18n.js)
+   para su simulación a ciegas, ahora con el importe REAL del banco en vez de estimado. Se llama
+   desde `runBankSync` (11-app-main.js, auto al reconocer el aporte mensual exacto) y desde `setCat`
+   (04-tab-gastos.js, cuando el usuario marca a mano un round-up/cashback como Inversión). Función
+   PURA — no muta `state`. `reverseInvestBuy` deshace exactamente lo que compró esta (con los MISMOS
+   `shares`/`cInv` que devolvió, no recalculados, para no descuadrar si el cambio USD se movió entre medias).*/
+function applyInvestBuy(state, ent, amountEur){
+  if(!(amountEur>0)) return null;
+  const acc=(state.accounts||[]).find(function(a){ return a.ent===ent && a.rewardInv; });
+  if(!acc) return null;
+  const inv=(state.investments||[]).find(function(i){ return i.id===acc.rewardInv; });
+  if(!inv) return null;
+  const cInv = inv.cur==="USD" ? amountEur/(state.fx||1) : amountEur;   // a la moneda de la inversión
+  const boughtShares = (inv.shares>0 && inv.value>0) ? +(cInv/(inv.value/inv.shares)).toFixed(6) : 0;
+  const newInv=Object.assign({},inv,{
+    shares: +(((inv.shares||0)+boughtShares)).toFixed(6),
+    value:  +(((inv.value||0)+cInv)).toFixed(2),
+    cost:   +(((inv.cost||0)+cInv)).toFixed(2),
+  });
+  const investments=(state.investments||[]).map(function(i){ return i.id===inv.id?newInv:i; });
+  const trRewardsTotal=+(((state.trRewardsTotal||0)+amountEur)).toFixed(2);   // acumulado histórico (€)
+  return {
+    state: Object.assign({},state,{investments:investments, trRewardsTotal:trRewardsTotal}),
+    invId: inv.id, shares: boughtShares, cInv: cInv, amountEur: amountEur,
+  };
+}
+function reverseInvestBuy(state, invId, shares, cInv, amountEur){
+  const inv=(state.investments||[]).find(function(i){ return i.id===invId; });
+  if(!inv) return state;
+  const newInv=Object.assign({},inv,{
+    shares: Math.max(0,+(((inv.shares||0)-(shares||0))).toFixed(6)),
+    value:  Math.max(0,+(((inv.value||0)-(cInv||0))).toFixed(2)),
+    cost:   Math.max(0,+(((inv.cost||0)-(cInv||0))).toFixed(2)),
+  });
+  const investments=(state.investments||[]).map(function(i){ return i.id===invId?newInv:i; });
+  const trRewardsTotal=Math.max(0,+(((state.trRewardsTotal||0)-(amountEur||0))).toFixed(2));
+  return Object.assign({},state,{investments:investments, trRewardsTotal:trRewardsTotal});
 }
 
 /* IMPORTAR HISTÓRICO — duplicados de RECIBO dentro del propio lote (2026-07-31, caso real: -9k

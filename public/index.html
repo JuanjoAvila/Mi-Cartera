@@ -1748,7 +1748,10 @@ const CATEGORIES = [
 ];
 const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
 const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰" };
-const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (CAT[id] || CAT.otros);
+// Ni gasto ni ingreso: dinero que sale del efectivo pero va a un fondo (round-up/cashback/aporte
+// automático de un bróker). Ver `applyInvestBuy` en 08-motor-bank.js y `reconcileTR` en este fichero.
+const INVERSION_CAT = { id:"inversion", name:"Inversión", color:"#D4AF37", icon:"📈" };
+const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (id==="inversion" ? INVERSION_CAT : (CAT[id] || CAT.otros));
 const catName = (id)=> t("cat_"+(catOf(id).id));   // nombre traducido de la categoría
 const freqLabel = (f)=> t("freq_"+f);              // frecuencia traducida
 
@@ -3862,7 +3865,7 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -3949,7 +3952,7 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -4035,7 +4038,7 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -4823,32 +4826,39 @@ function reconcileTR(s){
     if(accRole(acc)==="ambos") acc.value = +(acc.value + monthNetForAccount(s, acc.ent, ay, am+1, null)).toFixed(2);
     // Round-up & Saveback (#19): al cerrar el mes, el round-up sale del efectivo y se abona
     // (junto al saveback, dinero gratis) a la inversión destino comprando participaciones.
-    const ru = (acc.roundupManual!=null) ? acc.roundupManual : roundupOf(monthExp, acc.roundup||0);
-    const sb = (acc.savebackManual!=null) ? acc.savebackManual : (acc.saveback ? savebackOf(monthExp) : 0);
-    if(ru>0) acc.value = +(acc.value - ru).toFixed(2);             // el round-up abandona el efectivo
-    const contrib = ru + sb;                                       // total que entra a la inversión (€)
-    if(contrib>0 && acc.rewardInv){
-      const inv = s.investments && s.investments.find(function(i){ return i.id===acc.rewardInv; });
-      if(inv){
-        const cInv = inv.cur==="USD" ? contrib/(s.fx||1) : contrib;   // a la moneda de la inversión
-        if(inv.shares>0 && inv.value>0) inv.shares = +(inv.shares + cInv/(inv.value/inv.shares)).toFixed(6);
-        inv.value = +((inv.value||0)+cInv).toFixed(2);
-        inv.cost  = +((inv.cost||0)+cInv).toFixed(2);
+    // SOLO si la cuenta no tiene ya movimientos reales de Open Banking (2026-08-03): desde que TR
+    // sincroniza de verdad, el round-up/saveback/aporte YA entran como gastos reales categoría
+    // "inversion" (ver `applyInvestBuy` en 08-motor-bank.js, disparado desde `importObExpenses` y
+    // `setCat`) — sumarlos aquí TAMBIÉN los contaba dos veces (una simulada, otra real).
+    const obFed = (s.expenses||[]).some(function(e){ return e.source==="ob" && e.ent===acc.ent; });
+    if(!obFed){
+      const ru = (acc.roundupManual!=null) ? acc.roundupManual : roundupOf(monthExp, acc.roundup||0);
+      const sb = (acc.savebackManual!=null) ? acc.savebackManual : (acc.saveback ? savebackOf(monthExp) : 0);
+      if(ru>0) acc.value = +(acc.value - ru).toFixed(2);             // el round-up abandona el efectivo
+      const contrib = ru + sb;                                       // total que entra a la inversión (€)
+      if(contrib>0 && acc.rewardInv){
+        const inv = s.investments && s.investments.find(function(i){ return i.id===acc.rewardInv; });
+        if(inv){
+          const cInv = inv.cur==="USD" ? contrib/(s.fx||1) : contrib;   // a la moneda de la inversión
+          if(inv.shares>0 && inv.value>0) inv.shares = +(inv.shares + cInv/(inv.value/inv.shares)).toFixed(6);
+          inv.value = +((inv.value||0)+cInv).toFixed(2);
+          inv.cost  = +((inv.cost||0)+cInv).toFixed(2);
+        }
+        s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
       }
-      s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
-    }
-    // Aporte periódico a inversión (plan de ahorro, p.ej. 50€/mes al FTSE): sale del efectivo y
-    // compra participaciones en su destino (por defecto el mismo del round-up).
-    const mi = acc.monthlyInvest||0;
-    if(mi>0){
-      const dest = acc.monthlyInvestTo || acc.rewardInv;
-      const inv2 = s.investments && s.investments.find(function(i){ return i.id===dest; });
-      if(inv2){
-        acc.value = +(acc.value - mi).toFixed(2);
-        const cInv2 = inv2.cur==="USD" ? mi/(s.fx||1) : mi;
-        if(inv2.shares>0 && inv2.value>0) inv2.shares = +(inv2.shares + cInv2/(inv2.value/inv2.shares)).toFixed(6);
-        inv2.value = +((inv2.value||0)+cInv2).toFixed(2);
-        inv2.cost  = +((inv2.cost||0)+cInv2).toFixed(2);
+      // Aporte periódico a inversión (plan de ahorro, p.ej. 50€/mes al FTSE): sale del efectivo y
+      // compra participaciones en su destino (por defecto el mismo del round-up).
+      const mi = acc.monthlyInvest||0;
+      if(mi>0){
+        const dest = acc.monthlyInvestTo || acc.rewardInv;
+        const inv2 = s.investments && s.investments.find(function(i){ return i.id===dest; });
+        if(inv2){
+          acc.value = +(acc.value - mi).toFixed(2);
+          const cInv2 = inv2.cur==="USD" ? mi/(s.fx||1) : mi;
+          if(inv2.shares>0 && inv2.value>0) inv2.shares = +(inv2.shares + cInv2/(inv2.value/inv2.shares)).toFixed(6);
+          inv2.value = +((inv2.value||0)+cInv2).toFixed(2);
+          inv2.cost  = +((inv2.cost||0)+cInv2).toFixed(2);
+        }
       }
     }
     // Interés del efectivo (TR lo abona el día 1 del mes siguiente = justo al cerrar):
@@ -6460,15 +6470,29 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     set(function(s){
       const ov=Object.assign({}, s.catOverrides||{}); if(mkey) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
+      // Marcar a mano un round-up/cashback como "Inversión" (o deshacerlo) compra/vende de verdad
+      // participaciones en el fondo enlazado de esa cuenta — mismo importe real del banco, ver
+      // `applyInvestBuy`/`reverseInvestBuy` en 08-motor-bank.js (2026-08-03).
+      let invState=s;
       const exps=s.expenses.map(function(e){
-        if(e.id===ex.id) return Object.assign({},e,{category:newCat});
-        if(mkey && catKey(e.merchant)===mkey && e.category==="otros") return Object.assign({},e,{category:newCat});
-        return e;
+        const isTarget=e.id===ex.id;
+        const isSibling=!isTarget && mkey && catKey(e.merchant)===mkey && e.category==="otros";
+        if(!isTarget && !isSibling) return e;
+        const wasInv=e.category==="inversion", willBeInv=newCat==="inversion";
+        const upd=Object.assign({},e,{category:newCat});
+        if(!wasInv && willBeInv){
+          const ib=applyInvestBuy(invState, e.ent, Math.abs(e.amount));
+          if(ib){ invState=ib.state; upd.investInvId=ib.invId; upd.investShares=ib.shares; upd.investCInv=ib.cInv; upd.investAmountEur=ib.amountEur; }
+        } else if(wasInv && !willBeInv && e.investInvId){
+          invState=reverseInvestBuy(invState, e.investInvId, e.investShares, e.investCInv, e.investAmountEur);
+          delete upd.investInvId; delete upd.investShares; delete upd.investCInv; delete upd.investAmountEur;
+        }
+        return upd;
       });
-      return Object.assign({},s,{expenses:exps,catOverrides:ov});
+      return Object.assign({},invState,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
-    const cc=CATEGORIES.concat([INGRESO_CAT]).find(function(x){ return x.id===newCat; });
+    const cc=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).find(function(x){ return x.id===newCat; });
     if(showToast) showToast(tf("v4_moved_cat",{cat:(cc?cc.icon+" ":"")+catName(newCat)}));
   };
   // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
@@ -6598,6 +6622,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     let spent=0, income=0;
     (state.expenses||[]).forEach(function(e){
       if(dateMs(e.date)<startMs) return;
+      if(e.category==="inversion") return;   // ni gasto ni ingreso: sale del efectivo camino de un fondo
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
@@ -6791,7 +6816,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
       bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
@@ -6962,7 +6987,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
           React.createElement("div",{className:"v4-chips"},
-            CATEGORIES.map(function(cc){
+            CATEGORIES.concat([INVERSION_CAT]).map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })
           ),
@@ -9327,9 +9352,15 @@ function importObExpenses(s, txs){
     if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
+    // Aporte automático a inversión (2026-08-03): el importe EXACTO que el usuario configuró en
+    // `monthlyInvest` (p.ej. 50€/mes a un fondo) no es un gasto — es dinero que sale del efectivo
+    // camino de la inversión. Solo se reconoce el importe FIJO que él mismo puso (dato conocido, no
+    // una suposición sobre lo que manda el banco, que no manda nada). Round-up/cashback (variables)
+    // siguen entrando como gasto normal — el usuario los pasa a mano a "Inversión" desde la ficha.
+    const esAporteInv = esDiario && daily && daily.monthlyInvest>0 && Math.abs(tx.amount-daily.monthlyInvest)<0.01;
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
       merchant:tx.merchant||"Compra", amount:tx.amount,
-      category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+      category: esAporteInv ? "inversion" : autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
@@ -9412,6 +9443,47 @@ function applyReserva(state, income, plan, bankEnt){
 // mirando, para que lo apartado se note de verdad en "lo que puedes gastar".
 function reservedSince(state, fromMs){
   return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
+}
+
+/* CATEGORÍA "INVERSIÓN" (2026-08-03): round-up/cashback/aporte automático de un bróker que llega
+   como movimiento REAL de Open Banking — dinero que sale del efectivo pero no es gasto ni ingreso,
+   va a un fondo. Mismo cálculo de "comprar participaciones" que ya usaba `reconcileTR` (01-i18n.js)
+   para su simulación a ciegas, ahora con el importe REAL del banco en vez de estimado. Se llama
+   desde `runBankSync` (11-app-main.js, auto al reconocer el aporte mensual exacto) y desde `setCat`
+   (04-tab-gastos.js, cuando el usuario marca a mano un round-up/cashback como Inversión). Función
+   PURA — no muta `state`. `reverseInvestBuy` deshace exactamente lo que compró esta (con los MISMOS
+   `shares`/`cInv` que devolvió, no recalculados, para no descuadrar si el cambio USD se movió entre medias).*/
+function applyInvestBuy(state, ent, amountEur){
+  if(!(amountEur>0)) return null;
+  const acc=(state.accounts||[]).find(function(a){ return a.ent===ent && a.rewardInv; });
+  if(!acc) return null;
+  const inv=(state.investments||[]).find(function(i){ return i.id===acc.rewardInv; });
+  if(!inv) return null;
+  const cInv = inv.cur==="USD" ? amountEur/(state.fx||1) : amountEur;   // a la moneda de la inversión
+  const boughtShares = (inv.shares>0 && inv.value>0) ? +(cInv/(inv.value/inv.shares)).toFixed(6) : 0;
+  const newInv=Object.assign({},inv,{
+    shares: +(((inv.shares||0)+boughtShares)).toFixed(6),
+    value:  +(((inv.value||0)+cInv)).toFixed(2),
+    cost:   +(((inv.cost||0)+cInv)).toFixed(2),
+  });
+  const investments=(state.investments||[]).map(function(i){ return i.id===inv.id?newInv:i; });
+  const trRewardsTotal=+(((state.trRewardsTotal||0)+amountEur)).toFixed(2);   // acumulado histórico (€)
+  return {
+    state: Object.assign({},state,{investments:investments, trRewardsTotal:trRewardsTotal}),
+    invId: inv.id, shares: boughtShares, cInv: cInv, amountEur: amountEur,
+  };
+}
+function reverseInvestBuy(state, invId, shares, cInv, amountEur){
+  const inv=(state.investments||[]).find(function(i){ return i.id===invId; });
+  if(!inv) return state;
+  const newInv=Object.assign({},inv,{
+    shares: Math.max(0,+(((inv.shares||0)-(shares||0))).toFixed(6)),
+    value:  Math.max(0,+(((inv.value||0)-(cInv||0))).toFixed(2)),
+    cost:   Math.max(0,+(((inv.cost||0)-(cInv||0))).toFixed(2)),
+  });
+  const investments=(state.investments||[]).map(function(i){ return i.id===invId?newInv:i; });
+  const trRewardsTotal=Math.max(0,+(((state.trRewardsTotal||0)-(amountEur||0))).toFixed(2));
+  return Object.assign({},state,{investments:investments, trRewardsTotal:trRewardsTotal});
 }
 
 /* IMPORTAR HISTÓRICO — duplicados de RECIBO dentro del propio lote (2026-07-31, caso real: -9k
@@ -15870,12 +15942,23 @@ function App(){
         // ORDEN anti-doble-conteo: primero entran las compras de tarjeta como gastos, y DESPUÉS
         // se re-ancla con el saldo real del banco (que ya incluye esas compras).
         const add=importObExpenses(prev, txs);
+        // Aporte automático reconocido (categoría "inversion", ver importObExpenses): compra ya
+        // mismo participaciones en el fondo enlazado, con el importe REAL del banco — mismo cálculo
+        // que `reconcileTR` usaba a ciegas, ahora disparado por el dato de verdad (2026-08-03).
+        let invState=prev;
+        (add||[]).forEach(function(e){
+          if(e.category!=="inversion") return;
+          const ib=applyInvestBuy(invState, e.ent, e.amount);
+          if(!ib) return;
+          invState=ib.state;
+          e.investInvId=ib.invId; e.investShares=ib.shares; e.investCInv=ib.cInv; e.investAmountEur=ib.amountEur;
+        });
         obAdded=add||[];
-        const baseExp=add? add.concat(prev.expenses||[]) : (prev.expenses||[]);
+        const baseExp=add? add.concat(invState.expenses||[]) : (invState.expenses||[]);
         // Rellena el CONCEPTO de lo que ya estaba apuntado con lo que acaba de traer el banco
         // (2026-07-24): si no, el histórico viejo —el que se consulta— seguiría sin explicar nada.
         const withNotes=enrichNotesFromBankTx(baseExp, txs);
-        const withExp=(withNotes!==(prev.expenses||[])) ? Object.assign({},prev,{expenses:withNotes}) : prev;
+        const withExp=(withNotes!==(invState.expenses||[])) ? Object.assign({},invState,{expenses:withNotes}) : invState;
         const r=applyBankBalances(withExp, links);
         return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: bankIssuesOf(links) });
       });

@@ -182,15 +182,29 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     set(function(s){
       const ov=Object.assign({}, s.catOverrides||{}); if(mkey) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
+      // Marcar a mano un round-up/cashback como "Inversión" (o deshacerlo) compra/vende de verdad
+      // participaciones en el fondo enlazado de esa cuenta — mismo importe real del banco, ver
+      // `applyInvestBuy`/`reverseInvestBuy` en 08-motor-bank.js (2026-08-03).
+      let invState=s;
       const exps=s.expenses.map(function(e){
-        if(e.id===ex.id) return Object.assign({},e,{category:newCat});
-        if(mkey && catKey(e.merchant)===mkey && e.category==="otros") return Object.assign({},e,{category:newCat});
-        return e;
+        const isTarget=e.id===ex.id;
+        const isSibling=!isTarget && mkey && catKey(e.merchant)===mkey && e.category==="otros";
+        if(!isTarget && !isSibling) return e;
+        const wasInv=e.category==="inversion", willBeInv=newCat==="inversion";
+        const upd=Object.assign({},e,{category:newCat});
+        if(!wasInv && willBeInv){
+          const ib=applyInvestBuy(invState, e.ent, Math.abs(e.amount));
+          if(ib){ invState=ib.state; upd.investInvId=ib.invId; upd.investShares=ib.shares; upd.investCInv=ib.cInv; upd.investAmountEur=ib.amountEur; }
+        } else if(wasInv && !willBeInv && e.investInvId){
+          invState=reverseInvestBuy(invState, e.investInvId, e.investShares, e.investCInv, e.investAmountEur);
+          delete upd.investInvId; delete upd.investShares; delete upd.investCInv; delete upd.investAmountEur;
+        }
+        return upd;
       });
-      return Object.assign({},s,{expenses:exps,catOverrides:ov});
+      return Object.assign({},invState,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
-    const cc=CATEGORIES.concat([INGRESO_CAT]).find(function(x){ return x.id===newCat; });
+    const cc=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).find(function(x){ return x.id===newCat; });
     if(showToast) showToast(tf("v4_moved_cat",{cat:(cc?cc.icon+" ":"")+catName(newCat)}));
   };
   // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
@@ -320,6 +334,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     let spent=0, income=0;
     (state.expenses||[]).forEach(function(e){
       if(dateMs(e.date)<startMs) return;
+      if(e.category==="inversion") return;   // ni gasto ni ingreso: sale del efectivo camino de un fondo
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
@@ -513,7 +528,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
       bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
@@ -684,7 +699,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
           React.createElement("div",{className:"v4-chips"},
-            CATEGORIES.map(function(cc){
+            CATEGORIES.concat([INVERSION_CAT]).map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })
           ),

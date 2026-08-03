@@ -124,7 +124,10 @@ const CATEGORIES = [
 ];
 const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
 const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰" };
-const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (CAT[id] || CAT.otros);
+// Ni gasto ni ingreso: dinero que sale del efectivo pero va a un fondo (round-up/cashback/aporte
+// automático de un bróker). Ver `applyInvestBuy` en 08-motor-bank.js y `reconcileTR` en este fichero.
+const INVERSION_CAT = { id:"inversion", name:"Inversión", color:"#D4AF37", icon:"📈" };
+const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (id==="inversion" ? INVERSION_CAT : (CAT[id] || CAT.otros));
 const catName = (id)=> t("cat_"+(catOf(id).id));   // nombre traducido de la categoría
 const freqLabel = (f)=> t("freq_"+f);              // frecuencia traducida
 

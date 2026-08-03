@@ -27,6 +27,7 @@ const steps = [
   ["finance-core", ["node", "tests/finance-core.test.mjs"]],
   ["ob-ingresos", ["node", "tests/ob-ingresos.test.mjs"]],
   ["reserva-dinero", ["node", "tests/reserva-dinero.test.mjs"]],
+  ["invest-category", ["node", "tests/invest-category.test.mjs"]],
   ["fx-multi", ["node", "tests/fx-multi.test.mjs"]],
   ["categories", ["node", "tests/categories.test.mjs"]],
   ["revo-parse", ["node", "tests/revo-parse.test.mjs"]],

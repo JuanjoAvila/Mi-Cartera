@@ -244,12 +244,23 @@ function App(){
         // ORDEN anti-doble-conteo: primero entran las compras de tarjeta como gastos, y DESPUÉS
         // se re-ancla con el saldo real del banco (que ya incluye esas compras).
         const add=importObExpenses(prev, txs);
+        // Aporte automático reconocido (categoría "inversion", ver importObExpenses): compra ya
+        // mismo participaciones en el fondo enlazado, con el importe REAL del banco — mismo cálculo
+        // que `reconcileTR` usaba a ciegas, ahora disparado por el dato de verdad (2026-08-03).
+        let invState=prev;
+        (add||[]).forEach(function(e){
+          if(e.category!=="inversion") return;
+          const ib=applyInvestBuy(invState, e.ent, e.amount);
+          if(!ib) return;
+          invState=ib.state;
+          e.investInvId=ib.invId; e.investShares=ib.shares; e.investCInv=ib.cInv; e.investAmountEur=ib.amountEur;
+        });
         obAdded=add||[];
-        const baseExp=add? add.concat(prev.expenses||[]) : (prev.expenses||[]);
+        const baseExp=add? add.concat(invState.expenses||[]) : (invState.expenses||[]);
         // Rellena el CONCEPTO de lo que ya estaba apuntado con lo que acaba de traer el banco
         // (2026-07-24): si no, el histórico viejo —el que se consulta— seguiría sin explicar nada.
         const withNotes=enrichNotesFromBankTx(baseExp, txs);
-        const withExp=(withNotes!==(prev.expenses||[])) ? Object.assign({},prev,{expenses:withNotes}) : prev;
+        const withExp=(withNotes!==(invState.expenses||[])) ? Object.assign({},invState,{expenses:withNotes}) : invState;
         const r=applyBankBalances(withExp, links);
         return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: bankIssuesOf(links) });
       });
