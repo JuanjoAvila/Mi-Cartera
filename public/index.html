@@ -3415,15 +3415,17 @@ Object.assign(LANG.es,{
   bi_done:"✓ {n} posiciones re-ancladas con el extracto",
   /* Importar una hoja de cálculo con gastos (petición 2026-07-28: la hoja de su madre). */
   ih_title:"Importar una hoja de gastos",
-  ih_intro:"¿Llevas tus gastos en un Excel? Súbelo y los paso a la app. Da igual cómo se llamen tus columnas ni en qué orden estén: te propongo qué es cada una y lo corriges si me equivoco.",
-  ih_steps:["Vale un Excel (.xlsx) o un CSV. Si tu fichero es .xls antiguo, ábrelo y haz «Guardar como» → .xlsx.","Que haya una columna con la fecha, otra con el concepto y otra con el importe. Lo demás es opcional.","Lo miras antes de guardar: te enseño lo que entra y lo que ya tenías apuntado."],
+  ih_intro:"¿Llevas tus gastos en un Excel, un Word o un PDF? Súbelo y los paso a la app. Da igual cómo se llamen tus columnas ni en qué orden estén: te propongo qué es cada una y lo corriges si me equivoco.",
+  ih_steps:["Vale un Excel (.xlsx), un CSV, un Word (.docx) o un PDF con texto (no una foto escaneada). Si tu fichero es .xls o .doc antiguo, ábrelo y haz «Guardar como» → .xlsx o .docx.","Que haya una columna con la fecha, otra con el concepto y otra con el importe. Lo demás es opcional.","Lo miras antes de guardar: te enseño lo que entra y lo que ya tenías apuntado."],
   ih_pick:"Elegir el fichero",
   ih_leyendo:"Leyendo…",
   ih_privacidad:"El fichero se lee en tu móvil. No se sube a ningún sitio.",
-  ih_err_xls:"Ese es un .xls de los antiguos y no lo sé leer. Ábrelo y haz «Guardar como» → .xlsx (o descárgalo como CSV).",
-  ih_err_zip:"No parece un Excel válido. Prueba a abrirlo y volver a guardarlo como .xlsx.",
+  ih_err_xls:"Ese es un formato antiguo de Office (.xls o .doc) y no lo sé leer. Ábrelo y haz «Guardar como» → .xlsx o .docx (o descárgalo como CSV).",
+  ih_err_zip:"No parece un Excel o Word válido. Prueba a abrirlo y volver a guardarlo como .xlsx o .docx.",
   ih_err_vacio:"He abierto el fichero pero no he encontrado ninguna fila con datos.",
   ih_err_leer:"No he podido leer el fichero. Si puedes, guárdalo como CSV y prueba otra vez.",
+  ih_err_pdf_imagen:"Este PDF parece una imagen escaneada (no lleva texto dentro) y no lo sé leer. Si puedes, pásalo a Excel, Word o CSV, o apunta los datos a mano.",
+  ih_err_pdf_filas:"He leído texto de este PDF pero no encuentro filas con fecha e importe reconocibles. Prueba a pasarlo a Excel, Word o CSV.",
   ih_leidas:"{n} filas leídas. Dime qué es cada columna:",
   ih_c_fecha:"Fecha", ih_c_concepto:"Concepto", ih_c_importe:"Importe", ih_c_categoria:"Categoría", ih_c_banco:"Cuenta o tarjeta",
   ih_sin:"— no la tengo —",
@@ -3467,15 +3469,17 @@ Object.assign(LANG.en,{
   bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth) and value is rescaled to the last known price. Right after, live prices refresh automatically by ticker.",
   bi_done:"✓ {n} positions re-anchored to the statement",
   ih_title:"Import an expenses sheet",
-  ih_intro:"Keeping your expenses in a spreadsheet? Upload it and I'll bring them in. It doesn't matter what your columns are called or what order they're in: I'll guess what each one is and you fix me if I'm wrong.",
-  ih_steps:["Excel (.xlsx) or CSV both work. If yours is an old .xls, open it and «Save as» → .xlsx.","You need a column with the date, one with the description and one with the amount. The rest is optional.","You check it before saving: I show you what's coming in and what you already had."],
+  ih_intro:"Keeping your expenses in a spreadsheet, a Word document or a PDF? Upload it and I'll bring them in. It doesn't matter what your columns are called or what order they're in: I'll guess what each one is and you fix me if I'm wrong.",
+  ih_steps:["Excel (.xlsx), CSV, Word (.docx) or a PDF with real text (not a scanned photo) all work. If yours is an old .xls or .doc, open it and «Save as» → .xlsx or .docx.","You need a column with the date, one with the description and one with the amount. The rest is optional.","You check it before saving: I show you what's coming in and what you already had."],
   ih_pick:"Choose the file",
   ih_leyendo:"Reading…",
   ih_privacidad:"The file is read on your phone. It is never uploaded anywhere.",
-  ih_err_xls:"That's an old .xls and I can't read it. Open it and «Save as» → .xlsx (or download it as CSV).",
-  ih_err_zip:"That doesn't look like a valid Excel file. Try opening it and saving it again as .xlsx.",
+  ih_err_xls:"That's an old Office format (.xls or .doc) and I can't read it. Open it and «Save as» → .xlsx or .docx (or download it as CSV).",
+  ih_err_zip:"That doesn't look like a valid Excel or Word file. Try opening it and saving it again as .xlsx or .docx.",
   ih_err_vacio:"I opened the file but found no rows with data in it.",
   ih_err_leer:"I couldn't read the file. If you can, save it as CSV and try again.",
+  ih_err_pdf_imagen:"This PDF looks like a scanned image (it has no text inside) and I can't read it. If you can, convert it to Excel, Word or CSV, or enter the data by hand.",
+  ih_err_pdf_filas:"I read text from this PDF but couldn't find rows with a recognisable date and amount. Try converting it to Excel, Word or CSV.",
   ih_leidas:"{n} rows read. Tell me what each column is:",
   ih_c_fecha:"Date", ih_c_concepto:"Description", ih_c_importe:"Amount", ih_c_categoria:"Category", ih_c_banco:"Account or card",
   ih_sin:"— I don't have it —",
@@ -3519,15 +3523,17 @@ Object.assign(LANG.ca,{
   bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker) i el valor es recalcula amb l'últim preu conegut. Just després, els preus en viu s'actualitzen sols per ticker.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
   ih_title:"Importar un full de despeses",
-  ih_intro:"Portes les despeses en un Excel? Puja'l i les passo a l'app. Tant se val com es diguin les teves columnes ni en quin ordre estiguin: et proposo què és cadascuna i ho corregeixes si m'equivoco.",
-  ih_steps:["Serveix un Excel (.xlsx) o un CSV. Si el teu fitxer és .xls antic, obre'l i fes «Anomena i desa» → .xlsx.","Cal una columna amb la data, una altra amb el concepte i una altra amb l'import. La resta és opcional.","Ho mires abans de desar: t'ensenyo el que entra i el que ja tenies apuntat."],
+  ih_intro:"Portes les despeses en un Excel, un Word o un PDF? Puja'l i les passo a l'app. Tant se val com es diguin les teves columnes ni en quin ordre estiguin: et proposo què és cadascuna i ho corregeixes si m'equivoco.",
+  ih_steps:["Serveix un Excel (.xlsx), un CSV, un Word (.docx) o un PDF amb text (no una foto escanejada). Si el teu fitxer és .xls o .doc antic, obre'l i fes «Anomena i desa» → .xlsx o .docx.","Cal una columna amb la data, una altra amb el concepte i una altra amb l'import. La resta és opcional.","Ho mires abans de desar: t'ensenyo el que entra i el que ja tenies apuntat."],
   ih_pick:"Triar el fitxer",
   ih_leyendo:"Llegint…",
   ih_privacidad:"El fitxer es llegeix al teu mòbil. No es puja enlloc.",
-  ih_err_xls:"Aquest és un .xls dels antics i no el sé llegir. Obre'l i fes «Anomena i desa» → .xlsx (o baixa'l com a CSV).",
-  ih_err_zip:"No sembla un Excel vàlid. Prova d'obrir-lo i tornar-lo a desar com a .xlsx.",
+  ih_err_xls:"Aquest és un format antic d'Office (.xls o .doc) i no el sé llegir. Obre'l i fes «Anomena i desa» → .xlsx o .docx (o baixa'l com a CSV).",
+  ih_err_zip:"No sembla un Excel o Word vàlid. Prova d'obrir-lo i tornar-lo a desar com a .xlsx o .docx.",
   ih_err_vacio:"He obert el fitxer però no hi he trobat cap fila amb dades.",
   ih_err_leer:"No he pogut llegir el fitxer. Si pots, desa'l com a CSV i torna-ho a provar.",
+  ih_err_pdf_imagen:"Aquest PDF sembla una imatge escanejada (no porta text a dins) i no el sé llegir. Si pots, passa'l a Excel, Word o CSV, o apunta les dades a mà.",
+  ih_err_pdf_filas:"He llegit text d'aquest PDF però no trobo files amb data i import reconeixibles. Prova de passar-lo a Excel, Word o CSV.",
   ih_leidas:"{n} files llegides. Digues-me què és cada columna:",
   ih_c_fecha:"Data", ih_c_concepto:"Concepte", ih_c_importe:"Import", ih_c_categoria:"Categoria", ih_c_banco:"Compte o targeta",
   ih_sin:"— no la tinc —",
@@ -10603,6 +10609,73 @@ function xlsxCompartidas(xml){
   return out;
 }
 
+/* ---------- DOCX: mismo ZIP, otro XML (petición suya 2026-08-03: «un Word con gastos, recibos e
+   ingresos que la gente escribe a mano») ----------
+
+   Un .docx es la MISMA estructura que un .xlsx: un ZIP con XML dentro, solo que el fichero que
+   importa se llama `word/document.xml` en vez de una hoja. Así que se reutiliza `zipAbrir` entero
+   y solo cambia el parseo: en vez de celdas de una hoja, aquí hay párrafos (`w:p`) y, si alguien
+   apuntó "fecha · concepto · importe" en una tabla de Word (lo más probable), filas y columnas de
+   verdad (`w:tbl`/`w:tr`/`w:tc`). Con tabla se lee como una hoja; sin tabla, cada párrafo es una
+   fila que se reparte por tabulador o por dos espacios seguidos — igual que una hoja sin
+   cabeceras. */
+
+/** Todo el texto visible de un nodo, EN ORDEN: pega los `w:t` que cuelguen de él (una celda o un
+ *  párrafo pueden traer el texto troceado en varias «runs» con formato distinto) y convierte un
+ *  `w:tab` en un tabulador de verdad — es un elemento vacío sin texto dentro, así que si no se
+ *  traduce aquí el tabulador que puso quien escribió el párrafo desaparece sin dejar rastro (y con
+ *  él, la columna que separaba). `getElementsByTagName("*")` los da todos en orden de documento. */
+function docxTexto(nodo){
+  const els=nodo.getElementsByTagName("*"), partes=[];
+  for(let i=0;i<els.length;i++){
+    const tag=els[i].tagName;
+    if(tag==="w:t") partes.push(els[i].textContent);
+    else if(tag==="w:tab") partes.push("\t");
+    else if(tag==="w:br"||tag==="w:cr") partes.push("\n");
+  }
+  return partes.join("");
+}
+/** De varias tablas del documento, la más larga con datos: la primera de un Word para currar suele
+ *  ser una portada o una tabla suelta de una fila, no la de gastos. Separado de `docxTabla` para
+ *  poder probarlo sin `DOMParser` (que no existe en Node). */
+function docxMejorTabla(tablas){
+  let mejor=[];
+  tablas.forEach(function(t){ if(t.length>mejor.length) mejor=t; });
+  return mejor;
+}
+/** Un párrafo (o una línea de PDF sin columnas reconocibles) a fila: por el tabulador que puso
+ *  quien escribió (más fiable) o, si no hay, por dos o más espacios seguidos — el mismo criterio
+ *  que una hoja sin cabeceras bien cuadrada. Compartida entre el DOCX (párrafo suelto) y el PDF
+ *  (línea sin posiciones de columna). */
+function filaDeTexto(linea){
+  return linea.split(/\t|\s{2,}/).map(function(s){ return s.trim(); }).filter(function(s){ return s!==""; });
+}
+/** `word/document.xml` → filas de texto. Con tabla, la mejor tabla del documento; sin ninguna, un
+ *  párrafo por fila repartido con `filaDeTexto`. */
+function docxTabla(xml){
+  const doc=new DOMParser().parseFromString(xml,"application/xml");
+  const tbls=doc.getElementsByTagName("w:tbl");
+  if(tbls.length){
+    const tablas=[];
+    for(let k=0;k<tbls.length;k++){
+      const filas=[], trs=tbls[k].getElementsByTagName("w:tr");
+      for(let i=0;i<trs.length;i++){
+        const fila=[], tcs=trs[i].getElementsByTagName("w:tc");
+        for(let j=0;j<tcs.length;j++) fila.push(docxTexto(tcs[j]).trim());
+        if(fila.some(function(c){ return c!==""; })) filas.push(fila);
+      }
+      tablas.push(filas);
+    }
+    return docxMejorTabla(tablas);
+  }
+  const ps=doc.getElementsByTagName("w:p"), filas=[];
+  for(let i=0;i<ps.length;i++){
+    const linea=docxTexto(ps[i]).trim();
+    if(linea) filas.push(filaDeTexto(linea));
+  }
+  return filas;
+}
+
 /* ---------- CSV ---------- */
 
 /** CSV/TSV con comillas y saltos de línea dentro de celda. Separador: el que más aparezca en la
@@ -10629,14 +10702,159 @@ function csvTabla(txt){
   return filas.filter(function(f){ return f.some(function(x){ return String(x||"").trim()!==""; }); });
 }
 
+/* ---------- PDF: mejor esfuerzo sin librería ----------
+
+   Un PDF no es un ZIP: es texto con bloques binarios sueltos. La mitad barata (y la que cubre casi
+   todo lo que sale de Word/Excel/Google Docs, que no es una foto escaneada) es que el texto vive en
+   operadores `Tj`/`TJ` dentro de streams de contenido, casi siempre comprimidos con el MISMO
+   deflate que un ZIP (filtro `FlateDecode`) — se descomprime con `DecompressionStream("deflate")`,
+   la variante CON cabecera zlib (la de un ZIP es "deflate-raw", sin ella).
+
+   NO se parsea la estructura del PDF (tabla xref, objetos, diccionarios): se buscan a pelo los
+   bloques `stream…endstream` sueltos por todo el fichero y se intenta inflar cada uno; el que no
+   sea flate (una imagen con otro filtro, o ya venga sin comprimir) se prueba tal cual, y si no trae
+   ningún operador de texto simplemente no aporta filas — no hace falta saber POR QUÉ un bloque no
+   es texto, basta con que los que sí lo son aparezcan.
+
+   Si al final no hay ni una fila de texto, es una foto escaneada (o un filtro que no reconocemos) y
+   se avisa claro en vez de intentar OCR. Si hay texto pero ninguna fila parece fecha+importe,
+   también se avisa claro: mejor decir «este PDF en concreto no lo sé leer» que inventarse filas
+   (AGENTS §9: los importadores nunca pisan a ciegas, y menos aún inventan). */
+
+/** Bloques `stream…endstream` del PDF, en bruto (aún sin inflar) y COMO BYTES: un stream deflate
+ *  es binario, y `TextDecoder("latin1")` no es la ISO-8859-1 de verdad — la etiqueta "latin1" la
+ *  trata como windows-1252 (así lo pide el estándar WHATWG, por compatibilidad web), que para los
+ *  bytes 0x80-0x9F NO hace una vuelta byte↔carácter fiel. Pasar el comprimido por ahí y volver a
+ *  bytes rompía el deflate en silencio (probado con un PDF sintético: bytes 0x9C/0x8C volvían
+ *  como otra cosa). Por eso aquí se busca `stream`/`endstream` byte a byte, sin tocar texto. */
+function pdfBloques(buf){
+  const u8=new Uint8Array(buf);
+  const M_STREAM=[115,116,114,101,97,109], M_END=[101,110,100,115,116,114,101,97,109]; // "stream","endstream"
+  const buscar=function(desde,pat){
+    busca: for(let i=desde;i<=u8.length-pat.length;i++){
+      for(let j=0;j<pat.length;j++) if(u8[i+j]!==pat[j]) continue busca;
+      return i;
+    }
+    return -1;
+  };
+  const bloques=[]; let p=0;
+  while(true){
+    const i=buscar(p,M_STREAM);
+    if(i<0) break;
+    let ini=i+M_STREAM.length;
+    if(u8[ini]===13) ini++;   // \r
+    if(u8[ini]===10) ini++;   // \n
+    const f=buscar(ini,M_END);
+    if(f<0) break;
+    // El EOL de cierre («…datos\nendstream») no es parte de los datos: si se cuela, el deflate
+    // acaba con un byte de más y no infla. Se recorta el mismo \r?\n que se saltó al entrar.
+    let fin=f;
+    if(u8[fin-1]===10) fin--;
+    if(u8[fin-1]===13) fin--;
+    bloques.push(u8.subarray(ini,fin));
+    p=f+M_END.length;
+  }
+  return bloques;
+}
+/** Infla un bloque si es FlateDecode; si no lo es (otro filtro, o venía sin comprimir), se
+ *  decodifica tal cual — un bloque que no era texto no va a traer `Tj`/`TJ` y `pdfLineas` no
+ *  sacará nada útil de él, así que no hace falta saber de antemano qué filtro trae cada uno.
+ *  Aquí SÍ se pasa a texto con `TextDecoder("latin1")` (=windows-1252): ya no hay que volver a
+ *  bytes después, y de hecho es la codificación de fábrica de un PDF simple (`WinAnsiEncoding`). */
+function pdfInflar(u8){
+  if(typeof DecompressionStream==="undefined") return Promise.resolve(new TextDecoder("latin1").decode(u8));
+  return new Response(new Blob([u8.slice()]).stream().pipeThrough(new DecompressionStream("deflate")))
+    .arrayBuffer().then(function(ab){ return new TextDecoder("latin1").decode(ab); })
+    .catch(function(){ return new TextDecoder("latin1").decode(u8); });
+}
+/** Desescapa un string literal `(...)` de un content stream: `\n \r \t \( \) \\` y octales `\ddd`. */
+function pdfEscStr(s){
+  return s.replace(/\\([nrtbf()\\]|[0-7]{1,3})/g,function(_,g){
+    if(g==="n") return "\n"; if(g==="r") return "\r"; if(g==="t") return "\t";
+    if(g==="("||g===")"||g==="\\") return g;
+    if(g==="b"||g==="f") return "";
+    return String.fromCharCode(parseInt(g,8)&0xff);
+  });
+}
+/** Un string hexadecimal `<...>` de un content stream, byte a byte (una tabla hecha a mano no trae
+ *  fuentes con codificación de 2 bytes por carácter, así que basta con esto). */
+function pdfHexStr(h){
+  h=h.replace(/\s+/g,"");
+  let out=""; for(let i=0;i+1<h.length;i+=2) out+=String.fromCharCode(parseInt(h.substr(i,2),16));
+  return out;
+}
+/** Un content stream ya inflado → filas de texto. Cada `Td`/`TD` con desplazamiento vertical de
+ *  verdad es un salto de línea; uno solo horizontal (`ty≈0`) es la siguiente celda de la MISMA
+ *  fila — así se reconstruye una tabla sin tener que entender fuentes ni tamaños. `T*` siempre
+ *  salta de línea. Si una fila se queda en una sola columna (el documento escribió la línea entera
+ *  de un tirón, con espacios para alinear en vez de con posiciones), se reparte con `filaDeTexto`,
+ *  la misma heurística que un párrafo suelto de Word. */
+function pdfLineas(cs){
+  const re=/(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(?:Td|TD)\b|T\*|\(((?:\\.|[^\\()])*)\)\s*Tj|<([0-9A-Fa-f\s]*)>\s*Tj|\[((?:\\.|[^\[\]])*)\]\s*TJ/g;
+  const lineas=[]; let fila=[""], m;
+  const cierra=function(){
+    let f=fila;
+    if(f.length===1){ const partido=filaDeTexto(f[0]); if(partido.length>1) f=partido; }
+    if(f.some(function(x){ return x.trim()!==""; })) lineas.push(f);
+    fila=[""];
+  };
+  while((m=re.exec(cs))){
+    if(m[1]!==undefined){
+      const tx=parseFloat(m[1]), ty=parseFloat(m[2]);
+      if(Math.abs(ty)>1) cierra();
+      // Solo cuenta como «celda nueva» si ya se escribió algo en la actual — si no, el primer
+      // Td de una línea (el que solo reposiciona el arranque del renglón) dejaría una columna
+      // vacía colgando delante de la primera de verdad.
+      else if(Math.abs(tx)>0.5 && fila[fila.length-1]!=="") fila.push("");
+    } else if(m[0]==="T*"){
+      cierra();
+    } else if(m[3]!==undefined){
+      fila[fila.length-1]+=pdfEscStr(m[3]);
+    } else if(m[4]!==undefined){
+      fila[fila.length-1]+=pdfHexStr(m[4]);
+    } else if(m[5]!==undefined){
+      const trozos=m[5].match(/\(((?:\\.|[^\\()])*)\)/g)||[];
+      trozos.forEach(function(t){ fila[fila.length-1]+=pdfEscStr(t.slice(1,-1)); });
+    }
+  }
+  cierra();
+  return lineas;
+}
+/** Lee un PDF entero: infla lo que se pueda, saca líneas de texto de cada bloque y decide si hay
+ *  algo reconocible ANTES de dejar pasar al mapeo de columnas — con un PDF no hay cabeceras de
+ *  verdad que mapear a mano, así que si `hojaAdivinar` no encuentra ni fecha ni importe es mejor
+ *  avisar aquí que soltar al usuario delante de una previsualización ilegible. */
+function pdfLeer(file){
+  return file.arrayBuffer().then(function(buf){
+    return Promise.all(pdfBloques(buf).map(pdfInflar));
+  }).then(function(streams){
+    let lineas=[];
+    streams.forEach(function(cs){ lineas=lineas.concat(pdfLineas(cs)); });
+    if(!lineas.length) throw new Error("pdf-imagen");
+    const map=hojaAdivinar(lineas);
+    if(map.fecha<0||map.importe<0) throw new Error("pdf-sin-filas");
+    return { filas:lineas, tipo:"pdf" };
+  });
+}
+
 /* ---------- Leer el fichero que sea ---------- */
 
-/** Devuelve {filas, tipo}. Acepta .xlsx y .csv/.tsv/.txt. Los .xls VIEJOS (formato binario de
- *  Office 97) no: son otro formato completamente distinto, y decirlo claro vale más que fallar
- *  con «no he podido leerlo» — el arreglo es «Guardar como → .xlsx», que se hace en dos toques. */
+/** Devuelve {filas, tipo}. Acepta .xlsx/.xlsm, .csv/.tsv/.txt, .docx y .pdf. Los .xls/.doc VIEJOS
+ *  (formato binario de Office 97) no: son otro formato completamente distinto, y decirlo claro
+ *  vale más que fallar con «no he podido leerlo» — el arreglo es «Guardar como → .xlsx/.docx»,
+ *  que se hace en dos toques. */
 function hojaLeer(file){
   const nom=(file&&file.name||"").toLowerCase();
-  if(/\.xls$/.test(nom)) return Promise.reject(new Error("xls-viejo"));
+  if(/\.xls$/.test(nom)||/\.doc$/.test(nom)) return Promise.reject(new Error("xls-viejo"));
+  if(/\.docx$/.test(nom)){
+    return file.arrayBuffer().then(function(buf){
+      return zipAbrir(buf,function(n){ return n==="word/document.xml"; });
+    }).then(function(fich){
+      if(!fich["word/document.xml"]) throw new Error("sin-hojas");
+      return { filas:docxTabla(fich["word/document.xml"]), tipo:"docx" };
+    });
+  }
+  if(/\.pdf$/.test(nom)) return pdfLeer(file);
   if(/\.xlsx$/.test(nom)||/\.xlsm$/.test(nom)){
     return file.arrayBuffer().then(function(buf){
       return zipAbrir(buf,function(n){
@@ -10894,7 +11112,9 @@ function SheetImport({state, set, onClose, showToast, goGastos}){
       setPaso(1);
     }).catch(function(e){
       const m=(e&&e.message)||String(e);
-      setErr(m==="xls-viejo"?t("ih_err_xls"):m==="no-zip"?t("ih_err_zip"):m==="vacio"?t("ih_err_vacio"):t("ih_err_leer"));
+      setErr(m==="xls-viejo"?t("ih_err_xls"):m==="no-zip"?t("ih_err_zip"):
+        m==="pdf-imagen"?t("ih_err_pdf_imagen"):m==="pdf-sin-filas"?t("ih_err_pdf_filas"):
+        m==="vacio"?t("ih_err_vacio"):t("ih_err_leer"));
       try{ cloud.logEvent("error","import hoja: "+m.slice(0,120)); }catch(_){}
     }).finally(function(){ setLeyendo(false); });
   };
@@ -10954,7 +11174,7 @@ function SheetImport({state, set, onClose, showToast, goGastos}){
         onClick:function(){ if(fileRef.current) fileRef.current.click(); }},
         leyendo?t("ih_leyendo"):t("ih_pick")),
       React.createElement("input",{ref:fileRef,type:"file",style:{display:"none"},
-        accept:".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        accept:".xlsx,.xlsm,.csv,.tsv,.txt,.docx,.pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf",
         onChange:function(e){ cargar(e.target.files&&e.target.files[0]); e.target.value=""; }}),
       React.createElement("div",{className:"hint",style:{marginTop:12}}, t("ih_privacidad"))
     ),
@@ -12407,6 +12627,14 @@ var RELEASE_NOTES=[
     /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
        .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de
        pruebas en sí, así que aprobado = hecho, sin paso intermedio que esperar. */
+    /* TANDA AÑADIDA 2026-08-03 (petición suya: «que se pueda importar un pdf o documento con
+       gastos, recibos e ingresos que la gente escribe a mano en un Word»). Reutiliza el mismo ZIP
+       y el mismo mapeo/previsualización del import de Excel; el PDF es mejor esfuerzo sin librería
+       (ver 15-import-hoja.js). */
+    {id:"import-docx-pdf", t:"📄 Importar también desde Word o PDF", items:[
+      "En Ajustes → Copia de seguridad → «Importar una hoja de gastos», ya se puede subir también un Word (.docx) con una tabla de fecha/concepto/importe: mismo mapeo de columnas y mismo reparto entre nuevos y repetidos que con un Excel.",
+      "Y también un PDF con texto de verdad (no una foto escaneada). Si el PDF resulta ser una imagen, o no se le pueden sacar filas con fecha e importe reconocibles, avisa con un mensaje claro en vez de fallar en silencio o inventarse datos.",
+    ]},
    ],
    items:{
    /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación) NI LOS 3 DE

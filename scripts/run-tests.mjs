@@ -33,6 +33,7 @@ const steps = [
   ["ingest-classify", ["node", "tests/ingest-classify.test.mjs"]],
   ["revo-golden", ["node", "tests/revo-golden.test.mjs"]],
   ["import-hoja", ["node", "tests/import-hoja.test.mjs"]],
+  ["import-docx-pdf", ["node", "tests/import-docx-pdf.test.mjs"]],
   ["hist-import-dup", ["node", "tests/hist-import-dup.test.mjs"]],
   ["revo-metales-coste", ["node", "tests/revo-metales-coste.test.mjs"]],
   ["parsers-revolut", ["node", "tests/parsers/revolut.test.mjs"]],
