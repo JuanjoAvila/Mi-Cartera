@@ -174,17 +174,34 @@ function Tour({onDone, goTab, tabIds}){
   };
   const steps=[
     {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero, [data-tour='hero']"); }},
+    // Gestos "cómo moverte" (petición 2026-08-03, sustituye a la tarjeta estática GestureCoach
+    // que rechazó: «yo me refería un tutorial dinámico no fijo arriba de ajustes»). Van pegados
+    // al paso del elemento con el que se relacionan, para no romper el recorrido por pestañas.
+    {k:"tour_settings", tab:null, sel:function(){ return document.querySelector('.botnav-tab[data-tour="inicio"]'); }},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
     {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
     {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
+    // Swipe vertical dentro de Plan (feature 2026-08-03: Recibos↔Deudas↔Metas sin subir a tocar
+    // el segmentado). Mismo tab que el paso anterior — ya estamos en Plan, no hace falta re-esperar.
+    {k:"tour_planswipe", tab:null, sel:function(){ return document.querySelector(".v4-seg"); }},
     {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
     // Avatar: SOLO el que está en viewport (el track anima 0.42s; medir a medias dejaba el
     // foco en vacío — feedback 2026-07-17).
     {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
+    // Mismo foco que el paso anterior (el avatar), pero explicando el atajo del tirón hacia
+    // abajo — ya estamos en Inicio, no hace falta re-esperar el carrusel.
+    {k:"tour_pulldown", tab:null, round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
     {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
   ];
   const [i,setI]=useState(0);
-  const [rect,setRect]=useState(null);
+  // `shown` es lo que se PINTA de verdad (texto + foco), y solo se actualiza junto en cuanto
+  // termina de medirse el paso `i` (target). Antes el texto usaba `i` directamente y el foco
+  // vivía en su propio estado `rect`: al tocar «Siguiente» el texto cambiaba al instante pero
+  // el recorte se quedaba plantado en el elemento VIEJO durante los 520 ms de espera del
+  // carrusel — «no marca las cosas en su sitio, sale descuadrado» (rechazo 3/8). Con los dos
+  // datos en un único estado que se pisa a la vez, nunca se pinta un texto con el foco de otro
+  // paso: mientras se mide, sigue enseñándose el último par (texto+foco) que sí encajaba.
+  const [shown,setShown]=useState(null);
   const inViewport=function(r){
     const H=window.innerHeight||700, W=window.innerWidth||400;
     return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left>=0 && r.left<W-8 && r.right>8;
@@ -228,12 +245,12 @@ function Tour({onDone, goTab, tabIds}){
       const m=measure(i);
       if(!m){ onDone(); return; }
       if(m.j!==i){ setI(m.j); return; }
-      setRect(Object.assign({},m.r,{round:m.round}));
+      setShown({i:m.j, rect:Object.assign({},m.r,{round:m.round})});
     };
     const tm=setTimeout(function(){
       requestAnimationFrame(function(){ requestAnimationFrame(run); });
     }, wait);
-    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(Object.assign({},mm.r,{round:mm.round})); };
+    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setShown({i:mm.j, rect:Object.assign({},mm.r,{round:mm.round})}); };
     window.addEventListener("resize",onR);
     return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
   },[i]);
@@ -242,12 +259,13 @@ function Tour({onDone, goTab, tabIds}){
     window.addEventListener("keydown",onKey);
     return function(){ window.removeEventListener("keydown",onKey); };
   },[onDone]);
-  if(!rect) return React.createElement("div",{className:"tour-wrap"},
+  if(!shown) return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-tip",style:{bottom:80,left:16,right:16}},
       React.createElement("div",{className:"tour-txt"}, t("tour_skip")),
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
     )
   );
+  const rect=shown.rect;
   const pad=rect.round?6:8;
   const H=window.innerHeight||700;
   const below = rect.y + rect.h/2 < H*0.55;
@@ -260,10 +278,10 @@ function Tour({onDone, goTab, tabIds}){
   return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-spot",style:spotStyle}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
-      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{
+      React.createElement("div",{className:"tour-txt"},tf(steps[shown.i].k,{
         gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")
       })),
-      React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===i?" on":"")}); })),
+      React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===shown.i?" on":"")}); })),
       React.createElement("div",{className:"tour-btns"},
         React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
         React.createElement("button",{className:"btn btn-primary",style:{padding:"9px 20px"},onClick:function(){ if(last) onDone(); else setI(i+1); }}, last?t("tour_done"):t("tour_next"))

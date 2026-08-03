@@ -21,27 +21,6 @@ const TabCoach=React.memo(function TabCoach({tabId}){
     React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:dismiss},t("coach_ok"))
   );
 });
-/* Tutorial de gestos, anclado a Ajustes (petición 2026-08-03: «no son obvios para alguien
-   nuevo»): mismo mecanismo que TabCoach (tarjeta desplegada la primera vez → se pliega a un
-   botoncito reabrible), pero con contenido fijo (no por pestaña) y su propia clave en
-   localStorage. Explica edge-swipe→Ajustes (solo desde Resumen), tirón→perfil y swipe↔pestañas.
-   Si en el futuro se añade el swipe vertical dentro de Plan, solo hace falta sumar una línea
-   más al array `coach_gestos` de 01-i18n.js — el componente no necesita cambios. */
-const GestureCoach=React.memo(function GestureCoach(){
-  const tips=t("coach_gestos");
-  const coachKey="_coach_gestos";
-  const [seen,setSeen]=useState(function(){ try{ return localStorage.getItem(coachKey)==="1"; }catch(e){ return true; } });
-  const [open,setOpen]=useState(!seen);
-  if(!Array.isArray(tips)||!tips.length) return null;
-  const dismiss=function(){ try{ localStorage.setItem(coachKey,"1"); }catch(e){} setSeen(true); setOpen(false); };
-  if(!open) return React.createElement("button",{className:"coach-pill",onClick:function(){ setOpen(true); }},"💡 "+t("coach_gestos_btn"));
-  return React.createElement("div",{className:"coach-card"},
-    React.createElement("div",{style:{fontWeight:800,fontSize:13.5,color:"var(--text)",marginBottom:4}},"💡 "+t("coach_gestos_title")),
-    tips.map(function(tip,i){ return React.createElement("div",{key:i,style:{display:"flex",gap:8,fontSize:12.5,color:"var(--muted)",lineHeight:1.5,marginTop:5}},
-      React.createElement("span",{style:{flex:"0 0 auto"}},"·"),React.createElement("span",null,tip)); }),
-    React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:dismiss},t("coach_gestos_ok"))
-  );
-});
 const TABS=[
   {id:"dash",label:"Inicio",icon:I.home},
   {id:"gastos",label:"Gastos",icon:I.expense},
@@ -1458,13 +1437,25 @@ var RELEASE_NOTES=[
        3/8 y se promocionó sola a producción como 4.12.4 el mismo día, separada a mano de
        gestos/bancos que siguen aquí. Su checklist de verdad, en el CHANGELOG de la 4.12.4 y en
        docs/ROADMAP.md. */
-    /* TANDA AÑADIDA 2026-08-03: tutorial de gestos en Ajustes (petición «no son obvios para
-       alguien nuevo»). Mismo mecanismo que TabCoach — tarjeta desplegada la primera vez, se
-       pliega a un botoncito reabrible; estado propio en localStorage (_coach_gestos). */
-    {id:"tutorial-gestos", t:"🎓 Tutorial de gestos en Ajustes", items:[
-      "Entra en Ajustes por primera vez (o borra los datos del sitio para simularlo): sale una tarjeta desplegada explicando 3 gestos — abrir Ajustes deslizando desde el borde en Resumen, tirar hacia abajo para el perfil, y deslizar a los lados entre pestañas.",
-      "Toca «¡Entendido!»: la tarjeta se pliega a un botoncito «💡 ¿Cómo van los gestos?». Sal de Ajustes y vuelve a entrar: ya no sale desplegada sola, solo el botoncito.",
-      "Toca ese botoncito: la tarjeta se vuelve a desplegar con el mismo texto.",
+    /* TANDA REESCRITA 2026-08-03: rechazó la tarjeta ESTÁTICA de gestos («yo me refería un
+       tutorial dinámico no fijo arriba de ajustes... como el tutorial del principio de la app
+       que por cierto está bugueado, no marca las cosas en su sitio sale descuadrado»). Dos
+       encargos en uno: (1) los gestos van DENTRO del tour dinámico ya existente (`Tour`,
+       02-ui-shared.js), no en una tarjeta aparte — GestureCoach se ha quitado entero; (2) el
+       tour venía realmente descuadrado, pero NO por selectores obsoletos (se comprobó cada uno
+       contra el HTML de hoy: todos apuntaban al sitio correcto). El fallo estaba en el estado:
+       al tocar «Siguiente» el TEXTO cambiaba al instante pero el RECORTE se quedaba plantado en
+       el elemento del paso anterior durante los ~520 ms que tarda en re-medir (más la transición
+       del carrusel) — texto de un paso con el foco de otro, que es exactamente «sale
+       descuadrado». Ahora texto y foco viven en un único estado que se pisa junto: mientras se
+       mide el siguiente, se sigue viendo el último par que sí encajaba. */
+    {id:"tutorial-gestos", t:"🎓 Tutorial de gestos (dentro del tour de siempre)", items:[
+      "Ajustes → busca «tutorial» → «🎓 Ver el tutorial» (o borra los datos del sitio para que salga solo, como la primera vez): el recorrido de foco/spotlight de siempre, ahora con 10 pasos en vez de 7.",
+      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado tiene que caer justo encima de lo que describe el texto, sin quedarse pegado al elemento del paso anterior ni por un instante.",
+      "Tras el paso de Inicio, un paso nuevo (con el foco en la pestaña Inicio) explica deslizar desde el borde izquierdo para abrir Ajustes.",
+      "Tras el paso de Plan, otro paso nuevo (foco en el segmentado Recibos/Deudas/Metas) explica deslizar arriba/abajo dentro de Plan para cambiar de sección.",
+      "Tras el paso del avatar, un paso nuevo con el MISMO foco explica el tirón hacia abajo en Inicio como atajo al mismo perfil.",
+      "La tarjeta fija que salía arriba de Ajustes ha desaparecido del todo — no queda nada estático que plegar ni botoncito «💡 ¿Cómo van los gestos?».",
     ]},
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
       "El rebote al final de una pestaña ahora es EL MISMO mecanismo que Ajustes y el perfil (no una imitación con curva propia — se quitó el bloqueo que impedía al navegador hacer lo suyo). Tíralo en Gastos y compáralo abriendo Ajustes: tiene que sentirse idéntico, es literalmente el mismo efecto.",
@@ -2381,7 +2372,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     );
   };
   return React.createElement(React.Fragment,null,
-    React.createElement(GestureCoach,null),
     React.createElement("div",{className:"v4-set-profile"},
       React.createElement("div",{className:"v4-set-av"}, (meEmail||"MC").slice(0,2).toUpperCase()),
       React.createElement("div",{style:{minWidth:0,flex:1}},

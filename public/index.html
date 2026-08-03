@@ -3166,11 +3166,14 @@ function tf(k,vals){ let s=t(k); if(vals) for(const v in vals) s=s.split("{"+v+"
 Object.assign(LANG.es,{
   st_bigtext:"🔍 Letra grande", st_tour:"🎓 Ver el tutorial",
   tour_1:"💰 Aquí ves tu dinero de un vistazo: cuánto tienes en total y cómo va el mes.",
+  tour_settings:"👉 Desde Inicio, desliza desde el borde izquierdo hacia dentro de la pantalla para abrir Ajustes.",
   tour_2:"🧾 «{gastos}» es solo el día a día (súper, bares, ropa…). Filtra por mes, categoría o banco. Los recibos NO van aquí.",
   tour_3:"➕ El botón verde del centro apunta un gasto o un ingreso al momento, sin ir a ninguna pestaña.",
   tour_4:"📅 «{plan}» junta recibos, deudas y metas. En Recibos ves lo pendiente y lo ya pagado; Gestionar abre el detalle.",
+  tour_planswipe:"🔀 Dentro de «{plan}» puedes deslizar hacia arriba o abajo para saltar entre Recibos, Deudas y Metas sin subir a tocar la pestaña.",
   tour_5:"💼 «{cartera}» es tu patrimonio: cuentas, inversiones y bienes. Las herramientas de inversión están un toque más abajo.",
-  tour_6:"👤 El círculo de arriba abre tu perfil. Tira hacia abajo en Inicio para el mismo efecto. Ajustes: desliza de izquierda a derecha.",
+  tour_6:"👤 Toca el círculo de arriba para abrir tu perfil.",
+  tour_pulldown:"⬇️ Y si estás arriba del todo en Inicio, tirar hacia abajo abre ese mismo perfil sin venir hasta aquí.",
   tour_7:"👆 Desliza entre pestañas con el dedo. ¡Ya estás listo!",
   tour_next:"Siguiente", tour_skip:"Saltar", tour_done:"¡Listo!",
   h_ok:"Entendido",
@@ -3207,11 +3210,14 @@ Object.assign(LANG.es,{
 Object.assign(LANG.en,{
   st_bigtext:"🔍 Large text", st_tour:"🎓 View the tutorial",
   tour_1:"💰 Here's your money at a glance: how much you have in total and how the month is going.",
+  tour_settings:"👉 From Home, swipe in from the left edge of the screen to open Settings.",
   tour_2:"🧾 “{gastos}” is day-to-day only (groceries, bars, clothes…). Filter by month, category or bank. Bills do NOT go here.",
   tour_3:"➕ The green button in the centre logs an expense or income right away — no need to open a tab.",
   tour_4:"📅 “{plan}” brings together bills, debts and goals. In Bills you see what's due and what's paid; Manage opens the detail.",
+  tour_planswipe:"🔀 Inside “{plan}” you can swipe up or down to jump between Bills, Debts and Goals without reaching for the tab bar.",
   tour_5:"💼 “{cartera}” is your net worth: accounts, investments and assets. Investment tools are one tap below.",
-  tour_6:"👤 The circle up top opens your profile. Pull down on Home for the same effect. Settings: swipe right.",
+  tour_6:"👤 Tap the circle up top to open your profile.",
+  tour_pulldown:"⬇️ And while you're at the very top of Home, pulling down opens that same profile without reaching up here.",
   tour_7:"👆 Swipe between tabs with your finger. You're all set!",
   tour_next:"Next", tour_skip:"Skip", tour_done:"Done!",
   h_ok:"Got it",
@@ -3248,11 +3254,14 @@ Object.assign(LANG.en,{
 Object.assign(LANG.ca,{
   st_bigtext:"🔍 Lletra gran", st_tour:"🎓 Veure el tutorial",
   tour_1:"💰 Aquí veus els teus diners d'un cop d'ull: quant tens en total i com va el mes.",
+  tour_settings:"👉 Des d'Inici, llisca des de la vora esquerra cap endins de la pantalla per obrir Ajustos.",
   tour_2:"🧾 «{gastos}» és només el dia a dia (súper, bars, roba…). Filtra per mes, categoria o banc. Els rebuts NO van aquí.",
   tour_3:"➕ El botó verd del centre apunta una despesa o un ingrés al moment, sense anar a cap pestanya.",
   tour_4:"📅 «{plan}» junta rebuts, deutes i metes. A Rebuts veus el pendent i el ja pagat; Gestionar obre el detall.",
+  tour_planswipe:"🔀 Dins de «{plan}» pots lliscar amunt o avall per saltar entre Rebuts, Deutes i Metes sense pujar a tocar la pestanya.",
   tour_5:"💼 «{cartera}» és el teu patrimoni: comptes, inversions i béns. Les eines d'inversió són un toc més avall.",
-  tour_6:"👤 El cercle de dalt obre el teu perfil. Estira cap avall a Inici per al mateix efecte. Ajustos: llisca de esquerra a dreta.",
+  tour_6:"👤 Toca el cercle de dalt per obrir el teu perfil.",
+  tour_pulldown:"⬇️ I si ets a dalt de tot a Inici, estirar cap avall obre el mateix perfil sense venir fins aquí.",
   tour_7:"👆 Llisca entre pestanyes amb el dit. Ja estàs a punt!",
   tour_next:"Següent", tour_skip:"Omet", tour_done:"Fet!",
   h_ok:"Entesos",
@@ -3586,15 +3595,6 @@ Object.assign(LANG.es,{
   coach_patri:["Tu foto completa: cuentas, inversiones y bienes, todo sumado.","Al editar una cuenta, elige su rol: «Recibos» = fijos/cuotas; «Gasto diario» = compras del día a día (solo una); «Todo» = ambas cosas. Si el día a día va con OTRO banco, márcalo en Ajustes → Bancos.","Lo conectado (banco/bróker) se refresca solo; lo manual se edita tocándolo."],
   coach_debt:["El pendiente baja solo cada mes con lo que amortizas; cuando te llegue el saldo real del banco, edítalo y se re-ancla.","💸 «Amortizar» adelanta pago: baja el pendiente y acorta el plazo (misma cuota, menos meses).","💡 En «¿Cuándo amortizar?» pones el interés de la deuda y te digo cuánto ahorras y si te compensa."],
   coach_compartido:["Grupos para gastos a medias (viaje, casa, cena): añade personas y apunta quién pagó qué.","La app calcula el reparto y quién debe a quién."],
-  // Tutorial de gestos, anclado a Ajustes (petición 2026-08-03): la primera vez que se abre el
-  // panel sale desplegado; sigue el mismo mecanismo que TabCoach (coach-card/coach-pill + localStorage).
-  // ⚠ Texto de cierre DISTINTO al de coach_ok/wn_close a propósito: el cajón de Ajustes se
-  // premonta oculto en idle (11-app-main.js) para que el gesto de borde no vea un panel negro
-  // vacío la 1ª vez, así que este botón vive en el DOM (oculto) desde antes de abrir Ajustes. Si
-  // compartiera texto con «¡Entendido!»/«Got it!» (Novedades, TabCoach…), cualquier test que
-  // cierre esos popups con un selector genérico por texto podría toparse con este en su lugar.
-  coach_gestos_title:"Cómo moverte con gestos", coach_gestos_btn:"¿Cómo van los gestos?", coach_gestos_ok:"¡Genial, gracias!",
-  coach_gestos:["👉 Ajustes: desde Inicio, desliza desde el borde izquierdo hacia dentro de la pantalla.","👤 Tu perfil: estando arriba del todo en Inicio, tira hacia abajo.","↔️ Cambiar de pestaña: desliza a los lados entre Inicio, Gastos, Plan y Cartera (o toca los iconos de abajo)."],
 });
 Object.assign(LANG.en,{
   coach_btn:"How does this work?", coach_title:"Tips for “{tab}”", coach_ok:"Got it!",
@@ -3607,8 +3607,6 @@ Object.assign(LANG.en,{
   coach_patri:["Your full picture: accounts, investments and assets, all added up.","When editing an account, pick its role: “Bills” = fixed/instalments; “Daily spending” = day-to-day (only one); “Everything” = both. If day-to-day is on ANOTHER bank, tick it in Settings → Banks.","Connected stuff (bank/broker) refreshes itself; manual entries are edited by tapping."],
   coach_debt:["The outstanding drops by itself each month by what you amortise; when the bank's real balance arrives, edit it and it re-anchors.","💸 “Pay down” makes an early payment: the balance drops and the term shortens (same instalment, fewer months).","💡 In “When to pay down?” set the debt's interest and I'll tell you what you save and whether it's worth it."],
   coach_compartido:["Groups for shared expenses (trip, house, dinner): add people and log who paid what.","The app works out the split and who owes whom."],
-  coach_gestos_title:"How to move around with gestures", coach_gestos_btn:"How do the gestures work?", coach_gestos_ok:"Nice, thanks!",
-  coach_gestos:["👉 Settings: from Home, swipe in from the left edge of the screen.","👤 Your profile: while at the very top of Home, pull down.","↔️ Switch tabs: swipe sideways between Home, Spending, Plan and Portfolio (or tap the icons below)."],
 });
 Object.assign(LANG.ca,{
   coach_btn:"Com va això?", coach_title:"Trucs de «{tab}»", coach_ok:"Entesos!",
@@ -3621,8 +3619,6 @@ Object.assign(LANG.ca,{
   coach_patri:["La teva foto completa: comptes, inversions i béns, tot sumat.","En editar un compte, tria el rol: «Rebuts» = fixos/quotes; «Despesa diària» = compres del dia a dia (només un); «Tot» = les dues coses. Si el dia a dia va amb UN ALTRE banc, marca'l a Ajustos → Bancs.","El que està connectat (banc/bròker) es refresca sol; el manual s'edita tocant-lo."],
   coach_debt:["El pendent baixa sol cada mes amb el que amortitzes; quan t'arribi el saldo real del banc, edita'l i es re-ancora.","💸 «Amortitza» avança pagament: baixa el pendent i s'escurça el termini (mateixa quota, menys mesos).","💡 A «Quan amortitzar?» poses l'interès del deute i et dic quant estalvies i si et compensa."],
   coach_compartido:["Grups per a despeses a mitges (viatge, casa, sopar): afegeix persones i apunta qui va pagar què.","L'app calcula el repartiment i qui deu a qui."],
-  coach_gestos_title:"Com moure't amb gestos", coach_gestos_btn:"Com van els gestos?", coach_gestos_ok:"Genial, gràcies!",
-  coach_gestos:["👉 Ajustos: des d'Inici, llisca des de la vora esquerra cap endins de la pantalla.","👤 El teu perfil: estant a dalt de tot a Inici, estira cap avall.","↔️ Canviar de pestanya: llisca als costats entre Inici, Despeses, Pla i Cartera (o toca les icones de sota)."],
 });
 /* Sincronización Trade Republic (beta · nativa en Android) */
 Object.assign(LANG.es,{
@@ -5525,17 +5521,34 @@ function Tour({onDone, goTab, tabIds}){
   };
   const steps=[
     {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero, [data-tour='hero']"); }},
+    // Gestos "cómo moverte" (petición 2026-08-03, sustituye a la tarjeta estática GestureCoach
+    // que rechazó: «yo me refería un tutorial dinámico no fijo arriba de ajustes»). Van pegados
+    // al paso del elemento con el que se relacionan, para no romper el recorrido por pestañas.
+    {k:"tour_settings", tab:null, sel:function(){ return document.querySelector('.botnav-tab[data-tour="inicio"]'); }},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
     {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
     {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
+    // Swipe vertical dentro de Plan (feature 2026-08-03: Recibos↔Deudas↔Metas sin subir a tocar
+    // el segmentado). Mismo tab que el paso anterior — ya estamos en Plan, no hace falta re-esperar.
+    {k:"tour_planswipe", tab:null, sel:function(){ return document.querySelector(".v4-seg"); }},
     {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
     // Avatar: SOLO el que está en viewport (el track anima 0.42s; medir a medias dejaba el
     // foco en vacío — feedback 2026-07-17).
     {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
+    // Mismo foco que el paso anterior (el avatar), pero explicando el atajo del tirón hacia
+    // abajo — ya estamos en Inicio, no hace falta re-esperar el carrusel.
+    {k:"tour_pulldown", tab:null, round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
     {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
   ];
   const [i,setI]=useState(0);
-  const [rect,setRect]=useState(null);
+  // `shown` es lo que se PINTA de verdad (texto + foco), y solo se actualiza junto en cuanto
+  // termina de medirse el paso `i` (target). Antes el texto usaba `i` directamente y el foco
+  // vivía en su propio estado `rect`: al tocar «Siguiente» el texto cambiaba al instante pero
+  // el recorte se quedaba plantado en el elemento VIEJO durante los 520 ms de espera del
+  // carrusel — «no marca las cosas en su sitio, sale descuadrado» (rechazo 3/8). Con los dos
+  // datos en un único estado que se pisa a la vez, nunca se pinta un texto con el foco de otro
+  // paso: mientras se mide, sigue enseñándose el último par (texto+foco) que sí encajaba.
+  const [shown,setShown]=useState(null);
   const inViewport=function(r){
     const H=window.innerHeight||700, W=window.innerWidth||400;
     return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left>=0 && r.left<W-8 && r.right>8;
@@ -5579,12 +5592,12 @@ function Tour({onDone, goTab, tabIds}){
       const m=measure(i);
       if(!m){ onDone(); return; }
       if(m.j!==i){ setI(m.j); return; }
-      setRect(Object.assign({},m.r,{round:m.round}));
+      setShown({i:m.j, rect:Object.assign({},m.r,{round:m.round})});
     };
     const tm=setTimeout(function(){
       requestAnimationFrame(function(){ requestAnimationFrame(run); });
     }, wait);
-    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(Object.assign({},mm.r,{round:mm.round})); };
+    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setShown({i:mm.j, rect:Object.assign({},mm.r,{round:mm.round})}); };
     window.addEventListener("resize",onR);
     return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
   },[i]);
@@ -5593,12 +5606,13 @@ function Tour({onDone, goTab, tabIds}){
     window.addEventListener("keydown",onKey);
     return function(){ window.removeEventListener("keydown",onKey); };
   },[onDone]);
-  if(!rect) return React.createElement("div",{className:"tour-wrap"},
+  if(!shown) return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-tip",style:{bottom:80,left:16,right:16}},
       React.createElement("div",{className:"tour-txt"}, t("tour_skip")),
       React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
     )
   );
+  const rect=shown.rect;
   const pad=rect.round?6:8;
   const H=window.innerHeight||700;
   const below = rect.y + rect.h/2 < H*0.55;
@@ -5611,10 +5625,10 @@ function Tour({onDone, goTab, tabIds}){
   return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-spot",style:spotStyle}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
-      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{
+      React.createElement("div",{className:"tour-txt"},tf(steps[shown.i].k,{
         gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")
       })),
-      React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===i?" on":"")}); })),
+      React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===shown.i?" on":"")}); })),
       React.createElement("div",{className:"tour-btns"},
         React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
         React.createElement("button",{className:"btn btn-primary",style:{padding:"9px 20px"},onClick:function(){ if(last) onDone(); else setI(i+1); }}, last?t("tour_done"):t("tour_next"))
@@ -11596,27 +11610,6 @@ const TabCoach=React.memo(function TabCoach({tabId}){
     React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:dismiss},t("coach_ok"))
   );
 });
-/* Tutorial de gestos, anclado a Ajustes (petición 2026-08-03: «no son obvios para alguien
-   nuevo»): mismo mecanismo que TabCoach (tarjeta desplegada la primera vez → se pliega a un
-   botoncito reabrible), pero con contenido fijo (no por pestaña) y su propia clave en
-   localStorage. Explica edge-swipe→Ajustes (solo desde Resumen), tirón→perfil y swipe↔pestañas.
-   Si en el futuro se añade el swipe vertical dentro de Plan, solo hace falta sumar una línea
-   más al array `coach_gestos` de 01-i18n.js — el componente no necesita cambios. */
-const GestureCoach=React.memo(function GestureCoach(){
-  const tips=t("coach_gestos");
-  const coachKey="_coach_gestos";
-  const [seen,setSeen]=useState(function(){ try{ return localStorage.getItem(coachKey)==="1"; }catch(e){ return true; } });
-  const [open,setOpen]=useState(!seen);
-  if(!Array.isArray(tips)||!tips.length) return null;
-  const dismiss=function(){ try{ localStorage.setItem(coachKey,"1"); }catch(e){} setSeen(true); setOpen(false); };
-  if(!open) return React.createElement("button",{className:"coach-pill",onClick:function(){ setOpen(true); }},"💡 "+t("coach_gestos_btn"));
-  return React.createElement("div",{className:"coach-card"},
-    React.createElement("div",{style:{fontWeight:800,fontSize:13.5,color:"var(--text)",marginBottom:4}},"💡 "+t("coach_gestos_title")),
-    tips.map(function(tip,i){ return React.createElement("div",{key:i,style:{display:"flex",gap:8,fontSize:12.5,color:"var(--muted)",lineHeight:1.5,marginTop:5}},
-      React.createElement("span",{style:{flex:"0 0 auto"}},"·"),React.createElement("span",null,tip)); }),
-    React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:10},onClick:dismiss},t("coach_gestos_ok"))
-  );
-});
 const TABS=[
   {id:"dash",label:"Inicio",icon:I.home},
   {id:"gastos",label:"Gastos",icon:I.expense},
@@ -13033,13 +13026,25 @@ var RELEASE_NOTES=[
        3/8 y se promocionó sola a producción como 4.12.4 el mismo día, separada a mano de
        gestos/bancos que siguen aquí. Su checklist de verdad, en el CHANGELOG de la 4.12.4 y en
        docs/ROADMAP.md. */
-    /* TANDA AÑADIDA 2026-08-03: tutorial de gestos en Ajustes (petición «no son obvios para
-       alguien nuevo»). Mismo mecanismo que TabCoach — tarjeta desplegada la primera vez, se
-       pliega a un botoncito reabrible; estado propio en localStorage (_coach_gestos). */
-    {id:"tutorial-gestos", t:"🎓 Tutorial de gestos en Ajustes", items:[
-      "Entra en Ajustes por primera vez (o borra los datos del sitio para simularlo): sale una tarjeta desplegada explicando 3 gestos — abrir Ajustes deslizando desde el borde en Resumen, tirar hacia abajo para el perfil, y deslizar a los lados entre pestañas.",
-      "Toca «¡Entendido!»: la tarjeta se pliega a un botoncito «💡 ¿Cómo van los gestos?». Sal de Ajustes y vuelve a entrar: ya no sale desplegada sola, solo el botoncito.",
-      "Toca ese botoncito: la tarjeta se vuelve a desplegar con el mismo texto.",
+    /* TANDA REESCRITA 2026-08-03: rechazó la tarjeta ESTÁTICA de gestos («yo me refería un
+       tutorial dinámico no fijo arriba de ajustes... como el tutorial del principio de la app
+       que por cierto está bugueado, no marca las cosas en su sitio sale descuadrado»). Dos
+       encargos en uno: (1) los gestos van DENTRO del tour dinámico ya existente (`Tour`,
+       02-ui-shared.js), no en una tarjeta aparte — GestureCoach se ha quitado entero; (2) el
+       tour venía realmente descuadrado, pero NO por selectores obsoletos (se comprobó cada uno
+       contra el HTML de hoy: todos apuntaban al sitio correcto). El fallo estaba en el estado:
+       al tocar «Siguiente» el TEXTO cambiaba al instante pero el RECORTE se quedaba plantado en
+       el elemento del paso anterior durante los ~520 ms que tarda en re-medir (más la transición
+       del carrusel) — texto de un paso con el foco de otro, que es exactamente «sale
+       descuadrado». Ahora texto y foco viven en un único estado que se pisa junto: mientras se
+       mide el siguiente, se sigue viendo el último par que sí encajaba. */
+    {id:"tutorial-gestos", t:"🎓 Tutorial de gestos (dentro del tour de siempre)", items:[
+      "Ajustes → busca «tutorial» → «🎓 Ver el tutorial» (o borra los datos del sitio para que salga solo, como la primera vez): el recorrido de foco/spotlight de siempre, ahora con 10 pasos en vez de 7.",
+      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado tiene que caer justo encima de lo que describe el texto, sin quedarse pegado al elemento del paso anterior ni por un instante.",
+      "Tras el paso de Inicio, un paso nuevo (con el foco en la pestaña Inicio) explica deslizar desde el borde izquierdo para abrir Ajustes.",
+      "Tras el paso de Plan, otro paso nuevo (foco en el segmentado Recibos/Deudas/Metas) explica deslizar arriba/abajo dentro de Plan para cambiar de sección.",
+      "Tras el paso del avatar, un paso nuevo con el MISMO foco explica el tirón hacia abajo en Inicio como atajo al mismo perfil.",
+      "La tarjeta fija que salía arriba de Ajustes ha desaparecido del todo — no queda nada estático que plegar ni botoncito «💡 ¿Cómo van los gestos?».",
     ]},
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
       "El rebote al final de una pestaña ahora es EL MISMO mecanismo que Ajustes y el perfil (no una imitación con curva propia — se quitó el bloqueo que impedía al navegador hacer lo suyo). Tíralo en Gastos y compáralo abriendo Ajustes: tiene que sentirse idéntico, es literalmente el mismo efecto.",
@@ -13956,7 +13961,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     );
   };
   return React.createElement(React.Fragment,null,
-    React.createElement(GestureCoach,null),
     React.createElement("div",{className:"v4-set-profile"},
       React.createElement("div",{className:"v4-set-av"}, (meEmail||"MC").slice(0,2).toUpperCase()),
       React.createElement("div",{style:{minWidth:0,flex:1}},
