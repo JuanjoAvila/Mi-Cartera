@@ -81,11 +81,139 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
      de tener el resto arreglado, que es justo por qué esta decisión se re-mide en vez de heredarse.
      Al ponerse siempre, sobra la regla especial de `.track.dragging` que había en shell.html. */
   const oculto={height:0,overflow:"hidden",contentVisibility:"hidden",pointerEvents:"none"};
+  const segElRef=useRef({});
   const capa=function(id,hijo){
     if(!segMounted[id]) return null;
-    return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
+    return React.createElement("div",{key:id,"data-seg":id,ref:function(el){ segElRef.current[id]=el; },style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
   };
-  return React.createElement("div",{className:"v4-screen"},
+
+  /* DESLIZAR VERTICAL PARA CAMBIAR DE SEGMENTO (petición 2026-08-03: «no depender de la otra
+     mano para tocar arriba» — con el móvil cogido con una sola mano, llegar al segmentado de
+     arriba es un incordio). Mismo lenguaje que el pull-down del perfil (`11-app-main.js`): el
+     gesto SOLO se activa en los EXTREMOS del scroll —arriba del todo tirando hacia abajo, o
+     abajo del todo tirando hacia arriba—, nunca a mitad de una lista larga de Deudas/Metas, y el
+     eje (x/y) se decide una vez a los primeros px, igual que el swipe de pestañas: si sale
+     horizontal, este gesto se aparta del todo y deja pasar el swipe entre Inicio/Gastos/Plan/
+     Cartera sin tocarlo (no hace `preventDefault` ni `stopPropagation`, así que el listener del
+     `.viewport` lo ve exactamente igual que si esto no existiera).
+     Orden cíclico = el de la barra de arriba: Recibos → Deudas → Metas → Recibos; deslizar al
+     revés (abajo→arriba, ya en el fondo de la lista) recorre el mismo círculo en sentido
+     contrario. Umbral en % de alto de pantalla, del mismo orden que cerrar el perfil arrastrando
+     (`PROF_TH_CLOSE=0.062` en 11-app-main.js): este gesto también compite solo con el scroll
+     propio, ya en el tope, así que no hace falta ser tan exigente como para abrir un panel entero. */
+  const planScreenRef=useRef(null);
+  const enterDirRef=useRef(null);
+  useEffect(function(){
+    if(simple) return undefined;   // modo sencillo: un único segmento, no hay a dónde ir
+    const root=planScreenRef.current; if(!root) return undefined;
+    // Orden fijo, NO derivado de `segs` (ese array es literal nuevo en cada render de PlanTab):
+    // si esta lista dependiera de `segs`, el efecto se desmontaría y remontaría en CUALQUIER
+    // re-render del componente —cambie o no `simple`/`seg`—, y si eso pasa a mitad de un gesto
+    // (entre un touchmove y el siguiente) los listeners viejos se sueltan y los nuevos arrancan
+    // con sx/sy/axis en blanco: el primer arrastre después de aterrizar en Plan se perdía así
+    // (visto en el e2e: el primer deslizamiento no cambiaba de segmento y el segundo sí).
+    const order=["recibos","deudas","metas"];
+    const TH=0.07, FLICK_V=0.4, FLICK_MIN=26, MAX_PULL=46;
+    const reduceMotion=function(){
+      try{ return (window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches) || document.documentElement.classList.contains("reduce-motion"); }catch(e){ return false; }
+    };
+    let sx=0, sy=0, t0=0, axis=null, mode=null, dir=0, dyRaw=0, raf=0, pend=null;
+    const paint=function(){
+      raf=0;
+      const el=segElRef.current[seg];
+      if(el) el.style.transform=pend?("translate3d(0,"+pend+"px,0)"):"";
+    };
+    const queue=function(v){ pend=v; if(!raf) raf=requestAnimationFrame(paint); };
+    const resist=function(px){ return Math.pow(Math.min(1,px/160),0.72)*MAX_PULL; };
+    const cleanup=function(el){ if(el){ el.style.transition=""; el.style.transform=""; } };
+    const onStart=function(e){
+      if(document.documentElement.classList.contains("sheet-open")) return;
+      if(!(e.touches&&e.touches[0])) return;
+      const tt=e.touches[0];
+      sx=tt.clientX; sy=tt.clientY; t0=Date.now(); axis=null; mode=null; dir=0; dyRaw=0;
+    };
+    const onMove=function(e){
+      if(axis==="x"||mode==="ignore") return;
+      if(!(e.touches&&e.touches[0])) return;
+      const tt=e.touches[0], ddx=tt.clientX-sx, ddy=tt.clientY-sy;
+      if(axis===null){
+        if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
+        axis = Math.abs(ddx)>Math.abs(ddy)*1.25 ? "x" : "y";
+        if(axis==="x"){ mode="ignore"; return; }
+        // ¿En qué extremo estamos? Se mira AQUÍ (al fijar el eje), como el pull-down del perfil,
+        // no en touchstart: así una lista que aún estaba asentando el scroll también cuenta.
+        const pg=root.closest(".page");
+        const atTop=!pg||pg.scrollTop<=2;
+        const atBottom=!!pg && (pg.scrollHeight-pg.scrollTop-pg.clientHeight)<=2;
+        if(ddy>0 && atTop) dir=1;
+        else if(ddy<0 && atBottom) dir=-1;
+        else { mode="ignore"; return; }
+        mode="seg";
+      }
+      if(mode!=="seg") return;
+      // El dedo cambió de sentido a mitad: no es un tirón hacia el siguiente segmento.
+      if((dir>0&&ddy<0)||(dir<0&&ddy>0)){ dyRaw=0; queue(0); return; }
+      dyRaw=Math.abs(ddy);
+      if(e.cancelable) e.preventDefault();
+      queue(reduceMotion()?0:dir*resist(dyRaw));
+    };
+    const finish=function(allowCommit){
+      if(raf){ cancelAnimationFrame(raf); raf=0; }
+      pend=null;
+      if(mode!=="seg"){ axis=null; mode=null; return; }
+      const el=segElRef.current[seg];
+      const dt=Math.max(1,Date.now()-t0);
+      const vel=dyRaw/dt;
+      const pasa=allowCommit && (dyRaw>(window.innerHeight||700)*TH || (vel>FLICK_V && dyRaw>FLICK_MIN));
+      if(pasa){
+        try{ if(navigator.vibrate) navigator.vibrate(8); }catch(err){}
+        const i=order.indexOf(seg);
+        const nextId=order[(i+(dir>0?1:-1)+order.length)%order.length];
+        cleanup(el);
+        enterDirRef.current=dir>0?"down":"up";
+        // Mismo truco que `gotoSeg`: marcar montado y cambiar de seg en el mismo lote de React
+        // (createRoot agrupa los dos `set...`) para que el segmento nuevo llegue YA pintado en
+        // el mismo render, sin esperar al ciclo de premontaje perezoso de más arriba.
+        setSegMounted(function(m){ return m[nextId]?m:Object.assign({},m,{[nextId]:true}); });
+        setSeg(nextId);
+      } else if(el && !reduceMotion()){
+        el.style.transition="transform .22s cubic-bezier(.32,.72,0,1)";
+        el.style.transform="";
+        setTimeout(function(){ cleanup(el); }, 230);
+      } else cleanup(el);
+      axis=null; mode=null; dir=0; dyRaw=0;
+    };
+    const onTouchEnd=function(){ finish(true); };
+    // `touchcancel` (el sistema se lleva el dedo): el gesto NO cuenta, se queda como estaba —
+    // mismo criterio que el cierre del perfil en `onCancel` de 11-app-main.js.
+    const onTouchCancel=function(){ finish(false); };
+    root.addEventListener("touchstart", onStart, {passive:true});
+    root.addEventListener("touchmove", onMove, {passive:false});
+    root.addEventListener("touchend", onTouchEnd, {passive:true});
+    root.addEventListener("touchcancel", onTouchCancel, {passive:true});
+    return function(){
+      if(raf) cancelAnimationFrame(raf);
+      root.removeEventListener("touchstart", onStart);
+      root.removeEventListener("touchmove", onMove);
+      root.removeEventListener("touchend", onTouchEnd);
+      root.removeEventListener("touchcancel", onTouchCancel);
+    };
+  },[simple, seg]);
+  // Entrada sutil SOLO cuando el segmento cambia por este gesto (tocar la pestaña de arriba
+  // sigue siendo instantáneo, a propósito: ese toque ya es una decisión explícita del usuario).
+  useEffect(function(){
+    const dir=enterDirRef.current; if(!dir) return;
+    enterDirRef.current=null;
+    const el=segElRef.current[seg]; if(!el) return;
+    const cls=dir==="down"?"v4-seg-enter-down":"v4-seg-enter-up";
+    el.classList.add(cls);
+    const clear=function(){ el.classList.remove(cls); el.removeEventListener("animationend",clear); };
+    el.addEventListener("animationend", clear);
+    const to=setTimeout(clear, 500);   // red de seguridad si el evento no llega
+    return function(){ clearTimeout(to); };
+  },[seg]);
+
+  return React.createElement("div",{className:"v4-screen",ref:planScreenRef},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_plan_title")),
     React.createElement("div",{className:"v4-seg",role:"tablist"},
       segs.map(function(s){
