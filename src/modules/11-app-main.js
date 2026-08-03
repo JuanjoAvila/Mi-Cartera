@@ -28,7 +28,18 @@ function App(){
   const navHiddenRef=useRef(false);
   const lastScrollY=useRef(0);
   const scrollTab=useRef(0);
-  const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
+  // Escondido RÁPIDO, sin la curva calmada de .55s (2026-08-03, bug 6 «rebote raro»). El .55s de
+  // abajo es a propósito para el caso normal (bajar leyendo la lista) — «el ocultado de golpe se
+  // sentía brusco» (feedback 2026-07-18) — pero ESE mismo calmado es justo el problema cuando el
+  // motivo de esconder es «hemos llegado al final»: el rebote nativo (la "ola") empieza a la vez
+  // que la barra, y tarda solo ~0,2-0,3 s en asentarse — mucho menos que los 0,55 s de la barra.
+  // Resultado, tal y como lo describió («se queda atascado un momento y luego sí que hace la ola
+  // pero es muy raro»): la barra sigue deslizándose/desvaneciéndose ENCIMA de la ola mientras esta
+  // ya está en marcha, dos animaciones a ritmos distintos peleando por el mismo trozo de pantalla.
+  // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
+  // escondido normal al bajar sigue con su calma de siempre.
+  const [navHiddenFast,setNavHiddenFast]=useState(false);
+  const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); } };
   // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
   // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
   // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
@@ -52,9 +63,9 @@ function App(){
     // el rebote nativo por debajo (z-index de la barra por encima) — parecía que «no se reproduce
     // la ola en Gastos», pero solo estaba oculta detrás (feedback pareja + él, 2026-08-02).
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
-    if(max>0 && y>=max-4){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } return; }
+    if(max>0 && y>=max-4){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); setNavHiddenFast(true); } return; }
     if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
-    if(dy>0 && y>56){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } }  // bajando → esconder
+    if(dy>0 && y>56){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); setNavHiddenFast(false); } }  // bajando → esconder (calmado)
     else if(dy<0){ revealNav(); }                     // subiendo → mostrar
   };
   const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
@@ -2156,7 +2167,26 @@ function App(){
   useLayoutEffect(function(){
     const antes=tabPrevRef.current; tabPrevRef.current=tab;
     const el=indRef.current;
-    if(!el || antes===tab || ((antes<=1)===(tab<=1))) return undefined;
+    if(!el || antes===tab) return undefined;
+    const cruza=(antes<=1)!==(tab<=1);
+    if(!cruza){
+      /* ⚠ BUG 1 DE VERDAD, no el acompasado de arriba (2026-08-03, «a velocidad alta la rayita
+         sigue atravesando el +»). Antes, este caso (un salto que NO pasa por encima del FAB) hacía
+         `return` sin más — y como React llama al cleanup del efecto ANTERIOR justo antes de correr
+         este (limpia el `clearTimeout` de una `rodea` que sí cruzaba), el `setTimeout` de 460 ms
+         que debía quitar la clase se cancelaba SIN que nadie la quitara en su lugar. Resultado: en
+         cuanto encadenabas dos o tres cambios de pestaña seguidos (justo lo que pasa "a velocidad
+         alta"), `rodea` se quedaba pegada al indicador para SIEMPRE — y el siguiente salto, aunque
+         no cruzara el +, heredaba su curva de 0,44 s Y el brinco vertical del span (`indrodear`)
+         seguía su curso por su cuenta, colándose en un movimiento que no le tocaba. Con varios
+         cruces reales seguidos, esa clase colgada además interfería con CUÁNDO se veía el arco del
+         cruce de verdad — que es justo lo que él describía como "atraviesa el +" y que "al ir más
+         despacio se arregla solo" (con hueco entre saltos, el `setTimeout` sí llegaba a limpiarla).
+         Arreglo: si no cruza, quitar "rodea" YA si estaba puesta — así solo vive durante la
+         transición del cruce que la causó, nunca más. */
+      if(el.classList.contains("rodea")) el.classList.remove("rodea");
+      return undefined;
+    }
     /* ⚠ EL `offsetWidth` FORZADO ERA EL BUG DE VERDAD, no solo el `useEffect` (2026-08-01, su
        vídeo de las 12:11 — «sigue siendo diagonal, mira el video»). En el caso normal (un salto
        suelto, que es el 99% de las veces) "rodea" NO está puesta todavía. Quitarla igualmente y
@@ -2212,7 +2242,21 @@ function App(){
   },[]);
   // Toque en la barra inferior (y cualquier setTab que no venga del gesto): mismo asentamiento
   // por rAF. Si el gesto ya lo arrancó hacia este índice, asentarTrack no reinicia.
-  useEffect(function(){ if(!dragging.current) asentarTrack(tab); },[tab]);
+  // Mismo apagado de desenfoque que ya tiene el swipe, aquí también (2026-08-03, bug 1 «la rayita
+  // atraviesa el + a velocidad alta»). Un toque directo en la barra TAMBIÉN mueve el carrusel por
+  // detrás (`asentarTrack`), y `.botnav` con `backdrop-filter` recalcula el desenfoque en cada
+  // frame en que cambia lo de detrás — el mismo coste ya medido en el swipe (181→145 ms sin él).
+  // A velocidad alta (varios toques seguidos, sin dejar asentar el anterior) ese coste se acumula
+  // justo en la ventana de ~220 ms en la que tiene que pintarse el pico del arco de la rayita:
+  // menos trabajo de sobra en el hilo principal ahí es menos probable perderse ese frame. Llamarlo
+  // también cuando el asentamiento viene de un swipe (que ya lo gestiona en `onEnd`) es inofensivo:
+  // `navSinBlur`/`navSinBlurTrasTransicion` solo tocan una clase y un timer, sin efectos duplicados.
+  useEffect(function(){
+    if(dragging.current) return;
+    navSinBlur(true);
+    asentarTrack(tab);
+    navSinBlurTrasTransicion();
+  },[tab]);
   // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
   // píxel no. Si cambia el ancho (rotación, teclado, barra del navegador), se tira la medida
   // cacheada y se vuelve a colocar el carrusel. Fuera del gesto, para no medir con el dedo puesto.
@@ -2506,7 +2550,7 @@ function App(){
       React.createElement("div",{className:"viewport",ref:viewportRef},
         React.createElement("div",{className:"track",ref:trackRef}, paginas)
       ),
-      React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
+      React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden"+(navHiddenFast?" botnav-hidden-fast":""):""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
           React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),ref:indRef,
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
