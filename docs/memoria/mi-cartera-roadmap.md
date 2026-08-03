@@ -4,13 +4,52 @@
 
 ---
 name: mi-cartera-roadmap
-description: Estado actual y backlog de Mi Cartera (2026-08-01 noche: producción = 4.12.3 —arranque, primera promoción por FEATURE—; beta = 4.13.0 con import/gestos/bancos pendientes, arranque+canal ya QUITADOS del array por estar hechos. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
+description: Estado actual y backlog de Mi Cartera (2026-08-03: producción = 4.12.4 —import de hoja Excel/CSV, segunda promoción por FEATURE tras el arranque—; beta = 4.13.0 con gestos/bancos pendientes, import+arranque+canal ya QUITADOS del array por estar hechos. Sesión "dale caña a todo": 7 bugs + 6 features nuevas pedidas de golpe, repartidas en tandas paralelas. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
 metadata:
   node_type: memory
   type: project
   originSessionId: e1dc0ffc-f316-4885-bf7c-1e694f8b4d24
-  modified: 2026-08-01T20:00:56.641Z
+  modified: 2026-08-03T07:58:49.494Z
 ---
+
+**★ SESIÓN DEL 2026-08-03 — «dale caña a todo», resumen para continuar en frío.**
+El usuario llegó con 7 bugs + 6 features nuevas de golpe, pidiendo explícitamente NO ir uno a uno
+sino repartir en tandas paralelas (autorizó subagentes sonnet/haiku para lo mecánico). Hecho esta
+sesión, en orden:
+1. **Promocionada `import` a producción como 4.12.4** (commit 492c1dc en `main`, misma receta
+   quirúrgica que la 4.12.2 con `arranque`: sin ramas `tanda/<id>`, se separó a mano de entre los
+   commits mezclados de `beta` con ayuda de un subagente Explore que mapeó fichero a fichero qué
+   línea era de import y cuál de gestos/bancos). `docs-frescura` obligó también a: package-lock.json
+   (`npm install --package-lock-only`), README/ROADMAP «Estado actual», y `npm run memoria` (el
+   guardián `memoria-espejo` en `npm test` pincha si el espejo de `docs/memoria/` no está al día —
+   nuevo desde esta sesión, ver `scripts/run-tests.mjs`). Tanda `import` QUITADA del array
+   `tandas` de RELEASE_NOTES en beta + sus 3 bullets quitados de los `items` de la 4.13.0 (misma
+   regla que arranque, para no contarle la novedad dos veces a la familia).
+2. **Arreglado en `beta` (commit 334ec65), pendiente de su prueba real**: el banco de GASTO DIARIO
+   ahora mete CUALQUIER cargo en Gastos (no solo compras con tarjeta — el regex de detección de
+   tarjeta era solo español, con TR/bancos que avisan en inglés se perdía en silencio), salvo que
+   case con un Fijo/deuda/puntual ya modelado ese mes (evita doble conteo); los INGRESOS entran de
+   CUALQUIER banco enlazado (no solo el de gasto), para que «Mi ciclo» encuentre la nómina de la
+   pareja aunque caiga en un banco distinto al de TR; el filtro de banco en Gastos arranca ya
+   marcado en el banco de gasto diario en vez de «Todos»; suscripciones detectadas ahora se pueden
+   DESCARTAR (botón, `state.subsDismissed`) y el importe es editable antes de pasar a Fijos (pedido
+   suyo: recibos variables como luz/gas). **EL SIGNO DE TR SIGUE SIN CERRARSE CON CERTEZA**: el
+   fix de `Math.abs()` en `mapTransaction` (intento anterior, rechazado) no basta si TR manda el
+   `credit_debit_indicator` YA mal para ciertos movimientos — en vez de adivinar otra vez (misma
+   trampa que costó 7 alphas en [[tr-frio-saga]]), se amplió el diagnóstico en `bank-sync/index.ts`
+   (`logObAmbiguous`) para loguear el payload CRUDO de TODO movimiento de TR a `app_events` — hace
+   falta que él sincronice TR por Open Banking UNA vez más para leer el dato real con
+   `node scripts/errores.mjs --grep="epublic"` y cerrarlo sin volver a fallar en falso.
+3. **Pendiente de repartir en agentes paralelos** (no arrancado aún esta sesión, ver petición
+   completa en el turno del usuario): bug1 (rayita atraviesa el + a velocidad alta — regresión
+   sobre el fix ya en beta), bug2 (quitar temporadas que «caen», sustituir por animación
+   incrustada por sección al estilo de los iconos de tab), bug6 (rebote con stopper raro, rechazado
+   1/8 21:46 tras el intento de c40a67f), feature2 (deslizar de arriba a abajo en Plan → Deudas →
+   Metas → Recibos), feature3 (tutorial de los 4 gestos de slice), feature4 (rediseño del import
+   de histórico bancario: filtros ingreso/gasto, por banco, por fecha, comparar duplicados como el
+   import de Excel), feature5 (importar PDF/Word de gastos — docx es zip+XML igual que xlsx, PDF
+   solo best-effort de texto plano), feature6 «Reservar dinero» (la gran nueva: repartir la nómina
+   entre metas/gasto diario/parking de recibos automáticamente, compatible con metas ya creadas).
 
 **★ SESIÓN DEL 2026-08-01 (larga, varios turnos) — resumen para arrancar en frío.**
 
