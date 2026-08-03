@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: e1dc0ffc-f316-4885-bf7c-1e694f8b4d24
-  modified: 2026-08-03T07:58:49.494Z
+  modified: 2026-08-03T10:57:39.142Z
 ---
 
 **★ SESIÓN DEL 2026-08-03 — «dale caña a todo», resumen para continuar en frío.**
@@ -40,16 +40,26 @@ sesión, en orden:
    (`logObAmbiguous`) para loguear el payload CRUDO de TODO movimiento de TR a `app_events` — hace
    falta que él sincronice TR por Open Banking UNA vez más para leer el dato real con
    `node scripts/errores.mjs --grep="epublic"` y cerrarlo sin volver a fallar en falso.
-3. **Pendiente de repartir en agentes paralelos** (no arrancado aún esta sesión, ver petición
-   completa en el turno del usuario): bug1 (rayita atraviesa el + a velocidad alta — regresión
-   sobre el fix ya en beta), bug2 (quitar temporadas que «caen», sustituir por animación
-   incrustada por sección al estilo de los iconos de tab), bug6 (rebote con stopper raro, rechazado
-   1/8 21:46 tras el intento de c40a67f), feature2 (deslizar de arriba a abajo en Plan → Deudas →
-   Metas → Recibos), feature3 (tutorial de los 4 gestos de slice), feature4 (rediseño del import
-   de histórico bancario: filtros ingreso/gasto, por banco, por fecha, comparar duplicados como el
-   import de Excel), feature5 (importar PDF/Word de gastos — docx es zip+XML igual que xlsx, PDF
-   solo best-effort de texto plano), feature6 «Reservar dinero» (la gran nueva: repartir la nómina
-   entre metas/gasto diario/parking de recibos automáticamente, compatible con metas ya creadas).
+3. **Repartido en 6 agentes paralelos (worktrees), 4 ya fusionados en beta y subidos (commit
+   76ee1a3)**: swipe vertical en Plan (Recibos→Deudas→Metas→Recibos, en `14-v4-screens.js` — NO en
+   `09-tab-debts-goals.js` como se pensaba al principio), tutorial de gestos en Ajustes
+   (`GestureCoach`, mismo mecanismo que `TabCoach`), temporadas sin lluvia (quitado `.season-fx`
+   entero, sustituido por un detalle `::after` incrustado en `.v4-title` por temática, mismo
+   mecanismo que los iconos de tab), y rediseño de importar histórico bancario (arregló el bug real
+   de que el filtro de banco no filtraba — `BankPanel` pasaba TODOS los enlaces sin filtrar — más
+   filtros ingreso/gasto/mes y dedup con comparación tipo Excel). Yo mismo hice la 5ª: **"Reservar
+   dinero"** (`reservaPlanFor`/`applyReserva`/`reservedSince` en `08-motor-bank.js` + UI en Metas,
+   09-tab-debts-goals.js) — reglas fijo/% que al detectar nómina reparten a metas, con confirmación
+   siempre manual, y lo reservado se resta del presupuesto de Gastos (antes las metas eran un bote
+   aparte que no tocaba el presupuesto). Subido el presupuesto de bundle 310→340 KB gzip (justo,
+   con motivo escrito) tras meter 4 tandas en un día.
+   **PENDIENTES de fusionar** (agentes aún corriendo en worktrees separados, se resumieron una vez
+   tras agotar la sesión de uso): rayita atraviesa el + a velocidad alta + rebote raro (gestos,
+   `agent-a6e6780e7367ee4b2`), importar PDF/Word de gastos (`agent-aed3966cb555a1cac`).
+   **LECCIÓN de esta ronda**: correr `npm test` con varios agentes en paralelo en la misma máquina
+   da MUCHOS falsos negativos en el e2e de Playwright (ERR_CONNECTION_REFUSED / timeouts por
+   contención de CPU/puerto 4173) — antes de dar por rota una tanda nueva, reintentar en aislamiento
+   (`npx playwright test --workers=1 <spec>`) mientras otros agentes sigan corriendo.
 
 **★ SESIÓN DEL 2026-08-01 (larga, varios turnos) — resumen para arrancar en frío.**
 
