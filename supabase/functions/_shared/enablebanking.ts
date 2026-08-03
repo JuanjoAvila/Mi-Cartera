@@ -104,7 +104,12 @@ export function mapTransaction(t: any) {
     amount: isCredit ? -amt : amt,
     merchant: String(merchant).trim().slice(0, 80),
     note: note.slice(0, 160),
-    card: /TARJ|TARJETA|COMPRA TARJ/i.test(haystack),  // best-effort: compra con tarjeta
+    // best-effort: compra con tarjeta. Solo texto en español lo detectaba (TARJ/TARJETA); un
+    // ASPSP que informa en inglés (Trade Republic, Revolut…) no lo mencionaba nunca y el cargo
+    // se perdía en silencio (petición 2026-08-03). Con la cuenta de gasto diario esto ya no
+    // decide si el cargo cuenta (ver `importObExpenses`), pero sigue usándose para los bancos
+    // EXTRA de settings.expenseBanks, así que merece detectarse bien en cualquier idioma.
+    card: /TARJ|TARJETA|COMPRA TARJ|\bCARD\b|\bPOS\b|\bDEBIT CARD\b|\bCARD PAYMENT\b|\bPURCHASE\b/i.test(haystack),
     status: t?.status || "",
   };
 }

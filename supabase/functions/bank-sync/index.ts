@@ -15,24 +15,36 @@ import { withCors } from "../_shared/cors.ts";
 // (feedback 2026-08-01, Trade Republic por Open Banking). `mapTransaction` solo tiene el
 // `credit_debit_indicator` del banco para decidir el signo — si un ASPSP lo manda mal para
 // ciertos movimientos, no hay forma de arreglarlo sin ver el payload real. Mejor registrar el
-// caso ambiguo (sin remesa ni nombre de contraparte) que adivinar el signo y arriesgarse a
+// caso (ambiguo, o TODO Trade Republic mientras se cierra el signo) que adivinar y arriesgarse a
 // invertir un ingreso de verdad para otro banco que sí cumple la spec.
+// ⚠ 2026-08-03: el usuario sigue viendo gastos de TR contados como ingresos tras el fix de abs()
+// (commit anterior) — ese fix protege de un doble-signo, pero si el ASPSP manda el
+// `credit_debit_indicator` YA MAL para ciertos movimientos (p.ej. los ligados a la tarjeta/cash
+// de un bróker), abs() no lo arregla. En vez de adivinar OTRA VEZ sin datos (mismo error que costó
+// 7 alphas en la saga TR-en-frío, ver memoria `tr-frio-saga`), esto registra el payload CRUDO de
+// CUALQUIER movimiento de Trade Republic —tenga o no comercio/concepto— para diagnosticarlo con
+// certeza en cuanto el usuario sincronice una vez más. Quitar el `siempreTR` cuando se cierre.
 // deno-lint-ignore no-explicit-any
 async function logObAmbiguous(admin: any, userId: string, aspsp: string, raw: any[]) {
   try {
+    const siempreTR = /trade republic|traderepublic/i.test(String(aspsp || ""));
     // deno-lint-ignore no-explicit-any
     const sospechosos = (raw || []).filter((t: any) => {
+      if (siempreTR) return true;
       const remit = Array.isArray(t?.remittance_information) ? t.remittance_information.join(" ") : (t?.remittance_information || "");
       const nombre = t?.debtor?.name || t?.creditor?.name || "";
       return !remit && !nombre;
-    }).slice(0, 5).map((t: any) => ({
+    }).slice(0, 8).map((t: any) => ({
       amt: t?.transaction_amount?.amount, ind: t?.credit_debit_indicator,
       code: t?.bank_transaction_code?.description || t?.bank_transaction_code || null, status: t?.status,
+      remit: Array.isArray(t?.remittance_information) ? t.remittance_information.join(" ") : (t?.remittance_information || null),
+      creditor: t?.creditor?.name || null, debtor: t?.debtor?.name || null,
+      date: t?.booking_date || t?.value_date || null,
     }));
     if (!sospechosos.length) return;
     await admin.from("app_events").insert({
       user_id: userId, email: null, kind: "error",
-      message: `OB (${aspsp}): ${sospechosos.length} movimiento(s) sin comercio ni concepto — payload para revisar el signo`,
+      message: `OB (${aspsp}): ${sospechosos.length} movimiento(s) — payload para revisar el signo`,
       detail: JSON.stringify(sospechosos).slice(0, 2000),
       app_version: "edge", platform: "server",
     });

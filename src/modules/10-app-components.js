@@ -1359,11 +1359,14 @@ var RELEASE_NOTES=[
        que 401214e/a8730a9, que tampoco bumpearon. Se promociona junto al resto cuando él diga. */
     {id:"bancos", t:"🏦 Bancos: los bugs gordos de esta semana", items:[
       "Conectar «Trade Republic» desde Conectar banco ya se puede: trae sus MOVIMIENTOS a Gastos y el saldo lo sigue poniendo su tarjeta de bróker de siempre. Ni se descuadra el patrimonio ni se apunta nada dos veces.",
-      "Y lo de «todos los gastos del mes contados como ingresos» al conectarlo: comprueba que un gasto de TR sale como gasto, no en verde.",
+      "Y lo de «todos los gastos del mes contados como ingresos» al conectarlo: comprueba que un gasto de TR sale como gasto, no en verde. ⚠ Si AÚN sale mal: ya está instrumentado para verlo con certeza en el próximo aviso tuyo — no lo des por cerrado sin decírmelo.",
       "Importar histórico: una factura que sale varias veces en 3 meses de extracto ya no se marca como recibo repetido — solo cuenta una (antes creaba un Fijo por cada mes que aparecía).",
       "Reconectar Trade Republic desde el aviso de Cartera lleva directo a su tarjeta, con scroll — antes aterrizaba en Mis bancos con la tarjeta abierta pero fuera de pantalla.",
       "Ajustes → Copia de seguridad → «Copias automáticas»: se ve la lista de los últimos días guardados y se puede restaurar uno.",
       "Cambiar el banco de gasto diario en Patrimonio → Editar hace que sus compras entren en Gastos — antes se quedaba pegado al banco anterior para siempre.",
+      "NUEVO: el banco de gasto diario mete TODO cargo en Gastos, no solo compras con tarjeta (salvo que ya sea un Fijo tuyo, para no contarlo dos veces) — antes un cargo sin la palabra «tarjeta» en el concepto (habitual si el banco avisa en inglés) se perdía en silencio.",
+      "NUEVO: en Gastos, el filtro de banco arranca ya marcado en tu banco de gasto diario en vez de «Todos» — cámbialo a mano si quieres ver todo mezclado.",
+      "NUEVO: un ingreso ya se apunta venga de CUALQUIER banco enlazado, no solo el de gasto diario — para que «Mi ciclo» encuentre tu nómina aunque caiga en otra cuenta.",
       "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
     ]},
     /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en

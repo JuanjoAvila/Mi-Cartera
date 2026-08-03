@@ -335,42 +335,70 @@ function flattenBankTx(links){
   return out.slice(0,150);   // últimos ~150 movimientos
 }
 
-/* GASTO VARIABLE VÍA OPEN BANKING: compras con tarjeta de los bancos en
-   settings.expenseBanks (o, por defecto, el ent de la cuenta diaria). El motor de
-   presupuesto/round-up sigue anclado a UNA sola cuenta spendFrom — esto solo decide
-   qué tarjetas OB se apuntan en Gastos. Idempotente por ext_id (+ dedup fecha|importe|comercio). */
+/* GASTO VARIABLE VÍA OPEN BANKING: en el banco de GASTO DIARIO cuenta CUALQUIER cargo (petición
+   2026-08-03: «que meta todo en gastos, independientemente del filtro» — antes solo entraban las
+   COMPRAS CON TARJETA, y con bancos que avisan en inglés o sin el texto "TARJETA" en el concepto
+   los cargos se perdían en silencio). En los bancos EXTRA de settings.expenseBanks (opcionales,
+   añadidos aparte de la cuenta diaria) se mantiene la regla vieja —solo tarjeta— porque esos sí
+   suelen tener recibos domiciliados modelados como Fijos que no hay que duplicar. Para la cuenta
+   diaria, el único cargo que se descarta es el que YA case con un Fijo/deuda/puntual de ESE mes en
+   ESA cuenta (`matchesModeled`, mismo criterio de nombre+importe que la conciliación de arriba):
+   si no, un recibo pagado desde el banco de gasto diario se contaría dos veces. El motor de
+   presupuesto/round-up sigue anclado a UNA sola cuenta spendFrom — esto solo decide qué entra en
+   Gastos. Idempotente por ext_id (+ dedup fecha|importe|comercio).
+
+   INGRESOS: de CUALQUIER banco enlazado, no solo el de gasto (petición 2026-08-03: la nómina de tu
+   pareja puede caer en un banco que no es el de gasto diario, y sin verla ahí «Mi ciclo» —que se
+   ancla al último ingreso real, ver `lastPaydayOf` en 04-tab-gastos.js— nunca encuentra el cobro).
+   Antes de esto un ingreso en un banco no-permitido no se apuntaba en ningún sitio: el saldo subía
+   pero en Gastos no aparecía nada y el ciclo se quedaba anclado al mes natural. */
 function importObExpenses(s, txs){
+  if(!txs || !txs.length) return null;
   const ents=expenseBankEnts(s);
-  if(!ents.length || !txs || !txs.length) return null;
   const allow={}; ents.forEach(function(e){ allow[e]=1; });
+  const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
+  const dailyEnt=daily&&daily.ent;
   const som=startOfMonth();
   const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
   const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
+  // Cargos ya modelados ESTE mes por entidad (Fijos/deudas/puntuales), para no duplicar un recibo
+  // de la cuenta diaria ahora que ya no exigimos "compra con tarjeta" ahí.
+  const now=new Date(), ym=now.getMonth()+1, yy=now.getFullYear();
+  const modeledByEnt={};
+  const pushModeled=function(ent,name,amount){ if(!ent||!(amount>0)) return; (modeledByEnt[ent]=modeledByEnt[ent]||[]).push({name:name,amount:amount}); };
+  (s.fixed||[]).forEach(function(f){ if(occursIn(f,ym)) pushModeled(accOf(f), f.name, occAmountIn(f,ym)); });
+  (s.debts||[]).forEach(function(d){ if(debtActive(d)) pushModeled(d.account||"sabadell", d.name||"Cuota", (d.monthly||0)+debtBalloonIn(d,yy,ym)); });
+  (s.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,yy,ym)) pushModeled(o.account||"sabadell", o.name||"Cargo", o.amount||0); });
+  const matchesModeled=function(ent,merchant,amount){
+    return (modeledByEnt[ent]||[]).some(function(mm){ return recAmtClose(mm.amount,amount) && recNameMatch(mm.name,merchant); });
+  };
   const add=[];
   txs.forEach(function(tx){
-    if(!allow[tx.ent]) return;
-    // COMPRAS con tarjeta (importe POSITIVO) e INGRESOS (importe NEGATIVO: el servidor manda
-    // CRDT → -amt, ver `mapTransaction`).
-    //
-    // Los ingresos entraron el 2026-07-26, por un fallo que llevaba DIEZ DÍAS sin que nadie lo
-    // leyera: «no me ha leído un ingreso de la caixa, he tenido notificación y todo pero no lo ha
-    // leído». Y era verdad: aquí solo pasaban las compras con tarjeta. El saldo sí subía —el
-    // patrimonio salía bien— pero en Gastos no aparecía nada, así que parecía que la app no se
-    // había enterado. Un ingreso es justo lo que más se quiere ver apuntado.
-    //
-    // Lo que sigue fuera a propósito: los CARGOS que no son de tarjeta (recibos domiciliados,
-    // hipoteca, seguros). Eso son los Fijos, que ya están contados en el motor mensual, y
-    // apuntarlos aquí sería contarlos dos veces.
     const esIngreso = tx.amount<0;
-    const esCompra  = tx.card && tx.amount>0;
-    if(!esIngreso && !esCompra) return;
+    if(esIngreso){
+      if(!tx.date || parseDate(tx.date)<som) return;              // solo el mes en curso
+      if(tx.id && seen[tx.id]) return;                            // ya importado (ext_id)
+      const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
+        merchant:tx.merchant||"Ingreso", amount:tx.amount, category:INGRESO_CAT.id, source:"ob", ent:tx.ent };
+      if(tx.id) e.extId=tx.id;
+      const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
+      if(keys[kOf(e)]) return;
+      keys[kOf(e)]=1; add.push(e);
+      return;
+    }
+    // GASTO: la cuenta diaria admite cualquier cargo; las extra solo compras con tarjeta.
+    const esDiario=tx.ent===dailyEnt;
+    const esCompra=tx.card && tx.amount>0;
+    if(!esDiario && !allow[tx.ent]) return;
+    if(!esDiario && !esCompra) return;
+    if(esDiario && !esCompra && matchesModeled(tx.ent, tx.merchant, tx.amount)) return;   // ya es un Fijo/deuda/puntual
     if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
-      merchant:tx.merchant||(esIngreso?"Ingreso":"Compra"), amount:tx.amount,
-      category:esIngreso?INGRESO_CAT.id:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+      merchant:tx.merchant||"Compra", amount:tx.amount,
+      category:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica

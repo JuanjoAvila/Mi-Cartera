@@ -35,6 +35,45 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
+// Fila de una suscripción detectada. Importe EDITABLE antes de «pasar a Fijos» (petición
+// 2026-08-03: recibos que se repiten cada mes pero varían de importe —luz, gas— para no dejarlos
+// con el de este mes y tener que corregirlo a mano el que viene) + botón para descartarla del
+// todo cuando no es una suscripción de verdad (ej. gasolina: se repite, pero nunca va a ser un
+// importe fijo). Componente propio porque cada fila necesita su PROPIO estado de edición —dentro
+// de un .map() no se pueden usar hooks por elemento.
+function SubRow({sp, state, set, showToast}){
+  const c=catOf(sp.cat);
+  const [amt,setAmt]=useState(String(sp.amount).replace(".",","));
+  const toFixed=function(){
+    const useAmt=parseFloat(String(amt).replace(",",'.'))||sp.amount;
+    const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
+    const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
+    const it={ id:uid(), name:sp.name, amount:useAmt, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
+    const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
+    set(function(s){ return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
+    showToast(tf("sub_tofixed_done",{n:sp.name,b:entOf((acc&&acc.ent)||"sabadell").label}));
+  };
+  const dismiss=function(){
+    set(function(s){ return Object.assign({},s,{subsDismissed:(s.subsDismissed||[]).concat([sp.key])}); });
+    showToast(t("sub_dismissed_ok"));
+  };
+  return React.createElement("div",{className:"sub-row"},
+    React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
+    React.createElement("div",{className:"sub-mid"},
+      React.createElement("div",{className:"sub-name"}, sp.name),
+      React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)})),
+      React.createElement("div",{style:{display:"flex",gap:6,marginTop:5,alignItems:"center"}},
+        React.createElement("button",{className:"chip",style:{fontSize:11.5,padding:"3px 10px"},onClick:toFixed}, "→ "+t("sub_tofixed")),
+        React.createElement("button",{className:"chip",style:{fontSize:11.5,padding:"3px 10px"},onClick:dismiss,title:t("sub_dismiss")}, "✕ "+t("sub_dismiss"))
+      )
+    ),
+    React.createElement("div",{className:"sub-amt num",style:{display:"flex",alignItems:"baseline",gap:2}},
+      React.createElement("input",{type:"text",inputMode:"decimal",value:amt,onChange:function(e){ setAmt(e.target.value); },
+        style:{width:52,textAlign:"right",background:"transparent",border:"none",borderBottom:"1px dashed var(--bd)",color:"inherit",font:"inherit"}}),
+      " €"+t("sub_permonth")
+    )
+  );
+}
 function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, forceAllTs}){
   const [preset,setPreset]=useState("month");
   // Tras importar una hoja: salta a "Todo" — lo importado suele traer fechas fuera del mes en
@@ -42,7 +81,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   useEffect(function(){ if(forceAllTs) setPreset("all"); },[forceAllTs]);
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
-  const [bankSel,setBankSel]=useState([]); // ents o "_manual"; [] = todos los bancos
+  // Por defecto, el banco de gasto diario (petición 2026-08-03: «que por defecto esté marcado el
+  // banco de gasto diario, no un filtro de Todo» — así el que tenga un banco puesto ve solo lo
+  // suyo nada más entrar, en vez de todo mezclado). Sin banco diario configurado, [] = todos.
+  // Solo se calcula UNA vez al montar (igual que heavyOk): si luego cambia el banco diario no
+  // reordena el filtro que el usuario ya esté usando.
+  const [bankSel,setBankSel]=useState(function(){
+    const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
+    return daily&&daily.ent ? [daily.ent] : [];
+  }); // ents o "_manual"; [] = todos los bancos
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [morePeriods,setMorePeriods]=useState(false);
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
@@ -226,6 +273,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // enseñaría el mes pasado. Antes no pasaba porque el cálculo se rehacía en cada render.
   const todayKey=new Date().toDateString();
   const bounds=useMemo(function(){ return presetBoundsMs(preset,range,cycle&&cycle.start); },[preset,range,cycle,todayKey]);
+  const dailyEnt=useMemo(function(){ const d=(state.accounts||[]).find(function(a){ return accDaily(a); }); return d&&d.ent||null; },[state.accounts]);
   const bankOpts=useMemo(function(){
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
@@ -481,30 +529,18 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     ),
 /* Alta de gasto/ingreso: FAB Apuntar (SPEC §7). */
     (function(){
-      // SPEC §4: suscripciones solo si hay novedad (activas aún no pasadas a Fijos).
+      // SPEC §4: suscripciones solo si hay novedad (activas, aún no pasadas a Fijos, ni descartadas
+      // a mano — petición 2026-08-03: poder quitar una detección que no es una suscripción de
+      // verdad, ej. la gasolina, que se repite pero nunca va a tener un importe fijo).
+      const dismissed=state.subsDismissed||[];
       const novel=(subs||[]).filter(function(sp){
         if(!sp.active) return false;
+        if(dismissed.indexOf(sp.key)!==-1) return false;
         return !(state.fixed||[]).some(function(f){ return catKey(f.name)===sp.key; });
       });
       if(!novel.length) return null;
       return React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title")+" · "+novel.length,sub:tf("sub_sub",{n:novel.length,y:eur0(novel.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:true,storageKey:"g_subs_novel",help:t("h_subs")},
-        novel.map(function(sp){ const c=catOf(sp.cat);
-          const toFixed=function(){
-            const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
-            const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
-            const it={ id:uid(), name:sp.name, amount:sp.amount, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
-            const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
-            set(function(s){ return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
-            showToast(tf("sub_tofixed_done",{n:sp.name,b:entOf((acc&&acc.ent)||"sabadell").label}));
-          };
-          return React.createElement("div",{key:sp.key,className:"sub-row"},
-          React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
-          React.createElement("div",{className:"sub-mid"},
-            React.createElement("div",{className:"sub-name"}, sp.name),
-            React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)})),
-            React.createElement("button",{className:"chip",style:{marginTop:5,fontSize:11.5,padding:"3px 10px"},onClick:toFixed}, "→ "+t("sub_tofixed"))),
-          React.createElement("div",{className:"sub-amt num"}, eur(sp.amount)+t("sub_permonth"))
-        ); }),
+        novel.map(function(sp){ return React.createElement(SubRow,{key:sp.key,sp:sp,state:state,set:set,showToast:showToast}); }),
         React.createElement("div",{className:"hint",style:{marginTop:8}}, t("sub_hint"))
       ));
     })(),
@@ -517,7 +553,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // el filtro" (feedback 2026-08-01). Solo si hay histórico real en OTRO período y
               // no hay ningún filtro activo (búsqueda/categoría/banco) es "vacío por normal";
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
-              const sinFiltros=!q.trim() && !sel.length && !bankSel.length;
+              // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
+              // (2026-08-03), no algo que el usuario haya elegido a mano.
+              const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+              const sinFiltros=!q.trim() && !sel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
               return React.createElement("div",{className:"empty"},
