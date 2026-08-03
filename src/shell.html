@@ -400,6 +400,14 @@
     .hoja-fin-ic{animation:none !important;}
   }
 
+  /* Importar histórico de banco (rediseño 2026-08-03): mismas filas entrando animadas que el
+     import de Excel (reutiliza el keyframe `hojaentra`), pero sin heredar la caja fija de
+     `.hoja-fila` — esta pantalla ya tenía su propio estilo de fila (checkbox + chips de destino
+     inline) y solo hacía falta la animación de entrada, no la caja entera. */
+  .hist-fila{opacity:0;transform:translateX(14px);}
+  .hist-fila.dentro{animation:hojaentra .34s cubic-bezier(.32,.72,0,1) both;}
+  @media (prefers-reduced-motion:reduce){ .hist-fila,.hist-fila.dentro{opacity:1;transform:none;animation:none !important;} }
+
   /* Ayuda contextual "?" */
   .helpq{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
   .helpq:active{color:var(--mint);border-color:var(--mint-dim);}
