@@ -2574,17 +2574,11 @@ function applyA11y(s){
 }
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
 // Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
-// lo sigue mandando el tema de arriba; la temporada solo añade acentos + animación ambiental.
+// lo sigue mandando el tema de arriba; la temporada solo añade acentos + el icono incrustado en
+// cada sección (su detalle CSS, `--season-ico`, va en shell.html — mismo emoji que este chip).
+// ⚠ Ya NO hay una capa de piezas cayendo por la pantalla (quitada 2026-08-03): aquí vivía
+// `SEASON_FX`, el pool de emojis que caían, y ha desaparecido con ella.
 const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
-// Emojis que caen en la capa ambiental de cada temática.
-const SEASON_FX={
-  mundial:["⚽","🇪🇸","⚽","🏆","⚽","🥅","⚽","🇪🇸"],
-  halloween:["🎃","👻","🦇","🕷️","🎃","👻","🍬","🦇"],
-  navidad:["❄️","🎄","🎁","⭐","❄️","🎅","🎄","❄️"],
-  verano:["☀️","🌴","🏖️","🍦","🌊","🐚","🍉","☀️"],
-  invierno:["❄️","⛄","❄️","🌨️","❄️","🧣","❄️","⛄"],
-  pascua:["🐣","🥚","🐰","🌷","🐣","🥚","🌸","🐰"]
-};
 function loadState(){
   const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){

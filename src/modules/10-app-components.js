@@ -1403,6 +1403,19 @@ var RELEASE_NOTES=[
       "NUEVO: un ingreso ya se apunta venga de CUALQUIER banco enlazado, no solo el de gasto diario — para que «Mi ciclo» encuentre tu nómina aunque caiga en otra cuenta.",
       "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
     ]},
+    /* TANDA AÑADIDA 2026-08-03: petición suya textual, «Quítame lo de que caigan cosas cuando
+       aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación
+       personalizada incrustada en las secciones, como cuando se mueven los logos de las tabs».
+       Se quita del todo la capa que caía/subía (`.season-fx`, `SEASON_FX`, `seasonEpoch`) y se
+       sustituye por un icono de la temática incrustado junto al título de cada pestaña, con el
+       mismo tipo de POP de un solo uso que ya usan los iconos de la barra — nunca en bucle.
+       No sube VERSION, misma ronda abierta de 4.13.0 que gestos/bancos. */
+    {id:"temporada", t:"🍂 Temporadas sin lluvia de cosas", items:[
+      "Ya no caen ni suben piezas por la pantalla, ni al abrir la app ni al cambiar de pestaña: esa capa se ha quitado del todo.",
+      "Con una temática puesta (Halloween, Navidad…), al lado del título de Inicio/Gastos/Plan/Cartera sale un icono pequeño de esa temática con un POP al pintarse la pantalla — no se repite en bucle.",
+      "Sin temática (Ajustes → Apariencia → Temática → «—»), todo se ve exactamente igual que siempre: no se nota nada de esto.",
+      "Con «Reducir animaciones» (en Ajustes o en el propio sistema), el icono de la temática sigue ahí pero sin el POP de entrada: sale fijo, quieto.",
+    ]},
     /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
        .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de
        pruebas en sí, así que aprobado = hecho, sin paso intermedio que esperar. */

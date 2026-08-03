@@ -253,53 +253,19 @@
   html.hi-contrast[data-theme="light"]{ --muted:#33463C; --muted-2:#5A6E63; }
   html.hi-contrast[data-theme="dark"]{ --muted:#C7C7CE; --muted-2:#9C9CA6; }
   html.hi-contrast[data-theme="blue"]{ --muted:#BFD2E6; --muted-2:#93A8C2; }
-  /* Temáticas de temporada: capa ambiental con PROFUNDIDAD (3 capas parallax) y movimiento
-     orgánico (deriva lateral + giro + pulso de escala) — estilo Revolut, no una caída plana. */
-  .season-fx{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;}
-  /* UNA SOLA CAÍDA AL ABRIR, Y UNA RÁFAGA CORTA AL CAMBIAR DE PESTAÑA (2026-08-02, petición de
-     la pareja transmitida por él). Historial de por qué esto es delicado: él mismo rechazó DOS
-     veces (29/7 y 1/8) que la animación se repitiera al cambiar de tab —«que al cambiar de tab
-     no sigan cayendo», «solo quiero que pase al principio»—, pero aquello era la caída LARGA
-     repitiéndose sin parar. Esto es distinto a propósito: una ráfaga CORTA que SUBE (no cae,
-     para no confundirse con el arranque) y solo se dispara al tocar una pestaña de verdad — si
-     te quedas quieto en la misma, no pasa nada. Si vuelve a no gustar, el epoch (`seasonEpoch`
-     en 11-app-main.js) es el sitio para volver a apagarlo.
-     `iteration-count:1` + `fill-mode:forwards`: una vuelta, se posa y se desvanece (ver el
-     100% de cada keyframe), coste cero el resto del tiempo. */
-  .season-fx span{position:absolute;top:-12vh;opacity:0;will-change:transform,opacity;
-    animation-name:seasonfall;animation-timing-function:cubic-bezier(.37,.16,.55,.9);
-    animation-iteration-count:1;animation-fill-mode:forwards;}
-  .season-fx.rising span{animation-name:seasonrise;}
-  /* Capas de profundidad: lejos = pequeña, desenfocada y lenta; cerca = grande, nítida, sombra. */
-  .season-fx .sfx-l0{filter:blur(1.4px) drop-shadow(0 1px 2px rgba(0,0,0,.18));}
-  .season-fx .sfx-l1{filter:blur(.4px) drop-shadow(0 2px 4px rgba(0,0,0,.22));}
-  .season-fx .sfx-l2{filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));}
-  /* --sway (deriva px) y --spin (giro) los pone cada pieza en JS → cada una cae distinto.
-     SIN `scale()` (quitado 2026-08-02, feedback de la pareja: «cae a cortes a partir de cierto
-     punto»). `filter` + `transform:scale()` a la vez obliga a muchos motores a re-rasterizar el
-     desenfoque/sombra en CADA frame en el que cambia el tamaño, en vez de solo recolocar una
-     capa ya pintada — con 18 piezas a la vez es de sobra para notarse en un móvil de gama media.
-     `translate3d`+`rotate` sí son solo composición (GPU, sin repintar). */
-  @keyframes seasonfall{
-    0%{transform:translate3d(0,-14vh,0) rotate(0deg);opacity:0;}
-    8%{opacity:var(--op,.7);}
-    15%{transform:translate3d(calc(var(--sway,10px)*.5),8vh,0) rotate(calc(var(--spin,180deg)*.15));}
-    50%{transform:translate3d(calc(var(--sway,10px)*-1),52vh,0) rotate(calc(var(--spin,180deg)*.55));}
-    80%{transform:translate3d(calc(var(--sway,10px)*.7),90vh,0) rotate(calc(var(--spin,180deg)*.85));opacity:var(--op,.7);}
-    /* Se desvanece justo antes de posarse (no solo se sale del viewport): así, si el rebote
-       nativo estira temporalmente el visual viewport durante el overscroll, no queda ninguna
-       pieza "aparcada" visible fuera de la pantalla normal — feedback 2026-08-01. */
-    100%{transform:translate3d(0,118vh,0) rotate(var(--spin,360deg));opacity:0;}
-  }
-  /* Sube desde el suelo, con la misma deriva lateral que la caída pero de abajo arriba —el
-     «viento» que pidió la pareja— y sale por arriba desvanecida, nunca se posa a media pantalla. */
-  @keyframes seasonrise{
-    0%{transform:translate3d(0,112vh,0) rotate(0deg);opacity:0;}
-    10%{opacity:var(--op,.7);}
-    45%{transform:translate3d(calc(var(--sway,10px)*-1),56vh,0) rotate(calc(var(--spin,180deg)*.4));}
-    78%{transform:translate3d(calc(var(--sway,10px)*.7),8vh,0) rotate(calc(var(--spin,180deg)*.78));opacity:var(--op,.7);}
-    100%{transform:translate3d(0,-16vh,0) rotate(var(--spin,360deg));opacity:0;}
-  }
+  /* Temáticas de temporada: YA NO hay una capa de piezas cayendo/subiendo por la pantalla —
+     quitada del todo (2026-08-03, petición suya textual: «Quítame lo de que caigan cosas cuando
+     aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación personalizada
+     incrustada en las secciones, como cuando se mueven los logos de las tabs»).
+     Tres intentos en fila con la misma queja de fondo (algo se mueve SOLO por moverse): caída
+     larga en bucle → una sola caída al abrir → ráfaga corta al cambiar de pestaña. Lo que pide
+     ahora es justo lo que ya tienen los iconos de la barra (`tabpop`/`tabpeina`/`tabmarca`/
+     `tabsube`, más abajo): un detalle que se pinta CON la sección, no una capa aparte animada por
+     su cuenta. Ver `--season-ico` en el bloque de `--season-tinte`, y el badge sobre `.v4-title`/
+     `.v4-inicio-hi` en «MÁS AMBIENTACIÓN», los dos más abajo.
+     Lo que desaparece con este commit: `.season-fx`, `@keyframes seasonfall`/`seasonrise` (y su
+     `.rising`) de aquí; `seasonEpoch`/`seasonFirstTab` (el JS que las disparaba) en
+     11-app-main.js; y el pool de emojis que caían (`SEASON_FX`) en 01-i18n.js. */
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
   /* EL HALO DEL + AHORA ES UN ANILLO, NO UNA SOMBRA (2026-07-28). `fabpulse` animaba
@@ -356,13 +322,30 @@
   html[data-season] .card{border-top:2px solid color-mix(in srgb, var(--season-tinte,transparent) 55%, var(--line-soft));}
   html[data-season] .botnav-tab.active svg{filter:drop-shadow(0 0 5px var(--season-tinte,transparent));}
   html[data-season] .serif{text-decoration:underline;text-decoration-color:color-mix(in srgb, var(--season-tinte,transparent) 45%, transparent);text-decoration-thickness:2px;text-underline-offset:6px;}
-  html[data-season="mundial"]{--season-tinte:#F1C40F;}
-  html[data-season="halloween"]{--season-tinte:#F0862B;}
-  html[data-season="navidad"]{--season-tinte:#D64550;}
-  html[data-season="verano"]{--season-tinte:#FFB347;}
-  html[data-season="invierno"]{--season-tinte:#7FB5E8;}
-  html[data-season="pascua"]{--season-tinte:#F7C6D9;}
-  @media (prefers-reduced-motion:reduce){ .season-fx{display:none;} html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} }
+  /* DETALLE PROPIO POR TEMÁTICA, INCRUSTADO EN CADA SECCIÓN (2026-08-03) — esto es lo que
+     sustituye a la capa que caía/subía. Mismo mecanismo que ya usan los iconos de la barra
+     (`tabpop` y compañía, arriba en este fichero): una animación CSS de un solo uso, disparada
+     porque el propio elemento se pinta — nunca en bucle, nunca por JS frame a frame. Un icono
+     pequeño de la temática (`--season-ico`) aparece con un POP al lado del título de cada
+     pantalla la primera vez que se pinta, no en cada cambio de pestaña (que es justo lo que
+     cansó: «ya me cansé jajaja»). Puro CSS con `::after` sobre el título de cada pestaña, sin
+     tocar el JSX de Inicio/Gastos/Plan/Cartera: `.v4-title` lo llevan Gastos/Plan/Cartera y
+     `.v4-inicio-hi` es su equivalente en Inicio. */
+  html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{
+    content:var(--season-ico,"");display:inline-block;margin-left:9px;font-size:.7em;
+    vertical-align:middle;animation:seasonchip .5s cubic-bezier(.32,.72,0,1) both;}
+  @keyframes seasonchip{
+    0%{opacity:0;transform:scale(.3) rotate(-20deg);}
+    60%{opacity:1;transform:scale(1.18) rotate(6deg);}
+    100%{opacity:1;transform:scale(1) rotate(0deg);}
+  }
+  html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";}
+  html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";}
+  html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";}
+  html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";}
+  html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";}
+  html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";}
+  @media (prefers-reduced-motion:reduce){ html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;} }
   /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
   .beta-tanda{margin:0 0 22px;padding-top:2px;}
   .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
@@ -5301,17 +5284,11 @@ function applyA11y(s){
 }
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
 // Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
-// lo sigue mandando el tema de arriba; la temporada solo añade acentos + animación ambiental.
+// lo sigue mandando el tema de arriba; la temporada solo añade acentos + el icono incrustado en
+// cada sección (su detalle CSS, `--season-ico`, va en shell.html — mismo emoji que este chip).
+// ⚠ Ya NO hay una capa de piezas cayendo por la pantalla (quitada 2026-08-03): aquí vivía
+// `SEASON_FX`, el pool de emojis que caían, y ha desaparecido con ella.
 const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
-// Emojis que caen en la capa ambiental de cada temática.
-const SEASON_FX={
-  mundial:["⚽","🇪🇸","⚽","🏆","⚽","🥅","⚽","🇪🇸"],
-  halloween:["🎃","👻","🦇","🕷️","🎃","👻","🍬","🦇"],
-  navidad:["❄️","🎄","🎁","⭐","❄️","🎅","🎄","❄️"],
-  verano:["☀️","🌴","🏖️","🍦","🌊","🐚","🍉","☀️"],
-  invierno:["❄️","⛄","❄️","🌨️","❄️","🧣","❄️","⛄"],
-  pascua:["🐣","🥚","🐰","🌷","🐣","🥚","🌸","🐰"]
-};
 function loadState(){
   const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){
@@ -12666,6 +12643,19 @@ var RELEASE_NOTES=[
       "NUEVO: un ingreso ya se apunta venga de CUALQUIER banco enlazado, no solo el de gasto diario — para que «Mi ciclo» encuentre tu nómina aunque caiga en otra cuenta.",
       "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
     ]},
+    /* TANDA AÑADIDA 2026-08-03: petición suya textual, «Quítame lo de que caigan cosas cuando
+       aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación
+       personalizada incrustada en las secciones, como cuando se mueven los logos de las tabs».
+       Se quita del todo la capa que caía/subía (`.season-fx`, `SEASON_FX`, `seasonEpoch`) y se
+       sustituye por un icono de la temática incrustado junto al título de cada pestaña, con el
+       mismo tipo de POP de un solo uso que ya usan los iconos de la barra — nunca en bucle.
+       No sube VERSION, misma ronda abierta de 4.13.0 que gestos/bancos. */
+    {id:"temporada", t:"🍂 Temporadas sin lluvia de cosas", items:[
+      "Ya no caen ni suben piezas por la pantalla, ni al abrir la app ni al cambiar de pestaña: esa capa se ha quitado del todo.",
+      "Con una temática puesta (Halloween, Navidad…), al lado del título de Inicio/Gastos/Plan/Cartera sale un icono pequeño de esa temática con un POP al pintarse la pantalla — no se repite en bucle.",
+      "Sin temática (Ajustes → Apariencia → Temática → «—»), todo se ve exactamente igual que siempre: no se nota nada de esto.",
+      "Con «Reducir animaciones» (en Ajustes o en el propio sistema), el icono de la temática sigue ahí pero sin el POP de entrada: sale fijo, quieto.",
+    ]},
     /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
        .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de
        pruebas en sí, así que aprobado = hecho, sin paso intermedio que esperar. */
@@ -15184,18 +15174,6 @@ function App(){
   const [mountedTabs,setMountedTabs]=useState(function(){ return {}; });
   const [mountNeighbors,setMountNeighbors]=useState(false);
   const tabRef=useRef(tab); useEffect(function(){ tabRef.current=tab; });   // pestaña activa (la usa el gesto atrás nativo)
-  // Ráfaga de temporada al cambiar de pestaña (petición pareja 2026-08-02, ver el porqué largo
-  // en shell.html junto a @keyframes seasonrise). Cambiar `seasonEpoch` fuerza remontar
-  // `.season-fx` (va en su `key`), que es lo único que reinicia una animación CSS con
-  // fill-mode:forwards. Se salta el primer montaje (esa ya la dispara la caída de apertura).
-  const [seasonEpoch,setSeasonEpoch]=useState(0);
-  const seasonFirstTab=useRef(true);
-  useEffect(function(){
-    if(seasonFirstTab.current){ seasonFirstTab.current=false; return; }
-    const season=stateRef.current.settings&&stateRef.current.settings.season;
-    const reduceMo=!!(stateRef.current.settings&&stateRef.current.settings.reduceMotion);
-    if(season && season!=="none" && !reduceMo) setSeasonEpoch(function(e){ return e+1; });
-  },[tab]);
   const [tabOrderState,setTabOrderState]=useState(null);   // orden transitorio mientras arrastras una pestaña
   const tabDrag=useRef(null);
   // Nav inferior que se esconde al bajar y reaparece al subir (estilo Revolut, petición 2026-07-17).
@@ -17634,46 +17612,10 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // Capa ambiental de temporada: solo si hay temática y no está «reducir animaciones».
-  // Estilo «Revolut» (2026-07-18): 3 capas de profundidad (lejos/medio/cerca) con distinto tamaño,
-  // opacidad, desenfoque y velocidad → parallax; y movimiento ORGÁNICO (deriva lateral + giro +
-  // pulso de escala) en vez de una caída recta y sosa. ~18 piezas repartidas.
-  const season=(state.settings&&state.settings.season)||"";
-  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
-  const seasonFx=(season && season!=="none" && !reduceMo && SEASON_FX[season])
-    ? React.createElement("div",{key:"sfx"+seasonEpoch,className:"season-fx"+(seasonEpoch>0?" rising":""),"data-season":season,"aria-hidden":"true"},
-        (function(){
-          const pool=SEASON_FX[season], N=18, out=[];
-          for(let i=0;i<N;i++){
-            const layer=i%3;                                   // 0=lejos, 1=medio, 2=cerca
-            const em=pool[i%pool.length];
-            // reparto pseudo-aleatorio pero estable (sin saltos entre renders)
-            const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
-            const left=Math.round(rnd(12.9898)*98);
-            const sz=[13,18,25][layer]+Math.round(rnd(4.1)*4);
-            /* MUCHÍSIMO MÁS CORTO (rechazo suyo del 29/7: «muchísimo menos tiempo»). Era
-               [16,12,9]+0-4 s por DOS vueltas = entre 18 y 40 segundos de cosas cayendo cada vez
-               que abría la app o tocaba una pestaña. Ahora una sola vuelta de 4-7 s, así que la
-               capa entera se posa antes de los 8 s y no vuelve a moverse. Sigue habiendo parallax
-               —lejos más lento que cerca—, solo que en un tercio del tiempo. */
-            const dur=[7,5.5,4.5][layer]+rnd(7.7)*1.6;         // lejos = más lento (parallax)
-            /* Retraso POSITIVO y corto. Con el negativo de antes, media capa empezaba a mitad de
-               la caída y, con una sola vuelta, esas piezas se perdían la entrada por arriba: se
-               veían aparecer ya por el medio de la pantalla. Escalonarlas hacia delante hace que
-               entren todas desde arriba, unas detrás de otras, y que aun así acabe pronto. */
-            const delay=rnd(3.3)*1.1;
-            const sway=(6+Math.round(rnd(5.5)*18))*(rnd(9.1)>0.5?1:-1);   // deriva lateral px
-            const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
-            const op=[0.5,0.72,0.9][layer];
-            out.push(React.createElement("span",{key:i,className:"sfx-l"+layer,
-              style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
-                "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
-          }
-          return out;
-        })())
-    : null;
+  // La capa ambiental de temporada (piezas cayendo/subiendo) SE QUITÓ del todo (2026-08-03): el
+  // detalle por temática ahora vive incrustado en cada sección, en CSS puro (ver `--season-ico`
+  // y el badge sobre `.v4-title`/`.v4-inicio-hi` en shell.html). Nada que montar ni disparar aquí.
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
-    seasonFx,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",
