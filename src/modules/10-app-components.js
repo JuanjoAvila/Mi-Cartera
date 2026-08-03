@@ -1344,6 +1344,15 @@ var RELEASE_NOTES=[
       "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal. Iba a destiempo dos veces: primero salto y desplazamiento con curvas distintas, y luego un reflow forzado que arrancaba la transición con las reglas viejas un instante antes de tiempo.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
     ]},
+    /* TANDA AÑADIDA 2026-08-03 (petición suya: «cuando deslices de arriba a abajo se pase a
+       deudas, y en deudas a metas, y de metas otra vez a recibos» — para no depender de la otra
+       mano y tocar el segmentado de arriba con el móvil cogido con una sola mano). */
+    {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
+      "Dentro de Plan, con la lista arriba del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
+      "Con la lista abajo del todo, tira hacia arriba: recorre el mismo círculo pero al revés.",
+      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba tiene que seguir siendo scroll normal — no debe cambiar de sección.",
+      "Deslizar de lado para cambiar entre Inicio/Gastos/Plan/Cartera sigue funcionando igual dentro de Plan.",
+    ]},
     /* ⚠ AQUÍ VIVÍA LA TANDA `arranque` — y SE QUITA DEL TODO, no se marca «hecha» (2026-08-01,
        regla suya, textual: «si sube algo en prod, se quita de beta para probar porque ya está
        listo... conforme apruebe la tanda sube y desaparece»). La aprobó (5/5 ok) el 1/8 y se

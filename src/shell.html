@@ -602,6 +602,12 @@
   .v4-seg{display:flex;gap:4px;background:var(--sur);border:1px solid var(--line-soft);border-radius:16px;padding:4px;margin-bottom:14px;}
   .v4-seg-btn{flex:1;min-height:40px;border-radius:12px;font-size:13.5px;font-weight:700;color:var(--muted);padding:8px 6px;}
   .v4-seg-btn.on{background:var(--mint);color:var(--on-mint);}
+  /* Entrada al cambiar de segmento de Plan DESLIZANDO (petición 2026-08-03). Solo transform+
+     opacity (compositor, sin repintar) — mismo criterio de coste que el resto de este archivo. */
+  @keyframes v4SegEnterDown{from{opacity:.4;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes v4SegEnterUp{from{opacity:.4;transform:translateY(-16px);}to{opacity:1;transform:translateY(0);}}
+  .v4-seg-enter-down{animation:v4SegEnterDown .26s var(--ease) both;}
+  .v4-seg-enter-up{animation:v4SegEnterUp .26s var(--ease) both;}
   .v4-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(95,208,138,.13);color:var(--mint);border-radius:20px;padding:7px 15px;font-size:14.5px;font-weight:700;}
   .v4-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(150deg,var(--sur2),var(--sur));border:1px solid var(--line);
     display:grid;place-items:center;font-weight:800;font-size:15px;color:var(--mint);flex:0 0 auto;
@@ -797,7 +803,7 @@
   @keyframes v4bar{from{transform:scaleX(0);}to{transform:scaleX(1);}}
   .rise{animation:rise .32s var(--ease) both;}
   @media (prefers-reduced-motion:reduce){
-    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.botnav-ind span,.botnav-tab svg,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.v4-avatar.pulling,.set-exp,.v4-inv-drop{animation:none !important;transition:none !important;}
+    .rise,.v4-sheet,.v4-sheet-back,.botnav,.botnav-ind,.botnav-ind span,.botnav-tab svg,.v4-stackbar i,.v4-goal .bar i,.v4-gastos-progress i,.settings-push,.settings-slide,.app-shell.settings-dim,.profile-pull,.app-shell.profile-dim,.v4-avatar.pulling,.set-exp,.v4-inv-drop,.v4-seg-enter-down,.v4-seg-enter-up{animation:none !important;transition:none !important;}
   }
 
   /* «Gestionar recibos» y «Herramientas de inversión» viven en un sheet v4 pero por dentro
