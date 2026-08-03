@@ -1528,6 +1528,14 @@ var RELEASE_NOTES=[
       "Lo que se reserva a una meta YA SE NOTA en Gastos: el presupuesto de ese mes baja lo reservado, así que «lo que puedes gastar» refleja de verdad lo que has apartado.",
       "Pensada para tu caso (un solo banco que es fondo de emergencia + inversión + gasto diario a la vez): ahora puedes ahorrar para una meta y seguir viendo claro cuánto te queda de verdad para gastar.",
     ]},
+    /* TANDA AÑADIDA 2026-08-03 (petición suya: «que se pueda importar un pdf o documento con
+       gastos, recibos e ingresos que la gente escribe a mano en un Word»). Reutiliza el mismo ZIP
+       y el mismo mapeo/previsualización del import de Excel; el PDF es mejor esfuerzo sin librería
+       (ver 15-import-hoja.js). */
+    {id:"import-docx-pdf", t:"📄 Importar también desde Word o PDF", items:[
+      "En Ajustes → Copia de seguridad → «Importar una hoja de gastos», ya se puede subir también un Word (.docx) con una tabla de fecha/concepto/importe: mismo mapeo de columnas y mismo reparto entre nuevos y repetidos que con un Excel.",
+      "Y también un PDF con texto de verdad (no una foto escaneada). Si el PDF resulta ser una imagen, o no se le pueden sacar filas con fecha e importe reconocibles, avisa con un mensaje claro en vez de fallar en silencio o inventarse datos.",
+    ]},
    ],
    items:{
    /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación) NI LOS 3 DE

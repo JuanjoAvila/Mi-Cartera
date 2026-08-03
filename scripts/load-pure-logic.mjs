@@ -59,6 +59,15 @@ export function createLogicSandbox(extra = {}) {
     isNaN,
     encodeURIComponent,
     decodeURIComponent,
+    // El importador de PDF (15-import-hoja.js) usa estas cuatro APIs de navegador para descomprimir
+    // streams FlateDecode sin ninguna librería — Node las trae de serie desde hace tiempo, así que
+    // se reenvían tal cual y el .pdf de verdad se puede probar aquí (no solo en e2e, como el .xlsx/
+    // .docx, que si necesitan `DOMParser` y ESO Node no lo tiene).
+    TextEncoder,
+    TextDecoder,
+    Blob,
+    Response,
+    DecompressionStream,
     Error,
     CustomEvent: class { constructor() {} },
     btoa: (s) => Buffer.from(s, "binary").toString("base64"),
