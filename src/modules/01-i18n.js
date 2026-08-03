@@ -437,11 +437,14 @@ function tf(k,vals){ let s=t(k); if(vals) for(const v in vals) s=s.split("{"+v+"
 Object.assign(LANG.es,{
   st_bigtext:"🔍 Letra grande", st_tour:"🎓 Ver el tutorial",
   tour_1:"💰 Aquí ves tu dinero de un vistazo: cuánto tienes en total y cómo va el mes.",
+  tour_settings:"👉 Desde Inicio, desliza desde el borde izquierdo hacia dentro de la pantalla para abrir Ajustes.",
   tour_2:"🧾 «{gastos}» es solo el día a día (súper, bares, ropa…). Filtra por mes, categoría o banco. Los recibos NO van aquí.",
   tour_3:"➕ El botón verde del centro apunta un gasto o un ingreso al momento, sin ir a ninguna pestaña.",
   tour_4:"📅 «{plan}» junta recibos, deudas y metas. En Recibos ves lo pendiente y lo ya pagado; Gestionar abre el detalle.",
+  tour_planswipe:"🔀 Dentro de «{plan}» puedes deslizar hacia arriba o abajo para saltar entre Recibos, Deudas y Metas sin subir a tocar la pestaña.",
   tour_5:"💼 «{cartera}» es tu patrimonio: cuentas, inversiones y bienes. Las herramientas de inversión están un toque más abajo.",
-  tour_6:"👤 El círculo de arriba abre tu perfil. Tira hacia abajo en Inicio para el mismo efecto. Ajustes: desliza de izquierda a derecha.",
+  tour_6:"👤 Toca el círculo de arriba para abrir tu perfil.",
+  tour_pulldown:"⬇️ Y si estás arriba del todo en Inicio, tirar hacia abajo abre ese mismo perfil sin venir hasta aquí.",
   tour_7:"👆 Desliza entre pestañas con el dedo. ¡Ya estás listo!",
   tour_next:"Siguiente", tour_skip:"Saltar", tour_done:"¡Listo!",
   h_ok:"Entendido",
@@ -478,11 +481,14 @@ Object.assign(LANG.es,{
 Object.assign(LANG.en,{
   st_bigtext:"🔍 Large text", st_tour:"🎓 View the tutorial",
   tour_1:"💰 Here's your money at a glance: how much you have in total and how the month is going.",
+  tour_settings:"👉 From Home, swipe in from the left edge of the screen to open Settings.",
   tour_2:"🧾 “{gastos}” is day-to-day only (groceries, bars, clothes…). Filter by month, category or bank. Bills do NOT go here.",
   tour_3:"➕ The green button in the centre logs an expense or income right away — no need to open a tab.",
   tour_4:"📅 “{plan}” brings together bills, debts and goals. In Bills you see what's due and what's paid; Manage opens the detail.",
+  tour_planswipe:"🔀 Inside “{plan}” you can swipe up or down to jump between Bills, Debts and Goals without reaching for the tab bar.",
   tour_5:"💼 “{cartera}” is your net worth: accounts, investments and assets. Investment tools are one tap below.",
-  tour_6:"👤 The circle up top opens your profile. Pull down on Home for the same effect. Settings: swipe right.",
+  tour_6:"👤 Tap the circle up top to open your profile.",
+  tour_pulldown:"⬇️ And while you're at the very top of Home, pulling down opens that same profile without reaching up here.",
   tour_7:"👆 Swipe between tabs with your finger. You're all set!",
   tour_next:"Next", tour_skip:"Skip", tour_done:"Done!",
   h_ok:"Got it",
@@ -519,11 +525,14 @@ Object.assign(LANG.en,{
 Object.assign(LANG.ca,{
   st_bigtext:"🔍 Lletra gran", st_tour:"🎓 Veure el tutorial",
   tour_1:"💰 Aquí veus els teus diners d'un cop d'ull: quant tens en total i com va el mes.",
+  tour_settings:"👉 Des d'Inici, llisca des de la vora esquerra cap endins de la pantalla per obrir Ajustos.",
   tour_2:"🧾 «{gastos}» és només el dia a dia (súper, bars, roba…). Filtra per mes, categoria o banc. Els rebuts NO van aquí.",
   tour_3:"➕ El botó verd del centre apunta una despesa o un ingrés al moment, sense anar a cap pestanya.",
   tour_4:"📅 «{plan}» junta rebuts, deutes i metes. A Rebuts veus el pendent i el ja pagat; Gestionar obre el detall.",
+  tour_planswipe:"🔀 Dins de «{plan}» pots lliscar amunt o avall per saltar entre Rebuts, Deutes i Metes sense pujar a tocar la pestanya.",
   tour_5:"💼 «{cartera}» és el teu patrimoni: comptes, inversions i béns. Les eines d'inversió són un toc més avall.",
-  tour_6:"👤 El cercle de dalt obre el teu perfil. Estira cap avall a Inici per al mateix efecte. Ajustos: llisca de esquerra a dreta.",
+  tour_6:"👤 Toca el cercle de dalt per obrir el teu perfil.",
+  tour_pulldown:"⬇️ I si ets a dalt de tot a Inici, estirar cap avall obre el mateix perfil sense venir fins aquí.",
   tour_7:"👆 Llisca entre pestanyes amb el dit. Ja estàs a punt!",
   tour_next:"Següent", tour_skip:"Omet", tour_done:"Fet!",
   h_ok:"Entesos",
@@ -857,15 +866,6 @@ Object.assign(LANG.es,{
   coach_patri:["Tu foto completa: cuentas, inversiones y bienes, todo sumado.","Al editar una cuenta, elige su rol: «Recibos» = fijos/cuotas; «Gasto diario» = compras del día a día (solo una); «Todo» = ambas cosas. Si el día a día va con OTRO banco, márcalo en Ajustes → Bancos.","Lo conectado (banco/bróker) se refresca solo; lo manual se edita tocándolo."],
   coach_debt:["El pendiente baja solo cada mes con lo que amortizas; cuando te llegue el saldo real del banco, edítalo y se re-ancla.","💸 «Amortizar» adelanta pago: baja el pendiente y acorta el plazo (misma cuota, menos meses).","💡 En «¿Cuándo amortizar?» pones el interés de la deuda y te digo cuánto ahorras y si te compensa."],
   coach_compartido:["Grupos para gastos a medias (viaje, casa, cena): añade personas y apunta quién pagó qué.","La app calcula el reparto y quién debe a quién."],
-  // Tutorial de gestos, anclado a Ajustes (petición 2026-08-03): la primera vez que se abre el
-  // panel sale desplegado; sigue el mismo mecanismo que TabCoach (coach-card/coach-pill + localStorage).
-  // ⚠ Texto de cierre DISTINTO al de coach_ok/wn_close a propósito: el cajón de Ajustes se
-  // premonta oculto en idle (11-app-main.js) para que el gesto de borde no vea un panel negro
-  // vacío la 1ª vez, así que este botón vive en el DOM (oculto) desde antes de abrir Ajustes. Si
-  // compartiera texto con «¡Entendido!»/«Got it!» (Novedades, TabCoach…), cualquier test que
-  // cierre esos popups con un selector genérico por texto podría toparse con este en su lugar.
-  coach_gestos_title:"Cómo moverte con gestos", coach_gestos_btn:"¿Cómo van los gestos?", coach_gestos_ok:"¡Genial, gracias!",
-  coach_gestos:["👉 Ajustes: desde Inicio, desliza desde el borde izquierdo hacia dentro de la pantalla.","👤 Tu perfil: estando arriba del todo en Inicio, tira hacia abajo.","↔️ Cambiar de pestaña: desliza a los lados entre Inicio, Gastos, Plan y Cartera (o toca los iconos de abajo)."],
 });
 Object.assign(LANG.en,{
   coach_btn:"How does this work?", coach_title:"Tips for “{tab}”", coach_ok:"Got it!",
@@ -878,8 +878,6 @@ Object.assign(LANG.en,{
   coach_patri:["Your full picture: accounts, investments and assets, all added up.","When editing an account, pick its role: “Bills” = fixed/instalments; “Daily spending” = day-to-day (only one); “Everything” = both. If day-to-day is on ANOTHER bank, tick it in Settings → Banks.","Connected stuff (bank/broker) refreshes itself; manual entries are edited by tapping."],
   coach_debt:["The outstanding drops by itself each month by what you amortise; when the bank's real balance arrives, edit it and it re-anchors.","💸 “Pay down” makes an early payment: the balance drops and the term shortens (same instalment, fewer months).","💡 In “When to pay down?” set the debt's interest and I'll tell you what you save and whether it's worth it."],
   coach_compartido:["Groups for shared expenses (trip, house, dinner): add people and log who paid what.","The app works out the split and who owes whom."],
-  coach_gestos_title:"How to move around with gestures", coach_gestos_btn:"How do the gestures work?", coach_gestos_ok:"Nice, thanks!",
-  coach_gestos:["👉 Settings: from Home, swipe in from the left edge of the screen.","👤 Your profile: while at the very top of Home, pull down.","↔️ Switch tabs: swipe sideways between Home, Spending, Plan and Portfolio (or tap the icons below)."],
 });
 Object.assign(LANG.ca,{
   coach_btn:"Com va això?", coach_title:"Trucs de «{tab}»", coach_ok:"Entesos!",
@@ -892,8 +890,6 @@ Object.assign(LANG.ca,{
   coach_patri:["La teva foto completa: comptes, inversions i béns, tot sumat.","En editar un compte, tria el rol: «Rebuts» = fixos/quotes; «Despesa diària» = compres del dia a dia (només un); «Tot» = les dues coses. Si el dia a dia va amb UN ALTRE banc, marca'l a Ajustos → Bancs.","El que està connectat (banc/bròker) es refresca sol; el manual s'edita tocant-lo."],
   coach_debt:["El pendent baixa sol cada mes amb el que amortitzes; quan t'arribi el saldo real del banc, edita'l i es re-ancora.","💸 «Amortitza» avança pagament: baixa el pendent i s'escurça el termini (mateixa quota, menys mesos).","💡 A «Quan amortitzar?» poses l'interès del deute i et dic quant estalvies i si et compensa."],
   coach_compartido:["Grups per a despeses a mitges (viatge, casa, sopar): afegeix persones i apunta qui va pagar què.","L'app calcula el repartiment i qui deu a qui."],
-  coach_gestos_title:"Com moure't amb gestos", coach_gestos_btn:"Com van els gestos?", coach_gestos_ok:"Genial, gràcies!",
-  coach_gestos:["👉 Ajustos: des d'Inici, llisca des de la vora esquerra cap endins de la pantalla.","👤 El teu perfil: estant a dalt de tot a Inici, estira cap avall.","↔️ Canviar de pestanya: llisca als costats entre Inici, Despeses, Pla i Cartera (o toca les icones de sota)."],
 });
 /* Sincronización Trade Republic (beta · nativa en Android) */
 Object.assign(LANG.es,{
