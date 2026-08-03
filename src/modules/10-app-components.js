@@ -1368,6 +1368,12 @@ var RELEASE_NOTES=[
     /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
        .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de
        pruebas en sí, así que aprobado = hecho, sin paso intermedio que esperar. */
+    {id:"reservar", t:"🔒 Reservar dinero de tu nómina", items:[
+      "En Metas hay una sección nueva «Reservar dinero de tu nómina»: reglas de importe fijo o % que, al detectar tu nómina, reparten sola parte del ingreso hacia las metas que elijas.",
+      "Al detectarse un ingreso grande (el mismo que ancla «Mi ciclo»), sale una tarjeta con el reparto propuesto — nunca se aplica solo, tú confirmas o dices «ahora no».",
+      "Lo que se reserva a una meta YA SE NOTA en Gastos: el presupuesto de ese mes baja lo reservado, así que «lo que puedes gastar» refleja de verdad lo que has apartado.",
+      "Pensada para tu caso (un solo banco que es fondo de emergencia + inversión + gasto diario a la vez): ahora puedes ahorrar para una meta y seguir viendo claro cuánto te queda de verdad para gastar.",
+    ]},
    ],
    items:{
    /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación) NI LOS 3 DE

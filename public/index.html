@@ -3172,6 +3172,7 @@ Object.assign(LANG.es,{
   h_trend:"Compara lo que llevas gastado en cada categoría con tu media de los últimos meses. Flecha arriba = este mes vas por encima de lo normal.",
   h_goalw:"Tu meta de ahorro más cercana y cómo va. La frase de abajo te dice si llegas a la fecha o cuánto tendrías que apartar al mes.",
   h_subs:"Pagos que se repiten cada mes por el mismo importe (Netflix, gym…). La app los detecta sola en tus gastos: revisa si de verdad los usas.",
+  h_reserva:"Cuando detecte una nómina, te propongo repartir parte según estas reglas: cada una suma a la meta que elijas y se descuenta de tu presupuesto de gasto variable, para que lo reservado se note de verdad.",
   h_cvg:"Cuánto has puesto de tu bolsillo en cada bróker y cuánto vale hoy. La diferencia es tu ganancia (o pérdida) real, en la moneda de cada uno.",
   h_bytype:"Tus inversiones agrupadas por tipo (acciones, ETF, fondo, oro…). Para ver de un vistazo si lo tienes todo en un mismo saco.",
   h_rend:"Cada posición ordenada por lo que te ha dado: verde = ganas, rojo = pierdes. Con el % sobre lo que pusiste.",
@@ -3212,6 +3213,7 @@ Object.assign(LANG.en,{
   h_trend:"Compares what you've spent per category with your average of recent months. Arrow up = above your normal this month.",
   h_goalw:"Your nearest savings goal and how it's going. The line below tells you if you'll make the date or how much to set aside monthly.",
   h_subs:"Payments that repeat monthly for the same amount (Netflix, gym…). The app detects them in your spending: check you still use them.",
+  h_reserva:"When I detect a paycheck, I'll suggest splitting part of it by these rules: each one adds to the goal you pick and gets deducted from your variable spending budget, so the reserved money actually feels set aside.",
   h_cvg:"How much of your own money went into each broker and what it's worth today. The difference is your real gain (or loss), in each one's currency.",
   h_bytype:"Your investments grouped by type (stocks, ETF, fund, gold…). A quick check that everything isn't in one basket.",
   h_rend:"Each position ranked by what it has made you: green = gaining, red = losing. With the % over what you put in.",
@@ -3252,6 +3254,7 @@ Object.assign(LANG.ca,{
   h_trend:"Compara el que portes gastat en cada categoria amb la teva mitjana dels últims mesos. Fletxa amunt = aquest mes vas per sobre del normal.",
   h_goalw:"La teva meta d'estalvi més propera i com va. La frase de sota et diu si arribes a la data o quant hauries d'apartar al mes.",
   h_subs:"Pagaments que es repeteixen cada mes pel mateix import (Netflix, gym…). L'app els detecta sola a les teves despeses: revisa si de debò els fas servir.",
+  h_reserva:"Quan detecti una nòmina, et proposaré repartir-ne part segons aquestes regles: cada una suma a l'objectiu que triïs i es descompta del teu pressupost de despesa variable, perquè el que reserves es noti de debò.",
   h_cvg:"Quant has posat de la teva butxaca a cada bròker i quant val avui. La diferència és el teu guany (o pèrdua) real, en la moneda de cadascun.",
   h_bytype:"Les teves inversions agrupades per tipus (accions, ETF, fons, or…). Per veure d'un cop d'ull si ho tens tot al mateix sac.",
   h_rend:"Cada posició ordenada pel que t'ha donat: verd = guanyes, vermell = perds. Amb el % sobre el que hi vas posar.",
@@ -4286,6 +4289,17 @@ Object.assign(LANG.es,{
   sh_back:"Grupos", sh_delgroup:"Borrar grupo", sh_delgroup_q:"¿Borrar este grupo y sus gastos?",
   gl_empty_t:"Aún no tienes metas", gl_empty_d:"Crea tu primera meta de ahorro y mira cómo se acerca cada mes.",
   gl_widget_title:"Tu meta", wl_goal:"Meta",
+  rr_title:"🔒 Reservar dinero de tu nómina", rr_sub:"{n} regla(s)", rr_sub_empty:"sin reglas",
+  rr_none:"Aún no tienes ninguna regla. Añade una para que parte de tu nómina vaya sola a una meta.",
+  rr_add:"+ Añadir regla", rr_save:"Guardar regla",
+  rr_name_ph:"Nombre (opcional, ej. Parking recibos)",
+  rr_kind_fixed:"Importe fijo €", rr_kind_pct:"% de la nómina",
+  rr_row_fixed:"{v} fijos", rr_row_pct:"{v} %",
+  rr_goal_gone:"(meta borrada)",
+  rr_detect_t:"💰 Nómina detectada: {x}", rr_detect_sub:"Cobrada el {d}. Según tus reglas, este es el reparto:",
+  rr_remainder:"Y te quedan {x} para gasto diario, sin tocar.",
+  rr_apply:"Aplicar reparto", rr_dismiss:"Ahora no",
+  rr_applied_ok:"✓ Reparto aplicado a tus metas",
 });
 Object.assign(LANG.en,{
   tab_metas:"Goals", tab_logros:"Achievements",
@@ -4318,6 +4332,17 @@ Object.assign(LANG.en,{
   sh_back:"Groups", sh_delgroup:"Delete group", sh_delgroup_q:"Delete this group and its expenses?",
   gl_empty_t:"No goals yet", gl_empty_d:"Create your first savings goal and watch it get closer each month.",
   gl_widget_title:"Your goal", wl_goal:"Goal",
+  rr_title:"🔒 Reserve money from your paycheck", rr_sub:"{n} rule(s)", rr_sub_empty:"no rules",
+  rr_none:"You don't have any rules yet. Add one so part of your paycheck goes to a goal on its own.",
+  rr_add:"+ Add rule", rr_save:"Save rule",
+  rr_name_ph:"Name (optional, e.g. Bill parking)",
+  rr_kind_fixed:"Fixed amount €", rr_kind_pct:"% of paycheck",
+  rr_row_fixed:"{v} fixed", rr_row_pct:"{v}%",
+  rr_goal_gone:"(deleted goal)",
+  rr_detect_t:"💰 Paycheck detected: {x}", rr_detect_sub:"Received on {d}. Based on your rules, here's the split:",
+  rr_remainder:"And {x} is left for daily spending, untouched.",
+  rr_apply:"Apply split", rr_dismiss:"Not now",
+  rr_applied_ok:"✓ Split applied to your goals",
 });
 Object.assign(LANG.ca,{
   tab_metas:"Objectius", tab_logros:"Assoliments",
@@ -4350,6 +4375,17 @@ Object.assign(LANG.ca,{
   sh_back:"Grups", sh_delgroup:"Esborra grup", sh_delgroup_q:"Esborrar aquest grup i les seves despeses?",
   gl_empty_t:"Encara no tens objectius", gl_empty_d:"Crea el teu primer objectiu d'estalvi i mira com s'acosta cada mes.",
   gl_widget_title:"El teu objectiu", wl_goal:"Objectiu",
+  rr_title:"🔒 Reservar diners de la teva nòmina", rr_sub:"{n} regla(es)", rr_sub_empty:"sense regles",
+  rr_none:"Encara no tens cap regla. Afegeix-ne una perquè part de la teva nòmina vagi sola a un objectiu.",
+  rr_add:"+ Afegir regla", rr_save:"Desar regla",
+  rr_name_ph:"Nom (opcional, ex. Aparcament de rebuts)",
+  rr_kind_fixed:"Import fix €", rr_kind_pct:"% de la nòmina",
+  rr_row_fixed:"{v} fixos", rr_row_pct:"{v} %",
+  rr_goal_gone:"(objectiu esborrat)",
+  rr_detect_t:"💰 Nòmina detectada: {x}", rr_detect_sub:"Cobrada el {d}. Segons les teves regles, aquest és el repartiment:",
+  rr_remainder:"I et queden {x} per a despesa diària, sense tocar.",
+  rr_apply:"Aplicar repartiment", rr_dismiss:"Ara no",
+  rr_applied_ok:"✓ Repartiment aplicat als teus objectius",
 });
 // --- Open Banking (Capa 2: el saldo real del banco) ---
 Object.assign(LANG.es,{
@@ -6515,18 +6551,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
-    const budget=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+    // «Reservar dinero» (2026-08-03): lo que ya se ha repartido a metas desde una nómina de este
+    // mes deja de contar como disponible — si no, aportar a una meta y ver que el presupuesto no
+    // se inmuta es justo la sensación de "esto no está reservado de verdad" que se quería arreglar.
+    const reserved=reservedSince(state, startMs);
+    const budgetRaw=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+    const budget=budgetRaw==null?null:Math.max(0,+(budgetRaw-reserved).toFixed(2));
     const mode=(state.settings&&state.settings.gTotalMode)||"split";
     const balance=income-spent; // positivo = te queda / negativo = gastaste de más
     return {
       spent:spent, income:income, balance:balance, mode:mode,
-      budget:budget,
+      budget:budget, reserved:reserved,
       remaining:budget==null?null:(mode==="net"?budget-spent+income:budget-spent),
       day:now.getDate(),
       last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),
       month:monthLong(now.getMonth())
     };
-  },[state.expenses,state.budget,state.settings&&state.settings.gTotalMode]);
+  },[state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
     if(!cloud.enabled()||!ex||aiBusy) return;
@@ -9248,6 +9289,81 @@ function importObExpenses(s, txs){
   return add.length? add : null;
 }
 
+/* ============================================================
+   RESERVAR DINERO: repartir la nómina entre metas al cobrar (2026-08-03).
+   ============================================================
+   Las metas (`state.goals`) son un bote aparte que no toca ninguna cuenta ni el presupuesto — por
+   diseño (ver `ContributeGoalSheet` en 09-tab-debts-goals.js: "no mueve saldos de cuentas, la hucha
+   de metas es un bote aparte"). Es justo lo que el usuario echaba en falta: contribuir a una meta
+   no se notaba en "lo que puedes gastar", así que ahorrar Y controlar el gasto variable con la
+   MISMA cuenta (su caso: Trade Republic es fondo de emergencia + round-up + inversión + gasto
+   diario a la vez) no se podía ver claro.
+
+   Reglas (`state.settings.reservaRules`): {id, name, kind:"fixed"|"pct", value, goalId}. Al
+   detectarse un ingreso grande (mismo umbral que "Mi ciclo": `lastPaydayOf` en 04-tab-gastos.js,
+   ≥200€ en los últimos 45 días) se calcula el reparto y el usuario CONFIRMA antes de aplicarlo
+   (nunca en silencio: es dinero de verdad, aunque aquí solo sea contabilidad de la app). Al
+   aplicar: cada regla suma a su meta (mismo mecanismo que "Aportar a una meta") y queda un
+   registro en `state.reservaLog`, idempotente por `incomeKey` (fecha+importe+comercio del ingreso,
+   igual criterio de dedup que el resto de este fichero) para no aplicar la misma nómina dos veces.
+
+   Lo reservado YA NO cuenta como "disponible para gastar": `monthSummary` en 04-tab-gastos.js
+   resta el total reservado desde el inicio del período del presupuesto antes de calcular "lo que
+   te queda" — sin eso, la sensación de "esto está apartado de verdad" no existía por mucho que
+   sumara a una meta. */
+function reservaKeyOf(income){ return String(income&&income.date).slice(0,10)+"|"+((income&&income.amount)||0)+"|"+((income&&income.merchant)||""); }
+// Reparto de un ingreso según las reglas configuradas: el importe fijo o porcentual de cada regla,
+// sin pasarse nunca del propio ingreso ni dejar ninguna meta en negativo. Ignora reglas huérfanas
+// (meta borrada) o metas ya cumplidas (no tiene sentido seguir metiéndoles dinero).
+function reservaPlanFor(state, incomeAmount){
+  const rules=(state.settings&&state.settings.reservaRules)||[];
+  const goals=state.goals||[];
+  const gross=Math.abs(incomeAmount||0);
+  let used=0;
+  const plan=[];
+  rules.forEach(function(r){
+    if(!r||!r.goalId) return;
+    const g=goals.find(function(x){ return x.id===r.goalId; });
+    if(!g||g.done) return;
+    let amt=r.kind==="pct" ? gross*(Math.max(0,r.value||0)/100) : Math.max(0,r.value||0);
+    amt=Math.min(amt, Math.max(0, gross-used));
+    amt=+amt.toFixed(2);
+    if(amt<=0) return;
+    used+=amt;
+    plan.push({ ruleId:r.id, goalId:g.id, name:r.name||g.name, amount:amt });
+  });
+  return { plan:plan, total:+used.toFixed(2), remainder:+(gross-used).toFixed(2) };
+}
+// ¿Ya se aplicó el reparto de ESTE ingreso? (idempotencia: una nómina, un reparto.)
+function reservaAlreadyApplied(state, income){
+  const k=reservaKeyOf(income);
+  return (state.reservaLog||[]).some(function(x){ return x.incomeKey===k; });
+}
+// Aplica el reparto: suma cada meta (mismo efecto que "Aportar a una meta") y deja el registro que
+// hace que se descuente del presupuesto. Función PURA — devuelve el nuevo estado sin mutar `state`.
+function applyReserva(state, income, plan, bankEnt){
+  if(!plan || !plan.length) return state;
+  if(reservaAlreadyApplied(state,income)) return state;
+  const k=reservaKeyOf(income);
+  let goals=(state.goals||[]).slice();
+  plan.forEach(function(p){
+    goals=goals.map(function(g){
+      if(g.id!==p.goalId) return g;
+      const ns=Math.max(0,(g.saved||0)+p.amount);
+      return Object.assign({},g,{saved:ns, fromBank:bankEnt||g.fromBank, done:ns>=g.target, doneAt:(ns>=g.target&&!g.doneAt)?new Date().toISOString():g.doneAt});
+    });
+  });
+  const log=(state.reservaLog||[]).concat(plan.map(function(p){
+    return { id:uid(), ruleId:p.ruleId, goalId:p.goalId, name:p.name, amount:p.amount, date:income.date, incomeKey:k };
+  }));
+  return Object.assign({},state,{goals:goals, reservaLog:log});
+}
+// Total reservado desde `fromMs` — lo que hay que restar del presupuesto del período que se esté
+// mirando, para que lo apartado se note de verdad en "lo que puedes gastar".
+function reservedSince(state, fromMs){
+  return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
+}
+
 /* IMPORTAR HISTÓRICO — duplicados de RECIBO dentro del propio lote (2026-07-31, caso real: -9k
    en Revolut de golpe). Un recibo recurrente (alquiler, seguro, suscripción…) aparece UNA VEZ POR
    MES en 3 meses de extracto: son 3 movimientos reales y distintos en el banco, pero la MISMA
@@ -10197,6 +10313,92 @@ function Debts({state, set, showToast}){
 /* ============================================================
    METAS DE AHORRO (#15)
    ============================================================ */
+/* ============================================================
+   RESERVAR DINERO (2026-08-03) — petición del usuario: su caso es una sola cuenta (Trade
+   Republic) que hace de fondo de emergencia + round-up + inversión + gasto diario a la vez, y
+   quería que ahorrar para una meta se notara de verdad en "lo que puede gastar", no solo en un
+   bote aparte. Ver la explicación larga en `08-motor-bank.js` (reservaPlanFor/applyReserva).
+   ============================================================ */
+// Editor de reglas: nombre opcional, importe fijo o % de la nómina, y a qué meta va.
+function ReservaRules({state, set}){
+  const goals=(state.goals||[]).filter(function(g){ return !g.done; });
+  const rules=(state.settings&&state.settings.reservaRules)||[];
+  const [adding,setAdding]=useState(false);
+  const blank={name:"",kind:"fixed",value:"",goalId:goals[0]&&goals[0].id||""};
+  const [form,setForm]=useState(blank);
+  const setRules=function(next){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{reservaRules:next})}); }); };
+  const addRule=function(){
+    const v=parseFloat(String(form.value).replace(',','.'))||0;
+    if(v<=0 || !form.goalId) return;
+    const r={id:uid(),name:form.name||"",kind:form.kind,value:v,goalId:form.goalId};
+    setRules(rules.concat([r]));
+    setForm(blank); setAdding(false);
+  };
+  const delRule=function(id){ setRules(rules.filter(function(r){ return r.id!==id; })); };
+  const goalName=function(id){ const g=(state.goals||[]).find(function(x){ return x.id===id; }); return g?((g.emoji||"🎯")+" "+g.name):t("rr_goal_gone"); };
+  if(!goals.length && !rules.length) return null;   // sin metas activas no hay nada que configurar
+  return React.createElement(CollapsibleCard,{title:t("rr_title"),sub:rules.length?tf("rr_sub",{n:rules.length}):t("rr_sub_empty"),dot:"#5FD08A",storageKey:"g_reserva_rules",help:t("h_reserva")},
+    rules.length===0 && React.createElement("div",{className:"hint"}, t("rr_none")),
+    rules.map(function(r){
+      return React.createElement("div",{key:r.id,className:"sub-row"},
+        React.createElement("div",{className:"sub-mid"},
+          React.createElement("div",{className:"sub-name"}, r.name||goalName(r.goalId)),
+          React.createElement("div",{className:"sub-meta"}, (r.kind==="pct"?tf("rr_row_pct",{v:r.value}):tf("rr_row_fixed",{v:eur0(r.value)}))+" → "+goalName(r.goalId))
+        ),
+        React.createElement("button",{className:"chip",style:{fontSize:11.5,padding:"3px 10px"},onClick:function(){ delRule(r.id); }}, "✕")
+      );
+    }),
+    goals.length>0 && (adding
+      ? React.createElement("div",{className:"add-form",style:{marginTop:10}},
+          React.createElement("input",{className:"af-in",placeholder:t("rr_name_ph"),value:form.name,onChange:function(e){ setForm(Object.assign({},form,{name:e.target.value})); }}),
+          React.createElement("div",{className:"af-row"},
+            React.createElement("select",{className:"af-in",value:form.kind,onChange:function(e){ setForm(Object.assign({},form,{kind:e.target.value})); }},
+              React.createElement("option",{value:"fixed"},t("rr_kind_fixed")),
+              React.createElement("option",{value:"pct"},t("rr_kind_pct"))),
+            React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:form.kind==="pct"?"%":"€",value:form.value,onChange:function(e){ setForm(Object.assign({},form,{value:e.target.value})); }})
+          ),
+          React.createElement("select",{className:"af-in",value:form.goalId,onChange:function(e){ setForm(Object.assign({},form,{goalId:e.target.value})); }},
+            goals.map(function(g){ return React.createElement("option",{key:g.id,value:g.id}, (g.emoji||"🎯")+" "+g.name); })),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:8},onClick:addRule}, t("rr_save")),
+          React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAdding(false); setForm(blank); }}, t("gl_cancel"))
+        )
+      : React.createElement("button",{className:"v4-ghost-add",style:{marginTop:8},onClick:function(){ setForm(blank); setAdding(true); }}, t("rr_add"))
+    )
+  );
+}
+// Banner de "nómina detectada": aparece cuando `lastPaydayOf` encuentra un ingreso grande que aún
+// no se ha repartido ni descartado. Nunca aplica en silencio — siempre pide confirmación, porque
+// aunque solo mueva cifras dentro de la app, es DINERO DE VERDAD para quien lo mira.
+function ReservaDetect({state, set, showToast}){
+  const dismissed=(state.reservaDismissed)||[];
+  const cycle=useMemo(function(){ return lastPaydayOf(state.expenses); },[state.expenses]);
+  const rules=(state.settings&&state.settings.reservaRules)||[];
+  if(!cycle || !cycle.inc || !rules.length) return null;
+  const income=cycle.inc;
+  const key=reservaKeyOf(income);
+  if(reservaAlreadyApplied(state,income) || dismissed.indexOf(key)!==-1) return null;
+  const plan=reservaPlanFor(state, income.amount);
+  if(!plan.plan.length) return null;
+  const dailyEnt=(state.accounts||[]).find(function(a){ return accDaily(a); });
+  const apply=function(){
+    set(function(s){ return applyReserva(s, income, plan.plan, dailyEnt&&dailyEnt.ent); });
+    if(showToast) showToast(t("rr_applied_ok"));
+  };
+  const dismiss=function(){ set(function(s){ return Object.assign({},s,{reservaDismissed:(s.reservaDismissed||[]).concat([key])}); }); };
+  return React.createElement("div",{className:"v4-card rise",style:{borderColor:"var(--mint-dim)",marginBottom:14}},
+    React.createElement("div",{style:{fontWeight:800,fontSize:14.5}}, tf("rr_detect_t",{x:eur0(Math.abs(income.amount))})),
+    React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:4}}, tf("rr_detect_sub",{d:parseDate(income.date).toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})})),
+    React.createElement("div",{style:{marginTop:10}}, plan.plan.map(function(p){
+      return React.createElement("div",{key:p.ruleId,style:{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}},
+        React.createElement("span",null, p.name), React.createElement("span",{className:"num"}, eur0(p.amount)));
+    })),
+    plan.remainder>0 && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:4}}, tf("rr_remainder",{x:eur0(plan.remainder)})),
+    React.createElement("div",{className:"af-row",style:{marginTop:10}},
+      React.createElement("button",{className:"btn btn-primary",style:{flex:1},onClick:apply}, t("rr_apply")),
+      React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:dismiss}, t("rr_dismiss"))
+    )
+  );
+}
 function Goals({state, set, totals, showToast}){
   const tt=totals||{};
   const goals=state.goals||[];
@@ -10263,6 +10465,7 @@ function Goals({state, set, totals, showToast}){
       React.createElement("div",{className:"serif num",style:{fontSize:40,fontWeight:550,letterSpacing:"-1px",lineHeight:1.05,marginTop:6,color:"var(--mint)"}},eur(totalSaved)),
       totalTarget>0 && React.createElement("div",{style:{marginTop:10,fontSize:13.5,color:"var(--muted)"}},tf("gl_total_sub",{x:eur0(totalTarget)}))
     ),
+    React.createElement(ReservaDetect,{state:state,set:set,showToast:showToast}),
     goals.length===0 && !adding && React.createElement("div",{className:"empty"},
       React.createElement("div",{className:"ttl"},t("gl_empty_t")), t("gl_empty_d")),
 
@@ -10299,6 +10502,8 @@ function Goals({state, set, totals, showToast}){
     }),
 
     goals.length>0 && React.createElement("button",{className:"btn btn-block "+(editing?"btn-primary":"btn-ghost"),style:{marginTop:4},onClick:function(){ editing?saveEdit():startEdit(); }}, editing?t("gl_save"):t("gl_edit")),
+
+    React.createElement("div",{style:{marginTop:14}}, React.createElement(ReservaRules,{state:state,set:set})),
 
     adding
       ? React.createElement("div",{className:"add-form",style:{marginTop:12}},
@@ -12407,6 +12612,12 @@ var RELEASE_NOTES=[
     /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
        .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de
        pruebas en sí, así que aprobado = hecho, sin paso intermedio que esperar. */
+    {id:"reservar", t:"🔒 Reservar dinero de tu nómina", items:[
+      "En Metas hay una sección nueva «Reservar dinero de tu nómina»: reglas de importe fijo o % que, al detectar tu nómina, reparten sola parte del ingreso hacia las metas que elijas.",
+      "Al detectarse un ingreso grande (el mismo que ancla «Mi ciclo»), sale una tarjeta con el reparto propuesto — nunca se aplica solo, tú confirmas o dices «ahora no».",
+      "Lo que se reserva a una meta YA SE NOTA en Gastos: el presupuesto de ese mes baja lo reservado, así que «lo que puedes gastar» refleja de verdad lo que has apartado.",
+      "Pensada para tu caso (un solo banco que es fondo de emergencia + inversión + gasto diario a la vez): ahora puedes ahorrar para una meta y seguir viendo claro cuánto te queda de verdad para gastar.",
+    ]},
    ],
    items:{
    /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación) NI LOS 3 DE

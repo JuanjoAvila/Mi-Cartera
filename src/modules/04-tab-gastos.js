@@ -323,18 +323,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
-    const budget=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+    // «Reservar dinero» (2026-08-03): lo que ya se ha repartido a metas desde una nómina de este
+    // mes deja de contar como disponible — si no, aportar a una meta y ver que el presupuesto no
+    // se inmuta es justo la sensación de "esto no está reservado de verdad" que se quería arreglar.
+    const reserved=reservedSince(state, startMs);
+    const budgetRaw=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+    const budget=budgetRaw==null?null:Math.max(0,+(budgetRaw-reserved).toFixed(2));
     const mode=(state.settings&&state.settings.gTotalMode)||"split";
     const balance=income-spent; // positivo = te queda / negativo = gastaste de más
     return {
       spent:spent, income:income, balance:balance, mode:mode,
-      budget:budget,
+      budget:budget, reserved:reserved,
       remaining:budget==null?null:(mode==="net"?budget-spent+income:budget-spent),
       day:now.getDate(),
       last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),
       month:monthLong(now.getMonth())
     };
-  },[state.expenses,state.budget,state.settings&&state.settings.gTotalMode]);
+  },[state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
     if(!cloud.enabled()||!ex||aiBusy) return;

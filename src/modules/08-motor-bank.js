@@ -408,6 +408,81 @@ function importObExpenses(s, txs){
   return add.length? add : null;
 }
 
+/* ============================================================
+   RESERVAR DINERO: repartir la nómina entre metas al cobrar (2026-08-03).
+   ============================================================
+   Las metas (`state.goals`) son un bote aparte que no toca ninguna cuenta ni el presupuesto — por
+   diseño (ver `ContributeGoalSheet` en 09-tab-debts-goals.js: "no mueve saldos de cuentas, la hucha
+   de metas es un bote aparte"). Es justo lo que el usuario echaba en falta: contribuir a una meta
+   no se notaba en "lo que puedes gastar", así que ahorrar Y controlar el gasto variable con la
+   MISMA cuenta (su caso: Trade Republic es fondo de emergencia + round-up + inversión + gasto
+   diario a la vez) no se podía ver claro.
+
+   Reglas (`state.settings.reservaRules`): {id, name, kind:"fixed"|"pct", value, goalId}. Al
+   detectarse un ingreso grande (mismo umbral que "Mi ciclo": `lastPaydayOf` en 04-tab-gastos.js,
+   ≥200€ en los últimos 45 días) se calcula el reparto y el usuario CONFIRMA antes de aplicarlo
+   (nunca en silencio: es dinero de verdad, aunque aquí solo sea contabilidad de la app). Al
+   aplicar: cada regla suma a su meta (mismo mecanismo que "Aportar a una meta") y queda un
+   registro en `state.reservaLog`, idempotente por `incomeKey` (fecha+importe+comercio del ingreso,
+   igual criterio de dedup que el resto de este fichero) para no aplicar la misma nómina dos veces.
+
+   Lo reservado YA NO cuenta como "disponible para gastar": `monthSummary` en 04-tab-gastos.js
+   resta el total reservado desde el inicio del período del presupuesto antes de calcular "lo que
+   te queda" — sin eso, la sensación de "esto está apartado de verdad" no existía por mucho que
+   sumara a una meta. */
+function reservaKeyOf(income){ return String(income&&income.date).slice(0,10)+"|"+((income&&income.amount)||0)+"|"+((income&&income.merchant)||""); }
+// Reparto de un ingreso según las reglas configuradas: el importe fijo o porcentual de cada regla,
+// sin pasarse nunca del propio ingreso ni dejar ninguna meta en negativo. Ignora reglas huérfanas
+// (meta borrada) o metas ya cumplidas (no tiene sentido seguir metiéndoles dinero).
+function reservaPlanFor(state, incomeAmount){
+  const rules=(state.settings&&state.settings.reservaRules)||[];
+  const goals=state.goals||[];
+  const gross=Math.abs(incomeAmount||0);
+  let used=0;
+  const plan=[];
+  rules.forEach(function(r){
+    if(!r||!r.goalId) return;
+    const g=goals.find(function(x){ return x.id===r.goalId; });
+    if(!g||g.done) return;
+    let amt=r.kind==="pct" ? gross*(Math.max(0,r.value||0)/100) : Math.max(0,r.value||0);
+    amt=Math.min(amt, Math.max(0, gross-used));
+    amt=+amt.toFixed(2);
+    if(amt<=0) return;
+    used+=amt;
+    plan.push({ ruleId:r.id, goalId:g.id, name:r.name||g.name, amount:amt });
+  });
+  return { plan:plan, total:+used.toFixed(2), remainder:+(gross-used).toFixed(2) };
+}
+// ¿Ya se aplicó el reparto de ESTE ingreso? (idempotencia: una nómina, un reparto.)
+function reservaAlreadyApplied(state, income){
+  const k=reservaKeyOf(income);
+  return (state.reservaLog||[]).some(function(x){ return x.incomeKey===k; });
+}
+// Aplica el reparto: suma cada meta (mismo efecto que "Aportar a una meta") y deja el registro que
+// hace que se descuente del presupuesto. Función PURA — devuelve el nuevo estado sin mutar `state`.
+function applyReserva(state, income, plan, bankEnt){
+  if(!plan || !plan.length) return state;
+  if(reservaAlreadyApplied(state,income)) return state;
+  const k=reservaKeyOf(income);
+  let goals=(state.goals||[]).slice();
+  plan.forEach(function(p){
+    goals=goals.map(function(g){
+      if(g.id!==p.goalId) return g;
+      const ns=Math.max(0,(g.saved||0)+p.amount);
+      return Object.assign({},g,{saved:ns, fromBank:bankEnt||g.fromBank, done:ns>=g.target, doneAt:(ns>=g.target&&!g.doneAt)?new Date().toISOString():g.doneAt});
+    });
+  });
+  const log=(state.reservaLog||[]).concat(plan.map(function(p){
+    return { id:uid(), ruleId:p.ruleId, goalId:p.goalId, name:p.name, amount:p.amount, date:income.date, incomeKey:k };
+  }));
+  return Object.assign({},state,{goals:goals, reservaLog:log});
+}
+// Total reservado desde `fromMs` — lo que hay que restar del presupuesto del período que se esté
+// mirando, para que lo apartado se note de verdad en "lo que puedes gastar".
+function reservedSince(state, fromMs){
+  return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
+}
+
 /* IMPORTAR HISTÓRICO — duplicados de RECIBO dentro del propio lote (2026-07-31, caso real: -9k
    en Revolut de golpe). Un recibo recurrente (alquiler, seguro, suscripción…) aparece UNA VEZ POR
    MES en 3 meses de extracto: son 3 movimientos reales y distintos en el banco, pero la MISMA
