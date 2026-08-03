@@ -151,6 +151,13 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
         mode="seg";
       }
       if(mode!=="seg") return;
+      // RECLAMADO como vertical: `stopPropagation` para que el listener horizontal de
+      // `.viewport` (11-app-main.js, mismo umbral 1.25×) NUNCA vea este touchmove — sin esto,
+      // los dos gestos deciden el eje por separado sobre el MISMO stream de toques y un tirón
+      // con algo de deriva lateral (normal con una mano) podía convencer a los dos a la vez:
+      // «al ir hacia abajo se vuelve loco y cambia también de tabs» (rechazado 3/8). Mismo
+      // idioma que `stopSwipe` en 11-app-main.js para los chips de Gastos.
+      e.stopPropagation();
       // El dedo cambió de sentido a mitad: no es un tirón hacia el siguiente segmento.
       if((dir>0&&ddy<0)||(dir<0&&ddy>0)){ dyRaw=0; queue(0); return; }
       dyRaw=Math.abs(ddy);

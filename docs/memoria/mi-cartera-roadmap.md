@@ -4,13 +4,64 @@
 
 ---
 name: mi-cartera-roadmap
-description: Estado actual y backlog de Mi Cartera (2026-08-03: producción = 4.12.4 —import de hoja Excel/CSV, segunda promoción por FEATURE tras el arranque—; beta = 4.13.0 con gestos/bancos pendientes, import+arranque+canal ya QUITADOS del array por estar hechos. Sesión "dale caña a todo": 7 bugs + 6 features nuevas pedidas de golpe, repartidas en tandas paralelas. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
+description: Estado actual y backlog de Mi Cartera (2026-08-03 tarde: producción = 4.12.4 —import de hoja Excel/CSV—; beta = 4.13.0 con gestos/bancos pendientes de re-probar tras arreglos grandes. ⚠ HALLAZGO GORDO: las Edge Functions NUNCA se habían desplegado desde beta —solo despliegan al pushear a main—, así que el fix del signo de TR llevaba 3 días inerte; desplegado hoy directo a main. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
 metadata:
   node_type: memory
   type: project
   originSessionId: e1dc0ffc-f316-4885-bf7c-1e694f8b4d24
-  modified: 2026-08-03T10:57:39.142Z
+  modified: 2026-08-03T18:40:00.416Z
 ---
+
+**★ SESIÓN 2026-08-03 TARDE — segunda vuelta tras probarlo TODO, hallazgos gordos.**
+Reabrió con los veredictos de su prueba real (`node scripts/errores.mjs --kind=beta`): aprobó
+`reservar` y `temporada` (4/4 cada una), rechazó `bancos` (signo de TR SIGUE mal + import
+histórico "va como el culo", duplicados al revés), `plan-swipe` ("al ir hacia abajo se vuelve
+loco y cambia también de tabs") y `tutorial-gestos` ("quería el tutorial DINÁMICO del principio
+de la app, no una tarjeta fija — y ese tutorial viejo está bugueado, sale descuadrado").
+
+1. **★★★ CAUSA RAÍZ DEL SIGNO DE TR, POR FIN: nunca se había desplegado.** Las Edge Functions de
+   Supabase se despliegan SOLO al pushear a `main` (`.github/workflows/supabase.yml`, sin canal
+   beta propio) — el fix de `Math.abs()` en `mapTransaction` (diagnosticado bien el 31/7, con test
+   unitario desde entonces) llevaba TRES DÍAS viviendo solo en la rama `beta`, nunca desplegado:
+   cada "arreglo" se probó contra el código viejo sin abs(), así que nada podía cambiar. Desplegado
+   hoy directo a `main` (commit d6a6f90, `supabase/functions/_shared/enablebanking.ts` +
+   `bank-sync/index.ts`, verificado con `gh run watch`) — trae también detección de "compra con
+   tarjeta" en cualquier idioma y diagnóstico ampliado (payload crudo de TR a `app_events`) por si
+   abs() no basta del todo. **LECCIÓN para cualquier fix de `supabase/functions/`: no basta con
+   que esté en beta, hay que promocionarlo a `main` aparte — no hay entorno de pruebas para Edge
+   Functions.** Pendiente: que sincronice TR una vez más para confirmar con certeza.
+2. **Excel de su madre analizado — no es un bug de detección, es otra FORMA de datos.**
+   `Contabilidad de casa.xlsx` (16 años, 33 hojas: una "Año YYYY" por año 2010-2026 + hojas
+   "Colegio_El Corte Inglés YYYY" sueltas) reveló DOS cosas:
+   - **Bug real, arreglado**: `hojaLeer` (15-import-hoja.js) cogía en silencio la hoja con MÁS
+     filas — con 33 hojas eso NUNCA es "la que quieres" (aquí habría cogido "Año 2025", no "Año
+     2026" que es la actual). Ahora, con más de una hoja con datos, se pregunta por nombre real
+     (nuevo `xlsxNombresHojas`, cruza `workbook.xml`+`rels`) en vez de adivinar — con una sola
+     hoja sigue sin preguntar nada, cero fricción de más.
+   - **Fuera de alcance, y así se le dijo**: la hoja "Año 2026" en sí NO es una lista de
+     transacciones — es una MATRIZ pivote (filas = códigos de categoría sin nombre legible tipo
+     "14"/"301", columnas = meses, celda = total del mes). Ningún detector de columnas puede
+     adivinar eso: hace falta una tabla plana (fecha+concepto+importe por fila), que es un formato
+     de datos distinto, no un problema de heurística. Si en algún momento quiere convertir ESE
+     fichero en concreto, hace falta que diga qué significa cada código de categoría (no está en
+     el fichero) — tarea aparte, muy a medida, no una mejora general del importador.
+3. **`plan-swipe` arreglado**: el gesto vertical de Plan y el swipe horizontal de `.viewport`
+   (11-app-main.js) escuchaban el MISMO touchmove por separado, cada uno decidiendo el eje a su
+   aire con el mismo umbral 1.25× — un tirón con deriva lateral (normal con el pulgar) podía
+   convencer a los dos a la vez. Fix: `e.stopPropagation()` en `14-v4-screens.js` en cuanto el
+   gesto de Plan se declara vertical (mismo idioma que `stopSwipe` de los chips de Gastos). Test
+   nuevo que reproduce el caso real (dx=40 de deriva) en `e2e/plan-swipe-segmento.spec.mjs`.
+4. **`tutorial-gestos` en rehecho**: lo que quería de verdad era el tour dinámico existente
+   (`Tour` en `02-ui-shared.js`, ya reabrible desde Ajustes con el botón 🎓) con pasos de gestos
+   añadidos, no una tarjeta nueva — y ese tour viejo estaba realmente desalineado (selectores CSS
+   obsoletos tras varios rediseños). Agente en curso arreglando ambas cosas a la vez.
+5. **Import histórico bancario "duplicados al revés"**: sin confirmar aún si era 100% el signo de
+   TR (ahora arreglado) o si `histCandDupKey`/`histCandExisting` (08-motor-bank.js) tiene además
+   un bug propio — revisado el código y parece correcto (deriva el signo de `x.kind`, no del
+   amount crudo), así que la hipótesis fuerte es que era el signo. Pendiente confirmar con su
+   próxima prueba.
+6. Le mandé un `.docx` de prueba (tabla Fecha/Concepto/Importe, 10 filas realistas) para que
+   pueda probar el importador de Word sin tener que buscarse un documento él mismo.
 
 **★ SESIÓN DEL 2026-08-03 — «dale caña a todo», resumen para continuar en frío.**
 El usuario llegó con 7 bugs + 6 features nuevas de golpe, pidiendo explícitamente NO ir uno a uno

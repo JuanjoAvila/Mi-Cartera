@@ -50,6 +50,19 @@ async function deslizarV(page, cdp, { x = 196, y0, dy, pasos = 10 } = {}) {
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
 
+/** Como `deslizarV` pero con una DERIVA lateral (dx) además de la vertical (dy): un pulgar de
+ *  verdad casi nunca baja en línea perfectamente recta. Existe para el rechazo real del usuario
+ *  (3/8): «al ir hacia abajo se vuelve loco y cambia también de tabs» — el gesto vertical de
+ *  `deslizarV` (dx=0 fijo) nunca podría haber cazado ese caso. */
+async function deslizarDiag(page, cdp, { x0, y0, dx, dy, pasos = 10 } = {}) {
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: x0, y: y0 }] });
+  for (let i = 1; i <= pasos; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x0 + (dx * i) / pasos, y: y0 + (dy * i) / pasos }] });
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
 const debts = Array.from({ length: 16 }, (_, i) => ({
   id: "d" + i, name: "Préstamo " + i, value: 6000 + i * 900, monthly: 180 + i * 12,
   apr: 5.5, account: "e2e", start: "2024-01-15", anchor: 8000 + i * 900,
@@ -129,6 +142,31 @@ test("a mitad de una lista larga de Deudas, tirar no cambia de sección", async 
   expect(await segmentoActivo(page), "tirar a mitad de lista cambió de sección: no debería").toBe("deudas");
   const despues = await page.evaluate(() => document.querySelectorAll(".page")[2].scrollTop);
   expect(despues, "el scroll normal de la lista se quedó bloqueado").not.toBe(antes);
+});
+
+// Rechazo real del usuario (3/8, 14:03): «al ir hacia abajo se vuelve loco y cambia también de
+// tabs». Causa: el gesto vertical de Plan y el swipe horizontal de `.viewport` escuchan el MISMO
+// touchmove por separado y cada uno decidía el eje a su aire — un tirón con algo de deriva
+// lateral (normal con el pulgar) podía convencer a los dos a la vez. Fix: en cuanto el de Plan
+// se declara vertical, `stopPropagation()` dentro del propio `onMove` para que el listener
+// horizontal ni se entere de ese touchmove (mismo idioma que `stopSwipe` para los chips de Gastos).
+test("un tirón hacia abajo con algo de deriva lateral cambia de sección, no de pestaña", async ({ page }) => {
+  await seedLoggedInDashboard(page, { debts, goals });
+  await page.goto("/");
+  await appLista(page);
+  await irAPlan(page);
+  const cdp = await page.context().newCDPSession(page);
+
+  expect(await segmentoActivo(page)).toBe("recibos");
+  expect(await pestanaActiva(page)).toBe("plan");
+
+  // Mayormente vertical (dy=190) pero con una deriva lateral real (dx=40) — sigue siendo "y" con
+  // el margen 1.25× que usan ambos gestos, así que un pulgar normal cae aquí a menudo.
+  await deslizarDiag(page, cdp, { x0: 196, y0: 260, dx: 40, dy: 190 });
+
+  await expect.poll(() => segmentoActivo(page), { timeout: 5_000 }).toBe("deudas");
+  // Lo que falló de verdad: la pestaña activa NUNCA debería moverse de "plan" con este gesto.
+  expect(await pestanaActiva(page), "el tirón vertical también cambió de pestaña").toBe("plan");
 });
 
 // (c) El gesto nuevo no rompe el swipe horizontal entre las 4 pestañas principales.

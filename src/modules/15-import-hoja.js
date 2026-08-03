@@ -144,6 +144,33 @@ function xlsxEstilosFecha(stylesXml){
   }
   return marcados;
 }
+/** Nombre de verdad de cada hoja ("Año 2026", no "Hoja 19"): cruza `workbook.xml` (orden +
+ *  nombre + r:id) con `_rels/workbook.xml.rels` (r:id → sheetN.xml). Sin alguno de los dos
+ *  ficheros (o si algo no casa) devuelve {} y el llamador cae a "Hoja N". */
+function xlsxNombresHojas(workbookXml, relsXml){
+  if(!workbookXml||!relsXml) return {};
+  try{
+    const wb=new DOMParser().parseFromString(workbookXml,"application/xml");
+    const rels=new DOMParser().parseFromString(relsXml,"application/xml");
+    const ridDestino={};
+    const rs=rels.getElementsByTagName("Relationship");
+    for(let i=0;i<rs.length;i++){
+      const id=rs[i].getAttribute("Id"), target=rs[i].getAttribute("Target")||"";
+      if(id && /worksheets\/sheet\d+\.xml$/.test(target)) ridDestino[id]="xl/"+target.replace(/^\/?/,"");
+    }
+    const out={};
+    const hojas=wb.getElementsByTagName("sheet");
+    for(let i=0;i<hojas.length;i++){
+      const nombre=hojas[i].getAttribute("name");
+      // r:id lleva prefijo de espacio de nombres; getAttribute con el nombre completo es lo único
+      // fiable entre navegadores para un atributo con prefijo dentro de DOMParser.
+      const rid=hojas[i].getAttribute("r:id")||hojas[i].getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id");
+      const ruta=rid&&ridDestino[rid];
+      if(ruta&&nombre) out[ruta]=nombre;
+    }
+    return out;
+  }catch(e){ return {}; }
+}
 function xlsxCompartidas(xml){
   if(!xml) return [];
   const doc=new DOMParser().parseFromString(xml,"application/xml");
@@ -408,21 +435,28 @@ function hojaLeer(file){
   if(/\.xlsx$/.test(nom)||/\.xlsm$/.test(nom)){
     return file.arrayBuffer().then(function(buf){
       return zipAbrir(buf,function(n){
-        return n==="xl/sharedStrings.xml" || n==="xl/styles.xml" || /^xl\/worksheets\/sheet\d+\.xml$/.test(n);
+        return n==="xl/sharedStrings.xml" || n==="xl/styles.xml" || n==="xl/workbook.xml"
+          || n==="xl/_rels/workbook.xml.rels" || /^xl\/worksheets\/sheet\d+\.xml$/.test(n);
       });
     }).then(function(fich){
-      const hojas=Object.keys(fich).filter(function(n){ return /worksheets/.test(n); }).sort();
-      if(!hojas.length) throw new Error("sin-hojas");
+      const rutasHojas=Object.keys(fich).filter(function(n){ return /^xl\/worksheets\/sheet\d+\.xml$/.test(n); }).sort();
+      if(!rutasHojas.length) throw new Error("sin-hojas");
       const compartidas=xlsxCompartidas(fich["xl/sharedStrings.xml"]);
       const fechaCols=xlsxEstilosFecha(fich["xl/styles.xml"]);
-      // La primera hoja QUE TENGA DATOS: en las hojas de casa la primera suele ser una portada o
-      // un resumen con fórmulas, y quedarse con ella deja el importador mirando a una pared.
-      let mejor=[];
-      hojas.forEach(function(h){
-        const t=xlsxTabla(fich[h], compartidas, fechaCols);
-        if(t.length>mejor.length) mejor=t;
-      });
-      return { filas:mejor, tipo:"xlsx" };
+      const nombres=xlsxNombresHojas(fich["xl/workbook.xml"], fich["xl/_rels/workbook.xml.rels"]);
+      // Cada hoja con datos, con su nombre de verdad si se pudo resolver (si no, "Hoja N").
+      const candidatas=rutasHojas.map(function(ruta){
+        const n=(ruta.match(/sheet(\d+)\.xml$/)||[])[1];
+        return { ruta:ruta, nombre:nombres[ruta]||("Hoja "+n), filas:xlsxTabla(fich[ruta], compartidas, fechaCols) };
+      }).filter(function(h){ return h.filas.length>0; });
+      if(!candidatas.length) return { filas:[], tipo:"xlsx" };
+      // UNA sola hoja con datos: como siempre, directa. VARIAS (petición 2026-08-03: un Excel de
+      // 16 años con 33 hojas —una por año— que antes se leía en silencio "la que tenga más filas",
+      // así que el año en curso —el que de verdad quería— podía perderse sin que nadie se enterase.
+      // Ahora, con más de una candidata, se pregunta en vez de adivinar.
+      if(candidatas.length===1) return { filas:candidatas[0].filas, tipo:"xlsx" };
+      candidatas.sort(function(a,b){ return b.filas.length-a.filas.length; });
+      return { filas:null, tipo:"xlsx", hojas:candidatas.map(function(h){ return {nombre:h.nombre, filas:h.filas}; }) };
     });
   }
   return file.text().then(function(txt){ return { filas:csvTabla(txt), tipo:"csv" }; });
@@ -625,6 +659,7 @@ function hojaDuplicados(nuevos, existentes){
 function SheetImport({state, set, onClose, showToast, goGastos}){
   useBackClose(true, onClose);
   const [paso,setPaso]=useState(0);          // 0 fichero · 1 columnas · 2 reparto · 3 hecho
+  const [hojasDisp,setHojasDisp]=useState(null); // varias hojas con datos: hay que elegir antes de seguir
   const [filas,setFilas]=useState(null);
   const [map,setMap]=useState({fecha:-1,concepto:-1,importe:-1,categoria:-1,banco:-1});
   const [signo,setSigno]=useState("gastos"); // hoja de casa: todo son gastos aunque no lleven signo
@@ -652,14 +687,19 @@ function SheetImport({state, set, onClose, showToast, goGastos}){
     return "—";
   };
 
+  const usarFilas=function(filasElegidas){
+    setFilas(filasElegidas);
+    setMap(hojaAdivinar(filasElegidas));
+    setHojasDisp(null);
+    setPaso(1);
+  };
   const cargar=function(file){
     if(!file) return;
-    setErr(""); setLeyendo(true); t0Ref.current=Date.now();
+    setErr(""); setLeyendo(true); setHojasDisp(null); t0Ref.current=Date.now();
     hojaLeer(file).then(function(r){
+      if(r.hojas){ setHojasDisp(r.hojas); return; }    // varias hojas con datos: que elija
       if(!r.filas.length) throw new Error("vacio");
-      setFilas(r.filas);
-      setMap(hojaAdivinar(r.filas));
-      setPaso(1);
+      usarFilas(r.filas);
     }).catch(function(e){
       const m=(e&&e.message)||String(e);
       setErr(m==="xls-viejo"?t("ih_err_xls"):m==="no-zip"?t("ih_err_zip"):
@@ -715,7 +755,7 @@ function SheetImport({state, set, onClose, showToast, goGastos}){
     React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("v4_back")),
     React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 6px"}}, t("ih_title")),
 
-    paso===0 && React.createElement(React.Fragment,null,
+    paso===0 && !hojasDisp && React.createElement(React.Fragment,null,
       React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:16}}, t("ih_intro")),
       React.createElement("ol",{className:"hoja-pasos"},
         t("ih_steps").map(function(s,i){ return React.createElement("li",{key:i}, s); })),
@@ -727,6 +767,19 @@ function SheetImport({state, set, onClose, showToast, goGastos}){
         accept:".xlsx,.xlsm,.csv,.tsv,.txt,.docx,.pdf,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf",
         onChange:function(e){ cargar(e.target.files&&e.target.files[0]); e.target.value=""; }}),
       React.createElement("div",{className:"hint",style:{marginTop:12}}, t("ih_privacidad"))
+    ),
+
+    // VARIAS hojas con datos (un Excel de varios años, una por hoja): se pregunta en vez de coger
+    // a ciegas la que más filas tenga — esa nunca tiene por qué ser la que quieres traer.
+    paso===0 && hojasDisp && React.createElement(React.Fragment,null,
+      React.createElement("div",{style:{color:"var(--muted)",fontSize:13.5,lineHeight:1.55,marginBottom:14}}, tf("ih_hojas_intro",{n:hojasDisp.length})),
+      hojasDisp.map(function(h,i){
+        return React.createElement("button",{key:i,type:"button",className:"hoja-sel",style:{textAlign:"left",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"},
+          onClick:function(){ usarFilas(h.filas); }},
+          React.createElement("span",null, h.nombre),
+          React.createElement("span",{className:"hint",style:{margin:0}}, tf("ih_hojas_filas",{n:h.filas.length})));
+      }),
+      React.createElement("button",{className:"btn btn-ghost btn-block",style:{marginTop:8},onClick:function(){ setHojasDisp(null); }}, t("ih_volver"))
     ),
 
     paso===1 && filas && React.createElement(React.Fragment,null,
