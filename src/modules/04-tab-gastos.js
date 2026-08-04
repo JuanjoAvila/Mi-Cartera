@@ -179,8 +179,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // futuros y arregla otros gastos del mismo comercio que estuvieran en "Otros".
   const setCat=function(ex,newCat){
     const mkey=catKey(ex.merchant);
+    // "Movimiento" es el hueco que deja un banco que no manda NINGÚN dato (Trade Republic por
+    // Open Banking, ver `mapTransaction` en enablebanking.ts) — no es un comercio de verdad, así
+    // que ni se aprende como override (contaminaría CUALQUIER futuro gasto sin datos, de cualquier
+    // banco) ni dispara el "recategoriza también los del mismo comercio en Otros" (bug 2026-08-04:
+    // eso convertía TODOS los movimientos sin datos en Inversión de un solo toque, cada uno con su
+    // propia compra de participaciones).
+    const learnable = mkey && ex.merchant!=="Movimiento";
     set(function(s){
-      const ov=Object.assign({}, s.catOverrides||{}); if(mkey) ov[mkey]=newCat;
+      const ov=Object.assign({}, s.catOverrides||{}); if(learnable) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
       // Marcar a mano un round-up/cashback como "Inversión" (o deshacerlo) compra/vende de verdad
       // participaciones en el fondo enlazado de esa cuenta — mismo importe real del banco, ver
@@ -188,7 +195,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       let invState=s;
       const exps=s.expenses.map(function(e){
         const isTarget=e.id===ex.id;
-        const isSibling=!isTarget && mkey && catKey(e.merchant)===mkey && e.category==="otros";
+        const isSibling=!isTarget && learnable && catKey(e.merchant)===mkey && e.category==="otros";
         if(!isTarget && !isSibling) return e;
         const wasInv=e.category==="inversion", willBeInv=newCat==="inversion";
         const upd=Object.assign({},e,{category:newCat});

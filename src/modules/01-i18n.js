@@ -2478,6 +2478,37 @@ function fixRevoDupes(s){
   s._invFixRevoDupes = true;
   return s;
 }
+// Limpieza única del bug de `setCat` (2026-08-04): "Movimiento" es el hueco que deja un banco sin
+// datos (Trade Republic por Open Banking) — no es un comercio de verdad, pero `setCat` lo trataba
+// como si todos los gastos con ese mismo texto fueran el MISMO comercio: al marcar UNO como
+// Inversión, recategorizaba TODOS los demás también (con su propia compra de participaciones cada
+// uno) y aprendía "movimiento"→inversion como override para siempre. Deshace el destrozo: borra
+// ese override envenenado y devuelve a su categoría normal (deshaciendo la compra) cualquier gasto
+// "Movimiento"/Inversión que NO sea el aporte automático real (`monthlyInvest`, el único legítimo,
+// ver `importObExpenses`). Idempotente con flag, como fixInvSold/fixInvAuto/fixRevoDupes.
+function fixMovInvasion(state){
+  if(!state || state._fixMovInvasion) return state;
+  let s=state;
+  if(s.catOverrides && s.catOverrides["movimiento"]){
+    const ov=Object.assign({},s.catOverrides); delete ov["movimiento"];
+    s=Object.assign({},s,{catOverrides:ov});
+  }
+  if(Array.isArray(s.expenses) && s.expenses.length){
+    const exps=s.expenses.map(function(e){
+      if(e.category!=="inversion" || e.merchant!=="Movimiento" || !e.investInvId) return e;
+      const acc=(s.accounts||[]).find(function(a){ return a.ent===e.ent; });
+      const esAporteReal = acc && acc.monthlyInvest>0 && Math.abs(e.amount-acc.monthlyInvest)<0.01;
+      if(esAporteReal) return e;   // el aporte automático real: se queda tal cual
+      s=reverseInvestBuy(s, e.investInvId, e.investShares, e.investCInv, e.investAmountEur);
+      const upd=Object.assign({},e,{category:autoCategory(e.merchant||"")});
+      delete upd.investInvId; delete upd.investShares; delete upd.investCInv; delete upd.investAmountEur;
+      return upd;
+    });
+    s=Object.assign({},s,{expenses:exps});
+  }
+  s._fixMovInvasion=true;
+  return s;
+}
 // Motor de cash-flow: si el estado no tiene movimientos recurrentes, siembra los del usuario
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
@@ -2609,7 +2640,7 @@ function loadState(){
     // Capturar ANTES de seedFlows (muta in-place): evita stringify de toda la cartera en cada
     // apertura fría — feedback 2026-07-16.
     var writeBack=!(saved._dataVer>=6) || !saved._dynBalAnchored;
-    const s = seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))))));
+    const s = seedFlows(fixMovInvasion(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)))))));
     if(writeBack) mcSaveRaw(mcStateKey(), s);
     applyTheme(s.settings&&s.settings.theme);
     applyA11y(s);

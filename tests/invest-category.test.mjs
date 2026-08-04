@@ -128,4 +128,46 @@ t("reconcileTR DEJA de simular en cuanto la cuenta tiene un movimiento real (sou
   assert.equal(ns.trRewardsTotal, 0);
 });
 
+/* BUG 2026-08-04: "Movimiento" (el hueco que deja TR sin datos) NO es un comercio de verdad — al
+ * marcar UNO como Inversión, `setCat` recategorizaba TODOS los gastos con ese mismo texto genérico
+ * (de cualquier fecha/importe) y aprendía el override para siempre. `fixMovInvasion` repara el
+ * estado ya dañado: quita el override envenenado y deshace la compra de cada gasto que NO sea el
+ * aporte automático real. */
+t("fixMovInvasion borra el override envenenado 'movimiento'→inversion", () => {
+  const s = { catOverrides: { movimiento: "inversion" }, expenses: [], accounts: [], investments: [] };
+  const ns = ctx.fixMovInvasion(s);
+  assert.equal(ns.catOverrides.movimiento, undefined);
+});
+
+t("fixMovInvasion deshace los 'Movimiento' arrastrados a Inversión por error, deja el aporte real", () => {
+  const s = {
+    accounts: [{ id: "acc1", ent: "trade_republic", monthlyInvest: 50, rewardInv: "inv1" }],
+    investments: [{ id: "inv1", cur: "EUR", shares: 20, value: 2000, cost: 1800 }],
+    trRewardsTotal: 100,
+    expenses: [
+      // el aporte automático real (50€, coincide con monthlyInvest) → se queda
+      { id: "eA", merchant: "Movimiento", amount: 50, ent: "trade_republic", category: "inversion",
+        investInvId: "inv1", investShares: 0.5, investCInv: 50, investAmountEur: 50 },
+      // arrastrado por el bug (8.38€, NO coincide con monthlyInvest) → se deshace
+      { id: "eB", merchant: "Movimiento", amount: 8.38, ent: "trade_republic", category: "inversion",
+        investInvId: "inv1", investShares: 0.0838, investCInv: 8.38, investAmountEur: 8.38 },
+    ],
+  };
+  const ns = ctx.fixMovInvasion(s);
+  const eA = ns.expenses.find((e) => e.id === "eA"), eB = ns.expenses.find((e) => e.id === "eB");
+  assert.equal(eA.category, "inversion", "el aporte automático real no se toca");
+  assert.ok(eA.investInvId, "conserva su compra real");
+  assert.notEqual(eB.category, "inversion", "el arrastrado por el bug vuelve a su categoría normal");
+  assert.equal(eB.investInvId, undefined, "y pierde el rastro de una compra que nunca debió pasar");
+  const inv = ns.investments.find((i) => i.id === "inv1");
+  assert.equal(inv.shares, 19.9162, "el fondo ya incluía las dos compras (20) y solo se deshace la del arrastre (-0.0838)");
+});
+
+t("fixMovInvasion es idempotente (no repite la limpieza en la siguiente carga)", () => {
+  const s = { catOverrides: {}, expenses: [], accounts: [], investments: [] };
+  const once = ctx.fixMovInvasion(s);
+  const twice = ctx.fixMovInvasion(once);
+  assert.strictEqual(twice, once, "con el flag puesto, la segunda vuelta no toca nada");
+});
+
 console.log("\ninvest-category: OK");
