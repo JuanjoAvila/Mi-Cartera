@@ -41,7 +41,10 @@ function App(){
     navQuietUntil.current=Date.now()+(ms||900);
     try{
       const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.add("botnav-edge-quiet");
+      if(nav){
+        nav.classList.add("botnav-edge-quiet");
+        nav.classList.add("botnav-ola-clear");
+      }
     }catch(e){}
     if(navQuietTimer.current) clearTimeout(navQuietTimer.current);
     navQuietTimer.current=setTimeout(function(){
@@ -49,7 +52,7 @@ function App(){
       if(Date.now()<navQuietUntil.current) return;
       try{
         const nav=document.querySelector(".botnav");
-        if(nav) nav.classList.remove("botnav-edge-quiet");
+        if(nav) nav.classList.remove("botnav-edge-quiet","botnav-ola-clear");
       }catch(e){}
     }, (ms||900)+40);
   };
@@ -84,7 +87,7 @@ function App(){
     navRevealArmed.current=false;
     try{
       const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast","botnav-ola-clear","botnav-edge-quiet");
     }catch(e){}
     if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
   };
@@ -138,7 +141,7 @@ function App(){
     navQuietUntil.current=0;
     try{
       const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.remove("botnav-edge-quiet","botnav-hidden","botnav-hidden-fast");
+      if(nav) nav.classList.remove("botnav-edge-quiet","botnav-ola-clear","botnav-hidden","botnav-hidden-fast");
     }catch(e){}
     if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
   };
@@ -2154,20 +2157,19 @@ function App(){
       // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
       const eje=gestureAxis(ddx,ddy);
       if(!eje) return;
-      /* A MITAD o ABAJO: el arco del pulgar gana `x` pronto → preventDefault + freezeShell matan
-         scroll/ola (medido 5/8). PERO fijar `axis=y` para «proteger» bloqueaba tabs el RESTO del
-         gesto (feedback .39: ola ok con CSS, pero «no puedo deslizar entre pantallas a mitad/
-         final»). Solución: si `x` aún no está claro, NO fijar eje — el navegador scrollea con
-         pan-y; si el dedo sigue y el gesto se vuelve casi solo horizontal, el siguiente move sí
-         reclama tabs. Arriba del todo: umbral normal (Inicio → Ajustes). */
+      /* A MITAD, ABAJO o ARRIBA: el arco del pulgar gana `x` pronto → preventDefault +
+         leaveScrollHost + freezeShell matan scroll/ola. Abajo ya estaba guardado; ARRIBA
+         faltaba — por eso la ola de arriba iba «a veces» (gesto limpio vertical OK; con deriva
+         lateral el carrusel robaba el dedo). Si `x` no está claro, NO fijar eje. */
       if(eje==="x"){
         const pages0=trackRef.current&&trackRef.current.children;
         const pg0=pages0&&pages0[tab];
         if(pg0){
           const st0=pg0.scrollTop||0, max0=pg0.scrollHeight-pg0.clientHeight;
+          const atTop=st0<=2;
           const mid0=st0>2 && max0-st0>2;
           const atBottom=max0>0 && (max0-st0)<=2;
-          if((mid0||atBottom) && !(Math.abs(ddy)<16 && Math.abs(ddx)>36)){
+          if((atTop||mid0||atBottom) && !(Math.abs(ddy)<16 && Math.abs(ddx)>36)){
             return;
           }
         }

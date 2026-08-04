@@ -5,13 +5,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [Sin publicar] — 2026-08-05 (noche 3)
 ### Flick→ola, Cartera y título bajo iconos
 
-1. **Botnav:** no se toca hasta asentar. Abajo: hide en `scrollend`. Arriba: el reveal en
-   `scrollend` llegaba antes de que acabara la ola y la mataba — ahora el mostrar espera
-   ~1 s y en el borde la barra entra en `botnav-edge-quiet` (sin blur ni transition). Si
-   venía oculta, se queda oculta durante la ola.
-2. **Padding del host:** `safe-top` como Ajustes; sin él «Tus gastos» chocaba con la barra de
-   estado. Viewport en `overflow:visible` mientras hay host.
-3. **`.rise`:** el keyframe acaba en `transform:none` (antes dejaba matrix en Cartera).
+1. **Botnav en bordes:** quiet + `botnav-ola-clear` (fuera del compositing sin transform).
+   Reveal arriba NO va en `scrollend` (llegaba antes de la ola).
+2. **Ola arriba a ratos:** el candado anti-arco del pulgar cubría mitad/abajo pero NO el
+   tope — un gesto con deriva lateral reclamaba tabs (`leaveScrollHost`+`preventDefault`) y
+   mataba la ola. Ahora arriba usa el mismo umbral casi-solo-horizontal.
+3. **Padding del host / `.rise`:** safe-top; rise acaba en `transform:none`.
 
 ## [Sin publicar] — 2026-08-05 (noche 2)
 ### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)
