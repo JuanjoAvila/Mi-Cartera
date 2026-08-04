@@ -96,6 +96,37 @@ test("tour de bienvenida: los 10 pasos caen exactamente sobre su elemento", asyn
     .toBe(true);
 });
 
+/* EL CASO QUE SE ESCAPÓ DOS VECES (rechazos 3/8 y 4/8). La prueba de arriba espera 1,1 s antes de
+ * comparar, y ese colchón tapaba justo lo que él veía: el tour medía el elemento UNA sola vez,
+ * tras una espera fija de 520 ms. Hasta que esa medición llegaba, el recorte seguía plantado en el
+ * elemento del paso ANTERIOR mientras la pestaña ya se había ido — «no se marca correctamente en
+ * el sitio, sale movido, los recortes no están bien posicionados». Y si la medición caía con el
+ * carrusel aún en marcha (aparato lento, arranque cargado), se quedaba clavada a medio camino para
+ * siempre, porque no se volvía a medir nunca más.
+ *
+ * Aquí se mide lo que él nota de verdad: CUÁNTO TARDA el recorte en llegar. Medido el 4/8 en el
+ * paso de «Cartera», a 400 ms de tocar «Siguiente»: código viejo 298 px de desvío horizontal y 601
+ * vertical (seguía rodeando la pestaña de Plan); con el seguimiento, 8 px — el margen del recorte. */
+const TOLERANCIA_RAPIDA = 16;
+test("al tocar «Siguiente» el recorte llega al elemento nuevo sin hacerte esperar", async ({ page }) => {
+  await seedLoggedInDashboard(page, { tourSeen: false });
+  await page.goto("/");
+  await appLista(page);
+  await expect(page.locator(".tour-wrap")).toBeVisible({ timeout: 5_000 });
+
+  for (let i = 1; i < PASOS.length; i++) {
+    // Dejar asentado el paso anterior para que lo que se mide sea solo el salto al siguiente.
+    await page.waitForTimeout(1_100);
+    await page.locator(".tour-btns button.btn-primary").click();
+    await page.waitForTimeout(400);
+    const spotBox = await page.locator(".tour-spot").boundingBox();
+    const targetBox = await page.locator(PASOS[i]).first().boundingBox();
+    expect(spotBox, `paso ${i}: no hay .tour-spot`).toBeTruthy();
+    expect(Math.abs(spotBox.x - targetBox.x), `paso ${i}: a 400 ms el recorte sigue lejos en x`).toBeLessThan(TOLERANCIA_RAPIDA);
+    expect(Math.abs(spotBox.y - targetBox.y), `paso ${i}: a 400 ms el recorte sigue lejos en y`).toBeLessThan(TOLERANCIA_RAPIDA);
+  }
+});
+
 test("Ajustes → Ver el tutorial reabre el mismo tour, ya con los pasos de gestos", async ({ page }) => {
   await seedLoggedInDashboard(page); // tourSeen:true por defecto → no se abre solo
   await page.goto("/");

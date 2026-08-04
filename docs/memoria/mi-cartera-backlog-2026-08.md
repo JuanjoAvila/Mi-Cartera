@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d6ae387e-f9d4-460d-b8dc-c43511bd8b4c
-  modified: 2026-08-04T17:50:20.405Z
+  modified: 2026-08-04T18:10:57.941Z
 ---
 
 **⚠ ESTE FICHERO ES LA LISTA ÚNICA. Si aparece algo nuevo, va aquí.** Se armó porque el 4/8 le di un
@@ -32,19 +32,21 @@ futuro» y **ahora tiene fecha**. Es lo único que se pierde si no llega a tiemp
 
 ---
 
-# 🔁 1. PENDIENTE DE QUE ÉL LO RE-PRUEBE (ya arreglado, sin veredicto nuevo)
-Tandas que **rechazó** y que se arreglaron después. **Están esperando su ✓/✗ en el panel de beta.**
-No son trabajo nuevo: son deuda de verificación. Lo que más le quema es repetir un fallo, así que
-esto va antes que empezar cosas nuevas.
+# 🔁 1. RECHAZADAS OTRA VEZ el 4/8 (los arreglos anteriores NO sirvieron)
+Van por su 3ª ronda cada una. Lo que más le quema es repetir un fallo — esto va antes que empezar
+cosas nuevas.
 
-| Tanda | Lo que dijo al rechazarla | Arreglo |
+| Tanda | Rechazo 4/8 20:0x | Detalle nuevo |
 |---|---|---|
-| `bancos` 🏦 | «te lo pinta todo en positivo como si fuera todo ingresos» / «sigue saliendo mal» | ✅ signo + toda la saga de duplicados ([[tr-duplicados-saga]]) |
-| `plan-swipe` 👇 | «al ir hacia abajo se vuelve loco y cambia también de tabs» | commit `8a48db8` |
-| `tutorial-gestos` 🎓 | «quería un tutorial dinámico, no fijo arriba de ajustes… y ese tutorial está bugueado, sale descuadrado» | commit `77db9d1` |
-| `gestos` 🎯 | «se queda atascado un momento y luego sí hace la ola pero es muy raro» (grabó vídeo) | commit `f0ab10d` |
+| `plan-swipe` 👇 | «SIGUE PASANDO IGUAL» | el commit `8a48db8` no lo arregló: al ir hacia abajo en medio de una lista larga, sigue cambiando de tab. |
+| `gestos` 🎯 | «sigue pasando lo mismo» / «sigue sin funcionar» | el commit `f0ab10d` no lo arregló. **Pista nueva suya:** «hay un stopper antes de llegar abajo y luego ya sale la ola, es como un muro invisible. Se reproduce solo deslizando una vez hacia abajo». |
+| `tutorial-gestos` 🎓 | «no se marca correctamente en el sitio, sale movido, los recortes no están bien posicionados» | el commit `77db9d1` no lo arregló. Ahora es el tutorial de 10 pasos dentro del tour de siempre — el recorte iluminado no cae encima de lo que describe el texto. |
 
-**Aprobadas y ya subidas:** `import`, `arranque`, `canal`, `reservar`, `temporada`.
+**Aprobadas y ya subidas (4/8):** `bancos` 🏦 (16 ok / 0 fallo — **por fin aprobada**, cierra
+[[tr-duplicados-saga]] y el signo en positivo; 3 ítems marcados "no probable" sin tocar: detección de
+duplicados en import histórico y reconectar TR), `import-docx-pdf` 📄 (nueva, importar desde Word/PDF
+además de Excel), `reservar`, `temporada`.
+Aprobadas en rondas previas: `import`, `arranque`, `canal`.
 ⚠ Al aprobar+subir una tanda **se BORRA del array `tandas`**, no se marca hecha
 ([[feedback-tandas-desaparecen-al-subir]]).
 
@@ -60,6 +62,8 @@ esto va antes que empezar cosas nuevas.
    - `Total de gastos` → **ESE SÍ se queda**.
 2. **Doble filtro de bancos en «Mis bancos»** (de su veredicto del 3/8): «te da a elegir entre los
    bancos conectados… y da igual lo que elijas, luego hay otro filtro para elegir los bancos».
+   ⚠ Probablemente resuelto: iba en la tanda `bancos`, que el 4/8 se aprobó 16 ok/0 fallo. **Sin
+   confirmar del todo** — no hay ítem explícito sobre el doble filtro en el detalle de la tanda.
 3. **El presupuesto del mes en Resumen no cuadra**: «no pilla correctamente el balance correcto de lo
    que queda realmente para gastar». Mirar si Resumen usa un cálculo distinto al `monthSummary` de
    Gastos (que ahora descuenta `reservedSince` y las categorías neutras `CAT_NEUTRAS`).

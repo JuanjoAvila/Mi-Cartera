@@ -194,14 +194,27 @@ function Tour({onDone, goTab, tabIds}){
     {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
   ];
   const [i,setI]=useState(0);
-  // `shown` es lo que se PINTA de verdad (texto + foco), y solo se actualiza junto en cuanto
-  // termina de medirse el paso `i` (target). Antes el texto usaba `i` directamente y el foco
-  // vivía en su propio estado `rect`: al tocar «Siguiente» el texto cambiaba al instante pero
-  // el recorte se quedaba plantado en el elemento VIEJO durante los 520 ms de espera del
-  // carrusel — «no marca las cosas en su sitio, sale descuadrado» (rechazo 3/8). Con los dos
-  // datos en un único estado que se pisa a la vez, nunca se pinta un texto con el foco de otro
-  // paso: mientras se mide, sigue enseñándose el último par (texto+foco) que sí encajaba.
+  // `shown` es lo que se PINTA (qué paso + dónde), y texto y recorte se pisan SIEMPRE juntos:
+  // nunca se enseña el texto de un paso con el foco de otro (rechazo 3/8). Se estrena en cuanto
+  // el elemento del paso nuevo asoma por la pantalla, no cuando termina de asentarse — esperar a
+  // que parase dejaba medio segundo largo en el que «Siguiente» no hacía nada visible.
   const [shown,setShown]=useState(null);
+  const spotRef=useRef(null);
+  // La caja del recorte la escribe SOLO `pintar()`, nunca el `style` de React.
+  //
+  // No es manía: mientras el carrusel de pestañas anima, el `App` de arriba re-renderiza (cambia
+  // `tab`), y con la posición en el `style` de React cada re-render volvía a plantar el recorte
+  // en la caja del enganche — pisando lo que el bucle de seguimiento acababa de medir. Medido el
+  // 4/8: el recorte del avatar se quedaba 57 px descolgado hasta que la pestaña paraba. Sacando
+  // left/top/width/height del `style`, React ya no tiene nada que pisar. Es el mismo motivo por
+  // el que los gestos de la app tampoco van por props de React.
+  const pad=function(round){ return round?6:8; };
+  const pintar=function(r){
+    const n=spotRef.current; if(!n) return;
+    const p=pad(r.round);
+    n.style.left=(r.x-p)+"px"; n.style.top=(r.y-p)+"px";
+    n.style.width=(r.w+p*2)+"px"; n.style.height=(r.h+p*2)+"px";
+  };
   const inViewport=function(r){
     const H=window.innerHeight||700, W=window.innerWidth||400;
     return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left>=0 && r.left<W-8 && r.right>8;
@@ -235,30 +248,77 @@ function Tour({onDone, goTab, tabIds}){
     }
     return null;
   };
+  // El recorte se PEGA al elemento fotograma a fotograma hasta que este deja de moverse.
+  //
+  // Antes se medía UNA sola vez tras una espera fija de 520 ms, «que es lo que anima el carrusel».
+  // Ese número salía del móvil de pruebas: en un aparato más lento la foto se saca con la pestaña
+  // todavía deslizándose y, como no se volvía a medir nunca más, el recorte se quedaba clavado
+  // PARA SIEMPRE a medio camino — «no se marca correctamente en el sitio, sale movido, los
+  // recortes no están bien posicionados» (rechazo 4/8, tercera ronda seguida de este mismo bug).
+  // Medido el 4/8 con el tour real: en el paso del avatar el elemento seguía viajando a los
+  // 400 ms (x=157 → x=325), o sea que 520 ms era un margen de apenas 120 ms.
+  // Ahora no hay número mágico que ajustar: da igual lo que tarde el aparato.
   useEffect(function(){
-    let cancelled=false;
+    let cancelled=false, raf=0, esperas=0, quieto=0, vueltas=0, ultima="", traido=null, nodo=null, redondo=false, enganchado=false;
     ensureTab(steps[i]&&steps[i].tab);
-    // El track anima 420 ms: medir antes = foco desplazado (bug avatar del tutorial).
-    const wait=(steps[i]&&steps[i].tab)?520:80;
-    const run=function(){
+    const seguir=function(){
       if(cancelled) return;
-      const m=measure(i);
-      if(!m){ onDone(); return; }
-      if(m.j!==i){ setI(m.j); return; }
-      setShown({i:m.j, rect:Object.assign({},m.r,{round:m.round})});
+      const r=nodo.getBoundingClientRect();
+      // Desapareció del DOM (cambio de pestaña a destiempo): volver a buscarlo.
+      if(r.width<8||r.height<8){ traido=null; esperas=0; enganchado=false; raf=requestAnimationFrame(buscar); return; }
+      const caja={x:r.left,y:r.top,w:r.width,h:r.height,round:redondo};
+      const clave=Math.round(r.left)+","+Math.round(r.top)+","+Math.round(r.width)+","+Math.round(r.height);
+      if(clave===ultima) quieto++; else { quieto=0; ultima=clave; }
+      // Tope de 3 s por si algo de la pantalla no para nunca de animarse: mejor asentar el
+      // recorte donde esté que dejar un rAF dando vueltas toda la visita guiada.
+      const fin=quieto>=6 || ++vueltas>180;
+      if(!enganchado){
+        // Primer fotograma en que el elemento está a la vista: aquí sí manda React, porque es
+        // cuando cambian a la vez el texto, los puntitos y el recorte. `pegado` quita la
+        // transición CSS para que salte limpio en vez de cruzar por encima de lo que no toca.
+        enganchado=true; setShown({i:i, rect:caja, pegado:true});
+      } else if(fin){
+        setShown({i:i, rect:caja, pegado:false});
+      } else {
+        pintar(caja);
+      }
+      if(!fin) raf=requestAnimationFrame(seguir);
     };
-    const tm=setTimeout(function(){
-      requestAnimationFrame(function(){ requestAnimationFrame(run); });
-    }, wait);
-    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setShown({i:mm.j, rect:Object.assign({},mm.r,{round:mm.round})}); };
+    const buscar=function(){
+      if(cancelled) return;
+      const st=steps[i], el=st&&st.sel();
+      if(el){
+        // Sacarlo a la vista una sola vez por elemento (bringIntoView escribe scrollTop; en bucle
+        // pelearía con el propio scroll).
+        if(el!==traido){ traido=el; bringIntoView(el); }
+        const r=el.getBoundingClientRect();
+        if(inViewport(r)){ nodo=el; redondo=!!st.round; seguir(); return; }
+      }
+      // Insistir ~1,5 s antes de darlo por perdido: saltar de paso al primer fotograma en que el
+      // elemento no está a la vista se comía pasos enteros en arranques lentos.
+      if(++esperas<90){ raf=requestAnimationFrame(buscar); return; }
+      const alt=measure(i);
+      if(!alt){ onDone(); return; }
+      if(alt.j!==i){ setI(alt.j); return; }
+      nodo=steps[i].sel();
+      if(!nodo){ onDone(); return; }
+      redondo=!!alt.round; seguir();
+    };
+    raf=requestAnimationFrame(buscar);
+    // Al girar el móvil o abrirse el teclado hay que volver a pegarse.
+    const onR=function(){ if(nodo){ quieto=0; vueltas=0; cancelAnimationFrame(raf); raf=requestAnimationFrame(seguir); } };
     window.addEventListener("resize",onR);
-    return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
+    return function(){ cancelled=true; cancelAnimationFrame(raf); window.removeEventListener("resize",onR); };
   },[i]);
   useEffect(function(){
     const onKey=function(e){ if(e.key==="Escape") onDone(); };
     window.addEventListener("keydown",onKey);
     return function(){ window.removeEventListener("keydown",onKey); };
   },[onDone]);
+  // El nodo del recorte nace sin caja (React ya no la escribe): hay que pintarla en cuanto
+  // existe y cada vez que un paso se engancha o se asienta. Antes de pintar, para que no se vea
+  // ni un fotograma en la esquina.
+  useLayoutEffect(function(){ if(shown) pintar(shown.rect); },[shown]);
   if(!shown) return React.createElement("div",{className:"tour-wrap"},
     React.createElement("div",{className:"tour-tip",style:{bottom:80,left:16,right:16}},
       React.createElement("div",{className:"tour-txt"}, t("tour_skip")),
@@ -266,17 +326,17 @@ function Tour({onDone, goTab, tabIds}){
     )
   );
   const rect=shown.rect;
-  const pad=rect.round?6:8;
+  const p=pad(rect.round);
   const H=window.innerHeight||700;
   const below = rect.y + rect.h/2 < H*0.55;
   const tipStyle = below
-    ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
-    : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
+    ? {top:Math.min(rect.y+rect.h+p+12, H-180), left:16, right:16}
+    : {bottom:Math.max(24, Math.min(H-rect.y+p+12, H-180)), left:16, right:16};
   const last=i===steps.length-1;
-  const spotStyle={left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2};
-  if(rect.round) spotStyle.borderRadius="50%";
+  // Sin left/top/width/height a propósito (ver `pintar`): de la caja se encarga el seguimiento.
+  const spotStyle=rect.round?{borderRadius:"50%"}:null;
   return React.createElement("div",{className:"tour-wrap"},
-    React.createElement("div",{className:"tour-spot",style:spotStyle}),
+    React.createElement("div",{className:"tour-spot"+(shown.pegado?" pegado":""),style:spotStyle,ref:spotRef}),
     React.createElement("div",{className:"tour-tip",style:tipStyle},
       React.createElement("div",{className:"tour-txt"},tf(steps[shown.i].k,{
         gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")

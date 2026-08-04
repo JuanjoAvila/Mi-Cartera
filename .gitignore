@@ -40,3 +40,7 @@ test-results/
 *.mp4
 *.mov
 *.webm
+
+# Caché de Gradle al compilar la APK aquí mismo (GRADLE_USER_HOME local). Son decenas de miles
+# de ficheros de dependencias descargadas: un `git add -A` despistado se los lleva enteros.
+.gradle-local/

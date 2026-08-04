@@ -416,6 +416,10 @@
   /* Tour guiado (coach-marks) */
   .tour-wrap{position:fixed;inset:0;z-index:90;}
   .tour-spot{position:fixed;border-radius:18px;box-shadow:0 0 0 9999px rgba(0,0,0,.62), 0 0 0 3px var(--mint);transition:all .32s cubic-bezier(.22,.61,.36,1);pointer-events:none;}
+  /* Mientras el elemento enfocado se mueve (el carrusel de pestañas anima), el recorte va pegado
+     a él fotograma a fotograma: con la transición puesta llegaría 0,32 s tarde y se le vería
+     cruzar por encima de lo que no toca (rechazo 4/8, «sale movido»). */
+  .tour-spot.pegado{transition:none;}
   .tour-tip{position:fixed;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);z-index:91;animation:sheetup .25s ease;color:var(--text);}
   .tour-txt{font-size:15px;line-height:1.55;font-weight:600;}
   .tour-dots{display:flex;gap:5px;margin:12px 0;}
