@@ -27,11 +27,41 @@ function App(){
   // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
   // escondido normal al bajar sigue con su calma de siempre.
   const [navHiddenFast,setNavHiddenFast]=useState(false);
-  // Sync React del botnav ABAJO DEL TODO: diferido. setState a mitad del fling re-renderiza App
-  // y corta el stretch nativo (medido 5/8: page fixed + ola al tirar OK, flick al final no).
+  // Botnav: NADA de clase DOM ni setState hasta que el scroll SE ASIENTA (`scrollend` o
+  // fallback ~550 ms). Mutar la barra a mitad del fling (aunque sea solo classList) corta el
+  // stretch nativo: tirar con el dedo ya abajo sí hacía ola; flick hasta el final, no (5/8).
   const navBotSync=useRef(0);
+  const navHideArmed=useRef(false);
+  const navHideFastRef=useRef(false);
+  const applyNavHide=function(){
+    navBotSync.current=0;
+    navHideArmed.current=false;
+    navHiddenRef.current=true;
+    const fast=!!navHideFastRef.current;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav){
+        nav.classList.add("botnav-hidden");
+        nav.classList.toggle("botnav-hidden-fast", fast);
+      }
+    }catch(e){}
+    setNavHidden(true);
+    setNavHiddenFast(fast);
+  };
+  const armNavHide=function(fast){
+    navHideFastRef.current=!!fast;
+    if(navHideArmed.current || navHiddenRef.current){
+      // Ya armado: si ahora es «abajo del todo», sube a fast.
+      if(fast) navHideFastRef.current=true;
+      return;
+    }
+    navHideArmed.current=true;
+    if(navBotSync.current) clearTimeout(navBotSync.current);
+    navBotSync.current=setTimeout(applyNavHide, 550);
+  };
   const revealNav=function(){
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+    navHideArmed.current=false;
     try{
       const nav=document.querySelector(".botnav");
       if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
@@ -73,50 +103,27 @@ function App(){
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){ revealNav(); return; }                 // arriba del todo → siempre visible
-    // Abajo del todo → siempre escondida (simétrico al caso de arriba). Sin esto, si llegabas al
-    // final sin un tramo de bajada sostenida (>56 px seguidos) la barra se quedaba visible y TAPABA
-    // el rebote nativo por debajo (z-index de la barra por encima) — parecía que «no se reproduce
-    // la ola en Gastos», pero solo estaba oculta detrás (feedback pareja + él, 2026-08-02).
-    // Y el setState hay que DIFERIRLO: si React re-renderiza a mitad del fling, el stretch nativo
-    // del WebView se corta (5/8: tirar a mano hacía ola; flick hasta el final, no).
+    // Abajo / bajando: solo ARMAR el escondido. Aplicar en scrollend (ver efecto abajo) —
+    // tocar el botnav aquí mata el flick→ola.
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
-    if(max>0 && y>=max-4){
-      if(!navHiddenRef.current){
-        navHiddenRef.current=true;
-        try{
-          const nav=document.querySelector(".botnav");
-          if(nav) nav.classList.add("botnav-hidden","botnav-hidden-fast");
-        }catch(err){}
-        if(navBotSync.current) clearTimeout(navBotSync.current);
-        navBotSync.current=setTimeout(function(){
-          navBotSync.current=0;
-          setNavHidden(true);
-          setNavHiddenFast(true);
-        }, 420);
-      }
-      return;
-    }
+    if(max>0 && y>=max-4){ armNavHide(true); return; }
     if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
-    // Bajando: igual que abajo del todo — clase DOM ya, setState diferido. Un setState a la
-    // primera bajada del fling re-renderizaba App y, si las clases del host no vivían en React,
-    // mataba el momentum antes de llegar al borde (5/8 noche).
-    if(dy>0 && y>56){
-      if(!navHiddenRef.current){
-        navHiddenRef.current=true;
-        try{
-          const nav=document.querySelector(".botnav");
-          if(nav){ nav.classList.add("botnav-hidden"); nav.classList.remove("botnav-hidden-fast"); }
-        }catch(err){}
-        if(navBotSync.current) clearTimeout(navBotSync.current);
-        navBotSync.current=setTimeout(function(){
-          navBotSync.current=0;
-          setNavHidden(true);
-          setNavHiddenFast(false);
-        }, 420);
-      }
-    }
+    if(dy>0 && y>56){ armNavHide(false); }
     else if(dy<0){ revealNav(); }                     // subiendo → mostrar
   };
+  const applyNavHideRef=useRef(applyNavHide);
+  applyNavHideRef.current=applyNavHide;
+  // Al asentarse el scroll (tras el fling/ola), aplicar el botnav armado. Sin esto el fallback
+  // de 550 ms también vale; con scrollend la barra se aparta justo cuando la ola ya terminó.
+  useEffect(function(){
+    const onScrollEnd=function(){
+      if(!navHideArmed.current) return;
+      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+      applyNavHideRef.current();
+    };
+    document.addEventListener("scrollend", onScrollEnd, true);
+    return function(){ document.removeEventListener("scrollend", onScrollEnd, true); };
+  },[]);
   const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
   const trashRef=useRef(null);
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
@@ -1913,6 +1920,7 @@ function App(){
     }
     scrollHostOn.current=false;
     if(hostTabRef.current!==-1){ hostTabRef.current=-1; setHostTab(-1); }
+    try{ if(viewportRef.current) viewportRef.current.classList.remove("scroll-host-open"); }catch(e){}
   };
   const enterScrollHost=function(i){
     const el=trackRef.current; if(!el||dragging.current) return;
@@ -1929,6 +1937,7 @@ function App(){
     }
     scrollHostOn.current=true;
     if(hostTabRef.current!==i){ hostTabRef.current=i; setHostTab(i); }
+    try{ if(viewportRef.current) viewportRef.current.classList.add("scroll-host-open"); }catch(e){}
     // Recolocar touch-action (perfil arriba en Inicio)
     if(pgs[i]) syncPageTouchAction(pgs[i], i);
   };

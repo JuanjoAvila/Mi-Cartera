@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-05 (noche 3)
+### Flick→ola, Cartera y título bajo iconos
+
+1. **Botnav:** ya no se toca (ni classList) hasta `scrollend` / 550 ms — mutarlo a mitad del
+   fling cortaba el stretch nativo aunque el host fixed estuviera bien.
+2. **Padding del host:** `safe-top` como Ajustes; sin él «Tus gastos» chocaba con la barra de
+   estado. Viewport en `overflow:visible` mientras hay host (Ajustes no vive bajo
+   `overflow:hidden`).
+3. **`.rise`:** el keyframe acaba en `transform:none` (antes `translateY(0)` dejaba matrix y
+   capas con transform en Cartera, donde hay más cards).
+
 ## [Sin publicar] — 2026-08-05 (noche 2)
 ### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)
 
