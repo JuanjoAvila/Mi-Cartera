@@ -69,7 +69,14 @@ async function scrollear(page, scrollTop) {
     const live = document.querySelectorAll(".page")[idx];
     live.scrollTop = st;
     live.dispatchEvent(new Event("scroll", { bubbles: true }));
+    // La app aplica hide/reveal en scrollend (+ margen en bordes para la ola nativa).
+    live.dispatchEvent(new Event("scrollend", { bubbles: true }));
   }, scrollTop);
+}
+
+/** Espera a que el botnav asiente tras un scroll a borde (hide diferido ~450 ms / clear tope ~400 ms). */
+async function esperarBarra(page) {
+  await page.waitForTimeout(550);
 }
 
 const alturaMax = (page) => page.evaluate(() => {
@@ -111,7 +118,7 @@ test("llegar al final esconde la barra con una transición RÁPIDA, no con la ca
 
   // Scroll normal hacia abajo, SIN llegar al final: tiene que esconder con la curva calmada.
   await scrollear(page, Math.round(max * 0.4));
-  await page.waitForTimeout(60);
+  await page.waitForTimeout(80);
   const normal = await estadoBarra(page);
   expect(normal.escondida, "un scroll normal hacia abajo tiene que esconder la barra").toBe(true);
   expect(normal.rapida, "un scroll normal (sin llegar al final) NO debe usar la transición rápida").toBe(false);
@@ -119,13 +126,13 @@ test("llegar al final esconde la barra con una transición RÁPIDA, no con la ca
 
   // Vuelve a enseñar la barra (sube) antes de medir el caso del final, para partir de "visible".
   await scrollear(page, 0);
-  await page.waitForTimeout(60);
+  await esperarBarra(page); // clear tope + reveal diferido
   const trasSubir = await estadoBarra(page);
   expect(trasSubir.escondida, "subir tiene que volver a enseñar la barra").toBe(false);
 
   // Llega al final de golpe (el caso real: una lista corta, o un fling que aterriza ya al fondo).
   await scrollear(page, max);
-  await page.waitForTimeout(60);
+  await esperarBarra(page); // hide en borde tras ~450 ms (no matar la ola del fling)
   const final = await estadoBarra(page);
   expect(final.escondida, "llegar al final tiene que esconder la barra (si no, tapa el rebote)").toBe(true);
   expect(final.rapida, "llegar al final tiene que usar la transición RÁPIDA (botnav-hidden-fast)").toBe(true);
@@ -143,7 +150,7 @@ test("al alejarse del final y volver a bajar hasta abajo, la transición sigue s
   await scrollear(page, 0); // sincroniza
   await page.waitForTimeout(60);
   await scrollear(page, max); // llega al final
-  await page.waitForTimeout(60);
+  await esperarBarra(page);
   let estado = await estadoBarra(page);
   expect(estado.rapida).toBe(true);
 
@@ -151,9 +158,9 @@ test("al alejarse del final y volver a bajar hasta abajo, la transición sigue s
   // `max` se recalcula: la lista pagina con IntersectionObserver y puede haber crecido, y un
   // valor viejo aterrizaría por DEBAJO del nuevo final — dando el escondido "normal", no el rápido.
   await scrollear(page, 0);
-  await page.waitForTimeout(60);
+  await esperarBarra(page);
   await scrollear(page, await alturaMax(page));
-  await page.waitForTimeout(60);
+  await esperarBarra(page);
   estado = await estadoBarra(page);
   expect(estado.escondida, "el segundo viaje al final también tiene que esconder la barra").toBe(true);
   expect(estado.rapida, "el segundo viaje al final también tiene que ser con la transición rápida").toBe(true);
