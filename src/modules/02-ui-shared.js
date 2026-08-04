@@ -155,10 +155,17 @@ function shareMonthReport(state, tt, showToast){
    Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
    ============================================================ */
 function Tour({onDone, goTab, tabIds}){
-  // Tour v4. El overlay va a `document.body` (portal): dentro de `.app` (padding safe-area)
-  // el `position:fixed` del recorte y el `getBoundingClientRect` del elemento NO compartían
-  // origen en el móvil real — fotos 4/8: Gastos/Plan/Cartera/+ «seleccionaban el aire»
-  // varios cm por encima de la barra.
+  // Tour v4. Portal a `document.body` + compensación del `zoom` de la letra (small/big/huge).
+  // Causa real del descuadre en su Oppo (medido por CDP 4/8): con `html.smalltext body{zoom:0.92}`
+  // `getBoundingClientRect` viene en px de pantalla, pero `position:fixed` left/top se interpretan
+  // en el espacio PRE-zoom del body → el foco se pintaba al 92% (Gastos ~57 px arriba). Playwright
+  // en Pixel 5 no aplica smalltext, por eso el e2e salía verde y el móvil no.
+  const bodyZoom=function(){
+    const z=parseFloat(getComputedStyle(document.body).zoom);
+    return (z&&isFinite(z)&&z>0)?z:1;
+  };
+  // Convierte coords de pantalla (getBoundingClientRect / innerWidth) al espacio del zoom.
+  const zPx=function(v){ return v/bodyZoom(); };
   const pickVisible=function(sel){
     const nodes=document.querySelectorAll(sel);
     const W=window.innerWidth||400, H=window.innerHeight||700;
@@ -187,9 +194,9 @@ function Tour({onDone, goTab, tabIds}){
     return el.getBoundingClientRect();
   };
   const steps=[
-    // Solo la cifra; pad holgado para envolver € y el letter-spacing.
-    {k:"tour_1", tab:"dash", pad:14, sel:function(){ return pickVisible(".page .v4-hero-amt, [data-tour='hero-amt']"); }},
-    // Sin foco: el gesto abre Ajustes desde casi cualquier sitio, no solo el borde (feedback 4/8).
+    // Solo la cifra; pad holgado para envolver € (Range + margen; no a ojo del número grande).
+    {k:"tour_1", tab:"dash", pad:18, sel:function(){ return pickVisible(".page .v4-hero-amt, [data-tour='hero-amt']"); }},
+    // Sin recorte: el gesto abre Ajustes en cualquier sitio. Sigue el velo oscuro del tutorial.
     {k:"tour_settings", tab:"dash", tipOnly:true},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
     {k:"tour_3", tab:null, round:true, sel:function(){ return document.querySelector(".botnav-fab"); }},
@@ -210,6 +217,7 @@ function Tour({onDone, goTab, tabIds}){
     return round?8:10;
   };
   const tipPos=function(r, tipH, tipOnly){
+    // Todo en px de pantalla; `pintar` lo pasa a espacio zoom al escribir estilos.
     const H=window.innerHeight||700;
     const need=Math.max(120, tipH||156);
     if(tipOnly||!r||r.tipOnly) return {top:Math.max(24, Math.round(H*0.28)), bottom:""};
@@ -230,19 +238,27 @@ function Tour({onDone, goTab, tabIds}){
     const n=spotRef.current;
     if(n){
       if(tipOnly){
-        n.style.opacity="0"; n.style.width="0"; n.style.height="0"; n.style.left="-9999px";
+        // Velo a pantalla completa (mismo tono que el box-shadow del foco). Antes opacity:0
+        // quitaba el oscurecido y parecía que el tutorial había terminado (feedback 4/8).
+        n.style.opacity="1";
+        n.style.left="0"; n.style.top="0";
+        n.style.width=zPx(window.innerWidth||360)+"px";
+        n.style.height=zPx(window.innerHeight||700)+"px";
+        n.style.borderRadius="0";
       } else {
         n.style.opacity="1";
-        n.style.left=(r.x-p)+"px"; n.style.top=(r.y-p)+"px";
-        n.style.width=(r.w+p*2)+"px"; n.style.height=(r.h+p*2)+"px";
+        n.style.borderRadius="";
+        n.style.left=zPx(r.x-p)+"px"; n.style.top=zPx(r.y-p)+"px";
+        n.style.width=zPx(r.w+p*2)+"px"; n.style.height=zPx(r.h+p*2)+"px";
       }
     }
     const tip=tipRef.current;
     if(tip){
-      const box=tipPos(r, tip.offsetHeight||156, tipOnly);
-      tip.style.top=box.top===""?"":(box.top+"px");
-      tip.style.bottom=box.bottom===""?"":(box.bottom+"px");
-      tip.style.left="16px"; tip.style.right="16px";
+      // offsetHeight del tip ya está en px de pantalla (post-zoom); tipPos trabaja en pantalla.
+      const box=tipPos(r, tip.getBoundingClientRect().height||156, tipOnly);
+      tip.style.top=box.top===""?"":(zPx(box.top)+"px");
+      tip.style.bottom=box.bottom===""?"":(zPx(box.bottom)+"px");
+      tip.style.left=zPx(16)+"px"; tip.style.right=zPx(16)+"px";
     }
   };
   const showNav=function(){

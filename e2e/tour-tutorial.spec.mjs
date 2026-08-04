@@ -1,9 +1,8 @@
 /* TOUR DE BIENVENIDA (coach-marks) — `Tour` en 02-ui-shared.js.
  *
- * Fotos reales 4/8: (1) la cifra cortaba el €; (2) Gastos/Plan/Cartera/+ salían «en el aire»
- * porque el overlay vivía dentro de `.app` (safe-area) y el fixed no coincidía con el rect —
- * ahora portal a `document.body`; (3) gestos de Ajustes/perfil sin foco (el gesto vale en
- * cualquier sitio); (4) mensajes sin «verde» ni «borde» ni «arriba del todo».
+ * Causa real del descuadre en su Oppo (CDP 4/8): `html.smalltext body{zoom:0.92}` — el rect
+ * viene en px de pantalla y left/top fixed se leían en espacio pre-zoom. Aquí se prueba también
+ * con letra pequeña. tipOnly = velo a pantalla entera (mismo tono), sin recorte.
  */
 import { test, expect } from "@playwright/test";
 import { seedLoggedInDashboard, dismissNews } from "./fixtures.mjs";
@@ -29,9 +28,9 @@ async function abrirAjustesConGesto(page) {
   await expect(page.locator(".settings-push.open")).toBeVisible({ timeout: 5_000 });
 }
 
-/* Mismo orden que `steps` en 02-ui-shared.js. tipOnly = sin recorte. */
+/* Mismo orden que `steps` en 02-ui-shared.js. tipOnly = velo sin recorte. */
 const PASOS = [
-  { sel: ".page .v4-hero-amt, [data-tour='hero-amt']", pad: 14 },
+  { sel: ".page .v4-hero-amt, [data-tour='hero-amt']", pad: 18 },
   { tipOnly: true },
   { sel: '.botnav-tab[data-tour="gastos"]' },
   { sel: ".botnav-fab", round: true },
@@ -51,6 +50,12 @@ async function assertSpotSobreTarget(page, paso, i, tol) {
   if (paso.tipOnly) {
     const spot = page.locator(".tour-spot");
     await expect(spot).toHaveClass(/tiponly/, { timeout: 5_000 });
+    // Velo visible a pantalla (no opacity:0): mismo tono de tutorial.
+    const box = await spot.boundingBox();
+    const vp = page.viewportSize();
+    expect(box, `paso ${i}: tipOnly sin velo`).toBeTruthy();
+    expect(box.width, `paso ${i}: velo estrecho`).toBeGreaterThan(vp.width * 0.9);
+    expect(box.height, `paso ${i}: velo bajo`).toBeGreaterThan(vp.height * 0.9);
     return;
   }
   const spotBox = await page.locator(".tour-spot").boundingBox();
@@ -58,14 +63,12 @@ async function assertSpotSobreTarget(page, paso, i, tol) {
   expect(spotBox, `paso ${i}: no hay .tour-spot`).toBeTruthy();
   expect(targetBox, `paso ${i}: sin target`).toBeTruthy();
   const pad = paso.pad != null ? paso.pad : paso.round ? 8 : 10;
-  // Centros alineados (el pad hace que las esquinas no coincidan).
   const sx = spotBox.x + spotBox.width / 2,
     sy = spotBox.y + spotBox.height / 2;
   const tx = targetBox.x + targetBox.width / 2,
     ty = targetBox.y + targetBox.height / 2;
   expect(Math.abs(sx - tx), `paso ${i}: centro x descuadrado`).toBeLessThan(tol);
   expect(Math.abs(sy - ty), `paso ${i}: centro y descuadrado`).toBeLessThan(tol);
-  // El foco es al menos tan grande como el target (con el pad), sin cortarlo por el centro.
   expect(spotBox.width, `paso ${i}: foco más estrecho que el target`).toBeGreaterThanOrEqual(targetBox.width - 2);
   expect(spotBox.height, `paso ${i}: foco más bajo que el target`).toBeGreaterThanOrEqual(targetBox.height - 2);
   expect(pad).toBeGreaterThan(0);
@@ -105,6 +108,20 @@ test("tour de bienvenida: los 10 pasos caen sobre su sitio y el tip no los tapa"
   await expect
     .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("micartera_v3") || "{}").tourSeen), { timeout: 5_000 })
     .toBe(true);
+});
+
+test("tour con letra pequeña (zoom body 0.92): el foco sigue al target — regresión Oppo", async ({ page }) => {
+  await seedLoggedInDashboard(page, {
+    tourSeen: false,
+    settings: { autoPrices: false, theme: "green", textSize: "small", lang: "es" },
+  });
+  await page.goto("/");
+  await appLista(page);
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.body).zoom), { timeout: 5_000 })
+    .toBe("0.92");
+  await expect(page.locator(".tour-wrap")).toBeVisible({ timeout: 5_000 });
+  await comprobarPasos(page);
 });
 
 const TOLERANCIA_RAPIDA = 18;
@@ -170,7 +187,5 @@ test("mensajes del tour: sin «verde», sin «borde», sin «arriba del todo»",
   const todo = textos.join(" | ");
   expect(todo).not.toMatch(/verde|green|verd\b/);
   expect(todo).not.toMatch(/borde izquierdo|left edge|vora esquerra/);
-  // «lista arriba del todo» en Plan está bien (es la condición del gesto); lo prohibido es
-  // el mensaje viejo del tirón al perfil («si estás arriba del todo…»).
   expect(todo).not.toMatch(/si estás arriba del todo|while you're at the very top|si ets a dalt de tot/);
 });

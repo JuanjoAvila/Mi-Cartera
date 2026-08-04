@@ -3,22 +3,25 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar] — 2026-08-04
-### Tutorial: el tip tapaba el foco y los gestos apuntaban al sitio equivocado
+### Tutorial: el descuadre era el `zoom` de la letra, no (solo) el portal
 
-Rechazo con foto (4/8), segunda tanda: Gastos/Plan/Cartera/+ «seleccionaban el aire» varios cm
-por encima de la barra, la cifra cortaba el €, y los mensajes hablaban de «borde» / «verde» /
-«arriba del todo» — que no es cómo funciona la app.
+Tercera tanda con foto (4/8): tras el portal a `body` **seguía igual** en su Oppo. Medido por
+CDP en el WebView real: con **letra pequeña** (`html.smalltext body{zoom:0.92}`) el
+`getBoundingClientRect` del tab viene en px de pantalla, pero `left`/`top` de un `position:fixed`
+dentro del body se interpretan en el espacio **pre-zoom** → el foco se pintaba al 92 % (Gastos
+~57 px arriba de la barra; mismo ratio en +, Plan, Cartera, botnav). Playwright en Pixel 5 no
+usa smalltext, por eso el e2e salía verde.
 
-1. **Portal a `document.body`.** El overlay vivía dentro de `.app` (padding del safe-area) y en
-   el móvil el `position:fixed` del recorte y el `getBoundingClientRect` del botón no compartían
-   origen. Misma causa para todos los descuadres de la barra.
-2. **Cifra con margen de verdad:** se mide el rango de texto (incluye `,45 €`) y el pad sube a 14.
-3. **Ajustes y tirón al perfil: solo texto, sin recorte.** El gesto vale en cualquier sitio de
-   Inicio; pintar un borde o la cabecera mentía. Mensajes reescritos (es/en/ca): sin «verde»,
-   sin «borde izquierdo», sin «arriba del todo».
-4. **Plan swipe:** el texto dice solo «lista arriba → desliza hacia abajo» (el bug de abajo→arriba
-   sigue abierto aparte).
-5. Durante el tour se fuerza la barra visible: si estaba `botnav-hidden`, el foco medía fuera.
+1. **`pintar` divide por `getComputedStyle(body).zoom`** (1 / 0.92 / 1.12 / 1.26). Tip igual.
+2. **tipOnly con velo oscuro a pantalla entera** (mismo tono del tutorial). Antes `opacity:0`
+   quitaba el oscurecido y parecía que el tour había acabado en Ajustes / tirón al perfil.
+3. **Cifra:** Range del texto + pad 18 (no a ojo del número grande).
+4. **Pulso suave** del anillo mientras lees el paso (`tourpulse`; se apaga con reduce-motion /
+   mientras va pegado).
+5. E2E nuevo con `textSize:"small"` para no volver a cegar el zoom.
+
+(Portal a `body`, mensajes sin «verde»/«borde», barra forzada visible: siguen de la tanda
+anterior; no bastaban solos en su móvil.)
 
 ## [Sin publicar] — 2026-08-01 (segunda vuelta)
 ### El rebote de las pestañas era el navegador todo el tiempo, y una tanda subida se queda del todo fuera de beta

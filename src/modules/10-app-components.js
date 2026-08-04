@@ -1451,10 +1451,11 @@ var RELEASE_NOTES=[
        mide el siguiente, se sigue viendo el último par que sí encajaba. */
     {id:"tutorial-gestos", t:"🎓 Tutorial de gestos (dentro del tour de siempre)", items:[
       "Ajustes → busca «tutorial» → «🎓 Ver el tutorial» (o borra los datos del sitio para que salga solo, como la primera vez): el recorrido de foco/spotlight de siempre, ahora con 10 pasos en vez de 7.",
-      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado cae justo encima de lo que describe el texto (Gastos, +, Plan, Cartera, avatar, barra), y la tarjeta NO lo tapa.",
+      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado cae justo encima de lo que describe el texto (Gastos, +, Plan, Cartera, avatar, barra), y la tarjeta NO lo tapa — también con letra pequeña (zoom).",
       "El primer paso rodea SOLO la cifra del patrimonio — incluido el € y con margen — y se adapta al ancho del número.",
-      "Los pasos de Ajustes y del tirón al perfil NO llevan recorte (solo el texto): el gesto vale en cualquier parte de Inicio, no en un borde ni «arriba del todo».",
+      "Los pasos de Ajustes y del tirón al perfil NO llevan recorte, PERO la pantalla sigue oscurecida como el resto del tutorial (no parece que se haya acabado).",
       "Tras el paso de Plan, el del segmentado explica deslizar HACIA ABAJO con la lista arriba del todo para pasar Recibos→Deudas→Metas.",
+      "Si te quedas un momento sin pulsar Siguiente, el anillo del foco hace un pulso suave.",
       "El botón + ya no se llama «verde» en el texto (cambia con la temática).",
       "La tarjeta fija que salía arriba de Ajustes ha desaparecido del todo.",
     ]},
