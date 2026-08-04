@@ -362,6 +362,36 @@ function importObExpenses(s, txs){
   const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
   const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
+  /* EL MISMO GASTO, CONTADO DOS VECES POR DOS CAMINOS (2026-08-04, caso real medido).
+     Sus gastos de Trade Republic YA entran por las notificaciones del móvil (MacroDroid) con el
+     comercio de verdad —«Repsol», «BEACH BARBA ROSSA BAR»— el día que compra. Open Banking los
+     trae DE NUEVO uno o dos días después (fecha de contabilización del banco, no de la compra) y
+     sin ningún dato: TR manda `entry_reference`, `creditor`, `remittance_information`… todo null
+     (payload crudo verificado). Así que el dedup clásico —día + importe + comercio— no los ve
+     como el mismo: ni el día coincide ni el comercio. De sus 22 movimientos de TR por Open
+     Banking, 9 eran gemelos exactos de un gasto que ya tenía. Eso es lo que él veía como
+     «duplicados» y «movimientos que se inventa».
+     Regla: un movimiento SIN NOMBRE que case en importe exacto con algo apuntado por OTRA vía en
+     ±3 días es el mismo gasto → no se apunta. Emparejamiento 1 a 1 (`usadoDup`): si de verdad
+     hiciste dos cargos iguales y solo uno estaba apuntado, el segundo entra. Solo se comparan
+     movimientos sin nombre —cuando el banco SÍ dice el comercio no hay ambigüedad y manda el
+     dedup de siempre— y solo contra gastos de otra fuente: dos apuntes de Open Banking del mismo
+     banco no se tapan entre sí (ese caso ya lo cubre `kOf`). */
+  const DUP_MS=3*86400000;
+  const otrasVias=(s.expenses||[]).filter(function(e){ return e.source!=="ob" && e.source!=="ob-hist"; });
+  const usadoDup={};
+  const yaApuntadoPorOtraVia=function(tx){
+    if(tx.merchant && tx.merchant!=="Movimiento") return false;   // el banco sí dice qué es: sin ambigüedad
+    const ms=parseDate(tx.date).getTime();
+    const hit=otrasVias.findIndex(function(e,i){
+      if(usadoDup[i]) return false;
+      if(Math.abs((e.amount||0)-tx.amount)>0.005) return false;
+      return Math.abs(dateMs(e.date)-ms)<=DUP_MS;
+    });
+    if(hit<0) return false;
+    usadoDup[hit]=1;
+    return true;
+  };
   // Cargos ya modelados ESTE mes por entidad (Fijos/deudas/puntuales), para no duplicar un recibo
   // de la cuenta diaria ahora que ya no exigimos "compra con tarjeta" ahí.
   const now=new Date(), ym=now.getMonth()+1, yy=now.getFullYear();
@@ -384,6 +414,7 @@ function importObExpenses(s, txs){
       if(tx.id) e.extId=tx.id;
       const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
       if(keys[kOf(e)]) return;
+      if(yaApuntadoPorOtraVia(tx)) return;                        // el mismo ingreso, ya apuntado por otra vía
       keys[kOf(e)]=1; add.push(e);
       return;
     }
@@ -408,6 +439,7 @@ function importObExpenses(s, txs){
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
+    if(yaApuntadoPorOtraVia(tx)) return;                          // el mismo gasto, ya apuntado por otra vía
     keys[kOf(e)]=1;
     add.push(e);
   });

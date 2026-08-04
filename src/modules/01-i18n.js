@@ -2488,22 +2488,60 @@ function fixRevoDupes(s){
 // ver `importObExpenses`). Idempotente con flag, como fixInvSold/fixInvAuto/fixRevoDupes.
 function fixMovInvasion(state){
   if(!state || state._fixMovInvasion) return state;
+  // ⚠ SIN GASTOS TODAVÍA NO SE PUEDE LIMPIAR NADA, y marcar el flag aquí dejaría el destrozo vivo
+  // para siempre (fallo real del primer intento, 2026-08-04): los gastos NO viven en `app_state`,
+  // llegan de la tabla `expenses` en un segundo viaje —`syncCloudExpenses` en 11-app-main.js— que
+  // termina DESPUÉS de cargar el estado. La primera vez esto corrió contra una lista vacía, se
+  // marcó como hecho y no arregló ni un gasto. Por eso se llama también desde ahí, y por eso el
+  // flag solo se pone cuando de verdad había algo que revisar.
+  if(!Array.isArray(state.expenses) || !state.expenses.length) return state;
   let s=state;
   if(s.catOverrides && s.catOverrides["movimiento"]){
     const ov=Object.assign({},s.catOverrides); delete ov["movimiento"];
     s=Object.assign({},s,{catOverrides:ov});
+    delete USER_OVERRIDES["movimiento"];   // y en memoria: si no, sigue mandando el resto de la sesión
   }
-  if(Array.isArray(s.expenses) && s.expenses.length){
-    const exps=s.expenses.map(function(e){
-      if(e.category!=="inversion" || e.merchant!=="Movimiento" || !e.investInvId) return e;
-      const acc=(s.accounts||[]).find(function(a){ return a.ent===e.ent; });
-      const esAporteReal = acc && acc.monthlyInvest>0 && Math.abs(e.amount-acc.monthlyInvest)<0.01;
-      if(esAporteReal) return e;   // el aporte automático real: se queda tal cual
-      s=reverseInvestBuy(s, e.investInvId, e.investShares, e.investCInv, e.investAmountEur);
-      const upd=Object.assign({},e,{category:autoCategory(e.merchant||"")});
-      delete upd.investInvId; delete upd.investShares; delete upd.investCInv; delete upd.investAmountEur;
-      return upd;
+  const exps=s.expenses.map(function(e){
+    if(e.merchant!=="Movimiento") return e;
+    const acc=(s.accounts||[]).find(function(a){ return a.ent===e.ent; });
+    const esAporteReal = acc && acc.monthlyInvest>0 && Math.abs(e.amount-acc.monthlyInvest)<0.01;
+    // El aporte automático que entró ANTES de que existiera la categoría: se reclasifica para que
+    // deje de contar como gasto. Solo la etiqueta — la compra de participaciones la hizo en su día
+    // `reconcileTR` y repetirla aquí sería contarla dos veces, justo lo que se está arreglando.
+    if(esAporteReal) return e.category==="inversion" ? e : Object.assign({},e,{category:"inversion"});
+    if(e.category!=="inversion") return e;
+    if(e.investInvId) s=reverseInvestBuy(s, e.investInvId, e.investShares, e.investCInv, e.investAmountEur);
+    const upd=Object.assign({},e,{category:e.amount<0?"ingreso":autoCategory(e.merchant||"")});
+    delete upd.investInvId; delete upd.investShares; delete upd.investCInv; delete upd.investAmountEur;
+    return upd;
+  });
+  /* Y LOS DUPLICADOS QUE YA ESTABAN GUARDADOS. `importObExpenses` ya no deja entrar un movimiento
+     sin nombre que sea gemelo de algo apuntado por otra vía (±3 días, mismo importe), pero los que
+     entraron ANTES de esa red siguen ahí, contando doble. Mismo criterio, mismo emparejamiento 1 a
+     1, y solo se retiran los de Open Banking sin nombre: el gasto con el comercio de verdad —el que
+     vino del móvil— es el que se queda, siempre. Se marcan como borrados (`deleted`) en vez de
+     desaparecer sin más: es lo que impide que el siguiente pull de la nube los resucite (ver el
+     filtro `delSet` en `syncCloudExpenses`). */
+  const otrasVias=exps.filter(function(e){ return e.source!=="ob" && e.source!=="ob-hist"; });
+  const usado={};
+  const fuera={};
+  exps.forEach(function(e,i){
+    if(e.source!=="ob" && e.source!=="ob-hist") return;
+    if(e.merchant!=="Movimiento") return;
+    const acc=(s.accounts||[]).find(function(a){ return a.ent===e.ent; });
+    if(acc && acc.monthlyInvest>0 && Math.abs(e.amount-acc.monthlyInvest)<0.01) return;   // el aporte real no se toca
+    const ms=dateMs(e.date);
+    const j=otrasVias.findIndex(function(o,k){
+      return !usado[k] && Math.abs((o.amount||0)-(e.amount||0))<=0.005 && Math.abs(dateMs(o.date)-ms)<=3*86400000;
     });
+    if(j>=0){ usado[j]=1; fuera[i]=1; }
+  });
+  const quedan=exps.filter(function(e,i){ return !fuera[i]; });
+  if(quedan.length!==exps.length){
+    let del=s.deleted||[];
+    exps.forEach(function(e,i){ if(fuera[i]) del=pushDeleted(del, String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||"")); });
+    s=Object.assign({},s,{expenses:quedan, deleted:del});
+  } else {
     s=Object.assign({},s,{expenses:exps});
   }
   s._fixMovInvasion=true;

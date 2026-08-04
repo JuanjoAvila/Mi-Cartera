@@ -134,9 +134,22 @@ t("reconcileTR DEJA de simular en cuanto la cuenta tiene un movimiento real (sou
  * estado ya dañado: quita el override envenenado y deshace la compra de cada gasto que NO sea el
  * aporte automático real. */
 t("fixMovInvasion borra el override envenenado 'movimiento'→inversion", () => {
-  const s = { catOverrides: { movimiento: "inversion" }, expenses: [], accounts: [], investments: [] };
+  const s = {
+    catOverrides: { movimiento: "inversion" }, accounts: [], investments: [],
+    expenses: [{ id: "e1", merchant: "Consum", amount: 5, category: "super" }],
+  };
   const ns = ctx.fixMovInvasion(s);
   assert.equal(ns.catOverrides.movimiento, undefined);
+});
+
+/* El fallo del PRIMER intento (2026-08-04): los gastos no viven en `app_state`, llegan de la tabla
+ * `expenses` en un segundo viaje. La limpieza corrió contra una lista vacía, se marcó como hecha y
+ * no arregló ni un gasto — el usuario volvió a ver exactamente el mismo destrozo. */
+t("fixMovInvasion NO se da por hecha si los gastos aún no han llegado de la nube", () => {
+  const s = { catOverrides: { movimiento: "inversion" }, expenses: [], accounts: [], investments: [] };
+  const ns = ctx.fixMovInvasion(s);
+  assert.strictEqual(ns, s, "sin gastos delante no toca nada…");
+  assert.ok(!ns._fixMovInvasion, "…y sobre todo NO se marca como hecha: se reintenta cuando lleguen");
 });
 
 t("fixMovInvasion deshace los 'Movimiento' arrastrados a Inversión por error, deja el aporte real", () => {
@@ -164,10 +177,97 @@ t("fixMovInvasion deshace los 'Movimiento' arrastrados a Inversión por error, d
 });
 
 t("fixMovInvasion es idempotente (no repite la limpieza en la siguiente carga)", () => {
-  const s = { catOverrides: {}, expenses: [], accounts: [], investments: [] };
+  const s = {
+    catOverrides: {}, accounts: [], investments: [],
+    expenses: [{ id: "e1", merchant: "Consum", amount: 5, category: "super" }],
+  };
   const once = ctx.fixMovInvasion(s);
+  assert.ok(once._fixMovInvasion, "con gastos delante sí se marca como hecha");
   const twice = ctx.fixMovInvasion(once);
   assert.strictEqual(twice, once, "con el flag puesto, la segunda vuelta no toca nada");
+});
+
+/* EL MISMO GASTO POR DOS CAMINOS (2026-08-04, medido en sus datos reales): sus compras de TR ya
+ * entran por las notificaciones del móvil con el comercio de verdad; Open Banking las repite 1-2
+ * días después y sin ningún dato. 9 de sus 22 movimientos de TR eran gemelos exactos. */
+function estadoConMacroDroid(extra) {
+  return {
+    accounts: [{ id: "acc1", ent: "trade_republic", role: "diario", spendFrom: true, monthlyInvest: 50, rewardInv: "inv1" }],
+    investments: [{ id: "inv1", cur: "EUR", shares: 10, value: 1000, cost: 900 }],
+    settings: {},
+    expenses: [
+      { id: "m1", date: "2026-08-02T12:00:00.000Z", amount: 88.11, merchant: "Repsol", category: "transporte", source: "macrodroid" },
+      { id: "m2", date: "2026-08-02T12:00:00.000Z", amount: -34.7, merchant: "Bizum recibido", category: "ingreso", source: "macrodroid" },
+    ].concat(extra || []),
+  };
+}
+
+t("un gasto que ya entró por el móvil NO se repite cuando el banco lo trae un día después sin nombre", () => {
+  const s = estadoConMacroDroid();
+  const txs = [{ ent: "trade_republic", id: null, date: "2026-08-03", amount: 88.11, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  assert.equal(ctx.importObExpenses(s, txs), null, "mismo importe, un día después, sin nombre → es el mismo gasto");
+});
+
+t("lo mismo con los ingresos (el bizum que el banco repite sin decir de quién)", () => {
+  const s = estadoConMacroDroid();
+  const txs = [{ ent: "trade_republic", id: null, date: "2026-08-02", amount: -34.7, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  assert.equal(ctx.importObExpenses(s, txs), null);
+});
+
+t("pero lo que SOLO ve el banco (round-up, cashback, aporte) sí entra", () => {
+  const s = estadoConMacroDroid();
+  const txs = [
+    { ent: "trade_republic", id: null, date: "2026-08-03", amount: 50, merchant: "Movimiento", note: "", card: false, status: "BOOK" },
+    { ent: "trade_republic", id: null, date: "2026-08-03", amount: 22.62, merchant: "Movimiento", note: "", card: false, status: "BOOK" },
+  ];
+  const add = ctx.importObExpenses(s, txs);
+  assert.equal(add.length, 2, "ningún gemelo por otra vía → entran los dos");
+  assert.equal(add.find((e) => e.amount === 50).category, "inversion", "y el aporte sigue reconociéndose");
+});
+
+t("el emparejamiento es 1 a 1: dos cargos iguales de verdad con uno solo apuntado dejan pasar el otro", () => {
+  const s = estadoConMacroDroid();
+  const txs = [
+    { ent: "trade_republic", id: null, date: "2026-08-03", amount: 88.11, merchant: "Movimiento", note: "", card: false, status: "BOOK" },
+    { ent: "trade_republic", id: null, date: "2026-08-03", amount: 88.11, merchant: "Movimiento", note: "", card: false, status: "BOOK" },
+  ];
+  const add = ctx.importObExpenses(s, txs);
+  assert.equal(add.length, 1, "solo uno tenía gemelo; el segundo es un cargo real distinto");
+});
+
+t("si el banco SÍ dice el comercio no se aplica esta red (ahí manda el dedup de siempre)", () => {
+  const s = estadoConMacroDroid();
+  const txs = [{ ent: "trade_republic", id: null, date: "2026-08-03", amount: 88.11, merchant: "Repsol", note: "", card: false, status: "BOOK" }];
+  const add = ctx.importObExpenses(s, txs);
+  assert.equal(add.length, 1, "con nombre no hay ambigüedad: se respeta el criterio clásico día+importe+comercio");
+});
+
+t("fixMovInvasion retira los duplicados que YA estaban guardados, y deja el del comercio de verdad", () => {
+  const s = {
+    accounts: [{ id: "acc1", ent: "trade_republic", monthlyInvest: 50, rewardInv: "inv1" }],
+    investments: [{ id: "inv1", cur: "EUR", shares: 10, value: 1000, cost: 900 }],
+    catOverrides: {}, deleted: [],
+    expenses: [
+      { id: "m1", date: "2026-08-02T12:00:00.000Z", amount: 88.11, merchant: "Repsol", category: "transporte", source: "macrodroid" },
+      { id: "o1", date: "2026-08-03T12:00:00.000Z", amount: 88.11, merchant: "Movimiento", category: "otros", source: "ob", ent: "trade_republic" },
+      { id: "o2", date: "2026-08-03T12:00:00.000Z", amount: 50, merchant: "Movimiento", category: "inversion", source: "ob", ent: "trade_republic" },
+      { id: "o3", date: "2026-08-03T12:00:00.000Z", amount: 22.62, merchant: "Movimiento", category: "otros", source: "ob", ent: "trade_republic" },
+    ],
+  };
+  const ns = ctx.fixMovInvasion(s);
+  const ids = ns.expenses.map((e) => e.id);
+  assert.ok(ids.includes("m1"), "el que trae el comercio de verdad SIEMPRE se queda");
+  assert.ok(!ids.includes("o1"), "el duplicado sin nombre se retira");
+  assert.ok(ids.includes("o2"), "el aporte automático real no se toca");
+  assert.ok(ids.includes("o3"), "lo que solo ve el banco (round-up) se queda");
+  assert.ok(ns.deleted.length >= 1, "queda marcado como borrado para que el pull de la nube no lo resucite");
+});
+
+t("un gasto viejo del mismo importe (fuera de la ventana de 3 días) no tapa uno nuevo", () => {
+  const s = estadoConMacroDroid();
+  const txs = [{ ent: "trade_republic", id: null, date: "2026-08-20", amount: 88.11, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  const add = ctx.importObExpenses(s, txs);
+  assert.equal(add.length, 1, "18 días después es otro cargo, no el mismo");
 });
 
 console.log("\ninvest-category: OK");

@@ -167,7 +167,10 @@ function App(){
         // varias veces al día, y cada vez más caro según crecía el histórico (2026-07-24).
         const next=keep.concat(add);
         const igual = next.length===prev.expenses.length && next.every(function(e,i){ return e===prev.expenses[i]; });
-        return Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()});
+        // Los gastos llegan AQUÍ, no al cargar el estado — así que la limpieza única que los
+        // necesita se reintenta en este punto (ver `fixMovInvasion`, que se marca como hecha solo
+        // cuando ha tenido gastos delante).
+        return fixMovInvasion(Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()}));
       });
       return { total:incoming.length, nuevos:count };
     });
