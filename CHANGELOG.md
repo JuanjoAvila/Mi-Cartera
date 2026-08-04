@@ -3,14 +3,13 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar] — 2026-08-05 (noche 3)
-### Flick→ola, Cartera y título bajo iconos
+### Ola nativa + barra usable
 
-1. **Botnav en bordes:** quiet + `botnav-ola-clear` (fuera del compositing sin transform).
-   Reveal arriba NO va en `scrollend` (llegaba antes de la ola).
-2. **Ola arriba a ratos:** el candado anti-arco del pulgar cubría mitad/abajo pero NO el
-   tope — un gesto con deriva lateral reclamaba tabs (`leaveScrollHost`+`preventDefault`) y
-   mataba la ola. Ahora arriba usa el mismo umbral casi-solo-horizontal.
-3. **Padding del host / `.rise`:** safe-top; rise acaba en `transform:none`.
+1. **Host fixed** (como Ajustes) + `hostTab` en React + safe-top + rise sin matrix.
+2. **Flick abajo:** hide del botnav diferido a `scrollend` (sin mutar a mitad del fling).
+3. **Ola arriba a ratos:** el candado anti-arco cubría mitad/abajo pero no el tope — un
+   gesto con deriva lateral robaba el dedo (`leaveScrollHost`+`preventDefault`). Mismo
+   umbral arriba. Se RETIRA el lab que ocultaba la barra en el tope (iba lenta y sin botnav).
 
 ## [Sin publicar] — 2026-08-05 (noche 2)
 ### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)

@@ -521,22 +521,6 @@
      `.botnav-hidden` (no cambia el diseño, solo cuánto tarda en llegar); el escondido por scroll
      normal (bajar leyendo la lista) sigue con su calma de siempre — eso nunca fue el problema. */
   .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1),opacity .12s ease;}
-  /* En el borde (ola nativa): sin blur ni transición. El backdrop-filter + animar
-     transform/opacity de la barra pelea con el stretch del WebView y la ola de ARRIBA
-     falla a ratos (5/8: abajo ok tras diferir el hide; arriba seguía fallando con el reveal). */
-  .botnav.botnav-edge-quiet{
-    transition:none !important;
-    backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
-    will-change:auto !important;
-  }
-  /* Sacarla del todo del compositing en el tope mientras puede haber ola (opacity/visibility,
-     SIN transform — el translateY de botnav-hidden era otra pelea con el stretch). */
-  .botnav.botnav-ola-clear{
-    opacity:0 !important;visibility:hidden !important;pointer-events:none !important;
-    transition:none !important;transform:none !important;
-    backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
-    will-change:auto !important;
-  }
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
@@ -16137,43 +16121,15 @@ function App(){
   // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
   // escondido normal al bajar sigue con su calma de siempre.
   const [navHiddenFast,setNavHiddenFast]=useState(false);
-  // Botnav: NADA de clase DOM ni setState hasta que el scroll SE ASIENTA. Mutar la barra a
-  // mitad del fling corta el stretch nativo — abajo (esconder) Y arriba (mostrar). Además, en
-  // el borde la barra entra en `botnav-edge-quiet` (sin blur ni transition): el reveal en
-  // scrollend llegaba demasiado pronto y la ola de arriba seguía fallando (5/8).
+  // Botnav abajo: diferir hide hasta scrollend/550ms (mutarlo a mitad del fling corta la ola).
+  // Arriba: reveal inmediato — lo que mataba la ola de arriba era robar el gesto (axis x),
+  // no la barra; el lab que ocultaba la barra dejaba la UI rota (feedback 5/8 noche).
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
-  const navRevealArmed=useRef(false);
   const navHideFastRef=useRef(false);
-  const navQuietUntil=useRef(0);
-  const navQuietTimer=useRef(0);
-  const setBotnavQuiet=function(ms){
-    navQuietUntil.current=Date.now()+(ms||900);
-    try{
-      const nav=document.querySelector(".botnav");
-      if(nav){
-        nav.classList.add("botnav-edge-quiet");
-        nav.classList.add("botnav-ola-clear");
-      }
-    }catch(e){}
-    if(navQuietTimer.current) clearTimeout(navQuietTimer.current);
-    navQuietTimer.current=setTimeout(function(){
-      navQuietTimer.current=0;
-      if(Date.now()<navQuietUntil.current) return;
-      try{
-        const nav=document.querySelector(".botnav");
-        if(nav) nav.classList.remove("botnav-edge-quiet","botnav-ola-clear");
-      }catch(e){}
-    }, (ms||900)+40);
-  };
   const applyNavHide=function(){
-    if(Date.now()<navQuietUntil.current){
-      navBotSync.current=setTimeout(applyNavHide, Math.max(40, navQuietUntil.current-Date.now()+20));
-      return;
-    }
     navBotSync.current=0;
     navHideArmed.current=false;
-    navRevealArmed.current=false;
     navHiddenRef.current=true;
     const fast=!!navHideFastRef.current;
     try{
@@ -16186,72 +16142,22 @@ function App(){
     setNavHidden(true);
     setNavHiddenFast(fast);
   };
-  const applyNavReveal=function(){
-    // Arriba: NUNCA enseñar la barra dentro de la ventana quiet — es lo que mata la ola.
-    if(Date.now()<navQuietUntil.current){
-      navBotSync.current=setTimeout(applyNavReveal, Math.max(40, navQuietUntil.current-Date.now()+20));
-      return;
-    }
-    navBotSync.current=0;
-    navHideArmed.current=false;
-    navRevealArmed.current=false;
-    try{
-      const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast","botnav-ola-clear","botnav-edge-quiet");
-    }catch(e){}
-    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
-  };
   const armNavHide=function(fast){
     navHideFastRef.current=!!fast;
-    navRevealArmed.current=false;
-    setBotnavQuiet(fast?700:500);
     if(navHideArmed.current || navHiddenRef.current){
       if(fast) navHideFastRef.current=true;
       return;
     }
     navHideArmed.current=true;
     if(navBotSync.current) clearTimeout(navBotSync.current);
-    // Hide puede ir en scrollend; el quiet evita pelear con la ola.
     navBotSync.current=setTimeout(applyNavHide, 550);
   };
-  const armNavReveal=function(){
-    navHideArmed.current=false;
-    // Ventana larga: el stretch de arriba dura más de lo que tarda scrollend en dispararse.
-    setBotnavQuiet(1000);
-    try{
-      const nav=document.querySelector(".botnav");
-      const alreadyOut=nav&&nav.classList.contains("botnav-hidden");
-      // Si venía oculta, QUE SIGA oculta durante la ola (no enseñar a mitad).
-      if(alreadyOut || navHiddenRef.current){
-        if(nav) nav.classList.add("botnav-hidden");
-      }
-    }catch(e){}
-    if(!navHiddenRef.current){
-      try{
-        const nav=document.querySelector(".botnav");
-        if(nav && !nav.classList.contains("botnav-hidden")){
-          // Ya visible: solo quiet (sin blur), no armar reveal.
-          if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-          navRevealArmed.current=false;
-          return;
-        }
-      }catch(e){}
-    }
-    if(navRevealArmed.current) return;
-    navRevealArmed.current=true;
-    if(navBotSync.current) clearTimeout(navBotSync.current);
-    // NO usar scrollend para reveal — llega antes de que acabe la ola. Solo timeout tras quiet.
-    navBotSync.current=setTimeout(applyNavReveal, 1050);
-  };
-  // Inmediato: solo al cambiar de pestaña / salir de gesto (no durante fling→ola).
   const revealNav=function(){
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
-    navRevealArmed.current=false;
-    navQuietUntil.current=0;
     try{
       const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.remove("botnav-edge-quiet","botnav-ola-clear","botnav-hidden","botnav-hidden-fast");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
     }catch(e){}
     if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
   };
@@ -16289,20 +16195,15 @@ function App(){
     if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); return; }
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
-    // Arriba: ARMAR mostrar barra (no ahora). Si revealNav iba ya, el flick hacia arriba
-    // llegaba al borde, la barra volvía y cortaba la ola de arriba — «a veces sí a veces no».
-    if(y<=8){ armNavReveal(); return; }
-    // Abajo / bajando: solo ARMAR el escondido. Aplicar en scrollend (ver efecto abajo).
+    if(y<=8){ revealNav(); return; }                 // arriba → barra visible (ola arriba = candado de eje)
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
     if(max>0 && y>=max-4){ armNavHide(true); return; }
-    if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
+    if(Math.abs(dy)<6) return;
     if(dy>0 && y>56){ armNavHide(false); }
-    else if(dy<0){ armNavReveal(); }                  // subiendo → armar mostrar
+    else if(dy<0){ revealNav(); }
   };
   const applyNavHideRef=useRef(applyNavHide);
   applyNavHideRef.current=applyNavHide;
-  // scrollend: SOLO esconder. El mostrar en scrollend llega antes de que acabe la ola de
-  // arriba y la mata — el reveal va por timeout tras `botnav-edge-quiet` (ver armNavReveal).
   useEffect(function(){
     const onScrollEnd=function(){
       if(!navHideArmed.current) return;
