@@ -529,6 +529,14 @@
     will-change:auto !important;
     background:var(--bg-2);
   }
+  /* Tope: apartar barra del compositing SOLO durante el gesto de ola (ver beginTopClear).
+     Lock en JS — no rearmar en cada scroll o no vuelve nunca. */
+  .botnav.botnav-ola-clear{
+    opacity:0 !important;visibility:hidden !important;pointer-events:none !important;
+    transition:none !important;transform:none !important;
+    backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
+    will-change:auto !important;
+  }
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
@@ -16129,14 +16137,43 @@ function App(){
   // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
   // escondido normal al bajar sigue con su calma de siempre.
   const [navHiddenFast,setNavHiddenFast]=useState(false);
-  // Botnav abajo: diferir hide hasta scrollend/550ms (mutarlo a mitad del fling corta la ola).
-  // Arriba: candado de eje (no robar el gesto). NADA de ocultar la barra a mano — eso rompía
-  // ola de ambos bordes y dejaba la UI sin botnav (labs 5/8). Con el host activo la barra
-  // pierde blur/will-change (ver `.app-shell.scroll-host-on .botnav`), que es lo que peleaba
-  // con el stretch nativo sin hacerla desaparecer.
+  // Botnav y ola nativa (5/8 noche):
+  // · Abajo LENTO: ok. Abajo RÁPIDO (flick): `scrollend` disparaba el hide EN CUANTO
+  //   scrollTop tocaba el fondo, ANTES del stretch → ola cortada. Ahora el hide en borde
+  //   espera ~450 ms tras scrollend.
+  // · Arriba: la barra encima del stretch la mata. `botnav-ola-clear` SOLO con lock (una vez
+  //   por gesto) y se suelta en touchend/scrollend+400 ms — sin rearmar en cada scroll.
+  // · Con host: sin backdrop-filter (`.scroll-host-on`).
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
   const navHideFastRef=useRef(false);
+  const topClearOn=useRef(false);
+  const topClearTimer=useRef(0);
+  const revealAfterTopClear=useRef(false);
+  const beginTopClear=function(){
+    if(topClearOn.current) return;
+    topClearOn.current=true;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.add("botnav-ola-clear");
+    }catch(e){}
+  };
+  const scheduleEndTopClear=function(){
+    if(!topClearOn.current) return;
+    if(topClearTimer.current) clearTimeout(topClearTimer.current);
+    topClearTimer.current=setTimeout(function(){
+      topClearTimer.current=0;
+      topClearOn.current=false;
+      try{
+        const nav=document.querySelector(".botnav");
+        if(nav) nav.classList.remove("botnav-ola-clear");
+      }catch(e){}
+      if(revealAfterTopClear.current){
+        revealAfterTopClear.current=false;
+        revealNav();
+      }
+    }, 400);
+  };
   const applyNavHide=function(){
     navBotSync.current=0;
     navHideArmed.current=false;
@@ -16160,14 +16197,18 @@ function App(){
     }
     navHideArmed.current=true;
     if(navBotSync.current) clearTimeout(navBotSync.current);
-    navBotSync.current=setTimeout(applyNavHide, 550);
+    // Fallback si no hay scrollend: abajo más margen (ola del flick).
+    navBotSync.current=setTimeout(applyNavHide, fast?800:550);
   };
   const revealNav=function(){
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
+    revealAfterTopClear.current=false;
+    if(topClearTimer.current){ clearTimeout(topClearTimer.current); topClearTimer.current=0; }
+    topClearOn.current=false;
     try{
       const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast","botnav-ola-clear");
     }catch(e){}
     if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
   };
@@ -16206,8 +16247,11 @@ function App(){
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){
-      // Sin setState si ya visible (re-render a mitad de la ola de arriba).
-      if(navHiddenRef.current) revealNav();
+      beginTopClear();
+      // No revealNav aquí: quitaría el clear y mataría la ola. Tras el gesto, scheduleEndTopClear.
+      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+      navHideArmed.current=false;
+      if(navHiddenRef.current) revealAfterTopClear.current=true;
       return;
     }
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
@@ -16218,11 +16262,21 @@ function App(){
   };
   const applyNavHideRef=useRef(applyNavHide);
   applyNavHideRef.current=applyNavHide;
+  const scheduleEndTopClearRef=useRef(scheduleEndTopClear);
+  scheduleEndTopClearRef.current=scheduleEndTopClear;
   useEffect(function(){
-    const onScrollEnd=function(){
+    const onScrollEnd=function(ev){
+      const p=ev&&ev.target;
+      const y=p&&p.scrollTop!=null?p.scrollTop:null;
+      const max=p&&p.scrollHeight!=null?(p.scrollHeight-p.clientHeight):0;
+      const atTop=y!=null && y<=8;
+      const atBottom=max>0 && y!=null && y>=max-4;
+      if(atTop) scheduleEndTopClearRef.current();
       if(!navHideArmed.current) return;
       if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-      applyNavHideRef.current();
+      // En el borde el stretch nativo sigue tras scrollend: esperar antes del hide.
+      const delay=(atBottom||atTop||navHideFastRef.current)?450:0;
+      navBotSync.current=setTimeout(function(){ applyNavHideRef.current(); }, delay);
     };
     document.addEventListener("scrollend", onScrollEnd, true);
     return function(){ document.removeEventListener("scrollend", onScrollEnd, true); };
@@ -18172,6 +18226,12 @@ function App(){
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
+    // Tirón en el tope (ola arriba): apartar barra una vez (lock).
+    if(ddy>8){
+      const pagesT=trackRef.current&&trackRef.current.children;
+      const pgT=pagesT&&pagesT[tabRef.current];
+      if(pgT && (pgT.scrollTop||0)<=2) beginTopClear();
+    }
     // Inicio arriba: cortar overscroll/rebote ANTES de fijar eje (vídeo 2026-07-18).
     if(axis.current===null && tab===0 && ddy>0 && Math.abs(ddy)>=Math.abs(ddx)){
       const pages=trackRef.current&&trackRef.current.children;
@@ -18319,6 +18379,7 @@ function App(){
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
+    scheduleEndTopClear();
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
       const dist=pDY.current;
@@ -18387,6 +18448,7 @@ function App(){
      El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
   const onCancel=function(){
     if(!dragging.current) return;
+    scheduleEndTopClear();
     if(gestureMode.current==="profile"){
       profileRelease();
       setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba

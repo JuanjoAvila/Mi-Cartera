@@ -529,6 +529,14 @@
     will-change:auto !important;
     background:var(--bg-2);
   }
+  /* Tope: apartar barra del compositing SOLO durante el gesto de ola (ver beginTopClear).
+     Lock en JS — no rearmar en cada scroll o no vuelve nunca. */
+  .botnav.botnav-ola-clear{
+    opacity:0 !important;visibility:hidden !important;pointer-events:none !important;
+    transition:none !important;transform:none !important;
+    backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
+    will-change:auto !important;
+  }
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
