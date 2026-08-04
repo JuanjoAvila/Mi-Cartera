@@ -29,13 +29,16 @@ function App(){
   const [navHiddenFast,setNavHiddenFast]=useState(false);
   // Botnav: NADA de clase DOM ni setState hasta que el scroll SE ASIENTA (`scrollend` o
   // fallback ~550 ms). Mutar la barra a mitad del fling (aunque sea solo classList) corta el
-  // stretch nativo: tirar con el dedo ya abajo sí hacía ola; flick hasta el final, no (5/8).
+  // stretch nativo — abajo (esconder) Y arriba (mostrar): el flick hacia arriba llegaba al
+  // borde, `revealNav` devolvía la barra y mataba la ola de arriba a ratos (5/8).
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
+  const navRevealArmed=useRef(false);
   const navHideFastRef=useRef(false);
   const applyNavHide=function(){
     navBotSync.current=0;
     navHideArmed.current=false;
+    navRevealArmed.current=false;
     navHiddenRef.current=true;
     const fast=!!navHideFastRef.current;
     try{
@@ -48,10 +51,20 @@ function App(){
     setNavHidden(true);
     setNavHiddenFast(fast);
   };
+  const applyNavReveal=function(){
+    navBotSync.current=0;
+    navHideArmed.current=false;
+    navRevealArmed.current=false;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
+    }catch(e){}
+    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
+  };
   const armNavHide=function(fast){
     navHideFastRef.current=!!fast;
+    navRevealArmed.current=false;
     if(navHideArmed.current || navHiddenRef.current){
-      // Ya armado: si ahora es «abajo del todo», sube a fast.
       if(fast) navHideFastRef.current=true;
       return;
     }
@@ -59,14 +72,24 @@ function App(){
     if(navBotSync.current) clearTimeout(navBotSync.current);
     navBotSync.current=setTimeout(applyNavHide, 550);
   };
+  const armNavReveal=function(){
+    navHideArmed.current=false;
+    // Ya visible y sin hide pendiente → nada.
+    if(!navHiddenRef.current && !document.querySelector(".botnav.botnav-hidden")){
+      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+      return;
+    }
+    if(navRevealArmed.current) return;
+    navRevealArmed.current=true;
+    if(navBotSync.current) clearTimeout(navBotSync.current);
+    navBotSync.current=setTimeout(applyNavReveal, 550);
+  };
+  // Inmediato: solo al cambiar de pestaña / salir de gesto (no durante fling→ola).
   const revealNav=function(){
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
-    try{
-      const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
-    }catch(e){}
-    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
+    navRevealArmed.current=false;
+    applyNavReveal();
   };
   // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
   // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
@@ -102,24 +125,32 @@ function App(){
     if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); return; }
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
-    if(y<=8){ revealNav(); return; }                 // arriba del todo → siempre visible
-    // Abajo / bajando: solo ARMAR el escondido. Aplicar en scrollend (ver efecto abajo) —
-    // tocar el botnav aquí mata el flick→ola.
+    // Arriba: ARMAR mostrar barra (no ahora). Si revealNav iba ya, el flick hacia arriba
+    // llegaba al borde, la barra volvía y cortaba la ola de arriba — «a veces sí a veces no».
+    if(y<=8){ armNavReveal(); return; }
+    // Abajo / bajando: solo ARMAR el escondido. Aplicar en scrollend (ver efecto abajo).
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
     if(max>0 && y>=max-4){ armNavHide(true); return; }
     if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
     if(dy>0 && y>56){ armNavHide(false); }
-    else if(dy<0){ revealNav(); }                     // subiendo → mostrar
+    else if(dy<0){ armNavReveal(); }                  // subiendo → armar mostrar
   };
   const applyNavHideRef=useRef(applyNavHide);
   applyNavHideRef.current=applyNavHide;
-  // Al asentarse el scroll (tras el fling/ola), aplicar el botnav armado. Sin esto el fallback
-  // de 550 ms también vale; con scrollend la barra se aparta justo cuando la ola ya terminó.
+  const applyNavRevealRef=useRef(applyNavReveal);
+  applyNavRevealRef.current=applyNavReveal;
+  // Al asentarse el scroll (tras el fling/ola), aplicar hide O reveal armados.
   useEffect(function(){
     const onScrollEnd=function(){
-      if(!navHideArmed.current) return;
-      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-      applyNavHideRef.current();
+      if(navHideArmed.current){
+        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+        applyNavHideRef.current();
+        return;
+      }
+      if(navRevealArmed.current){
+        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+        applyNavRevealRef.current();
+      }
     };
     document.addEventListener("scrollend", onScrollEnd, true);
     return function(){ document.removeEventListener("scrollend", onScrollEnd, true); };

@@ -6,7 +6,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ### Flick→ola, Cartera y título bajo iconos
 
 1. **Botnav:** ya no se toca (ni classList) hasta `scrollend` / 550 ms — mutarlo a mitad del
-   fling cortaba el stretch nativo aunque el host fixed estuviera bien.
+   fling cortaba el stretch nativo aunque el host fixed estuviera bien. Simétrico arriba:
+   `revealNav` inmediato al llegar al tope también mataba la ola de arriba «a veces»; ahora
+   el mostrar también espera al asiento.
 2. **Padding del host:** `safe-top` como Ajustes; sin él «Tus gastos» chocaba con la barra de
    estado. Viewport en `overflow:visible` mientras hay host (Ajustes no vive bajo
    `overflow:hidden`).
