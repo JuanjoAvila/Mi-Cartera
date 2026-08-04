@@ -1441,6 +1441,7 @@ var RELEASE_NOTES=[
        letra + portal a body). Misma regla: aprobada → se BORRA del array, no se marca hecha. */
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
       "Gastos y Cartera: ola ARRIBA y ABAJO a la primera (igual que Ajustes), sin muro ni segundo tirón.",
+      "Un flick hacia abajo hasta el final: al llegar, la ola sale sola (como en Ajustes).",
       "Resumen y Plan: ola SOLO ABAJO. Arriba de Resumen abre el perfil; arriba de Plan cambia de sección (Recibos→Deudas→Metas).",
       "A mitad o abajo de una lista, deslizar de LADO sigue cambiando de pestaña; tirar hacia abajo/arriba scrollea o hace la ola.",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",

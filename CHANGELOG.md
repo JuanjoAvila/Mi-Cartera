@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-05 (noche 2)
+### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)
+
+Tras labs en su Oppo: quitar `contain`/`preventDefault` no bastaba; aparcar el track sin
+`transform` tampoco. Lo que SÍ igualó Ajustes: la pestaña activa en `position:fixed` a
+pantalla (`.page-scroll-host`), track en reposo con `left` (sin transform). Arriba/abajo al
+tirar → ola nativa sin stopper.
+
+El flick hasta el final seguía sin ola: el `setNavHidden` del botnav re-renderizaba App y
+React pisaba el `className` de `.page`/`.track` (solo tenía `"page"` / `"track"`), así que
+se perdía el `page-scroll-host` a mitad del momentum. Ahora esas clases viven en el
+`className` de React (`hostTab`) y el setState del botnav (abajo y al bajar) va diferido
+420 ms con clase DOM primero.
+
+Al deslizar tabs se sale del host y vuelve el `translate3d`; al asentar, otra vez host.
+
 ## [Sin publicar] — 2026-08-05 (noche)
 ### Ola de vuelta + tabs a mitad/abajo sin matar el scroll
 

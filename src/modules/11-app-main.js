@@ -27,7 +27,17 @@ function App(){
   // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
   // escondido normal al bajar sigue con su calma de siempre.
   const [navHiddenFast,setNavHiddenFast]=useState(false);
-  const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); } };
+  // Sync React del botnav ABAJO DEL TODO: diferido. setState a mitad del fling re-renderiza App
+  // y corta el stretch nativo (medido 5/8: page fixed + ola al tirar OK, flick al final no).
+  const navBotSync=useRef(0);
+  const revealNav=function(){
+    if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
+    }catch(e){}
+    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
+  };
   // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
   // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
   // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
@@ -67,10 +77,44 @@ function App(){
     // final sin un tramo de bajada sostenida (>56 px seguidos) la barra se quedaba visible y TAPABA
     // el rebote nativo por debajo (z-index de la barra por encima) — parecía que «no se reproduce
     // la ola en Gastos», pero solo estaba oculta detrás (feedback pareja + él, 2026-08-02).
+    // Y el setState hay que DIFERIRLO: si React re-renderiza a mitad del fling, el stretch nativo
+    // del WebView se corta (5/8: tirar a mano hacía ola; flick hasta el final, no).
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
-    if(max>0 && y>=max-4){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); setNavHiddenFast(true); } return; }
+    if(max>0 && y>=max-4){
+      if(!navHiddenRef.current){
+        navHiddenRef.current=true;
+        try{
+          const nav=document.querySelector(".botnav");
+          if(nav) nav.classList.add("botnav-hidden","botnav-hidden-fast");
+        }catch(err){}
+        if(navBotSync.current) clearTimeout(navBotSync.current);
+        navBotSync.current=setTimeout(function(){
+          navBotSync.current=0;
+          setNavHidden(true);
+          setNavHiddenFast(true);
+        }, 420);
+      }
+      return;
+    }
     if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
-    if(dy>0 && y>56){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); setNavHiddenFast(false); } }  // bajando → esconder (calmado)
+    // Bajando: igual que abajo del todo — clase DOM ya, setState diferido. Un setState a la
+    // primera bajada del fling re-renderizaba App y, si las clases del host no vivían en React,
+    // mataba el momentum antes de llegar al borde (5/8 noche).
+    if(dy>0 && y>56){
+      if(!navHiddenRef.current){
+        navHiddenRef.current=true;
+        try{
+          const nav=document.querySelector(".botnav");
+          if(nav){ nav.classList.add("botnav-hidden"); nav.classList.remove("botnav-hidden-fast"); }
+        }catch(err){}
+        if(navBotSync.current) clearTimeout(navBotSync.current);
+        navBotSync.current=setTimeout(function(){
+          navBotSync.current=0;
+          setNavHidden(true);
+          setNavHiddenFast(false);
+        }, 420);
+      }
+    }
     else if(dy<0){ revealNav(); }                     // subiendo → mostrar
   };
   const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
@@ -1839,6 +1883,55 @@ function App(){
   useEffect(function(){ return function(){ if(navBlurT.current) clearTimeout(navBlurT.current); }; },[]);
   const trackAnchoAhora=function(){ return (trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360; };
   const trackX=function(i){ return "translate3d("+(-i*(trackW.current||trackAnchoAhora()))+"px,0,0)"; };
+  /* Host de scroll nativo (ola = stretch de Android como Ajustes). En reposo la pestaña activa
+     pasa a `position:fixed` (`.page-scroll-host`) y el track aparca con `left` SIN transform —
+     un ancestro con transform mata el overscroll nativo (medido 5/8 en su Oppo). Al deslizar
+     tabs se sale del modo y vuelve el translate3d.
+
+     ⚠ Las clases van también en el `className` de React (`hostTab`). Si solo se ponían por
+     `classList`, el primer `setNavHidden` del fling re-renderizaba App y React pisaba el
+     atributo a `"page"` / `"track"` → se perdía el fixed a mitad del momentum y la ola del
+     flick no salía (el tirón con el dedo ya abajo sí, porque no había setState en ese momento). */
+  const scrollHostOn=useRef(false);
+  const [hostTab,setHostTab]=useState(0);
+  const hostTabRef=useRef(0);
+  const leaveScrollHost=function(){
+    const el=trackRef.current; if(!el) return;
+    const w=trackW.current||trackAnchoAhora();
+    let i=tabRef.current;
+    // Si estábamos aparcados con left, recuperar transform antes de arrastrar
+    if(scrollHostOn.current){
+      const leftPx=parseFloat(el.style.left);
+      if(!isNaN(leftPx)) i=Math.round(-leftPx/w);
+      el.style.left="";
+      el.classList.remove("scroll-host-park");
+      el.style.transform="translate3d("+(-(i*(trackW.current||w)))+"px,0,0)";
+    }
+    const pgs=el.children;
+    for(let k=0;k<pgs.length;k++){
+      if(pgs[k]&&pgs[k].classList) pgs[k].classList.remove("page-scroll-host");
+    }
+    scrollHostOn.current=false;
+    if(hostTabRef.current!==-1){ hostTabRef.current=-1; setHostTab(-1); }
+  };
+  const enterScrollHost=function(i){
+    const el=trackRef.current; if(!el||dragging.current) return;
+    const w=trackW.current||trackAnchoAhora();
+    const toX=-(i*w);
+    el.classList.remove("dragging");
+    el.classList.add("scroll-host-park");
+    el.style.transform="none";
+    el.style.left=toX+"px";
+    const pgs=el.children;
+    for(let k=0;k<pgs.length;k++){
+      if(!pgs[k]||!pgs[k].classList) continue;
+      pgs[k].classList.toggle("page-scroll-host", k===i);
+    }
+    scrollHostOn.current=true;
+    if(hostTabRef.current!==i){ hostTabRef.current=i; setHostTab(i); }
+    // Recolocar touch-action (perfil arriba en Inicio)
+    if(pgs[i]) syncPageTouchAction(pgs[i], i);
+  };
   /* ASENTAR EL CARRUSEL CON rAF, NO CON transition CSS — 2026-07-27, medido en SU móvil.
      La transition de 0,42 s producía exactamente este ritmo al soltar el dedo:
        25 8 25 8 25 8 … (trece veces) → 60 Hz a trompicones durante todo el asentamiento.
@@ -1873,12 +1966,14 @@ function App(){
     if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
     const gen=++settleGen.current;
     settleTo.current=i;
+    leaveScrollHost();   // animar con transform, no con left
     el.classList.remove("dragging");
     const toX=-(i*(trackW.current||trackAnchoAhora()));
     if(document.documentElement.classList.contains("reduce-motion")){
       el.style.transform="translate3d("+toX+"px,0,0)";
       settleTo.current=-1;
       navSinBlur(false);
+      enterScrollHost(i);
       return;
     }
     const fromX=trackPxAhora();
@@ -1886,6 +1981,7 @@ function App(){
       el.style.transform="translate3d("+toX+"px,0,0)";
       settleTo.current=-1;
       navSinBlurTrasTransicion();
+      enterScrollHost(i);
       return;
     }
     const t0=performance.now();
@@ -1900,6 +1996,7 @@ function App(){
         settleRaf.current=0; settleTo.current=-1;
         el.style.transform="translate3d("+toX+"px,0,0)";
         navSinBlur(false);
+        enterScrollHost(i);
       }
     };
     settleRaf.current=requestAnimationFrame(step);
@@ -2007,6 +2104,7 @@ function App(){
           freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
+          leaveScrollHost();   // salir del fixed: el carrusel vuelve a translate3d
           if(trackRef.current) trackRef.current.classList.add("dragging");
           navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
           // Congela el scroll de la página: sin esto, el momentum vertical de Deudas/Metas
@@ -2324,7 +2422,10 @@ function App(){
         // Snap sin animar: el ancho nuevo cambia el destino en px; animar desde el viejo salta.
         if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
         settleTo.current=-1;
+        leaveScrollHost();
+        trackW.current=trackAnchoAhora();
         trackRef.current.style.transform=trackX(tab);
+        enterScrollHost(tab);
       }
     };
     window.addEventListener("resize",alRedimensionar);
@@ -2546,6 +2647,13 @@ function App(){
   // Al cambiar de pestaña (o del orden), recalcular qué páginas necesitan `mc-touch-own`.
   // Sin esto, Inicio se quedaba en pan-y tras volver desde Gastos scrolleado, o Plan perdía el
   // gesto de segmento al aterrizar ya arriba del todo sin haber disparado onScroll.
+  // También tras CUALQUIER re-render: React pisa className y se lleva el `mc-touch-own` que
+  // solo vivía en classList (mismo agujero que page-scroll-host).
+  useLayoutEffect(function(){
+    const pages=trackRef.current&&trackRef.current.children;
+    if(!pages) return;
+    for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
+  });
   useEffect(function(){
     const pages=trackRef.current&&trackRef.current.children;
     if(!pages) return;
@@ -2554,7 +2662,9 @@ function App(){
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
-    return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
+    // `page-scroll-host` EN el className de React (no solo classList): si no, cualquier
+    // setState de App (botnav al bajar) lo borra y el fling pierde la ola nativa.
+    return React.createElement("div",{className:"page"+(show?" page-live":"")+(hostTab===i?" page-scroll-host":""),key:id,onScroll:onPageScroll},
       show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
     );
   });
@@ -2577,7 +2687,7 @@ function App(){
       "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
       React.createElement("div",{className:"viewport",ref:viewportRef},
-        React.createElement("div",{className:"track",ref:trackRef}, paginas)
+        React.createElement("div",{className:"track"+(hostTab>=0?" scroll-host-park":""),ref:trackRef}, paginas)
       ),
       React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden"+(navHiddenFast?" botnav-hidden-fast":""):""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},

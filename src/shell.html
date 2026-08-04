@@ -471,25 +471,25 @@
      retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
      estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
      durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
-  /* Ola = rebote NATIVO (como Ajustes/perfil). 2026-08-01 se quitó `overscroll-behavior-y:none`.
-     El 5/8 volvió `contain` + `contain:paint` con el pan-y… y en su Oppo la ola murió otra vez
-     (hot-patch: quitar paint + overscroll → ola al momento; Ajustes no tiene ninguno de los dos).
-     `contain:paint` recorta lo que pinta fuera de la caja — justo el estirón. Sin overscroll
-     forzado en `.page`: html/body ya llevan `none` y cortan el encadenado al documento. */
-  /* `touch-action:pan-y` (2026-08-04, el «muro invisible»). Sin él, `.page` va en `auto` y el
-     navegador bloquea la dirección del dedo con sus primeros píxeles: si el pulgar sale de lado
-     —arco normal al agarrar el móvil— se queda el gesto como horizontal, y como aquí no hay nada
-     que desplazar en X, la lista no scrollea en todo el tirón. Medido 4/8: bajada de 190 px con
-     40 px de deriva → scrollTop quieto y nadie de nuestro código cancelaba el evento. El segundo
-     tirón (más vertical) sí movía y al final salía la ola — exactamente «hay un stopper y luego
-     la ola». Con `pan-y` el navegador se queda el scroll vertical desde el primer píxel (ola
-     incluida al llegar al borde), igual que en Ajustes/perfil.
-     EXCEPCIÓN `.page.mc-touch-own` (= `touch-action:none`): Inicio ARRIBA (perfil/Ajustes) y,
-     solo DURANTE el gesto, Plan cuando el tirón nace arriba (cambio de segmento). Plan en reposo
-     queda en pan-y — si no, no se puede bajar a ver el contenido. */
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style;}
+  /* `touch-action:pan-y` durante el swipe de tabs (anti muro del arco, 2026-08-04). */
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:none;}
   .page.mc-touch-own{touch-action:none;}
   .page.page-live{content-visibility:visible;}
+  /* Ola NATIVA como Ajustes (medido 5/8 en Oppo): la pestaña activa se comporta como
+     `.settings-push` — `position:fixed` a pantalla, `touch-action:auto`, sin contain ni
+     ancestro con `transform`. El carrusel en reposo aparca con `left` (no transform); al
+     deslizar tabs se sale de este modo y vuelve el translate3d. */
+  .page.page-scroll-host{
+    position:fixed;inset:0;left:0;right:0;top:0;bottom:0;width:100%;height:100%;max-width:520px;
+    margin:0 auto;z-index:35;transform:none !important;
+    touch-action:auto;contain:none;overscroll-behavior:auto;overscroll-behavior-y:auto;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;content-visibility:visible;
+    background:var(--bg);padding:6px 18px calc(108px + var(--safe-bottom));
+  }
+  .page.page-scroll-host.mc-touch-own{touch-action:none;}
+  .track.scroll-host-park{transform:none !important;will-change:auto;}
+  /* Las hermanas quedan fuera del viewport (track con left); no hace falta visibility:hidden
+     — eso dejaba nodos «hidden» que confunden e2e (listas-render Recibos). */
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
   /* ===== v4: nav inferior + FAB + sheets (SPEC-v4 §1–2, §7) ===== */
@@ -588,6 +588,7 @@
   /* Banda del banco de pruebas: imposible de confundir con la app de verdad, pero sin robar
      apenas alto (el móvil ya va justo). Toda la banda es el botón de salir. */
   .sandbox-bar{flex:0 0 auto;width:100%;border:none;display:block;text-align:center;cursor:pointer;
+    position:relative;z-index:60; /* por encima de .page-scroll-host (35) */
     background:repeating-linear-gradient(45deg,#E2A05F,#E2A05F 12px,#C9803F 12px,#C9803F 24px);
     color:#1A1005;font-weight:800;font-size:11.5px;letter-spacing:.02em;padding:5px 10px;
     font-family:'Manrope',sans-serif;}
