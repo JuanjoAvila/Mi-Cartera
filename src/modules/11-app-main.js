@@ -27,15 +27,37 @@ function App(){
   // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
   // escondido normal al bajar sigue con su calma de siempre.
   const [navHiddenFast,setNavHiddenFast]=useState(false);
-  // Botnav: NADA de clase DOM ni setState hasta que el scroll SE ASIENTA (`scrollend` o
-  // fallback ~550 ms). Mutar la barra a mitad del fling (aunque sea solo classList) corta el
-  // stretch nativo — abajo (esconder) Y arriba (mostrar): el flick hacia arriba llegaba al
-  // borde, `revealNav` devolvía la barra y mataba la ola de arriba a ratos (5/8).
+  // Botnav: NADA de clase DOM ni setState hasta que el scroll SE ASIENTA. Mutar la barra a
+  // mitad del fling corta el stretch nativo — abajo (esconder) Y arriba (mostrar). Además, en
+  // el borde la barra entra en `botnav-edge-quiet` (sin blur ni transition): el reveal en
+  // scrollend llegaba demasiado pronto y la ola de arriba seguía fallando (5/8).
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
   const navRevealArmed=useRef(false);
   const navHideFastRef=useRef(false);
+  const navQuietUntil=useRef(0);
+  const navQuietTimer=useRef(0);
+  const setBotnavQuiet=function(ms){
+    navQuietUntil.current=Date.now()+(ms||900);
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.add("botnav-edge-quiet");
+    }catch(e){}
+    if(navQuietTimer.current) clearTimeout(navQuietTimer.current);
+    navQuietTimer.current=setTimeout(function(){
+      navQuietTimer.current=0;
+      if(Date.now()<navQuietUntil.current) return;
+      try{
+        const nav=document.querySelector(".botnav");
+        if(nav) nav.classList.remove("botnav-edge-quiet");
+      }catch(e){}
+    }, (ms||900)+40);
+  };
   const applyNavHide=function(){
+    if(Date.now()<navQuietUntil.current){
+      navBotSync.current=setTimeout(applyNavHide, Math.max(40, navQuietUntil.current-Date.now()+20));
+      return;
+    }
     navBotSync.current=0;
     navHideArmed.current=false;
     navRevealArmed.current=false;
@@ -52,6 +74,11 @@ function App(){
     setNavHiddenFast(fast);
   };
   const applyNavReveal=function(){
+    // Arriba: NUNCA enseñar la barra dentro de la ventana quiet — es lo que mata la ola.
+    if(Date.now()<navQuietUntil.current){
+      navBotSync.current=setTimeout(applyNavReveal, Math.max(40, navQuietUntil.current-Date.now()+20));
+      return;
+    }
     navBotSync.current=0;
     navHideArmed.current=false;
     navRevealArmed.current=false;
@@ -64,32 +91,56 @@ function App(){
   const armNavHide=function(fast){
     navHideFastRef.current=!!fast;
     navRevealArmed.current=false;
+    setBotnavQuiet(fast?700:500);
     if(navHideArmed.current || navHiddenRef.current){
       if(fast) navHideFastRef.current=true;
       return;
     }
     navHideArmed.current=true;
     if(navBotSync.current) clearTimeout(navBotSync.current);
+    // Hide puede ir en scrollend; el quiet evita pelear con la ola.
     navBotSync.current=setTimeout(applyNavHide, 550);
   };
   const armNavReveal=function(){
     navHideArmed.current=false;
-    // Ya visible y sin hide pendiente → nada.
-    if(!navHiddenRef.current && !document.querySelector(".botnav.botnav-hidden")){
-      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-      return;
+    // Ventana larga: el stretch de arriba dura más de lo que tarda scrollend en dispararse.
+    setBotnavQuiet(1000);
+    try{
+      const nav=document.querySelector(".botnav");
+      const alreadyOut=nav&&nav.classList.contains("botnav-hidden");
+      // Si venía oculta, QUE SIGA oculta durante la ola (no enseñar a mitad).
+      if(alreadyOut || navHiddenRef.current){
+        if(nav) nav.classList.add("botnav-hidden");
+      }
+    }catch(e){}
+    if(!navHiddenRef.current){
+      try{
+        const nav=document.querySelector(".botnav");
+        if(nav && !nav.classList.contains("botnav-hidden")){
+          // Ya visible: solo quiet (sin blur), no armar reveal.
+          if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+          navRevealArmed.current=false;
+          return;
+        }
+      }catch(e){}
     }
     if(navRevealArmed.current) return;
     navRevealArmed.current=true;
     if(navBotSync.current) clearTimeout(navBotSync.current);
-    navBotSync.current=setTimeout(applyNavReveal, 550);
+    // NO usar scrollend para reveal — llega antes de que acabe la ola. Solo timeout tras quiet.
+    navBotSync.current=setTimeout(applyNavReveal, 1050);
   };
   // Inmediato: solo al cambiar de pestaña / salir de gesto (no durante fling→ola).
   const revealNav=function(){
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
     navRevealArmed.current=false;
-    applyNavReveal();
+    navQuietUntil.current=0;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-edge-quiet","botnav-hidden","botnav-hidden-fast");
+    }catch(e){}
+    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
   };
   // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
   // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
@@ -137,20 +188,13 @@ function App(){
   };
   const applyNavHideRef=useRef(applyNavHide);
   applyNavHideRef.current=applyNavHide;
-  const applyNavRevealRef=useRef(applyNavReveal);
-  applyNavRevealRef.current=applyNavReveal;
-  // Al asentarse el scroll (tras el fling/ola), aplicar hide O reveal armados.
+  // scrollend: SOLO esconder. El mostrar en scrollend llega antes de que acabe la ola de
+  // arriba y la mata — el reveal va por timeout tras `botnav-edge-quiet` (ver armNavReveal).
   useEffect(function(){
     const onScrollEnd=function(){
-      if(navHideArmed.current){
-        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-        applyNavHideRef.current();
-        return;
-      }
-      if(navRevealArmed.current){
-        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-        applyNavRevealRef.current();
-      }
+      if(!navHideArmed.current) return;
+      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+      applyNavHideRef.current();
     };
     document.addEventListener("scrollend", onScrollEnd, true);
     return function(){ document.removeEventListener("scrollend", onScrollEnd, true); };

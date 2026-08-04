@@ -521,6 +521,14 @@
      `.botnav-hidden` (no cambia el diseño, solo cuánto tarda en llegar); el escondido por scroll
      normal (bajar leyendo la lista) sigue con su calma de siempre — eso nunca fue el problema. */
   .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1),opacity .12s ease;}
+  /* En el borde (ola nativa): sin blur ni transición. El backdrop-filter + animar
+     transform/opacity de la barra pelea con el stretch del WebView y la ola de ARRIBA
+     falla a ratos (5/8: abajo ok tras diferir el hide; arriba seguía fallando con el reveal). */
+  .botnav.botnav-edge-quiet{
+    transition:none !important;
+    backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
+    will-change:auto !important;
+  }
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
