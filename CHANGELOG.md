@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-05
+### Plan: el `touch-action:none` arriba bloqueaba BAJAR, no solo el cambio de sección
+
+Feedback: «el objetivo era bloquear que no se moviera de recibos a deudas desde abajo, no bloquear
+la página entera». `mc-touch-own` en Plan al estar arriba dejaba `touch-action:none` en reposo →
+ni scroll. Ahora Plan en reposo es pan-y; `mc-touch-own` solo durante el gesto que nace arriba
+(tirón abajo = segmento; dedo arriba = scroll a mano).
+
 ## [Sin publicar] — 2026-08-04 (noche, 2)
 ### Ola: mapa exacto — Gastos/Cartera ambos bordes; Resumen/Plan solo abajo
 

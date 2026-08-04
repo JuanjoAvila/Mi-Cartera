@@ -32,20 +32,19 @@ function App(){
   // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
   // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
   const lastScrollAt=useRef(0);
-  /* Ola nativa (`touch-action:pan-y` en `.page`) vs gestos de borde que necesitan `preventDefault`.
-     Mapa que pidió (4/8 noche):
-       · Gastos y Cartera: ola ARRIBA y ABAJO (pan-y siempre).
-       · Resumen e Plan: ola SOLO ABAJO. Arriba es otro gesto (perfil / cambio de segmento).
-     `.mc-touch-own` (= none) solo en esos dos «arriba» — si también lo poníamos abajo de Plan,
-     el preventDefault del segmento inverso mataba la ola (feedback: «abajo sí tiene que
-     reproducirse solo la ola»). */
+  /* Ola nativa (`touch-action:pan-y` en `.page`) vs gestos de borde.
+     Mapa: Gastos/Cartera = ola arriba y abajo (pan-y siempre). Resumen = ola solo abajo
+     (arriba = perfil → `.mc-touch-own`). Plan = pan-y SIEMPRE en reposo: si lo poníamos en
+     `mc-touch-own` al estar arriba, `touch-action:none` bloqueaba TAMBIÉN bajar a ver el
+     contenido (feedback 5/8: «me has bloqueado incluso que pueda bajar»). El gesto de segmento
+     pone/quita `mc-touch-own` solo DURANTE el tirón hacia abajo (14-v4-screens.js). */
   const syncPageTouchAction=function(pageEl, pageIdx){
     if(!pageEl||!pageEl.classList) return;
     const id=tabIds[pageIdx];
     const y=pageEl.scrollTop||0;
     const atTop=y<=2;
-    // Por id, no por índice: el orden de pestañas es configurable.
-    const own=(id==="inicio" && atTop) || (id==="plan" && atTop);
+    // Solo Inicio arriba. Plan lo gestiona su propio listener al reclamar el segmento.
+    const own=(id==="inicio" && atTop);
     pageEl.classList.toggle("mc-touch-own", !!own);
   };
   const onPageScroll=function(e){

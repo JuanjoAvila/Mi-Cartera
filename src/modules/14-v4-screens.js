@@ -109,11 +109,12 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const reduceMotion=function(){
       try{ return (window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches) || document.documentElement.classList.contains("reduce-motion"); }catch(e){ return false; }
     };
-    // Solo ARRIBA → abajo cambia de segmento (Recibos→Deudas→Metas→…). Abajo del todo es la
-    // OLA nativa, igual que Gastos/Cartera (feedback 4/8 noche: «abajo sí solo la ola»).
-    // startAtTop: si empiezas a mitad y scrolleas hasta arriba, sigue siendo scroll.
+    // Solo ARRIBA → abajo cambia de segmento. Abajo = ola. Plan en reposo va SIEMPRE en pan-y
+    // (si `mc-touch-own` queda puesto al estar arriba, `touch-action:none` bloquea también
+    // BAJAR a ver el contenido — feedback 5/8). `mc-touch-own` solo durante el gesto que nace
+    // arriba: tirón abajo = segmento; dedo arriba = scroll a mano hasta salir del tope.
     let sx=0, sy=0, t0=0, axis=null, mode=null, dir=0, dyRaw=0, raf=0, pend=null;
-    let startAtTop=false;
+    let startAtTop=false, lastY=0, pageEl=null, ownOn=false;
     const paint=function(){
       raf=0;
       const el=segElRef.current[seg];
@@ -123,50 +124,64 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const resist=function(px){ return Math.pow(Math.min(1,px/160),0.72)*MAX_PULL; };
     const cleanup=function(el){ if(el){ el.style.transition=""; el.style.transform=""; } };
     const atTopOf=function(pg){ return !pg || (pg.scrollTop||0)<=2; };
+    const setOwn=function(on){
+      if(!pageEl||!pageEl.classList) return;
+      if(on && !ownOn){ pageEl.classList.add("mc-touch-own"); ownOn=true; }
+      else if(!on && ownOn){ pageEl.classList.remove("mc-touch-own"); ownOn=false; }
+    };
     const onStart=function(e){
       if(document.documentElement.classList.contains("sheet-open")) return;
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0];
-      sx=tt.clientX; sy=tt.clientY; t0=Date.now(); axis=null; mode=null; dir=0; dyRaw=0;
-      startAtTop=atTopOf(root.closest(".page"));
+      pageEl=root.closest(".page");
+      sx=tt.clientX; sy=tt.clientY; lastY=tt.clientY; t0=Date.now();
+      axis=null; mode=null; dir=0; dyRaw=0;
+      startAtTop=atTopOf(pageEl);
+      // touch-action se decide al empezar el gesto: none solo si nacemos arriba (segmento).
+      setOwn(!!startAtTop);
     };
     const onMove=function(e){
-      // "x" = el swipe de pestañas: NO paramos el bubble, el `.viewport` tiene que verlo.
-      // "scroll" / "seg" = vertical nuestro: sí paramos, si no el arco del pulgar (sale de lado
-      // y luego baja) bloquea el eje como horizontal en el viewport y «cambia también de tabs».
       if(axis==="x"||mode==="x") return;
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0], ddx=tt.clientX-sx, ddy=tt.clientY-sy;
       if(axis===null){
-        // `gestureAxis` (00-core.js) es el MISMO que usa el swipe de pestañas: los dos gestos
-        // escuchan el mismo dedo, así que tienen que decidir el eje con la misma regla o se
-        // contradicen (ver el porqué largo allí).
         const eje=gestureAxis(ddx,ddy);
         if(!eje) return;
         axis=eje;
-        if(axis==="x"){ mode="x"; return; }
-        // Solo tirón hacia ABAJO naciendo ARRIBA del todo → siguiente segmento.
-        // Abajo del todo (ddy<0) = ola nativa: mode=scroll, sin preventDefault.
-        if(ddy>0 && startAtTop && atTopOf(root.closest(".page"))) dir=1;
-        else { mode="scroll"; e.stopPropagation(); return; }
-        mode="seg";
+        if(axis==="x"){ mode="x"; setOwn(false); return; }
+        if(ddy>0 && startAtTop && atTopOf(pageEl)){ dir=1; mode="seg"; }
+        else { mode="scroll"; }
       }
-      if(mode==="scroll"){ e.stopPropagation(); return; }
+      if(mode==="scroll"){
+        e.stopPropagation();
+        // Con none el navegador no scrollea: empujamos scrollTop (dedo arriba → baja la lista).
+        if(ownOn && pageEl){
+          const fingerUp=lastY-tt.clientY;
+          lastY=tt.clientY;
+          if(fingerUp){
+            pageEl.scrollTop=Math.max(0, (pageEl.scrollTop||0)+fingerUp);
+            if(pageEl.scrollTop>2) setOwn(false);
+          }
+          if(e.cancelable) e.preventDefault();
+        }
+        return;
+      }
       if(mode!=="seg") return;
-      // RECLAMADO como vertical de segmento: `stopPropagation` para que el listener horizontal
-      // de `.viewport` NUNCA vea este touchmove (rechazo 3/8 y otra vez 4/8: «cambia también
-      // de tabs»). Mismo idioma que `stopSwipe` en 11-app-main.js para los chips de Gastos.
       e.stopPropagation();
-      // El dedo cambió de sentido a mitad: no es un tirón hacia el siguiente segmento.
       if((dir>0&&ddy<0)||(dir<0&&ddy>0)){ dyRaw=0; queue(0); return; }
       dyRaw=Math.abs(ddy);
+      lastY=tt.clientY;
       if(e.cancelable) e.preventDefault();
       queue(reduceMotion()?0:dir*resist(dyRaw));
     };
     const finish=function(allowCommit){
       if(raf){ cancelAnimationFrame(raf); raf=0; }
       pend=null;
-      if(mode!=="seg"){ axis=null; mode=null; return; }
+      if(mode!=="seg"){
+        setOwn(false);
+        axis=null; mode=null;
+        return;
+      }
       const el=segElRef.current[seg];
       const dt=Math.max(1,Date.now()-t0);
       const vel=dyRaw/dt;
@@ -177,9 +192,6 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
         const nextId=order[(i+(dir>0?1:-1)+order.length)%order.length];
         cleanup(el);
         enterDirRef.current=dir>0?"down":"up";
-        // Mismo truco que `gotoSeg`: marcar montado y cambiar de seg en el mismo lote de React
-        // (createRoot agrupa los dos `set...`) para que el segmento nuevo llegue YA pintado en
-        // el mismo render, sin esperar al ciclo de premontaje perezoso de más arriba.
         setSegMounted(function(m){ return m[nextId]?m:Object.assign({},m,{[nextId]:true}); });
         setSeg(nextId);
       } else if(el && !reduceMotion()){
@@ -187,6 +199,7 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
         el.style.transform="";
         setTimeout(function(){ cleanup(el); }, 230);
       } else cleanup(el);
+      setOwn(false);
       axis=null; mode=null; dir=0; dyRaw=0;
     };
     const onTouchEnd=function(){ finish(true); };
@@ -199,6 +212,7 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     root.addEventListener("touchcancel", onTouchCancel, {passive:true});
     return function(){
       if(raf) cancelAnimationFrame(raf);
+      setOwn(false);
       root.removeEventListener("touchstart", onStart);
       root.removeEventListener("touchmove", onMove);
       root.removeEventListener("touchend", onTouchEnd);
