@@ -1451,12 +1451,12 @@ var RELEASE_NOTES=[
        mide el siguiente, se sigue viendo el último par que sí encajaba. */
     {id:"tutorial-gestos", t:"🎓 Tutorial de gestos (dentro del tour de siempre)", items:[
       "Ajustes → busca «tutorial» → «🎓 Ver el tutorial» (o borra los datos del sitio para que salga solo, como la primera vez): el recorrido de foco/spotlight de siempre, ahora con 10 pasos en vez de 7.",
-      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado tiene que caer justo encima de lo que describe el texto, y la tarjeta de texto NO lo tapa (ni el importe, ni el segmentado, ni la barra).",
-      "El primer paso rodea SOLO la cifra del patrimonio (no el gráfico ni el pill del mes): con 1.000 € es un rectángulo chico; con 192.148 €, más ancho — se adapta solo.",
-      "Tras el paso del patrimonio, un paso con el foco en la FRANJA IZQUIERDA de la pantalla (no en el icono de Inicio) explica deslizar desde el borde para abrir Ajustes.",
-      "Tras el paso de Plan, otro paso (foco en el segmentado Recibos/Deudas/Metas) explica deslizar arriba/abajo dentro de Plan para cambiar de sección.",
-      "Tras el paso del avatar, un paso con el foco en la CABECERA de Inicio (saludo + avatar — de donde tiras) explica el tirón hacia abajo como atajo al mismo perfil.",
-      "La tarjeta fija que salía arriba de Ajustes ha desaparecido del todo — no queda nada estático que plegar ni botoncito «💡 ¿Cómo van los gestos?».",
+      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado cae justo encima de lo que describe el texto (Gastos, +, Plan, Cartera, avatar, barra), y la tarjeta NO lo tapa.",
+      "El primer paso rodea SOLO la cifra del patrimonio — incluido el € y con margen — y se adapta al ancho del número.",
+      "Los pasos de Ajustes y del tirón al perfil NO llevan recorte (solo el texto): el gesto vale en cualquier parte de Inicio, no en un borde ni «arriba del todo».",
+      "Tras el paso de Plan, el del segmentado explica deslizar HACIA ABAJO con la lista arriba del todo para pasar Recibos→Deudas→Metas.",
+      "El botón + ya no se llama «verde» en el texto (cambia con la temática).",
+      "La tarjeta fija que salía arriba de Ajustes ha desaparecido del todo.",
     ]},
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
       "El rebote al final de una pestaña ahora es EL MISMO mecanismo que Ajustes y el perfil (no una imitación con curva propia — se quitó el bloqueo que impedía al navegador hacer lo suyo). Tíralo en Gastos y compáralo abriendo Ajustes: tiene que sentirse idéntico, es literalmente el mismo efecto.",

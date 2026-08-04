@@ -5,23 +5,20 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [Sin publicar] — 2026-08-04
 ### Tutorial: el tip tapaba el foco y los gestos apuntaban al sitio equivocado
 
-Rechazo con foto (4/8): en el paso del patrimonio la tarjeta de texto se plantaba ENCIMA del
-recorte, y en el de «desliza desde el borde» el foco rodeaba el icono de Inicio. Dos causas
-distintas, el mismo «sale descuadrado».
+Rechazo con foto (4/8), segunda tanda: Gastos/Plan/Cartera/+ «seleccionaban el aire» varios cm
+por encima de la barra, la cifra cortaba el €, y los mensajes hablaban de «borde» / «verde» /
+«arriba del todo» — que no es cómo funciona la app.
 
-1. **El tip se anclaba al primer rect del paso** y no volvía a medirse mientras el recorte sí
-   seguía al elemento (fuente Fraunces / sparkline: el hero crecía debajo de la tarjeta). Ahora
-   tip y recorte se pintan juntos por DOM en cada fotograma, y la posición del tip **nunca**
-   invade el foco (hueco debajo, o encima si no cabe). Se quitó el `sheetup` del tip: partía de
-   `translateY(100%)` y un instante cruzaba el foco aunque el `top` final estuviera bien.
-2. **Los pasos de gesto apuntan a la zona del gesto**, no a un botón vecino: franja izquierda
-   (abrir Ajustes) y cabecera de Inicio (tirón al perfil — antes era y=0 y en el móvil caía en
-   la barra de estado, «en el vacío»).
-3. **El primer paso rodea SOLO la cifra** (`.v4-hero-amt` en `inline-block`): con 1.000 € el
-   rectángulo es chico; con 192.148 €, más ancho. El + del centro va con foco redondo (antes un
-   cuadrado alrededor del círculo).
-
-El e2e comprueba geometría de esas franjas y que tip y spot no se solapen.
+1. **Portal a `document.body`.** El overlay vivía dentro de `.app` (padding del safe-area) y en
+   el móvil el `position:fixed` del recorte y el `getBoundingClientRect` del botón no compartían
+   origen. Misma causa para todos los descuadres de la barra.
+2. **Cifra con margen de verdad:** se mide el rango de texto (incluye `,45 €`) y el pad sube a 14.
+3. **Ajustes y tirón al perfil: solo texto, sin recorte.** El gesto vale en cualquier sitio de
+   Inicio; pintar un borde o la cabecera mentía. Mensajes reescritos (es/en/ca): sin «verde»,
+   sin «borde izquierdo», sin «arriba del todo».
+4. **Plan swipe:** el texto dice solo «lista arriba → desliza hacia abajo» (el bug de abajo→arriba
+   sigue abierto aparte).
+5. Durante el tour se fuerza la barra visible: si estaba `botnav-hidden`, el foco medía fuera.
 
 ## [Sin publicar] — 2026-08-01 (segunda vuelta)
 ### El rebote de las pestañas era el navegador todo el tiempo, y una tanda subida se queda del todo fuera de beta

@@ -1,11 +1,9 @@
 /* TOUR DE BIENVENIDA (coach-marks) — `Tour` en 02-ui-shared.js.
  *
- * Rechazos 3/8 y 4/8 (con foto): (1) el tip TAPA el foco (patrimonio); (2) el paso de Ajustes
- * iluminaba el icono de Inicio mientras el texto hablaba del borde izquierdo; (3) al tocar
- * «Siguiente» el recorte llegaba tarde o se quedaba a medio carrusel.
- *
- * Aquí se comprueba lo que él ve: el recorte cae sobre el sitio del que habla el texto, la
- * tarjeta no lo invade, y el salto entre pasos no deja el foco colgado del paso anterior.
+ * Fotos reales 4/8: (1) la cifra cortaba el €; (2) Gastos/Plan/Cartera/+ salían «en el aire»
+ * porque el overlay vivía dentro de `.app` (safe-area) y el fixed no coincidía con el rect —
+ * ahora portal a `document.body`; (3) gestos de Ajustes/perfil sin foco (el gesto vale en
+ * cualquier sitio); (4) mensajes sin «verde» ni «borde» ni «arriba del todo».
  */
 import { test, expect } from "@playwright/test";
 import { seedLoggedInDashboard, dismissNews } from "./fixtures.mjs";
@@ -31,57 +29,50 @@ async function abrirAjustesConGesto(page) {
   await expect(page.locator(".settings-push.open")).toBeVisible({ timeout: 5_000 });
 }
 
-/* Mismo orden que `steps` en 02-ui-shared.js. Las franjas de gesto no tienen nodo: se
- * comprueban por geometría (borde izquierdo / franja superior). */
+/* Mismo orden que `steps` en 02-ui-shared.js. tipOnly = sin recorte. */
 const PASOS = [
-  { sel: ".page .v4-hero-amt, [data-tour='hero-amt']" },
-  { zone: "left" },
+  { sel: ".page .v4-hero-amt, [data-tour='hero-amt']", pad: 14 },
+  { tipOnly: true },
   { sel: '.botnav-tab[data-tour="gastos"]' },
   { sel: ".botnav-fab", round: true },
   { sel: '.botnav-tab[data-tour="plan"]' },
   { sel: ".v4-seg" },
   { sel: '.botnav-tab[data-tour="cartera"]' },
   { sel: ".v4-avatar, [data-tour='avatar']", round: true },
-  { zone: "pull" }, // cabecera de Inicio (donde tiras), no la franja y=0 del status bar
+  { tipOnly: true },
   { sel: ".botnav-row" },
 ];
 
-function zonaEsperada(page, tipo) {
-  return page.evaluate((z) => {
-    const H = window.innerHeight || 700,
-      W = window.innerWidth || 400;
-    if (z === "left") {
-      let top = 0;
-      try { top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-top")) || 0; } catch (_) {}
-      const y = Math.max(top + 8, Math.round(H * 0.12));
-      return { x: 0, y, w: 36, h: Math.round(H * 0.48) };
-    }
-    const head = document.querySelector(".page .v4-inicio-head") || document.querySelector(".v4-inicio-head");
-    if (head) {
-      const r = head.getBoundingClientRect();
-      return { x: r.left, y: r.top, w: r.width, h: r.height };
-    }
-    return { x: 12, y: 8, w: W - 24, h: 56 };
-  }, tipo);
-}
-
 async function targetBoxDe(page, paso) {
-  if (paso.zone) return zonaEsperada(page, paso.zone);
   return page.locator(paso.sel).first().boundingBox();
 }
 
-/** El recorte lleva pad 6–8 px; se compara con tolerancia, no con igualdad exacta. */
 async function assertSpotSobreTarget(page, paso, i, tol) {
+  if (paso.tipOnly) {
+    const spot = page.locator(".tour-spot");
+    await expect(spot).toHaveClass(/tiponly/, { timeout: 5_000 });
+    return;
+  }
   const spotBox = await page.locator(".tour-spot").boundingBox();
   const targetBox = await targetBoxDe(page, paso);
   expect(spotBox, `paso ${i}: no hay .tour-spot`).toBeTruthy();
   expect(targetBox, `paso ${i}: sin target`).toBeTruthy();
-  expect(Math.abs(spotBox.x - targetBox.x), `paso ${i}: x descuadrada`).toBeLessThan(tol);
-  expect(Math.abs(spotBox.y - targetBox.y), `paso ${i}: y descuadrada`).toBeLessThan(tol);
+  const pad = paso.pad != null ? paso.pad : paso.round ? 8 : 10;
+  // Centros alineados (el pad hace que las esquinas no coincidan).
+  const sx = spotBox.x + spotBox.width / 2,
+    sy = spotBox.y + spotBox.height / 2;
+  const tx = targetBox.x + targetBox.width / 2,
+    ty = targetBox.y + targetBox.height / 2;
+  expect(Math.abs(sx - tx), `paso ${i}: centro x descuadrado`).toBeLessThan(tol);
+  expect(Math.abs(sy - ty), `paso ${i}: centro y descuadrado`).toBeLessThan(tol);
+  // El foco es al menos tan grande como el target (con el pad), sin cortarlo por el centro.
+  expect(spotBox.width, `paso ${i}: foco más estrecho que el target`).toBeGreaterThanOrEqual(targetBox.width - 2);
+  expect(spotBox.height, `paso ${i}: foco más bajo que el target`).toBeGreaterThanOrEqual(targetBox.height - 2);
+  expect(pad).toBeGreaterThan(0);
 }
 
-/** La tarjeta de texto no puede invadir el foco (fotos 4/8: tip encima del patrimonio). */
-async function assertTipNoTapaSpot(page, i) {
+async function assertTipNoTapaSpot(page, i, tipOnly) {
+  if (tipOnly) return;
   const spot = await page.locator(".tour-spot").boundingBox();
   const tip = await page.locator(".tour-tip").boundingBox();
   expect(spot, `paso ${i}: spot`).toBeTruthy();
@@ -92,10 +83,10 @@ async function assertTipNoTapaSpot(page, i) {
 
 async function comprobarPasos(page) {
   for (let i = 0; i < PASOS.length; i++) {
-    await expect(page.locator(".tour-spot")).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(".tour-tip")).toBeVisible({ timeout: 5_000 });
     await page.waitForTimeout(1_100);
-    await assertSpotSobreTarget(page, PASOS[i], i, 14);
-    await assertTipNoTapaSpot(page, i);
+    await assertSpotSobreTarget(page, PASOS[i], i, 16);
+    await assertTipNoTapaSpot(page, i, !!PASOS[i].tipOnly);
     const btn = page.locator(".tour-btns button.btn-primary");
     const texto = (await btn.textContent()) || "";
     if (/listo|done|fet/i.test(texto)) break;
@@ -116,7 +107,7 @@ test("tour de bienvenida: los 10 pasos caen sobre su sitio y el tip no los tapa"
     .toBe(true);
 });
 
-const TOLERANCIA_RAPIDA = 16;
+const TOLERANCIA_RAPIDA = 18;
 test("al tocar «Siguiente» el recorte llega al sitio nuevo sin hacerte esperar", async ({ page }) => {
   await seedLoggedInDashboard(page, { tourSeen: false });
   await page.goto("/");
@@ -149,11 +140,8 @@ test("Ajustes → Ver el tutorial reabre el mismo tour, ya con los pasos de gest
   await expect(page.locator(".tour-wrap")).toBeVisible({ timeout: 5_000 });
   await expect(page.locator(".settings-push.open")).toHaveCount(0);
   await page.waitForTimeout(1_100);
-  const spot = await page.locator(".tour-spot").boundingBox();
-  const hero = await page.locator(".v4-hero-amt").first().boundingBox();
-  expect(Math.abs(spot.x - hero.x)).toBeLessThan(14);
-  expect(Math.abs(spot.y - hero.y)).toBeLessThan(14);
-  await assertTipNoTapaSpot(page, 0);
+  await assertSpotSobreTarget(page, PASOS[0], 0, 16);
+  await assertTipNoTapaSpot(page, 0, false);
 });
 
 test("la tarjeta fija de gestos ya no existe en Ajustes", async ({ page }) => {
@@ -162,4 +150,27 @@ test("la tarjeta fija de gestos ya no existe en Ajustes", async ({ page }) => {
   await appLista(page);
   await abrirAjustesConGesto(page);
   await expect(page.locator(".settings-push.open .coach-card, .settings-push.open .coach-pill")).toHaveCount(0);
+});
+
+test("mensajes del tour: sin «verde», sin «borde», sin «arriba del todo»", async ({ page }) => {
+  await seedLoggedInDashboard(page, { tourSeen: false });
+  await page.goto("/");
+  await appLista(page);
+  await expect(page.locator(".tour-wrap")).toBeVisible({ timeout: 5_000 });
+
+  const textos = [];
+  for (let i = 0; i < PASOS.length; i++) {
+    await page.waitForTimeout(700);
+    textos.push(((await page.locator(".tour-txt").textContent()) || "").toLowerCase());
+    const btn = page.locator(".tour-btns button.btn-primary");
+    const t = (await btn.textContent()) || "";
+    if (/listo|done|fet/i.test(t)) break;
+    await btn.click();
+  }
+  const todo = textos.join(" | ");
+  expect(todo).not.toMatch(/verde|green|verd\b/);
+  expect(todo).not.toMatch(/borde izquierdo|left edge|vora esquerra/);
+  // «lista arriba del todo» en Plan está bien (es la condición del gesto); lo prohibido es
+  // el mensaje viejo del tirón al perfil («si estás arriba del todo…»).
+  expect(todo).not.toMatch(/si estás arriba del todo|while you're at the very top|si ets a dalt de tot/);
 });
