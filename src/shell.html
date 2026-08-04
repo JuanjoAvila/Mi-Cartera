@@ -420,7 +420,11 @@
      a él fotograma a fotograma: con la transición puesta llegaría 0,32 s tarde y se le vería
      cruzar por encima de lo que no toca (rechazo 4/8, «sale movido»). */
   .tour-spot.pegado{transition:none;}
-  .tour-tip{position:fixed;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);z-index:91;animation:sheetup .25s ease;color:var(--text);}
+  /* Sin sheetup: esa animación partía de translateY(100%) y, un instante, la tarjeta cruzaba
+     por encima del foco — en fotos parecía «el tip tapa el patrimonio» aunque el top final
+     estuviera bien. Posición solo por JS (`pintar`), igual que el recorte. */
+  .tour-tip{position:fixed;left:16px;right:16px;max-width:480px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow);z-index:91;color:var(--text);}
+  .tour-tip.pegado{transition:none;}
   .tour-txt{font-size:15px;line-height:1.55;font-weight:600;}
   .tour-dots{display:flex;gap:5px;margin:12px 0;}
   .tour-dots .td{width:7px;height:7px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);transition:all .2s;}
