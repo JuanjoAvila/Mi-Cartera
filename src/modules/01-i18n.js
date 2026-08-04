@@ -2487,7 +2487,13 @@ function fixRevoDupes(s){
 // "Movimiento"/Inversión que NO sea el aporte automático real (`monthlyInvest`, el único legítimo,
 // ver `importObExpenses`). Idempotente con flag, como fixInvSold/fixInvAuto/fixRevoDupes.
 function fixMovInvasion(state){
-  if(!state || state._fixMovInvasion) return state;
+  // ⚠ EL FLAG VA POR VERSIÓN (`_fixMovInvasion2`), y este es el motivo exacto: la PRIMERA versión de
+  // esta limpieza corría con la lista de gastos todavía vacía y aun así se marcaba como hecha. Ese
+  // `_fixMovInvasion:true` quedó guardado en la nube, así que la versión ya corregida salía por
+  // aquí sin tocar nada y el usuario seguía viendo el mismo caos (2026-08-04). Cambiar el nombre
+  // del flag es lo que la deja volver a correr. Si alguna vez hay que reparar otra vez, sube el
+  // número — no reutilices un flag que ya se escribió en cuentas reales.
+  if(!state || state._fixMovInvasion2) return state;
   // ⚠ SIN GASTOS TODAVÍA NO SE PUEDE LIMPIAR NADA, y marcar el flag aquí dejaría el destrozo vivo
   // para siempre (fallo real del primer intento, 2026-08-04): los gastos NO viven en `app_state`,
   // llegan de la tabla `expenses` en un segundo viaje —`syncCloudExpenses` en 11-app-main.js— que
@@ -2544,7 +2550,7 @@ function fixMovInvasion(state){
   } else {
     s=Object.assign({},s,{expenses:exps});
   }
-  s._fixMovInvasion=true;
+  s._fixMovInvasion2=true;
   return s;
 }
 // Motor de cash-flow: si el estado no tiene movimientos recurrentes, siembra los del usuario

@@ -149,7 +149,7 @@ t("fixMovInvasion NO se da por hecha si los gastos aún no han llegado de la nub
   const s = { catOverrides: { movimiento: "inversion" }, expenses: [], accounts: [], investments: [] };
   const ns = ctx.fixMovInvasion(s);
   assert.strictEqual(ns, s, "sin gastos delante no toca nada…");
-  assert.ok(!ns._fixMovInvasion, "…y sobre todo NO se marca como hecha: se reintenta cuando lleguen");
+  assert.ok(!ns._fixMovInvasion2, "…y sobre todo NO se marca como hecha: se reintenta cuando lleguen");
 });
 
 t("fixMovInvasion deshace los 'Movimiento' arrastrados a Inversión por error, deja el aporte real", () => {
@@ -182,7 +182,7 @@ t("fixMovInvasion es idempotente (no repite la limpieza en la siguiente carga)",
     expenses: [{ id: "e1", merchant: "Consum", amount: 5, category: "super" }],
   };
   const once = ctx.fixMovInvasion(s);
-  assert.ok(once._fixMovInvasion, "con gastos delante sí se marca como hecha");
+  assert.ok(once._fixMovInvasion2, "con gastos delante sí se marca como hecha");
   const twice = ctx.fixMovInvasion(once);
   assert.strictEqual(twice, once, "con el flag puesto, la segunda vuelta no toca nada");
 });
