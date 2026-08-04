@@ -88,19 +88,11 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
   };
 
   /* DESLIZAR VERTICAL PARA CAMBIAR DE SEGMENTO (petición 2026-08-03: «no depender de la otra
-     mano para tocar arriba» — con el móvil cogido con una sola mano, llegar al segmentado de
-     arriba es un incordio). Mismo lenguaje que el pull-down del perfil (`11-app-main.js`): el
-     gesto SOLO se activa en los EXTREMOS del scroll —arriba del todo tirando hacia abajo, o
-     abajo del todo tirando hacia arriba—, nunca a mitad de una lista larga de Deudas/Metas, y el
-     eje (x/y) se decide una vez a los primeros px, igual que el swipe de pestañas: si sale
-     horizontal, este gesto se aparta del todo y deja pasar el swipe entre Inicio/Gastos/Plan/
-     Cartera sin tocarlo (no hace `preventDefault` ni `stopPropagation`, así que el listener del
-     `.viewport` lo ve exactamente igual que si esto no existiera).
-     Orden cíclico = el de la barra de arriba: Recibos → Deudas → Metas → Recibos; deslizar al
-     revés (abajo→arriba, ya en el fondo de la lista) recorre el mismo círculo en sentido
-     contrario. Umbral en % de alto de pantalla, del mismo orden que cerrar el perfil arrastrando
-     (`PROF_TH_CLOSE=0.062` en 11-app-main.js): este gesto también compite solo con el scroll
-     propio, ya en el tope, así que no hace falta ser tan exigente como para abrir un panel entero. */
+     mano para tocar arriba»). SOLO arriba del todo tirando hacia abajo: Recibos → Deudas → Metas
+     → Recibos. Abajo del todo es la OLA nativa (feedback 4/8 noche), no el sentido inverso — si
+     reclamábamos ese borde con `touch-action:none` + preventDefault, matábamos la ola. A mitad
+     de lista = scroll normal. Eje x/y con `gestureAxis` (mismo que el swipe de pestañas); si sale
+     horizontal, este gesto se aparta y deja pasar el de `.viewport`. */
   const planScreenRef=useRef(null);
   const enterDirRef=useRef(null);
   useEffect(function(){
@@ -117,12 +109,11 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const reduceMotion=function(){
       try{ return (window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches) || document.documentElement.classList.contains("reduce-motion"); }catch(e){ return false; }
     };
-    // startAtTop/Bottom: el gesto de segmento SOLO si el dedo NACIÓ ya en el extremo. Si empiezas
-    // a mitad y al scrollear llegas arriba, sigue siendo scroll — no un cambio de sección a
-    // destiempo (feedback 4/8 noche: «si deslizas hacia abajo no debería cambiar, solo cuando
-    // deslizas de arriba a abajo»).
+    // Solo ARRIBA → abajo cambia de segmento (Recibos→Deudas→Metas→…). Abajo del todo es la
+    // OLA nativa, igual que Gastos/Cartera (feedback 4/8 noche: «abajo sí solo la ola»).
+    // startAtTop: si empiezas a mitad y scrolleas hasta arriba, sigue siendo scroll.
     let sx=0, sy=0, t0=0, axis=null, mode=null, dir=0, dyRaw=0, raf=0, pend=null;
-    let startAtTop=false, startAtBottom=false;
+    let startAtTop=false;
     const paint=function(){
       raf=0;
       const el=segElRef.current[seg];
@@ -131,21 +122,13 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const queue=function(v){ pend=v; if(!raf) raf=requestAnimationFrame(paint); };
     const resist=function(px){ return Math.pow(Math.min(1,px/160),0.72)*MAX_PULL; };
     const cleanup=function(el){ if(el){ el.style.transition=""; el.style.transform=""; } };
-    const edgesOf=function(pg){
-      if(!pg) return {top:true, bottom:true};
-      const y=pg.scrollTop||0;
-      const max=Math.max(0, pg.scrollHeight-pg.clientHeight);
-      // Sin scroll (max≈0) estás a la vez arriba y abajo: los dos sentidos cambian de segmento,
-      // igual que antes del fix (el test de «sentido contrario» en Recibos cortos lo exige).
-      return { top:y<=2, bottom:(max-y)<=2 };
-    };
+    const atTopOf=function(pg){ return !pg || (pg.scrollTop||0)<=2; };
     const onStart=function(e){
       if(document.documentElement.classList.contains("sheet-open")) return;
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0];
       sx=tt.clientX; sy=tt.clientY; t0=Date.now(); axis=null; mode=null; dir=0; dyRaw=0;
-      const ed=edgesOf(root.closest(".page"));
-      startAtTop=ed.top; startAtBottom=ed.bottom;
+      startAtTop=atTopOf(root.closest(".page"));
     };
     const onMove=function(e){
       // "x" = el swipe de pestañas: NO paramos el bubble, el `.viewport` tiene que verlo.
@@ -162,10 +145,9 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
         if(!eje) return;
         axis=eje;
         if(axis==="x"){ mode="x"; return; }
-        // Extremo AHORA + extremo al EMPEZAR + sentido correcto. Los tres a la vez.
-        const ed=edgesOf(root.closest(".page"));
-        if(ddy>0 && startAtTop && ed.top) dir=1;
-        else if(ddy<0 && startAtBottom && ed.bottom) dir=-1;
+        // Solo tirón hacia ABAJO naciendo ARRIBA del todo → siguiente segmento.
+        // Abajo del todo (ddy<0) = ola nativa: mode=scroll, sin preventDefault.
+        if(ddy>0 && startAtTop && atTopOf(root.closest(".page"))) dir=1;
         else { mode="scroll"; e.stopPropagation(); return; }
         mode="seg";
       }

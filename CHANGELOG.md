@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-04 (noche, 2)
+### Ola: mapa exacto — Gastos/Cartera ambos bordes; Resumen/Plan solo abajo
+
+Aclaración suya al probar: no era «ola en todas partes igual». Gastos y Cartera → ola arriba y
+abajo. Resumen y Plan → ola SOLO abajo (arriba = perfil / cambio de segmento). El primer parche
+ponía `mc-touch-own` también abajo de Plan (para el segmento inverso) y eso mataba la ola ahí.
+Quitado el segmento inverso por abajo: el círculo Recibos→Deudas→Metas solo va tirando hacia abajo
+arriba del todo; abajo de Plan es pan-y puro.
+
 ## [Sin publicar] — 2026-08-04 (noche)
 ### Plan-swipe y ola: el muro era el arco del pulgar, y a mitad de lista el viewport robaba el gesto
 

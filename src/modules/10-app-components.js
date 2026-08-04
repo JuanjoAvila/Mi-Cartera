@@ -1440,9 +1440,8 @@ var RELEASE_NOTES=[
     /* TANDA `tutorial-gestos` QUITADA 2026-08-04 noche: aprobada 8/0 en 4.13.0.36 (zoom de la
        letra + portal a body). Misma regla: aprobada → se BORRA del array, no se marca hecha. */
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
-      "En Gastos / Plan / Cartera: baja hasta el final y tira un poco más — la lista hace la OLA a la primera, igual que en Ajustes. Sin muro ni segundo tirón.",
-      "Lo mismo tirando hacia arriba cuando ya estás arriba del todo (menos en Resumen: ahí abre el perfil).",
-      "En Resumen, tirar hacia abajo estando ARRIBA sigue abriendo el perfil (sin ola). Abajo del todo de Resumen SÍ hace la ola.",
+      "Gastos y Cartera: ola ARRIBA y ABAJO a la primera (igual que Ajustes), sin muro ni segundo tirón.",
+      "Resumen y Plan: ola SOLO ABAJO. Arriba de Resumen abre el perfil; arriba de Plan cambia de sección (Recibos→Deudas→Metas).",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
       "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal, también a velocidad alta.",
@@ -1450,8 +1449,8 @@ var RELEASE_NOTES=[
     ]},
     {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
       "Dentro de Plan, con la lista ARRIBA del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
-      "Con la lista abajo del todo, tira hacia arriba: recorre el mismo círculo pero al revés.",
-      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba es scroll normal — NO cambia de sección NI de pestaña (Inicio/Gastos/Plan/Cartera).",
+      "Abajo del todo en Plan: tirar más hace la OLA (como Gastos), NO cambia de sección.",
+      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba es scroll normal — NO cambia de sección NI de pestaña.",
       "Deslizar de lado para cambiar entre Inicio/Gastos/Plan/Cartera sigue funcionando igual dentro de Plan.",
     ]},
     /* TANDA `arranque` QUITADA (aprobada → 4.12.3). `canal` QUITADA (aprobada 1/8).

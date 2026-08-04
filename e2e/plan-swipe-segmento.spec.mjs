@@ -108,21 +108,23 @@ test("deslizar hacia abajo arriba del todo recorre Recibos → Deudas → Metas 
   await expect.poll(() => segmentoActivo(page), { timeout: 5_000 }).toBe("recibos");
 });
 
-// Simétrico: deslizar hacia arriba abajo del todo recorre el círculo al revés.
-test("deslizar hacia arriba abajo del todo va en sentido contrario", async ({ page }) => {
+// Abajo del todo: tirar hacia arriba es la OLA, no cambia de sección (feedback 4/8 noche).
+test("abajo del todo, tirar hacia arriba no cambia de sección", async ({ page }) => {
   await seedLoggedInDashboard(page, { debts, goals });
   await page.goto("/");
   await appLista(page);
   await irAPlan(page);
   const cdp = await page.context().newCDPSession(page);
 
-  // Recibos → Metas (hacia atrás) tirando hacia arriba con la página ya abajo del todo.
+  expect(await segmentoActivo(page)).toBe("recibos");
   await page.evaluate(() => {
     const pg = document.querySelectorAll(".page")[2];
     pg.scrollTop = pg.scrollHeight;
   });
   await deslizarV(page, cdp, { y0: 500, dy: -190 });
-  await expect.poll(() => segmentoActivo(page), { timeout: 5_000 }).toBe("metas");
+  await page.waitForTimeout(150);
+  expect(await segmentoActivo(page), "abajo del todo no debería cambiar de sección").toBe("recibos");
+  expect(await pestanaActiva(page)).toBe("plan");
 });
 
 // (b) A mitad de una lista larga de Deudas, tirar hacia abajo sigue siendo scroll normal: NO

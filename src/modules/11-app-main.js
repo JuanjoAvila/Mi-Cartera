@@ -33,23 +33,19 @@ function App(){
   // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
   const lastScrollAt=useRef(0);
   /* Ola nativa (`touch-action:pan-y` en `.page`) vs gestos de borde que necesitan `preventDefault`.
-     Con pan-y el navegador se queda el scroll vertical (y la ola al llegar al borde) — eso quita
-     el «muro invisible» del arco del pulgar. PERO si dejamos pan-y también en los bordes donde
-     NOSOTROS reclamamos el gesto, el `preventDefault` posterior se ignora y el tirón del perfil /
-     el cambio de segmento de Plan no arrancan. Por eso `.mc-touch-own` (= none) solo ahí:
-       · Inicio ARRIBA: perfil / Ajustes; él no quiere ola en ese borde.
-       · Plan en extremos: gesto de segmento (arriba→abajo / abajo→arriba).
-     En cualquier otro sitio (Gastos entero, Cartera, Inicio ya bajado, Plan a mitad) manda pan-y
-     y la ola sale a la primera, como en Ajustes. */
+     Mapa que pidió (4/8 noche):
+       · Gastos y Cartera: ola ARRIBA y ABAJO (pan-y siempre).
+       · Resumen e Plan: ola SOLO ABAJO. Arriba es otro gesto (perfil / cambio de segmento).
+     `.mc-touch-own` (= none) solo en esos dos «arriba» — si también lo poníamos abajo de Plan,
+     el preventDefault del segmento inverso mataba la ola (feedback: «abajo sí tiene que
+     reproducirse solo la ola»). */
   const syncPageTouchAction=function(pageEl, pageIdx){
     if(!pageEl||!pageEl.classList) return;
     const id=tabIds[pageIdx];
     const y=pageEl.scrollTop||0;
-    const max=pageEl.scrollHeight-pageEl.clientHeight;
     const atTop=y<=2;
-    const atBottom=(max-y)<=2; // sin scroll (max≈0) = también abajo, como el gesto de Plan
     // Por id, no por índice: el orden de pestañas es configurable.
-    const own=(id==="inicio" && atTop) || (id==="plan" && (atTop||atBottom));
+    const own=(id==="inicio" && atTop) || (id==="plan" && atTop);
     pageEl.classList.toggle("mc-touch-own", !!own);
   };
   const onPageScroll=function(e){

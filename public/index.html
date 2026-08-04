@@ -486,9 +486,9 @@
      tirón (más vertical) sí movía y al final salía la ola — exactamente «hay un stopper y luego
      la ola». Con `pan-y` el navegador se queda el scroll vertical desde el primer píxel (ola
      incluida al llegar al borde), igual que en Ajustes/perfil.
-     EXCEPCIÓN `.page.mc-touch-own` (= `touch-action:none`): Inicio ARRIBA del todo (tirón del
-     perfil / Ajustes; él no quiere ola ahí) y Plan en los extremos (gesto de segmento, que
-     necesita poder hacer `preventDefault`). Lo pone/quita `syncPageTouchAction` en 11-app-main. */
+     EXCEPCIÓN `.page.mc-touch-own` (= `touch-action:none`): SOLO Inicio ARRIBA (perfil/Ajustes)
+     y Plan ARRIBA (cambio de segmento). Abajo de Plan, y todo Gastos/Cartera, quedan en pan-y
+     para la ola. Lo pone/quita `syncPageTouchAction` en 11-app-main. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.mc-touch-own{touch-action:none;}
   .page.page-live{content-visibility:visible;}
@@ -13567,9 +13567,8 @@ var RELEASE_NOTES=[
     /* TANDA `tutorial-gestos` QUITADA 2026-08-04 noche: aprobada 8/0 en 4.13.0.36 (zoom de la
        letra + portal a body). Misma regla: aprobada → se BORRA del array, no se marca hecha. */
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
-      "En Gastos / Plan / Cartera: baja hasta el final y tira un poco más — la lista hace la OLA a la primera, igual que en Ajustes. Sin muro ni segundo tirón.",
-      "Lo mismo tirando hacia arriba cuando ya estás arriba del todo (menos en Resumen: ahí abre el perfil).",
-      "En Resumen, tirar hacia abajo estando ARRIBA sigue abriendo el perfil (sin ola). Abajo del todo de Resumen SÍ hace la ola.",
+      "Gastos y Cartera: ola ARRIBA y ABAJO a la primera (igual que Ajustes), sin muro ni segundo tirón.",
+      "Resumen y Plan: ola SOLO ABAJO. Arriba de Resumen abre el perfil; arriba de Plan cambia de sección (Recibos→Deudas→Metas).",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
       "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal, también a velocidad alta.",
@@ -13577,8 +13576,8 @@ var RELEASE_NOTES=[
     ]},
     {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
       "Dentro de Plan, con la lista ARRIBA del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
-      "Con la lista abajo del todo, tira hacia arriba: recorre el mismo círculo pero al revés.",
-      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba es scroll normal — NO cambia de sección NI de pestaña (Inicio/Gastos/Plan/Cartera).",
+      "Abajo del todo en Plan: tirar más hace la OLA (como Gastos), NO cambia de sección.",
+      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba es scroll normal — NO cambia de sección NI de pestaña.",
       "Deslizar de lado para cambiar entre Inicio/Gastos/Plan/Cartera sigue funcionando igual dentro de Plan.",
     ]},
     /* TANDA `arranque` QUITADA (aprobada → 4.12.3). `canal` QUITADA (aprobada 1/8).
@@ -15436,19 +15435,11 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
   };
 
   /* DESLIZAR VERTICAL PARA CAMBIAR DE SEGMENTO (petición 2026-08-03: «no depender de la otra
-     mano para tocar arriba» — con el móvil cogido con una sola mano, llegar al segmentado de
-     arriba es un incordio). Mismo lenguaje que el pull-down del perfil (`11-app-main.js`): el
-     gesto SOLO se activa en los EXTREMOS del scroll —arriba del todo tirando hacia abajo, o
-     abajo del todo tirando hacia arriba—, nunca a mitad de una lista larga de Deudas/Metas, y el
-     eje (x/y) se decide una vez a los primeros px, igual que el swipe de pestañas: si sale
-     horizontal, este gesto se aparta del todo y deja pasar el swipe entre Inicio/Gastos/Plan/
-     Cartera sin tocarlo (no hace `preventDefault` ni `stopPropagation`, así que el listener del
-     `.viewport` lo ve exactamente igual que si esto no existiera).
-     Orden cíclico = el de la barra de arriba: Recibos → Deudas → Metas → Recibos; deslizar al
-     revés (abajo→arriba, ya en el fondo de la lista) recorre el mismo círculo en sentido
-     contrario. Umbral en % de alto de pantalla, del mismo orden que cerrar el perfil arrastrando
-     (`PROF_TH_CLOSE=0.062` en 11-app-main.js): este gesto también compite solo con el scroll
-     propio, ya en el tope, así que no hace falta ser tan exigente como para abrir un panel entero. */
+     mano para tocar arriba»). SOLO arriba del todo tirando hacia abajo: Recibos → Deudas → Metas
+     → Recibos. Abajo del todo es la OLA nativa (feedback 4/8 noche), no el sentido inverso — si
+     reclamábamos ese borde con `touch-action:none` + preventDefault, matábamos la ola. A mitad
+     de lista = scroll normal. Eje x/y con `gestureAxis` (mismo que el swipe de pestañas); si sale
+     horizontal, este gesto se aparta y deja pasar el de `.viewport`. */
   const planScreenRef=useRef(null);
   const enterDirRef=useRef(null);
   useEffect(function(){
@@ -15465,12 +15456,11 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const reduceMotion=function(){
       try{ return (window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches) || document.documentElement.classList.contains("reduce-motion"); }catch(e){ return false; }
     };
-    // startAtTop/Bottom: el gesto de segmento SOLO si el dedo NACIÓ ya en el extremo. Si empiezas
-    // a mitad y al scrollear llegas arriba, sigue siendo scroll — no un cambio de sección a
-    // destiempo (feedback 4/8 noche: «si deslizas hacia abajo no debería cambiar, solo cuando
-    // deslizas de arriba a abajo»).
+    // Solo ARRIBA → abajo cambia de segmento (Recibos→Deudas→Metas→…). Abajo del todo es la
+    // OLA nativa, igual que Gastos/Cartera (feedback 4/8 noche: «abajo sí solo la ola»).
+    // startAtTop: si empiezas a mitad y scrolleas hasta arriba, sigue siendo scroll.
     let sx=0, sy=0, t0=0, axis=null, mode=null, dir=0, dyRaw=0, raf=0, pend=null;
-    let startAtTop=false, startAtBottom=false;
+    let startAtTop=false;
     const paint=function(){
       raf=0;
       const el=segElRef.current[seg];
@@ -15479,21 +15469,13 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const queue=function(v){ pend=v; if(!raf) raf=requestAnimationFrame(paint); };
     const resist=function(px){ return Math.pow(Math.min(1,px/160),0.72)*MAX_PULL; };
     const cleanup=function(el){ if(el){ el.style.transition=""; el.style.transform=""; } };
-    const edgesOf=function(pg){
-      if(!pg) return {top:true, bottom:true};
-      const y=pg.scrollTop||0;
-      const max=Math.max(0, pg.scrollHeight-pg.clientHeight);
-      // Sin scroll (max≈0) estás a la vez arriba y abajo: los dos sentidos cambian de segmento,
-      // igual que antes del fix (el test de «sentido contrario» en Recibos cortos lo exige).
-      return { top:y<=2, bottom:(max-y)<=2 };
-    };
+    const atTopOf=function(pg){ return !pg || (pg.scrollTop||0)<=2; };
     const onStart=function(e){
       if(document.documentElement.classList.contains("sheet-open")) return;
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0];
       sx=tt.clientX; sy=tt.clientY; t0=Date.now(); axis=null; mode=null; dir=0; dyRaw=0;
-      const ed=edgesOf(root.closest(".page"));
-      startAtTop=ed.top; startAtBottom=ed.bottom;
+      startAtTop=atTopOf(root.closest(".page"));
     };
     const onMove=function(e){
       // "x" = el swipe de pestañas: NO paramos el bubble, el `.viewport` tiene que verlo.
@@ -15510,10 +15492,9 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
         if(!eje) return;
         axis=eje;
         if(axis==="x"){ mode="x"; return; }
-        // Extremo AHORA + extremo al EMPEZAR + sentido correcto. Los tres a la vez.
-        const ed=edgesOf(root.closest(".page"));
-        if(ddy>0 && startAtTop && ed.top) dir=1;
-        else if(ddy<0 && startAtBottom && ed.bottom) dir=-1;
+        // Solo tirón hacia ABAJO naciendo ARRIBA del todo → siguiente segmento.
+        // Abajo del todo (ddy<0) = ola nativa: mode=scroll, sin preventDefault.
+        if(ddy>0 && startAtTop && atTopOf(root.closest(".page"))) dir=1;
         else { mode="scroll"; e.stopPropagation(); return; }
         mode="seg";
       }
@@ -16123,23 +16104,19 @@ function App(){
   // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
   const lastScrollAt=useRef(0);
   /* Ola nativa (`touch-action:pan-y` en `.page`) vs gestos de borde que necesitan `preventDefault`.
-     Con pan-y el navegador se queda el scroll vertical (y la ola al llegar al borde) — eso quita
-     el «muro invisible» del arco del pulgar. PERO si dejamos pan-y también en los bordes donde
-     NOSOTROS reclamamos el gesto, el `preventDefault` posterior se ignora y el tirón del perfil /
-     el cambio de segmento de Plan no arrancan. Por eso `.mc-touch-own` (= none) solo ahí:
-       · Inicio ARRIBA: perfil / Ajustes; él no quiere ola en ese borde.
-       · Plan en extremos: gesto de segmento (arriba→abajo / abajo→arriba).
-     En cualquier otro sitio (Gastos entero, Cartera, Inicio ya bajado, Plan a mitad) manda pan-y
-     y la ola sale a la primera, como en Ajustes. */
+     Mapa que pidió (4/8 noche):
+       · Gastos y Cartera: ola ARRIBA y ABAJO (pan-y siempre).
+       · Resumen e Plan: ola SOLO ABAJO. Arriba es otro gesto (perfil / cambio de segmento).
+     `.mc-touch-own` (= none) solo en esos dos «arriba» — si también lo poníamos abajo de Plan,
+     el preventDefault del segmento inverso mataba la ola (feedback: «abajo sí tiene que
+     reproducirse solo la ola»). */
   const syncPageTouchAction=function(pageEl, pageIdx){
     if(!pageEl||!pageEl.classList) return;
     const id=tabIds[pageIdx];
     const y=pageEl.scrollTop||0;
-    const max=pageEl.scrollHeight-pageEl.clientHeight;
     const atTop=y<=2;
-    const atBottom=(max-y)<=2; // sin scroll (max≈0) = también abajo, como el gesto de Plan
     // Por id, no por índice: el orden de pestañas es configurable.
-    const own=(id==="inicio" && atTop) || (id==="plan" && (atTop||atBottom));
+    const own=(id==="inicio" && atTop) || (id==="plan" && atTop);
     pageEl.classList.toggle("mc-touch-own", !!own);
   };
   const onPageScroll=function(e){

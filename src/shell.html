@@ -486,9 +486,9 @@
      tirón (más vertical) sí movía y al final salía la ola — exactamente «hay un stopper y luego
      la ola». Con `pan-y` el navegador se queda el scroll vertical desde el primer píxel (ola
      incluida al llegar al borde), igual que en Ajustes/perfil.
-     EXCEPCIÓN `.page.mc-touch-own` (= `touch-action:none`): Inicio ARRIBA del todo (tirón del
-     perfil / Ajustes; él no quiere ola ahí) y Plan en los extremos (gesto de segmento, que
-     necesita poder hacer `preventDefault`). Lo pone/quita `syncPageTouchAction` en 11-app-main. */
+     EXCEPCIÓN `.page.mc-touch-own` (= `touch-action:none`): SOLO Inicio ARRIBA (perfil/Ajustes)
+     y Plan ARRIBA (cambio de segmento). Abajo de Plan, y todo Gastos/Cartera, quedan en pan-y
+     para la ola. Lo pone/quita `syncPageTouchAction` en 11-app-main. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.mc-touch-own{touch-action:none;}
   .page.page-live{content-visibility:visible;}
