@@ -3,6 +3,13 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [Sin publicar] — 2026-08-05
+### Stopper medido en su Oppo: preventDefault del swipe a mitad de lista
+
+Con el móvil enchufado: `pan-y` ya estaba, y aun así STUCK (scrollTop fijo mientras el dedo
+se movía, p.ej. st=53). Causa: a mitad de lista el arco del pulgar seguía reclamando eje `x`
+(umbral 28 px insuficiente) → `preventDefault` + `freezeShell` mataban el scroll. A mitad solo
+se acepta swipe de tabs si el gesto es casi solo horizontal (`|dy|<12` y `|dx|>48`).
+
 ### Plan: el `touch-action:none` arriba bloqueaba BAJAR, no solo el cambio de sección
 
 Feedback: «el objetivo era bloquear que no se moviera de recibos a deudas desde abajo, no bloquear

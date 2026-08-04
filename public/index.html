@@ -18052,19 +18052,19 @@ function App(){
       // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
       const eje=gestureAxis(ddx,ddy);
       if(!eje) return;
-      /* A MITAD DE LISTA el arco del pulgar (sale de lado y luego baja) gana `x` a los ~12 px
-         con gestureAxis — y entonces este listener hace preventDefault y MATA el scroll: eso es
-         el «muro» + «cambia de tabs» en Plan/Gastos (4/8). Con la página a mitad, exigir una
-         ventaja horizontal CLARA (~28 px) antes de reclamar el swipe de pestañas; si no, se deja
-         como vertical y manda el `touch-action:pan-y` del navegador. En los extremos se mantiene
-         el umbral normal (abrir Ajustes desde Resumen, etc.). */
+      /* A MITAD o ABAJO DEL TODO el arco del pulgar gana `x` muy pronto y este listener hace
+         preventDefault + freezeShell → scroll clavado / ola que no sale (medido 5/8 en su Oppo:
+         STUCK a mitad con pan-y; abajo del todo varios tirones con st=max sin ola). Solo
+         reclamamos tabs si el gesto es CASI solo horizontal. Arriba del todo se deja el umbral
+         normal (Inicio → Ajustes). */
       if(eje==="x"){
         const pages0=trackRef.current&&trackRef.current.children;
         const pg0=pages0&&pages0[tab];
         if(pg0){
           const st0=pg0.scrollTop||0, max0=pg0.scrollHeight-pg0.clientHeight;
           const mid0=st0>2 && max0-st0>2;
-          if(mid0 && Math.abs(ddx)-Math.abs(ddy)<28){
+          const atBottom=max0>0 && (max0-st0)<=2;
+          if((mid0||atBottom) && !(Math.abs(ddy)<12 && Math.abs(ddx)>48)){
             axis.current="y";
             return;
           }
