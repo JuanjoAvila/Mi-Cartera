@@ -412,4 +412,75 @@ t("…pero la ventana no arrastra meses enteros de histórico en cada sync", () 
   assert.equal(ctx.importObExpenses(s, txs), null, "40 días atrás sigue fuera de la ventana");
 });
 
+/* LA PASADA DEFINITIVA (2026-08-04, tercera vuelta). Las dos limpiezas anteriores fallaron por lo
+ * mismo: iban con flag (se marcaban hechas y ya no volvían a entrar) y solo tocaban el array local
+ * (la fila seguía viva en la tabla de la nube y volvía al reconectar el banco). Esta corre siempre,
+ * es idempotente, y devuelve lo que hay que borrar/recategorizar EN LA NUBE. */
+function estadoConDupes() {
+  return {
+    accounts: [{ id: "a1", ent: "trade_republic", role: "diario", spendFrom: true, rewardInv: "inv1", monthlyInvest: 50 }],
+    investments: [{ id: "inv1", cur: "EUR", shares: 10, value: 1000, cost: 900 }],
+    expenses: [
+      // duplicado: el bueno (con nombre, del móvil) y el del banco un día después sin nombre
+      { id: "bueno", date: "2026-08-02T12:00:00Z", amount: 9.5, merchant: "Serveis Ambientals", category: "tasas", source: "macrodroid", ent: "trade_republic" },
+      { id: "dupe", date: "2026-08-03T12:00:00Z", amount: 9.5, merchant: "Movimiento", category: "otros", source: "ob", ent: "trade_republic" },
+      // par del cashback: entra el 1 y sale el 3
+      { id: "cbIn", date: "2026-08-01T12:00:00Z", amount: -8.38, merchant: "Movimiento", category: "ingreso", source: "ob", ent: "trade_republic" },
+      { id: "cbOut", date: "2026-08-03T12:00:00Z", amount: 8.38, merchant: "Movimiento", category: "otros", source: "ob", ent: "trade_republic" },
+      // el aporte automático real: ni se borra ni se toca
+      { id: "aporte", date: "2026-08-03T12:00:00Z", amount: 50, merchant: "Movimiento", category: "inversion", source: "ob", ent: "trade_republic" },
+    ],
+  };
+}
+
+t("reconcileObDupes borra el duplicado sin nombre y deja el que trae el comercio de verdad", () => {
+  const r = ctx.reconcileObDupes(estadoConDupes());
+  assert.ok(r.borrar.some((e) => e.id === "dupe"), "el del banco sin nombre se va");
+  assert.ok(!r.borrar.some((e) => e.id === "bueno"), "el que tiene el nombre real se queda SIEMPRE");
+  assert.ok(r.state.expenses.some((e) => e.id === "bueno"));
+  assert.ok(!r.state.expenses.some((e) => e.id === "dupe"));
+});
+
+/* «Del cashback solo debe haber 1, solo pagan 1 vez al mes» (corrección suya). El banco lo apunta
+ * dos veces —entra el día 1 y sale hacia el fondo el día 3, el primer día laborable— pero es un
+ * solo movimiento: se deja UNA línea, la salida marcada Inversión, y la entrada se borra. */
+t("reconcileObDupes deja UNA sola línea del cashback: la salida, marcada Inversión", () => {
+  const r = ctx.reconcileObDupes(estadoConDupes());
+  const cbOut = r.state.expenses.find((e) => e.id === "cbOut");
+  assert.ok(cbOut, "la salida hacia el fondo se queda");
+  assert.equal(cbOut.category, "inversion");
+  assert.ok(!r.state.expenses.some((e) => e.id === "cbIn"), "su entrada se va: es el mismo movimiento, no dos");
+  assert.ok(r.borrar.some((e) => e.id === "cbIn"), "y se borra también en la nube");
+});
+
+t("reconcileObDupes NO toca el aporte automático real ni lo confunde con un duplicado", () => {
+  const r = ctx.reconcileObDupes(estadoConDupes());
+  const ap = r.state.expenses.find((e) => e.id === "aporte");
+  assert.ok(ap, "sigue ahí");
+  assert.equal(ap.category, "inversion");
+});
+
+t("reconcileObDupes devuelve lo que hay que aplicar EN LA NUBE (no solo en el móvil)", () => {
+  const r = ctx.reconcileObDupes(estadoConDupes());
+  assert.ok(r.borrar.length > 0, "las filas a borrar de la tabla");
+  assert.ok(r.recat.length > 0, "y las recategorizaciones a persistir");
+  r.recat.forEach((x) => assert.ok(x.expense && x.cat, "cada una con su gasto y su categoría"));
+});
+
+t("reconcileObDupes es IDEMPOTENTE: la segunda pasada no toca nada (corre en cada sync, sin flag)", () => {
+  const r1 = ctx.reconcileObDupes(estadoConDupes());
+  const r2 = ctx.reconcileObDupes(r1.state);
+  assert.equal(r2.borrar.length, 0);
+  assert.equal(r2.recat.length, 0);
+  assert.strictEqual(r2.state, r1.state, "mismo objeto: cero renders de más");
+});
+
+t("reconcileObDupes deja en paz un gasto de banco que NO repite nada (aunque no tenga nombre)", () => {
+  const s = estadoConDupes();
+  s.expenses = [{ id: "solo", date: "2026-08-03T12:00:00Z", amount: 22.62, merchant: "Movimiento", category: "otros", source: "ob", ent: "trade_republic" }];
+  const r = ctx.reconcileObDupes(s);
+  assert.equal(r.borrar.length, 0, "sin gemelo por otra vía no es un duplicado");
+  assert.equal(r.state.expenses[0].category, "otros", "y sin par de cashback tampoco se marca solo");
+});
+
 console.log("\ninvest-category: OK");

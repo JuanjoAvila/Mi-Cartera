@@ -167,10 +167,20 @@ function App(){
         // varias veces al día, y cada vez más caro según crecía el histórico (2026-07-24).
         const next=keep.concat(add);
         const igual = next.length===prev.expenses.length && next.every(function(e,i){ return e===prev.expenses[i]; });
-        // Los gastos llegan AQUÍ, no al cargar el estado — así que la limpieza única que los
-        // necesita se reintenta en este punto (ver `fixMovInvasion`, que se marca como hecha solo
-        // cuando ha tenido gastos delante).
-        return fixMovInvasion(Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()}));
+        // Los gastos llegan AQUÍ, no al cargar el estado, así que es el único punto donde se les
+        // puede pasar revista de verdad. `reconcileObDupes` corre SIEMPRE (sin flag: las dos
+        // limpiezas anteriores se quedaron bloqueadas por el suyo) y es idempotente.
+        const base=Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()});
+        const rec=reconcileObDupes(fixMovInvasion(base));
+        // Y se aplica TAMBIÉN en la nube: quitar la fila del array local no basta, la de la tabla
+        // seguía viva y volvía en el siguiente pull o al reconectar el banco.
+        if(rec.borrar.length || rec.recat.length){
+          setTimeout(function(){
+            rec.borrar.forEach(function(e){ cloud.deleteExpense(e).catch(function(){}); });
+            rec.recat.forEach(function(r){ cloud.setExpenseCat(r.expense, r.cat).catch(function(){}); });
+          },0);
+        }
+        return rec.state;
       });
       return { total:incoming.length, nuevos:count };
     });

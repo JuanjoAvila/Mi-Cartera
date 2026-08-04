@@ -513,6 +513,17 @@ const cloud = (function(){
         .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
       if(error){ if(_isMissingNotaCol(error)) _mcNotaCols=false; throw error; }
     },
+    // CATEGORÍA en la tabla. Sin esto, `syncCloudExpenses` —que reemplaza los gastos de origen
+    // "supabase" con lo que hay en la tabla— pisaba en el siguiente pull cualquier recategorización
+    // hecha en el móvil, incluida la que aparta un cashback a «Inversión» (2026-08-04).
+    async setExpenseCat(e, cat){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      const {error}=await sb.from('expenses').update({ cat:String(cat||"otros") })
+        .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
+      if(error) throw error;
+    },
     async deleteExpense(e){
       if(!sb) return;
       const {data:{session}}=await sb.auth.getSession();
@@ -863,7 +874,7 @@ const cloud = (function(){
 
    Si añades un método a `cloud` que ESCRIBA algo, añádelo a esta lista. */
 const CLOUD_WRITES=[
-  "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
+  "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","setExpenseCat","deleteExpense",
   "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
   "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","logUso","logPerf","feedback","betaReport",
   "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",

@@ -220,6 +220,12 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         }
         return upd;
       });
+      // Durable en la tabla: sin esto el siguiente pull —que reemplaza los gastos de la nube con
+      // lo que hay en `expenses`— devolvía la categoría vieja (2026-08-04).
+      if(cloud.enabled()){
+        cloud.setExpenseCat(ex,newCat).catch(function(){});
+        if(twinId){ const tw=s.expenses.find(function(e){ return e.id===twinId; }); if(tw) cloud.setExpenseCat(tw,newCat).catch(function(){}); }
+      }
       return Object.assign({},invState,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
