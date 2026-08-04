@@ -323,4 +323,34 @@ t("findCashbackTwin exige que la entrada vaya ANTES que la salida y dentro de 10
   assert.equal(ctx.findCashbackTwin(lejos, lejos[1]), -1, "un mes antes ya no es el mismo movimiento");
 });
 
+/* VENTANA DE FIN DE MES (2026-08-04). Su nómina llega a Sabadell y él se traspasa a Trade Republic
+ * lo del mes: +1.620 € el 31 de julio, con el bizum del piso de 70 € y varios gastos ese mismo día.
+ * Con el corte en el día 1 a secas, TODO eso se tiraba antes de llegar a la app — y sin ese ingreso
+ * apuntado, «Mi ciclo» (`lastPaydayOf`) no tiene a qué anclarse y se queda en el mes natural. */
+t("importObExpenses recoge el traspaso y los gastos del ÚLTIMO DÍA del mes anterior", () => {
+  const hoy = new Date();
+  const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().slice(0, 10);
+  const s = {
+    accounts: [{ id: "acc1", ent: "trade_republic", role: "diario", spendFrom: true }],
+    expenses: [], settings: {},
+  };
+  const txs = [
+    { ent: "trade_republic", id: null, date: finMesAnterior, amount: -1620, merchant: "Movimiento", note: "", card: false, status: "BOOK" },
+    { ent: "trade_republic", id: null, date: finMesAnterior, amount: 70, merchant: "Movimiento", note: "", card: false, status: "BOOK" },
+  ];
+  const add = ctx.importObExpenses(s, txs) || [];
+  assert.equal(add.length, 2, "el traspaso y el bizum del último día del mes ya no se pierden");
+  assert.ok(add.some((e) => e.amount === -1620), "el ingreso que ancla el ciclo entra");
+});
+
+t("…pero la ventana no arrastra meses enteros de histórico en cada sync", () => {
+  const s = {
+    accounts: [{ id: "acc1", ent: "trade_republic", role: "diario", spendFrom: true }],
+    expenses: [], settings: {},
+  };
+  const viejo = new Date(Date.now() - 40 * 86400000).toISOString().slice(0, 10);
+  const txs = [{ ent: "trade_republic", id: null, date: viejo, amount: 33, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  assert.equal(ctx.importObExpenses(s, txs), null, "40 días atrás sigue fuera de la ventana");
+});
+
 console.log("\ninvest-category: OK");

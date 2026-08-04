@@ -358,7 +358,18 @@ function importObExpenses(s, txs){
   const allow={}; ents.forEach(function(e){ allow[e]=1; });
   const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
   const dailyEnt=daily&&daily.ent;
-  const som=startOfMonth();
+  /* VENTANA CON MARGEN DE FIN DE MES (2026-08-04). Antes era `startOfMonth()` a secas: TODO lo
+     anterior al día 1 se tiraba antes de llegar a la app. Con la app de Trade Republic al lado se
+     vio lo que costaba — su nómina llega a Sabadell y él se traspasa a TR lo del mes (+1.620 € el
+     31 de julio, con el bizum del piso de 70 € y media docena de gastos ese mismo día): TODO eso
+     desaparecía por caer un día antes del corte, y sin ese ingreso apuntado «Mi ciclo»
+     (`lastPaydayOf`, 04-tab-gastos.js) no tiene a qué anclarse y se queda en el mes natural.
+     No es un caso raro: cobrar y repartir el dinero el último día del mes es de lo más normal, y
+     además muchos bancos contabilizan a caballo entre los dos meses.
+     8 días —y no 45— a propósito: cubre el borde de fin de mes sin arrastrar meses enteros de
+     histórico en cada sync. Los duplicados que esto pueda rozar ya los para la red de arriba
+     (mismo importe ±3 días contra lo que entró por otra vía) más el dedup por ext_id y clave. */
+  const som=new Date(startOfMonth().getTime() - 8*86400000);
   const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
   const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
@@ -407,7 +418,7 @@ function importObExpenses(s, txs){
   txs.forEach(function(tx){
     const esIngreso = tx.amount<0;
     if(esIngreso){
-      if(!tx.date || parseDate(tx.date)<som) return;              // solo el mes en curso
+      if(!tx.date || parseDate(tx.date)<som) return;              // mes en curso + margen de fin de mes
       if(tx.id && seen[tx.id]) return;                            // ya importado (ext_id)
       const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
         merchant:tx.merchant||"Ingreso", amount:tx.amount, category:INGRESO_CAT.id, source:"ob", ent:tx.ent };
@@ -424,7 +435,7 @@ function importObExpenses(s, txs){
     if(!esDiario && !allow[tx.ent]) return;
     if(!esDiario && !esCompra) return;
     if(esDiario && !esCompra && matchesModeled(tx.ent, tx.merchant, tx.amount)) return;   // ya es un Fijo/deuda/puntual
-    if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
+    if(!tx.date || parseDate(tx.date)<som) return;                // mes en curso + margen de fin de mes
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
     // Aporte automático a inversión (2026-08-03): el importe EXACTO que el usuario configuró en
