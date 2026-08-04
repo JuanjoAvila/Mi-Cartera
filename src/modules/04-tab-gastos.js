@@ -185,20 +185,32 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // banco) ni dispara el "recategoriza también los del mismo comercio en Otros" (bug 2026-08-04:
     // eso convertía TODOS los movimientos sin datos en Inversión de un solo toque, cada uno con su
     // propia compra de participaciones).
-    const learnable = mkey && ex.merchant!=="Movimiento";
+    // Y "Inversión" NUNCA se aprende como override, venga de donde venga el comercio: es un destino
+    // del dinero, no un tipo de tienda (ver el blindaje gemelo en `autoCategory`, 00-core.js).
+    const learnable = mkey && ex.merchant!=="Movimiento" && newCat!=="inversion";
     set(function(s){
       const ov=Object.assign({}, s.catOverrides||{}); if(learnable) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
+      // El cashback/round-up ENTRA al efectivo y días después SALE hacia el fondo: dos apuntes del
+      // banco para un solo movimiento de dinero. Al marcar la salida como Inversión, su entrada
+      // gemela va con ella — si no, sigue contando como ingreso del mes (2026-08-04, queja suya:
+      // «me lo detecta duplicado en inversiones y luego como ingreso al principio del mes»).
+      const twinIdx = newCat==="inversion" ? findCashbackTwin(s.expenses, ex) : -1;
+      const twinId = twinIdx>=0 ? s.expenses[twinIdx].id : null;
       // Marcar a mano un round-up/cashback como "Inversión" (o deshacerlo) compra/vende de verdad
       // participaciones en el fondo enlazado de esa cuenta — mismo importe real del banco, ver
       // `applyInvestBuy`/`reverseInvestBuy` en 08-motor-bank.js (2026-08-03).
       let invState=s;
       const exps=s.expenses.map(function(e){
         const isTarget=e.id===ex.id;
-        const isSibling=!isTarget && learnable && catKey(e.merchant)===mkey && e.category==="otros";
-        if(!isTarget && !isSibling) return e;
+        const isTwin=!!twinId && e.id===twinId;
+        const isSibling=!isTarget && !isTwin && learnable && catKey(e.merchant)===mkey && e.category==="otros";
+        if(!isTarget && !isTwin && !isSibling) return e;
         const wasInv=e.category==="inversion", willBeInv=newCat==="inversion";
         const upd=Object.assign({},e,{category:newCat});
+        // El gemelo solo cambia de categoría: el dinero ya lo compra su pareja, comprarlo dos veces
+        // duplicaría las participaciones del fondo.
+        if(isTwin) return upd;
         if(!wasInv && willBeInv){
           const ib=applyInvestBuy(invState, e.ent, Math.abs(e.amount));
           if(ib){ invState=ib.state; upd.investInvId=ib.invId; upd.investShares=ib.shares; upd.investCInv=ib.cInv; upd.investAmountEur=ib.amountEur; }

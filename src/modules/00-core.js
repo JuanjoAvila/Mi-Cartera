@@ -177,7 +177,13 @@ const KW = {
 function autoCategory(merchant){
   const c=(merchant||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const key=c.trim();
-  if(USER_OVERRIDES[key]) return USER_OVERRIDES[key];                                        // lo que T\u00da has aprendido a mano
+  // "Inversi\u00f3n" NUNCA se adivina por comercio (2026-08-04). Es una categor\u00eda de DESTINO del dinero,
+  // no un tipo de tienda: solo la pone el aporte autom\u00e1tico reconocido por importe exacto
+  // (`importObExpenses`) o el usuario a mano. Sin este blindaje, un override envenenado \u2014el que
+  // dej\u00f3 el bug de "Movimiento", ver `fixMovInvasion`\u2014 convierte en Inversi\u00f3n CUALQUIER gasto que
+  // pase por aqu\u00ed: fue lo que volvi\u00f3 a marcar solo un parking de zona azul de 9,50 \u20ac cada vez que
+  // abr\u00eda la app, porque `migrate` re-categoriza todo lo que est\u00e9 en "otros" y no sea manual.
+  if(USER_OVERRIDES[key] && USER_OVERRIDES[key]!=="inversion") return USER_OVERRIDES[key];   // lo que T\u00da has aprendido a mano
   for(const k in MERCHANT_OVERRIDES){ if(c.indexOf(k)!==-1) return MERCHANT_OVERRIDES[k]; }  // overrides de ejemplo
   // Keywords cortas (bar, bus…) con límite de palabra: si no, "Barcelona" caía en bares
   // por el substring «bar» (bug Kinepolis 2026-07-17).

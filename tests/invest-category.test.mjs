@@ -270,4 +270,57 @@ t("un gasto viejo del mismo importe (fuera de la ventana de 3 días) no tapa uno
   assert.equal(add.length, 1, "18 días después es otro cargo, no el mismo");
 });
 
+/* BUG 2026-08-04 (segunda vuelta, dos quejas suyas con la app de TR delante):
+ *   a) «un gasto de una cabina de zona azul de 9,50 € me lo detecta como Inversión» — el override
+ *      envenenado "movimiento"→inversion sobrevivió a la limpieza (que corre UNA vez, bajo flag) y
+ *      `migrate` re-categoriza en cada carga todo gasto en "otros" que no sea manual.
+ *   b) «el cashback me lo detecta duplicado en Inversiones y luego como ingreso» — TR abona el
+ *      saveback al efectivo y días después lo retira para comprar el fondo: dos apuntes, un solo
+ *      movimiento de dinero. */
+t("autoCategory NUNCA devuelve 'inversion', ni con un override envenenado apuntando ahí", () => {
+  const prev = ctx.USER_OVERRIDES;
+  try {
+    ctx.USER_OVERRIDES = { movimiento: "inversion", consum: "super" };
+    assert.notEqual(ctx.autoCategory("Movimiento"), "inversion", "el destino del dinero no se adivina por comercio");
+    assert.equal(ctx.autoCategory("Consum"), "super", "los overrides normales siguen mandando");
+  } finally { ctx.USER_OVERRIDES = prev; }
+});
+
+t("seedFlows borra cualquier override que apunte a 'inversion' (sin flag, en cada carga)", () => {
+  const s = { catOverrides: { movimiento: "inversion", playtomic: "padel" } };
+  const ns = ctx.seedFlows(s);
+  assert.equal(ns.catOverrides.movimiento, undefined, "el envenenado se va");
+  assert.equal(ns.catOverrides.playtomic, "padel", "los buenos se quedan");
+});
+
+t("findCashbackTwin empareja la entrada del cashback con su salida al fondo", () => {
+  const exps = [
+    { id: "in", date: "2026-08-01T12:00:00Z", amount: -8.38, merchant: "Movimiento", ent: "trade_republic", category: "ingreso" },
+    { id: "out", date: "2026-08-03T12:00:00Z", amount: 8.38, merchant: "Movimiento", ent: "trade_republic", category: "otros" },
+  ];
+  const i = ctx.findCashbackTwin(exps, exps[1]);
+  assert.equal(exps[i].id, "in", "encuentra la entrada gemela de dos días antes");
+});
+
+t("findCashbackTwin NO toca un ingreso con nombre real (un bizum de un amigo del mismo importe)", () => {
+  const exps = [
+    { id: "biz", date: "2026-08-01T12:00:00Z", amount: -8.38, merchant: "Bizum recibido", ent: "trade_republic", category: "ingreso" },
+    { id: "out", date: "2026-08-03T12:00:00Z", amount: 8.38, merchant: "Movimiento", ent: "trade_republic", category: "otros" },
+  ];
+  assert.equal(ctx.findCashbackTwin(exps, exps[1]), -1, "con comercio de verdad es dinero real, no el par del cashback");
+});
+
+t("findCashbackTwin exige que la entrada vaya ANTES que la salida y dentro de 10 días", () => {
+  const despues = [
+    { id: "in", date: "2026-08-20T12:00:00Z", amount: -8.38, merchant: "Movimiento", ent: "trade_republic", category: "ingreso" },
+    { id: "out", date: "2026-08-03T12:00:00Z", amount: 8.38, merchant: "Movimiento", ent: "trade_republic", category: "otros" },
+  ];
+  assert.equal(ctx.findCashbackTwin(despues, despues[1]), -1, "un ingreso posterior no es la entrada de esta salida");
+  const lejos = [
+    { id: "in", date: "2026-07-01T12:00:00Z", amount: -8.38, merchant: "Movimiento", ent: "trade_republic", category: "ingreso" },
+    { id: "out", date: "2026-08-03T12:00:00Z", amount: 8.38, merchant: "Movimiento", ent: "trade_republic", category: "otros" },
+  ];
+  assert.equal(ctx.findCashbackTwin(lejos, lejos[1]), -1, "un mes antes ya no es el mismo movimiento");
+});
+
 console.log("\ninvest-category: OK");

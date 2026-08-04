@@ -1801,7 +1801,13 @@ const KW = {
 function autoCategory(merchant){
   const c=(merchant||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const key=c.trim();
-  if(USER_OVERRIDES[key]) return USER_OVERRIDES[key];                                        // lo que T\u00da has aprendido a mano
+  // "Inversi\u00f3n" NUNCA se adivina por comercio (2026-08-04). Es una categor\u00eda de DESTINO del dinero,
+  // no un tipo de tienda: solo la pone el aporte autom\u00e1tico reconocido por importe exacto
+  // (`importObExpenses`) o el usuario a mano. Sin este blindaje, un override envenenado \u2014el que
+  // dej\u00f3 el bug de "Movimiento", ver `fixMovInvasion`\u2014 convierte en Inversi\u00f3n CUALQUIER gasto que
+  // pase por aqu\u00ed: fue lo que volvi\u00f3 a marcar solo un parking de zona azul de 9,50 \u20ac cada vez que
+  // abr\u00eda la app, porque `migrate` re-categoriza todo lo que est\u00e9 en "otros" y no sea manual.
+  if(USER_OVERRIDES[key] && USER_OVERRIDES[key]!=="inversion") return USER_OVERRIDES[key];   // lo que T\u00da has aprendido a mano
   for(const k in MERCHANT_OVERRIDES){ if(c.indexOf(k)!==-1) return MERCHANT_OVERRIDES[k]; }  // overrides de ejemplo
   // Keywords cortas (bar, bus…) con límite de palabra: si no, "Barcelona" caía en bares
   // por el substring «bar» (bug Kinepolis 2026-07-17).
@@ -5289,6 +5295,18 @@ function fixMovInvasion(state){
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
   if(!s) return s;
+  /* NINGÚN comercio puede tener "Inversión" como override aprendido — SIN FLAG, en cada carga
+     (2026-08-04). "Inversión" es un destino del dinero, no un tipo de tienda: aprenderla como
+     override hace que TODO gasto que pase por `autoCategory` con ese comercio se marque solo, una
+     y otra vez. Pasó con "Movimiento" (el hueco que deja Trade Republic sin datos) y le convertía
+     un parking de zona azul en Inversión cada vez que abría la app. Va aquí y no dentro de
+     `fixMovInvasion` a propósito: aquella corre UNA vez y bajo flag, así que en cuanto el flag
+     quedó puesto el override envenenado se volvió inmortal. Esto es barato e idempotente. */
+  if(s.catOverrides){
+    const limpio={}; let habia=false;
+    for(const k in s.catOverrides){ if(s.catOverrides[k]==="inversion") habia=true; else limpio[k]=s.catOverrides[k]; }
+    if(habia){ s=Object.assign({},s,{catOverrides:limpio}); USER_OVERRIDES=Object.assign({},limpio); }
+  }
   // Poda de arrays que crecían sin tope. Aquí se aplica a los estados que YA venían inflados de
   // versiones anteriores (el tope nuevo solo actúa al añadir) — 2026-07-24.
   if(Array.isArray(s.deleted) && s.deleted.length>DELETED_MAX) s.deleted=s.deleted.slice(s.deleted.length-DELETED_MAX);
@@ -6548,20 +6566,32 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // banco) ni dispara el "recategoriza también los del mismo comercio en Otros" (bug 2026-08-04:
     // eso convertía TODOS los movimientos sin datos en Inversión de un solo toque, cada uno con su
     // propia compra de participaciones).
-    const learnable = mkey && ex.merchant!=="Movimiento";
+    // Y "Inversión" NUNCA se aprende como override, venga de donde venga el comercio: es un destino
+    // del dinero, no un tipo de tienda (ver el blindaje gemelo en `autoCategory`, 00-core.js).
+    const learnable = mkey && ex.merchant!=="Movimiento" && newCat!=="inversion";
     set(function(s){
       const ov=Object.assign({}, s.catOverrides||{}); if(learnable) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
+      // El cashback/round-up ENTRA al efectivo y días después SALE hacia el fondo: dos apuntes del
+      // banco para un solo movimiento de dinero. Al marcar la salida como Inversión, su entrada
+      // gemela va con ella — si no, sigue contando como ingreso del mes (2026-08-04, queja suya:
+      // «me lo detecta duplicado en inversiones y luego como ingreso al principio del mes»).
+      const twinIdx = newCat==="inversion" ? findCashbackTwin(s.expenses, ex) : -1;
+      const twinId = twinIdx>=0 ? s.expenses[twinIdx].id : null;
       // Marcar a mano un round-up/cashback como "Inversión" (o deshacerlo) compra/vende de verdad
       // participaciones en el fondo enlazado de esa cuenta — mismo importe real del banco, ver
       // `applyInvestBuy`/`reverseInvestBuy` en 08-motor-bank.js (2026-08-03).
       let invState=s;
       const exps=s.expenses.map(function(e){
         const isTarget=e.id===ex.id;
-        const isSibling=!isTarget && learnable && catKey(e.merchant)===mkey && e.category==="otros";
-        if(!isTarget && !isSibling) return e;
+        const isTwin=!!twinId && e.id===twinId;
+        const isSibling=!isTarget && !isTwin && learnable && catKey(e.merchant)===mkey && e.category==="otros";
+        if(!isTarget && !isTwin && !isSibling) return e;
         const wasInv=e.category==="inversion", willBeInv=newCat==="inversion";
         const upd=Object.assign({},e,{category:newCat});
+        // El gemelo solo cambia de categoría: el dinero ya lo compra su pareja, comprarlo dos veces
+        // duplicaría las participaciones del fondo.
+        if(isTwin) return upd;
         if(!wasInv && willBeInv){
           const ib=applyInvestBuy(invState, e.ent, Math.abs(e.amount));
           if(ib){ invState=ib.state; upd.investInvId=ib.invId; upd.investShares=ib.shares; upd.investCInv=ib.cInv; upd.investAmountEur=ib.amountEur; }
@@ -9557,6 +9587,29 @@ function applyReserva(state, income, plan, bankEnt){
 // mirando, para que lo apartado se note de verdad en "lo que puedes gastar".
 function reservedSince(state, fromMs){
   return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
+}
+
+/* EL CASHBACK ENTRA Y LUEGO SALE — son DOS apuntes del banco, un solo movimiento de dinero
+   (2026-08-04, caso real suyo: «el cashback me lo detecta duplicado en categoría inversiones y
+   luego como ingreso al principio del mes»). Trade Republic ABONA el saveback/round-up al efectivo
+   (+8,38 € el 1/8) y días después lo RETIRA para comprar el fondo (−8,38 € el 3/8). Por separado
+   cada uno es correcto, pero juntos inflan los ingresos del mes con dinero que nunca se quedó.
+   Al marcar la SALIDA como Inversión se busca su entrada gemela —mismo importe al céntimo, misma
+   cuenta, sin nombre de comercio, dentro de 10 días ANTES— y se marca también: así el par entero
+   deja de contar, ni como ingreso ni como gasto. Devuelve el índice del gemelo o -1.
+   Solo mira ingresos SIN comercio: un bizum de 8,38 € de un amigo tiene su nombre y no se toca. */
+function findCashbackTwin(expenses, gasto){
+  if(!gasto || !(gasto.amount>0)) return -1;
+  const ms=dateMs(gasto.date);
+  return (expenses||[]).findIndex(function(e){
+    if(!e || e.id===gasto.id) return -1 === 0;                       // nunca a sí mismo
+    if(!(e.amount<0) || e.category==="inversion") return false;      // solo ingresos aún sin marcar
+    if(e.ent!==gasto.ent) return false;                              // misma cuenta
+    if(e.merchant && e.merchant!=="Movimiento" && e.merchant!=="Ingreso") return false;   // con nombre = real
+    if(Math.abs(Math.abs(e.amount)-gasto.amount)>0.005) return false;                     // mismo importe
+    const d=ms-dateMs(e.date);
+    return d>=0 && d<=10*86400000;                                   // la entrada va ANTES que la salida
+  });
 }
 
 /* CATEGORÍA "INVERSIÓN" (2026-08-03): round-up/cashback/aporte automático de un bróker que llega

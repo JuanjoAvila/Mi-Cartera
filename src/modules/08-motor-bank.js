@@ -521,6 +521,29 @@ function reservedSince(state, fromMs){
   return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
 }
 
+/* EL CASHBACK ENTRA Y LUEGO SALE — son DOS apuntes del banco, un solo movimiento de dinero
+   (2026-08-04, caso real suyo: «el cashback me lo detecta duplicado en categoría inversiones y
+   luego como ingreso al principio del mes»). Trade Republic ABONA el saveback/round-up al efectivo
+   (+8,38 € el 1/8) y días después lo RETIRA para comprar el fondo (−8,38 € el 3/8). Por separado
+   cada uno es correcto, pero juntos inflan los ingresos del mes con dinero que nunca se quedó.
+   Al marcar la SALIDA como Inversión se busca su entrada gemela —mismo importe al céntimo, misma
+   cuenta, sin nombre de comercio, dentro de 10 días ANTES— y se marca también: así el par entero
+   deja de contar, ni como ingreso ni como gasto. Devuelve el índice del gemelo o -1.
+   Solo mira ingresos SIN comercio: un bizum de 8,38 € de un amigo tiene su nombre y no se toca. */
+function findCashbackTwin(expenses, gasto){
+  if(!gasto || !(gasto.amount>0)) return -1;
+  const ms=dateMs(gasto.date);
+  return (expenses||[]).findIndex(function(e){
+    if(!e || e.id===gasto.id) return -1 === 0;                       // nunca a sí mismo
+    if(!(e.amount<0) || e.category==="inversion") return false;      // solo ingresos aún sin marcar
+    if(e.ent!==gasto.ent) return false;                              // misma cuenta
+    if(e.merchant && e.merchant!=="Movimiento" && e.merchant!=="Ingreso") return false;   // con nombre = real
+    if(Math.abs(Math.abs(e.amount)-gasto.amount)>0.005) return false;                     // mismo importe
+    const d=ms-dateMs(e.date);
+    return d>=0 && d<=10*86400000;                                   // la entrada va ANTES que la salida
+  });
+}
+
 /* CATEGORÍA "INVERSIÓN" (2026-08-03): round-up/cashback/aporte automático de un bróker que llega
    como movimiento REAL de Open Banking — dinero que sale del efectivo pero no es gasto ni ingreso,
    va a un fondo. Mismo cálculo de "comprar participaciones" que ya usaba `reconcileTR` (01-i18n.js)

@@ -2557,6 +2557,18 @@ function fixMovInvasion(state){
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
   if(!s) return s;
+  /* NINGÚN comercio puede tener "Inversión" como override aprendido — SIN FLAG, en cada carga
+     (2026-08-04). "Inversión" es un destino del dinero, no un tipo de tienda: aprenderla como
+     override hace que TODO gasto que pase por `autoCategory` con ese comercio se marque solo, una
+     y otra vez. Pasó con "Movimiento" (el hueco que deja Trade Republic sin datos) y le convertía
+     un parking de zona azul en Inversión cada vez que abría la app. Va aquí y no dentro de
+     `fixMovInvasion` a propósito: aquella corre UNA vez y bajo flag, así que en cuanto el flag
+     quedó puesto el override envenenado se volvió inmortal. Esto es barato e idempotente. */
+  if(s.catOverrides){
+    const limpio={}; let habia=false;
+    for(const k in s.catOverrides){ if(s.catOverrides[k]==="inversion") habia=true; else limpio[k]=s.catOverrides[k]; }
+    if(habia){ s=Object.assign({},s,{catOverrides:limpio}); USER_OVERRIDES=Object.assign({},limpio); }
+  }
   // Poda de arrays que crecían sin tope. Aquí se aplica a los estados que YA venían inflados de
   // versiones anteriores (el tope nuevo solo actúa al añadir) — 2026-07-24.
   if(Array.isArray(s.deleted) && s.deleted.length>DELETED_MAX) s.deleted=s.deleted.slice(s.deleted.length-DELETED_MAX);
