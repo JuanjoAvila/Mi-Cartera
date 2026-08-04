@@ -158,6 +158,25 @@ test("a mitad de una lista larga de Deudas, tirar no cambia de sección", async 
   expect(await segmentoActivo(page), "tirar a mitad de lista cambió de sección: no debería").toBe("deudas");
   const despues = await page.evaluate(() => document.querySelectorAll(".page")[2].scrollTop);
   expect(despues, "el scroll normal de la lista se quedó bloqueado").not.toBe(antes);
+  expect(await pestanaActiva(page), "a mitad de lista también cambió de pestaña").toBe("plan");
+});
+
+/* Mitad de lista + arco de pulgar: el caso real del rechazo 4/8 noche («si deslizas hacia abajo
+ * no debería cambiar»). Antes el viewport bloqueaba el eje en horizontal a los ~12 px y mataba
+ * el scroll / cambiaba de tab; ahora exige ventaja clara a mitad de lista. */
+test("a mitad de Deudas, un arco de pulgar no cambia de sección ni de pestaña", async ({ page }) => {
+  await seedLoggedInDashboard(page, { debts, goals });
+  await page.goto("/");
+  await appLista(page);
+  await irAPlan(page);
+  await page.locator(".v4-seg-btn", { hasText: /deuda/i }).click();
+  await expect.poll(() => segmentoActivo(page), { timeout: 5_000 }).toBe("deudas");
+  await page.evaluate(() => { document.querySelectorAll(".page")[2].scrollTop = 300; });
+  const cdp = await page.context().newCDPSession(page);
+  await arcoPulgar(page, cdp, { x0: 196, y0: 260, dx: 40, dy: 190 });
+  await page.waitForTimeout(150);
+  expect(await segmentoActivo(page)).toBe("deudas");
+  expect(await pestanaActiva(page)).toBe("plan");
 });
 
 // Rechazo real del usuario (3/8, 14:03): «al ir hacia abajo se vuelve loco y cambia también de

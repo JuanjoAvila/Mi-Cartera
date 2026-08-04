@@ -2,6 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-04 (noche)
+### Plan-swipe y ola: el muro era el arco del pulgar, y a mitad de lista el viewport robaba el gesto
+
+Dos tandas que seguían en beta tras el OK del tutorial (8/0 en 4.13.0.36):
+
+1. **`plan-swipe`**: «si deslizas hacia abajo no debería cambiar, solo de arriba a abajo». El
+   segmento ya miraba el extremo al fijar el eje, pero (a) no exigía haber *nacido* arriba/abajo
+   —podías llegar scrolleando y colarte— y (b) a mitad de lista `mode=ignore` **no** hacía
+   `stopPropagation`, así que el `.viewport` veía el mismo arco de pulgar, bloqueaba el eje en
+   horizontal a los ~12 px y cambiaba de pestaña / mataba el scroll. Ahora: extremo al start + al
+   move; vertical a mitad = `mode=scroll` con stopPropagation; y a mitad de lista el swipe de
+   pestañas exige ~28 px de ventaja horizontal clara antes de reclamar.
+
+2. **`gestos` (muro → ola)**: candidato medido el 4/8 puesto por fin — `touch-action:pan-y` en
+   `.page`. Excepción `.mc-touch-own` (`none`) solo en Inicio arriba (perfil/Ajustes, sin ola) y
+   Plan en extremos (gesto de segmento necesita `preventDefault`). Resto: ola nativa a la primera,
+   como Ajustes.
+
+3. **Panel beta**: quitadas del array `tandas` las ya aprobadas (`tutorial-gestos`, `bancos`,
+   `temporada`, `reservar`, `import-docx-pdf`). Quedan solo `gestos` y `plan-swipe`.
+
 ## [Sin publicar] — 2026-08-04
 ### Tutorial: el descuadre era el `zoom` de la letra, no (solo) el portal
 

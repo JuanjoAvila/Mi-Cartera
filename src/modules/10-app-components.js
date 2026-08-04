@@ -1437,106 +1437,26 @@ var RELEASE_NOTES=[
        3/8 y se promocionó sola a producción como 4.12.4 el mismo día, separada a mano de
        gestos/bancos que siguen aquí. Su checklist de verdad, en el CHANGELOG de la 4.12.4 y en
        docs/ROADMAP.md. */
-    /* TANDA REESCRITA 2026-08-03: rechazó la tarjeta ESTÁTICA de gestos («yo me refería un
-       tutorial dinámico no fijo arriba de ajustes... como el tutorial del principio de la app
-       que por cierto está bugueado, no marca las cosas en su sitio sale descuadrado»). Dos
-       encargos en uno: (1) los gestos van DENTRO del tour dinámico ya existente (`Tour`,
-       02-ui-shared.js), no en una tarjeta aparte — GestureCoach se ha quitado entero; (2) el
-       tour venía realmente descuadrado, pero NO por selectores obsoletos (se comprobó cada uno
-       contra el HTML de hoy: todos apuntaban al sitio correcto). El fallo estaba en el estado:
-       al tocar «Siguiente» el TEXTO cambiaba al instante pero el RECORTE se quedaba plantado en
-       el elemento del paso anterior durante los ~520 ms que tarda en re-medir (más la transición
-       del carrusel) — texto de un paso con el foco de otro, que es exactamente «sale
-       descuadrado». Ahora texto y foco viven en un único estado que se pisa junto: mientras se
-       mide el siguiente, se sigue viendo el último par que sí encajaba. */
-    {id:"tutorial-gestos", t:"🎓 Tutorial de gestos (dentro del tour de siempre)", items:[
-      "Ajustes → busca «tutorial» → «🎓 Ver el tutorial» (o borra los datos del sitio para que salga solo, como la primera vez): el recorrido de foco/spotlight de siempre, ahora con 10 pasos en vez de 7.",
-      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado cae justo encima de lo que describe el texto (Gastos, +, Plan, Cartera, avatar, barra), y la tarjeta NO lo tapa — también con letra pequeña (zoom).",
-      "El primer paso rodea SOLO la cifra del patrimonio — incluido el € y con margen — y se adapta al ancho del número.",
-      "Los pasos de Ajustes y del tirón al perfil NO llevan recorte, PERO la pantalla sigue oscurecida como el resto del tutorial (no parece que se haya acabado).",
-      "Tras el paso de Plan, el del segmentado explica deslizar HACIA ABAJO con la lista arriba del todo para pasar Recibos→Deudas→Metas.",
-      "Si te quedas un momento sin pulsar Siguiente, el anillo del foco hace un pulso suave.",
-      "El botón + ya no se llama «verde» en el texto (cambia con la temática).",
-      "La tarjeta fija que salía arriba de Ajustes ha desaparecido del todo.",
-    ]},
+    /* TANDA `tutorial-gestos` QUITADA 2026-08-04 noche: aprobada 8/0 en 4.13.0.36 (zoom de la
+       letra + portal a body). Misma regla: aprobada → se BORRA del array, no se marca hecha. */
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
-      "El rebote al final de una pestaña ahora es EL MISMO mecanismo que Ajustes y el perfil (no una imitación con curva propia — se quitó el bloqueo que impedía al navegador hacer lo suyo). Tíralo en Gastos y compáralo abriendo Ajustes: tiene que sentirse idéntico, es literalmente el mismo efecto.",
-      "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido) en vez de con la misma calma de cuando bajas leyendo la lista — antes se quedaba deslizándose todavía por encima de la ola mientras esta ya estaba en marcha, que es el «se queda atascado un momento y luego es muy raro» del vídeo. Pruébalo en Gastos con bastantes movimientos: tira hasta el fondo y suelta.",
-      "En Resumen, tirar hacia abajo estando arriba SIGUE abriendo el perfil (el rebote no estorba).",
+      "En Gastos / Plan / Cartera: baja hasta el final y tira un poco más — la lista hace la OLA a la primera, igual que en Ajustes. Sin muro ni segundo tirón.",
+      "Lo mismo tirando hacia arriba cuando ya estás arriba del todo (menos en Resumen: ahí abre el perfil).",
+      "En Resumen, tirar hacia abajo estando ARRIBA sigue abriendo el perfil (sin ola). Abajo del todo de Resumen SÍ hace la ola.",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
-      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal. Iba a destiempo dos veces: primero salto y desplazamiento con curvas distintas, y luego un reflow forzado que arrancaba la transición con las reglas viejas un instante antes de tiempo.",
-      "Y ese arco AGUANTA a velocidad alta: cambia de pestaña varias veces seguidas y rápido (sin esperar a que asiente la anterior) — antes, a partir de la segunda vez, la rayita dejaba de arquear y volvía a cruzar el + en línea recta; una clase se quedaba pegada de un salto a otro y desordenaba cuál llevaba el arco de verdad.",
+      "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
+      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal, también a velocidad alta.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
     ]},
-    /* TANDA AÑADIDA 2026-08-03 (petición suya: «cuando deslices de arriba a abajo se pase a
-       deudas, y en deudas a metas, y de metas otra vez a recibos» — para no depender de la otra
-       mano y tocar el segmentado de arriba con el móvil cogido con una sola mano). */
     {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
-      "Dentro de Plan, con la lista arriba del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
+      "Dentro de Plan, con la lista ARRIBA del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
       "Con la lista abajo del todo, tira hacia arriba: recorre el mismo círculo pero al revés.",
-      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba tiene que seguir siendo scroll normal — no debe cambiar de sección.",
+      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba es scroll normal — NO cambia de sección NI de pestaña (Inicio/Gastos/Plan/Cartera).",
       "Deslizar de lado para cambiar entre Inicio/Gastos/Plan/Cartera sigue funcionando igual dentro de Plan.",
     ]},
-    /* ⚠ AQUÍ VIVÍA LA TANDA `arranque` — y SE QUITA DEL TODO, no se marca «hecha» (2026-08-01,
-       regla suya, textual: «si sube algo en prod, se quita de beta para probar porque ya está
-       listo... conforme apruebe la tanda sube y desaparece»). La aprobó (5/5 ok) el 1/8 y se
-       promocionó sola a producción como 4.12.3 el mismo día — seguir enseñándola aquí como si
-       quedara algo pendiente es exactamente el ruido que haría dudar de si ya está hecho o no.
-       Su checklist de verdad, en el CHANGELOG de la 4.12.3 y en docs/ROADMAP.md. */
-    /* TANDA AÑADIDA 2026-08-01 tras el aviso «gastos como ingresos» + destrozo de -9k en Revolut
-       (ver CHANGELOG). No sube VERSION porque la ronda ya estaba abierta en 4.13.0 — mismo patrón
-       que 401214e/a8730a9, que tampoco bumpearon. Se promociona junto al resto cuando él diga. */
-    {id:"bancos", t:"🏦 Bancos: los bugs gordos de esta semana", items:[
-      "Conectar «Trade Republic» desde Conectar banco ya se puede: trae sus MOVIMIENTOS a Gastos y el saldo lo sigue poniendo su tarjeta de bróker de siempre. Ni se descuadra el patrimonio ni se apunta nada dos veces.",
-      "Y lo de «todos los gastos del mes contados como ingresos» al conectarlo: comprueba que un gasto de TR sale como gasto, no en verde. ⚠ Si AÚN sale mal: ya está instrumentado para verlo con certeza en el próximo aviso tuyo — no lo des por cerrado sin decírmelo.",
-      "LO GORDO: los movimientos de Trade Republic que salían como «Movimiento» y no cuadraban eran gastos DUPLICADOS. Tus compras de TR ya se apuntan solas por los avisos del móvil, con el comercio de verdad («Repsol», «Consum»…) el día que compras; el banco los mandaba OTRA VEZ uno o dos días después y sin ningún dato (TR no manda comercio, ni concepto, ni referencia — nada), así que el filtro de repetidos no los reconocía. Ahora, un movimiento sin nombre que coincida en importe con algo que ya tienes de los últimos 3 días no se vuelve a apuntar. Al abrir la app se limpian solos los que ya estaban: comprueba que en Gastos ya no hay dos apuntes del mismo importe con un día de diferencia (uno con el nombre de la tienda y otro como «Movimiento»), y que el total del mes baja a lo que de verdad has gastado.",
-      "Y lo que SÍ ve solo el banco (el aporte automático a tu fondo, round-up y cashback) sigue entrando: el aporte de 50€/mes ya sale con su propia categoría «📈 Inversión», que no cuenta ni como gasto ni como ingreso — comprueba que no infla «gastado este mes». Round-up y cashback (importes variables, sin ningún dato que los distinga) entran como gasto normal: puedes pasarlos a «Inversión» a mano desde la ficha del gasto, uno a uno.",
-      "Y al marcar un cashback como «Inversión», su ENTRADA se marca con él. El cashback llega dos veces al banco: primero entra al efectivo y días después sale hacia el fondo — dos apuntes para un solo movimiento de dinero. Antes la entrada se quedaba contando como ingreso del mes («me lo detecta duplicado en Inversiones y luego como ingreso»). Marca la salida y comprueba que el ingreso gemelo del mismo importe se va con ella. Un bizum de un amigo del mismo importe, con su nombre, NO se toca.",
-      "Un gasto normal ya no se vuelve «Inversión» él solo. Un parking de zona azul de 9,50 € se remarcaba como Inversión cada vez que abrías la app: al marcar el primer movimiento a mano se aprendía la regla «esto siempre es Inversión» para todo lo que llegara sin nombre. Comprueba que un gasto que pongas en cualquier categoría se queda donde lo dejaste, aunque cierres y abras.",
-      "NUEVO: lo del ÚLTIMO DÍA del mes ya no se pierde. Todo lo anterior al día 1 se tiraba antes de llegar a la app: tu traspaso de +1.620 € del 31 de julio, el bizum del piso de 70 € y los gastos de ese día desaparecían por caer un día antes del corte. Comprueba que ahora sí aparecen.",
-      "NUEVO: ese traspaso que te haces de Sabadell a Trade Republic sale con categoría «🔄 Traspaso» — se apunta (y «Mi ciclo» se ancla a él para saber cuándo empieza tu mes) pero NO suma a los ingresos del mes, porque no es dinero nuevo: es dinero tuyo cambiando de cuenta. Un cobro de verdad, con el nombre de quien paga, sigue siendo ingreso normal.",
-      "Importar histórico: una factura que sale varias veces en 3 meses de extracto ya no se marca como recibo repetido — solo cuenta una (antes creaba un Fijo por cada mes que aparecía).",
-      "Reconectar Trade Republic desde el aviso de Cartera lleva directo a su tarjeta, con scroll — antes aterrizaba en Mis bancos con la tarjeta abierta pero fuera de pantalla.",
-      "Ajustes → Copia de seguridad → «Copias automáticas»: se ve la lista de los últimos días guardados y se puede restaurar uno.",
-      "Cambiar el banco de gasto diario en Patrimonio → Editar hace que sus compras entren en Gastos — antes se quedaba pegado al banco anterior para siempre.",
-      "NUEVO: el banco de gasto diario mete TODO cargo en Gastos, no solo compras con tarjeta (salvo que ya sea un Fijo tuyo, para no contarlo dos veces) — antes un cargo sin la palabra «tarjeta» en el concepto (habitual si el banco avisa en inglés) se perdía en silencio.",
-      "NUEVO: en Gastos, el filtro de banco arranca ya marcado en tu banco de gasto diario en vez de «Todos» — cámbialo a mano si quieres ver todo mezclado.",
-      "NUEVO: un ingreso ya se apunta venga de CUALQUIER banco enlazado, no solo el de gasto diario — para que «Mi ciclo» encuentre tu nómina aunque caiga en otra cuenta.",
-      "Gastos, a principio de mes: «no hay gastos aquí» ya no suena a aviso de fallo si de verdad no has gastado nada todavía.",
-      "Importar histórico: arreglado el bug que reportaste — «seleccioné Trade Republic y salían también movimientos de Banco Sabadell». Ahora hay chips para elegir banco(s), y lo que ves con el filtro puesto es EXACTAMENTE lo que se importa (antes se buscaba y se importaba siempre de todos los bancos a la vez, sin forma de acotar a uno).",
-      "Importar histórico: nuevos filtros de tipo (Gastos/Ingresos) y de mes, para no ver los 3 meses de golpe mezclados.",
-      "Importar histórico: rediseñado con la misma idea que el import de Excel — contador de nuevos/repetidos, filas que entran animadas, y lo que ya tienes guardado (mismo día+importe+comercio) se ve tachado en la lista en vez de desaparecer sin explicación.",
-    ]},
-    /* TANDA AÑADIDA 2026-08-03: petición suya textual, «Quítame lo de que caigan cosas cuando
-       aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación
-       personalizada incrustada en las secciones, como cuando se mueven los logos de las tabs».
-       Se quita del todo la capa que caía/subía (`.season-fx`, `SEASON_FX`, `seasonEpoch`) y se
-       sustituye por un icono de la temática incrustado junto al título de cada pestaña, con el
-       mismo tipo de POP de un solo uso que ya usan los iconos de la barra — nunca en bucle.
-       No sube VERSION, misma ronda abierta de 4.13.0 que gestos/bancos. */
-    {id:"temporada", t:"🍂 Temporadas sin lluvia de cosas", items:[
-      "Ya no caen ni suben piezas por la pantalla, ni al abrir la app ni al cambiar de pestaña: esa capa se ha quitado del todo.",
-      "Con una temática puesta (Halloween, Navidad…), al lado del título de Inicio/Gastos/Plan/Cartera sale un icono pequeño de esa temática con un POP al pintarse la pantalla — no se repite en bucle.",
-      "Sin temática (Ajustes → Apariencia → Temática → «—»), todo se ve exactamente igual que siempre: no se nota nada de esto.",
-      "Con «Reducir animaciones» (en Ajustes o en el propio sistema), el icono de la temática sigue ahí pero sin el POP de entrada: sale fijo, quieto.",
-    ]},
-    /* TANDA `canal` QUITADA por la misma regla: la aprobó (3/3 ok) el 1/8. Su arreglo vive en
-       .github/workflows/beta.yml y ya está activo — no hay un «subir a prod» para el canal de
-       pruebas en sí, así que aprobado = hecho, sin paso intermedio que esperar. */
-    {id:"reservar", t:"🔒 Reservar dinero de tu nómina", items:[
-      "En Metas hay una sección nueva «Reservar dinero de tu nómina»: reglas de importe fijo o % que, al detectar tu nómina, reparten sola parte del ingreso hacia las metas que elijas.",
-      "Al detectarse un ingreso grande (el mismo que ancla «Mi ciclo»), sale una tarjeta con el reparto propuesto — nunca se aplica solo, tú confirmas o dices «ahora no».",
-      "Lo que se reserva a una meta YA SE NOTA en Gastos: el presupuesto de ese mes baja lo reservado, así que «lo que puedes gastar» refleja de verdad lo que has apartado.",
-      "Pensada para tu caso (un solo banco que es fondo de emergencia + inversión + gasto diario a la vez): ahora puedes ahorrar para una meta y seguir viendo claro cuánto te queda de verdad para gastar.",
-    ]},
-    /* TANDA AÑADIDA 2026-08-03 (petición suya: «que se pueda importar un pdf o documento con
-       gastos, recibos e ingresos que la gente escribe a mano en un Word»). Reutiliza el mismo ZIP
-       y el mismo mapeo/previsualización del import de Excel; el PDF es mejor esfuerzo sin librería
-       (ver 15-import-hoja.js). */
-    {id:"import-docx-pdf", t:"📄 Importar también desde Word o PDF", items:[
-      "En Ajustes → Copia de seguridad → «Importar una hoja de gastos», ya se puede subir también un Word (.docx) con una tabla de fecha/concepto/importe: mismo mapeo de columnas y mismo reparto entre nuevos y repetidos que con un Excel.",
-      "Y también un PDF con texto de verdad (no una foto escaneada). Si el PDF resulta ser una imagen, o no se le pueden sacar filas con fecha e importe reconocibles, avisa con un mensaje claro en vez de fallar en silencio o inventarse datos.",
-    ]},
+    /* TANDA `arranque` QUITADA (aprobada → 4.12.3). `canal` QUITADA (aprobada 1/8).
+       `bancos` / `temporada` / `reservar` / `import-docx-pdf` QUITADAS 2026-08-04: aprobadas
+       todas en 4.13.0.31 (bancos 16/0, resto sin fallos). Regla: se BORRAN del array. */
    ],
    items:{
    /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación) NI LOS 3 DE

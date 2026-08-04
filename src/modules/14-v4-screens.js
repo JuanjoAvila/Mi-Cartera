@@ -117,7 +117,12 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const reduceMotion=function(){
       try{ return (window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches) || document.documentElement.classList.contains("reduce-motion"); }catch(e){ return false; }
     };
+    // startAtTop/Bottom: el gesto de segmento SOLO si el dedo NACIÓ ya en el extremo. Si empiezas
+    // a mitad y al scrollear llegas arriba, sigue siendo scroll — no un cambio de sección a
+    // destiempo (feedback 4/8 noche: «si deslizas hacia abajo no debería cambiar, solo cuando
+    // deslizas de arriba a abajo»).
     let sx=0, sy=0, t0=0, axis=null, mode=null, dir=0, dyRaw=0, raf=0, pend=null;
+    let startAtTop=false, startAtBottom=false;
     const paint=function(){
       raf=0;
       const el=segElRef.current[seg];
@@ -126,14 +131,27 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
     const queue=function(v){ pend=v; if(!raf) raf=requestAnimationFrame(paint); };
     const resist=function(px){ return Math.pow(Math.min(1,px/160),0.72)*MAX_PULL; };
     const cleanup=function(el){ if(el){ el.style.transition=""; el.style.transform=""; } };
+    const edgesOf=function(pg){
+      if(!pg) return {top:true, bottom:true};
+      const y=pg.scrollTop||0;
+      const max=Math.max(0, pg.scrollHeight-pg.clientHeight);
+      // Sin scroll (max≈0) estás a la vez arriba y abajo: los dos sentidos cambian de segmento,
+      // igual que antes del fix (el test de «sentido contrario» en Recibos cortos lo exige).
+      return { top:y<=2, bottom:(max-y)<=2 };
+    };
     const onStart=function(e){
       if(document.documentElement.classList.contains("sheet-open")) return;
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0];
       sx=tt.clientX; sy=tt.clientY; t0=Date.now(); axis=null; mode=null; dir=0; dyRaw=0;
+      const ed=edgesOf(root.closest(".page"));
+      startAtTop=ed.top; startAtBottom=ed.bottom;
     };
     const onMove=function(e){
-      if(axis==="x"||mode==="ignore") return;
+      // "x" = el swipe de pestañas: NO paramos el bubble, el `.viewport` tiene que verlo.
+      // "scroll" / "seg" = vertical nuestro: sí paramos, si no el arco del pulgar (sale de lado
+      // y luego baja) bloquea el eje como horizontal en el viewport y «cambia también de tabs».
+      if(axis==="x"||mode==="x") return;
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0], ddx=tt.clientX-sx, ddy=tt.clientY-sy;
       if(axis===null){
@@ -143,24 +161,19 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
         const eje=gestureAxis(ddx,ddy);
         if(!eje) return;
         axis=eje;
-        if(axis==="x"){ mode="ignore"; return; }
-        // ¿En qué extremo estamos? Se mira AQUÍ (al fijar el eje), como el pull-down del perfil,
-        // no en touchstart: así una lista que aún estaba asentando el scroll también cuenta.
-        const pg=root.closest(".page");
-        const atTop=!pg||pg.scrollTop<=2;
-        const atBottom=!!pg && (pg.scrollHeight-pg.scrollTop-pg.clientHeight)<=2;
-        if(ddy>0 && atTop) dir=1;
-        else if(ddy<0 && atBottom) dir=-1;
-        else { mode="ignore"; return; }
+        if(axis==="x"){ mode="x"; return; }
+        // Extremo AHORA + extremo al EMPEZAR + sentido correcto. Los tres a la vez.
+        const ed=edgesOf(root.closest(".page"));
+        if(ddy>0 && startAtTop && ed.top) dir=1;
+        else if(ddy<0 && startAtBottom && ed.bottom) dir=-1;
+        else { mode="scroll"; e.stopPropagation(); return; }
         mode="seg";
       }
+      if(mode==="scroll"){ e.stopPropagation(); return; }
       if(mode!=="seg") return;
-      // RECLAMADO como vertical: `stopPropagation` para que el listener horizontal de
-      // `.viewport` (11-app-main.js, mismo umbral 1.25×) NUNCA vea este touchmove — sin esto,
-      // los dos gestos deciden el eje por separado sobre el MISMO stream de toques y un tirón
-      // con algo de deriva lateral (normal con una mano) podía convencer a los dos a la vez:
-      // «al ir hacia abajo se vuelve loco y cambia también de tabs» (rechazado 3/8). Mismo
-      // idioma que `stopSwipe` en 11-app-main.js para los chips de Gastos.
+      // RECLAMADO como vertical de segmento: `stopPropagation` para que el listener horizontal
+      // de `.viewport` NUNCA vea este touchmove (rechazo 3/8 y otra vez 4/8: «cambia también
+      // de tabs»). Mismo idioma que `stopSwipe` en 11-app-main.js para los chips de Gastos.
       e.stopPropagation();
       // El dedo cambió de sentido a mitad: no es un tirón hacia el siguiente segmento.
       if((dir>0&&ddy<0)||(dir<0&&ddy>0)){ dyRaw=0; queue(0); return; }

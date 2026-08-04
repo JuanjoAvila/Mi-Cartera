@@ -11,7 +11,9 @@
  *  2. Que el detalle nuevo existe, está bajo `html[data-season]` (sin temática no pasa nada) y
  *     cada temática declara su propio icono.
  *  3. Que respeta «reducir animaciones» (el media query OS) igual que el resto de decoración.
- *  4. Que la tanda «temporada» está en el panel de revisión (RELEASE_NOTES.tandas).
+ *  4. Que la tanda «temporada» YA NO está en el panel (aprobada 4/8 → se BORRA del array
+ *     `tandas`, no se marca hecha — regla en feedback-tandas-desaparecen-al-subir). El código
+ *     del detalle sigue vivo; lo que no puede volver es la lluvia ni una tanda fantasma.
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -76,10 +78,18 @@ assert.match(
   "el media query de reducir animaciones debe apagar también el pop del icono de temporada"
 );
 
-/* ---- 4. La tanda «temporada» está en el panel de revisión ---- */
-const tandaMatch = comps.match(/\{id:"temporada",\s*t:"[^"]*",\s*items:\[([\s\S]*?)\]\}/);
-assert.ok(tandaMatch, "falta la tanda {id:\"temporada\",...} en RELEASE_NOTES.tandas (10-app-components.js)");
-const items = tandaMatch[1].split(/",\s*\n/).map((s) => s.trim()).filter(Boolean);
-assert.ok(items.length >= 2 && items.length <= 4, `la tanda "temporada" debe tener entre 2 y 4 puntos concretos (tiene ${items.length})`);
+/* ---- 4. Tanda «temporada» QUITADA del panel (aprobada 4/8) ----
+   Regla: aprobada → se borra del array, no se comenta como hecha. El comentario del histórico
+   puede mencionar el id; lo que no puede volver es un objeto vivo `{id:"temporada", items:[...]}`. */
+assert.doesNotMatch(
+  comps,
+  /\{id:"temporada"\s*,\s*t:/,
+  "la tanda temporada ya se aprobó: no puede seguir en RELEASE_NOTES.tandas (se BORRA, no se marca hecha)"
+);
+assert.match(
+  comps,
+  /temporada.*QUITADA|QUITADA.*temporada/i,
+  "debe quedar escrito POR QUÉ desapareció la tanda (aprobada), para la siguiente sesión"
+);
 
-console.log("ok: la lluvia de piezas ha desaparecido, el detalle por temática está incrustado y respeta reducir-animaciones, y la tanda \"temporada\" está en el panel");
+console.log("ok: la lluvia de piezas ha desaparecido, el detalle por temática está incrustado y respeta reducir-animaciones; tanda temporada fuera del panel (aprobada)");

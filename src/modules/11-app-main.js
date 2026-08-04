@@ -32,6 +32,26 @@ function App(){
   // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
   // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
   const lastScrollAt=useRef(0);
+  /* Ola nativa (`touch-action:pan-y` en `.page`) vs gestos de borde que necesitan `preventDefault`.
+     Con pan-y el navegador se queda el scroll vertical (y la ola al llegar al borde) — eso quita
+     el «muro invisible» del arco del pulgar. PERO si dejamos pan-y también en los bordes donde
+     NOSOTROS reclamamos el gesto, el `preventDefault` posterior se ignora y el tirón del perfil /
+     el cambio de segmento de Plan no arrancan. Por eso `.mc-touch-own` (= none) solo ahí:
+       · Inicio ARRIBA: perfil / Ajustes; él no quiere ola en ese borde.
+       · Plan en extremos: gesto de segmento (arriba→abajo / abajo→arriba).
+     En cualquier otro sitio (Gastos entero, Cartera, Inicio ya bajado, Plan a mitad) manda pan-y
+     y la ola sale a la primera, como en Ajustes. */
+  const syncPageTouchAction=function(pageEl, pageIdx){
+    if(!pageEl||!pageEl.classList) return;
+    const id=tabIds[pageIdx];
+    const y=pageEl.scrollTop||0;
+    const max=pageEl.scrollHeight-pageEl.clientHeight;
+    const atTop=y<=2;
+    const atBottom=(max-y)<=2; // sin scroll (max≈0) = también abajo, como el gesto de Plan
+    // Por id, no por índice: el orden de pestañas es configurable.
+    const own=(id==="inicio" && atTop) || (id==="plan" && (atTop||atBottom));
+    pageEl.classList.toggle("mc-touch-own", !!own);
+  };
   const onPageScroll=function(e){
     lastScrollAt.current=Date.now();
     // Mientras el dedo cambia de pestaña, el momentum del scroll vertical sigue disparando
@@ -40,6 +60,8 @@ function App(){
     // (rechazo 4.12.0.17). El perfil ya congelaba el scroll; el swipe de pestañas no.
     if(dragging.current) return;
     const y=e.currentTarget.scrollTop;
+    // touch-action de la página (ola vs gestos de borde): ver syncPageTouchAction.
+    syncPageTouchAction(e.currentTarget, tab);
     // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
     // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
     if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); return; }
@@ -1762,7 +1784,7 @@ function App(){
     if(i<0) return;
     goTab(i);
     const pg=trackRef.current&&trackRef.current.children&&trackRef.current.children[i];
-    if(pg) pg.scrollTop=0;
+    if(pg){ pg.scrollTop=0; syncPageTouchAction(pg, i); }
   };
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */
@@ -1950,6 +1972,24 @@ function App(){
       // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
       const eje=gestureAxis(ddx,ddy);
       if(!eje) return;
+      /* A MITAD DE LISTA el arco del pulgar (sale de lado y luego baja) gana `x` a los ~12 px
+         con gestureAxis — y entonces este listener hace preventDefault y MATA el scroll: eso es
+         el «muro» + «cambia de tabs» en Plan/Gastos (4/8). Con la página a mitad, exigir una
+         ventaja horizontal CLARA (~28 px) antes de reclamar el swipe de pestañas; si no, se deja
+         como vertical y manda el `touch-action:pan-y` del navegador. En los extremos se mantiene
+         el umbral normal (abrir Ajustes desde Resumen, etc.). */
+      if(eje==="x"){
+        const pages0=trackRef.current&&trackRef.current.children;
+        const pg0=pages0&&pages0[tab];
+        if(pg0){
+          const st0=pg0.scrollTop||0, max0=pg0.scrollHeight-pg0.clientHeight;
+          const mid0=st0>2 && max0-st0>2;
+          if(mid0 && Math.abs(ddx)-Math.abs(ddy)<28){
+            axis.current="y";
+            return;
+          }
+        }
+      }
       axis.current=eje;
       if(axis.current==="x"){
         /* AJUSTES SOLO DESDE RESUMEN (feedback 2026-07-27). El borde (`EDGE_OPEN`) en el resto
@@ -2502,6 +2542,14 @@ function App(){
   },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosForceAll]);
   // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
   useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
+  // Al cambiar de pestaña (o del orden), recalcular qué páginas necesitan `mc-touch-own`.
+  // Sin esto, Inicio se quedaba en pan-y tras volver desde Gastos scrolleado, o Plan perdía el
+  // gesto de segmento al aterrizar ya arriba del todo sin haber disparado onScroll.
+  useEffect(function(){
+    const pages=trackRef.current&&trackRef.current.children;
+    if(!pages) return;
+    for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
+  },[tab, tabIds.join("|")]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
