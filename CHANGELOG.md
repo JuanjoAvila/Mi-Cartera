@@ -5,10 +5,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [Sin publicar] — 2026-08-05 (noche 3)
 ### Ola nativa + barra usable
 
-1. **Host fixed** (como Ajustes) + `hostTab` en React + safe-top + rise sin matrix.
-2. **Flick abajo:** hide del botnav diferido a `scrollend` (sin mutar a mitad del fling).
-3. **Ola arriba:** candado anti-arco también en el tope + `botnav-ola-clear` solo ~450 ms
-   en el tirón/llegada (no el lab que la dejaba oculta y trababa el scroll).
+1. **Host fixed** + `hostTab` en React + safe-top + rise sin matrix.
+2. **Flick abajo:** hide del botnav diferido a `scrollend`.
+3. **Ola arriba:** candado anti-arco también en el tope.
+4. **Barra:** sin ocultarla (labs rotos). Con `scroll-host-on`, sin `backdrop-filter`/
+   `will-change` (capa que mataba el stretch) y fondo sólido — visible siempre.
 
 ## [Sin publicar] — 2026-08-05 (noche 2)
 ### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)

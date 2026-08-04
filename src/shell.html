@@ -521,13 +521,13 @@
      `.botnav-hidden` (no cambia el diseño, solo cuánto tarda en llegar); el escondido por scroll
      normal (bajar leyendo la lista) sigue con su calma de siempre — eso nunca fue el problema. */
   .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1),opacity .12s ease;}
-  /* Ola ARRIBA: apartar la barra del compositing ~0,45 s (opacity/visibility, SIN transform).
-     Más tiempo o dejarla así = app sin botnav (lab rechazado 5/8). Solo el gesto del tope. */
-  .botnav.botnav-ola-clear{
-    opacity:0 !important;visibility:hidden !important;pointer-events:none !important;
-    transition:none !important;transform:none !important;
+  /* Con pestaña en host fixed (ola nativa): la barra SIGUE visible, pero sin backdrop-filter
+     ni will-change — esa capa encima del stretch del WebView mataba la ola arriba y abajo
+     (labs 5/8). Fondo sólido para que no se vea raro sin el blur. */
+  .app-shell.scroll-host-on .botnav{
     backdrop-filter:none !important;-webkit-backdrop-filter:none !important;
     will-change:auto !important;
+    background:var(--bg-2);
   }
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
