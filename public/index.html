@@ -471,13 +471,11 @@
      retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
      estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
      durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
-  /* SIN `overscroll-behavior-y` (2026-08-01, tercer intento del rebote). Durante 4.13.0 llevaba
-     `none`, puesto a propósito para dejar sitio a un rebote elástico dibujado a mano — y ESE
-     rebote es justo lo que él rechazó tres veces seguidas por no parecerse a Ajustes/el perfil.
-     La razón: Ajustes y el perfil (`.settings-push`/`.settings-slide`, más abajo) NUNCA tuvieron
-     ese override, así que corren con el rebote NATIVO del navegador — el "efecto ola" que él
-     describe y que quiere en las cuatro pestañas también. Quitando el `none` de aquí, `.page`
-     pasa a comportarse EXACTAMENTE igual que esos dos sitios: mismo mecanismo, no una imitación. */
+  /* Ola = rebote NATIVO (como Ajustes/perfil). 2026-08-01 se quitó `overscroll-behavior-y:none`.
+     El 5/8 volvió `contain` + `contain:paint` con el pan-y… y en su Oppo la ola murió otra vez
+     (hot-patch: quitar paint + overscroll → ola al momento; Ajustes no tiene ninguno de los dos).
+     `contain:paint` recorta lo que pinta fuera de la caja — justo el estirón. Sin overscroll
+     forzado en `.page`: html/body ya llevan `none` y cortan el encadenado al documento. */
   /* `touch-action:pan-y` (2026-08-04, el «muro invisible»). Sin él, `.page` va en `auto` y el
      navegador bloquea la dirección del dedo con sus primeros píxeles: si el pulgar sale de lado
      —arco normal al agarrar el móvil— se queda el gesto como horizontal, y como aquí no hay nada
@@ -489,7 +487,7 @@
      EXCEPCIÓN `.page.mc-touch-own` (= `touch-action:none`): Inicio ARRIBA (perfil/Ajustes) y,
      solo DURANTE el gesto, Plan cuando el tirón nace arriba (cambio de segmento). Plan en reposo
      queda en pan-y — si no, no se puede bajar a ver el contenido. */
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior-y:contain;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style;}
   .page.mc-touch-own{touch-action:none;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
@@ -13569,6 +13567,7 @@ var RELEASE_NOTES=[
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
       "Gastos y Cartera: ola ARRIBA y ABAJO a la primera (igual que Ajustes), sin muro ni segundo tirón.",
       "Resumen y Plan: ola SOLO ABAJO. Arriba de Resumen abre el perfil; arriba de Plan cambia de sección (Recibos→Deudas→Metas).",
+      "A mitad o abajo de una lista, deslizar de LADO sigue cambiando de pestaña; tirar hacia abajo/arriba scrollea o hace la ola.",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
       "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal, también a velocidad alta.",
@@ -17022,7 +17021,13 @@ function App(){
              la lista** hasta el siguiente gesto que terminara bien. Medido en su móvil por CDP el
              2026-07-27: gesto cortado → dos deslizadas reales sin mover un píxel (scroll 473 →
              473 → 473) → un gesto limpio → vuelve a ir (473 → 820). Eso es el «tirón». */
-          const conMomentum=(Date.now()-lastScrollAt.current)<200;
+          /* Abajo del todo NUNCA overflow:hidden: es el candado que deja la ola en nada aunque el
+             eje ya sea vertical en el siguiente tirón (medido 5/8 + hot-patch). El translateX del
+             track con momentum se aguanta con preventDefault del eje x; el candado caro solo
+             aporta cuando hay scroll de verdad a mitad de lista. */
+          const maxY=pageEl.scrollHeight-pageEl.clientHeight;
+          const atBottom=(maxY>0 && (maxY-(pageEl.scrollTop||0))<=2);
+          const conMomentum=!atBottom && (Date.now()-lastScrollAt.current)<200;
           if(conMomentum){
             pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
             pageEl.style.overflow="hidden";
@@ -18052,11 +18057,12 @@ function App(){
       // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
       const eje=gestureAxis(ddx,ddy);
       if(!eje) return;
-      /* A MITAD o ABAJO DEL TODO el arco del pulgar gana `x` muy pronto y este listener hace
-         preventDefault + freezeShell → scroll clavado / ola que no sale (medido 5/8 en su Oppo:
-         STUCK a mitad con pan-y; abajo del todo varios tirones con st=max sin ola). Solo
-         reclamamos tabs si el gesto es CASI solo horizontal. Arriba del todo se deja el umbral
-         normal (Inicio → Ajustes). */
+      /* A MITAD o ABAJO: el arco del pulgar gana `x` pronto → preventDefault + freezeShell matan
+         scroll/ola (medido 5/8). PERO fijar `axis=y` para «proteger» bloqueaba tabs el RESTO del
+         gesto (feedback .39: ola ok con CSS, pero «no puedo deslizar entre pantallas a mitad/
+         final»). Solución: si `x` aún no está claro, NO fijar eje — el navegador scrollea con
+         pan-y; si el dedo sigue y el gesto se vuelve casi solo horizontal, el siguiente move sí
+         reclama tabs. Arriba del todo: umbral normal (Inicio → Ajustes). */
       if(eje==="x"){
         const pages0=trackRef.current&&trackRef.current.children;
         const pg0=pages0&&pages0[tab];
@@ -18064,8 +18070,7 @@ function App(){
           const st0=pg0.scrollTop||0, max0=pg0.scrollHeight-pg0.clientHeight;
           const mid0=st0>2 && max0-st0>2;
           const atBottom=max0>0 && (max0-st0)<=2;
-          if((mid0||atBottom) && !(Math.abs(ddy)<12 && Math.abs(ddx)>48)){
-            axis.current="y";
+          if((mid0||atBottom) && !(Math.abs(ddy)<16 && Math.abs(ddx)>36)){
             return;
           }
         }

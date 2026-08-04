@@ -1442,6 +1442,7 @@ var RELEASE_NOTES=[
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
       "Gastos y Cartera: ola ARRIBA y ABAJO a la primera (igual que Ajustes), sin muro ni segundo tirón.",
       "Resumen y Plan: ola SOLO ABAJO. Arriba de Resumen abre el perfil; arriba de Plan cambia de sección (Recibos→Deudas→Metas).",
+      "A mitad o abajo de una lista, deslizar de LADO sigue cambiando de pestaña; tirar hacia abajo/arriba scrollea o hace la ola.",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
       "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal, también a velocidad alta.",

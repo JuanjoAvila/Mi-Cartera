@@ -2,13 +2,29 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar] — 2026-08-05
+## [Sin publicar] — 2026-08-05 (noche)
+### Ola de vuelta + tabs a mitad/abajo sin matar el scroll
+
+En .39 (Oppo): sin ola en ninguna tab; tabs a mitad/abajo bloqueados del todo; al quitar
+`contain:paint` + `overscroll-behavior` en caliente la ola volvía, pero el stopper y el bloqueo
+de tabs seguían. Tres piezas:
+
+1. **CSS:** `.page` sin `contain:paint` (recortaba el estirón nativo) y sin
+   `overscroll-behavior-y` forzado — igual que Ajustes. Se deja `contain:layout style` y
+   `touch-action:pan-y`.
+2. **Eje a mitad/abajo:** el candado anterior fijaba `axis=y` ante un `x` flojo → ese gesto ya
+   no podía acabar en cambio de tab. Ahora, si el horizontal no está claro (`|dy|≥16` o
+   `|dx|≤36`), **no se fija eje**: scrollea el navegador; si el dedo sigue y se vuelve casi solo
+   horizontal, el siguiente move sí reclama tabs.
+3. **`freezeShell`:** abajo del todo nunca pone `overflow:hidden` (mataba la ola aunque el
+   siguiente tirón fuera vertical).
+
 ### Stopper medido en su Oppo: preventDefault del swipe a mitad de lista
 
 Con el móvil enchufado: `pan-y` ya estaba, y aun así STUCK (scrollTop fijo mientras el dedo
 se movía, p.ej. st=53). Causa: a mitad de lista el arco del pulgar seguía reclamando eje `x`
 (umbral 28 px insuficiente) → `preventDefault` + `freezeShell` mataban el scroll. A mitad solo
-se acepta swipe de tabs si el gesto es casi solo horizontal (`|dy|<12` y `|dx|>48`).
+se acepta swipe de tabs si el gesto es casi solo horizontal (ver candado revisado arriba).
 
 ### Plan: el `touch-action:none` arriba bloqueaba BAJAR, no solo el cambio de sección
 

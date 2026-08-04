@@ -937,7 +937,13 @@ function App(){
              la lista** hasta el siguiente gesto que terminara bien. Medido en su móvil por CDP el
              2026-07-27: gesto cortado → dos deslizadas reales sin mover un píxel (scroll 473 →
              473 → 473) → un gesto limpio → vuelve a ir (473 → 820). Eso es el «tirón». */
-          const conMomentum=(Date.now()-lastScrollAt.current)<200;
+          /* Abajo del todo NUNCA overflow:hidden: es el candado que deja la ola en nada aunque el
+             eje ya sea vertical en el siguiente tirón (medido 5/8 + hot-patch). El translateX del
+             track con momentum se aguanta con preventDefault del eje x; el candado caro solo
+             aporta cuando hay scroll de verdad a mitad de lista. */
+          const maxY=pageEl.scrollHeight-pageEl.clientHeight;
+          const atBottom=(maxY>0 && (maxY-(pageEl.scrollTop||0))<=2);
+          const conMomentum=!atBottom && (Date.now()-lastScrollAt.current)<200;
           if(conMomentum){
             pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
             pageEl.style.overflow="hidden";
@@ -1967,11 +1973,12 @@ function App(){
       // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
       const eje=gestureAxis(ddx,ddy);
       if(!eje) return;
-      /* A MITAD o ABAJO DEL TODO el arco del pulgar gana `x` muy pronto y este listener hace
-         preventDefault + freezeShell → scroll clavado / ola que no sale (medido 5/8 en su Oppo:
-         STUCK a mitad con pan-y; abajo del todo varios tirones con st=max sin ola). Solo
-         reclamamos tabs si el gesto es CASI solo horizontal. Arriba del todo se deja el umbral
-         normal (Inicio → Ajustes). */
+      /* A MITAD o ABAJO: el arco del pulgar gana `x` pronto → preventDefault + freezeShell matan
+         scroll/ola (medido 5/8). PERO fijar `axis=y` para «proteger» bloqueaba tabs el RESTO del
+         gesto (feedback .39: ola ok con CSS, pero «no puedo deslizar entre pantallas a mitad/
+         final»). Solución: si `x` aún no está claro, NO fijar eje — el navegador scrollea con
+         pan-y; si el dedo sigue y el gesto se vuelve casi solo horizontal, el siguiente move sí
+         reclama tabs. Arriba del todo: umbral normal (Inicio → Ajustes). */
       if(eje==="x"){
         const pages0=trackRef.current&&trackRef.current.children;
         const pg0=pages0&&pages0[tab];
@@ -1979,8 +1986,7 @@ function App(){
           const st0=pg0.scrollTop||0, max0=pg0.scrollHeight-pg0.clientHeight;
           const mid0=st0>2 && max0-st0>2;
           const atBottom=max0>0 && (max0-st0)<=2;
-          if((mid0||atBottom) && !(Math.abs(ddy)<12 && Math.abs(ddx)>48)){
-            axis.current="y";
+          if((mid0||atBottom) && !(Math.abs(ddy)<16 && Math.abs(ddx)>36)){
             return;
           }
         }

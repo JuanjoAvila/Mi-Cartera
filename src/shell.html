@@ -471,13 +471,11 @@
      retirado el 2026-07-27: los segmentos ocultos de Plan lo llevan ya SIEMPRE, desde su propio
      estilo en 14-v4-screens.js, donde está la tabla con los tres candidatos medidos. Ponerlo solo
      durante el gesto no quitaba el peaje, lo aplazaba al `touchend` — que es donde él lo notaba. */
-  /* SIN `overscroll-behavior-y` (2026-08-01, tercer intento del rebote). Durante 4.13.0 llevaba
-     `none`, puesto a propósito para dejar sitio a un rebote elástico dibujado a mano — y ESE
-     rebote es justo lo que él rechazó tres veces seguidas por no parecerse a Ajustes/el perfil.
-     La razón: Ajustes y el perfil (`.settings-push`/`.settings-slide`, más abajo) NUNCA tuvieron
-     ese override, así que corren con el rebote NATIVO del navegador — el "efecto ola" que él
-     describe y que quiere en las cuatro pestañas también. Quitando el `none` de aquí, `.page`
-     pasa a comportarse EXACTAMENTE igual que esos dos sitios: mismo mecanismo, no una imitación. */
+  /* Ola = rebote NATIVO (como Ajustes/perfil). 2026-08-01 se quitó `overscroll-behavior-y:none`.
+     El 5/8 volvió `contain` + `contain:paint` con el pan-y… y en su Oppo la ola murió otra vez
+     (hot-patch: quitar paint + overscroll → ola al momento; Ajustes no tiene ninguno de los dos).
+     `contain:paint` recorta lo que pinta fuera de la caja — justo el estirón. Sin overscroll
+     forzado en `.page`: html/body ya llevan `none` y cortan el encadenado al documento. */
   /* `touch-action:pan-y` (2026-08-04, el «muro invisible»). Sin él, `.page` va en `auto` y el
      navegador bloquea la dirección del dedo con sus primeros píxeles: si el pulgar sale de lado
      —arco normal al agarrar el móvil— se queda el gesto como horizontal, y como aquí no hay nada
@@ -489,7 +487,7 @@
      EXCEPCIÓN `.page.mc-touch-own` (= `touch-action:none`): Inicio ARRIBA (perfil/Ajustes) y,
      solo DURANTE el gesto, Plan cuando el tirón nace arriba (cambio de segmento). Plan en reposo
      queda en pan-y — si no, no se puede bajar a ver el contenido. */
-  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior-y:contain;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
+  .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style;}
   .page.mc-touch-own{touch-action:none;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
