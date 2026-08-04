@@ -32,9 +32,25 @@ const segmentoActivo = (page) =>
     return el ? el.getAttribute("data-seg") : null;
   });
 
+/** Marcar la pestaña como activa NO significa haber llegado: el carrusel sigue deslizándose ~420 ms
+ *  después. Lanzar el gesto ahí dentro hacía que fallara UNA prueba distinta en cada pasada (1 de 6,
+ *  siempre la que pillaba el peor momento) — un dedo de verdad no arrastra a mitad de la transición.
+ *  Se espera a que el track esté QUIETO, no a un número de milisegundos. */
 async function irAPlan(page) {
   await page.locator('.botnav-tab[data-tour="plan"]').click();
   await expect.poll(() => pestanaActiva(page), { timeout: 10_000 }).toBe("plan");
+  await page.waitForFunction(
+    () => {
+      const tr = document.querySelector(".track");
+      if (!tr) return false;
+      const ahora = getComputedStyle(tr).transform;
+      const quieto = window.__trQuieto;
+      window.__trQuieto = { v: ahora, n: quieto && quieto.v === ahora ? quieto.n + 1 : 0 };
+      return window.__trQuieto.n >= 3;
+    },
+    null,
+    { timeout: 10_000, polling: "raf" },
+  );
 }
 
 /** Arrastre vertical real por CDP (mismo patrón que `swipe-pestanas.spec.mjs`/`profile-anim.spec.mjs`):
@@ -167,6 +183,44 @@ test("un tirón hacia abajo con algo de deriva lateral cambia de sección, no de
   await expect.poll(() => segmentoActivo(page), { timeout: 5_000 }).toBe("deudas");
   // Lo que falló de verdad: la pestaña activa NUNCA debería moverse de "plan" con este gesto.
   expect(await pestanaActiva(page), "el tirón vertical también cambió de pestaña").toBe("plan");
+});
+
+/** ARCO DE PULGAR: el dedo sale hacia el LADO y baja después, en vez de llevar una deriva
+ *  constante como `deslizarDiag`. Es como se mueve una mano que agarra el móvil (el pulgar pivota
+ *  sobre su base) y es el caso que se escapó dos veces: con deriva constante, |ddy| ya le saca
+ *  ventaja a |ddx| desde el primer píxel y el gesto se clasifica bien de casualidad. */
+async function arcoPulgar(page, cdp, { x0, y0, dx, dy, pasos = 14 } = {}) {
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: x0, y: y0 }] });
+  for (let i = 1; i <= pasos; i++) {
+    const u = i / pasos;
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [{ x: x0 + dx * Math.sqrt(u), y: y0 + dy * u * u }],
+    });
+    await new Promise((r) => setTimeout(r, 16));
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+/* RECHAZO DEL 4/8 («al ir hacia abajo se vuelve loco y cambia también de tabs — SIGUE PASANDO
+ * IGUAL»). El `stopPropagation` del arreglo anterior no tocó la causa: los dos gestos decidían el
+ * eje POR PROPORCIÓN (|ddx| > |ddy|·1,25) en cuanto el dedo pasaba de 10 px, y en un arco de pulgar
+ * a los 10 px se lleva recorrido 11 px de lado y 1 hacia abajo — o sea, HORIZONTAL para siempre,
+ * por muy vertical que acabe siendo el tirón. Medido el 4/8: una bajada de 190 px con 40 px de
+ * deriva no cambiaba de sección (se la quedaba el swipe de pestañas). Ahora el eje lo decide
+ * `gestureAxis` (00-core.js), el MISMO para los dos gestos, y por ventaja en píxeles. */
+test("un arco de pulgar hacia abajo cambia de sección, no de pestaña", async ({ page }) => {
+  await seedLoggedInDashboard(page, { debts, goals });
+  await page.goto("/");
+  await appLista(page);
+  await irAPlan(page);
+  const cdp = await page.context().newCDPSession(page);
+
+  expect(await segmentoActivo(page)).toBe("recibos");
+  await arcoPulgar(page, cdp, { x0: 196, y0: 260, dx: 40, dy: 190 });
+
+  await expect.poll(() => segmentoActivo(page), { timeout: 5_000 }).toBe("deudas");
+  expect(await pestanaActiva(page), "el arco de pulgar también cambió de pestaña").toBe("plan");
 });
 
 // (c) El gesto nuevo no rompe el swipe horizontal entre las 4 pestañas principales.

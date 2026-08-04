@@ -137,8 +137,12 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0], ddx=tt.clientX-sx, ddy=tt.clientY-sy;
       if(axis===null){
-        if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
-        axis = Math.abs(ddx)>Math.abs(ddy)*1.25 ? "x" : "y";
+        // `gestureAxis` (00-core.js) es el MISMO que usa el swipe de pestañas: los dos gestos
+        // escuchan el mismo dedo, así que tienen que decidir el eje con la misma regla o se
+        // contradicen (ver el porqué largo allí).
+        const eje=gestureAxis(ddx,ddy);
+        if(!eje) return;
+        axis=eje;
         if(axis==="x"){ mode="ignore"; return; }
         // ¿En qué extremo estamos? Se mira AQUÍ (al fijar el eje), como el pull-down del perfil,
         // no en touchstart: así una lista que aún estaba asentando el scroll también cuenta.

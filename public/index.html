@@ -464,6 +464,17 @@
      ese override, así que corren con el rebote NATIVO del navegador — el "efecto ola" que él
      describe y que quiere en las cuatro pestañas también. Quitando el `none` de aquí, `.page`
      pasa a comportarse EXACTAMENTE igual que esos dos sitios: mismo mecanismo, no una imitación. */
+  /* PENDIENTE DE PROBAR EN SU MÓVIL: `touch-action:pan-y` aquí. Sin él, `.page` va en `auto` y es
+     el NAVEGADOR quien bloquea la dirección del dedo con sus primeros píxeles: si el pulgar sale
+     de lado —el arco normal de una mano que agarra el móvil— se queda el gesto como horizontal, y
+     como aquí no hay nada que desplazar en horizontal, la lista no scrollea en todo el tirón.
+     Medido el 4/8 bajando 190 px con 40 px de deriva: el scrollTop no se movía ni un píxel y
+     NADIE de nuestro código cancelaba el evento (candidato a «hay un stopper... como un muro
+     invisible»). No se ha puesto porque en el entorno de pruebas no cambia NADA —los toques
+     sintéticos de CDP no pasan por el mismo camino que un dedo— y sí puede romper los dos gestos
+     que dependen de cancelar el scroll vertical (tirón del perfil y segmento de Plan): una vez el
+     navegador se queda un pan vertical, el `preventDefault` posterior se ignora. Hay que probarlo
+     en su aparato antes de dejarlo puesto. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
@@ -1682,6 +1693,32 @@ function mcOnGastosActive(cb){
    Idempotente a propósito: lo llaman varios caminos (sin nube, sin sesión, candado, alta, y el
    final del primer pull de la nube) y ninguno sabe de los demás. */
 function mcBootReady(){ try{ window.__mcBootReady=true; }catch(e){} }
+
+/* EJE DE UN GESTO: "x", "y" o null (todavía no está claro).
+   Lo comparten el swipe horizontal entre pestañas (11-app-main.js) y el vertical de Plan
+   (14-v4-screens.js). Vive AQUÍ y no duplicado en cada uno porque tenerlo por duplicado es
+   exactamente lo que se rompió: dos gestos decidiendo por su cuenta sobre el mismo dedo.
+
+   Antes se decidía por proporción (|ddx| > |ddy|·1,25) en cuanto el dedo pasaba de 10 px. Pero el
+   pulgar de una mano que agarra el móvil sale primero de lado y baja después: a los 10 px, un
+   tirón hacia abajo lleva 4 px de lado y 1 hacia abajo, así que se declaraba HORIZONTAL para
+   siempre. Medido el 4/8 a mitad de una lista de Deudas, bajando 190 px: con 80 px de deriva la
+   app se iba a la pestaña de Gastos («al ir hacia abajo se vuelve loco y cambia también de tabs»)
+   y con 40-60 px el scroll se quedaba muerto sin más («hay un stopper... como un muro invisible»).
+
+   Ahora un eje tiene que sacarle VENTAJA CLARA al otro en píxeles, no en proporción. Un desliz
+   horizontal de verdad la saca a los ~12 px —igual de rápido que antes—, y una bajada con deriva
+   ya no gana por haber salido de lado. Si el dedo va en diagonal exacta no gana nadie y se queda
+   el scroll del navegador, que es lo que el usuario espera. */
+const GEST_LEAD=12;   // px de ventaja de un eje sobre el otro para reclamarlo
+const GEST_MAX=64;    // sin ventaja clara a esta distancia, decide el mayor (no dejar el gesto colgado)
+function gestureAxis(ddx,ddy){
+  const ax=Math.abs(ddx), ay=Math.abs(ddy);
+  if(ax-ay>=GEST_LEAD) return "x";
+  if(ay-ax>=GEST_LEAD) return "y";
+  if(Math.max(ax,ay)>=GEST_MAX) return ax>ay?"x":"y";
+  return null;
+}
 
 var _mcSentryReady=false;
 var _mcSentryQueue=[];
@@ -15450,8 +15487,12 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
       if(!(e.touches&&e.touches[0])) return;
       const tt=e.touches[0], ddx=tt.clientX-sx, ddy=tt.clientY-sy;
       if(axis===null){
-        if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
-        axis = Math.abs(ddx)>Math.abs(ddy)*1.25 ? "x" : "y";
+        // `gestureAxis` (00-core.js) es el MISMO que usa el swipe de pestañas: los dos gestos
+        // escuchan el mismo dedo, así que tienen que decidir el eje con la misma regla o se
+        // contradicen (ver el porqué largo allí).
+        const eje=gestureAxis(ddx,ddy);
+        if(!eje) return;
+        axis=eje;
         if(axis==="x"){ mode="ignore"; return; }
         // ¿En qué extremo estamos? Se mira AQUÍ (al fijar el eje), como el pull-down del perfil,
         // no en touchstart: así una lista que aún estaba asentando el scroll también cuenta.
@@ -17983,8 +18024,12 @@ function App(){
       if((!pageEl||pageEl.scrollTop<=2) && e.cancelable) e.preventDefault();
     }
     if(axis.current===null){
-      if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
-      axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
+      // Mismo criterio que el gesto vertical de Plan, y a propósito el MISMO código
+      // (`gestureAxis` en 00-core.js): que cada uno decidiera el eje por su cuenta sobre el mismo
+      // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
+      const eje=gestureAxis(ddx,ddy);
+      if(!eje) return;
+      axis.current=eje;
       if(axis.current==="x"){
         /* AJUSTES SOLO DESDE RESUMEN (feedback 2026-07-27). El borde (`EDGE_OPEN`) en el resto
            de pestañas pillaba gestos normales y era un coñazo. Y el candado de 450 ms tras

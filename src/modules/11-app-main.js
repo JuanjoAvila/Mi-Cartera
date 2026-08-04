@@ -1945,8 +1945,12 @@ function App(){
       if((!pageEl||pageEl.scrollTop<=2) && e.cancelable) e.preventDefault();
     }
     if(axis.current===null){
-      if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
-      axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
+      // Mismo criterio que el gesto vertical de Plan, y a propósito el MISMO código
+      // (`gestureAxis` en 00-core.js): que cada uno decidiera el eje por su cuenta sobre el mismo
+      // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
+      const eje=gestureAxis(ddx,ddy);
+      if(!eje) return;
+      axis.current=eje;
       if(axis.current==="x"){
         /* AJUSTES SOLO DESDE RESUMEN (feedback 2026-07-27). El borde (`EDGE_OPEN`) en el resto
            de pestañas pillaba gestos normales y era un coñazo. Y el candado de 450 ms tras

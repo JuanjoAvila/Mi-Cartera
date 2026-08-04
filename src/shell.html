@@ -464,6 +464,17 @@
      ese override, así que corren con el rebote NATIVO del navegador — el "efecto ola" que él
      describe y que quiere en las cuatro pestañas también. Quitando el `none` de aquí, `.page`
      pasa a comportarse EXACTAMENTE igual que esos dos sitios: mismo mecanismo, no una imitación. */
+  /* PENDIENTE DE PROBAR EN SU MÓVIL: `touch-action:pan-y` aquí. Sin él, `.page` va en `auto` y es
+     el NAVEGADOR quien bloquea la dirección del dedo con sus primeros píxeles: si el pulgar sale
+     de lado —el arco normal de una mano que agarra el móvil— se queda el gesto como horizontal, y
+     como aquí no hay nada que desplazar en horizontal, la lista no scrollea en todo el tirón.
+     Medido el 4/8 bajando 190 px con 40 px de deriva: el scrollTop no se movía ni un píxel y
+     NADIE de nuestro código cancelaba el evento (candidato a «hay un stopper... como un muro
+     invisible»). No se ha puesto porque en el entorno de pruebas no cambia NADA —los toques
+     sintéticos de CDP no pasan por el mismo camino que un dedo— y sí puede romper los dos gestos
+     que dependen de cancelar el scroll vertical (tirón del perfil y segmento de Plan): una vez el
+     navegador se queda un pan vertical, el `preventDefault` posterior se ignora. Hay que probarlo
+     en su aparato antes de dejarlo puesto. */
   .page{flex:0 0 100%;min-width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 18px calc(108px + var(--safe-bottom));content-visibility:auto;contain-intrinsic-size:0 520px;contain:layout style paint;}
   .page.page-live{content-visibility:visible;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}

@@ -55,6 +55,32 @@ function mcOnGastosActive(cb){
    final del primer pull de la nube) y ninguno sabe de los demás. */
 function mcBootReady(){ try{ window.__mcBootReady=true; }catch(e){} }
 
+/* EJE DE UN GESTO: "x", "y" o null (todavía no está claro).
+   Lo comparten el swipe horizontal entre pestañas (11-app-main.js) y el vertical de Plan
+   (14-v4-screens.js). Vive AQUÍ y no duplicado en cada uno porque tenerlo por duplicado es
+   exactamente lo que se rompió: dos gestos decidiendo por su cuenta sobre el mismo dedo.
+
+   Antes se decidía por proporción (|ddx| > |ddy|·1,25) en cuanto el dedo pasaba de 10 px. Pero el
+   pulgar de una mano que agarra el móvil sale primero de lado y baja después: a los 10 px, un
+   tirón hacia abajo lleva 4 px de lado y 1 hacia abajo, así que se declaraba HORIZONTAL para
+   siempre. Medido el 4/8 a mitad de una lista de Deudas, bajando 190 px: con 80 px de deriva la
+   app se iba a la pestaña de Gastos («al ir hacia abajo se vuelve loco y cambia también de tabs»)
+   y con 40-60 px el scroll se quedaba muerto sin más («hay un stopper... como un muro invisible»).
+
+   Ahora un eje tiene que sacarle VENTAJA CLARA al otro en píxeles, no en proporción. Un desliz
+   horizontal de verdad la saca a los ~12 px —igual de rápido que antes—, y una bajada con deriva
+   ya no gana por haber salido de lado. Si el dedo va en diagonal exacta no gana nadie y se queda
+   el scroll del navegador, que es lo que el usuario espera. */
+const GEST_LEAD=12;   // px de ventaja de un eje sobre el otro para reclamarlo
+const GEST_MAX=64;    // sin ventaja clara a esta distancia, decide el mayor (no dejar el gesto colgado)
+function gestureAxis(ddx,ddy){
+  const ax=Math.abs(ddx), ay=Math.abs(ddy);
+  if(ax-ay>=GEST_LEAD) return "x";
+  if(ay-ax>=GEST_LEAD) return "y";
+  if(Math.max(ax,ay)>=GEST_MAX) return ax>ay?"x":"y";
+  return null;
+}
+
 var _mcSentryReady=false;
 var _mcSentryQueue=[];
 function mcInitSentry(){
