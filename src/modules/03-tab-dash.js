@@ -138,7 +138,7 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
 
     React.createElement("div",{className:"v4-hero rise","data-tour":"hero",style:{animationDelay:".05s"}},
       React.createElement("div",{className:"v4-micro"}, t(simple?"v4_money_total":"d_networth")),
-      React.createElement("div",{className:"v4-hero-amt num"},
+      React.createElement("div",{className:"v4-hero-amt num","data-tour":"hero-amt"},
         p.sign+p.ent, React.createElement("span",{style:{fontSize:28,color:"var(--muted)"}},","+(p.dec||"00")+" "+p.sym)),
       React.createElement("div",{style:{marginTop:12}},
         React.createElement("span",{className:"v4-pill"},

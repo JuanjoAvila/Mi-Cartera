@@ -15,8 +15,13 @@ distintas, el mismo «sale descuadrado».
    invade el foco (hueco debajo, o encima si no cabe). Se quitó el `sheetup` del tip: partía de
    `translateY(100%)` y un instante cruzaba el foco aunque el `top` final estuviera bien.
 2. **Los pasos de gesto apuntan a la zona del gesto**, no a un botón vecino: franja izquierda
-   (abrir Ajustes) y franja superior (tirón al perfil). El e2e comprueba geometría de esas
-   franjas y que tip y spot no se solapen.
+   (abrir Ajustes) y cabecera de Inicio (tirón al perfil — antes era y=0 y en el móvil caía en
+   la barra de estado, «en el vacío»).
+3. **El primer paso rodea SOLO la cifra** (`.v4-hero-amt` en `inline-block`): con 1.000 € el
+   rectángulo es chico; con 192.148 €, más ancho. El + del centro va con foco redondo (antes un
+   cuadrado alrededor del círculo).
+
+El e2e comprueba geometría de esas franjas y que tip y spot no se solapen.
 
 ## [Sin publicar] — 2026-08-01 (segunda vuelta)
 ### El rebote de las pestañas era el navegador todo el tiempo, y una tanda subida se queda del todo fuera de beta

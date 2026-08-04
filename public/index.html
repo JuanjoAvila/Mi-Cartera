@@ -637,7 +637,9 @@
   .v4-inicio-date{font-size:14px;color:var(--muted-2);font-weight:600;}
   .v4-inicio-hi{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:560;letter-spacing:-.2px;margin-top:2px;}
   .v4-hero{text-align:center;padding:22px 0 8px;}
-  .v4-hero-amt{font-family:'Fraunces',Georgia,serif;font-size:56px;font-weight:550;line-height:1.05;letter-spacing:-1.5px;margin-top:8px;font-variant-numeric:tabular-nums;}
+  /* inline-block: el tour (y cualquiera que mida la caja) ve el ancho REAL de la cifra, no
+     todo el ancho de la pantalla — con 999 € es chico; con 192.148,45 €, más ancho. */
+  .v4-hero-amt{display:inline-block;font-family:'Fraunces',Georgia,serif;font-size:56px;font-weight:550;line-height:1.05;letter-spacing:-1.5px;margin-top:8px;font-variant-numeric:tabular-nums;}
   .v4-budget{display:flex;gap:16px;align-items:center;}
   .v4-budget-txt{flex:1;min-width:0;}
   .v4-budget-txt .st{font-family:'Fraunces',Georgia,serif;font-size:21px;font-weight:600;color:var(--mint);line-height:1.15;}
@@ -5684,29 +5686,42 @@ function Tour({onDone, goTab, tabIds}){
     }
     return best||null;
   };
-  // Franjas sintéticas para gestos sin «sitio» en el DOM (borde / tirón). Antes se apuntaba a
-  // la pestaña Inicio o al avatar y el texto hablaba de otra cosa — rechazo con foto 4/8.
+  // Franjas / zonas de gesto. El tirón NO puede ir a y=0: en el móvil eso es la barra de
+  // estado / notch y el recorte sale «en el vacío» (foto 4/8). Se usa la cabecera de Inicio,
+  // que es justo de donde tira el dedo.
   const zoneLeft=function(){
     const H=window.innerHeight||700;
-    return {x:0, y:Math.round(H*0.14), w:40, h:Math.round(H*0.52)};
+    let top=0;
+    try{ top=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-top"))||0; }catch(_){}
+    const y=Math.max(top+8, Math.round(H*0.12));
+    return {x:0, y:y, w:36, h:Math.round(H*0.48)};
   };
-  const zoneTop=function(){
+  const zonePull=function(){
+    const head=document.querySelector(".page .v4-inicio-head")||document.querySelector(".v4-inicio-head");
+    if(head){
+      const r=head.getBoundingClientRect();
+      if(r.width>8&&r.height>8) return {x:r.left,y:r.top,w:r.width,h:r.height};
+    }
     const W=window.innerWidth||400;
-    return {x:Math.round(W*0.12), y:0, w:Math.round(W*0.76), h:52};
+    let top=0;
+    try{ top=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-top"))||0; }catch(_){}
+    return {x:12, y:top+8, w:W-24, h:56};
   };
   const steps=[
-    {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero, [data-tour='hero']"); }},
-    // Gestos "cómo moverte" (petición 2026-08-03). El foco tiene que SER la zona del gesto, no
-    // un botón vecino: si no, «sale descuadrado» aunque el recorte esté perfectamente medido.
+    // Solo la cifra (`.v4-hero-amt`): inline-block → el rectángulo crece/encoge con el dinero
+    // (petición 4/8 — el hero entero con gráfico era un bloque enorme que no aportaba).
+    {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero-amt, [data-tour='hero-amt']"); }},
+    // Gestos: el foco es la zona del gesto, no un botón vecino.
     {k:"tour_settings", tab:"dash", zone:zoneLeft},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
-    {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
+    // El + es redondo: sin `round` el recorte era un cuadrado alrededor del círculo (descuadrado).
+    {k:"tour_3", tab:null, round:true, sel:function(){ return document.querySelector(".botnav-fab"); }},
     {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
-    {k:"tour_planswipe", tab:"plan", sel:function(){ return document.querySelector(".v4-seg"); }},
+    {k:"tour_planswipe", tab:"plan", sel:function(){ return pickVisible(".page .v4-seg, .v4-seg"); }},
     {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
-    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
-    {k:"tour_pulldown", tab:"dash", zone:zoneTop},
-    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
+    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".page .v4-avatar, [data-tour='avatar']"); }},
+    {k:"tour_pulldown", tab:"dash", zone:zonePull},
+    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row"); }},
   ];
   const [i,setI]=useState(0);
   // `shown` es lo que se PINTA (qué paso + dónde), y texto y recorte se pisan SIEMPRE juntos:
@@ -5724,11 +5739,13 @@ function Tour({onDone, goTab, tabIds}){
     const H=window.innerHeight||700;
     const p=pad(r.round), gap=14, need=Math.max(120, tipH||156);
     const spotTop=r.y-p, spotBot=r.y+r.h+p;
+    // Foco en la barra inferior: la tarjeta arriba, lejos del recorte. Pegarla justo encima
+    // del icono se leía como «descuadrada» (la tarjeta tapaba mitad de pantalla junto al foco).
+    if(spotTop>H*0.62) return {top:Math.max(12, Math.round(H*0.10)), bottom:""};
     const belowTop=spotBot+gap;
     if(belowTop+need<=H-10) return {top:belowTop, bottom:""};
     const aboveBottom=H-spotTop+gap;
     if(spotTop-gap-need>=10) return {top:"", bottom:aboveBottom};
-    // No cabe entero a ningún lado: el lado con más hueco, sin invadir el foco.
     if((H-spotBot)>=spotTop) return {top:Math.min(belowTop, H-need-10), bottom:""};
     return {top:"", bottom:Math.min(Math.max(10, aboveBottom), H-need-10)};
   };
@@ -6391,7 +6408,7 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
 
     React.createElement("div",{className:"v4-hero rise","data-tour":"hero",style:{animationDelay:".05s"}},
       React.createElement("div",{className:"v4-micro"}, t(simple?"v4_money_total":"d_networth")),
-      React.createElement("div",{className:"v4-hero-amt num"},
+      React.createElement("div",{className:"v4-hero-amt num","data-tour":"hero-amt"},
         p.sign+p.ent, React.createElement("span",{style:{fontSize:28,color:"var(--muted)"}},","+(p.dec||"00")+" "+p.sym)),
       React.createElement("div",{style:{marginTop:12}},
         React.createElement("span",{className:"v4-pill"},
@@ -13526,10 +13543,11 @@ var RELEASE_NOTES=[
        mide el siguiente, se sigue viendo el último par que sí encajaba. */
     {id:"tutorial-gestos", t:"🎓 Tutorial de gestos (dentro del tour de siempre)", items:[
       "Ajustes → busca «tutorial» → «🎓 Ver el tutorial» (o borra los datos del sitio para que salga solo, como la primera vez): el recorrido de foco/spotlight de siempre, ahora con 10 pasos en vez de 7.",
-      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado tiene que caer justo encima de lo que describe el texto, y la tarjeta de texto NO lo tapa (ni el patrimonio, ni el segmentado, ni la barra).",
+      "Repasa los 10 pasos con «Siguiente»: en CADA uno el recorte iluminado tiene que caer justo encima de lo que describe el texto, y la tarjeta de texto NO lo tapa (ni el importe, ni el segmentado, ni la barra).",
+      "El primer paso rodea SOLO la cifra del patrimonio (no el gráfico ni el pill del mes): con 1.000 € es un rectángulo chico; con 192.148 €, más ancho — se adapta solo.",
       "Tras el paso del patrimonio, un paso con el foco en la FRANJA IZQUIERDA de la pantalla (no en el icono de Inicio) explica deslizar desde el borde para abrir Ajustes.",
       "Tras el paso de Plan, otro paso (foco en el segmentado Recibos/Deudas/Metas) explica deslizar arriba/abajo dentro de Plan para cambiar de sección.",
-      "Tras el paso del avatar, un paso con el foco en la FRANJA DE ARRIBA explica el tirón hacia abajo en Inicio como atajo al mismo perfil.",
+      "Tras el paso del avatar, un paso con el foco en la CABECERA de Inicio (saludo + avatar — de donde tiras) explica el tirón hacia abajo como atajo al mismo perfil.",
       "La tarjeta fija que salía arriba de Ajustes ha desaparecido del todo — no queda nada estático que plegar ni botoncito «💡 ¿Cómo van los gestos?».",
     ]},
     {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[

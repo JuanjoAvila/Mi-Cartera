@@ -172,29 +172,42 @@ function Tour({onDone, goTab, tabIds}){
     }
     return best||null;
   };
-  // Franjas sintéticas para gestos sin «sitio» en el DOM (borde / tirón). Antes se apuntaba a
-  // la pestaña Inicio o al avatar y el texto hablaba de otra cosa — rechazo con foto 4/8.
+  // Franjas / zonas de gesto. El tirón NO puede ir a y=0: en el móvil eso es la barra de
+  // estado / notch y el recorte sale «en el vacío» (foto 4/8). Se usa la cabecera de Inicio,
+  // que es justo de donde tira el dedo.
   const zoneLeft=function(){
     const H=window.innerHeight||700;
-    return {x:0, y:Math.round(H*0.14), w:40, h:Math.round(H*0.52)};
+    let top=0;
+    try{ top=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-top"))||0; }catch(_){}
+    const y=Math.max(top+8, Math.round(H*0.12));
+    return {x:0, y:y, w:36, h:Math.round(H*0.48)};
   };
-  const zoneTop=function(){
+  const zonePull=function(){
+    const head=document.querySelector(".page .v4-inicio-head")||document.querySelector(".v4-inicio-head");
+    if(head){
+      const r=head.getBoundingClientRect();
+      if(r.width>8&&r.height>8) return {x:r.left,y:r.top,w:r.width,h:r.height};
+    }
     const W=window.innerWidth||400;
-    return {x:Math.round(W*0.12), y:0, w:Math.round(W*0.76), h:52};
+    let top=0;
+    try{ top=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-top"))||0; }catch(_){}
+    return {x:12, y:top+8, w:W-24, h:56};
   };
   const steps=[
-    {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero, [data-tour='hero']"); }},
-    // Gestos "cómo moverte" (petición 2026-08-03). El foco tiene que SER la zona del gesto, no
-    // un botón vecino: si no, «sale descuadrado» aunque el recorte esté perfectamente medido.
+    // Solo la cifra (`.v4-hero-amt`): inline-block → el rectángulo crece/encoge con el dinero
+    // (petición 4/8 — el hero entero con gráfico era un bloque enorme que no aportaba).
+    {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero-amt, [data-tour='hero-amt']"); }},
+    // Gestos: el foco es la zona del gesto, no un botón vecino.
     {k:"tour_settings", tab:"dash", zone:zoneLeft},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
-    {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
+    // El + es redondo: sin `round` el recorte era un cuadrado alrededor del círculo (descuadrado).
+    {k:"tour_3", tab:null, round:true, sel:function(){ return document.querySelector(".botnav-fab"); }},
     {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
-    {k:"tour_planswipe", tab:"plan", sel:function(){ return document.querySelector(".v4-seg"); }},
+    {k:"tour_planswipe", tab:"plan", sel:function(){ return pickVisible(".page .v4-seg, .v4-seg"); }},
     {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
-    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
-    {k:"tour_pulldown", tab:"dash", zone:zoneTop},
-    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
+    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".page .v4-avatar, [data-tour='avatar']"); }},
+    {k:"tour_pulldown", tab:"dash", zone:zonePull},
+    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row"); }},
   ];
   const [i,setI]=useState(0);
   // `shown` es lo que se PINTA (qué paso + dónde), y texto y recorte se pisan SIEMPRE juntos:
@@ -212,11 +225,13 @@ function Tour({onDone, goTab, tabIds}){
     const H=window.innerHeight||700;
     const p=pad(r.round), gap=14, need=Math.max(120, tipH||156);
     const spotTop=r.y-p, spotBot=r.y+r.h+p;
+    // Foco en la barra inferior: la tarjeta arriba, lejos del recorte. Pegarla justo encima
+    // del icono se leía como «descuadrada» (la tarjeta tapaba mitad de pantalla junto al foco).
+    if(spotTop>H*0.62) return {top:Math.max(12, Math.round(H*0.10)), bottom:""};
     const belowTop=spotBot+gap;
     if(belowTop+need<=H-10) return {top:belowTop, bottom:""};
     const aboveBottom=H-spotTop+gap;
     if(spotTop-gap-need>=10) return {top:"", bottom:aboveBottom};
-    // No cabe entero a ningún lado: el lado con más hueco, sin invadir el foco.
     if((H-spotBot)>=spotTop) return {top:Math.min(belowTop, H-need-10), bottom:""};
     return {top:"", bottom:Math.min(Math.max(10, aboveBottom), H-need-10)};
   };

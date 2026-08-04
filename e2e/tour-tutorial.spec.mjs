@@ -34,15 +34,15 @@ async function abrirAjustesConGesto(page) {
 /* Mismo orden que `steps` en 02-ui-shared.js. Las franjas de gesto no tienen nodo: se
  * comprueban por geometría (borde izquierdo / franja superior). */
 const PASOS = [
-  { sel: ".page .v4-hero, [data-tour='hero']" },
+  { sel: ".page .v4-hero-amt, [data-tour='hero-amt']" },
   { zone: "left" },
   { sel: '.botnav-tab[data-tour="gastos"]' },
-  { sel: ".botnav-fab" },
+  { sel: ".botnav-fab", round: true },
   { sel: '.botnav-tab[data-tour="plan"]' },
   { sel: ".v4-seg" },
   { sel: '.botnav-tab[data-tour="cartera"]' },
-  { sel: ".v4-avatar, [data-tour='avatar']" },
-  { zone: "top" },
+  { sel: ".v4-avatar, [data-tour='avatar']", round: true },
+  { zone: "pull" }, // cabecera de Inicio (donde tiras), no la franja y=0 del status bar
   { sel: ".botnav-row" },
 ];
 
@@ -50,8 +50,18 @@ function zonaEsperada(page, tipo) {
   return page.evaluate((z) => {
     const H = window.innerHeight || 700,
       W = window.innerWidth || 400;
-    if (z === "left") return { x: 0, y: Math.round(H * 0.14), w: 40, h: Math.round(H * 0.52) };
-    return { x: Math.round(W * 0.12), y: 0, w: Math.round(W * 0.76), h: 52 };
+    if (z === "left") {
+      let top = 0;
+      try { top = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-top")) || 0; } catch (_) {}
+      const y = Math.max(top + 8, Math.round(H * 0.12));
+      return { x: 0, y, w: 36, h: Math.round(H * 0.48) };
+    }
+    const head = document.querySelector(".page .v4-inicio-head") || document.querySelector(".v4-inicio-head");
+    if (head) {
+      const r = head.getBoundingClientRect();
+      return { x: r.left, y: r.top, w: r.width, h: r.height };
+    }
+    return { x: 12, y: 8, w: W - 24, h: 56 };
   }, tipo);
 }
 
@@ -139,7 +149,10 @@ test("Ajustes → Ver el tutorial reabre el mismo tour, ya con los pasos de gest
   await expect(page.locator(".tour-wrap")).toBeVisible({ timeout: 5_000 });
   await expect(page.locator(".settings-push.open")).toHaveCount(0);
   await page.waitForTimeout(1_100);
-  await assertSpotSobreTarget(page, PASOS[0], 0, 14);
+  const spot = await page.locator(".tour-spot").boundingBox();
+  const hero = await page.locator(".v4-hero-amt").first().boundingBox();
+  expect(Math.abs(spot.x - hero.x)).toBeLessThan(14);
+  expect(Math.abs(spot.y - hero.y)).toBeLessThan(14);
   await assertTipNoTapaSpot(page, 0);
 });
 

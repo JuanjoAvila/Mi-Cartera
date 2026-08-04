@@ -637,7 +637,9 @@
   .v4-inicio-date{font-size:14px;color:var(--muted-2);font-weight:600;}
   .v4-inicio-hi{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:560;letter-spacing:-.2px;margin-top:2px;}
   .v4-hero{text-align:center;padding:22px 0 8px;}
-  .v4-hero-amt{font-family:'Fraunces',Georgia,serif;font-size:56px;font-weight:550;line-height:1.05;letter-spacing:-1.5px;margin-top:8px;font-variant-numeric:tabular-nums;}
+  /* inline-block: el tour (y cualquiera que mida la caja) ve el ancho REAL de la cifra, no
+     todo el ancho de la pantalla — con 999 € es chico; con 192.148,45 €, más ancho. */
+  .v4-hero-amt{display:inline-block;font-family:'Fraunces',Georgia,serif;font-size:56px;font-weight:550;line-height:1.05;letter-spacing:-1.5px;margin-top:8px;font-variant-numeric:tabular-nums;}
   .v4-budget{display:flex;gap:16px;align-items:center;}
   .v4-budget-txt{flex:1;min-width:0;}
   .v4-budget-txt .st{font-family:'Fraunces',Georgia,serif;font-size:21px;font-weight:600;color:var(--mint);line-height:1.15;}
