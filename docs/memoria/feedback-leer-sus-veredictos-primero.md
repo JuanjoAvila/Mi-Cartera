@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 0042f241-fc1e-4bc9-909f-14672c6f988e
-  modified: 2026-08-01T09:17:50.451Z
+  modified: 2026-08-04T17:50:51.479Z
 ---
 
 **Lo PRIMERO de cada sesión, antes de mirar el código:**
@@ -44,4 +44,10 @@ cualquier bug.
   de que «una cruz es justo lo que se acaba de arreglar» — falso, el panel no sabe si esa
   compilación tocó ese punto, y el que pagaba el error era él. No lo vuelvas a revertir.
 - Si un arreglo suyo no se ha hecho, dilo **antes** de contar lo que sí has hecho.
+- ⚠ **Y esto vale también para los INVENTARIOS, no solo para el código (2026-08-04).** Le entregué un
+  "control de todo lo pendiente" armado solo con lo hablado en la sesión: se dejaba fuera sus
+  veredictos rechazados del panel Y el backlog histórico ([[mi-cartera-backlog]], review de ChatGPT +
+  peticiones suyas). Me corrigió: *«y los bugs que te rechacé dentro de la app eso no los tienes en
+  cuenta o los evolutivos que apuntaste de ChatGPT + extras míos? te he dicho TODO»*. Cualquier
+  recuento se cruza con las TRES fuentes; la lista única vive en [[mi-cartera-backlog-2026-08]].
 - Relacionado: [[feedback-canal-beta-siempre]], [[mi-cartera-roadmap]], [[feedback-siempre-se-puede]].
