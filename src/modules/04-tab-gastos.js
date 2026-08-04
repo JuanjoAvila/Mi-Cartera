@@ -187,7 +187,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // propia compra de participaciones).
     // Y "Inversión" NUNCA se aprende como override, venga de donde venga el comercio: es un destino
     // del dinero, no un tipo de tienda (ver el blindaje gemelo en `autoCategory`, 00-core.js).
-    const learnable = mkey && ex.merchant!=="Movimiento" && newCat!=="inversion";
+    const learnable = mkey && ex.merchant!=="Movimiento" && !CAT_NEUTRAS[newCat];
     set(function(s){
       const ov=Object.assign({}, s.catOverrides||{}); if(learnable) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
@@ -223,7 +223,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return Object.assign({},invState,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
-    const cc=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).find(function(x){ return x.id===newCat; });
+    const cc=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).find(function(x){ return x.id===newCat; });
     if(showToast) showToast(tf("v4_moved_cat",{cat:(cc?cc.icon+" ":"")+catName(newCat)}));
   };
   // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
@@ -353,7 +353,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     let spent=0, income=0;
     (state.expenses||[]).forEach(function(e){
       if(dateMs(e.date)<startMs) return;
-      if(e.category==="inversion") return;   // ni gasto ni ingreso: sale del efectivo camino de un fondo
+      if(CAT_NEUTRAS[e.category]) return;   // inversión y traspaso mueven dinero: ni gasto ni ingreso
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
@@ -547,7 +547,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
       bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
@@ -718,7 +718,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
           React.createElement("div",{className:"v4-chips"},
-            CATEGORIES.concat([INVERSION_CAT]).map(function(cc){
+            CATEGORIES.concat([INVERSION_CAT,TRASPASO_CAT]).map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })
           ),

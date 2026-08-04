@@ -277,13 +277,17 @@ t("un gasto viejo del mismo importe (fuera de la ventana de 3 días) no tapa uno
  *   b) «el cashback me lo detecta duplicado en Inversiones y luego como ingreso» — TR abona el
  *      saveback al efectivo y días después lo retira para comprar el fondo: dos apuntes, un solo
  *      movimiento de dinero. */
-t("autoCategory NUNCA devuelve 'inversion', ni con un override envenenado apuntando ahí", () => {
-  const prev = ctx.USER_OVERRIDES;
-  try {
-    ctx.USER_OVERRIDES = { movimiento: "inversion", consum: "super" };
-    assert.notEqual(ctx.autoCategory("Movimiento"), "inversion", "el destino del dinero no se adivina por comercio");
-    assert.equal(ctx.autoCategory("Consum"), "super", "los overrides normales siguen mandando");
-  } finally { ctx.USER_OVERRIDES = prev; }
+/* El blindaje de dentro de `autoCategory` (no devolver nunca una categoría neutra por mucho que un
+ * override apunte ahí) no se puede ejercitar desde aquí: `USER_OVERRIDES` es `let` y las
+ * declaraciones `const`/`let` del monolito no salen al sandbox `vm` —solo las `function`—, así que
+ * inyectarlo desde fuera probaría una propiedad que el código no lee. Lo que sí se comprueba de
+ * verdad es la otra mitad, la que borra el override en origen (`seedFlows`, aquí debajo), que es
+ * además la que arregla el estado ya envenenado del usuario. */
+t("autoCategory no cae en una categoría neutra por sus propias keywords", () => {
+  ["Movimiento", "Ingreso", "Transferencia", "Inversion", "Traspaso"].forEach((m) => {
+    const c = ctx.autoCategory(m);
+    assert.ok(c !== "inversion" && c !== "traspaso", `"${m}" no debe autodetectarse como categoría neutra (dio "${c}")`);
+  });
 });
 
 t("seedFlows borra cualquier override que apunte a 'inversion' (sin flag, en cada carga)", () => {
@@ -341,6 +345,61 @@ t("importObExpenses recoge el traspaso y los gastos del ÚLTIMO DÍA del mes ant
   const add = ctx.importObExpenses(s, txs) || [];
   assert.equal(add.length, 2, "el traspaso y el bizum del último día del mes ya no se pierden");
   assert.ok(add.some((e) => e.amount === -1620), "el ingreso que ancla el ciclo entra");
+});
+
+/* TRASPASO PROPIO (2026-08-04, decisión suya): el dinero que se manda de Sabadell a TR para el mes
+ * se apunta —«Mi ciclo» se ancla a él— pero NO es dinero nuevo, así que no suma a los ingresos: el
+ * día que se conecte también el banco de ORIGEN, contaría dos veces. */
+function estadoConTraspasoModelado() {
+  return {
+    accounts: [{ id: "acc1", ent: "trade_republic", role: "diario", spendFrom: true }],
+    flows: [{ id: "f1", kind: "transfer", name: "A Trade Republic", amount: 1550, from: "sabadell", to: "trade_republic" }],
+    expenses: [], settings: {},
+  };
+}
+
+t("un ingreso grande sin nombre en la cuenta con traspaso modelado se marca 'traspaso'", () => {
+  const s = estadoConTraspasoModelado();
+  const txs = [{ ent: "trade_republic", id: null, date: today, amount: -1620, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  const add = ctx.importObExpenses(s, txs);
+  assert.equal(add[0].category, "traspaso", "aunque el importe no cuadre con el modelado: lo que traspasa varía cada mes");
+});
+
+t("…pero un cobro CON nombre sigue siendo ingreso de verdad", () => {
+  const s = estadoConTraspasoModelado();
+  const txs = [{ ent: "trade_republic", id: null, date: today, amount: -1620, merchant: "ACME NOMINA SL", note: "", card: false, status: "BOOK" }];
+  assert.equal(ctx.importObExpenses(s, txs)[0].category, "ingreso");
+});
+
+t("…y sin traspaso modelado hacia esa cuenta, tampoco se inventa nada", () => {
+  const s = estadoConTraspasoModelado();
+  s.flows = [];
+  const txs = [{ ent: "trade_republic", id: null, date: today, amount: -1620, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  assert.equal(ctx.importObExpenses(s, txs)[0].category, "ingreso");
+});
+
+t("…y un bizum pequeño sin nombre no se confunde con el traspaso del mes", () => {
+  const s = estadoConTraspasoModelado();
+  const txs = [{ ent: "trade_republic", id: null, date: today, amount: -30, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  assert.equal(ctx.importObExpenses(s, txs)[0].category, "ingreso", "por debajo del umbral de «Mi ciclo» no es un traspaso");
+});
+
+t("«Mi ciclo» SIGUE anclándose al traspaso (mira el importe, no la categoría)", () => {
+  const hace2 = new Date(Date.now() - 2 * 86400000).toISOString();
+  const exps = [{ id: "t1", date: hace2, amount: -1620, merchant: "Movimiento", category: "traspaso" }];
+  const p = ctx.lastPaydayOf(exps);
+  assert.ok(p, "el traspaso sirve de ancla del ciclo");
+  assert.equal(p.inc.id, "t1");
+});
+
+/* Que «traspaso» e «inversión» no sumen a gasto/ingreso lo decide `CAT_NEUTRAS` dentro de
+ * `monthSummary` (04-tab-gastos.js). Ni la constante ni el useMemo del componente salen al sandbox,
+ * así que eso se verifica en el e2e de la app real; aquí se fija el contrato de la etiqueta, que es
+ * lo que alimenta ese cálculo. */
+t("las categorías neutras quedan etiquetadas como tales en el apunte", () => {
+  const s = estadoConTraspasoModelado();
+  const txs = [{ ent: "trade_republic", id: null, date: today, amount: -1620, merchant: "Movimiento", note: "", card: false, status: "BOOK" }];
+  assert.equal(ctx.importObExpenses(s, txs)[0].category, "traspaso");
 });
 
 t("…pero la ventana no arrastra meses enteros de histórico en cada sync", () => {

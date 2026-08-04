@@ -421,7 +421,8 @@ function importObExpenses(s, txs){
       if(!tx.date || parseDate(tx.date)<som) return;              // mes en curso + margen de fin de mes
       if(tx.id && seen[tx.id]) return;                            // ya importado (ext_id)
       const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
-        merchant:tx.merchant||"Ingreso", amount:tx.amount, category:INGRESO_CAT.id, source:"ob", ent:tx.ent };
+        merchant:tx.merchant||"Ingreso", amount:tx.amount,
+        category: esTraspasoPropio(s, tx) ? TRASPASO_CAT.id : INGRESO_CAT.id, source:"ob", ent:tx.ent };
       if(tx.id) e.extId=tx.id;
       const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
       if(keys[kOf(e)]) return;
@@ -541,6 +542,23 @@ function reservedSince(state, fromMs){
    cuenta, sin nombre de comercio, dentro de 10 días ANTES— y se marca también: así el par entero
    deja de contar, ni como ingreso ni como gasto. Devuelve el índice del gemelo o -1.
    Solo mira ingresos SIN comercio: un bizum de 8,38 € de un amigo tiene su nombre y no se toca. */
+/* DINERO TUYO QUE CAMBIA DE CUENTA, no dinero nuevo (2026-08-04, decisión suya). Su nómina llega a
+   Sabadell y él se traspasa a Trade Republic lo del mes (+1.620 €): sin esto se apuntaba como un
+   ingreso más, y el día que se conecte también el banco de ORIGEN el mismo dinero contaría dos
+   veces. Se marca `traspaso`: se apunta igual —«Mi ciclo» necesita ese apunte para saber cuándo
+   empieza tu mes (`lastPaydayOf` mira el importe, no la categoría)— pero no suma a los ingresos.
+   Criterio, deliberadamente estrecho para no tragarse un cobro de verdad: ingreso GRANDE, sin
+   comercio (con nombre es un bizum/pago real y se respeta), y solo en una cuenta que TIENE un
+   traspaso entrante ya modelado en `flows` — o sea, que el propio usuario declaró que se manda
+   dinero ahí. El importe no tiene que cuadrar con el modelado: lo que se traspasa cada mes varía
+   (él modeló 1.550 € y este mes movió 1.620 €), así que exigir el importe exacto lo dejaría fuera
+   justo los meses que cambia. */
+function esTraspasoPropio(s, tx){
+  if(!tx || !(tx.amount<=-200)) return false;                         // mismo umbral que «Mi ciclo»
+  const m=String(tx.merchant||"").trim();
+  if(m && m!=="Movimiento" && m!=="Ingreso") return false;            // con nombre = cobro real
+  return (s.flows||[]).some(function(f){ return f && f.kind==="transfer" && f.to===tx.ent; });
+}
 function findCashbackTwin(expenses, gasto){
   if(!gasto || !(gasto.amount>0)) return -1;
   const ms=dateMs(gasto.date);

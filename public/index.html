@@ -1751,7 +1751,13 @@ const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰"
 // Ni gasto ni ingreso: dinero que sale del efectivo pero va a un fondo (round-up/cashback/aporte
 // automático de un bróker). Ver `applyInvestBuy` en 08-motor-bank.js y `reconcileTR` en este fichero.
 const INVERSION_CAT = { id:"inversion", name:"Inversión", color:"#D4AF37", icon:"📈" };
-const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (id==="inversion" ? INVERSION_CAT : (CAT[id] || CAT.otros));
+// Dinero TUYO que cambia de cuenta (la nómina que te traspasas de un banco a otro para el mes).
+// Se apunta —«Mi ciclo» se ancla a él, ver `lastPaydayOf`— pero no es dinero nuevo: no suma a los
+// ingresos del mes, o al conectar también el banco de origen se contaría dos veces (2026-08-04).
+const TRASPASO_CAT = { id:"traspaso", name:"Traspaso", color:"#8AA0B8", icon:"🔄" };
+// Categorías que NO son gasto ni ingreso: mueven dinero, no lo crean ni lo consumen.
+const CAT_NEUTRAS = { inversion:1, traspaso:1 };
+const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (id==="inversion" ? INVERSION_CAT : (id==="traspaso" ? TRASPASO_CAT : (CAT[id] || CAT.otros)));
 const catName = (id)=> t("cat_"+(catOf(id).id));   // nombre traducido de la categoría
 const freqLabel = (f)=> t("freq_"+f);              // frecuencia traducida
 
@@ -1807,7 +1813,7 @@ function autoCategory(merchant){
   // dej\u00f3 el bug de "Movimiento", ver `fixMovInvasion`\u2014 convierte en Inversi\u00f3n CUALQUIER gasto que
   // pase por aqu\u00ed: fue lo que volvi\u00f3 a marcar solo un parking de zona azul de 9,50 \u20ac cada vez que
   // abr\u00eda la app, porque `migrate` re-categoriza todo lo que est\u00e9 en "otros" y no sea manual.
-  if(USER_OVERRIDES[key] && USER_OVERRIDES[key]!=="inversion") return USER_OVERRIDES[key];   // lo que T\u00da has aprendido a mano
+  if(USER_OVERRIDES[key] && !CAT_NEUTRAS[USER_OVERRIDES[key]]) return USER_OVERRIDES[key];   // lo que T\u00da has aprendido a mano
   for(const k in MERCHANT_OVERRIDES){ if(c.indexOf(k)!==-1) return MERCHANT_OVERRIDES[k]; }  // overrides de ejemplo
   // Keywords cortas (bar, bus…) con límite de palabra: si no, "Barcelona" caía en bares
   // por el substring «bar» (bug Kinepolis 2026-07-17).
@@ -3871,7 +3877,7 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -3958,7 +3964,7 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -4044,7 +4050,7 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -6568,7 +6574,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // propia compra de participaciones).
     // Y "Inversión" NUNCA se aprende como override, venga de donde venga el comercio: es un destino
     // del dinero, no un tipo de tienda (ver el blindaje gemelo en `autoCategory`, 00-core.js).
-    const learnable = mkey && ex.merchant!=="Movimiento" && newCat!=="inversion";
+    const learnable = mkey && ex.merchant!=="Movimiento" && !CAT_NEUTRAS[newCat];
     set(function(s){
       const ov=Object.assign({}, s.catOverrides||{}); if(learnable) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
@@ -6604,7 +6610,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return Object.assign({},invState,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
-    const cc=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).find(function(x){ return x.id===newCat; });
+    const cc=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).find(function(x){ return x.id===newCat; });
     if(showToast) showToast(tf("v4_moved_cat",{cat:(cc?cc.icon+" ":"")+catName(newCat)}));
   };
   // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
@@ -6734,7 +6740,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     let spent=0, income=0;
     (state.expenses||[]).forEach(function(e){
       if(dateMs(e.date)<startMs) return;
-      if(e.category==="inversion") return;   // ni gasto ni ingreso: sale del efectivo camino de un fondo
+      if(CAT_NEUTRAS[e.category]) return;   // inversión y traspaso mueven dinero: ni gasto ni ingreso
       if(e.amount>0) spent+=e.amount;
       else if(e.amount<0) income+=Math.abs(e.amount);
     });
@@ -6928,7 +6934,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
       bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
@@ -7099,7 +7105,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
           React.createElement("div",{className:"v4-chips"},
-            CATEGORIES.concat([INVERSION_CAT]).map(function(cc){
+            CATEGORIES.concat([INVERSION_CAT,TRASPASO_CAT]).map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })
           ),
@@ -9489,7 +9495,8 @@ function importObExpenses(s, txs){
       if(!tx.date || parseDate(tx.date)<som) return;              // mes en curso + margen de fin de mes
       if(tx.id && seen[tx.id]) return;                            // ya importado (ext_id)
       const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
-        merchant:tx.merchant||"Ingreso", amount:tx.amount, category:INGRESO_CAT.id, source:"ob", ent:tx.ent };
+        merchant:tx.merchant||"Ingreso", amount:tx.amount,
+        category: esTraspasoPropio(s, tx) ? TRASPASO_CAT.id : INGRESO_CAT.id, source:"ob", ent:tx.ent };
       if(tx.id) e.extId=tx.id;
       const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
       if(keys[kOf(e)]) return;
@@ -9609,6 +9616,23 @@ function reservedSince(state, fromMs){
    cuenta, sin nombre de comercio, dentro de 10 días ANTES— y se marca también: así el par entero
    deja de contar, ni como ingreso ni como gasto. Devuelve el índice del gemelo o -1.
    Solo mira ingresos SIN comercio: un bizum de 8,38 € de un amigo tiene su nombre y no se toca. */
+/* DINERO TUYO QUE CAMBIA DE CUENTA, no dinero nuevo (2026-08-04, decisión suya). Su nómina llega a
+   Sabadell y él se traspasa a Trade Republic lo del mes (+1.620 €): sin esto se apuntaba como un
+   ingreso más, y el día que se conecte también el banco de ORIGEN el mismo dinero contaría dos
+   veces. Se marca `traspaso`: se apunta igual —«Mi ciclo» necesita ese apunte para saber cuándo
+   empieza tu mes (`lastPaydayOf` mira el importe, no la categoría)— pero no suma a los ingresos.
+   Criterio, deliberadamente estrecho para no tragarse un cobro de verdad: ingreso GRANDE, sin
+   comercio (con nombre es un bizum/pago real y se respeta), y solo en una cuenta que TIENE un
+   traspaso entrante ya modelado en `flows` — o sea, que el propio usuario declaró que se manda
+   dinero ahí. El importe no tiene que cuadrar con el modelado: lo que se traspasa cada mes varía
+   (él modeló 1.550 € y este mes movió 1.620 €), así que exigir el importe exacto lo dejaría fuera
+   justo los meses que cambia. */
+function esTraspasoPropio(s, tx){
+  if(!tx || !(tx.amount<=-200)) return false;                         // mismo umbral que «Mi ciclo»
+  const m=String(tx.merchant||"").trim();
+  if(m && m!=="Movimiento" && m!=="Ingreso") return false;            // con nombre = cobro real
+  return (s.flows||[]).some(function(f){ return f && f.kind==="transfer" && f.to===tx.ent; });
+}
 function findCashbackTwin(expenses, gasto){
   if(!gasto || !(gasto.amount>0)) return -1;
   const ms=dateMs(gasto.date);
@@ -13328,6 +13352,10 @@ var RELEASE_NOTES=[
       "Y lo de «todos los gastos del mes contados como ingresos» al conectarlo: comprueba que un gasto de TR sale como gasto, no en verde. ⚠ Si AÚN sale mal: ya está instrumentado para verlo con certeza en el próximo aviso tuyo — no lo des por cerrado sin decírmelo.",
       "LO GORDO: los movimientos de Trade Republic que salían como «Movimiento» y no cuadraban eran gastos DUPLICADOS. Tus compras de TR ya se apuntan solas por los avisos del móvil, con el comercio de verdad («Repsol», «Consum»…) el día que compras; el banco los mandaba OTRA VEZ uno o dos días después y sin ningún dato (TR no manda comercio, ni concepto, ni referencia — nada), así que el filtro de repetidos no los reconocía. Ahora, un movimiento sin nombre que coincida en importe con algo que ya tienes de los últimos 3 días no se vuelve a apuntar. Al abrir la app se limpian solos los que ya estaban: comprueba que en Gastos ya no hay dos apuntes del mismo importe con un día de diferencia (uno con el nombre de la tienda y otro como «Movimiento»), y que el total del mes baja a lo que de verdad has gastado.",
       "Y lo que SÍ ve solo el banco (el aporte automático a tu fondo, round-up y cashback) sigue entrando: el aporte de 50€/mes ya sale con su propia categoría «📈 Inversión», que no cuenta ni como gasto ni como ingreso — comprueba que no infla «gastado este mes». Round-up y cashback (importes variables, sin ningún dato que los distinga) entran como gasto normal: puedes pasarlos a «Inversión» a mano desde la ficha del gasto, uno a uno.",
+      "Y al marcar un cashback como «Inversión», su ENTRADA se marca con él. El cashback llega dos veces al banco: primero entra al efectivo y días después sale hacia el fondo — dos apuntes para un solo movimiento de dinero. Antes la entrada se quedaba contando como ingreso del mes («me lo detecta duplicado en Inversiones y luego como ingreso»). Marca la salida y comprueba que el ingreso gemelo del mismo importe se va con ella. Un bizum de un amigo del mismo importe, con su nombre, NO se toca.",
+      "Un gasto normal ya no se vuelve «Inversión» él solo. Un parking de zona azul de 9,50 € se remarcaba como Inversión cada vez que abrías la app: al marcar el primer movimiento a mano se aprendía la regla «esto siempre es Inversión» para todo lo que llegara sin nombre. Comprueba que un gasto que pongas en cualquier categoría se queda donde lo dejaste, aunque cierres y abras.",
+      "NUEVO: lo del ÚLTIMO DÍA del mes ya no se pierde. Todo lo anterior al día 1 se tiraba antes de llegar a la app: tu traspaso de +1.620 € del 31 de julio, el bizum del piso de 70 € y los gastos de ese día desaparecían por caer un día antes del corte. Comprueba que ahora sí aparecen.",
+      "NUEVO: ese traspaso que te haces de Sabadell a Trade Republic sale con categoría «🔄 Traspaso» — se apunta (y «Mi ciclo» se ancla a él para saber cuándo empieza tu mes) pero NO suma a los ingresos del mes, porque no es dinero nuevo: es dinero tuyo cambiando de cuenta. Un cobro de verdad, con el nombre de quien paga, sigue siendo ingreso normal.",
       "Importar histórico: una factura que sale varias veces en 3 meses de extracto ya no se marca como recibo repetido — solo cuenta una (antes creaba un Fijo por cada mes que aparecía).",
       "Reconectar Trade Republic desde el aviso de Cartera lleva directo a su tarjeta, con scroll — antes aterrizaba en Mis bancos con la tarjeta abierta pero fuera de pantalla.",
       "Ajustes → Copia de seguridad → «Copias automáticas»: se ve la lista de los últimos días guardados y se puede restaurar uno.",
