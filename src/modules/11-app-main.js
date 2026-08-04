@@ -28,11 +28,35 @@ function App(){
   // escondido normal al bajar sigue con su calma de siempre.
   const [navHiddenFast,setNavHiddenFast]=useState(false);
   // Botnav abajo: diferir hide hasta scrollend/550ms (mutarlo a mitad del fling corta la ola).
-  // Arriba: reveal inmediato — lo que mataba la ola de arriba era robar el gesto (axis x),
-  // no la barra; el lab que ocultaba la barra dejaba la UI rota (feedback 5/8 noche).
+  // Arriba: candado de eje (no robar el gesto) + `botnav-ola-clear` BREVE (~450 ms) solo en el
+  // tirón/llegada al tope. El lab que la dejaba oculta segundos rompía la UI (5/8).
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
   const navHideFastRef=useRef(false);
+  const olaClearUntil=useRef(0);
+  const olaClearTimer=useRef(0);
+  const navRevealAfterClear=useRef(false);
+  const armOlaClear=function(ms){
+    const wait=Math.min(ms||450, 500);
+    olaClearUntil.current=Date.now()+wait;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.add("botnav-ola-clear");
+    }catch(e){}
+    if(olaClearTimer.current) clearTimeout(olaClearTimer.current);
+    olaClearTimer.current=setTimeout(function(){
+      olaClearTimer.current=0;
+      if(Date.now()<olaClearUntil.current) return;
+      try{
+        const nav=document.querySelector(".botnav");
+        if(nav) nav.classList.remove("botnav-ola-clear");
+      }catch(e){}
+      if(navRevealAfterClear.current){
+        navRevealAfterClear.current=false;
+        revealNav();
+      }
+    }, wait+20);
+  };
   const applyNavHide=function(){
     navBotSync.current=0;
     navHideArmed.current=false;
@@ -61,9 +85,10 @@ function App(){
   const revealNav=function(){
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
+    navRevealAfterClear.current=false;
     try{
       const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast","botnav-ola-clear");
     }catch(e){}
     if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
   };
@@ -101,7 +126,19 @@ function App(){
     if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); return; }
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
-    if(y<=8){ revealNav(); return; }                 // arriba → barra visible (ola arriba = candado de eje)
+    if(y<=8){
+      // Tope: apartar barra ~450 ms (ola) SIN setState si ya estaba visible.
+      armOlaClear(450);
+      if(navHiddenRef.current) navRevealAfterClear.current=true;
+      else {
+        // Quitar botnav-hidden del DOM por si acaso, sin React.
+        try{
+          const nav=document.querySelector(".botnav");
+          if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast");
+        }catch(err){}
+      }
+      return;
+    }
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
     if(max>0 && y>=max-4){ armNavHide(true); return; }
     if(Math.abs(dy)<6) return;
@@ -2062,6 +2099,12 @@ function App(){
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
+    // Tope + tirón hacia abajo (ola): apartar barra ya, antes del stretch.
+    if(ddy>0){
+      const pagesT=trackRef.current&&trackRef.current.children;
+      const pgT=pagesT&&pagesT[tabRef.current];
+      if(pgT && (pgT.scrollTop||0)<=2) armOlaClear(450);
+    }
     // Inicio arriba: cortar overscroll/rebote ANTES de fijar eje (vídeo 2026-07-18).
     if(axis.current===null && tab===0 && ddy>0 && Math.abs(ddy)>=Math.abs(ddx)){
       const pages=trackRef.current&&trackRef.current.children;
