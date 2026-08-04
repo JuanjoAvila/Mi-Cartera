@@ -41,7 +41,10 @@ async function abrirHistorico(page) {
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("mc-open-banks", { detail: { focus: null } })));
   await expect(page.locator("[data-aspsp]")).toHaveCount(2, { timeout: 10_000 });
 
-  await page.getByRole("button", { name: /Importar histórico/i }).click();
+  // El de «Mis bancos», no el de Ajustes → Importaciones: desde la 4.13.0 se llega por los dos
+  // sitios y el nombre a secas es ambiguo. Este test comprueba el filtro por banco, que solo tiene
+  // sentido con los enlaces vivos que le pasa este panel (`linkEnts`).
+  await page.locator("button:not(.set-row)").filter({ hasText: /^Importar histórico$/ }).click();
   const overlay = page.locator(".hist-import");
   await expect(overlay).toBeVisible();
   await overlay.getByRole("button", { name: /Buscar movimientos/i }).click();

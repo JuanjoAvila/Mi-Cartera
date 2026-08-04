@@ -2157,7 +2157,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       cloud.signOut().then(function(){ showToast(t("au_signedout")); onClose(); });
     });
   };
-  const fileRef=useRef(null);
   // Telemetría: el panel «Actividad» SOLO existe para el admin (gate por email de la sesión;
   // la RLS de app_events lo re-valida en servidor — sin sesión de admin no devuelve filas).
   const [meEmail,setMeEmail]=useState(null);
@@ -2196,6 +2195,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
   const [betaOpen,setBetaOpen]=useState(false);  // pantalla «Revisar la beta» (solo en canal beta)
   const [hojaOpen,setHojaOpen]=useState(false);  // importar una hoja de gastos (Excel/CSV)
+  const [histOpen,setHistOpen]=useState(false);  // importar histórico del banco (también desde «Mis bancos»)
   const [autoBackOpen,setAutoBackOpen]=useState(false);  // copias automáticas diarias (state_backups)
   const yaEnProd=useYaEnProd();                  // lo que corre ya lo sirve Pages → nada que aprobar
   const loadEvents=function(){
@@ -2293,37 +2293,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     set(function(s){ return Object.assign({},s,{budget:b}); });
     showToast(t("st_budget_saved"));
   };
-  const doExport=function(){
-    try{
-      // El estado React manda: localStorage puede ir ~400 ms por detrás (persistencia debounced 2026-07-18)
-      const data=JSON.stringify(state||mcLoadRaw(mcStateKey()),null,2);
-      const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
-      const a=document.createElement("a");
-      a.href=url; a.download="mi-cartera-"+new Date().toISOString().slice(0,10)+".json"; a.click();
-      setTimeout(function(){ URL.revokeObjectURL(url); },1000);
-      showToast(t("st_backup_dl"));
-    }catch(e){ showToast("✕ "+((e&&e.message)||e)); }
-  };
-  const doImport=function(ev){
-    const f=ev.target.files&&ev.target.files[0]; if(!f) return;
-    const r=new FileReader();
-    r.onload=function(){
-      // el try SOLO cubre el parseo: si envolviera también el confirm (ahora asíncrono), un
-      // fallo al restaurar se tragaría por el catch de «archivo inválido» y engañaría.
-      let obj=null;
-      try{
-        obj=JSON.parse(r.result);
-        if(!obj || !obj.accounts) throw new Error(t("st_badfile"));
-      }catch(e){ showToast("✕ "+((e&&e.message)||e)); return; }
-      askConfirm({ title:t("st_confirm_import"), sub:t("st_confirm_import_sub"), ok:t("st_confirm_import_ok"), danger:true })
-        .then(function(yes){
-          if(!yes) return;
-          mcSaveRaw(mcStateKey(),obj); set(function(){ return obj; });
-          showToast(t("st_imported")); onClose();
-        });
-    };
-    r.readAsText(f);
-  };
+  /* `doExport`/`doImport` (copia manual a fichero JSON) retirados el 2026-08-04 a petición suya:
+     la copia automática diaria en la nube ya cubre el caso y se restaura desde Ajustes → Copia de
+     seguridad. El importar a mano además sobrescribía el estado ENTERO de golpe, que es la clase de
+     botón que no quieres al lado de nada. El <input type=file> que lo disparaba también se fue. */
   // --- Rediseño Claude Design (2026-07-10): tarjetas con filas agrupadas (.set-card/.set-row),
   // valores a la derecha, acordeones para las opciones y switches iOS (.sw). El contenido y la
   // lógica son los mismos de siempre; solo cambia la presentación.
@@ -2603,15 +2576,21 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
-    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar excel hoja csv gastos",null,
-      row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
-      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); }),
-      // Importar una hoja de gastos vive aquí y no en «Mis bancos» (donde está el CSV de Revolut)
-      // porque no es una sincronización: es traerse un histórico de fuera, como restaurar una
-      // copia. Y es lo que va a buscar quien llegue con el Excel de su madre.
+    /* IMPORTACIONES, todas juntas (2026-08-04, petición suya). Antes estaban repartidas: la hoja de
+       Excel dentro de «Copia de seguridad» —donde nadie la buscaría— y el histórico del banco
+       escondido en «Mis bancos», al final de la lista. Son la misma tarea («traerme lo que ya tengo
+       en otro sitio»), así que viven en el mismo sitio. El histórico sigue accesible también desde
+       «Mis bancos», que es donde estaba y donde tiene sentido justo tras conectar un banco. */
+    grp("import","📥",t("st_imports"),"importar import excel hoja csv gastos historico banco extracto",null,
       row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); }),
-      // Copia AUTOMÁTICA diaria (ya se escribía sola; esto la hace visible y restaurable — 2026-07-31).
-      cloud.enabled() && uid && row("autoback","🕐",t("bk_auto_title"),null,function(){ setAutoBackOpen(true); })
+      row("imphist","🏦",t("bp_hist_btn"),null,function(){ setHistOpen(true); })
+    ),
+    /* COPIA DE SEGURIDAD: solo la automática. El exportar/importar JSON a mano se retiró
+       (2026-08-04, petición suya: «quítame lo de importar y exportar datos dado que ya hay el
+       automático») — la copia diaria se guarda sola en la nube y se restaura desde aquí, así que el
+       fichero manual era una vía paralela que además podía sobrescribir el estado entero de golpe. */
+    cloud.enabled() && uid && grp("backup","🗄️",t("backup"),"copia seguridad backup restaurar automatica",null,
+      row("autoback","🕐",t("bk_auto_title"),null,function(){ setAutoBackOpen(true); })
     ),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
@@ -2765,11 +2744,13 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
     betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
     hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,goGastos:goGastos,onClose:function(){ setHojaOpen(false); }}), document.body),
+    // Sin `linkEnts`: el propio panel cae a los bancos de gasto cuando no se le pasa lista (ver
+    // `allowList` en BankHistoryImport). Desde «Mis bancos» sí se le pasan los enlaces vivos.
+    histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
     autoBackOpen && ReactDOM.createPortal(React.createElement(AutoBackupsPanel,{state:state,set:set,showToast:showToast,uid:uid,onClose:function(){ setAutoBackOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 
-    React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,
     // aquí se ve al momento si sigues en una APK vieja aunque la web ya esté al día (2026-07-26).
