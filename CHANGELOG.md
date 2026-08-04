@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-04
+### Tutorial: el tip tapaba el foco y los gestos apuntaban al sitio equivocado
+
+Rechazo con foto (4/8): en el paso del patrimonio la tarjeta de texto se plantaba ENCIMA del
+recorte, y en el de «desliza desde el borde» el foco rodeaba el icono de Inicio. Dos causas
+distintas, el mismo «sale descuadrado».
+
+1. **El tip se anclaba al primer rect del paso** y no volvía a medirse mientras el recorte sí
+   seguía al elemento (fuente Fraunces / sparkline: el hero crecía debajo de la tarjeta). Ahora
+   tip y recorte se pintan juntos por DOM en cada fotograma, y la posición del tip **nunca**
+   invade el foco (hueco debajo, o encima si no cabe). Se quitó el `sheetup` del tip: partía de
+   `translateY(100%)` y un instante cruzaba el foco aunque el `top` final estuviera bien.
+2. **Los pasos de gesto apuntan a la zona del gesto**, no a un botón vecino: franja izquierda
+   (abrir Ajustes) y franja superior (tirón al perfil). El e2e comprueba geometría de esas
+   franjas y que tip y spot no se solapen.
+
 ## [Sin publicar] — 2026-08-01 (segunda vuelta)
 ### El rebote de las pestañas era el navegador todo el tiempo, y una tanda subida se queda del todo fuera de beta
 
