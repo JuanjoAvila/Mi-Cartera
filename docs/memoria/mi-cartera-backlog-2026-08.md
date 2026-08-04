@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d6ae387e-f9d4-460d-b8dc-c43511bd8b4c
-  modified: 2026-08-04T18:10:57.941Z
+  modified: 2026-08-04T19:05:31.722Z
 ---
 
 **⚠ ESTE FICHERO ES LA LISTA ÚNICA. Si aparece algo nuevo, va aquí.** Se armó porque el 4/8 le di un
@@ -32,15 +32,28 @@ futuro» y **ahora tiene fecha**. Es lo único que se pierde si no llega a tiemp
 
 ---
 
-# 🔁 1. RECHAZADAS OTRA VEZ el 4/8 (los arreglos anteriores NO sirvieron)
-Van por su 3ª ronda cada una. Lo que más le quema es repetir un fallo — esto va antes que empezar
-cosas nuevas.
+# 🔁 1. LAS TRES RECHAZADAS DEL 4/8 — dos arregladas, una bloqueada
 
-| Tanda | Rechazo 4/8 20:0x | Detalle nuevo |
-|---|---|---|
-| `plan-swipe` 👇 | «SIGUE PASANDO IGUAL» | el commit `8a48db8` no lo arregló: al ir hacia abajo en medio de una lista larga, sigue cambiando de tab. |
-| `gestos` 🎯 | «sigue pasando lo mismo» / «sigue sin funcionar» | el commit `f0ab10d` no lo arregló. **Pista nueva suya:** «hay un stopper antes de llegar abajo y luego ya sale la ola, es como un muro invisible. Se reproduce solo deslizando una vez hacia abajo». |
-| `tutorial-gestos` 🎓 | «no se marca correctamente en el sitio, sale movido, los recortes no están bien posicionados» | el commit `77db9d1` no lo arregló. Ahora es el tutorial de 10 pasos dentro del tour de siempre — el recorte iluminado no cae encima de lo que describe el texto. |
+**`tutorial-gestos` 🎓 ✅ ARREGLADO** (commit `9c7c569`, pendiente de su veredicto). Causa real: el
+tour medía el elemento UNA vez tras una espera fija de 520 ms; si esa foto caía con el carrusel aún
+deslizándose (móvil lento), el recorte se quedaba clavado a medio camino **para siempre**. Ahora se
+pega al elemento fotograma a fotograma hasta que está quieto. Medido: a 400 ms de tocar «Siguiente»,
+antes 298 px de desvío, ahora 8 px.
+
+**`plan-swipe` 👇 ✅ ARREGLADO** (commit `2cbc091`, pendiente de su veredicto). Causa real: los dos
+gestos (swipe de pestañas y vertical de Plan) decidían el eje **por proporción a los 10 px**, y el
+arco del pulgar sale de lado primero → «horizontal» para siempre. Ahora `gestureAxis` en
+`00-core.js`, UNA función para los dos, por ventaja en píxeles.
+
+**`gestos` 🎯 ⛔ BLOQUEADO — no se puede verificar en el portátil.** El «muro invisible» y la «ola»
+son inercia y compositor, y **los toques sintéticos de CDP no generan scroll por momentum**
+(medido 4/8: un tirón deja Gastos en 0 y Deudas en 425 de 3695, solo lo que arrastra el dedo).
+Cuarta ronda a ciegas = cuarto rechazo. **Necesita su móvil** → [[depurar-webview-en-su-movil]].
+⚠ **Candidato con causa medida:** a mitad de lista con 40 px de deriva lateral el scroll no se mueve
+NI UN PÍXEL y **nadie de nuestro código cancela el evento** — es el navegador bloqueando la
+dirección del gesto. El arreglo candidato es `touch-action:pan-y` en `.page`, ya escrito y explicado
+en `src/shell.html` (sin poner). Riesgo: puede romper el tirón del perfil y el segmento de Plan, que
+dependen de cancelar el scroll vertical. Probar en su aparato antes de dejarlo.
 
 **Aprobadas y ya subidas (4/8):** `bancos` 🏦 (16 ok / 0 fallo — **por fin aprobada**, cierra
 [[tr-duplicados-saga]] y el signo en positivo; 3 ítems marcados "no probable" sin tocar: detección de
@@ -171,5 +184,11 @@ de cada «ya está», para no volver a proponerlo. Lo que falta de verdad:
 - **Enable Banking no manda NADA de Trade Republic** (todo `null` salvo importe/signo/fecha). No es
   arreglable con código.
 - El **rebote de pestañas** es el mecanismo NATIVO del navegador — no hay curva propia que tocar.
-- El e2e `plan-swipe-segmento` **falla de forma intermitente** (flake conocido de gestos), también en
-  aislamiento. No dar por rota una tanda por eso.
+- ~~El e2e `plan-swipe-segmento` falla de forma intermitente (flake conocido)~~ **NO ERA UN FLAKE**
+  (4/8). Fallaba 1 de 6, una distinta en cada pasada: las pruebas daban por buena la llegada a Plan
+  en cuanto la pestaña se marcaba activa, pero el carrusel sigue deslizándose 420 ms más, y la que
+  pillaba el peor momento arrastraba a mitad de la transición. Ahora se espera a que el track esté
+  QUIETO. Lección: **un e2e de gestos que falla «al azar» suele estar midiendo a destiempo, no
+  mintiendo** — mirarlo antes de etiquetarlo como flake.
+- ⚠ **Lo que NO se puede probar en el portátil:** inercia/momentum de scroll, rebote nativo y todo
+  lo del compositor. Los toques sintéticos de CDP mueven el scroll solo mientras el dedo arrastra.
