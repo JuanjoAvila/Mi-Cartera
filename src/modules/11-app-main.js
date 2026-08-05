@@ -2801,15 +2801,14 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
-  // Ambientación: UNA sola capa GLOBAL (fixed z-36). Feedback 2026-08-05 (3ª): una copia
-  // por pestaña hacía que al swipe se viera OTRA fase («vuelve más arriba / se retrasa»).
-  // Host opaco siempre. Destello de ARRIBA = html::before fixed (no botnav).
+  // Ambientación: destello `.season-glow` + lluvia `.season-amb` (nodos reales fixed).
+  // Feedback 2026-08-05: html::before fixed FALLABA en su WebView (se iba con el scroll
+  // aunque computed style dijera fixed — medido por CDP). Host opaco siempre.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
-  // useMemo: mismos spans entre re-renders → el DOM de `.season-amb` no se recrea → la
-  // animación CSS no se reinicia al cambiar de tab / setState del botnav.
-  const seasonAmb=useMemo(function(){
+  // useMemo: mismos spans entre re-renders → la animación CSS no se reinicia al cambiar de tab.
+  const seasonLayers=useMemo(function(){
     if(!seasonPool) return null;
     const N=10, out=[];
     for(let i=0;i<N;i++){
@@ -2826,7 +2825,10 @@ function App(){
         style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
           "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
     }
-    return React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out);
+    return React.createElement(React.Fragment,null,
+      React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
+      React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out)
+    );
   }, [seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
@@ -2847,7 +2849,7 @@ function App(){
   );
 
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
-    seasonAmb,
+    seasonLayers,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",

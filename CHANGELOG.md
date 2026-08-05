@@ -12,11 +12,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
    **Incidentes 2026-08-05 (mismo día):**
    - Host transparente → Inicio+Gastos. Fix: host SIEMPRE opaco.
    - Lluvia saltaba de fase al swipe → UNA capa GLOBAL fixed + `useMemo`.
-   - Destello: él lo quiere ARRIBA A LA DERECHA, no en la barra. Cocerlo en
-     `background-image` del host hacía que al scrollear apareciera/desapareciera.
-     `botnav::before` era el sitio equivocado y dejaba ver la lista a través de la barra.
-     Fix: `html[data-season]::before` `position:fixed; z-index:36` (viewport). Lluvia z-37.
-     Guardián: `tests/season-detalle.test.mjs`.
+   - Destello ARRIBA: `html::before` fixed fallaba en su WebView Oppo (CDP 2026-08-05:
+     computed=fixed z-36 y aun así se iba con el scroll). Fix: nodo real `.season-glow`.
+   - Fuga de lista en la barra ~1 s al scrollear: `botnav-hidden` usaba opacity→0 a mitad
+     de la transición. Fix: hide SOLO con translateY; lluvia recortada encima de la barra.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
