@@ -70,15 +70,19 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
     return ((parts[0]||"M").charAt(0)+(parts[1]||parts[0]||"C").charAt(0)).toUpperCase();
   })();
 
-  const ratio=state.budget>0 ? tt.thisMonthSpent/state.budget : 0;
+  // Misma cifra que la cabecera de Gastos / widget (no `thisMonthSpent`, que mete neutras).
+  const bud=monthBudgetStats(state);
+  const budAmt=bud.budget!=null?bud.budget:(state.budget||0);
+  const spentAgainst=Math.max(0, bud.against);
+  const ratio=budAmt>0 ? spentAgainst/budAmt : 0;
   const dim=new Date(tt.curYear, tt.curMonth, 0).getDate();
   const elapsed=Math.max(1, tt.today||1);
   const leftDays=Math.max(1, dim-elapsed);
-  const rem=state.budget-tt.thisMonthSpent;
+  const rem=bud.remaining!=null?bud.remaining:(budAmt-spentAgainst);
   const dailyAllow=rem/leftDays;
-  const pace=tt.thisMonthSpent/elapsed;
-  const projected=tt.thisMonthSpent+pace*leftDays;
-  const overTrack=projected>state.budget+0.5;
+  const pace=spentAgainst/elapsed;
+  const projected=spentAgainst+pace*leftDays;
+  const overTrack=projected>budAmt+0.5;
   let stCls="st", stHead=t("st_good_h");
   if(ratio>1 || overTrack&&ratio>0.85){ stCls="st bad"; stHead=t("st_over_h"); }
   else if(ratio>0.8 || !overTrack&&ratio>0.8){ stCls="st warn"; stHead=t("st_tight_h"); }
@@ -138,7 +142,7 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
 
     React.createElement("div",{className:"v4-hero rise","data-tour":"hero",style:{animationDelay:".05s"}},
       React.createElement("div",{className:"v4-micro"}, t(simple?"v4_money_total":"d_networth")),
-      React.createElement("div",{className:"v4-hero-amt num"},
+      React.createElement("div",{className:"v4-hero-amt num","data-tour":"hero-amt"},
         p.sign+p.ent, React.createElement("span",{style:{fontSize:28,color:"var(--muted)"}},","+(p.dec||"00")+" "+p.sym)),
       React.createElement("div",{style:{marginTop:12}},
         React.createElement("span",{className:"v4-pill"},
@@ -169,7 +173,7 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
         React.createElement("div",{className:"v4-budget-txt"},
           React.createElement("div",{className:stCls}, stHead),
           React.createElement("div",{className:"ph"},
-            tf("v4_budget_spent",{spent:eur0(tt.thisMonthSpent),budget:eur0(state.budget)}),
+            tf("v4_budget_spent",{spent:eur0(bud.shown),budget:eur0(budAmt)}),
             " ",
             rem>=0 ? tf("v4_budget_daily",{x:eur0(Math.max(0,dailyAllow))}) : t("st_over_l")
           )

@@ -155,8 +155,17 @@ function shareMonthReport(state, tt, showToast){
    Sale solo la primera vez (state.tourSeen=false) y desde Ajustes → Ver tutorial.
    ============================================================ */
 function Tour({onDone, goTab, tabIds}){
-  // Tour v4: barra inferior (Inicio / Gastos / + / Plan / Cartera) + avatar de perfil.
-  // goTab prepara la pestaña antes de medir el foco (lazy-mount).
+  // Tour v4. Portal a `document.body` + compensación del `zoom` de la letra (small/big/huge).
+  // Causa real del descuadre en su Oppo (medido por CDP 4/8): con `html.smalltext body{zoom:0.92}`
+  // `getBoundingClientRect` viene en px de pantalla, pero `position:fixed` left/top se interpretan
+  // en el espacio PRE-zoom del body → el foco se pintaba al 92% (Gastos ~57 px arriba). Playwright
+  // en Pixel 5 no aplica smalltext, por eso el e2e salía verde y el móvil no.
+  const bodyZoom=function(){
+    const z=parseFloat(getComputedStyle(document.body).zoom);
+    return (z&&isFinite(z)&&z>0)?z:1;
+  };
+  // Convierte coords de pantalla (getBoundingClientRect / innerWidth) al espacio del zoom.
+  const zPx=function(v){ return v/bodyZoom(); };
   const pickVisible=function(sel){
     const nodes=document.querySelectorAll(sel);
     const W=window.innerWidth||400, H=window.innerHeight||700;
@@ -164,30 +173,103 @@ function Tour({onDone, goTab, tabIds}){
     for(let n=0;n<nodes.length;n++){
       const r=nodes[n].getBoundingClientRect();
       if(r.width<8||r.height<8) continue;
-      // Visible de verdad (no la página del track todavía a mitad de swipe).
       const visL=Math.max(0,r.left), visR=Math.min(W,r.right);
       const visT=Math.max(0,r.top), visB=Math.min(H,r.bottom);
       const area=Math.max(0,visR-visL)*Math.max(0,visB-visT);
       if(area>bestArea && r.left>=-4 && r.left<W-20){ bestArea=area; best=nodes[n]; }
     }
-    return best||nodes[0]||null;
+    return best||null;
+  };
+  // Caja del texto real (incluye el span de decimales/€). Solo en la cifra: en botones el
+  // Range se queda en el icono/label y el foco salía más estrecho que el tab (e2e paso Gastos).
+  const boxOf=function(el){
+    if(el&&el.classList&&el.classList.contains("v4-hero-amt")){
+      try{
+        const rg=document.createRange();
+        rg.selectNodeContents(el);
+        const r=rg.getBoundingClientRect();
+        if(r.width>=8&&r.height>=8) return r;
+      }catch(_){}
+    }
+    return el.getBoundingClientRect();
   };
   const steps=[
-    {k:"tour_1", tab:"dash", sel:function(){ return pickVisible(".page .v4-hero, [data-tour='hero']"); }},
+    // Solo la cifra; pad holgado para envolver € (Range + margen; no a ojo del número grande).
+    {k:"tour_1", tab:"dash", pad:18, sel:function(){ return pickVisible(".page .v4-hero-amt, [data-tour='hero-amt']"); }},
+    // Sin recorte: el gesto abre Ajustes en cualquier sitio. Sigue el velo oscuro del tutorial.
+    {k:"tour_settings", tab:"dash", tipOnly:true},
     {k:"tour_2", tab:"gastos", sel:function(){ return document.querySelector('.botnav-tab[data-tour="gastos"]'); }},
-    {k:"tour_3", tab:null, sel:function(){ return document.querySelector(".botnav-fab"); }},
+    {k:"tour_3", tab:null, round:true, sel:function(){ return document.querySelector(".botnav-fab"); }},
     {k:"tour_4", tab:"plan", sel:function(){ return document.querySelector('.botnav-tab[data-tour="plan"]'); }},
+    {k:"tour_planswipe", tab:"plan", sel:function(){ return pickVisible(".page .v4-seg, .v4-seg"); }},
     {k:"tour_5", tab:"cartera", sel:function(){ return document.querySelector('.botnav-tab[data-tour="cartera"]'); }},
-    // Avatar: SOLO el que está en viewport (el track anima 0.42s; medir a medias dejaba el
-    // foco en vacío — feedback 2026-07-17).
-    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".v4-avatar, [data-tour='avatar']"); }},
-    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row")||document.querySelector(".botnav"); }},
+    {k:"tour_6", tab:"dash", round:true, sel:function(){ return pickVisible(".page .v4-avatar, [data-tour='avatar']"); }},
+    // Sin foco: el tirón abre el perfil en cualquier sitio de Inicio, no solo «arriba del todo».
+    {k:"tour_pulldown", tab:"dash", tipOnly:true},
+    {k:"tour_7", tab:null, sel:function(){ return document.querySelector(".botnav-row"); }},
   ];
   const [i,setI]=useState(0);
-  const [rect,setRect]=useState(null);
+  const [shown,setShown]=useState(null);
+  const spotRef=useRef(null);
+  const tipRef=useRef(null);
+  const padOf=function(st, round){
+    if(st&&st.pad!=null) return st.pad;
+    return round?8:10;
+  };
+  const tipPos=function(r, tipH, tipOnly){
+    // Todo en px de pantalla; `pintar` lo pasa a espacio zoom al escribir estilos.
+    const H=window.innerHeight||700;
+    const need=Math.max(120, tipH||156);
+    if(tipOnly||!r||r.tipOnly) return {top:Math.max(24, Math.round(H*0.28)), bottom:""};
+    const p=padOf(null, r.round), gap=16;
+    const spotTop=r.y-p, spotBot=r.y+r.h+p;
+    if(spotTop>H*0.62) return {top:Math.max(12, Math.round(H*0.10)), bottom:""};
+    const belowTop=spotBot+gap;
+    if(belowTop+need<=H-10) return {top:belowTop, bottom:""};
+    const aboveBottom=H-spotTop+gap;
+    if(spotTop-gap-need>=10) return {top:"", bottom:aboveBottom};
+    if((H-spotBot)>=spotTop) return {top:Math.min(belowTop, H-need-10), bottom:""};
+    return {top:"", bottom:Math.min(Math.max(10, aboveBottom), H-need-10)};
+  };
+  const pintar=function(r){
+    const st=steps[r.step!=null?r.step:i];
+    const tipOnly=!!(r.tipOnly||(st&&st.tipOnly));
+    const p=padOf(st, r.round);
+    const n=spotRef.current;
+    if(n){
+      if(tipOnly){
+        // Velo a pantalla completa (mismo tono que el box-shadow del foco). Antes opacity:0
+        // quitaba el oscurecido y parecía que el tutorial había terminado (feedback 4/8).
+        n.style.opacity="1";
+        n.style.left="0"; n.style.top="0";
+        n.style.width=zPx(window.innerWidth||360)+"px";
+        n.style.height=zPx(window.innerHeight||700)+"px";
+        n.style.borderRadius="0";
+      } else {
+        n.style.opacity="1";
+        n.style.borderRadius="";
+        n.style.left=zPx(r.x-p)+"px"; n.style.top=zPx(r.y-p)+"px";
+        n.style.width=zPx(r.w+p*2)+"px"; n.style.height=zPx(r.h+p*2)+"px";
+      }
+    }
+    const tip=tipRef.current;
+    if(tip){
+      // offsetHeight del tip ya está en px de pantalla (post-zoom); tipPos trabaja en pantalla.
+      const box=tipPos(r, tip.getBoundingClientRect().height||156, tipOnly);
+      tip.style.top=box.top===""?"":(zPx(box.top)+"px");
+      tip.style.bottom=box.bottom===""?"":(zPx(box.bottom)+"px");
+      tip.style.left=zPx(16)+"px"; tip.style.right=zPx(16)+"px";
+    }
+  };
+  const showNav=function(){
+    // Durante el tour la barra NO puede estar escondida: si lo está, medimos su sitio «fuera»
+    // y el foco cae en el aire (fotos Gastos/Plan/Cartera).
+    const nav=document.querySelector(".botnav");
+    if(nav){ nav.classList.remove("botnav-hidden","botnav-hidden-fast"); }
+  };
   const inViewport=function(r){
     const H=window.innerHeight||700, W=window.innerWidth||400;
-    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left>=0 && r.left<W-8 && r.right>8;
+    return r.width>0 && r.height>0 && r.top<H-24 && r.bottom>24 && r.left>=-2 && r.left<W-8 && r.right>8;
   };
   const bringIntoView=function(el){
     try{
@@ -207,69 +289,124 @@ function Tour({onDone, goTab, tabIds}){
     const idx=tabIds.indexOf(tabId);
     if(idx>=0) try{ goTab(idx); }catch(e){}
   };
+  const cajaDe=function(st){
+    if(!st) return null;
+    if(st.tipOnly) return {x:0,y:0,w:0,h:0,tipOnly:true,round:false};
+    const el=st.sel&&st.sel();
+    if(!el) return null;
+    const r=boxOf(el);
+    return {x:r.left,y:r.top,w:r.width,h:r.height,round:!!st.round,el:el};
+  };
   const measure=function(idx){
     for(let j=idx;j<steps.length;j++){
       ensureTab(steps[j].tab);
-      const el=steps[j].sel();
-      if(!el) continue;
-      bringIntoView(el);
-      const r=el.getBoundingClientRect();
-      if(inViewport(r)) return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}, round:!!steps[j].round};
+      showNav();
+      const c=cajaDe(steps[j]);
+      if(!c) continue;
+      if(c.tipOnly) return {j:j, r:{x:0,y:0,w:0,h:0,tipOnly:true}, round:false, tipOnly:true};
+      if(c.el) bringIntoView(c.el);
+      const r=c.el?boxOf(c.el):{left:c.x,top:c.y,width:c.w,height:c.h,bottom:c.y+c.h,right:c.x+c.w};
+      if(inViewport(r)){
+        return {j:j, r:{x:r.left,y:r.top,w:r.width,h:r.height}, round:!!steps[j].round, el:c.el||null};
+      }
     }
     return null;
   };
   useEffect(function(){
-    let cancelled=false;
+    let cancelled=false, raf=0, esperas=0, quieto=0, vueltas=0, ultima="", traido=null, nodo=null, redondo=false, enganchado=false, tipOnly=false;
     ensureTab(steps[i]&&steps[i].tab);
-    // El track anima 420 ms: medir antes = foco desplazado (bug avatar del tutorial).
-    const wait=(steps[i]&&steps[i].tab)?520:80;
-    const run=function(){
+    showNav();
+    const seguir=function(){
       if(cancelled) return;
-      const m=measure(i);
-      if(!m){ onDone(); return; }
-      if(m.j!==i){ setI(m.j); return; }
-      setRect(Object.assign({},m.r,{round:m.round}));
+      showNav();
+      let caja;
+      if(tipOnly){
+        caja={x:0,y:0,w:0,h:0,tipOnly:true,round:false,step:i};
+      } else {
+        const r=boxOf(nodo);
+        if(r.width<8||r.height<8){ traido=null; esperas=0; enganchado=false; raf=requestAnimationFrame(buscar); return; }
+        caja={x:r.left,y:r.top,w:r.width,h:r.height,round:redondo,step:i};
+      }
+      const clave=Math.round(caja.x)+","+Math.round(caja.y)+","+Math.round(caja.w)+","+Math.round(caja.h)+","+(caja.tipOnly?1:0);
+      if(clave===ultima) quieto++; else { quieto=0; ultima=clave; }
+      const fin=tipOnly || quieto>=6 || ++vueltas>180;
+      if(!enganchado){
+        enganchado=true; setShown({i:i, rect:caja, pegado:true, tipOnly:tipOnly});
+      } else if(fin){
+        setShown({i:i, rect:caja, pegado:false, tipOnly:tipOnly});
+      } else {
+        pintar(caja);
+      }
+      if(!fin) raf=requestAnimationFrame(seguir);
     };
-    const tm=setTimeout(function(){
-      requestAnimationFrame(function(){ requestAnimationFrame(run); });
-    }, wait);
-    const onR=function(){ const mm=measure(i); if(mm&&mm.j===i) setRect(Object.assign({},mm.r,{round:mm.round})); };
+    const buscar=function(){
+      if(cancelled) return;
+      const st=steps[i];
+      if(st&&st.tipOnly){ tipOnly=true; redondo=false; nodo=null; seguir(); return; }
+      tipOnly=false;
+      const el=st&&st.sel&&st.sel();
+      if(el){
+        if(el!==traido){ traido=el; bringIntoView(el); }
+        const r=boxOf(el);
+        if(inViewport(r)){ nodo=el; redondo=!!st.round; seguir(); return; }
+      }
+      if(++esperas<90){ raf=requestAnimationFrame(buscar); return; }
+      const alt=measure(i);
+      if(!alt){ onDone(); return; }
+      if(alt.j!==i){ setI(alt.j); return; }
+      if(alt.tipOnly){ tipOnly=true; redondo=false; nodo=null; seguir(); return; }
+      nodo=alt.el||(steps[i].sel&&steps[i].sel());
+      if(!nodo){ onDone(); return; }
+      redondo=!!alt.round; tipOnly=false; seguir();
+    };
+    raf=requestAnimationFrame(buscar);
+    const onR=function(){
+      quieto=0; vueltas=0; cancelAnimationFrame(raf);
+      raf=requestAnimationFrame(tipOnly||nodo?seguir:buscar);
+    };
     window.addEventListener("resize",onR);
-    return function(){ cancelled=true; clearTimeout(tm); window.removeEventListener("resize",onR); };
+    if(window.visualViewport) window.visualViewport.addEventListener("resize",onR);
+    if(window.visualViewport) window.visualViewport.addEventListener("scroll",onR);
+    return function(){
+      cancelled=true; cancelAnimationFrame(raf);
+      window.removeEventListener("resize",onR);
+      if(window.visualViewport) window.visualViewport.removeEventListener("resize",onR);
+      if(window.visualViewport) window.visualViewport.removeEventListener("scroll",onR);
+    };
   },[i]);
   useEffect(function(){
     const onKey=function(e){ if(e.key==="Escape") onDone(); };
     window.addEventListener("keydown",onKey);
     return function(){ window.removeEventListener("keydown",onKey); };
   },[onDone]);
-  if(!rect) return React.createElement("div",{className:"tour-wrap"},
-    React.createElement("div",{className:"tour-tip",style:{bottom:80,left:16,right:16}},
-      React.createElement("div",{className:"tour-txt"}, t("tour_skip")),
-      React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
-    )
-  );
-  const pad=rect.round?6:8;
-  const H=window.innerHeight||700;
-  const below = rect.y + rect.h/2 < H*0.55;
-  const tipStyle = below
-    ? {top:Math.min(rect.y+rect.h+pad+12, H-180), left:16, right:16}
-    : {bottom:Math.max(24, Math.min(H-rect.y+pad+12, H-180)), left:16, right:16};
-  const last=i===steps.length-1;
-  const spotStyle={left:rect.x-pad,top:rect.y-pad,width:rect.w+pad*2,height:rect.h+pad*2};
-  if(rect.round) spotStyle.borderRadius="50%";
-  return React.createElement("div",{className:"tour-wrap"},
-    React.createElement("div",{className:"tour-spot",style:spotStyle}),
-    React.createElement("div",{className:"tour-tip",style:tipStyle},
-      React.createElement("div",{className:"tour-txt"},tf(steps[i].k,{
-        gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")
-      })),
-      React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===i?" on":"")}); })),
-      React.createElement("div",{className:"tour-btns"},
-        React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
-        React.createElement("button",{className:"btn btn-primary",style:{padding:"9px 20px"},onClick:function(){ if(last) onDone(); else setI(i+1); }}, last?t("tour_done"):t("tour_next"))
+  useLayoutEffect(function(){ if(shown) pintar(shown.rect); },[shown]);
+
+  const ui=function(){
+    if(!shown) return React.createElement("div",{className:"tour-wrap"},
+      React.createElement("div",{className:"tour-tip",style:{bottom:80,left:16,right:16}},
+        React.createElement("div",{className:"tour-txt"}, t("tour_skip")),
+        React.createElement("button",{className:"btn btn-primary btn-block",onClick:onDone}, t("tour_done"))
       )
-    )
-  );
+    );
+    const rect=shown.rect;
+    const last=i===steps.length-1;
+    const tipOnly=!!shown.tipOnly;
+    const spotStyle=rect.round?{borderRadius:"50%"}:null;
+    return React.createElement("div",{className:"tour-wrap"},
+      React.createElement("div",{className:"tour-spot"+(shown.pegado?" pegado":"")+(tipOnly?" tiponly":""),style:spotStyle,ref:spotRef}),
+      React.createElement("div",{className:"tour-tip"+(shown.pegado?" pegado":""),ref:tipRef},
+        React.createElement("div",{className:"tour-txt"},tf(steps[shown.i].k,{
+          gastos:t("tab_gastos"), plan:t("tab_plan"), cartera:t("tab_cartera"), inicio:t("tab_dash")
+        })),
+        React.createElement("div",{className:"tour-dots"}, steps.map(function(_,d){ return React.createElement("span",{key:d,className:"td"+(d===shown.i?" on":"")}); })),
+        React.createElement("div",{className:"tour-btns"},
+          React.createElement("button",{className:"tour-skip",onClick:onDone},t("tour_skip")),
+          React.createElement("button",{className:"btn btn-primary",style:{padding:"9px 20px"},onClick:function(){ if(last) onDone(); else setI(i+1); }}, last?t("tour_done"):t("tour_next"))
+        )
+      )
+    );
+  };
+  return ReactDOM.createPortal(ui(), document.body);
 }
 
 function CollapsibleCard({title, sub, dot, defaultOpen, right, children, storageKey, help}){

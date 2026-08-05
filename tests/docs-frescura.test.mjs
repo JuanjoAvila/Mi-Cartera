@@ -149,15 +149,13 @@ ok(`VERSION = ${VERSION}`);
     const r = spawnSync("git", args, { cwd: root, encoding: "utf8" });
     return r.status === 0 ? r.stdout.trim() : null;
   };
-  /* En la rama `beta` esta comprobación NO aplica: `beta.yml` publica `VERSION.RUN_NUMBER`, así
-     que CADA push a beta sale con un número distinto y el móvil del dueño sí se entera. Exigir
-     un bump de `VERSION` por cada arreglo durante una ronda de pruebas obligaría a inventar
-     versiones que nadie va a publicar — justo lo que hace que la gente se salte el canal. El
-     bump se hace UNA vez, al abrir la ronda, y se comprueba al promocionar a `main`. */
-  /* `git branch --show-current` y no `rev-parse --abbrev-ref HEAD`: como existe también una
-     RELEASE llamada `beta`, el nombre es ambiguo y rev-parse devuelve «heads/beta». Se limpia el
-     prefijo igualmente por si el entorno usa la otra forma. */
-  const rama = (process.env.GITHUB_REF_NAME || git(["branch", "--show-current"]) || git(["rev-parse", "--abbrev-ref", "HEAD"]) || "")
+  /* Preferir la rama REALMENTE chequeada sobre `GITHUB_REF_NAME`. El promote corre el workflow
+     desde `main` (`workflow_dispatch`) pero hace `checkout -B beta` para testear el árbol que
+     se va a subir: si manda el env, cree que estamos en main, exige bump de VERSION y BLOQUEA
+     la promoción de toda una ronda beta (4.13.0) que a propósito no bumpea en cada arreglo.
+     `git branch --show-current` y no `rev-parse --abbrev-ref HEAD`: existe también un tag/release
+     `beta` y el nombre es ambiguo. */
+  const rama = (git(["branch", "--show-current"]) || process.env.GITHUB_REF_NAME || git(["rev-parse", "--abbrev-ref", "HEAD"]) || "")
     .replace(/^heads\//, "");
   const lastBump = rama === "beta" ? null : git(["log", "-1", "--format=%H", "--", "VERSION"]);
   if (rama === "beta") {

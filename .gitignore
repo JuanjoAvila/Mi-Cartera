@@ -33,3 +33,14 @@ test-results/
 /docs/design/handoff/capturas/revolut-profile-pull/
 /docs/design/handoff/capturas/video-frames/
 /docs/design/handoff/capturas/video-frames-dense/
+# ⚠ Y NINGÚN VÍDEO, VENGA DE DONDE VENGA. La regla de arriba solo cubría las carpetas de
+# capturas, así que el 17/7 se coló `revolut-settings-swipe.mp4` en el commit 202fd4e: 11 s de
+# su Revolut REAL con su nombre completo, su IBAN, su foto y su @usuario, en un repo PÚBLICO.
+# Un vídeo de referencia se mira en local; al repo no entra nunca.
+*.mp4
+*.mov
+*.webm
+
+# Caché de Gradle al compilar la APK aquí mismo (GRADLE_USER_HOME local). Son decenas de miles
+# de ficheros de dependencias descargadas: un `git add -A` despistado se los lleva enteros.
+.gradle-local/

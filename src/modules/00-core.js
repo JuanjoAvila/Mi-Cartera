@@ -1,7 +1,7 @@
 /* ============================================================
    MI CARTERA v3 — fuente JSX (se compila con runtime clásico)
    ============================================================ */
-const { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } = React;
+const { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useDeferredValue } = React;
 
 /* ---------- CONFIG ---------- */
 const CONFIG = {
@@ -54,6 +54,32 @@ function mcOnGastosActive(cb){
    Idempotente a propósito: lo llaman varios caminos (sin nube, sin sesión, candado, alta, y el
    final del primer pull de la nube) y ninguno sabe de los demás. */
 function mcBootReady(){ try{ window.__mcBootReady=true; }catch(e){} }
+
+/* EJE DE UN GESTO: "x", "y" o null (todavía no está claro).
+   Lo comparten el swipe horizontal entre pestañas (11-app-main.js) y el vertical de Plan
+   (14-v4-screens.js). Vive AQUÍ y no duplicado en cada uno porque tenerlo por duplicado es
+   exactamente lo que se rompió: dos gestos decidiendo por su cuenta sobre el mismo dedo.
+
+   Antes se decidía por proporción (|ddx| > |ddy|·1,25) en cuanto el dedo pasaba de 10 px. Pero el
+   pulgar de una mano que agarra el móvil sale primero de lado y baja después: a los 10 px, un
+   tirón hacia abajo lleva 4 px de lado y 1 hacia abajo, así que se declaraba HORIZONTAL para
+   siempre. Medido el 4/8 a mitad de una lista de Deudas, bajando 190 px: con 80 px de deriva la
+   app se iba a la pestaña de Gastos («al ir hacia abajo se vuelve loco y cambia también de tabs»)
+   y con 40-60 px el scroll se quedaba muerto sin más («hay un stopper... como un muro invisible»).
+
+   Ahora un eje tiene que sacarle VENTAJA CLARA al otro en píxeles, no en proporción. Un desliz
+   horizontal de verdad la saca a los ~12 px —igual de rápido que antes—, y una bajada con deriva
+   ya no gana por haber salido de lado. Si el dedo va en diagonal exacta no gana nadie y se queda
+   el scroll del navegador, que es lo que el usuario espera. */
+const GEST_LEAD=12;   // px de ventaja de un eje sobre el otro para reclamarlo
+const GEST_MAX=64;    // sin ventaja clara a esta distancia, decide el mayor (no dejar el gesto colgado)
+function gestureAxis(ddx,ddy){
+  const ax=Math.abs(ddx), ay=Math.abs(ddy);
+  if(ax-ay>=GEST_LEAD) return "x";
+  if(ay-ax>=GEST_LEAD) return "y";
+  if(Math.max(ax,ay)>=GEST_MAX) return ax>ay?"x":"y";
+  return null;
+}
 
 var _mcSentryReady=false;
 var _mcSentryQueue=[];
@@ -124,7 +150,16 @@ const CATEGORIES = [
 ];
 const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
 const INGRESO_CAT = { id:"ingreso", name:"Ingreso", color:"#5FD08A", icon:"💰" };
-const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (CAT[id] || CAT.otros);
+// Ni gasto ni ingreso: dinero que sale del efectivo pero va a un fondo (round-up/cashback/aporte
+// automático de un bróker). Ver `applyInvestBuy` en 08-motor-bank.js y `reconcileTR` en este fichero.
+const INVERSION_CAT = { id:"inversion", name:"Inversión", color:"#D4AF37", icon:"📈" };
+// Dinero TUYO que cambia de cuenta (la nómina que te traspasas de un banco a otro para el mes).
+// Se apunta —«Mi ciclo» se ancla a él, ver `lastPaydayOf`— pero no es dinero nuevo: no suma a los
+// ingresos del mes, o al conectar también el banco de origen se contaría dos veces (2026-08-04).
+const TRASPASO_CAT = { id:"traspaso", name:"Traspaso", color:"#8AA0B8", icon:"🔄" };
+// Categorías que NO son gasto ni ingreso: mueven dinero, no lo crean ni lo consumen.
+const CAT_NEUTRAS = { inversion:1, traspaso:1 };
+const catOf = (id)=> id==="ingreso" ? INGRESO_CAT : (id==="inversion" ? INVERSION_CAT : (id==="traspaso" ? TRASPASO_CAT : (CAT[id] || CAT.otros)));
 const catName = (id)=> t("cat_"+(catOf(id).id));   // nombre traducido de la categoría
 const freqLabel = (f)=> t("freq_"+f);              // frecuencia traducida
 
@@ -144,6 +179,20 @@ let USER_OVERRIDES = {};
    se puede discutir antes de que viaje nada. */
 const USO_OK=["import_hoja"];
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
+/* EL VOCABULARIO CERRADO DE LAS MÉTRICAS DE USO (ver `cloud.logUso`, más abajo).
+   Todo lo que se puede medir está en esta lista y en ningún otro sitio. Es a propósito: con una
+   etiqueta libre, el primer `logUso("gasto en "+comercio)` que alguien escriba con buena
+   intención se lleva el nombre de una tienda a una tabla de la nube, y esto es una app de
+   finanzas de una familia (AGENTS §9). Añadir una métrica es añadir una línea AQUÍ, donde se ve
+   en el diff y se puede discutir antes de que viaje nada. */
+const USO_OK=[
+  // Pantallas: cuáles se usan de verdad y cuáles sobran.
+  "tab_inicio","tab_gastos","tab_plan","tab_cartera",
+  "abre_perfil","abre_ajustes","abre_hogar","abre_novedades",
+  // Acciones: qué hace la gente, no con qué.
+  "apunta_gasto","apunta_ingreso","crea_meta","crea_deuda","amortiza","edita_presupuesto",
+  "sync_bancos","sync_brokers","import_hoja","import_csv","export_backup","informe_mes",
+];
 const KW = {
   // "pan" y "cine" ANTES que "bares": panadería/pastelería y Kinepolis no deben caer en bares.
   pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano"],
@@ -167,7 +216,13 @@ const KW = {
 function autoCategory(merchant){
   const c=(merchant||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const key=c.trim();
-  if(USER_OVERRIDES[key]) return USER_OVERRIDES[key];                                        // lo que T\u00da has aprendido a mano
+  // "Inversi\u00f3n" NUNCA se adivina por comercio (2026-08-04). Es una categor\u00eda de DESTINO del dinero,
+  // no un tipo de tienda: solo la pone el aporte autom\u00e1tico reconocido por importe exacto
+  // (`importObExpenses`) o el usuario a mano. Sin este blindaje, un override envenenado \u2014el que
+  // dej\u00f3 el bug de "Movimiento", ver `fixMovInvasion`\u2014 convierte en Inversi\u00f3n CUALQUIER gasto que
+  // pase por aqu\u00ed: fue lo que volvi\u00f3 a marcar solo un parking de zona azul de 9,50 \u20ac cada vez que
+  // abr\u00eda la app, porque `migrate` re-categoriza todo lo que est\u00e9 en "otros" y no sea manual.
+  if(USER_OVERRIDES[key] && !CAT_NEUTRAS[USER_OVERRIDES[key]]) return USER_OVERRIDES[key];   // lo que T\u00da has aprendido a mano
   for(const k in MERCHANT_OVERRIDES){ if(c.indexOf(k)!==-1) return MERCHANT_OVERRIDES[k]; }  // overrides de ejemplo
   // Keywords cortas (bar, bus…) con límite de palabra: si no, "Barcelona" caía en bares
   // por el substring «bar» (bug Kinepolis 2026-07-17).
@@ -491,6 +546,17 @@ const cloud = (function(){
         .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
       if(error){ if(_isMissingNotaCol(error)) _mcNotaCols=false; throw error; }
     },
+    // CATEGORÍA en la tabla. Sin esto, `syncCloudExpenses` —que reemplaza los gastos de origen
+    // "supabase" con lo que hay en la tabla— pisaba en el siguiente pull cualquier recategorización
+    // hecha en el móvil, incluida la que aparta un cashback a «Inversión» (2026-08-04).
+    async setExpenseCat(e, cat){
+      if(!sb) return;
+      const {data:{session}}=await sb.auth.getSession();
+      if(!session) return;
+      const {error}=await sb.from('expenses').update({ cat:String(cat||"otros") })
+        .eq('user_id',session.user.id).eq('fecha',e.date).eq('importe',e.amount).eq('comercio',e.merchant||"");
+      if(error) throw error;
+    },
     async deleteExpense(e){
       if(!sb) return;
       const {data:{session}}=await sb.auth.getSession();
@@ -527,6 +593,21 @@ const cloud = (function(){
       if(error) throw error;
       const cutoff=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
       try{ await sb.from('state_backups').delete().eq('user_id',uid).lt('day',cutoff); }catch(e){}
+    },
+    // Días con copia automática disponible (más reciente primero). Solo lectura: la copia ya
+    // se escribe sola cada día (backupState); esto es lo que faltaba para poder MIRARLAS y
+    // restaurar una, en vez de que vivan escritas pero invisibles (2026-07-31).
+    async listBackupDays(uid){
+      if(!sb || !uid) return [];
+      const {data,error}=await sb.from('state_backups').select('day').eq('user_id',uid).order('day',{ascending:false}).limit(30);
+      if(error) throw error;
+      return (data||[]).map(function(r){ return r.day; });
+    },
+    async getBackup(uid, day){
+      if(!sb || !uid || !day) return null;
+      const {data,error}=await sb.from('state_backups').select('data').eq('user_id',uid).eq('day',day).maybeSingle();
+      if(error) throw error;
+      return data ? data.data : null;
     },
     // ---- Open Banking (Enable Banking) · Capa 2 ----
     // Genera el enlace de login del banco (la Edge Function guarda el 'pending').
@@ -657,20 +738,30 @@ const cloud = (function(){
         });
       }catch(e){}
     },
-    /* MÉTRICAS DE USO — qué se usa de verdad, NUNCA quién ni con cuánto dinero.
+    /* MÉTRICAS DE USO — qué pantallas se usan, NUNCA quién ni con cuánto dinero.
+       Pendiente desde la review del 2026-07-25 y hecho ahora por el motivo que ya estaba escrito
+       en el ROADMAP: «el histórico de uso no se recupera hacia atrás». Con tres usuarios parece
+       que no urge, y es justo al revés — el día que haya treinta, los seis meses anteriores no
+       se pueden reconstruir.
+
        LO QUE SE MANDA es una etiqueta de un vocabulario CERRADO (`USO_OK`) y nada más. Ni el
        importe, ni el comercio, ni el banco, ni el texto que haya escrito. Si mañana alguien
-       quiere medir algo nuevo, tiene que añadir su etiqueta a `USO_OK` — que es exactamente la
-       puerta que se quiere: se ve en el diff y se puede discutir. Un `logEvent('use', loQueSea)`
-       libre acabaría llevándose el nombre de un comercio a la primera de cambio.
+       quiere medir algo nuevo, tiene que añadir su etiqueta aquí — que es exactamente la puerta
+       que se quiere: se ve en el diff y se puede discutir. Un `logEvent('use', loQueSea)` libre
+       acabaría llevándose el nombre de un comercio a la primera de cambio.
 
-       Comparte el tope de 20/sesión y el dedupe de `logEvent`. */
+       Comparte el tope de 20/sesión y el dedupe de `logEvent`, así que una pantalla cuenta UNA
+       vez por sesión: se mide cuántas sesiones tocan cada cosa, no cuántas veces se toca. Para lo
+       que sirve esto —saber qué sobra y qué falta— es la medida buena, y además es la barata. */
     logUso(que){
       if(USO_OK.indexOf(que)<0) return;   // vocabulario cerrado: lo que no está, no viaja
       return this.logEvent('use', que);
     },
-    /* Cuánto tardan las cosas que Supabase NO puede ver porque pasan en el móvil (un import, una
-       sincronización). Se redondea a medio segundo: menos precisión es menos huella. */
+    /* Cuánto tardan las cosas que Supabase NO puede ver porque pasan en el móvil: una
+       sincronización, un import. Las duraciones de las Edge Functions y el SQL caro ya los da su
+       panel (Logs + Query Performance) y rehacerlos sería trabajo tirado — esto es solo el hueco
+       que queda. Se redondea a medio segundo: la diferencia entre 3,1 s y 3,4 s no cambia
+       ninguna decisión, y menos precisión es menos huella. */
     logPerf(que, ms){
       if(USO_OK.indexOf(que)<0) return;
       const s=Math.round(Number(ms||0)/500)/2;
@@ -816,7 +907,7 @@ const cloud = (function(){
 
    Si añades un método a `cloud` que ESCRIBA algo, añádelo a esta lista. */
 const CLOUD_WRITES=[
-  "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","deleteExpense",
+  "pushState","addExpense","setExpenseBank","setExpenseNoCard","setExpenseNote","setExpenseCat","deleteExpense",
   "backupState","bankConnect","bankDisconnect","myinvestorConnect","myinvestorStore",
   "myinvestorDisconnect","setIngestToken","clearIngestToken","logEvent","logUso","logPerf","feedback","betaReport",
   "deleteAccount","createHousehold","joinHousehold","publishHouseholdSnapshot","leaveHousehold",
@@ -1030,6 +1121,24 @@ const bio = {
    aunque el banco diga «Operación realizada correctamente». Un candado compartido por Cartera y
    Mis bancos evita gastar el permiso dos veces. */
 var _bankConnectBusy=null;
+/* TRADE REPUBLIC POR OPEN BANKING: CONVIVE, NO SE BLOQUEA (2026-08-01).
+   El 31/7 esto se cerró a cal y canto —`bankConnectBlocked`— tras el susto de «todos los gastos
+   del mes contados como ingresos» al conectar TR desde el buscador de bancos. Pero bloquear no era
+   arreglar, y él lo dijo con razón: «en vez de mirar qué hacer, porque quizás pueden convivir
+   ambas integraciones... no me dio opción».
+
+   Y conviven. Repasado el código entero, el susto tenía dos causas SEPARADAS:
+   · La de verdad era `mapTransaction`: faltaba un `Math.abs()` antes de aplicar el signo del
+     `credit_debit_indicator`, así que un ASPSP que manda el importe YA firmado doblaba el signo.
+     Eso está arreglado en `enablebanking.ts` y no dependía de este bloqueo para nada.
+   · La otra es real pero pequeña y tiene dueño claro: el SALDO. El puente nativo re-ancla la
+     cuenta TR con `availableCash`; Open Banking re-anclaría la misma cuenta con su propio saldo y
+     otra fórmula → bailaría según cuál sincronizara la última.
+
+   Reparto: el puente nativo manda en el saldo y las posiciones (`saldoLoMandaPuenteNativo`, en
+   08-motor-bank.js), y Open Banking aporta los MOVIMIENTOS — que es lo que se ganaba y nadie
+   estaba mirando: las compras con la tarjeta de TR entrando solas en Gastos en vez de a mano.
+   Los movimientos van deduplicados por `ext_id`, así que no hay doble conteo posible. */
 function bankConnectOnce(aspsp_name, country){
   if(_bankConnectBusy){
     const err=new Error("busy");

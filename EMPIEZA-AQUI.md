@@ -29,6 +29,17 @@ tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versi�
 5. **En un portátil no se ven los problemas de rendimiento del móvil.** Cero tareas largas hasta
    estrangular la CPU x6 por CDP. Método completo y trampas en `AGENTS.md` §7 y §7 bis.
 
+> **Atajo para las cinco de golpe: `npm run salud`** (desde 4.13.0). Contesta en veinte segundos
+> lo que si no se comprueba a mano: si los cuatro sitios donde vive la versión cuadran, si la APK
+> anunciada existe de verdad, **qué sirve producción ahora mismo** (preguntándole a Pages, no
+> leyendo el repo), si la beta va por delante o por detrás, y qué commits hay en `beta` sin
+> promocionar. Empieza por ahí antes de tocar nada.
+
+> **Y si los e2e no arrancan por el navegador** («Executable doesn't exist at …»), no lances
+> `npx playwright install`: en los entornos con Chromium ya instalado se apunta al que hay con
+> `PLAYWRIGHT_CHROMIUM_PATH=/ruta/al/chrome` (la config lo lee). Instalar otro se come el disco y
+> tarda diez minutos para nada.
+
 ## 3. Cómo se publica
 
 | Quieres… | Haces |
@@ -69,36 +80,30 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy (2026-07-27):** `VERSION` = **4.12.0** en rama `beta`, lista para que la
-re-pruebe en el móvil. Producción (`main`) sigue en **4.11.0**. Además de los bloqueos de los
-rechazos .17/.18, esta tanda cierra dos de las tres cosas que quedaban abiertas:
+**Hoy (2026-08-01):** `VERSION` = **4.13.0** en rama `beta`, pendiente de su veredicto en el panel.
+Producción (`main`) va por la **4.12.1** (APK 35, que es de la 4.12.0: la .1 viajó por OTA).
+Antes de leer nada más, lanza **`npm run salud`**: te dice esto mismo pero comprobado.
 
-- **Abrir el perfil, 339 → 175 ms** (y esconder la barra al hacer scroll, 123 → **0 ms**). La
-  causa NO era la animación del panel: era que las cuatro páginas se construían dentro del render
-  de `App`. Todas las hipótesis descartadas están en el `CHANGELOG` **con su número**.
-- **La APK ya puede pasar de la 34 a la 35**: `beta.yml` no subía `apk.json` a la release `beta`,
-  así que el móvil en canal de pruebas leía el manifiesto de producción y se callaba.
-- **Mañana del 27, con su prueba delante:** APK aprobada por él. Deudas seguía mal y **no era lo que**
-  **parecía**: no es «salir de Deudas», es **Plan entero** (58 ms saliendo de Gastos contra 187 entrando
-  en Plan). Sus tres segmentos se ocultaban con `visibility:hidden`, que sigue pintando. Ahora llevan
-  `content-visibility:hidden` siempre: **entrar en Plan 162 → 89 ms**.
-- **Y la tercera vuelta:** el lag dependía de la DIRECCIÓN (hacia Gastos sí, hacia Cartera no), y eso
-  destapó que **`parseDate` devuelve un `Date` nuevo cada vez**, lo que rompía el `React.memo` de las
-  filas de Gastos desde siempre. Si pasas una fecha como prop, pasa el NÚMERO.
-- **El perfil se queda como está** (~175 ms), y él lo ha dado por bueno: «me conformo, no quiero
-  cambiar diseño». No lo toques. No es JS. Todas las palancas CSS están medidas y
-  descartadas: el siguiente tramo pide enseñar MENOS panel al abrir, no pintarlo más rápido.
-- ⚠ **SIGUE ABIERTO el lag al deslizar de Deudas a Gastos.** Todo lo que se ha probado (y lo mucho
-  que NO ha funcionado, con su número), el método de medida y lo siguiente que haría está en
-  **[`docs/LAG-DESLIZAR.md`](docs/LAG-DESLIZAR.md)**. **Léelo antes de tocar nada de rendimiento**:
-  te ahorra repetir ocho experimentos ya hechos. Aviso gordo de ahí: **el banco de pruebas no
-  reproducía su fallo** durante dos tandas enteras, y por eso dos arreglos «medidos» no le llegaron.
+- **El tirón al deslizar y el stopper del perfil están CERRADOS**, dichos por él desde el móvil
+  («arregladísimo» los dos). `docs/LAG-DESLIZAR.md` se queda por lo que enseña sobre **cómo medir**
+  el rendimiento en su móvil de verdad, no porque quede nada pendiente ahí.
+- **La 4.13.0 lleva cuatro tandas** (`import`, `gestos`, `arranque`, `bancos`), cada una con su
+  botón en «Revisar esta beta». ⚠ **Pero sus commits van mezclados en `beta`, así que esta ronda
+  solo puede subir ENTERA** (`tandas` vacío en el workflow). Para poder trocear la SIGUIENTE, cada
+  tanda tiene que nacer en su rama `tanda/<id>` **antes del primer commit** — regla y motivo en
+  [`docs/TESTING.md`](docs/TESTING.md).
+- **Lo gordo de la tanda `bancos`** salió de probar con dinero real: gastos apuntados como ingresos
+  al conectar Trade Republic por Open Banking, recibos duplicados del histórico (una factura de 3
+  meses creaba 3 Fijos que se cobraban los 3 cada mes) y el banco de gasto diario que se quedaba
+  pegado al anterior. Los tres, en el `CHANGELOG` con su porqué.
 - **Sigue abierto**: «Gastos se queda a medio pintar». **No se ha reproducido** — está medido en el
   `CHANGELOG` y en `docs/ROADMAP.md` («Abierto, con lo medido»). No lo toques a ciegas.
+- **Sigue pendiente**: MyInvestor nativo, y validar la entrada de las diez Edge Functions (el único
+  rojo de `docs/AMENAZAS.md`).
 
-⚠ `docs/memoria/pendiente-manana-4-12-0.md` retrata cómo se cerró la noche ANTES de esta tanda, y
-es un espejo generado (`npm run memoria`, no se edita a mano): dos de sus tres puntos ya están
-hechos. **La foto de ahora es `docs/ROADMAP.md`.**
+⚠ `docs/memoria/pendiente-manana-4-12-0.md` retrata una noche de julio y es un espejo generado
+(`npm run memoria`, **no se edita a mano**): sus puntos ya están hechos.
+**La foto de ahora es `docs/ROADMAP.md`.**
 
 Detalle y checklist en `docs/ROADMAP.md` y `docs/TESTING.md`. **No promocionar sin su OK** en el panel.
 

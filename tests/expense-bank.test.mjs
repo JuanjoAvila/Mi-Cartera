@@ -26,6 +26,39 @@ t("expenseBankOf: lee ent o source", () => {
   assert.equal(ctx.expenseBankOf({ source: "manual" }), null);
 });
 
+t("expenseBankEnts: sin settings, usa el banco de la cuenta diaria", () => {
+  const s = { accounts: [{ id: "a1", ent: "sabadell", role: "diario" }], settings: {} };
+  const out = ctx.expenseBankEnts(s);
+  assert.equal(out.length, 1);
+  assert.equal(out[0], "sabadell");
+});
+
+t("expenseBankEnts: la cuenta diaria SIEMPRE entra, aunque expenseBanks tenga otro banco guardado de antes (2026-07-31)", () => {
+  // Repro del bug real: expenseBanks se quedó apuntando a "caixabank" de una configuración
+  // vieja, y el usuario cambió su cuenta de gasto diario a "revolut" (Patrimonio → rol «Gasto
+  // diario»). Antes del fix, expenseBankEnts devolvía SOLO ["caixabank"] para siempre: las
+  // compras de Revolut, el banco de gasto diario de VERDAD, nunca entraban en Gastos.
+  const s = {
+    accounts: [{ id: "a1", ent: "revolut", role: "diario" }],
+    settings: { expenseBanks: ["caixabank"] },
+  };
+  const out = ctx.expenseBankEnts(s);
+  assert.ok(out.indexOf("revolut") >= 0, "la cuenta diaria tiene que estar SIEMPRE");
+  assert.ok(out.indexOf("caixabank") >= 0, "no se pierde el banco extra ya guardado");
+  assert.equal(out.length, 2);
+});
+
+t("expenseBankEnts: sin duplicar si el banco diario ya está en expenseBanks", () => {
+  const s = {
+    accounts: [{ id: "a1", ent: "sabadell", role: "diario" }],
+    settings: { expenseBanks: ["sabadell", "caixabank"] },
+  };
+  const out = ctx.expenseBankEnts(s);
+  assert.equal(out.length, 2);
+  assert.equal(out[0], "sabadell");
+  assert.equal(out[1], "caixabank");
+});
+
 t("expenseFromRow: recupera banco tras pull", () => {
   const tr = ctx.expenseFromRow({ id: "1", fecha: "2026-07-01T12:00:00.000Z", importe: 12, comercio: "X", cat: "otros", source: "macrodroid" });
   assert.equal(tr.ent, "trade_republic");

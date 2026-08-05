@@ -80,7 +80,7 @@ const LANG = {
     st_mode_hint:"Sencillo deja Inicio, Gastos, Plan (solo recibos) y Cartera. Ideal para empezar.",
     brand_sub:"tus finanzas, claras",
     settings:"Ajustes", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualización",
-    budget_month:"Presupuesto mensual (€)", save:"Guardar", backup:"Copia de seguridad",
+    budget_month:"Presupuesto mensual (€)", save:"Guardar", backup:"Copia de seguridad", st_imports:"Importaciones",
     do_export:"⬇️ Exportar datos (JSON)", do_import:"⬆️ Importar datos (JSON)",
     eb_title:"Algo se ha torcido", eb_msg:"La app ha tenido un error al dibujar. Tus datos están a salvo. Descarga una copia por si acaso y recarga.", eb_export:"⬇️ Descargar copia de seguridad", eb_reload:"🔄 Recargar la app",
     off_pill:"📴 Sin conexión · se guarda y sincroniza al volver",
@@ -219,7 +219,7 @@ const LANG = {
     st_mode:"App mode", st_mode_full:"Full", st_mode_simple:"Simple", st_mode_hint:"Simple keeps Home, Spending, Plan (bills only) and Portfolio. Great to start.",
     brand_sub:"your money, clear",
     settings:"Settings", language:"Language", theme:"Colour theme", currency:"Display currency",
-    budget_month:"Monthly budget (€)", save:"Save", backup:"Backup",
+    budget_month:"Monthly budget (€)", save:"Save", backup:"Backup", st_imports:"Imports",
     do_export:"⬇️ Export data (JSON)", do_import:"⬆️ Import data (JSON)",
     eb_title:"Something went wrong", eb_msg:"The app hit a rendering error. Your data is safe. Download a backup just in case and reload.", eb_export:"⬇️ Download backup", eb_reload:"🔄 Reload the app",
     off_pill:"📴 Offline · saved and synced when you're back",
@@ -352,7 +352,7 @@ const LANG = {
     st_mode:"Mode de l'app", st_mode_full:"Complet", st_mode_simple:"Senzill", st_mode_hint:"Senzill deixa Inici, Despeses, Pla (només rebuts) i Cartera. Ideal per començar.",
     brand_sub:"els teus diners, clars",
     settings:"Configuració", language:"Idioma", theme:"Tema de color", currency:"Moneda de visualització",
-    budget_month:"Pressupost mensual (€)", save:"Desa", backup:"Còpia de seguretat",
+    budget_month:"Pressupost mensual (€)", save:"Desa", backup:"Còpia de seguretat", st_imports:"Importacions",
     do_export:"⬇️ Exporta dades (JSON)", do_import:"⬆️ Importa dades (JSON)",
     eb_title:"Alguna cosa ha fallat", eb_msg:"L'app ha tingut un error en dibuixar. Les teves dades estan segures. Descarrega una còpia per si de cas i recarrega.", eb_export:"⬇️ Descarrega còpia de seguretat", eb_reload:"🔄 Recarrega l'app",
     off_pill:"📴 Sense connexió · es desa i sincronitza en tornar",
@@ -437,11 +437,14 @@ function tf(k,vals){ let s=t(k); if(vals) for(const v in vals) s=s.split("{"+v+"
 Object.assign(LANG.es,{
   st_bigtext:"🔍 Letra grande", st_tour:"🎓 Ver el tutorial",
   tour_1:"💰 Aquí ves tu dinero de un vistazo: cuánto tienes en total y cómo va el mes.",
+  tour_settings:"👉 En Inicio, desliza de izquierda a derecha para abrir Ajustes — da igual a qué altura.",
   tour_2:"🧾 «{gastos}» es solo el día a día (súper, bares, ropa…). Filtra por mes, categoría o banco. Los recibos NO van aquí.",
-  tour_3:"➕ El botón verde del centro apunta un gasto o un ingreso al momento, sin ir a ninguna pestaña.",
+  tour_3:"➕ El botón + del centro apunta un gasto o un ingreso al momento, sin ir a ninguna pestaña.",
   tour_4:"📅 «{plan}» junta recibos, deudas y metas. En Recibos ves lo pendiente y lo ya pagado; Gestionar abre el detalle.",
+  tour_planswipe:"🔀 En «{plan}», con la lista arriba del todo, desliza hacia abajo para pasar entre Recibos, Deudas y Metas.",
   tour_5:"💼 «{cartera}» es tu patrimonio: cuentas, inversiones y bienes. Las herramientas de inversión están un toque más abajo.",
-  tour_6:"👤 El círculo de arriba abre tu perfil. Tira hacia abajo en Inicio para el mismo efecto. Ajustes: desliza de izquierda a derecha.",
+  tour_6:"👤 Toca el círculo de arriba para abrir tu perfil.",
+  tour_pulldown:"⬇️ En Inicio, desliza hacia abajo para abrir tu perfil (y otra vez para cerrarlo).",
   tour_7:"👆 Desliza entre pestañas con el dedo. ¡Ya estás listo!",
   tour_next:"Siguiente", tour_skip:"Saltar", tour_done:"¡Listo!",
   h_ok:"Entendido",
@@ -451,6 +454,7 @@ Object.assign(LANG.es,{
   h_trend:"Compara lo que llevas gastado en cada categoría con tu media de los últimos meses. Flecha arriba = este mes vas por encima de lo normal.",
   h_goalw:"Tu meta de ahorro más cercana y cómo va. La frase de abajo te dice si llegas a la fecha o cuánto tendrías que apartar al mes.",
   h_subs:"Pagos que se repiten cada mes por el mismo importe (Netflix, gym…). La app los detecta sola en tus gastos: revisa si de verdad los usas.",
+  h_reserva:"Cuando detecte una nómina, te propongo repartir parte según estas reglas: cada una suma a la meta que elijas y se descuenta de tu presupuesto de gasto variable, para que lo reservado se note de verdad.",
   h_cvg:"Cuánto has puesto de tu bolsillo en cada bróker y cuánto vale hoy. La diferencia es tu ganancia (o pérdida) real, en la moneda de cada uno.",
   h_bytype:"Tus inversiones agrupadas por tipo (acciones, ETF, fondo, oro…). Para ver de un vistazo si lo tienes todo en un mismo saco.",
   h_rend:"Cada posición ordenada por lo que te ha dado: verde = ganas, rojo = pierdes. Con el % sobre lo que pusiste.",
@@ -477,11 +481,14 @@ Object.assign(LANG.es,{
 Object.assign(LANG.en,{
   st_bigtext:"🔍 Large text", st_tour:"🎓 View the tutorial",
   tour_1:"💰 Here's your money at a glance: how much you have in total and how the month is going.",
+  tour_settings:"👉 On Home, swipe left-to-right to open Settings — height doesn't matter.",
   tour_2:"🧾 “{gastos}” is day-to-day only (groceries, bars, clothes…). Filter by month, category or bank. Bills do NOT go here.",
-  tour_3:"➕ The green button in the centre logs an expense or income right away — no need to open a tab.",
+  tour_3:"➕ The + button in the centre logs an expense or income right away — no need to open a tab.",
   tour_4:"📅 “{plan}” brings together bills, debts and goals. In Bills you see what's due and what's paid; Manage opens the detail.",
+  tour_planswipe:"🔀 In “{plan}”, with the list at the very top, swipe down to move between Bills, Debts and Goals.",
   tour_5:"💼 “{cartera}” is your net worth: accounts, investments and assets. Investment tools are one tap below.",
-  tour_6:"👤 The circle up top opens your profile. Pull down on Home for the same effect. Settings: swipe right.",
+  tour_6:"👤 Tap the circle up top to open your profile.",
+  tour_pulldown:"⬇️ On Home, swipe down to open your profile (and again to close it).",
   tour_7:"👆 Swipe between tabs with your finger. You're all set!",
   tour_next:"Next", tour_skip:"Skip", tour_done:"Done!",
   h_ok:"Got it",
@@ -491,6 +498,7 @@ Object.assign(LANG.en,{
   h_trend:"Compares what you've spent per category with your average of recent months. Arrow up = above your normal this month.",
   h_goalw:"Your nearest savings goal and how it's going. The line below tells you if you'll make the date or how much to set aside monthly.",
   h_subs:"Payments that repeat monthly for the same amount (Netflix, gym…). The app detects them in your spending: check you still use them.",
+  h_reserva:"When I detect a paycheck, I'll suggest splitting part of it by these rules: each one adds to the goal you pick and gets deducted from your variable spending budget, so the reserved money actually feels set aside.",
   h_cvg:"How much of your own money went into each broker and what it's worth today. The difference is your real gain (or loss), in each one's currency.",
   h_bytype:"Your investments grouped by type (stocks, ETF, fund, gold…). A quick check that everything isn't in one basket.",
   h_rend:"Each position ranked by what it has made you: green = gaining, red = losing. With the % over what you put in.",
@@ -517,11 +525,14 @@ Object.assign(LANG.en,{
 Object.assign(LANG.ca,{
   st_bigtext:"🔍 Lletra gran", st_tour:"🎓 Veure el tutorial",
   tour_1:"💰 Aquí veus els teus diners d'un cop d'ull: quant tens en total i com va el mes.",
+  tour_settings:"👉 A Inici, llisca d'esquerra a dreta per obrir Ajustos — tant se val a quina alçada.",
   tour_2:"🧾 «{gastos}» és només el dia a dia (súper, bars, roba…). Filtra per mes, categoria o banc. Els rebuts NO van aquí.",
-  tour_3:"➕ El botó verd del centre apunta una despesa o un ingrés al moment, sense anar a cap pestanya.",
+  tour_3:"➕ El botó + del centre apunta una despesa o un ingrés al moment, sense anar a cap pestanya.",
   tour_4:"📅 «{plan}» junta rebuts, deutes i metes. A Rebuts veus el pendent i el ja pagat; Gestionar obre el detall.",
+  tour_planswipe:"🔀 A «{plan}», amb la llista a dalt de tot, llisca cap avall per passar entre Rebuts, Deutes i Metes.",
   tour_5:"💼 «{cartera}» és el teu patrimoni: comptes, inversions i béns. Les eines d'inversió són un toc més avall.",
-  tour_6:"👤 El cercle de dalt obre el teu perfil. Estira cap avall a Inici per al mateix efecte. Ajustos: llisca de esquerra a dreta.",
+  tour_6:"👤 Toca el cercle de dalt per obrir el teu perfil.",
+  tour_pulldown:"⬇️ A Inici, llisca cap avall per obrir el teu perfil (i una altra vegada per tancar-lo).",
   tour_7:"👆 Llisca entre pestanyes amb el dit. Ja estàs a punt!",
   tour_next:"Següent", tour_skip:"Omet", tour_done:"Fet!",
   h_ok:"Entesos",
@@ -531,6 +542,7 @@ Object.assign(LANG.ca,{
   h_trend:"Compara el que portes gastat en cada categoria amb la teva mitjana dels últims mesos. Fletxa amunt = aquest mes vas per sobre del normal.",
   h_goalw:"La teva meta d'estalvi més propera i com va. La frase de sota et diu si arribes a la data o quant hauries d'apartar al mes.",
   h_subs:"Pagaments que es repeteixen cada mes pel mateix import (Netflix, gym…). L'app els detecta sola a les teves despeses: revisa si de debò els fas servir.",
+  h_reserva:"Quan detecti una nòmina, et proposaré repartir-ne part segons aquestes regles: cada una suma a l'objectiu que triïs i es descompta del teu pressupost de despesa variable, perquè el que reserves es noti de debò.",
   h_cvg:"Quant has posat de la teva butxaca a cada bròker i quant val avui. La diferència és el teu guany (o pèrdua) real, en la moneda de cadascun.",
   h_bytype:"Les teves inversions agrupades per tipus (accions, ETF, fons, or…). Per veure d'un cop d'ull si ho tens tot al mateix sac.",
   h_rend:"Cada posició ordenada pel que t'ha donat: verd = guanyes, vermell = perds. Amb el % sobre el que hi vas posar.",
@@ -694,15 +706,17 @@ Object.assign(LANG.es,{
   bi_done:"✓ {n} posiciones re-ancladas con el extracto",
   /* Importar una hoja de cálculo con gastos (petición 2026-07-28: la hoja de su madre). */
   ih_title:"Importar una hoja de gastos",
-  ih_intro:"¿Llevas tus gastos en un Excel? Súbelo y los paso a la app. Da igual cómo se llamen tus columnas ni en qué orden estén: te propongo qué es cada una y lo corriges si me equivoco.",
-  ih_steps:["Vale un Excel (.xlsx) o un CSV. Si tu fichero es .xls antiguo, ábrelo y haz «Guardar como» → .xlsx.","Que haya una columna con la fecha, otra con el concepto y otra con el importe. Lo demás es opcional.","Lo miras antes de guardar: te enseño lo que entra y lo que ya tenías apuntado."],
+  ih_intro:"¿Llevas tus gastos en un Excel, un Word o un PDF? Súbelo y los paso a la app. Da igual cómo se llamen tus columnas ni en qué orden estén: te propongo qué es cada una y lo corriges si me equivoco.",
+  ih_steps:["Vale un Excel (.xlsx), un CSV, un Word (.docx) o un PDF con texto (no una foto escaneada). Si tu fichero es .xls o .doc antiguo, ábrelo y haz «Guardar como» → .xlsx o .docx.","Que haya una columna con la fecha, otra con el concepto y otra con el importe. Lo demás es opcional.","Lo miras antes de guardar: te enseño lo que entra y lo que ya tenías apuntado."],
   ih_pick:"Elegir el fichero",
   ih_leyendo:"Leyendo…",
   ih_privacidad:"El fichero se lee en tu móvil. No se sube a ningún sitio.",
-  ih_err_xls:"Ese es un .xls de los antiguos y no lo sé leer. Ábrelo y haz «Guardar como» → .xlsx (o descárgalo como CSV).",
-  ih_err_zip:"No parece un Excel válido. Prueba a abrirlo y volver a guardarlo como .xlsx.",
+  ih_err_xls:"Ese es un formato antiguo de Office (.xls o .doc) y no lo sé leer. Ábrelo y haz «Guardar como» → .xlsx o .docx (o descárgalo como CSV).",
+  ih_err_zip:"No parece un Excel o Word válido. Prueba a abrirlo y volver a guardarlo como .xlsx o .docx.",
   ih_err_vacio:"He abierto el fichero pero no he encontrado ninguna fila con datos.",
   ih_err_leer:"No he podido leer el fichero. Si puedes, guárdalo como CSV y prueba otra vez.",
+  ih_err_pdf_imagen:"Este PDF parece una imagen escaneada (no lleva texto dentro) y no lo sé leer. Si puedes, pásalo a Excel, Word o CSV, o apunta los datos a mano.",
+  ih_err_pdf_filas:"He leído texto de este PDF pero no encuentro filas con fecha e importe reconocibles. Prueba a pasarlo a Excel, Word o CSV.",
   ih_leidas:"{n} filas leídas. Dime qué es cada columna:",
   ih_c_fecha:"Fecha", ih_c_concepto:"Concepto", ih_c_importe:"Importe", ih_c_categoria:"Categoría", ih_c_banco:"Cuenta o tarjeta",
   ih_sin:"— no la tengo —",
@@ -719,6 +733,8 @@ Object.assign(LANG.es,{
   ih_guardar:"Guardar los {n} nuevos",
   ih_nada:"No hay nada nuevo que guardar",
   ih_volver:"‹ Cambiar las columnas",
+  ih_hojas_intro:"Ese fichero trae {n} hojas con datos. ¿Cuál quieres traer?",
+  ih_hojas_filas:"{n} filas",
   ih_ok:"✓ {n} gastos importados",
   ih_fin_t:"¡Listo!",
   ih_fin_s:"{n} gastos nuevos en tu histórico. Ya los ves en Gastos, y cuentan en tus totales.",
@@ -746,15 +762,17 @@ Object.assign(LANG.en,{
   bi_apply:"Apply to {n} positions", bi_apply_hint:"On apply: shares and cost are re-anchored to the statement (broker truth) and value is rescaled to the last known price. Right after, live prices refresh automatically by ticker.",
   bi_done:"✓ {n} positions re-anchored to the statement",
   ih_title:"Import an expenses sheet",
-  ih_intro:"Keeping your expenses in a spreadsheet? Upload it and I'll bring them in. It doesn't matter what your columns are called or what order they're in: I'll guess what each one is and you fix me if I'm wrong.",
-  ih_steps:["Excel (.xlsx) or CSV both work. If yours is an old .xls, open it and «Save as» → .xlsx.","You need a column with the date, one with the description and one with the amount. The rest is optional.","You check it before saving: I show you what's coming in and what you already had."],
+  ih_intro:"Keeping your expenses in a spreadsheet, a Word document or a PDF? Upload it and I'll bring them in. It doesn't matter what your columns are called or what order they're in: I'll guess what each one is and you fix me if I'm wrong.",
+  ih_steps:["Excel (.xlsx), CSV, Word (.docx) or a PDF with real text (not a scanned photo) all work. If yours is an old .xls or .doc, open it and «Save as» → .xlsx or .docx.","You need a column with the date, one with the description and one with the amount. The rest is optional.","You check it before saving: I show you what's coming in and what you already had."],
   ih_pick:"Choose the file",
   ih_leyendo:"Reading…",
   ih_privacidad:"The file is read on your phone. It is never uploaded anywhere.",
-  ih_err_xls:"That's an old .xls and I can't read it. Open it and «Save as» → .xlsx (or download it as CSV).",
-  ih_err_zip:"That doesn't look like a valid Excel file. Try opening it and saving it again as .xlsx.",
+  ih_err_xls:"That's an old Office format (.xls or .doc) and I can't read it. Open it and «Save as» → .xlsx or .docx (or download it as CSV).",
+  ih_err_zip:"That doesn't look like a valid Excel or Word file. Try opening it and saving it again as .xlsx or .docx.",
   ih_err_vacio:"I opened the file but found no rows with data in it.",
   ih_err_leer:"I couldn't read the file. If you can, save it as CSV and try again.",
+  ih_err_pdf_imagen:"This PDF looks like a scanned image (it has no text inside) and I can't read it. If you can, convert it to Excel, Word or CSV, or enter the data by hand.",
+  ih_err_pdf_filas:"I read text from this PDF but couldn't find rows with a recognisable date and amount. Try converting it to Excel, Word or CSV.",
   ih_leidas:"{n} rows read. Tell me what each column is:",
   ih_c_fecha:"Date", ih_c_concepto:"Description", ih_c_importe:"Amount", ih_c_categoria:"Category", ih_c_banco:"Account or card",
   ih_sin:"— I don't have it —",
@@ -771,6 +789,8 @@ Object.assign(LANG.en,{
   ih_guardar:"Save the {n} new ones",
   ih_nada:"Nothing new to save",
   ih_volver:"‹ Change the columns",
+  ih_hojas_intro:"That file has {n} sheets with data. Which one do you want to bring in?",
+  ih_hojas_filas:"{n} rows",
   ih_ok:"✓ {n} expenses imported",
   ih_fin_t:"All done!",
   ih_fin_s:"{n} new expenses in your history. You can see them in Expenses, and they count towards your totals.",
@@ -798,15 +818,17 @@ Object.assign(LANG.ca,{
   bi_apply:"Aplica a {n} posicions", bi_apply_hint:"En aplicar: participacions i cost es re-ancoren a l'extracte (veritat del bròker) i el valor es recalcula amb l'últim preu conegut. Just després, els preus en viu s'actualitzen sols per ticker.",
   bi_done:"✓ {n} posicions re-ancorades amb l'extracte",
   ih_title:"Importar un full de despeses",
-  ih_intro:"Portes les despeses en un Excel? Puja'l i les passo a l'app. Tant se val com es diguin les teves columnes ni en quin ordre estiguin: et proposo què és cadascuna i ho corregeixes si m'equivoco.",
-  ih_steps:["Serveix un Excel (.xlsx) o un CSV. Si el teu fitxer és .xls antic, obre'l i fes «Anomena i desa» → .xlsx.","Cal una columna amb la data, una altra amb el concepte i una altra amb l'import. La resta és opcional.","Ho mires abans de desar: t'ensenyo el que entra i el que ja tenies apuntat."],
+  ih_intro:"Portes les despeses en un Excel, un Word o un PDF? Puja'l i les passo a l'app. Tant se val com es diguin les teves columnes ni en quin ordre estiguin: et proposo què és cadascuna i ho corregeixes si m'equivoco.",
+  ih_steps:["Serveix un Excel (.xlsx), un CSV, un Word (.docx) o un PDF amb text (no una foto escanejada). Si el teu fitxer és .xls o .doc antic, obre'l i fes «Anomena i desa» → .xlsx o .docx.","Cal una columna amb la data, una altra amb el concepte i una altra amb l'import. La resta és opcional.","Ho mires abans de desar: t'ensenyo el que entra i el que ja tenies apuntat."],
   ih_pick:"Triar el fitxer",
   ih_leyendo:"Llegint…",
   ih_privacidad:"El fitxer es llegeix al teu mòbil. No es puja enlloc.",
-  ih_err_xls:"Aquest és un .xls dels antics i no el sé llegir. Obre'l i fes «Anomena i desa» → .xlsx (o baixa'l com a CSV).",
-  ih_err_zip:"No sembla un Excel vàlid. Prova d'obrir-lo i tornar-lo a desar com a .xlsx.",
+  ih_err_xls:"Aquest és un format antic d'Office (.xls o .doc) i no el sé llegir. Obre'l i fes «Anomena i desa» → .xlsx o .docx (o baixa'l com a CSV).",
+  ih_err_zip:"No sembla un Excel o Word vàlid. Prova d'obrir-lo i tornar-lo a desar com a .xlsx o .docx.",
   ih_err_vacio:"He obert el fitxer però no hi he trobat cap fila amb dades.",
   ih_err_leer:"No he pogut llegir el fitxer. Si pots, desa'l com a CSV i torna-ho a provar.",
+  ih_err_pdf_imagen:"Aquest PDF sembla una imatge escanejada (no porta text a dins) i no el sé llegir. Si pots, passa'l a Excel, Word o CSV, o apunta les dades a mà.",
+  ih_err_pdf_filas:"He llegit text d'aquest PDF però no trobo files amb data i import reconeixibles. Prova de passar-lo a Excel, Word o CSV.",
   ih_leidas:"{n} files llegides. Digues-me què és cada columna:",
   ih_c_fecha:"Data", ih_c_concepto:"Concepte", ih_c_importe:"Import", ih_c_categoria:"Categoria", ih_c_banco:"Compte o targeta",
   ih_sin:"— no la tinc —",
@@ -823,6 +845,8 @@ Object.assign(LANG.ca,{
   ih_guardar:"Desar els {n} nous",
   ih_nada:"No hi ha res nou per desar",
   ih_volver:"‹ Canviar les columnes",
+  ih_hojas_intro:"Aquest fitxer porta {n} fulls amb dades. Quin vols portar?",
+  ih_hojas_filas:"{n} files",
   ih_ok:"✓ {n} despeses importades",
   ih_fin_t:"Fet!",
   ih_fin_s:"{n} despeses noves al teu històric. Ja les veus a Despeses, i compten als teus totals.",
@@ -1095,7 +1119,7 @@ Object.assign(LANG.es,{
   g_cycle_none_t:"Sin nómina detectada",
   g_cycle_none:"Para ajustar «Mi ciclo» hace falta tu nómina. Apúntala como 💰 ingreso (con +) y el filtro irá de cobro a cobro.",
   g_search:"Buscar comercio o categoría…",
-  sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.",
+  sub_title:"🔁 Suscripciones detectadas", sub_sub:"{n} · ~{y}/año", sub_inactive:"· inactiva", sub_months:"{n} meses", sub_peryear:"~{y}/año", sub_permonth:"/mes", sub_tofixed:"pasar a Gastos fijos", sub_infixed:"ya en Fijos", sub_tofixed_done:"✓ «{n}» añadido a Gastos fijos ({b}). Si quieres que el cargo salga de ahí de verdad, cambia la tarjeta en la web de la suscripción.", sub_dismiss:"No es una suscripción", sub_dismissed_ok:"Descartada · no volverá a salir aquí",
   sub_hint:"Cargos al mismo comercio en ≥3 meses con importe parecido. Revisa si alguna ya no la usas.",
   g_totalfilt:"Gastos del período", g_n_one:"gasto", g_n_many:"gastos", g_inc_one:"ingreso", g_inc_many:"ingresos", g_balance:"Balance", g_lbl_spent:"Gastos", g_lbl_income:"Ingresos",
   g_totalnet:"Balance del período", st_gview:"Total de Gastos", st_gview_split:"Gastos e ingresos", st_gview_split_d:"El total de gastos arriba; debajo, los ingresos y el balance (ingresos − gastos) en una línea.", st_gview_net:"Balance", st_gview_net_d:"Manda el balance (ingresos − gastos del período); debajo, gastos e ingresos en pequeño. Verde si te queda dinero, rojo si gastaste de más.",
@@ -1107,8 +1131,9 @@ Object.assign(LANG.es,{
   g_addgasto:"Añadir gasto", g_addingreso:"Añadir ingreso", g_date:"Fecha (vacía = hoy)",
   g_card:"Con tarjeta (cuenta round-up)", g_nocard:"Bizum/transfer · sin round-up",
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
+  g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -1181,7 +1206,7 @@ Object.assign(LANG.en,{
   g_cycle_none_t:"No payday detected",
   g_cycle_none:"“My cycle” needs your salary. Log it as a 💰 income (with +) and the filter will run payday to payday.",
   g_search:"Search merchant or category…",
-  sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.",
+  sub_title:"🔁 Detected subscriptions", sub_sub:"{n} · ~{y}/yr", sub_inactive:"· inactive", sub_months:"{n} months", sub_peryear:"~{y}/yr", sub_permonth:"/mo", sub_tofixed:"move to Fixed expenses", sub_infixed:"already in Fixed", sub_tofixed_done:"✓ \"{n}\" added to Fixed expenses ({b}). To have it truly charged there, change the card on the subscription's site.", sub_dismiss:"Not a subscription", sub_dismissed_ok:"Dismissed · won't show up here again",
   sub_hint:"Charges to the same merchant in ≥3 months with similar amounts. Check if you still use them.",
   g_totalfilt:"Spending", g_n_one:"expense", g_n_many:"expenses", g_inc_one:"income", g_inc_many:"incomes", g_balance:"Net", g_lbl_spent:"Spent", g_lbl_income:"Income",
   g_totalnet:"Net balance", st_gview:"Expenses total", st_gview_split:"Spending & income", st_gview_split_d:"Total spent on top; income and net balance (income − spending) below, on one line.", st_gview_net:"Balance", st_gview_net_d:"The balance leads (income − spending for the period); spending and income shown small below. Green if money is left, red if you overspent.",
@@ -1193,8 +1218,9 @@ Object.assign(LANG.en,{
   g_addgasto:"Add expense", g_addingreso:"Add income", g_date:"Date (empty = today)",
   g_card:"Card (counts round-up)", g_nocard:"Bizum/transfer · no round-up",
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
+  g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -1266,7 +1292,7 @@ Object.assign(LANG.ca,{
   g_cycle_none_t:"Sense nòmina detectada",
   g_cycle_none:"Per ajustar «El meu cicle» cal la nòmina. Apunta-la com a 💰 ingrés (amb +) i el filtre anirà de cobrament a cobrament.",
   g_search:"Cerca comerç o categoria…",
-  sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.",
+  sub_title:"🔁 Subscripcions detectades", sub_sub:"{n} · ~{y}/any", sub_inactive:"· inactiva", sub_months:"{n} mesos", sub_peryear:"~{y}/any", sub_permonth:"/mes", sub_tofixed:"passar a Despeses fixes", sub_infixed:"ja a Fixes", sub_tofixed_done:"✓ «{n}» afegit a Despeses fixes ({b}). Perquè el càrrec surti d'allà de debò, canvia la targeta al web de la subscripció.", sub_dismiss:"No és una subscripció", sub_dismissed_ok:"Descartada · no tornarà a sortir aquí",
   sub_hint:"Càrrecs al mateix comerç en ≥3 mesos amb import semblant. Revisa si ja no n'uses alguna.",
   g_totalfilt:"Despeses del període", g_n_one:"despesa", g_n_many:"despeses", g_inc_one:"ingrés", g_inc_many:"ingressos", g_balance:"Balanç", g_lbl_spent:"Despeses", g_lbl_income:"Ingressos",
   g_totalnet:"Balanç del període", st_gview:"Total de Despeses", st_gview_split:"Despeses i ingressos", st_gview_split_d:"El total de despeses a dalt; a sota, els ingressos i el balanç (ingressos − despeses) en una línia.", st_gview_net:"Balanç", st_gview_net_d:"Mana el balanç (ingressos − despeses del període); a sota, despeses i ingressos en petit. Verd si et queden diners, vermell si has gastat de més.",
@@ -1278,8 +1304,9 @@ Object.assign(LANG.ca,{
   g_addgasto:"Afegeix despesa", g_addingreso:"Afegeix ingrés", g_date:"Data (buida = avui)",
   g_card:"Amb targeta (compta round-up)", g_nocard:"Bizum/transfer · sense round-up",
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
+  g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -1391,6 +1418,7 @@ Object.assign(LANG.es,{
   au_forgot:"¿Olvidaste tu contraseña?", au_reset_title:"Recuperar contraseña", au_reset_send:"Enviar email de recuperación", au_reset_sent:"📩 Si el email existe, te hemos enviado un enlace para cambiarla.", au_need_email:"Pon tu email", au_newpass_title:"Nueva contraseña", au_newpass_save:"Guardar contraseña", au_pass_changed:"✓ Contraseña actualizada", au_pass_short:"Mínimo 6 caracteres", au_back:"← Volver",
   au_need:"Pon email y contraseña", au_signedin:"✓ Sesión iniciada", au_created:"✓ Cuenta creada", au_signedout:"Sesión cerrada", au_bio_dis:"Huella desactivada", au_bio_en:"✓ Huella activada",
   st_budget_saved:"✓ Presupuesto guardado", st_backup_dl:"✓ Backup descargado", st_imported:"✓ Datos importados", st_badfile:"El archivo no parece un backup válido", st_confirm_import:"¿Restaurar esta copia de seguridad?", st_confirm_import_sub:"Reemplazará TODOS tus datos actuales por los del archivo. Esto no se puede deshacer.", st_confirm_import_ok:"Restaurar",
+  bk_auto_title:"Copias automáticas", bk_auto_hint:"Cada día se guarda una copia completa de tus datos en la nube (se conservan los últimos 30 días). Si algo se descuadra —una importación que salió mal, un banco que se lió—, puedes volver a cómo estaba ese día.", bk_auto_none:"Aún no hay copias guardadas (la primera se hace sola en cuanto abras la app un día entero).", bk_auto_confirm:"¿Restaurar la copia del {day}?",
 });
 Object.assign(LANG.en,{
   inv_total:"Total invested", inv_save:"Save", inv_cancel:"Cancel", inv_prices:"USD prices", inv_pricing:"Prices…", inv_editmanual:"Edit manually",
@@ -1458,6 +1486,7 @@ Object.assign(LANG.en,{
   au_forgot:"Forgot your password?", au_reset_title:"Reset password", au_reset_send:"Send recovery email", au_reset_sent:"📩 If the email exists, we've sent you a link to change it.", au_need_email:"Enter your email", au_newpass_title:"New password", au_newpass_save:"Save password", au_pass_changed:"✓ Password updated", au_pass_short:"At least 6 characters", au_back:"← Back",
   au_need:"Enter email and password", au_signedin:"✓ Signed in", au_created:"✓ Account created", au_signedout:"Signed out", au_bio_dis:"Fingerprint off", au_bio_en:"✓ Fingerprint on",
   st_budget_saved:"✓ Budget saved", st_backup_dl:"✓ Backup downloaded", st_imported:"✓ Data imported", st_badfile:"The file doesn't look like a valid backup", st_confirm_import:"Restore this backup?", st_confirm_import_sub:"It will replace ALL your current data with the file's. This can't be undone.", st_confirm_import_ok:"Restore",
+  bk_auto_title:"Automatic backups", bk_auto_hint:"A full copy of your data is saved to the cloud every day (the last 30 days are kept). If something goes wrong — a bad import, a bank that got tangled up —, you can go back to how things were that day.", bk_auto_none:"No backups saved yet (the first one happens on its own once you've had the app open a full day).", bk_auto_confirm:"Restore the {day} backup?",
 });
 Object.assign(LANG.ca,{
   inv_total:"Total invertit", inv_save:"Desa", inv_cancel:"Cancel·la", inv_prices:"Preus USD", inv_pricing:"Preus…", inv_editmanual:"Edita a mà",
@@ -1525,6 +1554,7 @@ Object.assign(LANG.ca,{
   au_forgot:"Has oblidat la contrasenya?", au_reset_title:"Recupera la contrasenya", au_reset_send:"Envia email de recuperació", au_reset_sent:"📩 Si l'email existeix, t'hem enviat un enllaç per canviar-la.", au_need_email:"Posa el teu email", au_newpass_title:"Nova contrasenya", au_newpass_save:"Desa la contrasenya", au_pass_changed:"✓ Contrasenya actualitzada", au_pass_short:"Mínim 6 caràcters", au_back:"← Torna",
   au_need:"Posa email i contrasenya", au_signedin:"✓ Sessió iniciada", au_created:"✓ Compte creat", au_signedout:"Sessió tancada", au_bio_dis:"Empremta desactivada", au_bio_en:"✓ Empremta activada",
   st_budget_saved:"✓ Pressupost desat", st_backup_dl:"✓ Còpia descarregada", st_imported:"✓ Dades importades", st_badfile:"El fitxer no sembla una còpia vàlida", st_confirm_import:"Restaurar aquesta còpia de seguretat?", st_confirm_import_sub:"Substituirà TOTES les teves dades actuals per les del fitxer. Això no es pot desfer.", st_confirm_import_ok:"Restaura",
+  bk_auto_title:"Còpies automàtiques", bk_auto_hint:"Cada dia es desa una còpia completa de les teves dades al núvol (es conserven els últims 30 dies). Si alguna cosa es descuadra —una importació que ha sortit malament, un banc que s'ha embolicat—, pots tornar a com estava aquell dia.", bk_auto_none:"Encara no hi ha còpies desades (la primera es fa sola quan hagis tingut l'app oberta un dia sencer).", bk_auto_confirm:"Restaurar la còpia del {day}?",
 });
 
 /* ---- Metas de ahorro (#15) ---- */
@@ -1559,6 +1589,17 @@ Object.assign(LANG.es,{
   sh_back:"Grupos", sh_delgroup:"Borrar grupo", sh_delgroup_q:"¿Borrar este grupo y sus gastos?",
   gl_empty_t:"Aún no tienes metas", gl_empty_d:"Crea tu primera meta de ahorro y mira cómo se acerca cada mes.",
   gl_widget_title:"Tu meta", wl_goal:"Meta",
+  rr_title:"🔒 Reservar dinero de tu nómina", rr_sub:"{n} regla(s)", rr_sub_empty:"sin reglas",
+  rr_none:"Aún no tienes ninguna regla. Añade una para que parte de tu nómina vaya sola a una meta.",
+  rr_add:"+ Añadir regla", rr_save:"Guardar regla",
+  rr_name_ph:"Nombre (opcional, ej. Parking recibos)",
+  rr_kind_fixed:"Importe fijo €", rr_kind_pct:"% de la nómina",
+  rr_row_fixed:"{v} fijos", rr_row_pct:"{v} %",
+  rr_goal_gone:"(meta borrada)",
+  rr_detect_t:"💰 Nómina detectada: {x}", rr_detect_sub:"Cobrada el {d}. Según tus reglas, este es el reparto:",
+  rr_remainder:"Y te quedan {x} para gasto diario, sin tocar.",
+  rr_apply:"Aplicar reparto", rr_dismiss:"Ahora no",
+  rr_applied_ok:"✓ Reparto aplicado a tus metas",
 });
 Object.assign(LANG.en,{
   tab_metas:"Goals", tab_logros:"Achievements",
@@ -1591,6 +1632,17 @@ Object.assign(LANG.en,{
   sh_back:"Groups", sh_delgroup:"Delete group", sh_delgroup_q:"Delete this group and its expenses?",
   gl_empty_t:"No goals yet", gl_empty_d:"Create your first savings goal and watch it get closer each month.",
   gl_widget_title:"Your goal", wl_goal:"Goal",
+  rr_title:"🔒 Reserve money from your paycheck", rr_sub:"{n} rule(s)", rr_sub_empty:"no rules",
+  rr_none:"You don't have any rules yet. Add one so part of your paycheck goes to a goal on its own.",
+  rr_add:"+ Add rule", rr_save:"Save rule",
+  rr_name_ph:"Name (optional, e.g. Bill parking)",
+  rr_kind_fixed:"Fixed amount €", rr_kind_pct:"% of paycheck",
+  rr_row_fixed:"{v} fixed", rr_row_pct:"{v}%",
+  rr_goal_gone:"(deleted goal)",
+  rr_detect_t:"💰 Paycheck detected: {x}", rr_detect_sub:"Received on {d}. Based on your rules, here's the split:",
+  rr_remainder:"And {x} is left for daily spending, untouched.",
+  rr_apply:"Apply split", rr_dismiss:"Not now",
+  rr_applied_ok:"✓ Split applied to your goals",
 });
 Object.assign(LANG.ca,{
   tab_metas:"Objectius", tab_logros:"Assoliments",
@@ -1623,6 +1675,17 @@ Object.assign(LANG.ca,{
   sh_back:"Grups", sh_delgroup:"Esborra grup", sh_delgroup_q:"Esborrar aquest grup i les seves despeses?",
   gl_empty_t:"Encara no tens objectius", gl_empty_d:"Crea el teu primer objectiu d'estalvi i mira com s'acosta cada mes.",
   gl_widget_title:"El teu objectiu", wl_goal:"Objectiu",
+  rr_title:"🔒 Reservar diners de la teva nòmina", rr_sub:"{n} regla(es)", rr_sub_empty:"sense regles",
+  rr_none:"Encara no tens cap regla. Afegeix-ne una perquè part de la teva nòmina vagi sola a un objectiu.",
+  rr_add:"+ Afegir regla", rr_save:"Desar regla",
+  rr_name_ph:"Nom (opcional, ex. Aparcament de rebuts)",
+  rr_kind_fixed:"Import fix €", rr_kind_pct:"% de la nòmina",
+  rr_row_fixed:"{v} fixos", rr_row_pct:"{v} %",
+  rr_goal_gone:"(objectiu esborrat)",
+  rr_detect_t:"💰 Nòmina detectada: {x}", rr_detect_sub:"Cobrada el {d}. Segons les teves regles, aquest és el repartiment:",
+  rr_remainder:"I et queden {x} per a despesa diària, sense tocar.",
+  rr_apply:"Aplicar repartiment", rr_dismiss:"Ara no",
+  rr_applied_ok:"✓ Repartiment aplicat als teus objectius",
 });
 // --- Open Banking (Capa 2: el saldo real del banco) ---
 Object.assign(LANG.es,{
@@ -1632,6 +1695,9 @@ Object.assign(LANG.es,{
   bank_connected:"Banco conectado ✓", bank_error:"No se pudo conectar el banco",
   bank_error_invalid:"Ese permiso ya se usó o caducó · vuelve a pulsar Reconectar y termina solo esa autorización",
   bank_error_busy:"Ya hay una autorización en marcha · termínala antes de abrir otra",
+  /* Antes esto era el aviso de un BLOQUEO. Desde el 2026-08-01 TR sí se puede conectar aquí y las
+     dos integraciones conviven, así que el texto explica el reparto en vez de cerrar la puerta. */
+  bp_tr_ob:"suma tus movimientos (el saldo lo sigue dando el bróker)",
   bank_syncfail:"No pude leer el saldo del banco · reconéctate", bank_none:"No tienes ningún banco conectado",
   bank_syncsoft:"{bank}: el banco no respondió ahora · lo reintento solo (no hace falta reconectar)",
   // Resultado de «↻ Sincronizar bancos» (2026-07-26). Antes salía «🏦 CaixaBank: 1.234,56 €»:
@@ -1654,6 +1720,7 @@ Object.assign(LANG.en,{
   bank_connected:"Bank connected ✓", bank_error:"Couldn't connect the bank",
   bank_error_invalid:"That permission was already used or expired · tap Reconnect again and finish only that one authorization",
   bank_error_busy:"An authorization is already in progress · finish it before opening another",
+  bp_tr_ob:"adds your transactions (the balance still comes from the broker)",
   bank_syncfail:"Couldn't read the bank balance · reconnect", bank_none:"No bank connected",
   bank_syncsoft:"{bank}: the bank didn't answer just now · I'll retry on my own (no need to reconnect)",
   bank_upd_one:"✓ {bank} up to date · {x}", bank_upd_n:"✓ {n} banks up to date",
@@ -1672,6 +1739,7 @@ Object.assign(LANG.ca,{
   bank_connected:"Banc connectat ✓", bank_error:"No s'ha pogut connectar el banc",
   bank_error_invalid:"Aquest permís ja s'ha usat o ha caducat · torna a prémer Reconnecta i acaba només aquesta autorització",
   bank_error_busy:"Ja hi ha una autorització en marxa · acaba-la abans d'obrir-ne una altra",
+  bp_tr_ob:"suma els teus moviments (el saldo el continua donant el bróker)",
   bank_syncfail:"No he pogut llegir el saldo del banc · reconnecta't", bank_none:"No tens cap banc connectat",
   bank_syncsoft:"{bank}: el banc no ha respost ara · ho reintento sol (no cal reconnectar)",
   bank_upd_one:"✓ {bank} al dia · {x}", bank_upd_n:"✓ {n} bancs al dia",
@@ -1741,7 +1809,10 @@ Object.assign(LANG.es,{
   bp_manage:"Gestionar mis bancos", bp_close:"Ajustes", bp_back:"Mis bancos",
   bp_empty:"Aún no has conectado ningún banco.", bp_add:"Conectar un banco",
   bp_expbanks:"También apuntar gastos de tarjeta de…", bp_expbanks_hint:"Sus compras con tarjeta entrarán solas en Gastos.", bp_expbanks_none:"Conecta un banco Open Banking para poder importar sus compras con tarjeta a Gastos.",
-  bp_hist_btn:"Importar histórico", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae movimientos de los últimos meses de: {banks}. Elige cuáles y si van a Gastos, Recibos o Ingresos. Tarjeta→Gasto, recibo→Recibos, crédito→Ingreso (puedes cambiarlo).", bp_hist_nodaily:"Conecta un banco Open Banking (o márcalo en «También apuntar gastos de tarjeta»). Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay movimientos nuevos en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos · marca y elige destino", bp_hist_notcard:"no es tarjeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importados", bp_hist_as_gasto:"🛒 Gasto", bp_hist_as_recibo:"🧾 Recibo", bp_hist_as_ingreso:"💰 Ingreso", bp_hist_recibo:"Recibo", bp_hist_done_g:"✓ {n} en Gastos", bp_hist_done_i:"✓ {n} ingresos", bp_hist_done_r:"✓ {n} recibos",
+  bp_hist_btn:"Importar histórico", bp_hist_title:"Importar histórico", bp_hist_sub:"Trae movimientos de los últimos meses de: {banks}. Elige cuáles y si van a Gastos, Recibos o Ingresos. Tarjeta→Gasto, recibo→Recibos, crédito→Ingreso (puedes cambiarlo).", bp_hist_nodaily:"Conecta un banco Open Banking (o márcalo en «También apuntar gastos de tarjeta»). Trade Republic no vale aquí: no está en Open Banking.", bp_hist_m:"{n} mes(es)", bp_hist_search:"Buscar movimientos", bp_hist_searching:"Buscando…", bp_hist_none:"No hay movimientos nuevos en ese periodo (o ya están todos apuntados). Recuerda: el banco solo deja ver ~90 días.", bp_hist_found:"{n} movimientos · marca y elige destino", bp_hist_notcard:"no es tarjeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importados", bp_hist_as_gasto:"🛒 Gasto", bp_hist_as_recibo:"🧾 Recibo", bp_hist_as_ingreso:"💰 Ingreso", bp_hist_recibo:"Recibo", bp_hist_done_g:"✓ {n} en Gastos", bp_hist_done_i:"✓ {n} ingresos", bp_hist_done_r:"✓ {n} recibos", bp_hist_dup:"ya detectado como recibo mensual · se cuenta una sola vez",
+  bp_hist_nuevos:"nuevos", bp_hist_repes:"repetidos", bp_hist_dupexist:"ya lo tienes apuntado (mismo día e importe)",
+  bp_hist_f_all:"Todos", bp_hist_f_gastos:"🛒 Gastos", bp_hist_f_ingresos:"💰 Ingresos", bp_hist_f_allmonths:"Todos los meses",
+  bp_hist_nofilter:"Ningún movimiento con este filtro. Prueba a quitar alguno.",
   bp_summary_n:"{n} conectado(s)", bp_summary_exp:"⚠ {n} caducado(s) — reconéctalo", bp_summary_none:"Ningún banco conectado todavía",
   bp_summary_tr_dead:"⚠ Trade Republic desconectado",
   st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
@@ -1766,7 +1837,10 @@ Object.assign(LANG.en,{
   bp_manage:"Manage my banks", bp_close:"Settings", bp_back:"My banks",
   bp_empty:"You haven't connected any bank yet.", bp_add:"Connect a bank",
   bp_expbanks:"Also log card spending from…", bp_expbanks_hint:"Their card purchases will land in Spending on their own.", bp_expbanks_none:"Connect an Open Banking bank to import its card purchases into Spending.",
-  bp_hist_btn:"Import history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months from: {banks}. Pick which ones and whether they go to Spending, Bills or Income. Card→Spending, bill→Bills, credit→Income (you can change it).", bp_hist_nodaily:"Connect an Open Banking bank (or tick it under “Also log card spending”). Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new transactions in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions · check and pick destination", bp_hist_notcard:"not a card purchase", bp_hist_import:"Import {n}", bp_hist_done:"✓ {n} imported", bp_hist_as_gasto:"🛒 Spend", bp_hist_as_recibo:"🧾 Bill", bp_hist_as_ingreso:"💰 Income", bp_hist_recibo:"Bill", bp_hist_done_g:"✓ {n} in Spending", bp_hist_done_i:"✓ {n} income", bp_hist_done_r:"✓ {n} bills",
+  bp_hist_btn:"Import history", bp_hist_title:"Import history", bp_hist_sub:"Pull the last months from: {banks}. Pick which ones and whether they go to Spending, Bills or Income. Card→Spending, bill→Bills, credit→Income (you can change it).", bp_hist_nodaily:"Connect an Open Banking bank (or tick it under “Also log card spending”). Trade Republic won't work here: it's not in Open Banking.", bp_hist_m:"{n} month(s)", bp_hist_search:"Find transactions", bp_hist_searching:"Searching…", bp_hist_none:"No new transactions in that period (or they're all logged already). Remember: the bank only shows ~90 days.", bp_hist_found:"{n} transactions · check and pick destination", bp_hist_notcard:"not a card purchase", bp_hist_import:"Import {n}", bp_hist_done:"✓ {n} imported", bp_hist_as_gasto:"🛒 Spend", bp_hist_as_recibo:"🧾 Bill", bp_hist_as_ingreso:"💰 Income", bp_hist_recibo:"Bill", bp_hist_done_g:"✓ {n} in Spending", bp_hist_done_i:"✓ {n} income", bp_hist_done_r:"✓ {n} bills", bp_hist_dup:"already detected as a monthly bill · counted once",
+  bp_hist_nuevos:"new", bp_hist_repes:"repeated", bp_hist_dupexist:"already logged (same day & amount)",
+  bp_hist_f_all:"All", bp_hist_f_gastos:"🛒 Spending", bp_hist_f_ingresos:"💰 Income", bp_hist_f_allmonths:"All months",
+  bp_hist_nofilter:"No transactions match this filter. Try removing one.",
   bp_summary_n:"{n} connected", bp_summary_exp:"⚠ {n} expired — reconnect it", bp_summary_none:"No bank connected yet",
   bp_summary_tr_dead:"⚠ Trade Republic disconnected",
   st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
@@ -1791,7 +1865,10 @@ Object.assign(LANG.ca,{
   bp_manage:"Gestiona els meus bancs", bp_close:"Ajustos", bp_back:"Els meus bancs",
   bp_empty:"Encara no has connectat cap banc.", bp_add:"Connecta un banc",
   bp_expbanks:"També apuntar despeses de targeta de…", bp_expbanks_hint:"Les seves compres amb targeta entraran soles a Despeses.", bp_expbanks_none:"Connecta un banc Open Banking per poder importar-ne les compres amb targeta a Despeses.",
-  bp_hist_btn:"Importar històric", bp_hist_title:"Importar històric", bp_hist_sub:"Porta moviments dels últims mesos de: {banks}. Tria quins i si van a Despeses, Rebuts o Ingressos. Targeta→Despesa, rebut→Rebuts, crèdit→Ingrés (ho pots canviar).", bp_hist_nodaily:"Connecta un banc Open Banking (o marca'l a «També apuntar despeses de targeta»). Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha moviments nous en aquest període (o ja estan tots apuntats). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments · marca i tria destinació", bp_hist_notcard:"no és targeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importats", bp_hist_as_gasto:"🛒 Despesa", bp_hist_as_recibo:"🧾 Rebut", bp_hist_as_ingreso:"💰 Ingrés", bp_hist_recibo:"Rebut", bp_hist_done_g:"✓ {n} a Despeses", bp_hist_done_i:"✓ {n} ingressos", bp_hist_done_r:"✓ {n} rebuts",
+  bp_hist_btn:"Importar històric", bp_hist_title:"Importar històric", bp_hist_sub:"Porta moviments dels últims mesos de: {banks}. Tria quins i si van a Despeses, Rebuts o Ingressos. Targeta→Despesa, rebut→Rebuts, crèdit→Ingrés (ho pots canviar).", bp_hist_nodaily:"Connecta un banc Open Banking (o marca'l a «També apuntar despeses de targeta»). Trade Republic no val aquí: no és a Open Banking.", bp_hist_m:"{n} mes(os)", bp_hist_search:"Cerca moviments", bp_hist_searching:"Cercant…", bp_hist_none:"No hi ha moviments nous en aquest període (o ja estan tots apuntats). Recorda: el banc només deixa veure ~90 dies.", bp_hist_found:"{n} moviments · marca i tria destinació", bp_hist_notcard:"no és targeta", bp_hist_import:"Importar {n}", bp_hist_done:"✓ {n} importats", bp_hist_as_gasto:"🛒 Despesa", bp_hist_as_recibo:"🧾 Rebut", bp_hist_as_ingreso:"💰 Ingrés", bp_hist_recibo:"Rebut", bp_hist_done_g:"✓ {n} a Despeses", bp_hist_done_i:"✓ {n} ingressos", bp_hist_done_r:"✓ {n} rebuts", bp_hist_dup:"ja detectat com a rebut mensual · es compta una sola vegada",
+  bp_hist_nuevos:"nous", bp_hist_repes:"repetits", bp_hist_dupexist:"ja ho tens apuntat (mateix dia i import)",
+  bp_hist_f_all:"Tots", bp_hist_f_gastos:"🛒 Despeses", bp_hist_f_ingresos:"💰 Ingressos", bp_hist_f_allmonths:"Tots els mesos",
+  bp_hist_nofilter:"Cap moviment amb aquest filtre. Prova de treure'n algun.",
   bp_summary_n:"{n} connectat(s)", bp_summary_exp:"⚠ {n} caducat(s) — reconnecta'l", bp_summary_none:"Cap banc connectat encara",
   bp_summary_tr_dead:"⚠ Trade Republic desconnectat",
   st_ver_web:"web v{v}", st_ver_app:"app {v}", st_ver_both:"web v{w} · app {a}",
@@ -1959,15 +2036,18 @@ function nominaYaEntro(now){                                        // ¿ya pas�
 function accRole(a){ return (a&&a.role) || (a&&a.spendFrom ? "diario" : "fijos"); }
 function accDaily(a){ const r=accRole(a); return r==="diario"||r==="ambos"; }   // gasto variable sale de aquí
 /* Bancos cuyas compras con tarjeta Open Banking entran en Gastos. Independiente del
-   spendFrom único (presupuesto/round-up). Por defecto = ent de la cuenta diaria. */
+   spendFrom único (presupuesto/round-up). Por defecto = ent de la cuenta diaria, y la cuenta
+   diaria SIEMPRE entra aunque `expenseBanks` ya tenga otros bancos guardados (bug 2026-07-31:
+   cambiar de banco de gasto diario —Patrimonio → rol «Gasto diario»— no tocaba `expenseBanks`
+   si ya tenía algo de antes, así que el banco nuevo se quedaba conectado pero sus compras nunca
+   entraban en Gastos: `expenseBankEnts` seguía devolviendo solo el banco viejo para siempre). */
 function expenseBankEnts(s){
+  const out=[];
   const raw=s&&s.settings&&s.settings.expenseBanks;
-  if(Array.isArray(raw)&&raw.length){
-    const out=[]; raw.forEach(function(e){ if(e&&out.indexOf(e)<0) out.push(e); });
-    if(out.length) return out;
-  }
+  if(Array.isArray(raw)) raw.forEach(function(e){ if(e&&out.indexOf(e)<0) out.push(e); });
   const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
-  return (daily&&daily.ent)? [daily.ent] : [];
+  if(daily&&daily.ent&&out.indexOf(daily.ent)<0) out.push(daily.ent);
+  return out;
 }
 // Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
 // despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si
@@ -2014,32 +2094,39 @@ function reconcileTR(s){
     if(accRole(acc)==="ambos") acc.value = +(acc.value + monthNetForAccount(s, acc.ent, ay, am+1, null)).toFixed(2);
     // Round-up & Saveback (#19): al cerrar el mes, el round-up sale del efectivo y se abona
     // (junto al saveback, dinero gratis) a la inversión destino comprando participaciones.
-    const ru = (acc.roundupManual!=null) ? acc.roundupManual : roundupOf(monthExp, acc.roundup||0);
-    const sb = (acc.savebackManual!=null) ? acc.savebackManual : (acc.saveback ? savebackOf(monthExp) : 0);
-    if(ru>0) acc.value = +(acc.value - ru).toFixed(2);             // el round-up abandona el efectivo
-    const contrib = ru + sb;                                       // total que entra a la inversión (€)
-    if(contrib>0 && acc.rewardInv){
-      const inv = s.investments && s.investments.find(function(i){ return i.id===acc.rewardInv; });
-      if(inv){
-        const cInv = inv.cur==="USD" ? contrib/(s.fx||1) : contrib;   // a la moneda de la inversión
-        if(inv.shares>0 && inv.value>0) inv.shares = +(inv.shares + cInv/(inv.value/inv.shares)).toFixed(6);
-        inv.value = +((inv.value||0)+cInv).toFixed(2);
-        inv.cost  = +((inv.cost||0)+cInv).toFixed(2);
+    // SOLO si la cuenta no tiene ya movimientos reales de Open Banking (2026-08-03): desde que TR
+    // sincroniza de verdad, el round-up/saveback/aporte YA entran como gastos reales categoría
+    // "inversion" (ver `applyInvestBuy` en 08-motor-bank.js, disparado desde `importObExpenses` y
+    // `setCat`) — sumarlos aquí TAMBIÉN los contaba dos veces (una simulada, otra real).
+    const obFed = (s.expenses||[]).some(function(e){ return e.source==="ob" && e.ent===acc.ent; });
+    if(!obFed){
+      const ru = (acc.roundupManual!=null) ? acc.roundupManual : roundupOf(monthExp, acc.roundup||0);
+      const sb = (acc.savebackManual!=null) ? acc.savebackManual : (acc.saveback ? savebackOf(monthExp) : 0);
+      if(ru>0) acc.value = +(acc.value - ru).toFixed(2);             // el round-up abandona el efectivo
+      const contrib = ru + sb;                                       // total que entra a la inversión (€)
+      if(contrib>0 && acc.rewardInv){
+        const inv = s.investments && s.investments.find(function(i){ return i.id===acc.rewardInv; });
+        if(inv){
+          const cInv = inv.cur==="USD" ? contrib/(s.fx||1) : contrib;   // a la moneda de la inversión
+          if(inv.shares>0 && inv.value>0) inv.shares = +(inv.shares + cInv/(inv.value/inv.shares)).toFixed(6);
+          inv.value = +((inv.value||0)+cInv).toFixed(2);
+          inv.cost  = +((inv.cost||0)+cInv).toFixed(2);
+        }
+        s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
       }
-      s.trRewardsTotal = +(((s.trRewardsTotal||0)+contrib)).toFixed(2);   // acumulado histórico (€)
-    }
-    // Aporte periódico a inversión (plan de ahorro, p.ej. 50€/mes al FTSE): sale del efectivo y
-    // compra participaciones en su destino (por defecto el mismo del round-up).
-    const mi = acc.monthlyInvest||0;
-    if(mi>0){
-      const dest = acc.monthlyInvestTo || acc.rewardInv;
-      const inv2 = s.investments && s.investments.find(function(i){ return i.id===dest; });
-      if(inv2){
-        acc.value = +(acc.value - mi).toFixed(2);
-        const cInv2 = inv2.cur==="USD" ? mi/(s.fx||1) : mi;
-        if(inv2.shares>0 && inv2.value>0) inv2.shares = +(inv2.shares + cInv2/(inv2.value/inv2.shares)).toFixed(6);
-        inv2.value = +((inv2.value||0)+cInv2).toFixed(2);
-        inv2.cost  = +((inv2.cost||0)+cInv2).toFixed(2);
+      // Aporte periódico a inversión (plan de ahorro, p.ej. 50€/mes al FTSE): sale del efectivo y
+      // compra participaciones en su destino (por defecto el mismo del round-up).
+      const mi = acc.monthlyInvest||0;
+      if(mi>0){
+        const dest = acc.monthlyInvestTo || acc.rewardInv;
+        const inv2 = s.investments && s.investments.find(function(i){ return i.id===dest; });
+        if(inv2){
+          acc.value = +(acc.value - mi).toFixed(2);
+          const cInv2 = inv2.cur==="USD" ? mi/(s.fx||1) : mi;
+          if(inv2.shares>0 && inv2.value>0) inv2.shares = +(inv2.shares + cInv2/(inv2.value/inv2.shares)).toFixed(6);
+          inv2.value = +((inv2.value||0)+cInv2).toFixed(2);
+          inv2.cost  = +((inv2.cost||0)+cInv2).toFixed(2);
+        }
       }
     }
     // Interés del efectivo (TR lo abona el día 1 del mes siguiente = justo al cerrar):
@@ -2391,10 +2478,97 @@ function fixRevoDupes(s){
   s._invFixRevoDupes = true;
   return s;
 }
+// Limpieza única del bug de `setCat` (2026-08-04): "Movimiento" es el hueco que deja un banco sin
+// datos (Trade Republic por Open Banking) — no es un comercio de verdad, pero `setCat` lo trataba
+// como si todos los gastos con ese mismo texto fueran el MISMO comercio: al marcar UNO como
+// Inversión, recategorizaba TODOS los demás también (con su propia compra de participaciones cada
+// uno) y aprendía "movimiento"→inversion como override para siempre. Deshace el destrozo: borra
+// ese override envenenado y devuelve a su categoría normal (deshaciendo la compra) cualquier gasto
+// "Movimiento"/Inversión que NO sea el aporte automático real (`monthlyInvest`, el único legítimo,
+// ver `importObExpenses`). Idempotente con flag, como fixInvSold/fixInvAuto/fixRevoDupes.
+function fixMovInvasion(state){
+  // ⚠ EL FLAG VA POR VERSIÓN (`_fixMovInvasion2`), y este es el motivo exacto: la PRIMERA versión de
+  // esta limpieza corría con la lista de gastos todavía vacía y aun así se marcaba como hecha. Ese
+  // `_fixMovInvasion:true` quedó guardado en la nube, así que la versión ya corregida salía por
+  // aquí sin tocar nada y el usuario seguía viendo el mismo caos (2026-08-04). Cambiar el nombre
+  // del flag es lo que la deja volver a correr. Si alguna vez hay que reparar otra vez, sube el
+  // número — no reutilices un flag que ya se escribió en cuentas reales.
+  if(!state || state._fixMovInvasion2) return state;
+  // ⚠ SIN GASTOS TODAVÍA NO SE PUEDE LIMPIAR NADA, y marcar el flag aquí dejaría el destrozo vivo
+  // para siempre (fallo real del primer intento, 2026-08-04): los gastos NO viven en `app_state`,
+  // llegan de la tabla `expenses` en un segundo viaje —`syncCloudExpenses` en 11-app-main.js— que
+  // termina DESPUÉS de cargar el estado. La primera vez esto corrió contra una lista vacía, se
+  // marcó como hecho y no arregló ni un gasto. Por eso se llama también desde ahí, y por eso el
+  // flag solo se pone cuando de verdad había algo que revisar.
+  if(!Array.isArray(state.expenses) || !state.expenses.length) return state;
+  let s=state;
+  if(s.catOverrides && s.catOverrides["movimiento"]){
+    const ov=Object.assign({},s.catOverrides); delete ov["movimiento"];
+    s=Object.assign({},s,{catOverrides:ov});
+    delete USER_OVERRIDES["movimiento"];   // y en memoria: si no, sigue mandando el resto de la sesión
+  }
+  const exps=s.expenses.map(function(e){
+    if(e.merchant!=="Movimiento") return e;
+    const acc=(s.accounts||[]).find(function(a){ return a.ent===e.ent; });
+    const esAporteReal = acc && acc.monthlyInvest>0 && Math.abs(e.amount-acc.monthlyInvest)<0.01;
+    // El aporte automático que entró ANTES de que existiera la categoría: se reclasifica para que
+    // deje de contar como gasto. Solo la etiqueta — la compra de participaciones la hizo en su día
+    // `reconcileTR` y repetirla aquí sería contarla dos veces, justo lo que se está arreglando.
+    if(esAporteReal) return e.category==="inversion" ? e : Object.assign({},e,{category:"inversion"});
+    if(e.category!=="inversion") return e;
+    if(e.investInvId) s=reverseInvestBuy(s, e.investInvId, e.investShares, e.investCInv, e.investAmountEur);
+    const upd=Object.assign({},e,{category:e.amount<0?"ingreso":autoCategory(e.merchant||"")});
+    delete upd.investInvId; delete upd.investShares; delete upd.investCInv; delete upd.investAmountEur;
+    return upd;
+  });
+  /* Y LOS DUPLICADOS QUE YA ESTABAN GUARDADOS. `importObExpenses` ya no deja entrar un movimiento
+     sin nombre que sea gemelo de algo apuntado por otra vía (±3 días, mismo importe), pero los que
+     entraron ANTES de esa red siguen ahí, contando doble. Mismo criterio, mismo emparejamiento 1 a
+     1, y solo se retiran los de Open Banking sin nombre: el gasto con el comercio de verdad —el que
+     vino del móvil— es el que se queda, siempre. Se marcan como borrados (`deleted`) en vez de
+     desaparecer sin más: es lo que impide que el siguiente pull de la nube los resucite (ver el
+     filtro `delSet` en `syncCloudExpenses`). */
+  const otrasVias=exps.filter(function(e){ return e.source!=="ob" && e.source!=="ob-hist"; });
+  const usado={};
+  const fuera={};
+  exps.forEach(function(e,i){
+    if(e.source!=="ob" && e.source!=="ob-hist") return;
+    if(e.merchant!=="Movimiento") return;
+    const acc=(s.accounts||[]).find(function(a){ return a.ent===e.ent; });
+    if(acc && acc.monthlyInvest>0 && Math.abs(e.amount-acc.monthlyInvest)<0.01) return;   // el aporte real no se toca
+    const ms=dateMs(e.date);
+    const j=otrasVias.findIndex(function(o,k){
+      return !usado[k] && Math.abs((o.amount||0)-(e.amount||0))<=0.005 && Math.abs(dateMs(o.date)-ms)<=3*86400000;
+    });
+    if(j>=0){ usado[j]=1; fuera[i]=1; }
+  });
+  const quedan=exps.filter(function(e,i){ return !fuera[i]; });
+  if(quedan.length!==exps.length){
+    let del=s.deleted||[];
+    exps.forEach(function(e,i){ if(fuera[i]) del=pushDeleted(del, String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||"")); });
+    s=Object.assign({},s,{expenses:quedan, deleted:del});
+  } else {
+    s=Object.assign({},s,{expenses:exps});
+  }
+  s._fixMovInvasion2=true;
+  return s;
+}
 // Motor de cash-flow: si el estado no tiene movimientos recurrentes, siembra los del usuario
 // (nómina + transferencias). Idempotente: no pisa ediciones una vez que ya hay flows.
 function seedFlows(s){
   if(!s) return s;
+  /* NINGÚN comercio puede tener "Inversión" como override aprendido — SIN FLAG, en cada carga
+     (2026-08-04). "Inversión" es un destino del dinero, no un tipo de tienda: aprenderla como
+     override hace que TODO gasto que pase por `autoCategory` con ese comercio se marque solo, una
+     y otra vez. Pasó con "Movimiento" (el hueco que deja Trade Republic sin datos) y le convertía
+     un parking de zona azul en Inversión cada vez que abría la app. Va aquí y no dentro de
+     `fixMovInvasion` a propósito: aquella corre UNA vez y bajo flag, así que en cuanto el flag
+     quedó puesto el override envenenado se volvió inmortal. Esto es barato e idempotente. */
+  if(s.catOverrides){
+    const limpio={}; let habia=false;
+    for(const k in s.catOverrides){ if(s.catOverrides[k]==="inversion") habia=true; else limpio[k]=s.catOverrides[k]; }
+    if(habia){ s=Object.assign({},s,{catOverrides:limpio}); USER_OVERRIDES=Object.assign({},limpio); }
+  }
   // Poda de arrays que crecían sin tope. Aquí se aplica a los estados que YA venían inflados de
   // versiones anteriores (el tope nuevo solo actúa al añadir) — 2026-07-24.
   if(Array.isArray(s.deleted) && s.deleted.length>DELETED_MAX) s.deleted=s.deleted.slice(s.deleted.length-DELETED_MAX);
@@ -2511,24 +2685,18 @@ function applyA11y(s){
 }
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
 // Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
-// lo sigue mandando el tema de arriba; la temporada solo añade acentos + animación ambiental.
+// lo sigue mandando el tema de arriba; la temporada solo añade acentos + el icono incrustado en
+// cada sección (su detalle CSS, `--season-ico`, va en shell.html — mismo emoji que este chip).
+// ⚠ Ya NO hay una capa de piezas cayendo por la pantalla (quitada 2026-08-03): aquí vivía
+// `SEASON_FX`, el pool de emojis que caían, y ha desaparecido con ella.
 const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
-// Emojis que caen en la capa ambiental de cada temática.
-const SEASON_FX={
-  mundial:["⚽","🇪🇸","⚽","🏆","⚽","🥅","⚽","🇪🇸"],
-  halloween:["🎃","👻","🦇","🕷️","🎃","👻","🍬","🦇"],
-  navidad:["❄️","🎄","🎁","⭐","❄️","🎅","🎄","❄️"],
-  verano:["☀️","🌴","🏖️","🍦","🌊","🐚","🍉","☀️"],
-  invierno:["❄️","⛄","❄️","🌨️","❄️","🧣","❄️","⛄"],
-  pascua:["🐣","🥚","🐰","🌷","🐣","🥚","🌸","🐰"]
-};
 function loadState(){
   const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){
     // Capturar ANTES de seedFlows (muta in-place): evita stringify de toda la cartera en cada
     // apertura fría — feedback 2026-07-16.
     var writeBack=!(saved._dataVer>=6) || !saved._dynBalAnchored;
-    const s = seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved))))));
+    const s = seedFlows(fixMovInvasion(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR((saved._dataVer>=6) ? saved : migrate(saved)))))));
     if(writeBack) mcSaveRaw(mcStateKey(), s);
     applyTheme(s.settings&&s.settings.theme);
     applyA11y(s);

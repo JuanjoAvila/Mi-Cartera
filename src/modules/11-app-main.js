@@ -16,11 +16,136 @@ function App(){
   const navHiddenRef=useRef(false);
   const lastScrollY=useRef(0);
   const scrollTab=useRef(0);
-  const revealNav=function(){ if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); } };
+  // Escondido RÁPIDO, sin la curva calmada de .55s (2026-08-03, bug 6 «rebote raro»). El .55s de
+  // abajo es a propósito para el caso normal (bajar leyendo la lista) — «el ocultado de golpe se
+  // sentía brusco» (feedback 2026-07-18) — pero ESE mismo calmado es justo el problema cuando el
+  // motivo de esconder es «hemos llegado al final»: el rebote nativo (la "ola") empieza a la vez
+  // que la barra, y tarda solo ~0,2-0,3 s en asentarse — mucho menos que los 0,55 s de la barra.
+  // Resultado, tal y como lo describió («se queda atascado un momento y luego sí que hace la ola
+  // pero es muy raro»): la barra sigue deslizándose/desvaneciéndose ENCIMA de la ola mientras esta
+  // ya está en marcha, dos animaciones a ritmos distintos peleando por el mismo trozo de pantalla.
+  // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
+  // escondido normal al bajar sigue con su calma de siempre.
+  const [navHiddenFast,setNavHiddenFast]=useState(false);
+  // Botnav y ola nativa (5/8 noche + pulido 5/8 madrugada):
+  // · Abajo LENTO: ok. Abajo RÁPIDO (flick): hide diferido ~450 ms tras scrollend.
+  // · ARRIBA / swipe de tabs: NUNCA `botnav-ola-clear`. Ese clear↔unclear era el
+  //   «aparece y desaparece todo el rato» al llegar al tope y al cambiar de pestaña
+  //   (feedback 2026-08-05). La barra se queda; la ola sigue debajo.
+  // · Pin breve al llegar al tope / al swipear tabs: ni hide ni clear en la racha.
+  const navBotSync=useRef(0);
+  const navHideArmed=useRef(false);
+  const navHideFastRef=useRef(false);
+  const topClearOn=useRef(false);
+  const topClearTimer=useRef(0);
+  const revealAfterTopClear=useRef(false);
+  const navPinUntil=useRef(0);
+  const navPinned=function(){ return Date.now()<navPinUntil.current; };
+  const pinNavVisible=function(ms){
+    navPinUntil.current=Date.now()+(ms||1200);
+    if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+    navHideArmed.current=false;
+    revealAfterTopClear.current=false;
+    if(topClearTimer.current){ clearTimeout(topClearTimer.current); topClearTimer.current=0; }
+    topClearOn.current=false;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast","botnav-ola-clear");
+    }catch(e){}
+    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
+  };
+  // clear del tope: solo API residual (enterScrollHost / swipe). Ya no se ARMA en scroll ni
+  // en touchmove — eso era el parpadeo.
+  const beginTopClear=function(){ /* no-op: ver comentario botnav arriba */ };
+  const endTopClearNow=function(doReveal){
+    if(topClearTimer.current){ clearTimeout(topClearTimer.current); topClearTimer.current=0; }
+    topClearOn.current=false;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-ola-clear");
+    }catch(e){}
+    if(doReveal && navHiddenRef.current){
+      revealAfterTopClear.current=false;
+      revealNav();
+    } else {
+      revealAfterTopClear.current=false;
+    }
+  };
+  const scheduleEndTopClear=function(){
+    if(!topClearOn.current) return;
+    if(topClearTimer.current) clearTimeout(topClearTimer.current);
+    topClearTimer.current=setTimeout(function(){
+      topClearTimer.current=0;
+      topClearOn.current=false;
+      try{
+        const nav=document.querySelector(".botnav");
+        if(nav) nav.classList.remove("botnav-ola-clear");
+      }catch(e){}
+      if(revealAfterTopClear.current){
+        revealAfterTopClear.current=false;
+        revealNav();
+      }
+    }, 400);
+  };
+  const applyNavHide=function(){
+    if(navPinned()) return;
+    navBotSync.current=0;
+    navHideArmed.current=false;
+    navHiddenRef.current=true;
+    const fast=!!navHideFastRef.current;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav){
+        nav.classList.add("botnav-hidden");
+        nav.classList.toggle("botnav-hidden-fast", fast);
+      }
+    }catch(e){}
+    setNavHidden(true);
+    setNavHiddenFast(fast);
+  };
+  const armNavHide=function(fast){
+    if(navPinned()) return;
+    navHideFastRef.current=!!fast;
+    if(navHideArmed.current || navHiddenRef.current){
+      if(fast) navHideFastRef.current=true;
+      return;
+    }
+    navHideArmed.current=true;
+    if(navBotSync.current) clearTimeout(navBotSync.current);
+    // Fallback si no hay scrollend: abajo más margen (ola del flick).
+    navBotSync.current=setTimeout(applyNavHide, fast?800:550);
+  };
+  const revealNav=function(){
+    if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+    navHideArmed.current=false;
+    revealAfterTopClear.current=false;
+    if(topClearTimer.current){ clearTimeout(topClearTimer.current); topClearTimer.current=0; }
+    topClearOn.current=false;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast","botnav-ola-clear");
+    }catch(e){}
+    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
+  };
   // Marca de tiempo del último scroll REAL de una página. La usa `freezeShell` para no pagar el
   // congelado cuando no hace falta (ver allí). Se apunta antes de cualquier corte: durante el
   // gesto también interesa, porque justo eso es el momentum que se quiere detectar.
   const lastScrollAt=useRef(0);
+  /* Ola nativa (`touch-action:pan-y` en `.page`) vs gestos de borde.
+     Mapa: Gastos/Cartera = ola arriba y abajo (pan-y siempre). Resumen = ola solo abajo
+     (arriba = perfil → `.mc-touch-own`). Plan = pan-y SIEMPRE en reposo: si lo poníamos en
+     `mc-touch-own` al estar arriba, `touch-action:none` bloqueaba TAMBIÉN bajar a ver el
+     contenido (feedback 5/8: «me has bloqueado incluso que pueda bajar»). El gesto de segmento
+     pone/quita `mc-touch-own` solo DURANTE el tirón hacia abajo (14-v4-screens.js). */
+  const syncPageTouchAction=function(pageEl, pageIdx){
+    if(!pageEl||!pageEl.classList) return;
+    const id=tabIds[pageIdx];
+    const y=pageEl.scrollTop||0;
+    const atTop=y<=2;
+    // Solo Inicio arriba. Plan lo gestiona su propio listener al reclamar el segmento.
+    const own=(id==="inicio" && atTop);
+    pageEl.classList.toggle("mc-touch-own", !!own);
+  };
   const onPageScroll=function(e){
     lastScrollAt.current=Date.now();
     // Mientras el dedo cambia de pestaña, el momentum del scroll vertical sigue disparando
@@ -29,20 +154,64 @@ function App(){
     // (rechazo 4.12.0.17). El perfil ya congelaba el scroll; el swipe de pestañas no.
     if(dragging.current) return;
     const y=e.currentTarget.scrollTop;
+    // touch-action de la página (ola vs gestos de borde): ver syncPageTouchAction.
+    syncPageTouchAction(e.currentTarget, tab);
     // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
     // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
-    if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); return; }
+    if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); pinNavVisible(1000); return; }
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
-    if(y<=8){ revealNav(); return; }                 // arriba del todo → siempre visible
-    if(Math.abs(dy)<6) return;                        // micro-scroll/rebote: ni caso
-    if(dy>0 && y>56){ if(!navHiddenRef.current){ navHiddenRef.current=true; setNavHidden(true); } }  // bajando → esconder
-    else if(dy<0){ revealNav(); }                     // subiendo → mostrar
+    if(y<=8){
+      // Tope: barra QUIETA y visible. Sin ola-clear. Pin solo al aterrizar / al revelar,
+      // no en cada frame del rubber-band (si no el pin no caduca nunca).
+      if(navHiddenRef.current){
+        revealNav();
+        pinNavVisible(1000);
+      } else {
+        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+        navHideArmed.current=false;
+        if(dy<-2) pinNavVisible(700);
+      }
+      return;
+    }
+    const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
+    if(max>0 && y>=max-4){ armNavHide(true); return; }
+    if(Math.abs(dy)<6) return;
+    if(dy>0 && y>56){ armNavHide(false); }
+    else if(dy<0){ revealNav(); }
   };
+  const applyNavHideRef=useRef(applyNavHide);
+  applyNavHideRef.current=applyNavHide;
+  const scheduleEndTopClearRef=useRef(scheduleEndTopClear);
+  scheduleEndTopClearRef.current=scheduleEndTopClear;
+  useEffect(function(){
+    const onScrollEnd=function(ev){
+      const p=ev&&ev.target;
+      const y=p&&p.scrollTop!=null?p.scrollTop:null;
+      const max=p&&p.scrollHeight!=null?(p.scrollHeight-p.clientHeight):0;
+      const atTop=y!=null && y<=8;
+      const atBottom=max>0 && y!=null && y>=max-4;
+      if(atTop){
+        scheduleEndTopClearRef.current();
+        // Nunca aplicar hide al llegar ARRIBA (antes el delay del borde escondía la barra en el tope).
+        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+        navHideArmed.current=false;
+        return;
+      }
+      if(!navHideArmed.current) return;
+      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+      // Abajo: el stretch sigue tras scrollend — esperar antes del hide.
+      const delay=(atBottom||navHideFastRef.current)?450:0;
+      navBotSync.current=setTimeout(function(){ applyNavHideRef.current(); }, delay);
+    };
+    document.addEventListener("scrollend", onScrollEnd, true);
+    return function(){ document.removeEventListener("scrollend", onScrollEnd, true); };
+  },[]);
   const [trashHot,setTrashHot]=useState(false);            // papelera resaltada durante el arrastre
   const trashRef=useRef(null);
   const [addTab,setAddTab]=useState(false);                // hoja "añadir pestaña" (botón +)
   const [gotoExp,setGotoExp]=useState(null);               // punto 5: gasto a enfocar al tocar la noti ({amount,merchant,ts})
+  const [gastosForceAll,setGastosForceAll]=useState(0);    // al importar una hoja, aterrizar en Gastos con el filtro en "Todo" (si no, "Este mes" tapa lo importado)
   const [planGoto,setPlanGoto]=useState(null);             // segmento de Plan a forzar desde «Ver plan» ({id,ts})
   const [gastosForceAll,setGastosForceAll]=useState(0);    // tras importar una hoja: salta a "Todo" en Gastos
   const [tourOpen,setTourOpen]=useState(false);            // tour guiado (coach-marks)
@@ -150,7 +319,20 @@ function App(){
         // varias veces al día, y cada vez más caro según crecía el histórico (2026-07-24).
         const next=keep.concat(add);
         const igual = next.length===prev.expenses.length && next.every(function(e,i){ return e===prev.expenses[i]; });
-        return Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()});
+        // Los gastos llegan AQUÍ, no al cargar el estado, así que es el único punto donde se les
+        // puede pasar revista de verdad. `reconcileObDupes` corre SIEMPRE (sin flag: las dos
+        // limpiezas anteriores se quedaron bloqueadas por el suyo) y es idempotente.
+        const base=Object.assign({},prev,{expenses: igual?prev.expenses:next, lastSync:Date.now()});
+        const rec=reconcileObDupes(fixMovInvasion(base));
+        // Y se aplica TAMBIÉN en la nube: quitar la fila del array local no basta, la de la tabla
+        // seguía viva y volvía en el siguiente pull o al reconectar el banco.
+        if(rec.borrar.length || rec.recat.length){
+          setTimeout(function(){
+            rec.borrar.forEach(function(e){ cloud.deleteExpense(e).catch(function(){}); });
+            rec.recat.forEach(function(r){ cloud.setExpenseCat(r.expense, r.cat).catch(function(){}); });
+          },0);
+        }
+        return rec.state;
       });
       return { total:incoming.length, nuevos:count };
     });
@@ -178,7 +360,7 @@ function App(){
           // Usuario que ya tenía cartera en la nube: no repetir onboarding en otro dispositivo.
           if(freshLogin && (cloudState.accounts||[]).length) baseObj.onboarded=true;
           if(freshLogin && ((cloudState.accounts||[]).length || (cloudState.monthStartNet||0)>0)) baseObj.setupHint=false;
-          return seedFlows(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR(baseObj)))));
+          return seedFlows(fixMovInvasion(fixRevoDupes(fixInvAuto(fixInvSold(reconcileTR(baseObj))))));
         });
       } else if(cloudState){
         // llegó algo pero con forma inválida (corrupto/parcial) → NO machacar lo local; resube lo bueno
@@ -227,12 +409,23 @@ function App(){
         // ORDEN anti-doble-conteo: primero entran las compras de tarjeta como gastos, y DESPUÉS
         // se re-ancla con el saldo real del banco (que ya incluye esas compras).
         const add=importObExpenses(prev, txs);
+        // Aporte automático reconocido (categoría "inversion", ver importObExpenses): compra ya
+        // mismo participaciones en el fondo enlazado, con el importe REAL del banco — mismo cálculo
+        // que `reconcileTR` usaba a ciegas, ahora disparado por el dato de verdad (2026-08-03).
+        let invState=prev;
+        (add||[]).forEach(function(e){
+          if(e.category!=="inversion") return;
+          const ib=applyInvestBuy(invState, e.ent, e.amount);
+          if(!ib) return;
+          invState=ib.state;
+          e.investInvId=ib.invId; e.investShares=ib.shares; e.investCInv=ib.cInv; e.investAmountEur=ib.amountEur;
+        });
         obAdded=add||[];
-        const baseExp=add? add.concat(prev.expenses||[]) : (prev.expenses||[]);
+        const baseExp=add? add.concat(invState.expenses||[]) : (invState.expenses||[]);
         // Rellena el CONCEPTO de lo que ya estaba apuntado con lo que acaba de traer el banco
         // (2026-07-24): si no, el histórico viejo —el que se consulta— seguiría sin explicar nada.
         const withNotes=enrichNotesFromBankTx(baseExp, txs);
-        const withExp=(withNotes!==(prev.expenses||[])) ? Object.assign({},prev,{expenses:withNotes}) : prev;
+        const withExp=(withNotes!==(invState.expenses||[])) ? Object.assign({},invState,{expenses:withNotes}) : invState;
         const r=applyBankBalances(withExp, links);
         return Object.assign({}, r.state, { lastBankSync:Date.now(), hasBankLink: links.length?true:prev.hasBankLink, bankTx: txs, bankIssues: bankIssuesOf(links) });
       });
@@ -745,6 +938,22 @@ function App(){
     window.addEventListener("mc-open-banks",h);
     return function(){ window.removeEventListener("mc-open-banks",h); };
   },[]);
+  /* RESYNC AUTOMÁTICO AL CAMBIAR EL ROL DE UN BANCO (2026-08-01, su rechazo de la tanda
+     `bancos`: «cambiar el banco de gasto diario... sigue sin salir en gastos es absurdo»).
+     `pickRole` (07-tab-patri-fijos.js) escribe el rol nuevo en `state.accounts`/`settings` al
+     instante — y `expenseBankEnts` YA lo ve (se recalcula fresco cada vez, no hay caché) — pero
+     eso solo decide qué banco CUENTA la próxima vez que se sincroniza. El banco nuevo puede
+     llevar DÍAS sin sincronizar porque antes no era «suyo»: sus compras de esta semana existen
+     en Enable Banking pero no en `state.expenses` hasta que algo pida `cloud.bankSync()`, y
+     cambiar un rol no lo pedía. El usuario ve el cambio hecho en Patrimonio y espera ver sus
+     compras en Gastos — no un tercer paso de «ahora sincroniza a mano». */
+  useEffect(function(){
+    // `runBankSync` lee `sessionRef`/`bankSyncing` (refs, siempre al día) y no cierra sobre
+    // estado obsoleto, así que referenciarla aquí con deps vacías es seguro.
+    const h=function(){ runBankSync(); };
+    window.addEventListener("mc-bank-role-changed",h);
+    return function(){ window.removeEventListener("mc-bank-role-changed",h); };
+  },[]);
   // Hogar y gastos compartidos: sacado de Ajustes (2026-07-18: «es una funcionalidad de la app,
   // no un ajuste»). Se abre desde Cartera (dinero compartido) por evento, como Mis bancos.
   const [sharedOpen,setSharedOpen]=useState(false);   // SharedPanel gestiona su propio useBackClose
@@ -863,7 +1072,13 @@ function App(){
              la lista** hasta el siguiente gesto que terminara bien. Medido en su móvil por CDP el
              2026-07-27: gesto cortado → dos deslizadas reales sin mover un píxel (scroll 473 →
              473 → 473) → un gesto limpio → vuelve a ir (473 → 820). Eso es el «tirón». */
-          const conMomentum=(Date.now()-lastScrollAt.current)<200;
+          /* Abajo del todo NUNCA overflow:hidden: es el candado que deja la ola en nada aunque el
+             eje ya sea vertical en el siguiente tirón (medido 5/8 + hot-patch). El translateX del
+             track con momentum se aguanta con preventDefault del eje x; el candado caro solo
+             aporta cuando hay scroll de verdad a mitad de lista. */
+          const maxY=pageEl.scrollHeight-pageEl.clientHeight;
+          const atBottom=(maxY>0 && (maxY-(pageEl.scrollTop||0))<=2);
+          const conMomentum=!atBottom && (Date.now()-lastScrollAt.current)<200;
           if(conMomentum){
             pageEl.dataset.mcLockY=String(pageEl.scrollTop||0);
             pageEl.style.overflow="hidden";
@@ -1400,13 +1615,16 @@ function App(){
     try{ nat.setIngestUrl({url:url}).catch(function(){}); }catch(e){}
   },[state.settings&&state.settings.trIngest, state.settings&&state.settings.ingestToken]);
   // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
+  // Misma cifra que Gastos/Resumen (`monthBudgetStats`), no `thisMonthSpent` (neutras/ingresos).
+  const budW=monthBudgetStats(state);
   const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
   const widgetCash=trAccW ? Math.round((totals.bankBal[trAccW.ent]||0)*100)/100 : null;
   // «Lo que te puedes permitir» (petición 2026-07-18): lo que puedes gastar SIN pasarte ni quedarte
   // en rojo = mínimo entre lo que te deja el presupuesto y la liquidez segura de la cuenta de gasto
   // (su peor saldo del mes; no puedes gastar lo que no tienes). Nunca negativo.
   const widgetAfford=(function(){
-    const budgetLeft = (state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null;
+    const budgetLeft = budW.remaining!=null ? Math.max(0, budW.remaining)
+      : ((state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null);
     const dailyEnt = trAccW && trAccW.ent;
     const safeLiq = dailyEnt!=null
       ? Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0))
@@ -1417,7 +1635,10 @@ function App(){
   useEffect(function(){
     const nat=natPlugin();
     if(!nat || !nat.updateWidget) return;
-    const data={ spent:Math.round((totals.thisMonthSpent||0)*100)/100, budget:state.budget||0 };
+    const data={
+      spent:Math.round((budW.shown||0)*100)/100,
+      budget:budW.budget!=null?budW.budget:(state.budget||0)
+    };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
     if(widgetAfford!=null) data.afford=widgetAfford;
     const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
@@ -1428,7 +1649,7 @@ function App(){
     const onVis=function(){ if(document.visibilityState==="visible") push(); };
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
-  },[totals.thisMonthSpent,state.budget,widgetCash,widgetAfford]);
+  },[budW.shown,budW.budget,state.budget,widgetCash,widgetAfford]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos
@@ -1705,7 +1926,7 @@ function App(){
     if(i<0) return;
     goTab(i);
     const pg=trackRef.current&&trackRef.current.children&&trackRef.current.children[i];
-    if(pg) pg.scrollTop=0;
+    if(pg){ pg.scrollTop=0; syncPageTouchAction(pg, i); }
   };
 
   /* swipe — distingue eje vertical/horizontal, menos sensible */
@@ -1759,6 +1980,74 @@ function App(){
   useEffect(function(){ return function(){ if(navBlurT.current) clearTimeout(navBlurT.current); }; },[]);
   const trackAnchoAhora=function(){ return (trackRef.current&&trackRef.current.offsetWidth)||window.innerWidth||360; };
   const trackX=function(i){ return "translate3d("+(-i*(trackW.current||trackAnchoAhora()))+"px,0,0)"; };
+  /* Host de scroll nativo (ola = stretch de Android como Ajustes). En reposo la pestaña activa
+     pasa a `position:fixed` (`.page-scroll-host`) y el track aparca con `left` SIN transform —
+     un ancestro con transform mata el overscroll nativo (medido 5/8 en su Oppo). Al deslizar
+     tabs se sale del modo y vuelve el translate3d.
+
+     ⚠ Las clases van también en el `className` de React (`hostTab`). Si solo se ponían por
+     `classList`, el primer `setNavHidden` del fling re-renderizaba App y React pisaba el
+     atributo a `"page"` / `"track"` → se perdía el fixed a mitad del momentum y la ola del
+     flick no salía (el tirón con el dedo ya abajo sí, porque no había setState en ese momento). */
+  const scrollHostOn=useRef(false);
+  const [hostTab,setHostTab]=useState(0);
+  const hostTabRef=useRef(0);
+  const leaveScrollHost=function(){
+    const el=trackRef.current; if(!el) return;
+    const w=trackW.current||trackAnchoAhora();
+    let i=tabRef.current;
+    // Si estábamos aparcados con left, recuperar transform antes de arrastrar
+    if(scrollHostOn.current){
+      const leftPx=parseFloat(el.style.left);
+      if(!isNaN(leftPx)) i=Math.round(-leftPx/w);
+      el.style.left="";
+      el.classList.remove("scroll-host-park");
+      el.style.transform="translate3d("+(-(i*(trackW.current||w)))+"px,0,0)";
+    }
+    const pgs=el.children;
+    for(let k=0;k<pgs.length;k++){
+      if(pgs[k]&&pgs[k].classList) pgs[k].classList.remove("page-scroll-host");
+    }
+    scrollHostOn.current=false;
+    if(hostTabRef.current!==-1){ hostTabRef.current=-1; setHostTab(-1); }
+    try{ if(viewportRef.current) viewportRef.current.classList.remove("scroll-host-open"); }catch(e){}
+    try{ if(appShellRef.current) appShellRef.current.classList.remove("scroll-host-on"); }catch(e){}
+  };
+  const enterScrollHost=function(i){
+    const el=trackRef.current; if(!el) return;
+    // Solo bloquear si el carrusel se está ARRASTRANDO ahora. Antes: `if(dragging) return`
+    // y si el asentamiento (rAF) acababa con un dedo nuevo puesto, NUNCA se re-entraba —
+    // estado random «como sin parches» + tabs/ola muertos hasta ir a Resumen (5/8).
+    if(dragging.current && gestureMode.current==="tab") return;
+    const w=trackW.current||trackAnchoAhora();
+    const toX=-(i*w);
+    el.classList.remove("dragging");
+    el.classList.add("scroll-host-park");
+    el.style.transform="none";
+    el.style.left=toX+"px";
+    const pgs=el.children;
+    for(let k=0;k<pgs.length;k++){
+      if(!pgs[k]||!pgs[k].classList) continue;
+      pgs[k].classList.toggle("page-scroll-host", k===i);
+    }
+    scrollHostOn.current=true;
+    if(hostTabRef.current!==i){ hostTabRef.current=i; setHostTab(i); }
+    try{ if(viewportRef.current) viewportRef.current.classList.add("scroll-host-open"); }catch(e){}
+    try{ if(appShellRef.current) appShellRef.current.classList.add("scroll-host-on"); }catch(e){}
+    endTopClearNow(false);
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-ola-clear");
+    }catch(e){}
+    if(pgs[i]) syncPageTouchAction(pgs[i], i);
+  };
+  // Red de seguridad: si el host se perdió (gesto cancelado / settle a medias), recuperarlo.
+  const ensureScrollHost=function(){
+    if(settleRaf.current) return;                         // el asentamiento ya lo pondrá
+    if(dragging.current && gestureMode.current==="tab") return;
+    if(scrollHostOn.current && hostTabRef.current===tabRef.current) return;
+    enterScrollHost(tabRef.current);
+  };
   /* ASENTAR EL CARRUSEL CON rAF, NO CON transition CSS — 2026-07-27, medido en SU móvil.
      La transition de 0,42 s producía exactamente este ritmo al soltar el dedo:
        25 8 25 8 25 8 … (trece veces) → 60 Hz a trompicones durante todo el asentamiento.
@@ -1793,12 +2082,14 @@ function App(){
     if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
     const gen=++settleGen.current;
     settleTo.current=i;
+    leaveScrollHost();   // animar con transform, no con left
     el.classList.remove("dragging");
     const toX=-(i*(trackW.current||trackAnchoAhora()));
     if(document.documentElement.classList.contains("reduce-motion")){
       el.style.transform="translate3d("+toX+"px,0,0)";
       settleTo.current=-1;
       navSinBlur(false);
+      enterScrollHost(i);
       return;
     }
     const fromX=trackPxAhora();
@@ -1806,6 +2097,7 @@ function App(){
       el.style.transform="translate3d("+toX+"px,0,0)";
       settleTo.current=-1;
       navSinBlurTrasTransicion();
+      enterScrollHost(i);
       return;
     }
     const t0=performance.now();
@@ -1820,6 +2112,7 @@ function App(){
         settleRaf.current=0; settleTo.current=-1;
         el.style.transform="translate3d("+toX+"px,0,0)";
         navSinBlur(false);
+        enterScrollHost(i);
       }
     };
     settleRaf.current=requestAnimationFrame(step);
@@ -1864,6 +2157,11 @@ function App(){
        encuentre la app bloqueada por el gesto anterior. Si algún día vuelve a haber una fuga,
        aquí se cura sola. */
     if(dragging.current) onCancel();
+    // Si un gesto anterior dejó el host/freeze/barra a medias, recuperar ANTES del nuevo dedo.
+    try{
+      if(appShellRef.current && appShellRef.current.classList.contains("gesture-freeze")) freezeShell(false);
+    }catch(e){}
+    ensureScrollHost();
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
     // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
@@ -1881,6 +2179,7 @@ function App(){
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
+    // (antes: beginTopClear en tirón al tope → barra off/on en cada swipe y en la ola)
     // Inicio arriba: cortar overscroll/rebote ANTES de fijar eje (vídeo 2026-07-18).
     if(axis.current===null && tab===0 && ddy>0 && Math.abs(ddy)>=Math.abs(ddx)){
       const pages=trackRef.current&&trackRef.current.children;
@@ -1888,8 +2187,29 @@ function App(){
       if((!pageEl||pageEl.scrollTop<=2) && e.cancelable) e.preventDefault();
     }
     if(axis.current===null){
-      if(Math.abs(ddx)<10 && Math.abs(ddy)<10) return;
-      axis.current = Math.abs(ddx) > Math.abs(ddy)*1.25 ? "x" : "y";
+      // Mismo criterio que el gesto vertical de Plan, y a propósito el MISMO código
+      // (`gestureAxis` en 00-core.js): que cada uno decidiera el eje por su cuenta sobre el mismo
+      // dedo es lo que hacía que una bajada con deriva lateral acabara cambiando de pestaña.
+      const eje=gestureAxis(ddx,ddy);
+      if(!eje) return;
+      /* A MITAD, ABAJO o ARRIBA: el arco del pulgar gana `x` pronto → preventDefault +
+         leaveScrollHost + freezeShell matan scroll/ola. Abajo ya estaba guardado; ARRIBA
+         faltaba — por eso la ola de arriba iba «a veces» (gesto limpio vertical OK; con deriva
+         lateral el carrusel robaba el dedo). Si `x` no está claro, NO fijar eje. */
+      if(eje==="x"){
+        const pages0=trackRef.current&&trackRef.current.children;
+        const pg0=pages0&&pages0[tab];
+        if(pg0){
+          const st0=pg0.scrollTop||0, max0=pg0.scrollHeight-pg0.clientHeight;
+          const atTop=st0<=2;
+          const mid0=st0>2 && max0-st0>2;
+          const atBottom=max0>0 && (max0-st0)<=2;
+          if((atTop||mid0||atBottom) && !(Math.abs(ddy)<16 && Math.abs(ddx)>36)){
+            return;
+          }
+        }
+      }
+      axis.current=eje;
       if(axis.current==="x"){
         /* AJUSTES SOLO DESDE RESUMEN (feedback 2026-07-27). El borde (`EDGE_OPEN`) en el resto
            de pestañas pillaba gestos normales y era un coñazo. Y el candado de 450 ms tras
@@ -1905,6 +2225,8 @@ function App(){
           freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
+          pinNavVisible(1400);   // barra fija durante el swipe y el asiento
+          leaveScrollHost();   // salir del fixed: el carrusel vuelve a translate3d
           if(trackRef.current) trackRef.current.classList.add("dragging");
           navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
           // Congela el scroll de la página: sin esto, el momentum vertical de Deudas/Metas
@@ -1943,6 +2265,22 @@ function App(){
       if(e.cancelable) e.preventDefault();
       return;
     }
+    /* ⚠ AQUÍ HABÍA UN REBOTE CASERO, Y SE QUITÓ ENTERO (2026-08-01, tercer intento, por fin con
+       la descripción exacta: «cuando bajas hasta abajo del todo y tiras más, se ve como un
+       efecto OLA de todas las cosas que hay en pantalla — eso es lo que quiero, lo mismo que
+       Ajustes y el perfil»).
+       Y Ajustes/el perfil (`.settings-push`/`.settings-slide`) NUNCA tuvieron un rebote nuestro:
+       ese "efecto ola" que él ve ahí es el rebote NATIVO de Chromium/Android — el navegador
+       estira TODO el contenido de la pantalla como una goma cuando llegas al final y sigues
+       tirando. `.page` (las cuatro pestañas) es la ÚNICA zona con `overscroll-behavior-y:none`
+       en toda la app, puesto a propósito el 28/7 para que un rebote JS propio no se pisara con
+       el nativo. Ese rebote propio es justo lo que él llevaba tres rondas rechazando por no
+       parecerse — porque es OTRO efecto, con otra física, por diseño.
+       La solución no era afinar la curva una cuarta vez: era dejar que el navegador haga aquí
+       LO MISMO que ya hace en Ajustes y en el perfil. Sin JS, sin `reb`, sin `REB_MAX` — el
+       `overscroll-behavior-y:none` de `.page` también se ha quitado (ver shell.html), así que
+       las cuatro pestañas se comportan exactamente como los otros dos sitios que él pone como
+       referencia, porque ahora es LITERALMENTE el mismo mecanismo. */
     if(axis.current!=="x") return;
     dx.current=ddx;
     if(gestureMode.current==="drawer"){
@@ -1990,6 +2328,7 @@ function App(){
   };
   const onEnd=()=>{
     if(!dragging.current) return; dragging.current=false;
+    scheduleEndTopClear();
     if(axis.current==="y" && gestureMode.current==="profile"){
       profileRelease();
       const dist=pDY.current;
@@ -2028,12 +2367,18 @@ function App(){
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
-        // Asentar YA (rAF), no esperar al setState: si no, el carrusel se queda un frame
-        // plantado donde lo soltó el dedo. goTab dispara el useEffect de `tab`, que vuelve a
-        // llamar asentarTrack con el mismo destino → no-op (ver settleTo).
+        // Limpiar modo ANTES de asentar: si no, enterScrollHost puede creer que seguimos en tab-drag.
+        gestureMode.current=null;
+        axis.current=null;
+        endTopClearNow(true);
         if(nt!==tab) goTab(nt);
         asentarTrack(nt);
+        return;
       }
+    } else {
+      // Scroll vertical normal: por si un leaveScrollHost quedó a medias, recuperar.
+      ensureScrollHost();
+      endTopClearNow(false);
     }
     gestureMode.current=null;
     axis.current=null;
@@ -2058,6 +2403,7 @@ function App(){
      El perfil, la tabbar y las fichas ya escuchaban `touchcancel`; las pestañas y Ajustes, no. */
   const onCancel=function(){
     if(!dragging.current) return;
+    scheduleEndTopClear();
     if(gestureMode.current==="profile"){
       profileRelease();
       setProfileProgress(profileOpen?1:0);   // el gesto no cuenta: se queda como estaba
@@ -2078,6 +2424,75 @@ function App(){
      Con el listener a mano el gesto es nuestro de verdad. `touchcancel` sigue atado (`onCancel`)
      porque el sistema —una noti, el borde de la pantalla— también puede llevárselo. */
   const viewportRef=useRef(null);
+  /* LA RAYITA SALTA POR ENCIMA DEL + (petición suya 2026-07-28). Solo cuando el cambio de
+     pestaña CRUZA el hueco del FAB —slots: 0 Inicio · 1 Gastos · 2 el + · 3 Plan · 4 Cartera—,
+     que es el único caso en que el indicador le pasa por la cara. Entre contiguas se desliza
+     como siempre.
+     Sin `useState` A PROPÓSITO: esto corre en cada cambio de pestaña, y un estado aquí son dos
+     repintados de la app entera por gesto — exactamente el tipo de trabajo atado al momento en
+     que el usuario toca que costó siete vueltas sacar del carrusel (ver CHANGELOG 4.12.0). La
+     clase se pone y se quita sobre el nodo y React ni se entera. */
+  /* AQUÍ VIVÍA EL REBOTE CASERO DE LAS PESTAÑAS, Y SE QUITÓ ENTERO EL 2026-08-01 — leer el
+     comentario en `onMove` (más arriba, donde estaba la rama que lo dibujaba) para el porqué:
+     la premisa de origen («la WebView no hace rubber-band, solo un fogonazo de borde») era la
+     causa de que tres rondas de retoques nunca se pareciesen a Ajustes/el perfil — esos dos
+     sitios NUNCA tuvieron rebote nuestro, corren con el `overscroll-behavior` por defecto del
+     navegador, y ESE es el efecto que él pedía copiar. `.page` ya no lo bloquea (shell.html). */
+  const indRef=useRef(null);
+  const tabPrevRef=useRef(tab);
+  /* ⚠ `useLayoutEffect` Y NO `useEffect`, y esta vez importa de verdad (2026-08-01).
+     La clase `rodea` es la que acompasa los dos ejes del salto: le cambia al CONTENEDOR la
+     duración y la curva para que casen con las del span (ver `.botnav-ind.rodea` en el shell).
+     Con `useEffect` la clase llega DESPUÉS de pintar, o sea después de que React haya escrito el
+     `translateX` nuevo — y para entonces el navegador ya ha arrancado la transición horizontal
+     con el muelle de .32s. Cambiar `transition` a una transición ya en marcha no la re-negocia:
+     sigue con lo que empezó. Resultado: el arreglo del acompasado no se aplicaría NUNCA en el
+     único movimiento para el que existe. `useLayoutEffect` corre antes del pintado, así que la
+     clase y el `translateX` entran en el mismo frame y la transición nace ya acompasada. */
+  useLayoutEffect(function(){
+    const antes=tabPrevRef.current; tabPrevRef.current=tab;
+    const el=indRef.current;
+    if(!el || antes===tab) return undefined;
+    const cruza=(antes<=1)!==(tab<=1);
+    const span=el.firstElementChild;
+    /* Si el arco iba a mitad y llega OTRO cambio de pestaña, reiniciar `rodea` dejaba la rayita
+       a medias (Y ya subida, X a mitad) y el nuevo translate la atravesaba por el + — feedback
+       2026-08-05 «si lo hago muy rápido se corta y atraviesa». Arreglo: SNAP al destino (sin
+       transición ni animación) y NO relanzar el arco en esa interrupción. El siguiente cruce
+       limpio (sin `rodea` colgada) vuelve a saltar por encima. */
+    const snapInd=function(){
+      el.classList.remove("rodea");
+      el.style.transition="none";
+      if(span){ span.style.animation="none"; span.style.transform="none"; }
+      void el.offsetWidth;
+      el.style.transition="";
+      if(span){ span.style.animation=""; span.style.transform=""; }
+    };
+    if(!cruza){
+      if(el.classList.contains("rodea")) snapInd();
+      return undefined;
+    }
+    if(el.classList.contains("rodea")){
+      snapInd();
+      return undefined;
+    }
+    el.classList.add("rodea");
+    const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);
+    return function(){ clearTimeout(id); };
+  },[tab]);
+  /* AQUÍ HABÍA UNA RACHA DE TEMPORADA EN CADA CAMBIO DE PESTAÑA, Y LA QUITÓ ÉL.
+     Se puso el 28/7 leyendo «alguna animación chula si deslizas», y la rechazó dos veces seguidas
+     con las palabras más claras que se pueden dar: «que al cambiar de tab no sigan cayendo» y «va
+     bien pero no quiero eso. Solo quiero que pase al principio». Queda escrito para que a nadie
+     le parezca una buena idea reponerlo: la caída es del ARRANQUE y de nada más. La temática se
+     nota el resto del tiempo en la ambientación fija (anillo del + y halos), que es lo que sí le
+     gusta — «como hiciste con el botón + que está chulo». */
+  /* Métricas de uso: qué pestañas se usan de verdad. Una etiqueta cerrada y nada más — ni qué hay
+     dentro, ni cuánto dinero, ni cuándo. El dedupe de `logEvent` hace que cada pestaña cuente una
+     vez por sesión, que es la medida que sirve para decidir qué sobra. Ver `USO_OK` en 00-core. */
+  useEffect(function(){
+    try{ cloud.logUso("tab_"+(tabIds[tab]||"inicio")); }catch(e){}
+  },[tab, tabIds]);
   const gestRef=useRef({});
   gestRef.current={ s:onStart, m:onMove, e:onEnd, c:onCancel };
   useEffect(function(){
@@ -2099,7 +2514,21 @@ function App(){
   },[]);
   // Toque en la barra inferior (y cualquier setTab que no venga del gesto): mismo asentamiento
   // por rAF. Si el gesto ya lo arrancó hacia este índice, asentarTrack no reinicia.
-  useEffect(function(){ if(!dragging.current) asentarTrack(tab); },[tab]);
+  // Mismo apagado de desenfoque que ya tiene el swipe, aquí también (2026-08-03, bug 1 «la rayita
+  // atraviesa el + a velocidad alta»). Un toque directo en la barra TAMBIÉN mueve el carrusel por
+  // detrás (`asentarTrack`), y `.botnav` con `backdrop-filter` recalcula el desenfoque en cada
+  // frame en que cambia lo de detrás — el mismo coste ya medido en el swipe (181→145 ms sin él).
+  // A velocidad alta (varios toques seguidos, sin dejar asentar el anterior) ese coste se acumula
+  // justo en la ventana de ~220 ms en la que tiene que pintarse el pico del arco de la rayita:
+  // menos trabajo de sobra en el hilo principal ahí es menos probable perderse ese frame. Llamarlo
+  // también cuando el asentamiento viene de un swipe (que ya lo gestiona en `onEnd`) es inofensivo:
+  // `navSinBlur`/`navSinBlurTrasTransicion` solo tocan una clase y un timer, sin efectos duplicados.
+  useEffect(function(){
+    if(dragging.current) return;
+    navSinBlur(true);
+    asentarTrack(tab);
+    navSinBlurTrasTransicion();
+  },[tab]);
   // Contrapartida de medir en píxeles: un porcentaje se re-resolvía solo al girar el móvil, y un
   // píxel no. Si cambia el ancho (rotación, teclado, barra del navegador), se tira la medida
   // cacheada y se vuelve a colocar el carrusel. Fuera del gesto, para no medir con el dedo puesto.
@@ -2110,7 +2539,10 @@ function App(){
         // Snap sin animar: el ancho nuevo cambia el destino en px; animar desde el viejo salta.
         if(settleRaf.current){ cancelAnimationFrame(settleRaf.current); settleRaf.current=0; }
         settleTo.current=-1;
+        leaveScrollHost();
+        trackW.current=trackAnchoAhora();
         trackRef.current.style.transform=trackX(tab);
+        enterScrollHost(tab);
       }
     };
     window.addEventListener("resize",alRedimensionar);
@@ -2196,6 +2628,7 @@ function App(){
   const cancelSwipe=function(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
+    endTopClearNow(true);
     // `tabRef` por lo mismo que en `goTab`: con el `tab` de cuando se construyó la página, cancelar
     // el gesto devolvería el carrusel a la pestaña equivocada. Asentar por rAF (no snap a pelo):
     // si no, el dedo ve un salto seco cuando el navegador se lleva el gesto.
@@ -2326,13 +2759,30 @@ function App(){
   const contenidoGastos=useMemo(function(){
     return tabIds.indexOf("gastos")>=0 ? pageFor("gastos") : null;
     // eslint-disable-next-line
-  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked]);
+  },[state, totals, tabIds.join("|"), syncing, syncStatus, gotoExp, planGoto, pricing, uid, drawerOpen, locked, gastosForceAll]);
   // Aviso barato a Expenses: sin setState en App que no haga falta, y sin re-render de Gastos.
   useEffect(function(){ mcSetGastosActive(tabIds[tab]==="gastos"); },[tab, tabIds]);
+  // Al cambiar de pestaña (o del orden), recalcular qué páginas necesitan `mc-touch-own`.
+  // Sin esto, Inicio se quedaba en pan-y tras volver desde Gastos scrolleado, o Plan perdía el
+  // gesto de segmento al aterrizar ya arriba del todo sin haber disparado onScroll.
+  // También tras CUALQUIER re-render: React pisa className y se lleva el `mc-touch-own` que
+  // solo vivía en classList (mismo agujero que page-scroll-host).
+  useLayoutEffect(function(){
+    const pages=trackRef.current&&trackRef.current.children;
+    if(!pages) return;
+    for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
+  });
+  useEffect(function(){
+    const pages=trackRef.current&&trackRef.current.children;
+    if(!pages) return;
+    for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
+  },[tab, tabIds.join("|")]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
-    return React.createElement("div",{className:"page"+(show?" page-live":""),key:id,onScroll:onPageScroll},
+    // `page-scroll-host` EN el className de React (no solo classList): si no, cualquier
+    // setState de App (botnav al bajar) lo borra y el fling pierde la ola nativa.
+    return React.createElement("div",{className:"page"+(show?" page-live":"")+(hostTab===i?" page-scroll-host":""),key:id,onScroll:onPageScroll},
       show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
     );
   });
@@ -2344,46 +2794,10 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // Capa ambiental de temporada: solo si hay temática y no está «reducir animaciones».
-  // Estilo «Revolut» (2026-07-18): 3 capas de profundidad (lejos/medio/cerca) con distinto tamaño,
-  // opacidad, desenfoque y velocidad → parallax; y movimiento ORGÁNICO (deriva lateral + giro +
-  // pulso de escala) en vez de una caída recta y sosa. ~18 piezas repartidas.
-  const season=(state.settings&&state.settings.season)||"";
-  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
-  const seasonFx=(season && season!=="none" && !reduceMo && SEASON_FX[season])
-    ? React.createElement("div",{className:"season-fx","data-season":season,"aria-hidden":"true"},
-        (function(){
-          const pool=SEASON_FX[season], N=18, out=[];
-          for(let i=0;i<N;i++){
-            const layer=i%3;                                   // 0=lejos, 1=medio, 2=cerca
-            const em=pool[i%pool.length];
-            // reparto pseudo-aleatorio pero estable (sin saltos entre renders)
-            const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
-            const left=Math.round(rnd(12.9898)*98);
-            const sz=[13,18,25][layer]+Math.round(rnd(4.1)*4);
-            /* MUCHÍSIMO MÁS CORTO (rechazo suyo del 29/7: «muchísimo menos tiempo»). Era
-               [16,12,9]+0-4 s por DOS vueltas = entre 18 y 40 segundos de cosas cayendo cada vez
-               que abría la app o tocaba una pestaña. Ahora una sola vuelta de 4-7 s, así que la
-               capa entera se posa antes de los 8 s y no vuelve a moverse. Sigue habiendo parallax
-               —lejos más lento que cerca—, solo que en un tercio del tiempo. */
-            const dur=[7,5.5,4.5][layer]+rnd(7.7)*1.6;         // lejos = más lento (parallax)
-            /* Retraso POSITIVO y corto. Con el negativo de antes, media capa empezaba a mitad de
-               la caída y, con una sola vuelta, esas piezas se perdían la entrada por arriba: se
-               veían aparecer ya por el medio de la pantalla. Escalonarlas hacia delante hace que
-               entren todas desde arriba, unas detrás de otras, y que aun así acabe pronto. */
-            const delay=rnd(3.3)*1.1;
-            const sway=(6+Math.round(rnd(5.5)*18))*(rnd(9.1)>0.5?1:-1);   // deriva lateral px
-            const spin=(rnd(2.2)>0.5?1:-1)*(180+Math.round(rnd(6.6)*220));
-            const op=[0.5,0.72,0.9][layer];
-            out.push(React.createElement("span",{key:i,className:"sfx-l"+layer,
-              style:{left:left+"vw",fontSize:sz+"px",opacity:op,animationDuration:dur+"s",animationDelay:delay+"s",
-                "--sway":sway+"px","--spin":spin+"deg"}}, em));
-          }
-          return out;
-        })())
-    : null;
+  // La capa ambiental de temporada (piezas cayendo/subiendo) SE QUITÓ del todo (2026-08-03): el
+  // detalle por temática ahora vive incrustado en cada sección, en CSS puro (ver `--season-ico`
+  // y el badge sobre `.v4-title`/`.v4-inicio-hi` en shell.html). Nada que montar ni disparar aquí.
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
-    seasonFx,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",
@@ -2391,11 +2805,11 @@ function App(){
       "🧪 MODO PRUEBAS · los datos no son reales · toca para salir"),
     React.createElement("div",{className:"app-shell",ref:appShellRef},
       React.createElement("div",{className:"viewport",ref:viewportRef},
-        React.createElement("div",{className:"track",ref:trackRef}, paginas)
+        React.createElement("div",{className:"track"+(hostTab>=0?" scroll-host-park":""),ref:trackRef}, paginas)
       ),
-      React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden":""),"aria-label":"Navegación"},
+      React.createElement("nav",{className:"botnav"+(navHidden&&!drawerOpen&&!profileOpen?" botnav-hidden"+(navHiddenFast?" botnav-hidden-fast":""):""),"aria-label":"Navegación"},
         React.createElement("div",{className:"botnav-row"},
-          React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),
+          React.createElement("div",{className:"botnav-ind"+(drawerOpen||profileOpen?" hide":""),ref:indRef,
             style:{transform:"translateX("+(tab<=1?tab*100:(tab+1)*100)+"%)"}},
             React.createElement("span",null)
           ),
@@ -2442,7 +2856,8 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus,goGastos:function(){ setDrawerOpen(false); setGastosForceAll(Date.now()); const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }})
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus,
+        goGastos:function(){ setDrawerOpen(false); setGastosForceAll(Date.now()); const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),
     /* Los gestos NO van por props de React (ver el efecto `profileOpen` de arriba): React registra

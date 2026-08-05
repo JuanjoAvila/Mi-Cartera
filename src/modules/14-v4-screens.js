@@ -81,11 +81,159 @@ function PlanTab({state, set, totals, showToast, simple, gotoSeg, clearGoto}){
      de tener el resto arreglado, que es justo por qué esta decisión se re-mide en vez de heredarse.
      Al ponerse siempre, sobra la regla especial de `.track.dragging` que había en shell.html. */
   const oculto={height:0,overflow:"hidden",contentVisibility:"hidden",pointerEvents:"none"};
+  const segElRef=useRef({});
   const capa=function(id,hijo){
     if(!segMounted[id]) return null;
-    return React.createElement("div",{key:id,"data-seg":id,style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
+    return React.createElement("div",{key:id,"data-seg":id,ref:function(el){ segElRef.current[id]=el; },style:seg===id?null:oculto,"aria-hidden":seg!==id}, hijo);
   };
-  return React.createElement("div",{className:"v4-screen"},
+
+  /* DESLIZAR VERTICAL PARA CAMBIAR DE SEGMENTO (petición 2026-08-03: «no depender de la otra
+     mano para tocar arriba»). SOLO arriba del todo tirando hacia abajo: Recibos → Deudas → Metas
+     → Recibos. Abajo del todo es la OLA nativa (feedback 4/8 noche), no el sentido inverso — si
+     reclamábamos ese borde con `touch-action:none` + preventDefault, matábamos la ola. A mitad
+     de lista = scroll normal. Eje x/y con `gestureAxis` (mismo que el swipe de pestañas); si sale
+     horizontal, este gesto se aparta y deja pasar el de `.viewport`. */
+  const planScreenRef=useRef(null);
+  const enterDirRef=useRef(null);
+  useEffect(function(){
+    if(simple) return undefined;   // modo sencillo: un único segmento, no hay a dónde ir
+    const root=planScreenRef.current; if(!root) return undefined;
+    // Orden fijo, NO derivado de `segs` (ese array es literal nuevo en cada render de PlanTab):
+    // si esta lista dependiera de `segs`, el efecto se desmontaría y remontaría en CUALQUIER
+    // re-render del componente —cambie o no `simple`/`seg`—, y si eso pasa a mitad de un gesto
+    // (entre un touchmove y el siguiente) los listeners viejos se sueltan y los nuevos arrancan
+    // con sx/sy/axis en blanco: el primer arrastre después de aterrizar en Plan se perdía así
+    // (visto en el e2e: el primer deslizamiento no cambiaba de segmento y el segundo sí).
+    const order=["recibos","deudas","metas"];
+    const TH=0.07, FLICK_V=0.4, FLICK_MIN=26, MAX_PULL=46;
+    const reduceMotion=function(){
+      try{ return (window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches) || document.documentElement.classList.contains("reduce-motion"); }catch(e){ return false; }
+    };
+    // Solo ARRIBA → abajo cambia de segmento. Abajo = ola. Plan en reposo va SIEMPRE en pan-y
+    // (si `mc-touch-own` queda puesto al estar arriba, `touch-action:none` bloquea también
+    // BAJAR a ver el contenido — feedback 5/8). `mc-touch-own` solo durante el gesto que nace
+    // arriba: tirón abajo = segmento; dedo arriba = scroll a mano hasta salir del tope.
+    let sx=0, sy=0, t0=0, axis=null, mode=null, dir=0, dyRaw=0, raf=0, pend=null;
+    let startAtTop=false, lastY=0, pageEl=null, ownOn=false;
+    const paint=function(){
+      raf=0;
+      const el=segElRef.current[seg];
+      if(el) el.style.transform=pend?("translate3d(0,"+pend+"px,0)"):"";
+    };
+    const queue=function(v){ pend=v; if(!raf) raf=requestAnimationFrame(paint); };
+    const resist=function(px){ return Math.pow(Math.min(1,px/160),0.72)*MAX_PULL; };
+    const cleanup=function(el){ if(el){ el.style.transition=""; el.style.transform=""; } };
+    const atTopOf=function(pg){ return !pg || (pg.scrollTop||0)<=2; };
+    const setOwn=function(on){
+      if(!pageEl||!pageEl.classList) return;
+      if(on && !ownOn){ pageEl.classList.add("mc-touch-own"); ownOn=true; }
+      else if(!on && ownOn){ pageEl.classList.remove("mc-touch-own"); ownOn=false; }
+    };
+    const onStart=function(e){
+      if(document.documentElement.classList.contains("sheet-open")) return;
+      if(!(e.touches&&e.touches[0])) return;
+      const tt=e.touches[0];
+      pageEl=root.closest(".page");
+      sx=tt.clientX; sy=tt.clientY; lastY=tt.clientY; t0=Date.now();
+      axis=null; mode=null; dir=0; dyRaw=0;
+      startAtTop=atTopOf(pageEl);
+      // touch-action se decide al empezar el gesto: none solo si nacemos arriba (segmento).
+      setOwn(!!startAtTop);
+    };
+    const onMove=function(e){
+      if(axis==="x"||mode==="x") return;
+      if(!(e.touches&&e.touches[0])) return;
+      const tt=e.touches[0], ddx=tt.clientX-sx, ddy=tt.clientY-sy;
+      if(axis===null){
+        const eje=gestureAxis(ddx,ddy);
+        if(!eje) return;
+        axis=eje;
+        if(axis==="x"){ mode="x"; setOwn(false); return; }
+        if(ddy>0 && startAtTop && atTopOf(pageEl)){ dir=1; mode="seg"; }
+        else { mode="scroll"; }
+      }
+      if(mode==="scroll"){
+        e.stopPropagation();
+        // Con none el navegador no scrollea: empujamos scrollTop (dedo arriba → baja la lista).
+        if(ownOn && pageEl){
+          const fingerUp=lastY-tt.clientY;
+          lastY=tt.clientY;
+          if(fingerUp){
+            pageEl.scrollTop=Math.max(0, (pageEl.scrollTop||0)+fingerUp);
+            if(pageEl.scrollTop>2) setOwn(false);
+          }
+          if(e.cancelable) e.preventDefault();
+        }
+        return;
+      }
+      if(mode!=="seg") return;
+      e.stopPropagation();
+      if((dir>0&&ddy<0)||(dir<0&&ddy>0)){ dyRaw=0; queue(0); return; }
+      dyRaw=Math.abs(ddy);
+      lastY=tt.clientY;
+      if(e.cancelable) e.preventDefault();
+      queue(reduceMotion()?0:dir*resist(dyRaw));
+    };
+    const finish=function(allowCommit){
+      if(raf){ cancelAnimationFrame(raf); raf=0; }
+      pend=null;
+      if(mode!=="seg"){
+        setOwn(false);
+        axis=null; mode=null;
+        return;
+      }
+      const el=segElRef.current[seg];
+      const dt=Math.max(1,Date.now()-t0);
+      const vel=dyRaw/dt;
+      const pasa=allowCommit && (dyRaw>(window.innerHeight||700)*TH || (vel>FLICK_V && dyRaw>FLICK_MIN));
+      if(pasa){
+        try{ if(navigator.vibrate) navigator.vibrate(8); }catch(err){}
+        const i=order.indexOf(seg);
+        const nextId=order[(i+(dir>0?1:-1)+order.length)%order.length];
+        cleanup(el);
+        enterDirRef.current=dir>0?"down":"up";
+        setSegMounted(function(m){ return m[nextId]?m:Object.assign({},m,{[nextId]:true}); });
+        setSeg(nextId);
+      } else if(el && !reduceMotion()){
+        el.style.transition="transform .22s cubic-bezier(.32,.72,0,1)";
+        el.style.transform="";
+        setTimeout(function(){ cleanup(el); }, 230);
+      } else cleanup(el);
+      setOwn(false);
+      axis=null; mode=null; dir=0; dyRaw=0;
+    };
+    const onTouchEnd=function(){ finish(true); };
+    // `touchcancel` (el sistema se lleva el dedo): el gesto NO cuenta, se queda como estaba —
+    // mismo criterio que el cierre del perfil en `onCancel` de 11-app-main.js.
+    const onTouchCancel=function(){ finish(false); };
+    root.addEventListener("touchstart", onStart, {passive:true});
+    root.addEventListener("touchmove", onMove, {passive:false});
+    root.addEventListener("touchend", onTouchEnd, {passive:true});
+    root.addEventListener("touchcancel", onTouchCancel, {passive:true});
+    return function(){
+      if(raf) cancelAnimationFrame(raf);
+      setOwn(false);
+      root.removeEventListener("touchstart", onStart);
+      root.removeEventListener("touchmove", onMove);
+      root.removeEventListener("touchend", onTouchEnd);
+      root.removeEventListener("touchcancel", onTouchCancel);
+    };
+  },[simple, seg]);
+  // Entrada sutil SOLO cuando el segmento cambia por este gesto (tocar la pestaña de arriba
+  // sigue siendo instantáneo, a propósito: ese toque ya es una decisión explícita del usuario).
+  useEffect(function(){
+    const dir=enterDirRef.current; if(!dir) return;
+    enterDirRef.current=null;
+    const el=segElRef.current[seg]; if(!el) return;
+    const cls=dir==="down"?"v4-seg-enter-down":"v4-seg-enter-up";
+    el.classList.add(cls);
+    const clear=function(){ el.classList.remove(cls); el.removeEventListener("animationend",clear); };
+    el.addEventListener("animationend", clear);
+    const to=setTimeout(clear, 500);   // red de seguridad si el evento no llega
+    return function(){ clearTimeout(to); };
+  },[seg]);
+
+  return React.createElement("div",{className:"v4-screen",ref:planScreenRef},
     React.createElement("h1",{className:"v4-title serif"}, t("v4_plan_title")),
     React.createElement("div",{className:"v4-seg",role:"tablist"},
       segs.map(function(s){

@@ -86,6 +86,29 @@ function mcFetchManifest(name){
   });
 }
 
+/* QUÉ VERSIÓN SIRVE PRODUCCIÓN AHORA MISMO (2026-07-28).
+   Siempre desde Pages (`_mcOtaBASE`), pase lo que pase con el canal: producción ES `main`, y el
+   móvil en beta también tiene derecho a saber por dónde va el resto de la familia.
+
+   Existe por una petición suya: «cuando suba algo a prod, la beta no haya nada para aprobar
+   porque lógicamente ya lo hice para que subiera prod». El panel de revisión no tenía forma de
+   saberlo —solo miraba la versión que lleva puesta— así que seguía pidiendo que aprobara una
+   beta que él mismo había promocionado horas antes. Con esto, el panel compara y se calla.
+
+   Se cachea en memoria (no en localStorage) para no pedirlo en cada apertura del panel; una
+   sesión de app es un intervalo perfectamente razonable para este dato. Falla en silencio a
+   `null` = «no se sabe», que la UI trata como «sigue preguntando»: quedarse callado por un fallo
+   de red sería peor que preguntar de más. */
+var _mcProdVerCache=null;
+window._mcProdVersion=function(){
+  if(_mcProdVerCache) return _mcProdVerCache;
+  _mcProdVerCache=mcGetJson(_mcOtaBASE+"version.json?ts="+Date.now())
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(v){ return (v&&v.version)?String(v.version):null; })
+    .catch(function(){ return null; });
+  return _mcProdVerCache;
+};
+
 /* CAMBIAR DE CANAL NO ES «ACTUALIZAR»: ES INSTALAR LO QUE TOCA EN EL CANAL NUEVO.
    El OTA solo va hacia ADELANTE (`_mcNewerVer`), así que apagar la beta dejaba el móvil con el
    bundle de pruebas puesto para siempre: la única salida era esperar a que producción pasara ese

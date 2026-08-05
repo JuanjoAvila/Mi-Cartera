@@ -1,12 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- updatePeriodMillis=0: no hay refresco periódico del sistema; lo refrescan la web
-     (plugin updateWidget) y el lector de notis de TR (saveMonth) cuando hay datos nuevos. -->
+<!-- updatePeriodMillis: red de seguridad de 6h, no el mecanismo principal (2026-08-01). El
+     refresco de verdad sigue siendo reactivo: la web (plugin updateWidget) y el lector de notis
+     de TR (saveMonth) empujan datos en cuanto los hay, y eso es casi instantáneo. Pero si NADA
+     de eso pasa justo al cruzar la medianoche del día 1, el widget se quedaba enseñando el
+     número del mes ANTERIOR indefinidamente — «sale -2€ y no se resetea» (feedback de su
+     pareja). 6h (21 600 000 ms, el mínimo real de Android son 30 min, esto es deliberadamente
+     poco frecuente) es barato de batería y basta para que MiCarteraWidget.build() note el
+     cambio de mes (ver el comparador de `updated` ahí) en vez de mentir con la cifra vieja
+     durante todo un día. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="250dp"
     android:minHeight="70dp"
     android:targetCellWidth="4"
     android:targetCellHeight="1"
-    android:updatePeriodMillis="0"
+    android:updatePeriodMillis="21600000"
     android:initialLayout="@layout/widget_micartera"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"

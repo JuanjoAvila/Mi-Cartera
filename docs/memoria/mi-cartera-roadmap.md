@@ -4,13 +4,113 @@
 
 ---
 name: mi-cartera-roadmap
-description: Estado actual y backlog de Mi Cartera (2026-08-01 noche: producción = 4.12.3 —arranque, primera promoción por FEATURE—; beta = 4.13.0 con import/gestos/bancos pendientes, arranque+canal ya QUITADOS del array por estar hechos. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
+description: Estado actual y backlog de Mi Cartera (2026-08-03 tarde: producción = 4.12.4 —import de hoja Excel/CSV—; beta = 4.13.0 con gestos/bancos pendientes de re-probar tras arreglos grandes. ⚠ HALLAZGO GORDO: las Edge Functions NUNCA se habían desplegado desde beta —solo despliegan al pushear a main—, así que el fix del signo de TR llevaba 3 días inerte; desplegado hoy directo a main. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
 metadata:
   node_type: memory
   type: project
   originSessionId: e1dc0ffc-f316-4885-bf7c-1e694f8b4d24
-  modified: 2026-08-01T20:00:56.641Z
+  modified: 2026-08-03T18:40:00.416Z
 ---
+
+**★ SESIÓN 2026-08-03 TARDE — segunda vuelta tras probarlo TODO, hallazgos gordos.**
+Reabrió con los veredictos de su prueba real (`node scripts/errores.mjs --kind=beta`): aprobó
+`reservar` y `temporada` (4/4 cada una), rechazó `bancos` (signo de TR SIGUE mal + import
+histórico "va como el culo", duplicados al revés), `plan-swipe` ("al ir hacia abajo se vuelve
+loco y cambia también de tabs") y `tutorial-gestos` ("quería el tutorial DINÁMICO del principio
+de la app, no una tarjeta fija — y ese tutorial viejo está bugueado, sale descuadrado").
+
+1. **★★★ CAUSA RAÍZ DEL SIGNO DE TR, POR FIN: nunca se había desplegado.** Las Edge Functions de
+   Supabase se despliegan SOLO al pushear a `main` (`.github/workflows/supabase.yml`, sin canal
+   beta propio) — el fix de `Math.abs()` en `mapTransaction` (diagnosticado bien el 31/7, con test
+   unitario desde entonces) llevaba TRES DÍAS viviendo solo en la rama `beta`, nunca desplegado:
+   cada "arreglo" se probó contra el código viejo sin abs(), así que nada podía cambiar. Desplegado
+   hoy directo a `main` (commit d6a6f90, `supabase/functions/_shared/enablebanking.ts` +
+   `bank-sync/index.ts`, verificado con `gh run watch`) — trae también detección de "compra con
+   tarjeta" en cualquier idioma y diagnóstico ampliado (payload crudo de TR a `app_events`) por si
+   abs() no basta del todo. **LECCIÓN para cualquier fix de `supabase/functions/`: no basta con
+   que esté en beta, hay que promocionarlo a `main` aparte — no hay entorno de pruebas para Edge
+   Functions.** Pendiente: que sincronice TR una vez más para confirmar con certeza.
+2. **Excel de su madre analizado — no es un bug de detección, es otra FORMA de datos.**
+   `Contabilidad de casa.xlsx` (16 años, 33 hojas: una "Año YYYY" por año 2010-2026 + hojas
+   "Colegio_El Corte Inglés YYYY" sueltas) reveló DOS cosas:
+   - **Bug real, arreglado**: `hojaLeer` (15-import-hoja.js) cogía en silencio la hoja con MÁS
+     filas — con 33 hojas eso NUNCA es "la que quieres" (aquí habría cogido "Año 2025", no "Año
+     2026" que es la actual). Ahora, con más de una hoja con datos, se pregunta por nombre real
+     (nuevo `xlsxNombresHojas`, cruza `workbook.xml`+`rels`) en vez de adivinar — con una sola
+     hoja sigue sin preguntar nada, cero fricción de más.
+   - **Fuera de alcance, y así se le dijo**: la hoja "Año 2026" en sí NO es una lista de
+     transacciones — es una MATRIZ pivote (filas = códigos de categoría sin nombre legible tipo
+     "14"/"301", columnas = meses, celda = total del mes). Ningún detector de columnas puede
+     adivinar eso: hace falta una tabla plana (fecha+concepto+importe por fila), que es un formato
+     de datos distinto, no un problema de heurística. Si en algún momento quiere convertir ESE
+     fichero en concreto, hace falta que diga qué significa cada código de categoría (no está en
+     el fichero) — tarea aparte, muy a medida, no una mejora general del importador.
+3. **`plan-swipe` arreglado**: el gesto vertical de Plan y el swipe horizontal de `.viewport`
+   (11-app-main.js) escuchaban el MISMO touchmove por separado, cada uno decidiendo el eje a su
+   aire con el mismo umbral 1.25× — un tirón con deriva lateral (normal con el pulgar) podía
+   convencer a los dos a la vez. Fix: `e.stopPropagation()` en `14-v4-screens.js` en cuanto el
+   gesto de Plan se declara vertical (mismo idioma que `stopSwipe` de los chips de Gastos). Test
+   nuevo que reproduce el caso real (dx=40 de deriva) en `e2e/plan-swipe-segmento.spec.mjs`.
+4. **`tutorial-gestos` en rehecho**: lo que quería de verdad era el tour dinámico existente
+   (`Tour` en `02-ui-shared.js`, ya reabrible desde Ajustes con el botón 🎓) con pasos de gestos
+   añadidos, no una tarjeta nueva — y ese tour viejo estaba realmente desalineado (selectores CSS
+   obsoletos tras varios rediseños). Agente en curso arreglando ambas cosas a la vez.
+5. **Import histórico bancario "duplicados al revés"**: sin confirmar aún si era 100% el signo de
+   TR (ahora arreglado) o si `histCandDupKey`/`histCandExisting` (08-motor-bank.js) tiene además
+   un bug propio — revisado el código y parece correcto (deriva el signo de `x.kind`, no del
+   amount crudo), así que la hipótesis fuerte es que era el signo. Pendiente confirmar con su
+   próxima prueba.
+6. Le mandé un `.docx` de prueba (tabla Fecha/Concepto/Importe, 10 filas realistas) para que
+   pueda probar el importador de Word sin tener que buscarse un documento él mismo.
+
+**★ SESIÓN DEL 2026-08-03 — «dale caña a todo», resumen para continuar en frío.**
+El usuario llegó con 7 bugs + 6 features nuevas de golpe, pidiendo explícitamente NO ir uno a uno
+sino repartir en tandas paralelas (autorizó subagentes sonnet/haiku para lo mecánico). Hecho esta
+sesión, en orden:
+1. **Promocionada `import` a producción como 4.12.4** (commit 492c1dc en `main`, misma receta
+   quirúrgica que la 4.12.2 con `arranque`: sin ramas `tanda/<id>`, se separó a mano de entre los
+   commits mezclados de `beta` con ayuda de un subagente Explore que mapeó fichero a fichero qué
+   línea era de import y cuál de gestos/bancos). `docs-frescura` obligó también a: package-lock.json
+   (`npm install --package-lock-only`), README/ROADMAP «Estado actual», y `npm run memoria` (el
+   guardián `memoria-espejo` en `npm test` pincha si el espejo de `docs/memoria/` no está al día —
+   nuevo desde esta sesión, ver `scripts/run-tests.mjs`). Tanda `import` QUITADA del array
+   `tandas` de RELEASE_NOTES en beta + sus 3 bullets quitados de los `items` de la 4.13.0 (misma
+   regla que arranque, para no contarle la novedad dos veces a la familia).
+2. **Arreglado en `beta` (commit 334ec65), pendiente de su prueba real**: el banco de GASTO DIARIO
+   ahora mete CUALQUIER cargo en Gastos (no solo compras con tarjeta — el regex de detección de
+   tarjeta era solo español, con TR/bancos que avisan en inglés se perdía en silencio), salvo que
+   case con un Fijo/deuda/puntual ya modelado ese mes (evita doble conteo); los INGRESOS entran de
+   CUALQUIER banco enlazado (no solo el de gasto), para que «Mi ciclo» encuentre la nómina de la
+   pareja aunque caiga en un banco distinto al de TR; el filtro de banco en Gastos arranca ya
+   marcado en el banco de gasto diario en vez de «Todos»; suscripciones detectadas ahora se pueden
+   DESCARTAR (botón, `state.subsDismissed`) y el importe es editable antes de pasar a Fijos (pedido
+   suyo: recibos variables como luz/gas). **EL SIGNO DE TR SIGUE SIN CERRARSE CON CERTEZA**: el
+   fix de `Math.abs()` en `mapTransaction` (intento anterior, rechazado) no basta si TR manda el
+   `credit_debit_indicator` YA mal para ciertos movimientos — en vez de adivinar otra vez (misma
+   trampa que costó 7 alphas en [[tr-frio-saga]]), se amplió el diagnóstico en `bank-sync/index.ts`
+   (`logObAmbiguous`) para loguear el payload CRUDO de TODO movimiento de TR a `app_events` — hace
+   falta que él sincronice TR por Open Banking UNA vez más para leer el dato real con
+   `node scripts/errores.mjs --grep="epublic"` y cerrarlo sin volver a fallar en falso.
+3. **Repartido en 6 agentes paralelos (worktrees), 4 ya fusionados en beta y subidos (commit
+   76ee1a3)**: swipe vertical en Plan (Recibos→Deudas→Metas→Recibos, en `14-v4-screens.js` — NO en
+   `09-tab-debts-goals.js` como se pensaba al principio), tutorial de gestos en Ajustes
+   (`GestureCoach`, mismo mecanismo que `TabCoach`), temporadas sin lluvia (quitado `.season-fx`
+   entero, sustituido por un detalle `::after` incrustado en `.v4-title` por temática, mismo
+   mecanismo que los iconos de tab), y rediseño de importar histórico bancario (arregló el bug real
+   de que el filtro de banco no filtraba — `BankPanel` pasaba TODOS los enlaces sin filtrar — más
+   filtros ingreso/gasto/mes y dedup con comparación tipo Excel). Yo mismo hice la 5ª: **"Reservar
+   dinero"** (`reservaPlanFor`/`applyReserva`/`reservedSince` en `08-motor-bank.js` + UI en Metas,
+   09-tab-debts-goals.js) — reglas fijo/% que al detectar nómina reparten a metas, con confirmación
+   siempre manual, y lo reservado se resta del presupuesto de Gastos (antes las metas eran un bote
+   aparte que no tocaba el presupuesto). Subido el presupuesto de bundle 310→340 KB gzip (justo,
+   con motivo escrito) tras meter 4 tandas en un día.
+   **PENDIENTES de fusionar** (agentes aún corriendo en worktrees separados, se resumieron una vez
+   tras agotar la sesión de uso): rayita atraviesa el + a velocidad alta + rebote raro (gestos,
+   `agent-a6e6780e7367ee4b2`), importar PDF/Word de gastos (`agent-aed3966cb555a1cac`).
+   **LECCIÓN de esta ronda**: correr `npm test` con varios agentes en paralelo en la misma máquina
+   da MUCHOS falsos negativos en el e2e de Playwright (ERR_CONNECTION_REFUSED / timeouts por
+   contención de CPU/puerto 4173) — antes de dar por rota una tanda nueva, reintentar en aislamiento
+   (`npx playwright test --workers=1 <spec>`) mientras otros agentes sigan corriendo.
 
 **★ SESIÓN DEL 2026-08-01 (larga, varios turnos) — resumen para arrancar en frío.**
 

@@ -65,6 +65,28 @@ function promoteObAccount(s, totals, key, role, id){
 //   van a state.obAccounts como SALDOS PUROS que suman al patrimonio, SIN tocar el motor
 //   (cero riesgo de doble conteo con fijos/flows/round-up).
 // · La cuenta de gasto (spendFrom / Trade Republic) NUNCA la toca el banco (fuera de Open Banking).
+/* ¿EL SALDO DE ESTE BANCO LO MANDA UN PUENTE NATIVO? (2026-08-01)
+   Trade Republic es el único caso: su integración propia (`06-sync-brokers.js`) re-ancla la cuenta
+   TR con el `availableCash` que da el puente, y además le pone las posiciones. Desde que Enable
+   Banking lista TR como ASPSP normal, TR puede llegar TAMBIÉN por Open Banking — y ahí está el
+   ÚNICO choque real entre las dos integraciones: las dos escribirían el mismo `value` con fórmulas
+   distintas, así que el saldo bailaría según cuál sincronizara la última. Los movimientos no
+   chocan (van deduplicados por `ext_id`), y las posiciones solo las trae el puente.
+
+   Así que no se bloquea la conexión: se reparte el trabajo. El puente nativo manda en el SALDO y
+   las posiciones; Open Banking aporta los MOVIMIENTOS, que es justo lo que faltaba —las compras
+   con la tarjeta de TR entrando solas en Gastos, en vez de a mano.
+
+   Solo aplica si el puente está encendido: quien tenga TR ÚNICAMENTE por Open Banking (nadie hoy,
+   pero es gratis dejarlo bien) sigue recibiendo su saldo por el camino normal. */
+function saldoLoMandaPuenteNativo(s, ent){
+  if(ent!=="trade_republic") return false;
+  const pref=(s&&s.settings||{}).brokersOn;
+  if(Array.isArray(pref)) return pref.indexOf("trade_republic")>=0;
+  // Sin preferencia guardada, el chip se deduce de si hay inversiones de ese bróker (misma regla
+  // que la pantalla de bancos): tener posiciones de TR ES tener el puente en marcha.
+  return (s&&s.investments||[]).some(function(i){ return i && i.ent==="trade_republic"; });
+}
 // Función PURA: {state, changed, synced:[{ent,bal}], obAccounts:[]}.
 function applyBankBalances(s, links){
   if(!s || !Array.isArray(links) || !links.length) return { state:s, changed:false, synced:[], obAccounts:(s&&s.obAccounts)||[] };
@@ -81,6 +103,11 @@ function applyBankBalances(s, links){
       return;
     }
     const ent=entFromAspsp(lk && lk.aspsp);
+    // TR por Open Banking: su saldo ya lo pone el puente nativo. Se sale ANTES de tocar `accounts`
+    // y `obAccounts` —ni re-ancla ni crea cuenta extra, que sería doble conteo en Patrimonio— y
+    // sus movimientos siguen su camino, que van por `flattenBankTx`/`importObExpenses` y no por
+    // aquí. Ver `saldoLoMandaPuenteNativo`.
+    if(saldoLoMandaPuenteNativo(s, ent)) return;
     // Si este banco al final no aporta NINGUNA cuenta utilizable (todas ok:false o sin saldo),
     // conserva las que ya tenía marcadas rancias, igual que un banco caído: reconstruir
     // obAccounts sin él las esfumaría en silencio (caso CaixaBank 2026-07-11, segunda variante).
@@ -308,49 +335,432 @@ function flattenBankTx(links){
   return out.slice(0,150);   // últimos ~150 movimientos
 }
 
-/* GASTO VARIABLE VÍA OPEN BANKING: compras con tarjeta de los bancos en
-   settings.expenseBanks (o, por defecto, el ent de la cuenta diaria). El motor de
-   presupuesto/round-up sigue anclado a UNA sola cuenta spendFrom — esto solo decide
-   qué tarjetas OB se apuntan en Gastos. Idempotente por ext_id (+ dedup fecha|importe|comercio). */
+/* GASTO VARIABLE VÍA OPEN BANKING: en el banco de GASTO DIARIO cuenta CUALQUIER cargo (petición
+   2026-08-03: «que meta todo en gastos, independientemente del filtro» — antes solo entraban las
+   COMPRAS CON TARJETA, y con bancos que avisan en inglés o sin el texto "TARJETA" en el concepto
+   los cargos se perdían en silencio). En los bancos EXTRA de settings.expenseBanks (opcionales,
+   añadidos aparte de la cuenta diaria) se mantiene la regla vieja —solo tarjeta— porque esos sí
+   suelen tener recibos domiciliados modelados como Fijos que no hay que duplicar. Para la cuenta
+   diaria, el único cargo que se descarta es el que YA case con un Fijo/deuda/puntual de ESE mes en
+   ESA cuenta (`matchesModeled`, mismo criterio de nombre+importe que la conciliación de arriba):
+   si no, un recibo pagado desde el banco de gasto diario se contaría dos veces. El motor de
+   presupuesto/round-up sigue anclado a UNA sola cuenta spendFrom — esto solo decide qué entra en
+   Gastos. Idempotente por ext_id (+ dedup fecha|importe|comercio).
+
+   INGRESOS: de CUALQUIER banco enlazado, no solo el de gasto (petición 2026-08-03: la nómina de tu
+   pareja puede caer en un banco que no es el de gasto diario, y sin verla ahí «Mi ciclo» —que se
+   ancla al último ingreso real, ver `lastPaydayOf` en 04-tab-gastos.js— nunca encuentra el cobro).
+   Antes de esto un ingreso en un banco no-permitido no se apuntaba en ningún sitio: el saldo subía
+   pero en Gastos no aparecía nada y el ciclo se quedaba anclado al mes natural. */
 function importObExpenses(s, txs){
+  if(!txs || !txs.length) return null;
   const ents=expenseBankEnts(s);
-  if(!ents.length || !txs || !txs.length) return null;
   const allow={}; ents.forEach(function(e){ allow[e]=1; });
-  const som=startOfMonth();
+  const daily=(s.accounts||[]).find(function(a){ return accDaily(a); });
+  const dailyEnt=daily&&daily.ent;
+  /* VENTANA CON MARGEN DE FIN DE MES (2026-08-04). Antes era `startOfMonth()` a secas: TODO lo
+     anterior al día 1 se tiraba antes de llegar a la app. Con la app de Trade Republic al lado se
+     vio lo que costaba — su nómina llega a Sabadell y él se traspasa a TR lo del mes (+1.620 € el
+     31 de julio, con el bizum del piso de 70 € y media docena de gastos ese mismo día): TODO eso
+     desaparecía por caer un día antes del corte, y sin ese ingreso apuntado «Mi ciclo»
+     (`lastPaydayOf`, 04-tab-gastos.js) no tiene a qué anclarse y se queda en el mes natural.
+     No es un caso raro: cobrar y repartir el dinero el último día del mes es de lo más normal, y
+     además muchos bancos contabilizan a caballo entre los dos meses.
+     8 días —y no 45— a propósito: cubre el borde de fin de mes sin arrastrar meses enteros de
+     histórico en cada sync. Los duplicados que esto pueda rozar ya los para la red de arriba
+     (mismo importe ±3 días contra lo que entró por otra vía) más el dedup por ext_id y clave. */
+  const som=new Date(startOfMonth().getTime() - 8*86400000);
   const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
   const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
   const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
+  /* EL MISMO GASTO, CONTADO DOS VECES POR DOS CAMINOS (2026-08-04, caso real medido).
+     Sus gastos de Trade Republic YA entran por las notificaciones del móvil (MacroDroid) con el
+     comercio de verdad —«Repsol», «BEACH BARBA ROSSA BAR»— el día que compra. Open Banking los
+     trae DE NUEVO uno o dos días después (fecha de contabilización del banco, no de la compra) y
+     sin ningún dato: TR manda `entry_reference`, `creditor`, `remittance_information`… todo null
+     (payload crudo verificado). Así que el dedup clásico —día + importe + comercio— no los ve
+     como el mismo: ni el día coincide ni el comercio. De sus 22 movimientos de TR por Open
+     Banking, 9 eran gemelos exactos de un gasto que ya tenía. Eso es lo que él veía como
+     «duplicados» y «movimientos que se inventa».
+     Regla: un movimiento SIN NOMBRE que case en importe exacto con algo apuntado por OTRA vía en
+     ±3 días es el mismo gasto → no se apunta. Emparejamiento 1 a 1 (`usadoDup`): si de verdad
+     hiciste dos cargos iguales y solo uno estaba apuntado, el segundo entra. Solo se comparan
+     movimientos sin nombre —cuando el banco SÍ dice el comercio no hay ambigüedad y manda el
+     dedup de siempre— y solo contra gastos de otra fuente: dos apuntes de Open Banking del mismo
+     banco no se tapan entre sí (ese caso ya lo cubre `kOf`). */
+  const DUP_MS=3*86400000;
+  const otrasVias=(s.expenses||[]).filter(function(e){ return e.source!=="ob" && e.source!=="ob-hist"; });
+  const usadoDup={};
+  const yaApuntadoPorOtraVia=function(tx){
+    if(tx.merchant && tx.merchant!=="Movimiento") return false;   // el banco sí dice qué es: sin ambigüedad
+    const ms=parseDate(tx.date).getTime();
+    const hit=otrasVias.findIndex(function(e,i){
+      if(usadoDup[i]) return false;
+      if(Math.abs((e.amount||0)-tx.amount)>0.005) return false;
+      return Math.abs(dateMs(e.date)-ms)<=DUP_MS;
+    });
+    if(hit<0) return false;
+    usadoDup[hit]=1;
+    return true;
+  };
+  // Cargos ya modelados ESTE mes por entidad (Fijos/deudas/puntuales), para no duplicar un recibo
+  // de la cuenta diaria ahora que ya no exigimos "compra con tarjeta" ahí.
+  const now=new Date(), ym=now.getMonth()+1, yy=now.getFullYear();
+  const modeledByEnt={};
+  const pushModeled=function(ent,name,amount){ if(!ent||!(amount>0)) return; (modeledByEnt[ent]=modeledByEnt[ent]||[]).push({name:name,amount:amount}); };
+  (s.fixed||[]).forEach(function(f){ if(occursIn(f,ym)) pushModeled(accOf(f), f.name, occAmountIn(f,ym)); });
+  (s.debts||[]).forEach(function(d){ if(debtActive(d)) pushModeled(d.account||"sabadell", d.name||"Cuota", (d.monthly||0)+debtBalloonIn(d,yy,ym)); });
+  (s.oneoffs||[]).forEach(function(o){ if(oneoffOccurs(o,yy,ym)) pushModeled(o.account||"sabadell", o.name||"Cargo", o.amount||0); });
+  const matchesModeled=function(ent,merchant,amount){
+    return (modeledByEnt[ent]||[]).some(function(mm){ return recAmtClose(mm.amount,amount) && recNameMatch(mm.name,merchant); });
+  };
   const add=[];
   txs.forEach(function(tx){
-    if(!allow[tx.ent]) return;
-    // COMPRAS con tarjeta (importe POSITIVO) e INGRESOS (importe NEGATIVO: el servidor manda
-    // CRDT → -amt, ver `mapTransaction`).
-    //
-    // Los ingresos entraron el 2026-07-26, por un fallo que llevaba DIEZ DÍAS sin que nadie lo
-    // leyera: «no me ha leído un ingreso de la caixa, he tenido notificación y todo pero no lo ha
-    // leído». Y era verdad: aquí solo pasaban las compras con tarjeta. El saldo sí subía —el
-    // patrimonio salía bien— pero en Gastos no aparecía nada, así que parecía que la app no se
-    // había enterado. Un ingreso es justo lo que más se quiere ver apuntado.
-    //
-    // Lo que sigue fuera a propósito: los CARGOS que no son de tarjeta (recibos domiciliados,
-    // hipoteca, seguros). Eso son los Fijos, que ya están contados en el motor mensual, y
-    // apuntarlos aquí sería contarlos dos veces.
     const esIngreso = tx.amount<0;
-    const esCompra  = tx.card && tx.amount>0;
-    if(!esIngreso && !esCompra) return;
-    if(!tx.date || parseDate(tx.date)<som) return;                // solo el mes en curso
+    if(esIngreso){
+      if(!tx.date || parseDate(tx.date)<som) return;              // mes en curso + margen de fin de mes
+      if(tx.id && seen[tx.id]) return;                            // ya importado (ext_id)
+      const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
+        merchant:tx.merchant||"Ingreso", amount:tx.amount,
+        category: esTraspasoPropio(s, tx) ? TRASPASO_CAT.id : INGRESO_CAT.id, source:"ob", ent:tx.ent };
+      if(tx.id) e.extId=tx.id;
+      const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
+      if(keys[kOf(e)]) return;
+      if(yaApuntadoPorOtraVia(tx)) return;                        // el mismo ingreso, ya apuntado por otra vía
+      keys[kOf(e)]=1; add.push(e);
+      return;
+    }
+    // GASTO: la cuenta diaria admite cualquier cargo; las extra solo compras con tarjeta.
+    const esDiario=tx.ent===dailyEnt;
+    const esCompra=tx.card && tx.amount>0;
+    if(!esDiario && !allow[tx.ent]) return;
+    if(!esDiario && !esCompra) return;
+    if(esDiario && !esCompra && matchesModeled(tx.ent, tx.merchant, tx.amount)) return;   // ya es un Fijo/deuda/puntual
+    if(!tx.date || parseDate(tx.date)<som) return;                // mes en curso + margen de fin de mes
     if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
     // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
+    // Aporte automático a inversión (2026-08-03): el importe EXACTO que el usuario configuró en
+    // `monthlyInvest` (p.ej. 50€/mes a un fondo) no es un gasto — es dinero que sale del efectivo
+    // camino de la inversión. Solo se reconoce el importe FIJO que él mismo puso (dato conocido, no
+    // una suposición sobre lo que manda el banco, que no manda nada). Round-up/cashback (variables)
+    // siguen entrando como gasto normal — el usuario los pasa a mano a "Inversión" desde la ficha.
+    const esAporteInv = esDiario && daily && daily.monthlyInvest>0 && Math.abs(tx.amount-daily.monthlyInvest)<0.01;
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
-      merchant:tx.merchant||(esIngreso?"Ingreso":"Compra"), amount:tx.amount,
-      category:esIngreso?INGRESO_CAT.id:autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+      merchant:tx.merchant||"Compra", amount:tx.amount,
+      category: esAporteInv ? "inversion" : autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
     if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
+    if(yaApuntadoPorOtraVia(tx)) return;                          // el mismo gasto, ya apuntado por otra vía
     keys[kOf(e)]=1;
     add.push(e);
   });
   return add.length? add : null;
+}
+
+/* ============================================================
+   RESERVAR DINERO: repartir la nómina entre metas al cobrar (2026-08-03).
+   ============================================================
+   Las metas (`state.goals`) son un bote aparte que no toca ninguna cuenta ni el presupuesto — por
+   diseño (ver `ContributeGoalSheet` en 09-tab-debts-goals.js: "no mueve saldos de cuentas, la hucha
+   de metas es un bote aparte"). Es justo lo que el usuario echaba en falta: contribuir a una meta
+   no se notaba en "lo que puedes gastar", así que ahorrar Y controlar el gasto variable con la
+   MISMA cuenta (su caso: Trade Republic es fondo de emergencia + round-up + inversión + gasto
+   diario a la vez) no se podía ver claro.
+
+   Reglas (`state.settings.reservaRules`): {id, name, kind:"fixed"|"pct", value, goalId}. Al
+   detectarse un ingreso grande (mismo umbral que "Mi ciclo": `lastPaydayOf` en 04-tab-gastos.js,
+   ≥200€ en los últimos 45 días) se calcula el reparto y el usuario CONFIRMA antes de aplicarlo
+   (nunca en silencio: es dinero de verdad, aunque aquí solo sea contabilidad de la app). Al
+   aplicar: cada regla suma a su meta (mismo mecanismo que "Aportar a una meta") y queda un
+   registro en `state.reservaLog`, idempotente por `incomeKey` (fecha+importe+comercio del ingreso,
+   igual criterio de dedup que el resto de este fichero) para no aplicar la misma nómina dos veces.
+
+   Lo reservado YA NO cuenta como "disponible para gastar": `monthSummary` en 04-tab-gastos.js
+   resta el total reservado desde el inicio del período del presupuesto antes de calcular "lo que
+   te queda" — sin eso, la sensación de "esto está apartado de verdad" no existía por mucho que
+   sumara a una meta. */
+function reservaKeyOf(income){ return String(income&&income.date).slice(0,10)+"|"+((income&&income.amount)||0)+"|"+((income&&income.merchant)||""); }
+// Reparto de un ingreso según las reglas configuradas: el importe fijo o porcentual de cada regla,
+// sin pasarse nunca del propio ingreso ni dejar ninguna meta en negativo. Ignora reglas huérfanas
+// (meta borrada) o metas ya cumplidas (no tiene sentido seguir metiéndoles dinero).
+function reservaPlanFor(state, incomeAmount){
+  const rules=(state.settings&&state.settings.reservaRules)||[];
+  const goals=state.goals||[];
+  const gross=Math.abs(incomeAmount||0);
+  let used=0;
+  const plan=[];
+  rules.forEach(function(r){
+    if(!r||!r.goalId) return;
+    const g=goals.find(function(x){ return x.id===r.goalId; });
+    if(!g||g.done) return;
+    let amt=r.kind==="pct" ? gross*(Math.max(0,r.value||0)/100) : Math.max(0,r.value||0);
+    amt=Math.min(amt, Math.max(0, gross-used));
+    amt=+amt.toFixed(2);
+    if(amt<=0) return;
+    used+=amt;
+    plan.push({ ruleId:r.id, goalId:g.id, name:r.name||g.name, amount:amt });
+  });
+  return { plan:plan, total:+used.toFixed(2), remainder:+(gross-used).toFixed(2) };
+}
+// ¿Ya se aplicó el reparto de ESTE ingreso? (idempotencia: una nómina, un reparto.)
+function reservaAlreadyApplied(state, income){
+  const k=reservaKeyOf(income);
+  return (state.reservaLog||[]).some(function(x){ return x.incomeKey===k; });
+}
+// Aplica el reparto: suma cada meta (mismo efecto que "Aportar a una meta") y deja el registro que
+// hace que se descuente del presupuesto. Función PURA — devuelve el nuevo estado sin mutar `state`.
+function applyReserva(state, income, plan, bankEnt){
+  if(!plan || !plan.length) return state;
+  if(reservaAlreadyApplied(state,income)) return state;
+  const k=reservaKeyOf(income);
+  let goals=(state.goals||[]).slice();
+  plan.forEach(function(p){
+    goals=goals.map(function(g){
+      if(g.id!==p.goalId) return g;
+      const ns=Math.max(0,(g.saved||0)+p.amount);
+      return Object.assign({},g,{saved:ns, fromBank:bankEnt||g.fromBank, done:ns>=g.target, doneAt:(ns>=g.target&&!g.doneAt)?new Date().toISOString():g.doneAt});
+    });
+  });
+  const log=(state.reservaLog||[]).concat(plan.map(function(p){
+    return { id:uid(), ruleId:p.ruleId, goalId:p.goalId, name:p.name, amount:p.amount, date:income.date, incomeKey:k };
+  }));
+  return Object.assign({},state,{goals:goals, reservaLog:log});
+}
+// Total reservado desde `fromMs` — lo que hay que restar del presupuesto del período que se esté
+// mirando, para que lo apartado se note de verdad en "lo que puedes gastar".
+function reservedSince(state, fromMs){
+  return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
+}
+/* Misma cifra en Gastos, Resumen y el widget (2026-08-05). `totals.thisMonthSpent` suma TODO
+   (ingresos en negativo + inversión/traspaso): sirve para el efectivo de TR, NO para «has gastado
+   X de tus Y». Aquí se excluyen neutras, se resta lo reservado al presupuesto, y `shown` es lo
+   que pinta la cabecera de Gastos (gasto bruto o |balance| según gTotalMode). */
+function monthBudgetStats(state){
+  const now=new Date(), startMs=startOfMonth(now).getTime();
+  let spent=0, income=0;
+  (state.expenses||[]).forEach(function(e){
+    if(dateMs(e.date)<startMs) return;
+    if(CAT_NEUTRAS[e.category]) return;
+    if(e.amount>0) spent+=e.amount;
+    else if(e.amount<0) income+=Math.abs(e.amount);
+  });
+  const reserved=reservedSince(state, startMs);
+  const budgetRaw=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+  const budget=budgetRaw==null?null:Math.max(0,+(budgetRaw-reserved).toFixed(2));
+  const mode=(state.settings&&state.settings.gTotalMode)||"split";
+  const balance=income-spent;
+  const against=mode==="net"?(spent-income):spent;
+  const shown=mode==="net"?Math.abs(balance):spent;
+  const remaining=budget==null?null:budget-against;
+  return {spent:spent, income:income, balance:balance, mode:mode, budget:budget, reserved:reserved,
+    remaining:remaining, against:against, shown:shown};
+}
+
+/* EL CASHBACK ENTRA Y LUEGO SALE — son DOS apuntes del banco, un solo movimiento de dinero
+   (2026-08-04, caso real suyo: «el cashback me lo detecta duplicado en categoría inversiones y
+   luego como ingreso al principio del mes»). Trade Republic ABONA el saveback/round-up al efectivo
+   (+8,38 € el 1/8) y días después lo RETIRA para comprar el fondo (−8,38 € el 3/8). Por separado
+   cada uno es correcto, pero juntos inflan los ingresos del mes con dinero que nunca se quedó.
+   Al marcar la SALIDA como Inversión se busca su entrada gemela —mismo importe al céntimo, misma
+   cuenta, sin nombre de comercio, dentro de 10 días ANTES— y se marca también: así el par entero
+   deja de contar, ni como ingreso ni como gasto. Devuelve el índice del gemelo o -1.
+   Solo mira ingresos SIN comercio: un bizum de 8,38 € de un amigo tiene su nombre y no se toca. */
+/* DINERO TUYO QUE CAMBIA DE CUENTA, no dinero nuevo (2026-08-04, decisión suya). Su nómina llega a
+   Sabadell y él se traspasa a Trade Republic lo del mes (+1.620 €): sin esto se apuntaba como un
+   ingreso más, y el día que se conecte también el banco de ORIGEN el mismo dinero contaría dos
+   veces. Se marca `traspaso`: se apunta igual —«Mi ciclo» necesita ese apunte para saber cuándo
+   empieza tu mes (`lastPaydayOf` mira el importe, no la categoría)— pero no suma a los ingresos.
+   Criterio, deliberadamente estrecho para no tragarse un cobro de verdad: ingreso GRANDE, sin
+   comercio (con nombre es un bizum/pago real y se respeta), y solo en una cuenta que TIENE un
+   traspaso entrante ya modelado en `flows` — o sea, que el propio usuario declaró que se manda
+   dinero ahí. El importe no tiene que cuadrar con el modelado: lo que se traspasa cada mes varía
+   (él modeló 1.550 € y este mes movió 1.620 €), así que exigir el importe exacto lo dejaría fuera
+   justo los meses que cambia. */
+function esTraspasoPropio(s, tx){
+  if(!tx || !(tx.amount<=-200)) return false;                         // mismo umbral que «Mi ciclo»
+  const m=String(tx.merchant||"").trim();
+  if(m && m!=="Movimiento" && m!=="Ingreso") return false;            // con nombre = cobro real
+  return (s.flows||[]).some(function(f){ return f && f.kind==="transfer" && f.to===tx.ent; });
+}
+/* LA PASADA QUE ARREGLA LO QUE YA ESTÁ GUARDADO — SIN FLAG, EN CADA SYNC (2026-08-04).
+   Las dos limpiezas anteriores (`fixMovInvasion`, `_fixMovInvasion2`) fallaron por el mismo par de
+   motivos, y esta nace de esos dos golpes:
+     1. IBAN CON FLAG: corrían una vez y se marcaban como hechas. En cuanto el flag quedó escrito
+        —aunque fuese en una vuelta donde no había gastos delante— la versión corregida ya no podía
+        entrar, y el usuario seguía viendo el mismo destrozo mientras desde fuera parecía aplicado.
+     2. SOLO TOCABAN EL MÓVIL: quitaban el gasto del array local pero la fila seguía viva en la
+        tabla `expenses` de la nube. Al reconectar el banco (o al siguiente pull) volvía. Los
+        tombstones tampoco bastaron: dependen de que la clave coincida al carácter, y un signo
+        distinto en el importe ya los deja pasar.
+   Esta corre SIEMPRE y es idempotente: cuando no queda nada que arreglar no toca nada y devuelve el
+   MISMO objeto (cero renders de más). Y devuelve lo que hay que borrar/recategorizar EN LA NUBE
+   para que quien la llama lo haga de verdad — ver `syncCloudExpenses` en 11-app-main.js.
+   Devuelve {state, borrar:[gastos], recat:[{expense,cat}]}. */
+function reconcileObDupes(state){
+  const exps=(state&&state.expenses)||[];
+  if(!exps.length) return { state:state, borrar:[], recat:[] };
+  const esOb=function(e){ return e && (e.source==="ob" || e.source==="ob-hist"); };
+  const sinNombre=function(e){ const m=String((e&&e.merchant)||"").trim(); return !m || m==="Movimiento" || m==="Ingreso"; };
+  const otrasVias=exps.filter(function(e){ return !esOb(e); });
+  // (a) DUPLICADOS: un apunte de Open Banking sin nombre que repite algo que ya entró por otra vía
+  // (los avisos del móvil, con el comercio de verdad). Emparejamiento 1 a 1 y ±3 días: el banco
+  // contabiliza uno o dos días después de la compra. El que se queda es SIEMPRE el que tiene nombre.
+  const usado={}, borrar=[];
+  exps.forEach(function(e){
+    if(!esOb(e) || !sinNombre(e)) return;
+    const acc=(state.accounts||[]).find(function(a){ return a.ent===e.ent; });
+    if(acc && acc.monthlyInvest>0 && Math.abs(Math.abs(e.amount)-acc.monthlyInvest)<0.01) return;   // el aporte real no se toca
+    const ms=dateMs(e.date);
+    const j=otrasVias.findIndex(function(o,k){
+      return !usado[k] && Math.abs((o.amount||0)-(e.amount||0))<=0.005 && Math.abs(dateMs(o.date)-ms)<=3*86400000;
+    });
+    if(j>=0){ usado[j]=1; borrar.push(e); }
+  });
+  const fuera={}; borrar.forEach(function(e){ fuera[e.id]=1; });
+  let quedan=borrar.length ? exps.filter(function(e){ return !fuera[e.id]; }) : exps;
+  /* (b) EL PAR DEL CASHBACK ES UN SOLO MOVIMIENTO, Y SE VE UNA SOLA VEZ (2026-08-04, corrección
+     suya: «del cashback solo debe haber 1, solo pagan 1 vez al mes»). El banco lo apunta dos veces
+     —entra al efectivo con fecha del día 1 y sale hacia el fondo el día 3, el primer día laborable—
+     pero es el mismo dinero yendo a un sitio. Se deja UNA línea: la SALIDA, marcada «Inversión»
+     (es la que refleja dónde acabó el dinero), y la entrada se borra como el duplicado que es.
+     Solo en la cuenta que TIENE fondo enlazado (`rewardInv`): sin destino declarado esto no es el
+     round-up/cashback de nadie y no se toca. */
+  const recat=[];
+  const usadoTwin={};
+  quedan.forEach(function(g){
+    if(!esOb(g) || !(g.amount>0) || !sinNombre(g)) return;
+    const acc=(state.accounts||[]).find(function(a){ return a.ent===g.ent && a.rewardInv; });
+    if(!acc) return;
+    if(acc.monthlyInvest>0 && Math.abs(g.amount-acc.monthlyInvest)<0.01) return;   // el aporte fijo va aparte
+    const i=findCashbackTwin(quedan, g);
+    if(i<0 || usadoTwin[quedan[i].id]) return;
+    usadoTwin[quedan[i].id]=1;
+    if(g.category!=="inversion") recat.push({ expense:g, cat:"inversion" });
+    borrar.push(quedan[i]);                                  // la entrada: mismo movimiento, una sola línea
+  });
+  if(usadoTwin && borrar.length){
+    const fuera2={}; borrar.forEach(function(e){ fuera2[e.id]=1; });
+    quedan=exps.filter(function(e){ return !fuera2[e.id]; });
+  }
+  if(!borrar.length && !recat.length) return { state:state, borrar:[], recat:[] };
+  if(recat.length){
+    const nuevaCat={}; recat.forEach(function(r){ nuevaCat[r.expense.id]=r.cat; });
+    quedan=quedan.map(function(e){ return nuevaCat[e.id] ? Object.assign({},e,{category:nuevaCat[e.id]}) : e; });
+  }
+  let del=state.deleted||[];
+  borrar.forEach(function(e){ del=pushDeleted(del, String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||"")); });
+  return { state:Object.assign({},state,{expenses:quedan, deleted:del}), borrar:borrar, recat:recat };
+}
+
+function findCashbackTwin(expenses, gasto){
+  if(!gasto || !(gasto.amount>0)) return -1;
+  const ms=dateMs(gasto.date);
+  return (expenses||[]).findIndex(function(e){
+    if(!e || e.id===gasto.id) return -1 === 0;                       // nunca a sí mismo
+    if(!(e.amount<0) || e.category==="inversion") return false;      // solo ingresos aún sin marcar
+    if(e.ent!==gasto.ent) return false;                              // misma cuenta
+    if(e.merchant && e.merchant!=="Movimiento" && e.merchant!=="Ingreso") return false;   // con nombre = real
+    if(Math.abs(Math.abs(e.amount)-gasto.amount)>0.005) return false;                     // mismo importe
+    const d=ms-dateMs(e.date);
+    return d>=0 && d<=10*86400000;                                   // la entrada va ANTES que la salida
+  });
+}
+
+/* CATEGORÍA "INVERSIÓN" (2026-08-03): round-up/cashback/aporte automático de un bróker que llega
+   como movimiento REAL de Open Banking — dinero que sale del efectivo pero no es gasto ni ingreso,
+   va a un fondo. Mismo cálculo de "comprar participaciones" que ya usaba `reconcileTR` (01-i18n.js)
+   para su simulación a ciegas, ahora con el importe REAL del banco en vez de estimado. Se llama
+   desde `runBankSync` (11-app-main.js, auto al reconocer el aporte mensual exacto) y desde `setCat`
+   (04-tab-gastos.js, cuando el usuario marca a mano un round-up/cashback como Inversión). Función
+   PURA — no muta `state`. `reverseInvestBuy` deshace exactamente lo que compró esta (con los MISMOS
+   `shares`/`cInv` que devolvió, no recalculados, para no descuadrar si el cambio USD se movió entre medias).*/
+function applyInvestBuy(state, ent, amountEur){
+  if(!(amountEur>0)) return null;
+  const acc=(state.accounts||[]).find(function(a){ return a.ent===ent && a.rewardInv; });
+  if(!acc) return null;
+  const inv=(state.investments||[]).find(function(i){ return i.id===acc.rewardInv; });
+  if(!inv) return null;
+  const cInv = inv.cur==="USD" ? amountEur/(state.fx||1) : amountEur;   // a la moneda de la inversión
+  const boughtShares = (inv.shares>0 && inv.value>0) ? +(cInv/(inv.value/inv.shares)).toFixed(6) : 0;
+  const newInv=Object.assign({},inv,{
+    shares: +(((inv.shares||0)+boughtShares)).toFixed(6),
+    value:  +(((inv.value||0)+cInv)).toFixed(2),
+    cost:   +(((inv.cost||0)+cInv)).toFixed(2),
+  });
+  const investments=(state.investments||[]).map(function(i){ return i.id===inv.id?newInv:i; });
+  const trRewardsTotal=+(((state.trRewardsTotal||0)+amountEur)).toFixed(2);   // acumulado histórico (€)
+  return {
+    state: Object.assign({},state,{investments:investments, trRewardsTotal:trRewardsTotal}),
+    invId: inv.id, shares: boughtShares, cInv: cInv, amountEur: amountEur,
+  };
+}
+function reverseInvestBuy(state, invId, shares, cInv, amountEur){
+  const inv=(state.investments||[]).find(function(i){ return i.id===invId; });
+  if(!inv) return state;
+  const newInv=Object.assign({},inv,{
+    shares: Math.max(0,+(((inv.shares||0)-(shares||0))).toFixed(6)),
+    value:  Math.max(0,+(((inv.value||0)-(cInv||0))).toFixed(2)),
+    cost:   Math.max(0,+(((inv.cost||0)-(cInv||0))).toFixed(2)),
+  });
+  const investments=(state.investments||[]).map(function(i){ return i.id===invId?newInv:i; });
+  const trRewardsTotal=Math.max(0,+(((state.trRewardsTotal||0)-(amountEur||0))).toFixed(2));
+  return Object.assign({},state,{investments:investments, trRewardsTotal:trRewardsTotal});
+}
+
+/* IMPORTAR HISTÓRICO — duplicados de RECIBO dentro del propio lote (2026-07-31, caso real: -9k
+   en Revolut de golpe). Un recibo recurrente (alquiler, seguro, suscripción…) aparece UNA VEZ POR
+   MES en 3 meses de extracto: son 3 movimientos reales y distintos en el banco, pero la MISMA
+   factura. `BankHistoryImport` ya evita duplicar contra un Fijo que YA EXISTE (`fixNames`), pero
+   nada evitaba duplicar ENTRE los propios candidatos del lote — así que "aceptar todo" con 3
+   meses de histórico creaba 3 Fijos idénticos para la misma factura, y cada uno se cobra TODOS
+   LOS MESES en el motor (`monthNetForAccount`): una factura duplicada 3 veces resta su importe 3
+   veces cada mes, para siempre, hasta que alguien lo note y las borre a mano.
+   Clave: comercio normalizado + importe + banco (misma que `histReciboDupKey`). `cands` ya viene
+   ordenado por fecha descendente (más reciente primero) — nos quedamos con esa y marcamos como
+   duplicado el resto. Solo mira candidatos con `kind:"out"` y `card:false` (los que `defDest`
+   manda a "recibo"; tarjeta e ingresos son gasto/ingreso real cada vez, no se tocan). */
+function histReciboDupKey(x){
+  const norm=String((x&&x.merchant)||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+  return norm+"|"+((x&&x.amount)||0)+"|"+((x&&x.ent)||"");
+}
+function dedupeHistRecibos(cands){
+  const dup={};
+  const seen={};
+  (cands||[]).forEach(function(x,i){
+    if(!x || x.kind!=="out" || x.card) return;
+    const k=histReciboDupKey(x);
+    if(seen[k]==null) seen[k]=i; else dup[i]=true;
+  });
+  return dup;
+}
+
+/* IMPORTAR HISTÓRICO — duplicados contra lo que YA GUARDASTE (2026-08-03, petición suya: que esta
+   pantalla compare como el import de Excel en vez de esconder gastos sin explicar por qué faltan).
+   `dedupeHistRecibos` de arriba compara candidatos ENTRE SÍ (misma factura repetida en 3 meses de
+   extracto); esto compara cada candidato contra `state.expenses`, con el MISMO criterio que usa el
+   import de Excel (`hojaClave`, 15-import-hoja.js): día + importe (con el signo de dentro de la
+   app: gasto positivo, ingreso negativo) + comercio normalizado. El ext_id exacto (mismo apunte
+   literal que ya trajo el sync diario) se sigue filtrando ANTES, en `BankHistoryImport.search()`,
+   en silencio — no hay ambigüedad ahí. Aquí solo entran los que coinciden "por casualidad de
+   datos" sin ext_id, que es donde de verdad hace falta que el usuario VEA la comparación en vez de
+   fiarse de un descarte mudo. */
+function histCandDupKey(dt, amountSigned, merchant){
+  const dia=String(dt||"").slice(0,10);
+  const norm=String(merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+  return dia+"|"+Math.round(amountSigned*100)+"|"+norm;
+}
+function histCandExisting(cands, expenses){
+  const porClave={};
+  (expenses||[]).forEach(function(e){ porClave[histCandDupKey(e.date, e.amount, e.merchant)]=e; });
+  const out={};
+  (cands||[]).forEach(function(x,i){
+    if(!x) return;
+    const signed = x.kind==="in" ? -Math.abs(x.amount) : Math.abs(x.amount);
+    const found=porClave[histCandDupKey(x.date, signed, x.merchant)];
+    if(found) out[i]=found;
+  });
+  return out;
 }
 
 /* Bancos que NO están sirviendo datos, con el motivo, para el banner «Reconectar» y la noti.

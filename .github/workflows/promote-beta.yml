@@ -19,6 +19,18 @@ on:
         description: 'Escribe SUBIR para confirmar (la verá tu padre y tu pareja)'
         required: true
         default: ''
+      tandas:
+        description: 'Qué tandas subir, separadas por comas (p. ej. import,gestos). Vacío = la beta entera.'
+        required: false
+        default: ''
+      commits:
+        description: 'O, para un parche urgente: commits sueltos de beta a subir (hash cortos, separados por comas, del más antiguo al más nuevo). No se puede usar a la vez que «tandas».'
+        required: false
+        default: ''
+      version:
+        description: 'Solo con «commits»: número de la versión del parche (p. ej. 4.12.2). Vacío = sube el PATCH de lo que hay en producción ahora.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -41,6 +53,12 @@ jobs:
           echo "::error::Hay que escribir SUBIR para confirmar. No se ha tocado nada."
           exit 1
 
+      - name: «tandas» y «commits» no van a la vez
+        if: ${{ inputs.tandas != '' && inputs.commits != '' }}
+        run: |
+          echo "::error::Elige UNA vía: «tandas» (mergea ramas tanda/<id>) o «commits» (cherry-pick suelto). No las dos."
+          exit 1
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -49,7 +67,10 @@ jobs:
         run: |
           git fetch origin main beta
           if [ -z "$(git log origin/main..origin/beta --oneline)" ]; then
-            echo "::error::`beta` no tiene nada que `main` no tenga ya. Nada que promocionar."
+            # Comillas SIMPLES a propósito: dentro de comillas dobles los acentos graves son
+            # sustitución de comandos, así que «`beta`» intentaba EJECUTAR `beta` y el mensaje
+            # llegaba mutilado justo el día que hacía falta leerlo (venía así desde el 24/7).
+            echo '::error::la rama beta no tiene nada que main no tenga ya. Nada que promocionar.'
             exit 1
           fi
           echo "### Se va a subir a producción" >> $GITHUB_STEP_SUMMARY
@@ -68,16 +89,120 @@ jobs:
         run: |
           git checkout -B beta origin/beta
           git log -1 --oneline
+          # docs-frescura mira la rama chequeada; el workflow_dispatch nace en `main` y si no
+          # forzamos esto, GITHUB_REF_NAME=main exige un bump absurdo de toda la ronda beta.
+          echo "GITHUB_REF_NAME=beta" >> "$GITHUB_ENV"
           npm ci
           npx playwright install chromium --with-deps
           node scripts/run-tests.mjs
 
-      - name: Mergear beta → main
+      # SUBIR SOLO LAS TANDAS APROBADAS (petición suya 2026-07-29: «que se pudieran implementar
+      # varias betas a la vez y que me des la opción de aprobarlas por separado»).
+      #
+      # Con `tandas` vacío se sube `beta` entera, que es como ha funcionado siempre y sigue siendo
+      # lo normal cuando solo hay una cosa en vuelo.
+      #
+      # Con tandas, cada una vive en su rama `tanda/<id>` y aquí se mergean SOLO las que él ha
+      # aprobado en el panel. Eso es lo que permite que una tanda lista suba hoy sin esperar a la
+      # que todavía tiene un fallo — que es el problema real que esto viene a resolver.
+      #
+      # ⚠ Si pides una tanda cuya rama no existe, esto PARA. Subir «lo que haya» cuando falta una
+      # rama es exactamente el fallo silencioso que ya costó dos promociones a medias.
+      #
+      # ⚠⚠ Y LA RAMA HAY QUE CREARLA ANTES DE ESCRIBIR EL CÓDIGO, no después. Declarar tandas en
+      # las notas NO crea ninguna rama: si las cuatro tandas se han commiteado mezcladas encima de
+      # `beta` (le pasó a la 4.13.0), ya no hay forma limpia de separarlas y esa ronda solo puede
+      # subir ENTERA. La regla completa, en docs/TESTING.md.
+      # TERCERA VÍA: PARCHE POR COMMITS SUELTOS (petición suya 1/8: «se han implementado
+      # montonazo de cosas y hay cosas urgentes para subir a prod por bugs gordos y no se puede
+      # subir esos parches»). Las tandas necesitan haber nacido en su propia rama DESDE EL PRIMER
+      # COMMIT — si una ronda entera se ha commiteado mezclada (como la 4.13.0), ya no hay forma
+      # limpia de trocearla por tandas. Esto es la vía de emergencia: `cherry-pick` de los commits
+      # exactos que quiere subir, sin tocar el resto de la rama. Sirve para EXACTAMENTE lo que
+      # pasó hoy: cinco arreglos de bugs listos mientras el importador de hojas todavía no.
+      #
+      # No sube VERSION solo, porque los commits de `beta` llevan el sello de la ronda EN CURSO
+      # (4.13.0), que no es lo que le toca a un parche sobre la 4.12.1 que ya está en producción.
+      # Se calcula un PATCH nuevo sobre lo que hay en `main` ahora mismo (o el que él pida) y se
+      # sella aparte, en un commit propio, después de los cherry-picks.
+      - name: Mergear a main lo aprobado
+        if: ${{ inputs.commits == '' }}
+        env:
+          # Por `env` y no interpolado dentro del script: `'${{ inputs.tandas }}'` mete el texto
+          # que él escriba DENTRO de la comilla simple, así que un apóstrofo o un `$(…)` en la
+          # casilla se convierte en shell ejecutable en un workflow con permiso de escritura.
+          TANDAS_IN: ${{ inputs.tandas }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout main
-          git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
+          TANDAS="$(printf '%s' "$TANDAS_IN" | tr -d '[:space:]')"
+          if [ -z "$TANDAS" ]; then
+            git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
+          else
+            echo "$TANDAS" | tr ',' '\n' | while read -r T; do
+              [ -n "$T" ] || continue
+              git rev-parse --verify "refs/remotes/origin/tanda/$T" >/dev/null 2>&1 || {
+                echo "::error::no existe la rama tanda/$T · no se sube nada a medias."
+                echo "::error::Ramas de tanda que SÍ existen: $(git branch -r --list 'origin/tanda/*' --format='%(refname:lstrip=4)' | tr '\n' ' ')"
+                echo "::error::Si esta ronda se commiteó mezclada en beta, no se puede trocear: déjalo vacío y sube la beta entera."
+                exit 1; }
+            done
+            for T in $(echo "$TANDAS" | tr ',' ' '); do
+              [ -n "$T" ] || continue
+              echo "→ tanda/$T"
+              git merge --no-ff "origin/tanda/$T" -m "Promocionar tanda «$T» a producción (probada y aprobada en el móvil)"
+            done
+          fi
+          git push origin main
+
+      - name: Cherry-pick de commits sueltos (parche urgente)
+        if: ${{ inputs.commits != '' }}
+        env:
+          COMMITS_IN: ${{ inputs.commits }}
+          VERSION_IN: ${{ inputs.version }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          BASE=$(cat VERSION | tr -d '[:space:]')
+
+          # El número del parche: el que pida, o el PATCH de lo que ya hay en main +1. Si lo que
+          # pide ya existe o es menor, PARA — bajarle la versión a la gente es peor que no subir.
+          NUEVA="$(printf '%s' "$VERSION_IN" | tr -d '[:space:]')"
+          if [ -z "$NUEVA" ]; then
+            MAYOR=$(echo "$BASE" | cut -d. -f1); MENOR=$(echo "$BASE" | cut -d. -f2); PATCH=$(echo "$BASE" | cut -d. -f3)
+            NUEVA="$MAYOR.$MENOR.$((PATCH + 1))"
+          fi
+          node -e "
+            const a='$BASE'.split('.').map(Number), b='$NUEVA'.split('.').map(Number);
+            if(b.length!==3||b.some(isNaN)) { console.error('«'+'$NUEVA'+'» no es X.Y.Z'); process.exit(1); }
+            for(let i=0;i<3;i++){ if(b[i]>a[i]) process.exit(0); if(b[i]<a[i]){ console.error('$NUEVA'+' es MENOR que la '+'$BASE'+' ya publicada'); process.exit(1); } }
+            console.error('$NUEVA'+' no es mayor que la '+'$BASE'+' ya publicada'); process.exit(1);
+          " || { echo "::error::número de versión inválido, mira el mensaje de arriba"; exit 1; }
+          echo "parche: $BASE → $NUEVA"
+
+          echo "$COMMITS_IN" | tr ',' '\n' | while read -r C; do
+            C="$(printf '%s' "$C" | tr -d '[:space:]')"
+            [ -n "$C" ] || continue
+            git rev-parse --verify "$C" >/dev/null 2>&1 || { echo "::error::«$C» no es un commit que exista en este árbol"; exit 1; }
+          done
+
+          echo "$COMMITS_IN" | tr ',' '\n' | while read -r C; do
+            C="$(printf '%s' "$C" | tr -d '[:space:]')"
+            [ -n "$C" ] || continue
+            echo "→ cherry-pick $C ($(git log -1 --format=%s "$C"))"
+            git cherry-pick -x "$C" || {
+              echo "::error::«$C» no aplica limpio sobre main (conflicto). Resuélvelo en tu portátil:"
+              echo "::error::  git checkout main && git cherry-pick -x $C   (y el resto de la lista a mano)"
+              git cherry-pick --abort 2>/dev/null || true
+              exit 1
+            }
+          done
+
+          printf '%s' "$NUEVA" > VERSION
+          git add VERSION
+          git commit -m "release($NUEVA): parche urgente — commits sueltos de beta, sin esperar al resto de la ronda"
           git push origin main
 
       # ⚠ ESTE PASO NO SOBRA: un push hecho con el GITHUB_TOKEN del propio workflow **NO dispara
@@ -95,7 +220,9 @@ jobs:
       # versión nueva. Una promoción que no llega a Pages no es una promoción.
       - name: Comprobar que producción ya sirve la versión nueva
         run: |
-          VERSION=$(git show origin/beta:VERSION | tr -d '[:space:]')
+          # La versión que tiene que servir Pages es la de LO QUE SE ACABA DE SUBIR, no la de
+          # `beta`: promocionando por tandas, `beta` puede ir por delante de lo aprobado.
+          VERSION=$(git show main:VERSION | tr -d '[:space:]')
           echo "Esperando a que Pages sirva $VERSION…"
           LIVE=""
           for i in $(seq 1 40); do

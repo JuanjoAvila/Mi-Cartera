@@ -255,3 +255,127 @@ Además de la checklist automática del panel (sale de `RELEASE_NOTES`), convien
    Si solo sale la web, la APK es anterior a la 35.
 6. **Panel de revisión:** los ✓ de una compilación anterior con el mismo texto de nota llegan
    heredados; los ✗ no.
+
+## Varias betas a la vez (tandas) — desde 4.13.0
+
+Petición suya del 2026-07-29: **«que se pudieran implementar varias betas a la vez y que me des la
+opción de aprobarlas por separado pero que estén juntas»**. O sea, como se trabaja en una empresa:
+varias cosas en vuelo, todas probándose en la misma instalación, y cada una sube cuando está lista
+sin esperar a la que va con retraso.
+
+> ⚠ **LA GRANULARIDAD POR DEFECTO ES UNA FUNCIONALIDAD = UNA TANDA** (aclarado 2026-08-01: «por
+> features, por cada cosa que haya, a no ser que sea un pack por dependencias — eso sí sería una
+> tanda de varias cosas»). No es «cuatro cosas grandes, cada una su tanda»: es **cada punto que se
+> pueda subir SOLO, sube solo**. Varias cosas comparten tanda ÚNICAMENTE cuando de verdad dependen
+> entre sí (p. ej. una migración de datos + la pantalla que la necesita: subir una sin la otra
+> rompe algo). En la duda, más tandas pequeñas, no menos.
+
+Y para lo que ni siquiera esto cubre —una ronda que se commiteó mezclada, sin tandas, y hay un
+arreglo urgente ahí dentro— está el **parche por commits sueltos**, más abajo.
+
+### Cómo se declara una tanda
+
+En la entrada de `RELEASE_NOTES` de la versión, junto a `items` (que es lo que ve la familia en
+Novedades y **no cambia**), se añade `tandas`, que **solo la ve él** en el panel de revisión:
+
+```js
+{v:"4.13.0", d:"28 jul 2026", t:{es:"…",en:"…",ca:"…"},
+ tandas:[
+   {id:"import", t:"📗 Importar hojas de gastos", items:["…qué probar…","…"]},
+   {id:"gestos", t:"🎯 Rebote y barra de abajo",  items:["…","…"]},
+ ],
+ items:{es:[…],en:[…],ca:[…]}}
+```
+
+Reglas:
+- **El `id` es el que viaja al parte y al workflow.** Corto, sin espacios, estable.
+- Los `items` de una tanda son **qué probar**, no qué se ha hecho: se leen desde el móvil con la
+  app delante. El `CHANGELOG` es para el porqué.
+- **Las tandas son opcionales.** Sin ellas, el panel se comporta exactamente como antes (una sola
+  checklist, un solo veredicto con id `todo`). Las 69 versiones del histórico siguen funcionando.
+- ⚠ **`items` y `tandas` son dos listas distintas y no tienen por qué parecerse**: `items` es lo
+  que lee la familia en Novedades, y los puntos de las tandas son lo que él prueba. El panel
+  aplana las tandas y esa lista aplanada ES la checklist (`betaChecklist`). **No toques ese
+  aplanado**: el progreso, los ✓ heredados entre compilaciones y el guardado van todos por el
+  índice global que sale de ahí. Si alguien vuelve a usar `items` como checklist, el panel enseña
+  un punto y guarda su ✓ bajo el texto de otro, sin avisar (pasó en la 4.13.0: 21 puntos en tandas
+  contra 14 en Novedades). Lo vigila `e2e/revisar-beta.spec.mjs`.
+
+### Cómo se aprueba
+
+Cada tanda tiene en el panel **su propio contador y su propio botón**. Un fallo marcado en una NO
+bloquea a las demás — que es todo el motivo de que existan. Cada veredicto se manda por separado y
+lleva su `id`, así que `node scripts/errores.mjs --kind=beta` enseña una línea por tanda.
+
+### Una tanda aprobada Y SUBIDA se QUITA de `tandas`, no se marca como hecha
+
+Regla suya, textual (2026-08-01): **«si sube algo en prod, se quita de beta para probar porque ya
+está listo — es como una especie de backlog: conforme apruebe la tanda sube y desaparece; si algo
+falla se queda hasta que esté todo aprobado por mí»**.
+
+Cuando una tanda se aprueba Y se promociona (a `main`, o su arreglo ya vive activo aunque no haya
+«producción» que tocar, como `canal`), su bloque entero **se borra** del array `tandas` de esa
+entrada de `RELEASE_NOTES` — no se deja ahí con un comentario de «ya hecha», porque eso es
+exactamente lo que le hizo dudar si de verdad estaba hecho o no («no se reflejaba en las pruebas
+de la beta»). El bloque `{id:...}` desaparece del código; lo que hizo esa tanda queda documentado
+en el CHANGELOG y en `docs/ROADMAP.md`, que es donde se consulta el HISTÓRICO — `tandas` es solo
+la cola de lo que **queda** por revisar, nunca un registro de lo ya cerrado.
+
+### Cómo se sube solo lo aprobado
+
+> ⚠⚠ **LA RAMA SE DECIDE ANTES DE ESCRIBIR NADA, NO AL FINAL.** Declarar `tandas` en las notas
+> **no crea ninguna rama**: solo parte la checklist del móvil en secciones. Si las tandas se
+> commitean mezcladas encima de `beta` —que es lo que pasó en la 4.13.0, con `import` + `gestos` +
+> `arranque` en un mismo commit—, **ya no se pueden trocear**: cortarlas a posteriori con
+> `cherry-pick` sobre los mismos ficheros es justo la promoción a medias que este mecanismo existe
+> para evitar. Esa ronda solo puede subir ENTERA (`tandas` vacío).
+>
+> Así que si la ronda va a tener tandas de verdad: **`git switch -c tanda/<id> main` para cada una
+> antes del primer commit**, y `beta` se mantiene como la mezcla (`git merge` de todas).
+
+Para que una tanda pueda subir sola, tiene que vivir en **su propia rama `tanda/<id>`**, y `beta`
+ser la mezcla de todas. Entonces:
+
+```
+Actions → «Promocionar beta a producción»
+  confirmar: SUBIR
+  tandas:    import,gestos      ← solo estas dos se mergean a main
+```
+
+Con `tandas` **vacío** se sube `beta` entera, que es lo de siempre y sigue siendo lo normal cuando
+solo hay una cosa en vuelo.
+
+⚠ Si pides una tanda cuya rama no existe, el workflow **para** y no sube nada. Subir «lo que haya»
+cuando falta una rama es el fallo silencioso que ya costó dos promociones a medias.
+
+## Un parche urgente, cuando ni siquiera hay tandas — desde 4.13.0
+
+Petición suya del 2026-08-01: **«se han implementado montonazo de cosas y hay cosas urgentes para
+subir a prod por bugs gordos para mi pareja y mi padre y no se puede subir esos parches»**. Las
+tandas resuelven esto SI la ronda nació troceada desde el primer commit — pero si no (la 4.13.0 se
+commiteó mezclada), no hay rama que mergear y toca esperar a que TODO esté listo, que es
+exactamente lo que no puede pasar con un bug gordo delante de la familia.
+
+La vía de emergencia: **`commits`**, cherry-pick de los commits exactos que hacen falta, sin tocar
+el resto de `beta`.
+
+```
+Actions → «Promocionar beta a producción»
+  confirmar: SUBIR
+  commits:   a1b2c3d,e4f5061      ← del más VIEJO al más nuevo (el orden importa)
+  version:   4.12.2                ← opcional; vacío = sube el PATCH de lo que hay en prod
+```
+
+`npm run salud` ya te da la lista de commits pendientes en el orden correcto para pegar, cuando
+los hay.
+
+Reglas:
+- **No se puede usar a la vez que `tandas`.** Son dos formas de trocear la misma cosa; mezclarlas
+  no tiene un significado claro y el workflow para si intentas las dos.
+- El número de versión **tiene que ser mayor** que el que ya hay en `main` — si pides uno igual o
+  menor, para: bajarle la versión a la gente es peor que no subir nada.
+- Si un commit **no aplica limpio** (conflicto), el workflow para y te dice el comando exacto para
+  resolverlo a mano en tu portátil. No intenta adivinar cómo fusionar.
+- Esto **no sube `VERSION` de `beta`**, sube un PATCH nuevo sobre lo que ya hay en producción — la
+  ronda grande sigue en `beta` esperando su turno, intacta.
+

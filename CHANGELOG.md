@@ -2,19 +2,418 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
-## [4.12.4] — 2026-08-03
-### Importar una hoja de gastos (Excel/CSV), separado del resto de la 4.13.0 en curso
+## [4.13.0] — 2026-08-05
+### Barra quieta de verdad al tope y al swipear tabs
 
-Misma receta que la 4.12.2 (arranque): la tanda `import` de la 4.13.0 —aprobada por él en el móvil,
-6/6 ok, sin fallos— se saca a mano de entre los commits mezclados de `beta` (import + gestos +
-bancos juntos) y se aplica sola sobre `main`, sin arrastrar `gestos` ni `bancos`, que siguen
-rechazadas y en beta.
+Causa del parpadeo: `botnav-ola-clear` se armaba en el tirón al tope (también con
+deriva al cambiar de pestaña) y en el scroll al llegar arriba → opacity 0↔1 en bucle.
+Ya no se arma: al tope solo reveal + pin breve; al swipe de tabs, pin 1,4 s forzado
+visible. La ola sigue; la barra no pelea.
 
-Trae: Ajustes → Copia de seguridad → «Importar una hoja de gastos» (Excel .xlsx o CSV, detecta
-columnas solo y las corriges si se equivoca, previsualización con reparto nuevos/repetidos antes de
-guardar, deduplicado contra el histórico y dentro del propio fichero). El lector de .xlsx es propio
-(sin librería: un .xlsx es un zip, se lee el directorio central a mano y se descomprime con
-`DecompressionStream`), para no crecer el bundle.
+### 2026-08-05 (noche 4)
+### Rayita, cifra de presupuesto y barra a mil
+
+1. **Rayita Gastos↔Plan:** si el arco se interrumpe a mitad, snap al destino sin relanzar
+   `rodea` — ya no atraviesa el + en diagonal.
+2. **Resumen/widget = Gastos:** `monthBudgetStats` (excluye inversión/traspaso, resta reservas,
+   respeta `gTotalMode`). `thisMonthSpent` sigue para el efectivo TR.
+3. **Barra al tope a mil:** `botnav-ola-clear` solo si la barra estaba escondida; pin breve si
+   hide/reveal se pelean en <200 ms.
+
+### 2026-08-05 (noche 3)
+### Ola nativa + barra usable
+
+1. **Host fixed** + `hostTab` en React + safe-top + rise sin matrix.
+2. **Flick abajo:** hide del botnav diferido a `scrollend`.
+3. **Ola arriba:** candado anti-arco también en el tope.
+5. **Host perdido random:** `enterScrollHost` fallaba si había dedo al acabar el settle →
+   estado «sin parches». Ahora solo bloquea en tab-drag activo + `ensureScrollHost` al tocar.
+
+### 2026-08-05 (noche 2)
+### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)
+
+Tras labs en su Oppo: quitar `contain`/`preventDefault` no bastaba; aparcar el track sin
+`transform` tampoco. Lo que SÍ igualó Ajustes: la pestaña activa en `position:fixed` a
+pantalla (`.page-scroll-host`), track en reposo con `left` (sin transform). Arriba/abajo al
+tirar → ola nativa sin stopper.
+
+El flick hasta el final seguía sin ola: el `setNavHidden` del botnav re-renderizaba App y
+React pisaba el `className` de `.page`/`.track` (solo tenía `"page"` / `"track"`), así que
+se perdía el `page-scroll-host` a mitad del momentum. Ahora esas clases viven en el
+`className` de React (`hostTab`) y el setState del botnav (abajo y al bajar) va diferido
+420 ms con clase DOM primero.
+
+Al deslizar tabs se sale del host y vuelve el `translate3d`; al asentar, otra vez host.
+
+### 2026-08-05 (noche)
+### Ola de vuelta + tabs a mitad/abajo sin matar el scroll
+
+En .39 (Oppo): sin ola en ninguna tab; tabs a mitad/abajo bloqueados del todo; al quitar
+`contain:paint` + `overscroll-behavior` en caliente la ola volvía, pero el stopper y el bloqueo
+de tabs seguían. Tres piezas:
+
+1. **CSS:** `.page` sin `contain:paint` (recortaba el estirón nativo) y sin
+   `overscroll-behavior-y` forzado — igual que Ajustes. Se deja `contain:layout style` y
+   `touch-action:pan-y`.
+2. **Eje a mitad/abajo:** el candado anterior fijaba `axis=y` ante un `x` flojo → ese gesto ya
+   no podía acabar en cambio de tab. Ahora, si el horizontal no está claro (`|dy|≥16` o
+   `|dx|≤36`), **no se fija eje**: scrollea el navegador; si el dedo sigue y se vuelve casi solo
+   horizontal, el siguiente move sí reclama tabs.
+3. **`freezeShell`:** abajo del todo nunca pone `overflow:hidden` (mataba la ola aunque el
+   siguiente tirón fuera vertical).
+
+### Stopper medido en su Oppo: preventDefault del swipe a mitad de lista
+
+Con el móvil enchufado: `pan-y` ya estaba, y aun así STUCK (scrollTop fijo mientras el dedo
+se movía, p.ej. st=53). Causa: a mitad de lista el arco del pulgar seguía reclamando eje `x`
+(umbral 28 px insuficiente) → `preventDefault` + `freezeShell` mataban el scroll. A mitad solo
+se acepta swipe de tabs si el gesto es casi solo horizontal (ver candado revisado arriba).
+
+### Plan: el `touch-action:none` arriba bloqueaba BAJAR, no solo el cambio de sección
+
+Feedback: «el objetivo era bloquear que no se moviera de recibos a deudas desde abajo, no bloquear
+la página entera». `mc-touch-own` en Plan al estar arriba dejaba `touch-action:none` en reposo →
+ni scroll. Ahora Plan en reposo es pan-y; `mc-touch-own` solo durante el gesto que nace arriba
+(tirón abajo = segmento; dedo arriba = scroll a mano).
+
+### 2026-08-04 (noche, 2)
+### Ola: mapa exacto — Gastos/Cartera ambos bordes; Resumen/Plan solo abajo
+
+Aclaración suya al probar: no era «ola en todas partes igual». Gastos y Cartera → ola arriba y
+abajo. Resumen y Plan → ola SOLO abajo (arriba = perfil / cambio de segmento). El primer parche
+ponía `mc-touch-own` también abajo de Plan (para el segmento inverso) y eso mataba la ola ahí.
+Quitado el segmento inverso por abajo: el círculo Recibos→Deudas→Metas solo va tirando hacia abajo
+arriba del todo; abajo de Plan es pan-y puro.
+
+### 2026-08-04 (noche)
+### Plan-swipe y ola: el muro era el arco del pulgar, y a mitad de lista el viewport robaba el gesto
+
+Dos tandas que seguían en beta tras el OK del tutorial (8/0 en 4.13.0.36):
+
+1. **`plan-swipe`**: «si deslizas hacia abajo no debería cambiar, solo de arriba a abajo». El
+   segmento ya miraba el extremo al fijar el eje, pero (a) no exigía haber *nacido* arriba/abajo
+   —podías llegar scrolleando y colarte— y (b) a mitad de lista `mode=ignore` **no** hacía
+   `stopPropagation`, así que el `.viewport` veía el mismo arco de pulgar, bloqueaba el eje en
+   horizontal a los ~12 px y cambiaba de pestaña / mataba el scroll. Ahora: extremo al start + al
+   move; vertical a mitad = `mode=scroll` con stopPropagation; y a mitad de lista el swipe de
+   pestañas exige ~28 px de ventaja horizontal clara antes de reclamar.
+
+2. **`gestos` (muro → ola)**: candidato medido el 4/8 puesto por fin — `touch-action:pan-y` en
+   `.page`. Excepción `.mc-touch-own` (`none`) solo en Inicio arriba (perfil/Ajustes, sin ola) y
+   Plan en extremos (gesto de segmento necesita `preventDefault`). Resto: ola nativa a la primera,
+   como Ajustes.
+
+3. **Panel beta**: quitadas del array `tandas` las ya aprobadas (`tutorial-gestos`, `bancos`,
+   `temporada`, `reservar`, `import-docx-pdf`). Quedan solo `gestos` y `plan-swipe`.
+
+### 2026-08-04
+### Tutorial: el descuadre era el `zoom` de la letra, no (solo) el portal
+
+Tercera tanda con foto (4/8): tras el portal a `body` **seguía igual** en su Oppo. Medido por
+CDP en el WebView real: con **letra pequeña** (`html.smalltext body{zoom:0.92}`) el
+`getBoundingClientRect` del tab viene en px de pantalla, pero `left`/`top` de un `position:fixed`
+dentro del body se interpretan en el espacio **pre-zoom** → el foco se pintaba al 92 % (Gastos
+~57 px arriba de la barra; mismo ratio en +, Plan, Cartera, botnav). Playwright en Pixel 5 no
+usa smalltext, por eso el e2e salía verde.
+
+1. **`pintar` divide por `getComputedStyle(body).zoom`** (1 / 0.92 / 1.12 / 1.26). Tip igual.
+2. **tipOnly con velo oscuro a pantalla entera** (mismo tono del tutorial). Antes `opacity:0`
+   quitaba el oscurecido y parecía que el tour había acabado en Ajustes / tirón al perfil.
+3. **Cifra:** Range del texto + pad 18 (no a ojo del número grande).
+4. **Pulso suave** del anillo mientras lees el paso (`tourpulse`; se apaga con reduce-motion /
+   mientras va pegado).
+5. E2E nuevo con `textSize:"small"` para no volver a cegar el zoom.
+
+(Portal a `body`, mensajes sin «verde»/«borde», barra forzada visible: siguen de la tanda
+anterior; no bastaban solos en su móvil.)
+
+### 2026-08-01 (segunda vuelta)
+### El rebote de las pestañas era el navegador todo el tiempo, y una tanda subida se queda del todo fuera de beta
+
+Tercer intento del rebote, y esta vez con la descripción exacta: «cuando bajas hasta abajo del
+todo y tiras más, se ve como un efecto OLA de todas las cosas que hay en pantalla — eso es lo que
+quiero, lo mismo que Ajustes y el perfil».
+
+**Y AJUSTES/EL PERFIL NUNCA TUVIERON UN REBOTE NUESTRO.** Se comprobó el CSS: `.settings-push` y
+`.settings-slide` jamás tocaron `overscroll-behavior` — corren con el valor por defecto del
+navegador, que en su Android SÍ hace rubber-band de verdad. `.page` (las cuatro pestañas) era la
+ÚNICA zona con `overscroll-behavior-y:none`, puesta el 28/7 a propósito para dejar sitio a un
+rebote JS hecho a mano — sobre la premisa de que «la WebView no hace rubber-band, hace un
+fogonazo». Esa premisa era la raíz de tres rondas de rechazo: no importaba cuánto se afinara la
+curva, seguía siendo UN EFECTO DISTINTO por diseño.
+
+Quitado entero: `reb`, `REB_MAX`, `REB_DIV`, `soltarRebote`, la rama completa en `onMove` — y el
+`overscroll-behavior-y:none` de `.page`. Las cuatro pestañas pasan a comportarse EXACTAMENTE como
+Ajustes y el perfil, porque ahora es literalmente el mismo mecanismo del navegador, no una copia.
+
+**UNA TANDA APROBADA Y SUBIDA SE QUITA DE `tandas`, NO SE MARCA COMO HECHA.** Regla suya, textual:
+«si sube algo en prod, se quita de beta para probar porque ya está listo... conforme apruebe la
+tanda sube y desaparece». `arranque` (aprobada 5/5, ya en producción como 4.12.3) y `canal`
+(aprobada 3/3, su arreglo vive en `beta.yml` y ya está activo) seguían apareciendo en el panel como
+si quedara algo pendiente — eso fue lo que hizo dudar si de verdad estaba hecho. Las dos se han
+QUITADO del array, no comentado ni marcado: lo que hicieron queda en el CHANGELOG y en
+`docs/ROADMAP.md`, que es donde se consulta el histórico.
+
+**APK DE PRUEBAS INSTALABLE EN PARALELO.** Pidió una vía para probar cambios nativos (el splash de
+Android 12+, el widget) sin esperar a una release pública ni arriesgar la app real. `assembleDebug`
+con `applicationIdSuffix ".debug"` la instala como `com.micartera.app.debug` — una app aparte en el
+móvil, con su propio nombre («Mi Cartera (debug)») y sus propios datos, conviviendo con la de
+producción sin tocarla.
+
+### 2026-08-01
+### Repaso de la ronda 4.13.0: el panel de tandas contaba mal, y la promoción por tandas prometía algo que no podía hacer
+
+Revisión del trabajo hecho desde el móvil los días 28/7 → 1/8 (nueve commits). El grueso está bien
+y con la suite en verde; esto es lo que no lo estaba.
+
+#### El panel de revisión numeraba los puntos contra la lista equivocada
+
+`betaChecklist` devolvía como checklist los `items` de la versión —**lo que lee la familia en
+Novedades**— mientras el panel pintaba los puntos de las **tandas**, que son otra redacción y otro
+número de líneas. En la 4.13.0: **21 puntos repartidos en cuatro tandas contra 14 en Novedades**.
+Como todo el panel va por un índice global (`marks`, el progreso, el guardado y sobre todo la lista
+de ✓ heredados entre compilaciones, que casa por el **texto** del punto), los dos números
+desalineados hacían tres cosas a la vez, todas en silencio:
+
+- el progreso decía **`x/14`** cuando había 21 cosas que probar — podía llegar a 14/14 con una
+  tanda entera sin tocar;
+- un ✓ puesto en «Un CSV también entra» se guardaba bajo el texto de una nota de bancos, así que la
+  promesa de «lo que ya diste por bueno no se vuelve a preguntar» dejaba de valer en cuanto se
+  reescribiera cualquiera de las dos notas;
+- los puntos del 14 al 20 —la tanda **`bancos` casi entera, la de los bugs de dinero real**— se
+  guardaban bajo `undefined` y **no se heredaban nunca**.
+
+Arreglado en `betaChecklist`: cuando hay tandas, la checklist **es la concatenación de sus puntos**.
+Sin tandas, `betaTandas` ya devuelve una sola con `rnItems` dentro, así que aplanar da exactamente
+la misma lista y las 69 versiones del histórico no se enteran.
+
+**Por qué no lo vio el guardián.** El test se llama «se reparten TODOS los puntos» y solo
+comprobaba `suma > 0`. Ahora compara la suma **contra la longitud de la checklist** y además que
+cada índice global caiga sobre el texto que su tanda enseña — que es lo que el título decía.
+
+#### Promocionar por tandas pedía ramas que nadie había creado
+
+El workflow mergea `origin/tanda/<id>`, pero **declarar tandas en las notas no crea ninguna rama**,
+y las cuatro de la 4.13.0 se commitearon mezcladas encima de `beta` (`import` + `gestos` +
+`arranque` viajan en un mismo commit). O sea que `-f tandas=import` habría parado en seco después
+de que él aprobara. **Esta ronda solo puede subir entera.** Se arregla lo que se puede arreglar:
+
+- el panel ya no le dice que ponga nombres de tanda en el workflow — dice lo único cierto siempre,
+  que el veredicto queda registrado con su nombre;
+- el error del workflow ahora lista **qué ramas `tanda/*` existen de verdad** y dice qué hacer;
+- la regla, en `docs/TESTING.md` y `EMPIEZA-AQUI.md`: **`git switch -c tanda/<id> main` antes del
+  primer commit**, o esa ronda no se puede trocear.
+
+#### Dos cosas más del workflow de promoción
+
+- **Inyección de shell**: `'${{ inputs.tandas }}'` metía el texto de la casilla dentro de una
+  comilla simple, así que un apóstrofo (o un `$(…)`) escrito ahí se convertía en shell ejecutable
+  en un job con permiso de escritura. Ahora entra por `env:`.
+- **El mensaje de «nada que promocionar» llegaba mutilado** desde el 24/7: dentro de comillas
+  dobles los acentos graves son sustitución de comandos, así que «\`beta\`» intentaba **ejecutar**
+  `beta`. Comillas simples.
+
+#### Y el espejo de la memoria, que iba a perderse
+
+`docs/memoria/` se genera **en un solo sentido** (memoria del PC → repo), pero el Claude del móvil
+no puede tocar la memoria del PC: escribe directo en el espejo. Tres bloques de esta ronda —las
+tandas, el «52» del canal de pruebas y lo hecho de la review externa— solo existían ahí, y el
+siguiente `npm run memoria` desde el portátil los habría borrado. Recuperados a mano antes de
+sincronizar; la trampa queda escrita en la memoria para no repetirla.
+
+---
+
+### Base de la ronda (28 jul 2026)
+### Importar una hoja de gastos, rebote en las pestañas y la rayita rodeando el +
+
+Tanda de su lista del 2026-07-28, con la app ya pulida («ahora que está tan pulida quería nuevas
+cosas»). Los dos puntos que traía como pendientes —el tirón al deslizar y el stopper del perfil—
+los cerró él mismo desde el móvil: «arregladísimo» los dos.
+
+#### Importar una hoja de gastos (Excel o CSV) — la petición nueva
+
+> «Poder importar ya excels formados con gastos, recibos y demás, porque mi madre tiene un Excel y
+> amigos míos igual y me preguntaron si habría alguna opción para importarlo de una manera que lo
+> pillara guay.»
+
+Lo que llega **no son extractos de banco**: son hojas hechas a mano, cada una con sus columnas, en
+su orden, con sus nombres y en el idioma que sea. No hay formato que reconocer — hay que **adivinar
+y dejar corregir**, que es todo el diseño de la pantalla: se propone qué es cada columna, se
+previsualiza con datos de verdad y no se toca nada hasta que dice que sí (AGENTS §9).
+
+El mapeo va en dos pasadas: primero por el **nombre de la cabecera** (con las pistas en es/en/ca,
+normalizadas sin tildes) y lo que quede sin casar, por **lo que contienen las columnas** — así una
+hoja sin cabeceras también se resuelve. Detectar si hay cabecera importa: sin eso, una hoja que
+empieza directamente por datos perdía su primera línea de gastos sin decir nada.
+
+**El .xlsx se abre SIN LIBRERÍA.** Un .xlsx es un ZIP con XML dentro, así que se lee el directorio
+central a mano y se descomprime con `DecompressionStream("deflate-raw")`, que es una API del
+navegador y no un paquete. Son ~120 líneas contra los ~400 KB de SheetJS, en un bundle que ya va al
+96 % del presupuesto — y la regla de cero dependencias sigue en pie. Solo se descomprime la hoja y
+las cadenas, no el ZIP entero.
+
+Dos trampas del formato, anotadas porque no se ven leyendo el código:
+- **Las fechas son números.** Serial de Excel con origen 1899-12-30, no 1900-01-01: Excel arrastra
+  desde Lotus el bug de creerse que 1900 fue bisiesto. Si eso se descuadra, **todas** las fechas de
+  un import salen corridas dos días y no lo nota nadie hasta ver el histórico raro.
+- **La cabecera local del ZIP no es la del directorio central.** El campo `extra` suele diferir, así
+  que saltar hasta los datos con las longitudes del central da basura.
+
+Y en un CSV, el separador se detecta: un Excel español exporta con `;` y uno inglés con `,`.
+Acertar solo con uno es medio importador.
+
+#### El criterio de duplicado, que es lo que él pidió ver
+
+> «Que si pillara alguna cosa duplicada que dijera de forma guapa con alguna animación o algo el
+> descarte y lo que se queda.»
+
+Dos apuntes son el mismo si coinciden **día, importe al céntimo y comercio normalizado** (sin
+tildes, sin mayúsculas, sin dobles espacios). Ni más fino ni más grueso, y las dos alternativas se
+descartaron con casos concretos, no de memoria:
+- **sin el comercio**, dos cafés de 1,20 € del mismo día se comerían el uno al otro;
+- **con la hora**, no casaría nada: una hoja de casa no lleva hora y el banco sí.
+
+Se mira contra el histórico **y contra el propio fichero**, porque una hoja de casa repite filas:
+se copian y se pegan meses enteros.
+
+El reparto entra **contando**, una tarjeta detrás de otra (90 ms la primera, 52 ms las siguientes,
+cortado a 14): lo que entra llega desde la derecha en verde, lo repetido se queda apagado y tachado.
+Pasadas 14 la animación ya no informa, solo hace esperar.
+
+#### Rebote al llegar al final, en las cuatro pestañas
+
+> «La animación esa chula de las settings de perfil y settings normales que si bajas abajo del todo
+> hace como efecto rebote, eso lo hacen la mayoría de apps y me flipa muchísimo, ¿lo podrías aplicar
+> para cada pestaña?»
+
+No sale gratis del navegador: la WebView de Android **no hace rubber-band**, hace un fogonazo de
+borde. Así que el estirón se dibuja a mano —`transform` mientras el dedo insiste, con resistencia
+asintótica a 88 px— y se suelta con la misma curva que usa el asentamiento del carrusel.
+`overscroll-behavior-y` pasa de `contain` a `none` para que el destello de Chromium no se pise con
+el nuestro.
+
+Sus dos avisos, respetados literalmente:
+- **De lado** no aplica: el eje ya está decidido antes de llegar ahí, así que abrir Ajustes no se
+  toca.
+- **Arriba del todo** el rebote se apaga **en Resumen**, que es donde el tirón hacia abajo abre el
+  perfil. En el resto de pestañas arriba no compite con nada y sí lo tiene.
+
+Las medidas del scroll (`scrollHeight`/`clientHeight`) se leen **una vez en el `touchstart`**, no en
+cada `touchmove`: leerlas en el bucle son ~35 reflows por arrastre, que es exactamente el
+layout-thrashing que costó los rechazos .17 → .23 de la 4.12.0.
+
+#### La rayita rodea el + en vez de atravesarlo
+
+> «La rayita que rula al ir de tab en tab que cuando llegue al + en vez de atravesarlo que lo rodee
+> con la animación suave.»
+
+Yendo de Gastos a Plan el indicador pasa por el hueco del FAB, y como es `position:absolute` pinta
+**por encima** del botón: se le veía cruzar la cara del +. Ahora salta por arriba.
+
+La geometría, para no tener que volver a medirla: en coordenadas de `.botnav-row` el FAB va de
+y=−28 a y=+30 (58 px de alto con `margin-top:-26px`), y el indicador vive en `top:-9`. Subirlo 26 px
+lo deja en −35, siete por encima del borde del botón. El estrechón de `scaleX` es lo que lo hace
+parecer un salto y no una traslación. El transform del salto va en el `span` porque el `translateX`
+horizontal lo escribe React en el contenedor y dos transforms en el mismo nodo se pisan.
+
+**Sin estado de React**, y esto no es un detalle: un `setState` por cambio de pestaña son dos
+repintados de la app entera **por gesto** — justo el tipo de trabajo atado al momento en que el
+usuario toca que costó siete vueltas sacar del carrusel. La clase se pone y se quita sobre el nodo.
+
+#### Iconos de la barra, temporadas que se cortan, y el arranque
+
+- **Iconos**: una animación por pestaña al activarse (Inicio salta, Gastos peina sus rayas, Plan
+  marca la casilla, Cartera sube como su flecha). **Solo al entrar, nunca en bucle**: infinita ahí
+  es repintado permanente en la barra.
+- **Temporadas**: las piezas caían `infinite`; ahora dan **dos vueltas y paran** (`forwards`). No se
+  pierde nada porque cada cambio de pestaña lanza una racha nueva — deslizar es lo que las trae de
+  vuelta, que era lo otro que pidió. El reinicio va alternando entre dos keyframes idénticos
+  (`seasonfall`/`seasonfallb`): cambiar `animation-name` es la única forma fiable de reiniciar una
+  animación CSS sin tocar los 18 nodos uno a uno.
+- **El halo del +** pasa de animar `box-shadow` —que obliga a repintar la barra cada frame, para
+  siempre— a un anillo en `::after` que solo mueve `opacity` y `transform`, o sea compositor puro.
+  Mismo guiño, cero repintado. Él quería justo eso: «deja más decoración como el botón + que me
+  encanta, pero que sea sutil».
+- **El splash** ya no cambia de forma a media carga: el nombre esperaba a que `font-display:swap`
+  hiciera el cambio de Georgia a Fraunces a la vista. Ahora espera a la fuente (tope de 500 ms) y
+  el icono entra solo. Y la cortina se va creciendo un pelín, no solo desvaneciéndose.
+- **El contador del patrimonio** arrancaba al montar React, o sea **detrás del splash**: cuando él
+  veía la pantalla la cuenta ya había terminado. Su feedback: «eso molaba mucho y se perdió». No se
+  había perdido — se gastaba a puerta cerrada. Ahora espera al evento `mc-splash-gone`. Y ya no
+  vuelve a cero en cada cambio: la primera vez cuenta desde 0 (la entrada), después encadena desde
+  donde estuviera.
+
+#### Canal beta: el sufijo y el veredicto
+
+- **El número.** Salía de `GITHUB_RUN_NUMBER`, un contador **global** del workflow que no se
+  reinicia jamás: la 4.12.1 se anunciaba como «4.12.1.52» siendo su primera compilación. Su queja:
+  «resetea ese 52 que no tiene sentido». Ahora cuenta compilaciones **de esa versión**, leyendo el
+  título de la propia release (`Beta 4.13.0.3` → +1; versión base nueva → empieza en 1). Sin estado
+  que mantener y se recompone solo.
+  ⚠ El sufijo **no se puede quitar**, y queda escrito para no volver a intentarlo: `_mcNewerVer`
+  compara número a número, así que una beta que se llamara igual que la estable no se vería como
+  nueva y el móvil no la descargaría nunca.
+- **El veredicto.** «Cuando suba algo a prod, la beta no haya nada para aprobar porque lógicamente
+  ya lo hice para que subiera prod» — y es verdad: promocionar **es** aprobar. El panel ahora
+  pregunta a Pages qué versión sirve producción (`_mcProdVersion`) y, si ya va por ahí o más allá,
+  se calla: sin botones de veredicto y con la fila de Ajustes diciendo «✅ ya en producción» en vez
+  de un «3/8» que se leía como trabajo pendiente. Si la red falla, sigue preguntando: en la duda,
+  el lado seguro.
+
+#### De la review externa: métricas, salud, amenazas y ADR
+
+- **Métricas de uso** (`cloud.logUso`) con **vocabulario cerrado** en `USO_OK`. Se hace ahora por el
+  motivo que ya estaba escrito en el ROADMAP: el histórico de uso no se recupera hacia atrás. Lo que
+  viaja es una etiqueta de una lista fija y nada más — ni importes, ni comercios, ni texto libre.
+  Con etiqueta libre, el primer `logUso("gasto en "+comercio)` escrito con buena intención se lleva
+  el nombre de una tienda a la nube. Añadir una métrica es añadir una línea a la lista, donde se ve
+  en el diff.
+- **Observabilidad** (`cloud.logPerf`): solo lo que Supabase **no** puede ver porque pasa en el
+  móvil (cuánto tarda un import, una sincronización). Redondeado a medio segundo: la diferencia
+  entre 3,1 s y 3,4 s no cambia ninguna decisión y menos precisión es menos huella.
+- **`npm run salud`**: alineación de versiones, qué sirve Pages de verdad, si la beta va por delante
+  o por detrás, commits sin promocionar, migraciones y recuento de errores a 24 h / 7 días. Script y
+  no pantalla, por lo decidido en la review: con tres usuarios una pantalla es un producto más que
+  mantener.
+- **[`docs/AMENAZAS.md`](docs/AMENAZAS.md)**: 13 amenazas cruzadas con lo que ya hay, y tres huecos
+  marcados que pasan a ser tareas con nombre — validar la entrada de las diez Edge Functions (la
+  única en rojo), auditar qué acaba en `app_events`/Sentry, y extender el rate limit.
+- **[`docs/adr/`](docs/adr/)**: cinco decisiones que costaron dinero, escritas a posteriori
+  (Supabase, el monolito, cero CDNs, el OTA propio, Capacitor). Cada una dice qué se descartó y qué
+  haría cambiar de opinión. La del OTA lleva pegada la lección de las dos causas con el mismo
+  síntoma.
+
+#### Varias betas a la vez, aprobables por separado
+
+> «Que se pudieran implementar varias betas a la vez y que me des la opción de aprobarlas por
+> separado pero que estén juntas. Así ya trabajo 100 % como mi trabajo.»
+
+Una versión puede declarar **tandas** en sus notas: cada una con su `id`, su título y sus puntos a
+probar. En el panel, cada tanda tiene **su contador y su botón** — un fallo en una no bloquea a las
+demás, que es el problema real (una rama con un fallo arrastraba a todas las que ya estaban listas).
+Cada veredicto viaja con su `id`, así que el parte dice QUÉ subir y no solo «aprobada».
+
+Detalle de implementación que importa para no romper lo que ya tiene probado: los puntos siguen
+numerados **globalmente**, porque el guardado y la herencia de ✓ entre compilaciones van por ese
+índice y por el TEXTO del punto. Cambiar el esquema de claves habría tirado a la basura todo lo
+aprobado en betas anteriores. Las tandas solo agrupan índices.
+
+**Sin tandas declaradas, todo se comporta como antes** (una checklist, un veredicto con id `todo`):
+las 69 versiones del histórico siguen funcionando y declarar tandas es opcional.
+
+Y el workflow de promoción acepta ahora `tandas: import,gestos` para mergear **solo esas** ramas
+`tanda/<id>` a `main`. Vacío = la beta entera, como siempre. Si pides una tanda cuya rama no
+existe, para: subir «lo que haya» es el fallo silencioso que ya costó dos promociones a medias.
+Flujo completo en [docs/TESTING.md](docs/TESTING.md).
+
+#### Guardianes
+
+- `tests/import-hoja.test.mjs` — el criterio de duplicado con sus casos límite, el mapeo con y sin
+  cabeceras, las fechas de aquí (3/4 es abril, no marzo) y el serial de Excel.
+- `e2e/import-hoja.spec.mjs` — construye un **.xlsx de verdad** en la propia página (bytes reales,
+  ZIP con método 0) y lo mete por el mismo input que usaría ella. La mitad que solo existe en un
+  navegador —descomprimir y `DOMParser`— no la puede cubrir un unitario, y es justo la que decide si
+  el Excel se abre o no.
 
 ## [4.12.3] — 2026-08-01
 ### Mantenimiento: el guardián de versión atrapó su propio efecto secundario

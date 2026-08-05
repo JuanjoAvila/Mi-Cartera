@@ -77,6 +77,71 @@ const CONSTRUIR_XLSX = `(function(filas){
   return out;
 })`;
 
+/* Igual que CONSTRUIR_XLSX pero con VARIAS hojas de verdad (workbook.xml + rels con nombres),
+   para probar el selector de hoja (petición 2026-08-03: un Excel de 16 años con una hoja por
+   año, donde "la hoja con más filas" nunca era el año que quería traer). Recibe [{nombre,filas}]. */
+const CONSTRUIR_XLSX_HOJAS = `(function(hojas){
+  const enc=new TextEncoder();
+  const crc32=(function(){
+    const t=new Uint32Array(256);
+    for(let i=0;i<256;i++){ let c=i; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[i]=c>>>0; }
+    return function(u8){ let c=0xFFFFFFFF; for(let i=0;i<u8.length;i++) c=t[(c^u8[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  })();
+  const esc=function(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+  const colRef=function(n){ let s=""; n++; while(n>0){ const r=(n-1)%26; s=String.fromCharCode(65+r)+s; n=(n-r-1)/26; } return s; };
+  const sheetXml=function(filas){
+    let rows="";
+    filas.forEach(function(fila,i){
+      let cs="";
+      fila.forEach(function(v,j){
+        const ref=colRef(j)+(i+1);
+        if(typeof v==="number") cs+='<c r="'+ref+'"><v>'+v+'</v></c>';
+        else cs+='<c r="'+ref+'" t="inlineStr"><is><t>'+esc(v)+'</t></is></c>';
+      });
+      rows+='<row r="'+(i+1)+'">'+cs+'</row>';
+    });
+    return '<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'+rows+'</sheetData></worksheet>';
+  };
+  const wbSheets=hojas.map(function(h,i){ return '<sheet name="'+esc(h.nombre)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>'; }).join("");
+  const workbook='<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>'+wbSheets+'</sheets></workbook>';
+  const rels=hojas.map(function(h,i){ return '<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>'; }).join("");
+  const relsXml='<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+rels+'</Relationships>';
+  const ficheros=[
+    ["[Content_Types].xml",'<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/></Types>'],
+    ["xl/workbook.xml",workbook],
+    ["xl/_rels/workbook.xml.rels",relsXml],
+  ];
+  hojas.forEach(function(h,i){ ficheros.push(["xl/worksheets/sheet"+(i+1)+".xml", sheetXml(h.filas)]); });
+  const locales=[], central=[]; let off=0;
+  ficheros.forEach(function(f){
+    const nom=enc.encode(f[0]), datos=enc.encode(f[1]), crc=crc32(datos);
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0,true); lh.setUint16(8,0,true);
+    lh.setUint16(10,0,true); lh.setUint16(12,0,true); lh.setUint32(14,crc,true);
+    lh.setUint32(18,datos.length,true); lh.setUint32(22,datos.length,true);
+    lh.setUint16(26,nom.length,true); lh.setUint16(28,0,true);
+    locales.push(new Uint8Array(lh.buffer),nom,datos);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true);
+    ch.setUint16(8,0,true); ch.setUint16(10,0,true); ch.setUint16(12,0,true); ch.setUint16(14,0,true);
+    ch.setUint32(16,crc,true); ch.setUint32(20,datos.length,true); ch.setUint32(24,datos.length,true);
+    ch.setUint16(28,nom.length,true); ch.setUint16(30,0,true); ch.setUint16(32,0,true);
+    ch.setUint16(34,0,true); ch.setUint16(36,0,true); ch.setUint32(38,0,true); ch.setUint32(42,off,true);
+    central.push(new Uint8Array(ch.buffer),nom);
+    off+=30+nom.length+datos.length;
+  });
+  const cdIni=off;
+  let cdLen=0; central.forEach(function(p){ cdLen+=p.length; });
+  const eocd=new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0,0x06054b50,true); eocd.setUint16(8,ficheros.length,true); eocd.setUint16(10,ficheros.length,true);
+  eocd.setUint32(12,cdLen,true); eocd.setUint32(16,cdIni,true);
+  const partes=locales.concat(central,[new Uint8Array(eocd.buffer)]);
+  let total=0; partes.forEach(function(p){ total+=p.length; });
+  const out=new Uint8Array(total); let p=0;
+  partes.forEach(function(x){ out.set(x,p); p+=x.length; });
+  return out;
+})`;
+
 // 46115 = 3 de abril de 2026 en serial de Excel (ver el unitario).
 const FILAS = [
   ["Fecha", "Concepto", "Importe"],
@@ -150,6 +215,64 @@ test("un .xlsx real se lee, se mapea solo y separa lo repetido de lo nuevo", asy
   // Mercadona ya estaba en el histórico; la gasolinera está DOS veces en el propio fichero.
   expect(res.dupes.sort()).toEqual(["Gasolinera", "Mercadona"]);
   expect(res.altas.sort()).toEqual(["Bar Paco", "Gasolinera"]);
+});
+
+test("varias hojas con datos: se ofrecen todas por nombre, no se coge a ciegas la que más filas tenga", async ({ page }) => {
+  await seedLoggedInDashboard(page);
+  await page.goto("/");
+  await page.waitForFunction(() => !document.getElementById("mc-load"));
+  await dismissNews(page);
+
+  // Caso real (petición 2026-08-03): un Excel de varios años, una hoja por año — "Año 2025" con
+  // más filas que "Año 2026" (que es justo el que se querría traer). Antes se elegía la de más
+  // filas en silencio; ahora `hojaLeer` tiene que devolver AMBAS para que decida el usuario.
+  const hojas = [
+    { nombre: "Año 2025", filas: [["Fecha", "Concepto", "Importe"],
+      [{ serial: 45658 }, "Mercadona", 12], [{ serial: 45659 }, "Bar", 5], [{ serial: 45660 }, "Luz", 60]] },
+    { nombre: "Año 2026", filas: [["Fecha", "Concepto", "Importe"],
+      [{ serial: 46115 }, "Mercadona", 23.45]] },
+  ];
+  const construido = await page.evaluate(([fabrica, hs]) => {
+    const fn = eval(fabrica);
+    const bytes = fn(hs);
+    window.__xlsxMulti = bytes;
+    return bytes.length;
+  }, [CONSTRUIR_XLSX_HOJAS, hojas]);
+  expect(construido).toBeGreaterThan(400);
+
+  const res = await page.evaluate(async () => {
+    const file = new File([window.__xlsxMulti], "casa-16-anos.xlsx",
+      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    return hojaLeer(file);
+  });
+
+  expect(res.filas).toBeNull();                 // ambigüedad real → no se elige sola
+  expect(res.hojas).toHaveLength(2);
+  const nombres = res.hojas.map((h) => h.nombre).sort();
+  expect(nombres).toEqual(["Año 2025", "Año 2026"]);
+  // Ordenadas por nº de filas (más primero) — el orden en que se ofrecen, no cuál "gana".
+  expect(res.hojas[0].nombre).toBe("Año 2025");
+  expect(res.hojas[0].filas.length).toBe(4);     // cabecera + 3
+  expect(res.hojas[1].nombre).toBe("Año 2026");
+  expect(res.hojas[1].filas.length).toBe(2);     // cabecera + 1
+});
+
+test("una sola hoja con datos: sigue sin preguntar nada, como siempre", async ({ page }) => {
+  await seedLoggedInDashboard(page);
+  await page.goto("/");
+  await page.waitForFunction(() => !document.getElementById("mc-load"));
+  await dismissNews(page);
+
+  const res = await page.evaluate(async ([fabrica, filas]) => {
+    const fn = eval(fabrica);
+    const bytes = fn(filas);
+    const file = new File([bytes], "gastos.xlsx",
+      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    return hojaLeer(file);
+  }, [CONSTRUIR_XLSX, FILAS]);
+
+  expect(res.hojas).toBeUndefined();
+  expect(res.filas.length).toBe(5);
 });
 
 test("la fila para importar la hoja está en Ajustes → Copia de seguridad", async ({ page }) => {

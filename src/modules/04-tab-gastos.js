@@ -35,6 +35,45 @@ function presetBoundsMs(preset,range,cycleStart){
   return {from:-Infinity, to:Infinity};   // "all" y cualquier preset desconocido
 }
 function inBounds(ms,b){ return ms>=b.from && ms<=b.to; }
+// Fila de una suscripción detectada. Importe EDITABLE antes de «pasar a Fijos» (petición
+// 2026-08-03: recibos que se repiten cada mes pero varían de importe —luz, gas— para no dejarlos
+// con el de este mes y tener que corregirlo a mano el que viene) + botón para descartarla del
+// todo cuando no es una suscripción de verdad (ej. gasolina: se repite, pero nunca va a ser un
+// importe fijo). Componente propio porque cada fila necesita su PROPIO estado de edición —dentro
+// de un .map() no se pueden usar hooks por elemento.
+function SubRow({sp, state, set, showToast}){
+  const c=catOf(sp.cat);
+  const [amt,setAmt]=useState(String(sp.amount).replace(".",","));
+  const toFixed=function(){
+    const useAmt=parseFloat(String(amt).replace(",",'.'))||sp.amount;
+    const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
+    const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
+    const it={ id:uid(), name:sp.name, amount:useAmt, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
+    const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
+    set(function(s){ return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
+    showToast(tf("sub_tofixed_done",{n:sp.name,b:entOf((acc&&acc.ent)||"sabadell").label}));
+  };
+  const dismiss=function(){
+    set(function(s){ return Object.assign({},s,{subsDismissed:(s.subsDismissed||[]).concat([sp.key])}); });
+    showToast(t("sub_dismissed_ok"));
+  };
+  return React.createElement("div",{className:"sub-row"},
+    React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
+    React.createElement("div",{className:"sub-mid"},
+      React.createElement("div",{className:"sub-name"}, sp.name),
+      React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)})),
+      React.createElement("div",{style:{display:"flex",gap:6,marginTop:5,alignItems:"center"}},
+        React.createElement("button",{className:"chip",style:{fontSize:11.5,padding:"3px 10px"},onClick:toFixed}, "→ "+t("sub_tofixed")),
+        React.createElement("button",{className:"chip",style:{fontSize:11.5,padding:"3px 10px"},onClick:dismiss,title:t("sub_dismiss")}, "✕ "+t("sub_dismiss"))
+      )
+    ),
+    React.createElement("div",{className:"sub-amt num",style:{display:"flex",alignItems:"baseline",gap:2}},
+      React.createElement("input",{type:"text",inputMode:"decimal",value:amt,onChange:function(e){ setAmt(e.target.value); },
+        style:{width:52,textAlign:"right",background:"transparent",border:"none",borderBottom:"1px dashed var(--bd)",color:"inherit",font:"inherit"}}),
+      " €"+t("sub_permonth")
+    )
+  );
+}
 function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe, cancelSwipe, focusExp, clearFocus, forceAllTs}){
   const [preset,setPreset]=useState("month");
   // Tras importar una hoja: salta a "Todo" — lo importado suele traer fechas fuera del mes en
@@ -42,7 +81,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   useEffect(function(){ if(forceAllTs) setPreset("all"); },[forceAllTs]);
   const [range,setRange]=useState({from:"",to:""});
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
-  const [bankSel,setBankSel]=useState([]); // ents o "_manual"; [] = todos los bancos
+  // Por defecto, el banco de gasto diario (petición 2026-08-03: «que por defecto esté marcado el
+  // banco de gasto diario, no un filtro de Todo» — así el que tenga un banco puesto ve solo lo
+  // suyo nada más entrar, en vez de todo mezclado). Sin banco diario configurado, [] = todos.
+  // Solo se calcula UNA vez al montar (igual que heavyOk): si luego cambia el banco diario no
+  // reordena el filtro que el usuario ya esté usando.
+  const [bankSel,setBankSel]=useState(function(){
+    const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
+    return daily&&daily.ent ? [daily.ent] : [];
+  }); // ents o "_manual"; [] = todos los bancos
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [morePeriods,setMorePeriods]=useState(false);
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
@@ -132,18 +179,57 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // futuros y arregla otros gastos del mismo comercio que estuvieran en "Otros".
   const setCat=function(ex,newCat){
     const mkey=catKey(ex.merchant);
+    // "Movimiento" es el hueco que deja un banco que no manda NINGÚN dato (Trade Republic por
+    // Open Banking, ver `mapTransaction` en enablebanking.ts) — no es un comercio de verdad, así
+    // que ni se aprende como override (contaminaría CUALQUIER futuro gasto sin datos, de cualquier
+    // banco) ni dispara el "recategoriza también los del mismo comercio en Otros" (bug 2026-08-04:
+    // eso convertía TODOS los movimientos sin datos en Inversión de un solo toque, cada uno con su
+    // propia compra de participaciones).
+    // Y "Inversión" NUNCA se aprende como override, venga de donde venga el comercio: es un destino
+    // del dinero, no un tipo de tienda (ver el blindaje gemelo en `autoCategory`, 00-core.js).
+    const learnable = mkey && ex.merchant!=="Movimiento" && !CAT_NEUTRAS[newCat];
     set(function(s){
-      const ov=Object.assign({}, s.catOverrides||{}); if(mkey) ov[mkey]=newCat;
+      const ov=Object.assign({}, s.catOverrides||{}); if(learnable) ov[mkey]=newCat;
       USER_OVERRIDES=Object.assign({},ov);
+      // El cashback/round-up ENTRA al efectivo y días después SALE hacia el fondo: dos apuntes del
+      // banco para un solo movimiento de dinero. Al marcar la salida como Inversión, su entrada
+      // gemela va con ella — si no, sigue contando como ingreso del mes (2026-08-04, queja suya:
+      // «me lo detecta duplicado en inversiones y luego como ingreso al principio del mes»).
+      const twinIdx = newCat==="inversion" ? findCashbackTwin(s.expenses, ex) : -1;
+      const twinId = twinIdx>=0 ? s.expenses[twinIdx].id : null;
+      // Marcar a mano un round-up/cashback como "Inversión" (o deshacerlo) compra/vende de verdad
+      // participaciones en el fondo enlazado de esa cuenta — mismo importe real del banco, ver
+      // `applyInvestBuy`/`reverseInvestBuy` en 08-motor-bank.js (2026-08-03).
+      let invState=s;
       const exps=s.expenses.map(function(e){
-        if(e.id===ex.id) return Object.assign({},e,{category:newCat});
-        if(mkey && catKey(e.merchant)===mkey && e.category==="otros") return Object.assign({},e,{category:newCat});
-        return e;
+        const isTarget=e.id===ex.id;
+        const isTwin=!!twinId && e.id===twinId;
+        const isSibling=!isTarget && !isTwin && learnable && catKey(e.merchant)===mkey && e.category==="otros";
+        if(!isTarget && !isTwin && !isSibling) return e;
+        const wasInv=e.category==="inversion", willBeInv=newCat==="inversion";
+        const upd=Object.assign({},e,{category:newCat});
+        // El gemelo solo cambia de categoría: el dinero ya lo compra su pareja, comprarlo dos veces
+        // duplicaría las participaciones del fondo.
+        if(isTwin) return upd;
+        if(!wasInv && willBeInv){
+          const ib=applyInvestBuy(invState, e.ent, Math.abs(e.amount));
+          if(ib){ invState=ib.state; upd.investInvId=ib.invId; upd.investShares=ib.shares; upd.investCInv=ib.cInv; upd.investAmountEur=ib.amountEur; }
+        } else if(wasInv && !willBeInv && e.investInvId){
+          invState=reverseInvestBuy(invState, e.investInvId, e.investShares, e.investCInv, e.investAmountEur);
+          delete upd.investInvId; delete upd.investShares; delete upd.investCInv; delete upd.investAmountEur;
+        }
+        return upd;
       });
-      return Object.assign({},s,{expenses:exps,catOverrides:ov});
+      // Durable en la tabla: sin esto el siguiente pull —que reemplaza los gastos de la nube con
+      // lo que hay en `expenses`— devolvía la categoría vieja (2026-08-04).
+      if(cloud.enabled()){
+        cloud.setExpenseCat(ex,newCat).catch(function(){});
+        if(twinId){ const tw=s.expenses.find(function(e){ return e.id===twinId; }); if(tw) cloud.setExpenseCat(tw,newCat).catch(function(){}); }
+      }
+      return Object.assign({},invState,{expenses:exps,catOverrides:ov});
     });
     setCatEdit(null);
-    const cc=CATEGORIES.concat([INGRESO_CAT]).find(function(x){ return x.id===newCat; });
+    const cc=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).find(function(x){ return x.id===newCat; });
     if(showToast) showToast(tf("v4_moved_cat",{cat:(cc?cc.icon+" ":"")+catName(newCat)}));
   };
   // Marca/desmarca un gasto como "no tarjeta" (bizum/transferencia) para que no cuente el round-up TR.
@@ -226,6 +312,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // enseñaría el mes pasado. Antes no pasaba porque el cálculo se rehacía en cada render.
   const todayKey=new Date().toDateString();
   const bounds=useMemo(function(){ return presetBoundsMs(preset,range,cycle&&cycle.start); },[preset,range,cycle,todayKey]);
+  const dailyEnt=useMemo(function(){ const d=(state.accounts||[]).find(function(a){ return accDaily(a); }); return d&&d.ent||null; },[state.accounts]);
   const bankOpts=useMemo(function(){
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
@@ -267,26 +354,18 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 
   // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
+  // Cifras = `monthBudgetStats` (misma fuente que Resumen y el widget).
   const monthSummary=useMemo(function(){
-    const now=new Date(), startMs=startOfMonth(now).getTime();
-    let spent=0, income=0;
-    (state.expenses||[]).forEach(function(e){
-      if(dateMs(e.date)<startMs) return;
-      if(e.amount>0) spent+=e.amount;
-      else if(e.amount<0) income+=Math.abs(e.amount);
-    });
-    const budget=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
-    const mode=(state.settings&&state.settings.gTotalMode)||"split";
-    const balance=income-spent; // positivo = te queda / negativo = gastaste de más
+    const now=new Date();
+    const bs=monthBudgetStats(state);
     return {
-      spent:spent, income:income, balance:balance, mode:mode,
-      budget:budget,
-      remaining:budget==null?null:(mode==="net"?budget-spent+income:budget-spent),
+      spent:bs.spent, income:bs.income, balance:bs.balance, mode:bs.mode,
+      budget:bs.budget, reserved:bs.reserved, remaining:bs.remaining,
       day:now.getDate(),
       last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),
       month:monthLong(now.getMonth())
     };
-  },[state.expenses,state.budget,state.settings&&state.settings.gTotalMode]);
+  },[state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
     if(!cloud.enabled()||!ex||aiBusy) return;
@@ -460,7 +539,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
         // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
         // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
+        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
       ),
       // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
       bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
@@ -481,37 +560,40 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     ),
 /* Alta de gasto/ingreso: FAB Apuntar (SPEC §7). */
     (function(){
-      // SPEC §4: suscripciones solo si hay novedad (activas aún no pasadas a Fijos).
+      // SPEC §4: suscripciones solo si hay novedad (activas, aún no pasadas a Fijos, ni descartadas
+      // a mano — petición 2026-08-03: poder quitar una detección que no es una suscripción de
+      // verdad, ej. la gasolina, que se repite pero nunca va a tener un importe fijo).
+      const dismissed=state.subsDismissed||[];
       const novel=(subs||[]).filter(function(sp){
         if(!sp.active) return false;
+        if(dismissed.indexOf(sp.key)!==-1) return false;
         return !(state.fixed||[]).some(function(f){ return catKey(f.name)===sp.key; });
       });
       if(!novel.length) return null;
       return React.createElement("div",{style:{marginTop:14}}, React.createElement(CollapsibleCard,{title:t("sub_title")+" · "+novel.length,sub:tf("sub_sub",{n:novel.length,y:eur0(novel.reduce(function(a,s){return a+(s.active?s.yearly:0);},0))}),dot:"#C9A6F0",defaultOpen:true,storageKey:"g_subs_novel",help:t("h_subs")},
-        novel.map(function(sp){ const c=catOf(sp.cat);
-          const toFixed=function(){
-            const lastE=(state.expenses||[]).filter(function(e){ return catKey(e.merchant)===sp.key && e.amount>0; }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
-            const acc=(state.accounts||[]).find(function(a){ return accRole(a)==="fijos"; })||(state.accounts||[]).find(function(a){ return accRole(a)==="ambos"; });
-            const it={ id:uid(), name:sp.name, amount:sp.amount, freq:"mes", account:(acc&&acc.ent)||"sabadell" };
-            const dd=lastE? parseDate(lastE.date).getDate() : null; if(dd>=1&&dd<=31) it.day=dd;
-            set(function(s){ return Object.assign({},s,{fixed:(s.fixed||[]).concat([it])}); });
-            showToast(tf("sub_tofixed_done",{n:sp.name,b:entOf((acc&&acc.ent)||"sabadell").label}));
-          };
-          return React.createElement("div",{key:sp.key,className:"sub-row"},
-          React.createElement("div",{className:"sub-ic",style:{borderColor:c.color+"55",color:c.color}}, c.icon),
-          React.createElement("div",{className:"sub-mid"},
-            React.createElement("div",{className:"sub-name"}, sp.name),
-            React.createElement("div",{className:"sub-meta"}, tf("sub_months",{n:sp.months})+" · "+tf("sub_peryear",{y:eur0(sp.yearly)})),
-            React.createElement("button",{className:"chip",style:{marginTop:5,fontSize:11.5,padding:"3px 10px"},onClick:toFixed}, "→ "+t("sub_tofixed"))),
-          React.createElement("div",{className:"sub-amt num"}, eur(sp.amount)+t("sub_permonth"))
-        ); }),
+        novel.map(function(sp){ return React.createElement(SubRow,{key:sp.key,sp:sp,state:state,set:set,showToast:showToast}); }),
         React.createElement("div",{className:"hint",style:{marginTop:8}}, t("sub_hint"))
       ));
     })(),
     React.createElement("div",{className:"v4-gastos-list",style:{marginTop:14}},
       React.createElement("div",{className:"v4-gastos-list-body"},
         shown.length===0
-          ? React.createElement("div",{className:"empty"},React.createElement("div",{className:"ttl"},t("g_empty_t")),t("g_empty_d"))
+          ? (function(){
+              // "No hay gastos aquí · cambia el filtro" asustaba a principio de mes/ciclo, cuando
+              // lo normal es no haber gastado nada todavía: no falta nada, no hay que "cambiar
+              // el filtro" (feedback 2026-08-01). Solo si hay histórico real en OTRO período y
+              // no hay ningún filtro activo (búsqueda/categoría/banco) es "vacío por normal";
+              // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
+              // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
+              // (2026-08-03), no algo que el usuario haya elegido a mano.
+              const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+              const sinFiltros=!q.trim() && !sel.length && bankSelIsDefault;
+              const hayHistorico=(expensesDef||[]).length>0;
+              const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
+              return React.createElement("div",{className:"empty"},
+                React.createElement("div",{className:"ttl"}, esVacioNormal?t("g_empty_period_t"):t("g_empty_t")),
+                esVacioNormal?t("g_empty_period_d"):t("g_empty_d"));
+            })()
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
               : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),
@@ -628,7 +710,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
         !isIncome && React.createElement(React.Fragment,null,
           React.createElement("div",{className:"v4-exp-sec"}, t("v4_exp_cat")),
           React.createElement("div",{className:"v4-chips"},
-            CATEGORIES.map(function(cc){
+            CATEGORIES.concat([INVERSION_CAT,TRASPASO_CAT]).map(function(cc){
               return React.createElement("button",{key:cc.id,type:"button",className:"v4-chip"+(cc.id===exp.category?" on":""),onClick:function(){ setCat(exp,cc.id); }}, cc.icon+" "+catName(cc.id));
             })
           ),

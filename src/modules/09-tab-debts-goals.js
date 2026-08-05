@@ -234,6 +234,92 @@ function Debts({state, set, showToast}){
 /* ============================================================
    METAS DE AHORRO (#15)
    ============================================================ */
+/* ============================================================
+   RESERVAR DINERO (2026-08-03) — petición del usuario: su caso es una sola cuenta (Trade
+   Republic) que hace de fondo de emergencia + round-up + inversión + gasto diario a la vez, y
+   quería que ahorrar para una meta se notara de verdad en "lo que puede gastar", no solo en un
+   bote aparte. Ver la explicación larga en `08-motor-bank.js` (reservaPlanFor/applyReserva).
+   ============================================================ */
+// Editor de reglas: nombre opcional, importe fijo o % de la nómina, y a qué meta va.
+function ReservaRules({state, set}){
+  const goals=(state.goals||[]).filter(function(g){ return !g.done; });
+  const rules=(state.settings&&state.settings.reservaRules)||[];
+  const [adding,setAdding]=useState(false);
+  const blank={name:"",kind:"fixed",value:"",goalId:goals[0]&&goals[0].id||""};
+  const [form,setForm]=useState(blank);
+  const setRules=function(next){ set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{reservaRules:next})}); }); };
+  const addRule=function(){
+    const v=parseFloat(String(form.value).replace(',','.'))||0;
+    if(v<=0 || !form.goalId) return;
+    const r={id:uid(),name:form.name||"",kind:form.kind,value:v,goalId:form.goalId};
+    setRules(rules.concat([r]));
+    setForm(blank); setAdding(false);
+  };
+  const delRule=function(id){ setRules(rules.filter(function(r){ return r.id!==id; })); };
+  const goalName=function(id){ const g=(state.goals||[]).find(function(x){ return x.id===id; }); return g?((g.emoji||"🎯")+" "+g.name):t("rr_goal_gone"); };
+  if(!goals.length && !rules.length) return null;   // sin metas activas no hay nada que configurar
+  return React.createElement(CollapsibleCard,{title:t("rr_title"),sub:rules.length?tf("rr_sub",{n:rules.length}):t("rr_sub_empty"),dot:"#5FD08A",storageKey:"g_reserva_rules",help:t("h_reserva")},
+    rules.length===0 && React.createElement("div",{className:"hint"}, t("rr_none")),
+    rules.map(function(r){
+      return React.createElement("div",{key:r.id,className:"sub-row"},
+        React.createElement("div",{className:"sub-mid"},
+          React.createElement("div",{className:"sub-name"}, r.name||goalName(r.goalId)),
+          React.createElement("div",{className:"sub-meta"}, (r.kind==="pct"?tf("rr_row_pct",{v:r.value}):tf("rr_row_fixed",{v:eur0(r.value)}))+" → "+goalName(r.goalId))
+        ),
+        React.createElement("button",{className:"chip",style:{fontSize:11.5,padding:"3px 10px"},onClick:function(){ delRule(r.id); }}, "✕")
+      );
+    }),
+    goals.length>0 && (adding
+      ? React.createElement("div",{className:"add-form",style:{marginTop:10}},
+          React.createElement("input",{className:"af-in",placeholder:t("rr_name_ph"),value:form.name,onChange:function(e){ setForm(Object.assign({},form,{name:e.target.value})); }}),
+          React.createElement("div",{className:"af-row"},
+            React.createElement("select",{className:"af-in",value:form.kind,onChange:function(e){ setForm(Object.assign({},form,{kind:e.target.value})); }},
+              React.createElement("option",{value:"fixed"},t("rr_kind_fixed")),
+              React.createElement("option",{value:"pct"},t("rr_kind_pct"))),
+            React.createElement("input",{className:"af-in num",inputMode:"decimal",placeholder:form.kind==="pct"?"%":"€",value:form.value,onChange:function(e){ setForm(Object.assign({},form,{value:e.target.value})); }})
+          ),
+          React.createElement("select",{className:"af-in",value:form.goalId,onChange:function(e){ setForm(Object.assign({},form,{goalId:e.target.value})); }},
+            goals.map(function(g){ return React.createElement("option",{key:g.id,value:g.id}, (g.emoji||"🎯")+" "+g.name); })),
+          React.createElement("button",{className:"btn btn-primary btn-block",style:{marginTop:8},onClick:addRule}, t("rr_save")),
+          React.createElement("button",{className:"btn btn-ghost btn-block",onClick:function(){ setAdding(false); setForm(blank); }}, t("gl_cancel"))
+        )
+      : React.createElement("button",{className:"v4-ghost-add",style:{marginTop:8},onClick:function(){ setForm(blank); setAdding(true); }}, t("rr_add"))
+    )
+  );
+}
+// Banner de "nómina detectada": aparece cuando `lastPaydayOf` encuentra un ingreso grande que aún
+// no se ha repartido ni descartado. Nunca aplica en silencio — siempre pide confirmación, porque
+// aunque solo mueva cifras dentro de la app, es DINERO DE VERDAD para quien lo mira.
+function ReservaDetect({state, set, showToast}){
+  const dismissed=(state.reservaDismissed)||[];
+  const cycle=useMemo(function(){ return lastPaydayOf(state.expenses); },[state.expenses]);
+  const rules=(state.settings&&state.settings.reservaRules)||[];
+  if(!cycle || !cycle.inc || !rules.length) return null;
+  const income=cycle.inc;
+  const key=reservaKeyOf(income);
+  if(reservaAlreadyApplied(state,income) || dismissed.indexOf(key)!==-1) return null;
+  const plan=reservaPlanFor(state, income.amount);
+  if(!plan.plan.length) return null;
+  const dailyEnt=(state.accounts||[]).find(function(a){ return accDaily(a); });
+  const apply=function(){
+    set(function(s){ return applyReserva(s, income, plan.plan, dailyEnt&&dailyEnt.ent); });
+    if(showToast) showToast(t("rr_applied_ok"));
+  };
+  const dismiss=function(){ set(function(s){ return Object.assign({},s,{reservaDismissed:(s.reservaDismissed||[]).concat([key])}); }); };
+  return React.createElement("div",{className:"v4-card rise",style:{borderColor:"var(--mint-dim)",marginBottom:14}},
+    React.createElement("div",{style:{fontWeight:800,fontSize:14.5}}, tf("rr_detect_t",{x:eur0(Math.abs(income.amount))})),
+    React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",marginTop:4}}, tf("rr_detect_sub",{d:parseDate(income.date).toLocaleDateString(loc(),{day:'2-digit',month:'2-digit'})})),
+    React.createElement("div",{style:{marginTop:10}}, plan.plan.map(function(p){
+      return React.createElement("div",{key:p.ruleId,style:{display:"flex",justifyContent:"space-between",fontSize:13,padding:"4px 0"}},
+        React.createElement("span",null, p.name), React.createElement("span",{className:"num"}, eur0(p.amount)));
+    })),
+    plan.remainder>0 && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:4}}, tf("rr_remainder",{x:eur0(plan.remainder)})),
+    React.createElement("div",{className:"af-row",style:{marginTop:10}},
+      React.createElement("button",{className:"btn btn-primary",style:{flex:1},onClick:apply}, t("rr_apply")),
+      React.createElement("button",{className:"btn btn-ghost",style:{flex:1},onClick:dismiss}, t("rr_dismiss"))
+    )
+  );
+}
 function Goals({state, set, totals, showToast}){
   const tt=totals||{};
   const goals=state.goals||[];
@@ -300,6 +386,7 @@ function Goals({state, set, totals, showToast}){
       React.createElement("div",{className:"serif num",style:{fontSize:40,fontWeight:550,letterSpacing:"-1px",lineHeight:1.05,marginTop:6,color:"var(--mint)"}},eur(totalSaved)),
       totalTarget>0 && React.createElement("div",{style:{marginTop:10,fontSize:13.5,color:"var(--muted)"}},tf("gl_total_sub",{x:eur0(totalTarget)}))
     ),
+    React.createElement(ReservaDetect,{state:state,set:set,showToast:showToast}),
     goals.length===0 && !adding && React.createElement("div",{className:"empty"},
       React.createElement("div",{className:"ttl"},t("gl_empty_t")), t("gl_empty_d")),
 
@@ -336,6 +423,8 @@ function Goals({state, set, totals, showToast}){
     }),
 
     goals.length>0 && React.createElement("button",{className:"btn btn-block "+(editing?"btn-primary":"btn-ghost"),style:{marginTop:4},onClick:function(){ editing?saveEdit():startEdit(); }}, editing?t("gl_save"):t("gl_edit")),
+
+    React.createElement("div",{style:{marginTop:14}}, React.createElement(ReservaRules,{state:state,set:set})),
 
     adding
       ? React.createElement("div",{className:"add-form",style:{marginTop:12}},

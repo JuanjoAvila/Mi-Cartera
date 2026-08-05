@@ -256,7 +256,24 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   const [cands,setCands]=useState(null);
   const [sel,setSel]=useState({});       // índice -> bool
   const [dest,setDest]=useState({});     // índice -> "gasto"|"recibo"|"ingreso"
+  const [dupRecibo,setDupRecibo]=useState({});   // índice -> true (misma factura, otro mes del histórico)
+  const [dupExist,setDupExist]=useState({});     // índice -> el gasto/ingreso YA guardado con el que coincide
   const [importing,setImporting]=useState(false);
+  /* FILTROS (rediseño 3/8, petición suya: «me parece anticuada comparada con el import de Excel»,
+     más un bug real que reportó: «seleccioné Trade Republic y salían también movimientos de Banco
+     Sabadell»). Investigado: esta pantalla NUNCA tuvo filtro de banco — se buscaba y se importaba
+     SIEMPRE de todos los bancos de `allowList` a la vez (Trade Republic incluido desde que admite
+     Open Banking solo para sus movimientos), sin forma de acotar a uno. `bankFilter` vacío = todos
+     (mismo patrón que el filtro de banco de la pestaña Gastos); con bancos dentro, solo esos se ven
+     Y SE IMPORTAN — el filtro no es cosmético: `doImport` recorre `visible`, nunca `cands` entero,
+     así que un banco fuera del filtro no puede colarse en el alta aunque su fila siguiera marcada
+     por debajo (para combinar selecciones de varios filtros en una sola importación, basta volver
+     a «Todos los bancos» antes de pulsar Importar: los `sel` de cada fila se conservan siempre,
+     solo cambia qué se VE y qué CUENTA en cada momento). */
+  const [bankFilter,setBankFilter]=useState([]);
+  const [tipoFilter,setTipoFilter]=useState("all");   // "all" | "gasto" | "ingreso"
+  const [mesFilter,setMesFilter]=useState("all");     // "all" | "YYYY-MM"
+  const [revelado,setRevelado]=useState(0);           // filas ya "entradas" (animación, como el import de Excel)
   useBackClose(true, onClose);
   const kOf=function(dt,am,mc){ return String(dt).slice(0,10)+"|"+am+"|"+(mc||""); };
   const defDest=function(x){
@@ -267,11 +284,14 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   const search=function(){
     if(!allowList.length){ showToast(t("bp_hist_nodaily")); return; }
     setLoading(true); setCands(null);
+    setBankFilter([]); setTipoFilter("all"); setMesFilter("all"); setRevelado(0);
     const d=new Date(); d.setMonth(d.getMonth()-months); const dateFrom=d.toISOString().slice(0,10);
     cloud.bankSyncHistory(dateFrom).then(function(res){
       const links=(res&&res.links)||[];
+      // Dedup CIERTO por ext_id: el mismo apunte que el sync diario ya trajo solo. No hay
+      // ambigüedad —es literalmente el mismo movimiento del banco— así que se descarta aquí, en
+      // silencio: enseñarlo solo ensuciaría la lista con lo que ya entró cada día sin que hiciera falta.
       const seen={}; (state.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
-      const keys={}; (state.expenses||[]).forEach(function(e){ keys[kOf(e.date,e.amount,e.merchant)]=1; });
       const fixNames={}; (state.fixed||[]).forEach(function(f){ fixNames[(f.name||"").toLowerCase()+"|"+(f.amount||0)+"|"+(f.account||"")]=1; });
       const out=[], uniq={};
       links.forEach(function(lk){
@@ -283,8 +303,6 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
             const isIn=am<0;
             const abs=Math.abs(am);
             if(tx.ext_id && seen[tx.ext_id]) return;
-            if(!isIn && keys[kOf(dt,abs,tx.merchant)]) return;
-            if(isIn && keys[kOf(dt,-abs,tx.merchant)]) return;
             const k=(tx.ext_id||"")+"|"+(isIn?"in":"out")+"|"+kOf(dt,abs,tx.merchant); if(uniq[k]) return; uniq[k]=1;
             out.push({ id:tx.ext_id||null, date:dt, amount:abs, merchant:tx.merchant||(isIn?t("cat_ingreso"):"Compra"), note:tx.note||"", card:!!tx.card, ent:ent, kind:isIn?"in":"out" });
           });
@@ -292,14 +310,27 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
       });
       out.sort(function(a,b){ return b.date.localeCompare(a.date); });
       setCands(out);
+      // Duplicados de recibo DENTRO del propio lote (2026-07-31): 3 meses de histórico traen la
+      // MISMA factura recurrente 3 veces — sin esto, "aceptar todo" crea 3 Fijos idénticos que se
+      // cobran los 3 cada mes para siempre. Ver dedupeHistRecibos (08-motor-bank.js).
+      const dup=dedupeHistRecibos(out);
+      setDupRecibo(dup);
+      // Duplicados contra lo que YA TIENES guardado (2026-08-03, mismo criterio y misma idea de UI
+      // que el import de Excel): antes esto se descartaba en silencio con una clave sin normalizar
+      // el comercio — ahora la fila se queda en la lista, tachada, para COMPARAR en vez de
+      // desaparecer sin explicación. Ver histCandExisting (08-motor-bank.js).
+      const dExist=histCandExisting(out, state.expenses||[]);
+      setDupExist(dExist);
       const s0={}, d0={};
       out.forEach(function(x,i){
         d0[i]=defDest(x);
         // Pre-marca: tarjeta/ingreso sí; recibo (no tarjeta) también — es lo que evita teclear fijos.
         s0[i]=true;
+        if(dExist[i]) s0[i]=false;      // ya está guardado con ese mismo día/importe/comercio
         if(d0[i]==="recibo"){
           const fk=(x.merchant||"").toLowerCase()+"|"+x.amount+"|"+x.ent;
           if(fixNames[fk]) s0[i]=false;   // ya tienes ese fijo
+          else if(dup[i]) s0[i]=false;    // misma factura ya contada por otro mes del histórico
         }
       });
       setSel(s0); setDest(d0);
@@ -307,12 +338,46 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
   };
   const toggle=function(i){ setSel(function(p){ const n=Object.assign({},p); n[i]=!n[i]; return n; }); };
   const setDestI=function(i,d){ setDest(function(p){ const n=Object.assign({},p); n[i]=d; return n; }); setSel(function(p){ const n=Object.assign({},p); n[i]=true; return n; }); };
-  const selCount=cands? cands.filter(function(x,i){ return sel[i]; }).length : 0;
+  const toggleBankFilter=function(ent){
+    setBankFilter(function(p){ const i=p.indexOf(ent); if(i>=0) return p.filter(function(e){ return e!==ent; }); return p.concat([ent]); });
+  };
+  // Meses realmente presentes en el lote (no `months`): si el banco solo dio 47 días de verdad, un
+  // filtro de mes que saliera vacío no serviría de nada.
+  const monthsPresent=(function(){
+    const vistos={}; const out=[];
+    (cands||[]).forEach(function(x){ const k=x.date.slice(0,7); if(!vistos[k]){ vistos[k]=1; out.push(k); } });
+    return out.sort().reverse();
+  })();
+  const monthLbl=function(k){ const p=k.split("-"); return monthShort(parseInt(p[1],10)-1)+" "+p[0]; };
+  const passFilter=function(x){
+    if(bankFilter.length && bankFilter.indexOf(x.ent)<0) return false;
+    if(tipoFilter==="gasto" && x.kind==="in") return false;
+    if(tipoFilter==="ingreso" && x.kind!=="in") return false;
+    if(mesFilter!=="all" && x.date.slice(0,7)!==mesFilter) return false;
+    return true;
+  };
+  // Lo que se VE es lo que se IMPORTA: `visible` (no `cands`) manda tanto en el contador como en
+  // `doImport`. Es la garantía de que el filtro de banco arregla de raíz el bug que reportó.
+  const visible=cands? cands.map(function(x,i){ return {x:x,i:i}; }).filter(function(o){ return passFilter(o.x); }) : [];
+  const selCount=visible.filter(function(o){ return sel[o.i]; }).length;
+  const repCount=visible.filter(function(o){ return dupRecibo[o.i]||dupExist[o.i]; }).length;
+  const nuevosCount=visible.length-repCount;
+  // Las filas entran contando, una detrás de otra — mismo efecto que el import de Excel (petición
+  // suya 2026-07-28, aplicada aquí también por consistencia). El tope evita una espera eterna si
+  // el histórico trae decenas de movimientos: pasado el tope, el resto aparece de golpe al acabar.
+  useEffect(function(){
+    if(!cands) return undefined;
+    const tope=Math.min(24, cands.length);
+    if(revelado>=tope) return undefined;
+    const tm=setTimeout(function(){ setRevelado(function(n){ return n+1; }); }, revelado===0?90:34);
+    return function(){ clearTimeout(tm); };
+  },[cands,revelado]);
   const doImport=function(){
     if(!cands || !selCount) return;
     setImporting(true);
     const expAdds=[], fixAdds=[];
-    cands.forEach(function(x,i){
+    visible.forEach(function(o){
+      const i=o.i, x=o.x;
       if(!sel[i]) return;
       const d=dest[i]||defDest(x);
       if(d==="recibo"){
@@ -356,7 +421,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
     return React.createElement("button",{key:id,type:"button",onClick:function(e){ e.stopPropagation(); setDestI(i,id); },
       style:{padding:"4px 9px",borderRadius:999,border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"rgba(95,208,138,.18)":"transparent",color:on?"var(--mint)":"var(--muted)",fontWeight:800,fontSize:11,cursor:"pointer"}}, label);
   };
-  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+  return React.createElement("div",{style:wrap,className:"hist-import"}, React.createElement("div",{style:inner},
     React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("bp_close")),
     React.createElement("div",{className:"serif",style:{fontSize:24,margin:"4px 0 4px"}}, t("bp_hist_title")),
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}},
@@ -366,16 +431,58 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
       React.createElement("button",{style:{width:"100%",padding:"12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)",color:"var(--text)",fontWeight:800,fontSize:14,cursor:"pointer"},disabled:loading,onClick:search}, loading?t("bp_hist_searching"):t("bp_hist_search")),
       cands!==null && cands.length===0 && !loading && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,textAlign:"center",padding:"20px 0"}}, t("bp_hist_none")),
       cands!==null && cands.length>0 && React.createElement("div",{style:{marginTop:14}},
-        React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginBottom:8}}, tf("bp_hist_found",{n:cands.length})),
-        cands.map(function(x,i){
+        React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginBottom:8}}, tf("bp_hist_found",{n:visible.length})),
+        /* FILTROS: banco (solo si hay más de uno entre los que se buscó — con uno solo no aporta
+           nada elegirlo), tipo (gasto/ingreso) y mes (solo si el lote trae más de uno). Mismo
+           patrón visual `.v4-chip`/`.v4-chips` que el resto de la app (Gastos ya filtra así por
+           banco/categoría) — coherencia en vez de reinventar un control nuevo para esta pantalla. */
+        allowList.length>1 && React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(bankFilter.length===0?" on":""),onClick:function(){ setBankFilter([]); }}, t("g_allbanks")),
+          allowList.map(function(ent){
+            const on=bankFilter.indexOf(ent)>=0;
+            return React.createElement("button",{key:ent,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBankFilter(ent); }}, entOf(ent).label);
+          })
+        ),
+        React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          [["all",t("bp_hist_f_all")],["gasto",t("bp_hist_f_gastos")],["ingreso",t("bp_hist_f_ingresos")]].map(function(o){
+            const on=tipoFilter===o[0];
+            return React.createElement("button",{key:o[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ setTipoFilter(o[0]); }}, o[1]);
+          })
+        ),
+        monthsPresent.length>1 && React.createElement("div",{className:"v4-chips meta-chips wrap"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(mesFilter==="all"?" on":""),onClick:function(){ setMesFilter("all"); }}, t("bp_hist_f_allmonths")),
+          monthsPresent.map(function(k){
+            const on=mesFilter===k;
+            return React.createElement("button",{key:k,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ setMesFilter(k); }}, monthLbl(k));
+          })
+        ),
+        /* Marcador nuevos/repetidos, mismas clases `.hoja-marc*` que el import de Excel (2026-07-28):
+           de un vistazo, cuánto de lo que ves es de verdad nuevo y cuánto ya lo tenías apuntado. */
+        React.createElement("div",{className:"hoja-marc",style:{marginTop:4}},
+          React.createElement("div",{className:"hoja-marc-c hoja-marc-ok"},
+            React.createElement("b",null, String(nuevosCount)),
+            React.createElement("span",null, t("bp_hist_nuevos"))),
+          repCount>0 && React.createElement("div",{className:"hoja-marc-c hoja-marc-dup"},
+            React.createElement("b",null, String(repCount)),
+            React.createElement("span",null, t("bp_hist_repes")))
+        ),
+        visible.length===0
+          ? React.createElement("div",{style:{color:"var(--muted)",fontSize:13,textAlign:"center",padding:"16px 0"}}, t("bp_hist_nofilter"))
+          : React.createElement(React.Fragment,null,
+          visible.map(function(o,vi){
+          const i=o.i, x=o.x;
           const on=!!sel[i];
           const isIn=x.kind==="in";
-          return React.createElement("div",{key:i,style:{border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)14":"var(--surface)",borderRadius:12,marginBottom:7,padding:"10px 12px"}},
+          const isDup=!!(dupRecibo[i]||dupExist[i]);
+          const dentro=vi<revelado;
+          return React.createElement("div",{key:i,className:"hist-fila"+(dentro?" dentro":""),style:{border:"1px solid "+(on?"var(--mint)":"var(--line)"),background:on?"var(--mint)14":"var(--surface)",borderRadius:12,marginBottom:7,padding:"10px 12px"}},
             React.createElement("button",{type:"button",onClick:function(){ toggle(i); },style:{display:"flex",alignItems:"center",gap:11,width:"100%",background:"none",border:"none",color:"inherit",cursor:"pointer",textAlign:"left",padding:0}},
               React.createElement("span",{style:{width:20,height:20,borderRadius:6,border:"2px solid "+(on?"var(--mint)":"var(--muted-2)"),background:on?"var(--mint)":"transparent",color:"#06120C",fontWeight:900,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}, on?"✓":""),
               React.createElement("div",{style:{flex:1,minWidth:0}},
-                React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}, x.merchant),
-                React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, " · ", entOf(x.ent).label, isIn?"":(x.card?"":" · "+t("bp_hist_notcard")))),
+                React.createElement("div",{style:{fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",textDecoration:(!on&&isDup)?"line-through":"none",color:(!on&&isDup)?"var(--muted-2)":undefined}}, x.merchant),
+                React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, x.date, " · ", entOf(x.ent).label, isIn?"":(x.card?"":" · "+t("bp_hist_notcard"))),
+                dupRecibo[i] ? React.createElement("div",{style:{fontSize:11,color:"var(--mint)",marginTop:1}}, "↺ "+t("bp_hist_dup"))
+                  : (dupExist[i] ? React.createElement("div",{style:{fontSize:11,color:"var(--muted-2)",marginTop:1}}, "🗐 "+t("bp_hist_dupexist")) : null)),
               React.createElement("span",{style:{fontWeight:800,fontSize:14,flexShrink:0,color:isIn?"var(--mint)":"var(--text)"}}, (isIn?"+":"")+eur(x.amount))
             ),
             on && React.createElement("div",{style:{display:"flex",gap:6,marginTop:8,flexWrap:"wrap",paddingLeft:31}},
@@ -386,6 +493,7 @@ function BankHistoryImport({state, set, showToast, onClose, linkEnts}){
           );
         }),
         React.createElement("button",{style:Object.assign({},bigBtn,{opacity:(selCount&&!importing)?1:0.5}),disabled:!selCount||importing,onClick:doImport}, tf("bp_hist_import",{n:selCount}))
+        )
       )
     )
   ));
@@ -431,11 +539,24 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
   // pantalla, que con tres o cuatro bancos enlazados el bueno se pierde en la lista (2026-07-24).
   // TR llega como focus «trade_republic» → abre su tarjeta de bróker (br:tr), no una fila OB.
   const focusRef=useRef(null);
+  const trFocusRef=useRef(null);   // tarjeta de TR (bróker): vive DEBAJO de la lista de bancos OB
   useEffect(function(){
     if(!focusAspsp) return;
     if(focusAspsp==="trade_republic" || focusAspsp==="tr"){
       setOpenBank("br:tr");
-      return;
+      // La tarjeta de TR solo se pinta si el chip «Trade Republic» está encendido (línea ~653).
+      // Si venías a reconectar y el chip estaba apagado (settings.brokersOn desactualizado), la
+      // tarjeta ni existía: el deep-link aterrizaba en una lista vacía, sin fallo visible ni
+      // forma de saber por qué (2026-07-31). Reconectar SIEMPRE implica que la quieres ver.
+      if(brokersOn.indexOf("trade_republic")<0){
+        set(function(s){ return Object.assign({},s,{settings:Object.assign({},s.settings,{brokersOn:brokersOn.concat(["trade_republic"])})}); });
+      }
+      // Sin esto, el padre aterrizaba en Mis bancos (arriba del todo) con la tarjeta de TR YA
+      // abierta pero fuera de pantalla —tenía que bajar él mismo a buscarla entre los bancos OB—
+      // y de ahí «le doy y no me lleva a Trade Republic» (2026-07-31). Mismo patrón que el resto
+      // de bancos (más abajo), solo que la tarjeta de TR no tiene fila en `links`.
+      const tm=setTimeout(function(){ try{ trFocusRef.current && trFocusRef.current.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }, 220);
+      return function(){ clearTimeout(tm); };
     }
     if(!links || !links.length) return;
     // El banco al que venías a arreglar llega ABIERTO: si el acordeón lo dejara plegado, el
@@ -463,7 +584,15 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       .catch(function(e){
         setBusy("");
         if(e&&e.code==="busy"){ showToast("⚠ "+t("bank_error_busy")); return; }
-        showToast("⚠ "+t("bank_error")+": "+((e&&e.message)||e));
+        const msg=(e&&e.message)||String(e);
+        showToast("⚠ "+t("bank_error")+": "+msg);
+        /* ANTES ESTE FALLO ERA MUDO: solo un toast, que se lee y se olvida. La conexión de TR
+           por Open Banking rechazada (2026-08-01: «da error») no dejó NINGÚN rastro en
+           app_events — no había forma de saber, sin estar delante de su móvil en ese instante,
+           si el fallo era del código, de un aviso legítimo de Enable Banking (TR sigue en
+           "beta" por SU lado) o de la sesión. Ahora sí queda escrito: `errores.mjs --kind=error`
+           lo enseña la próxima vez, con el banco y el mensaje real de Enable Banking. */
+        try{ cloud.logEvent("error","bankConnect "+name+": "+msg.slice(0,180)); }catch(_){}
       });
   };
   // Issues de la última sync: pinta rojo aunque bank_links.status siga en «active»
@@ -520,13 +649,18 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
       React.createElement("div",{style:{marginTop:12}},
         shown.slice(0,80).map(function(a){
           const isC=!!connected[(a.name||"").toLowerCase()];
+          // TR ya no se bloquea: se avisa de QUÉ va a aportar por aquí (los movimientos) para que
+          // nadie crea que está conectando el bróker por segunda vez. Ver `bankConnectOnce`.
+          const esTR=entFromAspsp(a.name)==="trade_republic";
           return React.createElement("button",{key:a.name+a.country,disabled:!!busy,onClick:function(){ connect(a.name,a.country); },
             className:"v4-mov",
-            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)",marginBottom:8,cursor:busy?"default":"pointer",opacity:busy&&busy!==a.name?0.5:1,textAlign:"left"}},
+            style:{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",borderRadius:16,border:"1px solid var(--line-soft)",background:"var(--sur)",marginBottom:8,cursor:busy?"default":"pointer",opacity:(busy&&busy!==a.name)?0.5:1,textAlign:"left"}},
             logoBox(a),
             React.createElement("div",{style:{flex:1,minWidth:0}},
               React.createElement("div",{className:"nm"}, a.name),
-              isC? React.createElement("div",{className:"meta",style:{color:"var(--mint)"}}, "✓ "+t("bp_already")) : (a.beta? React.createElement("div",{className:"meta"}, "beta") : null)),
+              isC? React.createElement("div",{className:"meta",style:{color:"var(--mint)"}}, "✓ "+t("bp_already"))
+                : (esTR? React.createElement("div",{className:"meta"}, t("bp_tr_ob"))
+                : (a.beta? React.createElement("div",{className:"meta"}, "beta") : null))),
             React.createElement("span",{style:{color:"var(--muted-2)",fontWeight:800,fontSize:18}}, busy===a.name?"…":"›")
           );
         })
@@ -650,8 +784,9 @@ function BankPanel({state, set, showToast, uid, onBankSync, onClose, totals, onL
         React.createElement("div",{style:{fontSize:12,color:"var(--muted)",lineHeight:1.45,marginBottom:8}}, t("bp_which")),
         React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8}}, chips));
     })(),
-    brokersOn.indexOf("trade_republic")>=0 && React.createElement(TRSync,{state:state,set:set,totals:totals,
-      open:openBank==="br:tr", onToggle:function(){ setOpenBank(openBank==="br:tr"?"":"br:tr"); }}),
+    brokersOn.indexOf("trade_republic")>=0 && React.createElement("div",{ref:trFocusRef},
+      React.createElement(TRSync,{state:state,set:set,totals:totals,
+        open:openBank==="br:tr", onToggle:function(){ setOpenBank(openBank==="br:tr"?"":"br:tr"); }})),
     brokersOn.indexOf("myinvestor")>=0 && React.createElement(MyInvestorSync,{state:state,set:set,
       open:openBank==="br:mi", onToggle:function(){ setOpenBank(openBank==="br:mi"?"":"br:mi"); }}),
     brokersOn.indexOf("revolut")>=0 && React.createElement(BrokerImport,{state:state,set:set,fetchPrices:fetchPrices,
@@ -694,11 +829,105 @@ function betaChecklist(version){
     : null;
   // El panel de revisión es la consola privada del dueño y va SIN traducir (como «Actividad»),
   // así que la checklist se lee siempre en castellano aunque la app esté en otro idioma.
-  return notes ? { v:notes.v, t:rnT(notes.t,"es"), items:rnItems(notes,"es") } : { v:base, t:"", items:[] };
+  if(!notes) return { v:base, t:"", items:[], tandas:[] };
+  /* ⚠ LA CHECKLIST SON LOS PUNTOS DE LAS TANDAS, NO LOS DE NOVEDADES (2026-08-01).
+     `items` de una versión es lo que lee LA FAMILIA en Novedades: otra redacción, otro número de
+     líneas (la 4.13.0 tiene 14 ahí y 21 repartidos en tandas). El panel numera los puntos
+     GLOBALMENTE y todo lo demás va por ese índice —`marks`, el progreso, y sobre todo la lista de
+     ✓ heredados, que casa por el TEXTO del punto—, así que si la lista plana no es exactamente la
+     concatenación de las tandas, los índices se cruzan: el panel enseña «Un CSV también entra» y
+     guarda ese ✓ bajo el texto de una nota de bancos, y los puntos que sobran (del 14 al 20) se
+     guardan bajo `undefined` y no se heredan nunca. Aplanar aquí lo deja alineado por
+     construcción. Sin tandas declaradas, `betaTandas` devuelve una sola con `rnItems` dentro, así
+     que esto da EXACTAMENTE la misma lista de siempre y las 69 versiones del histórico no se
+     enteran. */
+  var tandas=betaTandas(notes);
+  var planos=[];
+  tandas.forEach(function(g){ planos=planos.concat(g.items); });
+  return { v:notes.v, t:rnT(notes.t,"es"), items:planos, tandas:tandas };
+}
+/* LAS TANDAS DE UNA VERSIÓN — varias betas a la vez, cada una con su veredicto.
+   Petición suya 2026-07-29: «que se pudieran implementar varias betas a la vez y que me des la
+   opción de aprobarlas por separado pero que estén juntas». Es como trabaja él: varias cosas en
+   vuelo, se prueban en la MISMA app —una sola instalación, un solo bundle— y cada una sube cuando
+   está lista, sin esperar a la que va con retraso.
+
+   Si una versión no declara tandas se devuelve UNA sola con todo dentro, y el panel se comporta
+   exactamente como antes. Eso hace que las 69 versiones del histórico sigan funcionando y que
+   declarar tandas sea opcional: una tanda pequeña no necesita ceremonia. */
+function betaTandas(notes){
+  if(notes && notes.tandas && notes.tandas.length){
+    return notes.tandas.map(function(g){
+      return { id:String(g.id), t:rnT(g.t,"es"), items:rnItems(g,"es") };
+    });
+  }
+  return [{ id:"todo", t:"", items:rnItems(notes,"es") }];
+}
+/* CUENTA COMPARTIDA DE LA REVISIÓN — la MISMA lógica que usa el panel para heredar ✓/✗ entre
+   compilaciones, extraída para que la fila de Ajustes cuente exactamente lo mismo que el panel
+   (2026-08-01, bug suyo: «me sale revisar esta beta 0/26 cuando ya he aceptado o rechazado
+   cosas»). La fila llevaba TODO ESTE TIEMPO leyendo `_betaReview_`+pack.v —la versión BASE, tipo
+   "4.13.0"— mientras el panel SIEMPRE ha guardado (y sigue guardando) por la COMPILACIÓN exacta,
+   `_betaReview_`+CONFIG.APP_VERSION, tipo "4.13.0.11". Esa clave base no la escribe nadie, así
+   que la fila leía aire y enseñaba 0 pasara lo que pasara. Con `_betaReviewOk` (que sí es la
+   fuente de verdad persistente, por TEXTO del punto) la fila cuenta lo mismo que ve el panel al
+   abrirse. Ver `heredarOk` dentro de `BetaReviewPanel` — es la misma lógica de rescate. */
+function betaMarksCount(pack){
+  var okKey="_betaReviewOk";
+  var prev=store.get(okKey);
+  if(!prev){
+    prev={};
+    try{
+      var pre="_betaReview_"+mcVerBase(CONFIG.APP_VERSION);
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(!k||k.indexOf(pre)!==0||k.slice(-2)==="_n") continue;
+        var vieja=store.get(k)||{};
+        pack.items.forEach(function(it,j){ if(vieja[j]==="ok"||vieja[j]==="na"||vieja[j]==="ko") prev[it]=vieja[j]; });
+      }
+    }catch(e){}
+  }
+  // Lo marcado en ESTA compilación manda sobre lo heredado (mismo criterio que el panel).
+  var propias=store.get("_betaReview_"+CONFIG.APP_VERSION)||{};
+  var n=0;
+  pack.items.forEach(function(it,i){
+    var v=propias[i]!==undefined ? propias[i] : prev[it];
+    if(v==="ok"||v==="na"||v==="ko") n++;
+  });
+  return { n:n, tot:pack.items.length };
+}
+/* ¿LO QUE LLEVO PUESTO YA ESTÁ EN PRODUCCIÓN? (petición suya 2026-07-28)
+   «Ponme que cuando suba algo a prod, la beta no haya nada para aprobar porque lógicamente ya lo
+   hice para que subiera prod». Y es verdad: promocionar ES la aprobación. Pero el panel solo
+   miraba la versión que corre en el móvil, así que después de subir la 4.12.1 a producción
+   seguía enseñando su checklist entera como si faltara por probar.
+
+   Se compara la base de lo que corre (4.12.1.3 → 4.12.1) contra lo que sirve Pages. Si producción
+   ya va por ahí o más allá, esto está aprobado por definición. `null` mientras se pregunta o si
+   la red falla: en la duda se sigue preguntando, que es el lado seguro. */
+function useYaEnProd(){
+  const [prod,setProd]=useState(null);
+  useEffect(function(){
+    if(!window._mcProdVersion) return;
+    let vivo=true;
+    window._mcProdVersion().then(function(v){ if(vivo) setProd(v||null); });
+    return function(){ vivo=false; };
+  },[]);
+  if(!prod||!window._mcNewerVer) return null;
+  const base=mcVerBase(CONFIG.APP_VERSION);
+  /* UNA VERSIÓN QUE NO SE PUEDE COMPARAR NO DA NADA POR APROBADO (2026-07-28, cazado en CI).
+     `_mcNewerVer` compara con `parseInt`, y `parseInt("dev")` es `NaN`, que PIERDE todas las
+     comparaciones: sin este guardo, un bundle sin sellar (`APP_VERSION:"dev"` — el que hay en el
+     repo hasta que `stamp-version` corre) contestaba «ya está en producción» y escondía el
+     veredicto entero. Es exactamente la misma trampa del NaN que en la 4.9.2 dejó un móvil sin
+     recibir una actualización nunca más. En la duda, se sigue preguntando. */
+  if(!/^\d+\.\d+\.\d+$/.test(base)) return null;
+  return !window._mcNewerVer(base, prod) ? prod : false;
 }
 function BetaReviewPanel({onClose, showToast}){
   useBackClose(true, onClose);
   const pack=betaChecklist(CONFIG.APP_VERSION);
+  const yaEnProd=useYaEnProd();
   // La clave va por la COMPILACIÓN (4.12.0.17), no por la versión base (4.12.0). Petición suya
   // 2026-07-26: «cuando me subas una nueva versión con el fix de eso, que se resetee y se ponga
   // vacío». Con la clave por versión base, la beta siguiente heredaba las cruces y los comentarios
@@ -718,8 +947,19 @@ function BetaReviewPanel({onClose, showToast}){
      · si reescribimos la nota, ha cambiado lo que se prueba → vuelve a preguntarse;
      · si la nota es idéntica, es literalmente lo mismo que ya probó → viene marcado;
      · y si se reordenan las notas, no se cruzan los cables (con índices, sí).
-     Los ✗ no se heredan NUNCA, ni sus comentarios. */
+
+     ⚠ Y LOS ✗ TAMBIÉN SE HEREDAN, CON SU COMENTARIO (2026-08-01). Antes NO, con este argumento:
+     «las cruces son justo lo que se acaba de arreglar, así que vuelven a preguntarse». El
+     argumento es falso: el panel no tiene ni idea de si la compilación nueva ha tocado ese punto
+     o no. Y el precio de equivocarse lo paga él SIEMPRE — la 4.13.0 sacó cinco compilaciones en
+     tres días y cada una le borraba los tres fallos que acababa de escribir a mano, con sus
+     notas. Sus palabras: «ya he repetido los mensajes 3 veces, estoy hasta los cojones».
+     Ahora un ✗ heredado vuelve marcado, con su texto, y con un aviso de que viene de la
+     compilación anterior: si el arreglo ha llegado, lo pone en ✓ de un toque; si no, ya está
+     escrito y puede rechazar sin volver a teclear. Perder trabajo suyo es el fallo caro; que una
+     cruz sobreviva de más se arregla con un dedo. */
   const okKey="_betaReviewOk";
+  const notaKey="_betaReviewNotas";   // {texto del punto: comentario} — sobrevive a la compilación
   const heredarOk=function(){
     var prev=store.get(okKey);
     /* RESCATE DE LO YA APROBADO (2026-07-26 noche). La lista aparte se estrena en esta versión,
@@ -742,33 +982,78 @@ function BetaReviewPanel({onClose, showToast}){
       store.set(okKey,prev);
     }
     var m={};
-    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na") m[i]=v; });
+    pack.items.forEach(function(it,i){ var v=prev[it]; if(v==="ok"||v==="na"||v==="ko") m[i]=v; });
     return m;
+  };
+  /* Los comentarios de los ✗ heredados, por el mismo camino y con la misma clave (el TEXTO del
+     punto). Van aparte de `okKey` para no cambiarle la forma a lo que ya está guardado en su
+     móvil: allí los valores son "ok"/"na"/"ko" y aquí son strings largos. */
+  const heredarNotas=function(){
+    var prev=store.get(notaKey)||{};
+    var n={};
+    pack.items.forEach(function(it,i){ if(prev[it]) n[i]=prev[it]; });
+    return n;
   };
   // {i: "ok" | "ko" | "na"} + notas de los que fallan. Lo heredado va DEBAJO de lo marcado en esta
   // compilación: si ya has tocado algo aquí, manda lo tuyo. (Con `||` en vez de mezcla, haber
   // marcado una sola casilla en esta beta apagaba la herencia entera.)
   const [marks,setMarks]=useState(function(){ return Object.assign(heredarOk(), store.get(storeKey)||{}); });
-  const [notes,setNotes]=useState(function(){ return store.get(storeKey+"_n") || {}; });
+  const [notes,setNotes]=useState(function(){ return Object.assign(heredarNotas(), store.get(storeKey+"_n")||{}); });
   const [busy,setBusy]=useState(false);
-  const [sent,setSent]=useState(null);   // "approved" | "rejected"
+  // Veredicto POR TANDA: {idTanda: "approved"|"rejected"}. Antes era uno solo para toda la beta,
+  // y con varias cosas en vuelo eso obliga a esperar a la más lenta para subir la más rápida.
+  const [sent,setSent]=useState(function(){ return store.get(storeKey+"_v") || {}; });
   // Cuántos venían ya marcados de compilaciones anteriores, para decírselo en vez de que parezca
   // que el panel se ha inventado unos ✓ que él no ha puesto en esta ronda.
-  const heredados=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, n=0;
-    Object.keys(h).forEach(function(i){ if(propias[i]===undefined) n++; }); return n; })());
+  // Se separan los ✓/«no probable» de los ✗: el aviso de arriba no puede decir «los diste por
+  // buenos» de una cruz, y las cruces heredadas además se señalan una a una (viene de antes →
+  // compruébalo), que es la diferencia entre ahorrarle trabajo y mentirle.
+  const heredadas=useRef((function(){ var h=heredarOk(), propias=store.get(storeKey)||{}, buenos=0, ko={};
+    Object.keys(h).forEach(function(i){ if(propias[i]!==undefined) return; if(h[i]==="ko") ko[i]=true; else buenos++; });
+    return {buenos:buenos, ko:ko, nKo:Object.keys(ko).length}; })());
+  const heredados=useRef(heredadas.current.buenos);
   const save=function(m,n){ store.set(storeKey,m); if(n) store.set(storeKey+"_n",n); };
   const recordarOk=function(m){
     var prev=store.get(okKey)||{};
     pack.items.forEach(function(it,i){
-      if(m[i]==="ok"||m[i]==="na") prev[it]=m[i]; else delete prev[it];
+      if(m[i]==="ok"||m[i]==="na"||m[i]==="ko") prev[it]=m[i]; else delete prev[it];
     });
     store.set(okKey,prev);
   };
-  const mark=function(i,v){
-    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m); return m; });
+  // El comentario de un ✗ se guarda por TEXTO en cuanto se escribe, no al enviar el veredicto:
+  // si Android mata la app a media frase (pasa), lo escrito sigue ahí en la compilación siguiente.
+  const recordarNota=function(i,txt){
+    var prev=store.get(notaKey)||{};
+    var it=pack.items[i]; if(it==null) return;
+    if(txt&&txt.trim()) prev[it]=txt; else delete prev[it];
+    store.set(notaKey,prev);
   };
-  const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); return n; }); };
+  const mark=function(i,v){
+    setMarks(function(p){ const m=Object.assign({},p); if(m[i]===v) delete m[i]; else m[i]=v; save(m,null); recordarOk(m);
+      // Quitar el ✗ se lleva su comentario: si ya no falla, la nota es ruido en el parte siguiente.
+      if(m[i]!=="ko") recordarNota(i,"");
+      return m; });
+  };
+  const setNote=function(i,txt){ setNotes(function(p){ const n=Object.assign({},p); n[i]=txt; store.set(storeKey+"_n",n); recordarNota(i,txt); return n; }); };
 
+  /* Las tandas comparten la numeración GLOBAL de los puntos (`marks` va por índice), así que
+     cada tanda solo necesita saber qué índices son suyos. Se hace así y no con claves por tanda
+     porque el guardado y la herencia de ✓ entre compilaciones ya van por ese índice y por el
+     TEXTO del punto: cambiarlo habría tirado a la basura todo lo que ya tiene probado. */
+  const grupos=(function(){
+    var out=[], i=0;
+    (pack.tandas||[]).forEach(function(g){
+      var idx=g.items.map(function(){ return i++; });
+      out.push({ id:g.id, t:g.t, items:g.items, idx:idx });
+    });
+    return out;
+  })();
+  const cuenta=function(idx){
+    var r={ok:0,ko:0,na:0};
+    idx.forEach(function(i){ var m=marks[i]; if(m==="ok")r.ok++; else if(m==="ko")r.ko++; else if(m==="na")r.na++; });
+    r.pend=idx.length-r.ok-r.ko-r.na;
+    return r;
+  };
   const total=pack.items.length;
   const ok=pack.items.filter(function(_,i){ return marks[i]==="ok"; }).length;
   const ko=pack.items.filter(function(_,i){ return marks[i]==="ko"; }).length;
@@ -792,22 +1077,37 @@ function BetaReviewPanel({onClose, showToast}){
       if(info&&info.versionCode!=null) setApkCode(String(info.versionCode));
     }).catch(function(){});
   },[]);
-  const enviar=function(verdict){
+  /* EL VEREDICTO ES DE UNA TANDA, NO DE LA BETA ENTERA.
+     El parte lleva el `id` de la tanda para que quien promociona sepa QUÉ subir: con varias cosas
+     en vuelo, «aprobada» a secas no dice nada. `scripts/errores.mjs --kind=beta` las enseña una
+     por línea. Cuando una versión no declara tandas, el id es "todo" y el parte queda igual que
+     siempre — el histórico de veredictos se sigue leyendo sin cambiar nada. */
+  const enviar=function(g, verdict){
     if(busy) return;
     setBusy(true);
-    const fallos=pack.items.map(function(it,i){ return marks[i]==="ko" ? {item:it.slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
+    const c=cuenta(g.idx);
+    const fallos=g.idx.map(function(i,j){ return marks[i]==="ko" ? {item:g.items[j].slice(0,140), nota:(notes[i]||"").slice(0,300)} : null; }).filter(Boolean);
     const conApk=CONFIG.APP_VERSION+(apkCode?" (APK "+apkCode+")":"");
+    const etiq=g.t?(" ["+g.id+"] "+g.t):"";
     const payload={
       verdict:verdict, version:CONFIG.APP_VERSION, apk:apkCode, notas:pack.v,
-      probados:ok, fallos:ko, sinProbar:pend, noProbable:na, heredados:heredados.current,
-      noProbables:pack.items.map(function(it,i){ return marks[i]==="na" ? it.slice(0,140) : null; }).filter(Boolean),
+      tanda:g.id, tandaTitulo:g.t||null,
+      probados:c.ok, fallos:c.ko, sinProbar:c.pend, noProbable:c.na, heredados:heredados.current,
+      noProbables:g.idx.map(function(i,j){ return marks[i]==="na" ? g.items[j].slice(0,140) : null; }).filter(Boolean),
       detalle:fallos,
-      summary:(verdict==="approved" ? "✅ BETA APROBADA " : "⛔ BETA RECHAZADA ")+conApk+
-        " · "+ok+" ok / "+ko+" fallo(s) / "+pend+" sin probar"+(na?" / "+na+" no probable(s)":"")+
+      summary:(verdict==="approved" ? "✅ APROBADA " : "⛔ RECHAZADA ")+conApk+etiq+
+        " · "+c.ok+" ok / "+c.ko+" fallo(s) / "+c.pend+" sin probar"+(c.na?" / "+c.na+" no probable(s)":"")+
         (fallos.length? " · "+fallos.map(function(f){ return f.nota||f.item; }).join(" | ") : "")
     };
     cloud.betaReport(payload)
-      .then(function(){ setSent(verdict); showToast(verdict==="approved"?"✅ Aprobada · queda registrado":"⛔ Enviado · no se sube"); })
+      .then(function(){
+        setSent(function(p){
+          const n=Object.assign({},p); n[g.id]=verdict;
+          store.set(storeKey+"_v",n);   // sobrevive a cerrar la app: probar lleva días
+          return n;
+        });
+        showToast(verdict==="approved"?"✅ Aprobada · queda registrado":"⛔ Enviado · no se sube");
+      })
       .catch(function(e){ showToast("✕ No se pudo enviar: "+((e&&e.message)||e)); })
       .finally(function(){ setBusy(false); });
   };
@@ -826,11 +1126,25 @@ function BetaReviewPanel({onClose, showToast}){
     React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:4}},
       "v"+CONFIG.APP_VERSION+(apkCode?" · APK "+apkCode:"")+(pack.t?" · "+pack.t:"")),
     React.createElement("div",{style:{color:"var(--muted-2)",fontSize:12,lineHeight:1.5,marginBottom:14}},
-      "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
-    heredados.current>0 && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
+      yaEnProd
+        ? "Esta versión ya la subiste tú, así que no hay nada que aprobar. La checklist se queda abajo por si quieres repasar algo."
+        : "Pruébalo con calma: esto se guarda y puedes seguir otro día. Tu padre y tu pareja siguen en la versión estable hasta que lo apruebes."),
+    // YA ESTÁ EN PRODUCCIÓN → no se pide veredicto (2026-07-28). Promocionar ES aprobar: pedirle
+    // que apruebe otra vez lo que él mismo subió hace horas es ruido, y encima ruido que parece
+    // trabajo pendiente cada vez que abre Ajustes.
+    yaEnProd && React.createElement("div",{style:{fontSize:13,lineHeight:1.55,marginBottom:14,padding:"12px 14px",borderRadius:14,
+      background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--mint-dim)"}},
+      React.createElement("b",null,"✅ Ya está en producción"),
+      React.createElement("div",{style:{color:"var(--muted)",marginTop:4}},
+        "La v"+yaEnProd+" es la que tienen ahora tu padre y tu pareja. Esta beta ya pasó por aquí.")),
+    (heredados.current>0||heredadas.current.nKo>0) && !yaEnProd && React.createElement("div",{style:{fontSize:12,lineHeight:1.5,marginBottom:14,padding:"9px 12px",borderRadius:12,
       background:"var(--surface-2)",color:"var(--muted)",border:"1px solid var(--line-soft)"}},
-      "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
-      " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
+      heredados.current>0 && React.createElement("div",null,
+        "✓ "+heredados.current+(heredados.current===1?" punto viene ya marcado":" puntos vienen ya marcados")+
+        " porque los diste por buenos en una compilación anterior y su texto no ha cambiado. No hace falta repetirlos; si quieres, tócalos para desmarcar."),
+      heredadas.current.nKo>0 && React.createElement("div",{style:{marginTop:heredados.current>0?7:0,color:"var(--coral)"}},
+        "✗ "+heredadas.current.nKo+(heredadas.current.nKo===1?" fallo que marcaste antes sigue aquí, con lo que escribiste":" fallos que marcaste antes siguen aquí, con lo que escribiste")+
+        ". No hace falta que lo vuelvas a teclear: si esta compilación lo arregla, tócalo y ponlo en ✓.")),
 
     // Progreso
     React.createElement("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14}},
@@ -842,45 +1156,72 @@ function BetaReviewPanel({onClose, showToast}){
     pack.items.length===0 && React.createElement("div",{style:{fontSize:13,color:"var(--muted)"}},
       "Esta versión no trae notas, así que no hay checklist. Prueba lo que hayas tocado."),
 
-    pack.items.map(function(it,i){
-      const m=marks[i];
-      return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
-        borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
-        React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
-        React.createElement("div",{style:{display:"flex",gap:8}},
-          React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
-          React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
-        React.createElement("button",{type:"button",style:Object.assign({},btn(m==="na","var(--muted-2)"),{marginTop:8,width:"100%"}),
-          onClick:function(){ mark(i,"na"); }}, "— No lo puedo probar"),
-        m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
-          placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
-          onChange:function(e){ setNote(i,e.target.value); }})
+    /* UNA SECCIÓN POR TANDA, cada una con su veredicto (petición suya 2026-07-29).
+       El punto de todo esto: que una tanda lista pueda subir HOY sin esperar a la que todavía
+       tiene un fallo. Antes el botón era uno solo para la beta entera, así que un punto rojo en
+       cualquier sitio bloqueaba lo demás — que es justo lo que le pasa en el trabajo cuando una
+       rama se queda atrás y arrastra a las otras. */
+    grupos.map(function(g){
+      const c=cuenta(g.idx);
+      const v=sent[g.id];
+      const listo=c.pend===0 && c.ko===0;
+      return React.createElement("div",{key:g.id,className:"beta-tanda"},
+        g.t && React.createElement("div",{className:"beta-tanda-h"},
+          React.createElement("span",{className:"beta-tanda-t"}, g.t),
+          React.createElement("span",{className:"beta-tanda-n"+(v==="approved"?" ok":v==="rejected"?" ko":"")},
+            v==="approved" ? "✅ aprobada" : v==="rejected" ? "⛔ rechazada" : (c.ok+c.ko+c.na)+"/"+g.idx.length)),
+        g.idx.map(function(i,j){
+          const it=g.items[j], m=marks[i];
+          return React.createElement("div",{key:i,className:"beta-item",style:{border:"1px solid "+(m==="ko"?"var(--coral)":m==="ok"?"var(--mint)":m==="na"?"var(--muted-2)":"var(--line-soft)"),
+            borderRadius:16,padding:"12px 14px",marginBottom:10,background:"var(--sur)",opacity:m==="na"?0.72:1}},
+            React.createElement("div",{style:{fontSize:13.5,lineHeight:1.5,marginBottom:10}}, it),
+            // Una cruz que viene de la compilación anterior se dice, para que no parezca que la
+            // acaba de poner él ni que el panel se inventa fallos. El comentario sigue debajo.
+            m==="ko" && heredadas.current.ko[i] && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginTop:-4,marginBottom:9}},
+              "↩ lo marcaste en la compilación anterior · compruébalo y ponlo en ✓ si ya va"),
+            React.createElement("div",{style:{display:"flex",gap:8}},
+              React.createElement("button",{type:"button",style:btn(m==="ok","var(--mint)"),onClick:function(){ mark(i,"ok"); }}, "✓ Va bien"),
+              React.createElement("button",{type:"button",style:btn(m==="ko","var(--coral)"),onClick:function(){ mark(i,"ko"); }}, "✗ Falla")),
+            React.createElement("button",{type:"button",style:Object.assign({},btn(m==="na","var(--muted-2)"),{marginTop:8,width:"100%"}),
+              onClick:function(){ mark(i,"na"); }}, "— No lo puedo probar"),
+            m==="ko" && React.createElement("input",{className:"v4-exp-note-in",style:{marginTop:10},
+              placeholder:"¿Qué pasa exactamente?",value:notes[i]||"",
+              onChange:function(e){ setNote(i,e.target.value); }})
+          );
+        }),
+        // El veredicto de ESTA tanda. Con la versión ya en producción no se pide ninguno.
+        yaEnProd ? null
+        : v ? React.createElement("div",{className:"beta-veredicto",style:{borderColor:v==="approved"?"var(--mint)":"var(--coral)"}},
+            React.createElement("div",{style:{fontWeight:800,fontSize:14,marginBottom:5}},
+              v==="approved" ? "✅ Aprobada" : "⛔ Rechazada"),
+            React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.5}},
+              /* El texto NO promete trocear la subida (2026-08-01). Antes decía «poniendo las
+                 tandas que quieras en «tandas»», y eso solo funciona si cada tanda nació en su
+                 rama `tanda/<id>`: si la ronda se commiteó mezclada —la 4.13.0, sin ir más
+                 lejos—, el workflow PARA y él se queda mirando un error después de haber
+                 aprobado. Aquí se dice lo que sí es verdad siempre: queda registrado con su
+                 nombre. Cómo se sube es del otro lado (docs/TESTING.md). */
+              v==="approved"
+                ? "Queda registrado con su nombre («"+g.id+"»), así que quien la suba sabe exactamente qué subir."
+                : "Queda registrado con lo que falla. Esta tanda no sube; las demás pueden seguir su camino."),
+            React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:10},
+              onClick:function(){ setSent(function(p){ const n=Object.assign({},p); delete n[g.id]; store.set(storeKey+"_v",n); return n; }); }},
+              "↺ Cambiar de opinión"))
+        : React.createElement(React.Fragment,null,
+            c.ko>0 && React.createElement("button",{type:"button",className:"v4-danger",style:{marginTop:6},disabled:busy,
+              onClick:function(){ enviar(g,"rejected"); }}, busy?"Enviando…":("⛔ Reportar "+c.ko+" fallo(s) · no subir")),
+            React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,opacity:listo?1:0.45},
+              disabled:busy||!listo,onClick:function(){ enviar(g,"approved"); }},
+              busy?"Enviando…":(g.t?"✅ Aprobar esta tanda":"✅ Aprobar esta beta")),
+            !listo && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",textAlign:"center",marginTop:8,lineHeight:1.5}},
+              c.ko>0 ? "Hay algo marcado como que falla: arréglalo antes de aprobar."
+                     : "Te quedan "+c.pend+" cosa(s) por probar.")
+          )
       );
     }),
 
-    // Veredicto
-    sent
-      ? React.createElement("div",{style:{marginTop:16,padding:"14px 16px",borderRadius:16,
-          border:"1px solid "+(sent==="approved"?"var(--mint)":"var(--coral)"),background:"var(--sur)"}},
-          React.createElement("div",{style:{fontWeight:800,fontSize:14.5,marginBottom:6}},
-            sent==="approved" ? "✅ Beta aprobada" : "⛔ Beta rechazada"),
-          React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.5}},
-            sent==="approved"
-              ? "Queda registrado (Actividad → filtro «beta»). Para subirla a producción: dile a Claude «sube la beta», o lanza el workflow «Promocionar beta a producción» en GitHub → Actions. La app no puede hacer un merge de git ella sola."
-              : "Queda registrado con lo que falla. No la subas hasta arreglarlo."))
-      : React.createElement(React.Fragment,null,
-          ko>0 && React.createElement("button",{type:"button",className:"v4-danger",style:{marginTop:6},disabled:busy,
-            onClick:function(){ enviar("rejected"); }}, busy?"Enviando…":("⛔ Reportar "+ko+" fallo(s) · no subir")),
-          React.createElement("button",{type:"button",className:"v4-cta",style:{marginTop:10,opacity:(pend>0||ko>0)?0.45:1},
-            disabled:busy||pend>0||ko>0,onClick:function(){ enviar("approved"); }},
-            busy?"Enviando…":"✅ Aprobar esta beta"),
-          (pend>0||ko>0) && React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",textAlign:"center",marginTop:8,lineHeight:1.5}},
-            ko>0 ? "Hay algo marcado como que falla: arréglalo antes de aprobar."
-                 : "Te quedan "+pend+" cosa(s) por probar.")
-        ),
-
     React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:14},
-      onClick:function(){ store.del(storeKey); store.del(storeKey+"_n"); setMarks({}); setNotes({}); setSent(null); }},
+      onClick:function(){ store.del(storeKey); store.del(storeKey+"_n"); store.del(storeKey+"_v"); setMarks({}); setNotes({}); setSent({}); }},
       "↺ Empezar la revisión de cero")
   ));
 }
@@ -1014,6 +1355,56 @@ function FeedbackPanel({state, set, showToast, onClose}){
 }
 
 /* ============================================================
+   🕐 COPIAS AUTOMÁTICAS — restaurar un día de `state_backups` (2026-07-31).
+   La copia diaria YA SE ESCRIBÍA sola (backupState, 11-app-main.js) desde hace tiempo, pero era
+   de solo escritura: nadie podía MIRARLA ni restaurarla desde la app. Se echó en falta de verdad
+   con un desastre real de importación (cuenta a -9k una semana entera, reconectando el banco una
+   y otra vez sin arreglarlo): con esto habría sido un «Restaurar ayer» y listo, en vez de limpiar
+   a mano gasto a gasto. Reutiliza el MISMO camino que ya prueba `doImport` del JSON manual
+   (mcSaveRaw + set + askConfirm de dos pasos): restaurar un día es la misma operación peligrosa
+   que restaurar un fichero, solo que el fichero lo trae la nube en vez de tu disco.
+   ============================================================ */
+function AutoBackupsPanel({state, set, showToast, uid, onClose}){
+  useBackClose(true, onClose);
+  const [days,setDays]=useState(null);     // null = cargando
+  const [busy,setBusy]=useState("");
+  useEffect(function(){
+    cloud.listBackupDays(uid).then(function(rows){ setDays(rows||[]); })
+      .catch(function(e){ setDays([]); showToast("⚠ "+((e&&e.message)||e)); });
+  },[uid]);
+  const restore=function(day){
+    askConfirm({ title:tf("bk_auto_confirm",{day:day}), sub:t("st_confirm_import_sub"), ok:t("st_confirm_import_ok"), danger:true })
+      .then(function(yes){
+        if(!yes) return;
+        setBusy(day);
+        cloud.getBackup(uid, day).then(function(data){
+          if(!data || !data.accounts){ showToast("✕ "+t("st_badfile")); return; }
+          mcSaveRaw(mcStateKey(), data); set(function(){ return data; });
+          showToast(t("st_imported")); onClose();
+        }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setBusy(""); });
+      });
+  };
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const dayRow={display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:"12px 14px",borderRadius:12,border:"1px solid var(--line)",marginBottom:8};
+  const fmtDay=function(d){ try{ return new Date(d+"T12:00:00").toLocaleDateString(loc(),{weekday:"short",day:"2-digit",month:"short"}); }catch(e){ return d; } };
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 4px"}}, t("bk_auto_title")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:14}}, t("bk_auto_hint")),
+    days===null && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,padding:"18px 2px"}}, t("bp_loading")),
+    days!==null && days.length===0 && React.createElement("div",{style:{color:"var(--muted)",fontSize:13,padding:"18px 2px"}}, t("bk_auto_none")),
+    days!==null && days.map(function(d){
+      return React.createElement("div",{key:d,style:dayRow},
+        React.createElement("div",{style:{fontWeight:700,fontSize:14,textTransform:"capitalize"}}, fmtDay(d)),
+        React.createElement("button",{className:"btn btn-ghost",disabled:!!busy,onClick:function(){ restore(d); }}, busy===d?"…":t("st_confirm_import_ok"))
+      );
+    })
+  ));
+}
+
+/* ============================================================
    ✨ NOVEDADES — popup al actualizar + histórico + sugerencias
    ============================================================
    El CONTENIDO de las notas va solo en castellano a propósito (release notes para el
@@ -1033,25 +1424,55 @@ function FeedbackPanel({state, set, showToast, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.12.4", d:"3 ago 2026",
-   t:{es:"Trae tus gastos desde un Excel",
-      en:"Bring your expenses in from a spreadsheet",
-      ca:"Porta les teves despeses des d'un Excel"},
+  {v:"4.13.0", d:"5 ago 2026",
+   t:{es:"La app se mueve como te gusta, y tus bancos ya no se lían",
+      en:"The app moves the way you like, and your banks stop getting mixed up",
+      ca:"L'app es mou com t'agrada, i els teus bancs ja no s'embolica"},
+   /* TANDAS: todas QUITADAS (aprobadas → se BORRAN del array, no se marcan hechas).
+      `import` → 4.12.4; `arranque` → 4.12.3; `tutorial-gestos` QUITADA 4/8 (8/0 en .36);
+      `bancos` / `temporada` / `reservar` / `import-docx-pdf` QUITADAS 4/8 (.31);
+      `gestos` + `plan-swipe` QUITADAS 5/8 (aprobadas en 4.13.0.49). */
+   tandas:[],
    items:{
+   /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación) NI LOS 3 DE
+      IMPORTAR HOJA (Excel/CSV): esas dos partes de la ronda ya se promocionaron SOLAS a producción
+      como 4.12.3 (2026-08-01) y 4.12.4 (2026-08-03) y ya se le contó a la familia ahí. Repetirlo
+      aquí cuando el resto de la 4.13.0 (gestos/bancos) se apruebe sería la misma novedad dos veces. */
    es:[
-    "📗 ¿Llevas tus gastos en un Excel? Ahora se pueden traer a la app: Ajustes → Copia de seguridad → «Importar una hoja de gastos». Vale un Excel o un CSV, da igual cómo se llamen tus columnas.",
-    "🔍 Te propongo qué es cada columna y lo corriges si me equivoco. Antes de guardar nada ves exactamente lo que va a entrar.",
-    "♻️ Lo repetido se descarta solo: si un gasto ya lo tenías apuntado, no entra dos veces. Se te enseña cuántos entran y cuántos se quedan fuera.",
+    "🏦 Arreglado un lío gordo con Trade Republic: al conectarlo desde el buscador de bancos, algunos gastos se apuntaban al revés (contados como si fueran ingresos). Ya está bien, y además ahora puedes conectarlo por ahí para que tus compras se apunten solas: el saldo lo sigue dando su tarjeta de siempre.",
+    "🧾 Al traer el histórico de un banco, una factura que se repite varios meses ya no se duplica: se cuenta una sola vez.",
+    "🔌 Reconectar Trade Republic desde el aviso de Cartera ahora te lleva directo a su tarjeta.",
+    "💾 Nuevo: Ajustes → Copia de seguridad → «Copias automáticas». Cada día se guarda una copia entera de tus datos, y ahora puedes verla y volver a un día anterior si algo se descuadra.",
+    "🛒 Si cambias tu banco de gasto diario, sus compras ya aparecen en Gastos sin pasos de más.",
+    "🎯 En Gastos y Cartera, al tirar arriba o abajo del todo la lista hace la misma ola que Ajustes.",
+    "✨ La rayita de la barra de abajo ya no atraviesa el botón +: lo salta por encima (y si cambias a mitad, va al sitio sin cruzarlo).",
+    "👇 En Plan, arriba del todo, tira hacia abajo para pasar de Recibos a Deudas y a Metas.",
+    "🐣 Los iconos de la barra hacen su gracia al entrar en cada pestaña.",
+    "📊 El gasto del mes en Resumen (y en el widget) es el mismo número que ves en Gastos.",
    ],
    en:[
-    "📗 Keeping your expenses in a spreadsheet? You can now bring them in: Settings → Backup → «Import an expenses sheet». Excel or CSV both work, whatever your columns are called.",
-    "🔍 I guess what each column is and you fix me if I am wrong. Before anything is saved you see exactly what is coming in.",
-    "♻️ Duplicates are dropped on their own: an expense you already had does not go in twice. You are shown how many come in and how many stay out.",
+    "🏦 Fixed a big mess with Trade Republic: connecting it from the bank search would sometimes log expenses backwards (counted as income). That's sorted, and you can now connect it there so your purchases log themselves: the balance still comes from its usual card.",
+    "🧾 When bringing in a bank's history, a bill that repeats across several months no longer gets duplicated: it's counted once.",
+    "🔌 Reconnecting Trade Republic from the Portfolio banner now takes you straight to its card.",
+    "💾 New: Settings → Backup → «Automatic backups». A full copy of your data is saved every day, and now you can see it and go back to an earlier day if something gets out of sync.",
+    "🛒 If you change your daily-spending bank, its purchases now show up in Expenses with no extra steps.",
+    "🎯 In Expenses and Portfolio, pulling past the top or bottom now gives the same wave as Settings.",
+    "✨ The little bar underneath the tabs no longer crosses through the + button: it hops over it (and if you switch mid-hop, it jumps to place without cutting through).",
+    "👇 In Plan, at the very top, pull down to move from Bills to Debts to Goals.",
+    "🐣 The tab icons do their thing when you land on each one.",
+    "📊 Month spending on Overview (and the widget) matches the number you see in Expenses.",
    ],
    ca:[
-    "📗 Portes les teves despeses en un Excel? Ara es poden portar a l'app: Ajustos → Còpia de seguretat → «Importar un full de despeses». Serveix un Excel o un CSV, tant se val com es diguin les teves columnes.",
-    "🔍 Et proposo què és cada columna i ho corregeixes si m'equivoco. Abans de desar res veus exactament el que entrarà.",
-    "♻️ El repetit es descarta sol: si una despesa ja la tenies apuntada, no entra dues vegades. Se t'ensenya quantes entren i quantes es queden fora.",
+    "🏦 Arreglat un embolic gros amb Trade Republic: en connectar-lo des del cercador de bancs, algunes despeses s'apuntaven al revés (comptades com si fossin ingressos). Ja està bé, i a més ara el pots connectar per aquí perquè les teves compres s'apuntin soles: el saldo el continua donant la seva targeta de sempre.",
+    "🧾 En portar l'històric d'un banc, una factura que es repeteix diversos mesos ja no es duplica: es compta una sola vegada.",
+    "🔌 Reconnectar Trade Republic des de l'avís de Cartera ara et porta directe a la seva targeta.",
+    "💾 Nou: Ajustos → Còpia de seguretat → «Còpies automàtiques». Cada dia es desa una còpia sencera de les teves dades, i ara la pots veure i tornar a un dia anterior si alguna cosa es descuadra.",
+    "🛒 Si canvies el teu banc de despesa diària, les seves compres ja apareixen a Despeses sense passos de més.",
+    "🎯 A Despeses i Cartera, en estirar amunt o avall del tot la llista fa la mateixa ona que Ajustos.",
+    "✨ La ratlleta de la barra de sota ja no travessa el botó +: el salta per sobre (i si canvies a mitja, va al lloc sense travessar-lo).",
+    "👇 A Pla, amunt del tot, estira cap avall per passar de Rebuts a Deutes i a Metes.",
+    "🐣 Les icones de la barra fan la seva gràcia en entrar a cada pestanya.",
+    "📊 La despesa del mes al Resum (i al widget) és el mateix número que veus a Despeses.",
    ]}},
   {v:"4.12.3", d:"1 ago 2026",
    t:{es:"Un arranque más limpio, y tu dinero subiendo hasta la cifra otra vez",
@@ -1640,7 +2061,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       cloud.signOut().then(function(){ showToast(t("au_signedout")); onClose(); });
     });
   };
-  const fileRef=useRef(null);
   // Telemetría: el panel «Actividad» SOLO existe para el admin (gate por email de la sesión;
   // la RLS de app_events lo re-valida en servidor — sin sesión de admin no devuelve filas).
   const [meEmail,setMeEmail]=useState(null);
@@ -1678,6 +2098,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [events,setEvents]=useState(null);
   const [actOpen,setActOpen]=useState(false);   // pantalla «Actividad» (antes acordeón: crecía sin fin)
   const [betaOpen,setBetaOpen]=useState(false);  // pantalla «Revisar la beta» (solo en canal beta)
+  const [hojaOpen,setHojaOpen]=useState(false);  // importar una hoja de gastos (Excel/CSV)
+  const [histOpen,setHistOpen]=useState(false);  // importar histórico del banco (también desde «Mis bancos»)
+  const [autoBackOpen,setAutoBackOpen]=useState(false);  // copias automáticas diarias (state_backups)
+  const yaEnProd=useYaEnProd();                  // lo que corre ya lo sirve Pages → nada que aprobar
   const loadEvents=function(){
     cloud.adminEvents(200).then(function(rows){
       setEvents(rows||[]);
@@ -1773,37 +2197,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     set(function(s){ return Object.assign({},s,{budget:b}); });
     showToast(t("st_budget_saved"));
   };
-  const doExport=function(){
-    try{
-      // El estado React manda: localStorage puede ir ~400 ms por detrás (persistencia debounced 2026-07-18)
-      const data=JSON.stringify(state||mcLoadRaw(mcStateKey()),null,2);
-      const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
-      const a=document.createElement("a");
-      a.href=url; a.download="mi-cartera-"+new Date().toISOString().slice(0,10)+".json"; a.click();
-      setTimeout(function(){ URL.revokeObjectURL(url); },1000);
-      showToast(t("st_backup_dl"));
-    }catch(e){ showToast("✕ "+((e&&e.message)||e)); }
-  };
-  const doImport=function(ev){
-    const f=ev.target.files&&ev.target.files[0]; if(!f) return;
-    const r=new FileReader();
-    r.onload=function(){
-      // el try SOLO cubre el parseo: si envolviera también el confirm (ahora asíncrono), un
-      // fallo al restaurar se tragaría por el catch de «archivo inválido» y engañaría.
-      let obj=null;
-      try{
-        obj=JSON.parse(r.result);
-        if(!obj || !obj.accounts) throw new Error(t("st_badfile"));
-      }catch(e){ showToast("✕ "+((e&&e.message)||e)); return; }
-      askConfirm({ title:t("st_confirm_import"), sub:t("st_confirm_import_sub"), ok:t("st_confirm_import_ok"), danger:true })
-        .then(function(yes){
-          if(!yes) return;
-          mcSaveRaw(mcStateKey(),obj); set(function(){ return obj; });
-          showToast(t("st_imported")); onClose();
-        });
-    };
-    r.readAsText(f);
-  };
+  /* `doExport`/`doImport` (copia manual a fichero JSON) retirados el 2026-08-04 a petición suya:
+     la copia automática diaria en la nube ya cubre el caso y se restaura desde Ajustes → Copia de
+     seguridad. El importar a mano además sobrescribía el estado ENTERO de golpe, que es la clase de
+     botón que no quieres al lado de nada. El <input type=file> que lo disparaba también se fue. */
   // --- Rediseño Claude Design (2026-07-10): tarjetas con filas agrupadas (.set-card/.set-row),
   // valores a la derecha, acordeones para las opciones y switches iOS (.sw). El contenido y la
   // lógica son los mismos de siempre; solo cambia la presentación.
@@ -2083,10 +2480,21 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         checkUpdates),
       React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.45,padding:"0 14px 12px"}}, t("st_widget_hint"))
     ),
-    grp("backup","🗄️",t("backup"),"copia seguridad backup exportar importar json restaurar hoja excel csv gastos",null,
-      row("exp","⬇️",t("do_export").replace("⬇️ ",""),null,doExport),
-      row("imp","⬆️",t("do_import").replace("⬆️ ",""),null,function(){ fileRef.current&&fileRef.current.click(); }),
-      row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); })
+    /* IMPORTACIONES, todas juntas (2026-08-04, petición suya). Antes estaban repartidas: la hoja de
+       Excel dentro de «Copia de seguridad» —donde nadie la buscaría— y el histórico del banco
+       escondido en «Mis bancos», al final de la lista. Son la misma tarea («traerme lo que ya tengo
+       en otro sitio»), así que viven en el mismo sitio. El histórico sigue accesible también desde
+       «Mis bancos», que es donde estaba y donde tiene sentido justo tras conectar un banco. */
+    grp("import","📥",t("st_imports"),"importar import excel hoja csv gastos historico banco extracto",null,
+      row("imphoja","📗",t("ih_title"),null,function(){ setHojaOpen(true); }),
+      row("imphist","🏦",t("bp_hist_btn"),null,function(){ setHistOpen(true); })
+    ),
+    /* COPIA DE SEGURIDAD: solo la automática. El exportar/importar JSON a mano se retiró
+       (2026-08-04, petición suya: «quítame lo de importar y exportar datos dado que ya hay el
+       automático») — la copia diaria se guarda sola en la nube y se restaura desde aquí, así que el
+       fichero manual era una vía paralela que además podía sobrescribir el estado entero de golpe. */
+    cloud.enabled() && uid && grp("backup","🗄️",t("backup"),"copia seguridad backup restaurar automatica",null,
+      row("autoback","🕐",t("bk_auto_title"),null,function(){ setAutoBackOpen(true); })
     ),
     hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHojaOpen(false); },goGastos:goGastos}), document.body),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
@@ -2207,9 +2615,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
             // Solo tiene sentido estando en beta — en estable no hay nada que aprobar.
             beta && (function(){
               const pack=betaChecklist(CONFIG.APP_VERSION);
-              const done=store.get("_betaReview_"+pack.v)||{};
-              const n=Object.keys(done).length, tot=pack.items.length;
-              return row("betarev","🔍","Revisar esta beta", tot?(n+"/"+tot):null, function(){ setBetaOpen(true); });
+              const c=betaMarksCount(pack);
+              // Con la versión ya subida a producción la fila deja de cantar «3/8» — ese contador
+              // se leía como trabajo pendiente cada vez que abría Ajustes, y no lo era (2026-07-28).
+              if(yaEnProd) return row("betarev","🔍","Revisar esta beta","✅ ya en producción", function(){ setBetaOpen(true); });
+              return row("betarev","🔍","Revisar esta beta", c.tot?(c.n+"/"+c.tot):null, function(){ setBetaOpen(true); });
             })(),
             (function(){
               // La bandera CRUDA: Ajustes pinta el estado que tendrá la PRÓXIMA sesión, que es lo
@@ -2238,10 +2648,14 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
       )
     ),
     betaOpen && ReactDOM.createPortal(React.createElement(BetaReviewPanel,{showToast:showToast,onClose:function(){ setBetaOpen(false); }}), document.body),
+    hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,goGastos:goGastos,onClose:function(){ setHojaOpen(false); }}), document.body),
+    // Sin `linkEnts`: el propio panel cae a los bancos de gasto cuando no se le pasa lista (ver
+    // `allowList` en BankHistoryImport). Desde «Mis bancos» sí se le pasan los enlaces vivos.
+    histOpen && ReactDOM.createPortal(React.createElement(BankHistoryImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHistOpen(false); }}), document.body),
+    autoBackOpen && ReactDOM.createPortal(React.createElement(AutoBackupsPanel,{state:state,set:set,showToast:showToast,uid:uid,onClose:function(){ setAutoBackOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
 
-    React.createElement("input",{ref:fileRef,type:"file",accept:"application/json,.json",style:{display:"none"},onChange:doImport}),
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,
     // aquí se ve al momento si sigues en una APK vieja aunque la web ya esté al día (2026-07-26).
