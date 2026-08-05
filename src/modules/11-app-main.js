@@ -48,6 +48,22 @@ function App(){
       if(nav) nav.classList.add("botnav-ola-clear");
     }catch(e){}
   };
+  // Cortar el clear YA (swipe de tabs, cambio de pestaña): si no, la barra «desaparece»
+  // al deslizar de lado o queda rara hasta ir a Resumen (feedback 5/8).
+  const endTopClearNow=function(doReveal){
+    if(topClearTimer.current){ clearTimeout(topClearTimer.current); topClearTimer.current=0; }
+    topClearOn.current=false;
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-ola-clear");
+    }catch(e){}
+    if(doReveal && (revealAfterTopClear.current || navHiddenRef.current)){
+      revealAfterTopClear.current=false;
+      revealNav();
+    } else {
+      revealAfterTopClear.current=false;
+    }
+  };
   const scheduleEndTopClear=function(){
     if(!topClearOn.current) return;
     if(topClearTimer.current) clearTimeout(topClearTimer.current);
@@ -137,11 +153,15 @@ function App(){
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){
-      beginTopClear();
-      // No revealNav aquí: quitaría el clear y mataría la ola. Tras el gesto, scheduleEndTopClear.
+      // Clear SOLO si venimos de abajo (fling/scroll al tope). En el tope quieto no tocar la barra.
+      if(dy<-2){
+        beginTopClear();
+        if(navHiddenRef.current) revealAfterTopClear.current=true;
+      } else if(navHiddenRef.current && !topClearOn.current){
+        revealNav();
+      }
       if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
       navHideArmed.current=false;
-      if(navHiddenRef.current) revealAfterTopClear.current=true;
       return;
     }
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
@@ -161,11 +181,17 @@ function App(){
       const max=p&&p.scrollHeight!=null?(p.scrollHeight-p.clientHeight):0;
       const atTop=y!=null && y<=8;
       const atBottom=max>0 && y!=null && y>=max-4;
-      if(atTop) scheduleEndTopClearRef.current();
+      if(atTop){
+        scheduleEndTopClearRef.current();
+        // Nunca aplicar hide al llegar ARRIBA (antes el delay del borde escondía la barra en el tope).
+        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+        navHideArmed.current=false;
+        return;
+      }
       if(!navHideArmed.current) return;
       if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-      // En el borde el stretch nativo sigue tras scrollend: esperar antes del hide.
-      const delay=(atBottom||atTop||navHideFastRef.current)?450:0;
+      // Abajo: el stretch sigue tras scrollend — esperar antes del hide.
+      const delay=(atBottom||navHideFastRef.current)?450:0;
       navBotSync.current=setTimeout(function(){ applyNavHideRef.current(); }, delay);
     };
     document.addEventListener("scrollend", onScrollEnd, true);
@@ -1987,6 +2013,12 @@ function App(){
     if(hostTabRef.current!==i){ hostTabRef.current=i; setHostTab(i); }
     try{ if(viewportRef.current) viewportRef.current.classList.add("scroll-host-open"); }catch(e){}
     try{ if(appShellRef.current) appShellRef.current.classList.add("scroll-host-on"); }catch(e){}
+    // Al aterrizar tras swipe: sin clear residual (si no, Gastos parece «sin el fix» un segundo).
+    endTopClearNow(false);
+    try{
+      const nav=document.querySelector(".botnav");
+      if(nav) nav.classList.remove("botnav-ola-clear");
+    }catch(e){}
     // Recolocar touch-action (perfil arriba en Inicio)
     if(pgs[i]) syncPageTouchAction(pgs[i], i);
   };
@@ -2167,6 +2199,7 @@ function App(){
           freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
+          endTopClearNow(true);  // barra visible al cambiar de tab (no «desaparece» al deslizar)
           leaveScrollHost();   // salir del fixed: el carrusel vuelve a translate3d
           if(trackRef.current) trackRef.current.classList.add("dragging");
           navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
