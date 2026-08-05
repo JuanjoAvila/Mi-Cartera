@@ -2,7 +2,8 @@
 
 > Estado a 2026-08-05 · **v4.15.0** — en **`beta`**: tandas `season-fx-soft`, `fx-converter`,
 > `presupuesto-resumen`, `otros-bancos-vista`, `gastos-filtros-ia`, `fix-novedades-nag`,
-> `fix-season-glow` (destello fijo + lluvia sin reinicio al swipe). Producción = **4.14.1**.
+> `fix-season-glow`, `gastos-filtros-ubicacion`, `fix-season-portal`, `fix-season-glow-steady`
+> (destello estable al scroll, sin flash). Producción = **4.14.1**.
 > APK **35 / 4.12.0**.
 >
 > Anterior: 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos

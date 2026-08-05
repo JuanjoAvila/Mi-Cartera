@@ -288,13 +288,19 @@
      ⚠ NO montar fixed DENTRO de `#root` (`position:relative`): medido 2026-08-05 en su Oppo
      con ADB+CDP en la build .9 (f589f89c) — computed=fixed, glowTop=0, PERO el RGB de la
      esquina saltaba +31 al hacer scroll (19,28,20 → 26,41,31) y él lo veía aparecer/desaparecer.
-     Mismo patrón que los sheets: portal a `document.body` en `.season-portal` (centra 520px). */
-  /* Intensidad: opacity .55-.85 + gradientes .3-.42 — si baja de ahí, en reposo no se ve. */
+     Mismo patrón que los sheets: portal a `document.body` en `.season-portal` (centra 520px).
+     ⚠ NO dejar el destello TRANSLÚCIDO a 38vh encima del contenido (build .11): el gráfico y
+     las cartillas al pasar por debajo iluminaban el composite (~+30 RGB) y él lo veía como un
+     flash al scrollear. Animación y partículas NO eran la causa (congelándolas el salto seguía).
+     Fix 2026-08-05: ambiente en el fondo OPACO del host + cinta corta opaca (safe-top+8px) con
+     el gradiente encima de `var(--bg)`. Saludo/avatar empiezan ~70px → debajo de la cinta.
+     `background-size` ampliado: el radial nació para 38vh y en la cinta corta no se notaba. */
   .season-portal{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
     width:100%;max-width:520px;pointer-events:none;z-index:36;}
-  .season-glow{position:absolute;top:0;left:0;right:0;height:38vh;z-index:1;pointer-events:none;
-    opacity:.7;animation:seasonglow 9s ease-in-out infinite alternate;background:var(--season-glow-top);}
-  @keyframes seasonglow{0%{opacity:.55;}100%{opacity:.85;}}
+  .season-glow{position:absolute;top:0;left:0;right:0;height:calc(var(--safe-top) + 8px);z-index:1;pointer-events:none;
+    opacity:1;background:var(--season-glow-top),var(--bg);
+    background-size:200% 600%,160% 500%,auto;background-position:100% 0,0 0,0 0;}
+  /* Gradientes .3-.42: si bajan de ahí, en reposo la cinta no se distingue del fondo. */
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
      ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
      era el sitio equivocado + dejaba ver la lista a través). */
@@ -360,6 +366,7 @@
   @media (prefers-reduced-motion:reduce){
     .season-portal{display:none;}
     .season-amb,.season-glow{display:none;}
+    html[data-season] .page.page-scroll-host{background:var(--bg);}
     html[data-season] .botnav-fab::after{animation:none;opacity:0;}
     html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
   }
@@ -505,9 +512,12 @@
        de la barra de estado / iconos del sistema (feedback 5/8). El `.page` normal NO lo
        necesita porque ya cuelga dentro de `.app` con padding-top.
        FONDO OPACO, SIEMPRE (incidente 2026-08-05): transparente → Inicio+Gastos a la vez.
-       Lluvia global z-37; destello de ARRIBA = html::before fixed z-36 (no se va al scroll). */
+       Con temática, el gradiente va EN este fondo (detrás de cartillas): así el destello no
+       se mezcla encima del gráfico al scrollear (flash medido en 4.15.0.11). */
     background:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
+  html[data-season] .page.page-scroll-host{background:var(--season-glow-top),var(--bg);}
+  html.reduce-motion .page.page-scroll-host{background:var(--bg);}
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
   .page.page-scroll-host.mc-touch-own{touch-action:none;}

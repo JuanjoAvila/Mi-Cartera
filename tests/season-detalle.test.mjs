@@ -3,6 +3,10 @@
  *
  * Build .9 (f589f89c): intensidad + nav-sin-blur NO bastaron — RGB esquina +31 al scroll,
  * barra seguía al 88% en swipe. Fix real: portal fuera de #root + botnav opaco siempre.
+ *
+ * Build .11 (7c40d2fa): portal OK (posición fija), pero el destello TRANSLÚCIDO a 38vh encima
+ * del contenido hacía que gráfico/cartillas al scrollear iluminaran el composite (~+30 RGB).
+ * Fix: cinta opaca corta (safe-top+8) + ambiente en fondo del host; sin animación de opacity.
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -37,6 +41,17 @@ assert.doesNotMatch(main, /show\s*&&\s*seasonPool/, "NO por pestaña");
 
 /* Host opaco */
 assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/, "host opaco");
+/* Ambiente de temporada EN el fondo del host (detrás de cartillas, no encima) */
+assert.match(
+  shell,
+  /html\[data-season\]\s+\.page\.page-scroll-host\{[^}]*background:\s*var\(--season-glow-top\),\s*var\(--bg\)/,
+  "host con temática lleva gradiente detrás del contenido"
+);
+assert.match(
+  shell,
+  /html\.reduce-motion\s+\.page\.page-scroll-host\{[^}]*background:\s*var\(--bg\)/,
+  "reduce-motion quita el gradiente del host"
+);
 
 /* Barra: hide sin opacity (evita ver la lista a través) */
 assert.match(
@@ -68,23 +83,26 @@ assert.match(
   "nav-sin-blur mantiene fondo sólido"
 );
 
-assert.match(shell, /@keyframes\s+seasonglow/, "seasonglow");
 assert.match(shell, /@keyframes\s+seasonDrift/, "seasonDrift");
+/* Sin pulso de opacity: en .11 el respiro + contenido debajo = flash al scrollear */
+assert.doesNotMatch(shell, /@keyframes\s+seasonglow/, "seasonglow no puede volver (flash al scroll)");
 assert.doesNotMatch(
   shell,
-  /@keyframes\s+seasonglow\{[^}]*transform:/,
-  "seasonglow sin transform (evita saltos de compositor en su WebView)"
+  /\.season-glow\{[^}]*animation:\s*seasonglow/,
+  "`.season-glow` sin animación de opacity"
 );
 
-/* Intensidad mínima del destello */
+/* Cinta corta opaca: presencia constante sin tapar saludo/avatar (~70px) */
 {
   const glowRule = shell.match(/\.season-glow\{([^}]*)\}/);
   assert.ok(glowRule, "falta la regla `.season-glow`");
-  const baseOp = parseFloat((glowRule[1].match(/opacity:\s*([\d.]+)/) || [])[1] || "0");
-  assert.ok(baseOp >= 0.6, "`.season-glow` demasiado tenue en reposo (opacity base < 0.6): " + baseOp);
-  const kf = shell.match(/@keyframes\s+seasonglow\{([\s\S]*?)\}\s*(?=\/\*|@|\.)/);
-  const minOp = kf ? Math.min(...[...kf[1].matchAll(/opacity:\s*([\d.]+)/g)].map((m) => parseFloat(m[1]))) : 0;
-  assert.ok(minOp >= 0.45, "el mínimo del respiro de `seasonglow` es demasiado tenue: " + minOp);
+  const body = glowRule[1];
+  assert.match(body, /height:\s*calc\(\s*var\(--safe-top\)\s*\+\s*8px\s*\)/, "cinta = safe-top+8px");
+  assert.doesNotMatch(body, /height:\s*38vh/, "ya no a 38vh translúcido encima del contenido");
+  const baseOp = parseFloat((body.match(/opacity:\s*([\d.]+)/) || [])[1] || "0");
+  assert.ok(baseOp >= 0.99, "`.season-glow` debe ser opaco (opacity 1), no translúcido: " + baseOp);
+  assert.match(body, /background:\s*var\(--season-glow-top\),\s*var\(--bg\)/, "gradiente + bg bake");
+  assert.match(body, /background-size:/, "background-size ampliado para la cinta corta");
   for (const line of shell.matchAll(/--season-glow-top:([^;]+);/g)) {
     for (const m of line[1].matchAll(/rgba\([^)]+,([\d.]+)\)/g)) {
       assert.ok(parseFloat(m[1]) >= 0.3, "gradiente de temporada demasiado tenue (< .3): " + line[1].slice(0, 80));
@@ -94,4 +112,4 @@ assert.doesNotMatch(
 assert.doesNotMatch(comps, /\{id:"temporada"\s*,\s*t:/, "tanda temporada fuera");
 assert.match(comps, /temporada.*QUITADA|QUITADA.*temporada/i, "por qué se quitó");
 
-console.log("ok: season-portal en body; botnav opaco; glow sin transform en keyframes");
+console.log("ok: season cinta opaca + host bg; sin seasonglow; botnav opaco");

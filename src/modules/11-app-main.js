@@ -2804,6 +2804,8 @@ function App(){
   // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
   // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
   // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
+  // Build .11: portal OK, pero capa translúcida 38vh encima del contenido → flash al scrollear
+  // (gráfico/cartillas iluminaban el composite). Cinta opaca corta + gradiente en fondo del host.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;

@@ -1477,6 +1477,11 @@ var RELEASE_NOTES=[
        "Con temática activa, baja y sube en Gastos: el destello de arriba a la derecha NO debería aparecer y desaparecer al hacer scroll.",
        "Desliza de pestaña (Inicio ↔ Gastos ↔ Plan): la barra de abajo no debería dejar ver la lista a través suya ni un segundo.",
        "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
+     ]},
+     {id:"fix-season-glow-steady", t:"✨ Destello estable al hacer scroll", items:[
+       "Con temática puesta, el destello de arriba a la derecha se ve igual parado y mientras bajas/subes la lista — ya no se pone más intenso al scrollear.",
+       "El saludo y el botón del perfil siguen bien visibles debajo del destello.",
+       "La barra de abajo sigue limpia (sin ver la lista a través).",
      ]}
    ],
    items:{

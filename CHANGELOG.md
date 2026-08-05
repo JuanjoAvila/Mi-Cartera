@@ -7,7 +7,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
 `gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`,
-`fix-season-portal`.
+`fix-season-portal`, `fix-season-glow-steady`.
 
 1. **Ambientación** (`.season-amb` + destello superior):
    **Incidentes 2026-08-05 (mismo día):**
@@ -90,6 +90,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
       `color(srgb … / 0.88)` pese al override — la regla contextual no ganaba en su WebView.
       Fix: `.botnav` default pasa a `background:var(--bg-2)` opaco siempre (sin color-mix 88%).
       Tests actualizados en `tests/season-detalle.test.mjs`.
+11. **Fix 2026-08-05 — quinta pasada, destello que se intensificaba al scrollear**
+    (`fix-season-glow-steady`): tras .11 el destello YA estaba fijo (portal a `body`) y se
+    veía en reposo, pero al bajar la lista «se ponía más intenso». Medido otra vez en su Oppo
+    (ADB screencap + CDP, 4.15.0.11): congelar `seasonglow` y ocultar partículas NO bajaba el
+    salto RGB (~33). Apagar el destello y scrollear seguía saltando — el muestreo pillaba
+    cartillas/gráfico. Causa real: capa TRANSLÚCIDA a 38vh ENCIMA del contenido; al pasar el
+    gráfico mint o una cartilla por debajo, el composite se iluminaba (flash percibido). Fix:
+    ambiente en el fondo OPACO del host (`html[data-season] .page-scroll-host` con
+    `--season-glow-top, var(--bg)`); cinta `.season-glow` corta (`safe-top + 8px`, debajo del
+    saludo/avatar ~70px) con el mismo gradiente + `var(--bg)` bake, `opacity:1` fija y SIN
+    animación; `background-size` ampliado para que el radial se note en la cinta. Evidencia
+    post-inyección: delta RGB esquina rest→scroll ≈ 0–4 (antes ~33), mid-fling 0, presencia
+    ≥55, saludo/JA visibles. Tests en `tests/season-detalle.test.mjs`.
 
 Sin APK nuevo (35 / 4.12.0).
 
