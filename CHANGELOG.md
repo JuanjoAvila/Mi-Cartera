@@ -2,7 +2,7 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar] — 2026-08-05 (noche 5)
+## [4.13.0] — 2026-08-05
 ### Barra quieta de verdad al tope y al swipear tabs
 
 Causa del parpadeo: `botnav-ola-clear` se armaba en el tirón al tope (también con
@@ -10,7 +10,7 @@ deriva al cambiar de pestaña) y en el scroll al llegar arriba → opacity 0↔1
 Ya no se arma: al tope solo reveal + pin breve; al swipe de tabs, pin 1,4 s forzado
 visible. La ola sigue; la barra no pelea.
 
-## [Sin publicar] — 2026-08-05 (noche 4)
+### 2026-08-05 (noche 4)
 ### Rayita, cifra de presupuesto y barra a mil
 
 1. **Rayita Gastos↔Plan:** si el arco se interrumpe a mitad, snap al destino sin relanzar
@@ -20,7 +20,7 @@ visible. La ola sigue; la barra no pelea.
 3. **Barra al tope a mil:** `botnav-ola-clear` solo si la barra estaba escondida; pin breve si
    hide/reveal se pelean en <200 ms.
 
-## [Sin publicar] — 2026-08-05 (noche 3)
+### 2026-08-05 (noche 3)
 ### Ola nativa + barra usable
 
 1. **Host fixed** + `hostTab` en React + safe-top + rise sin matrix.
@@ -29,7 +29,7 @@ visible. La ola sigue; la barra no pelea.
 5. **Host perdido random:** `enterScrollHost` fallaba si había dedo al acabar el settle →
    estado «sin parches». Ahora solo bloquea en tab-drag activo + `ensureScrollHost` al tocar.
 
-## [Sin publicar] — 2026-08-05 (noche 2)
+### 2026-08-05 (noche 2)
 ### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)
 
 Tras labs en su Oppo: quitar `contain`/`preventDefault` no bastaba; aparcar el track sin
@@ -45,7 +45,7 @@ se perdía el `page-scroll-host` a mitad del momentum. Ahora esas clases viven e
 
 Al deslizar tabs se sale del host y vuelve el `translate3d`; al asentar, otra vez host.
 
-## [Sin publicar] — 2026-08-05 (noche)
+### 2026-08-05 (noche)
 ### Ola de vuelta + tabs a mitad/abajo sin matar el scroll
 
 En .39 (Oppo): sin ola en ninguna tab; tabs a mitad/abajo bloqueados del todo; al quitar
@@ -76,7 +76,7 @@ la página entera». `mc-touch-own` en Plan al estar arriba dejaba `touch-action
 ni scroll. Ahora Plan en reposo es pan-y; `mc-touch-own` solo durante el gesto que nace arriba
 (tirón abajo = segmento; dedo arriba = scroll a mano).
 
-## [Sin publicar] — 2026-08-04 (noche, 2)
+### 2026-08-04 (noche, 2)
 ### Ola: mapa exacto — Gastos/Cartera ambos bordes; Resumen/Plan solo abajo
 
 Aclaración suya al probar: no era «ola en todas partes igual». Gastos y Cartera → ola arriba y
@@ -85,7 +85,7 @@ ponía `mc-touch-own` también abajo de Plan (para el segmento inverso) y eso ma
 Quitado el segmento inverso por abajo: el círculo Recibos→Deudas→Metas solo va tirando hacia abajo
 arriba del todo; abajo de Plan es pan-y puro.
 
-## [Sin publicar] — 2026-08-04 (noche)
+### 2026-08-04 (noche)
 ### Plan-swipe y ola: el muro era el arco del pulgar, y a mitad de lista el viewport robaba el gesto
 
 Dos tandas que seguían en beta tras el OK del tutorial (8/0 en 4.13.0.36):
@@ -106,7 +106,7 @@ Dos tandas que seguían en beta tras el OK del tutorial (8/0 en 4.13.0.36):
 3. **Panel beta**: quitadas del array `tandas` las ya aprobadas (`tutorial-gestos`, `bancos`,
    `temporada`, `reservar`, `import-docx-pdf`). Quedan solo `gestos` y `plan-swipe`.
 
-## [Sin publicar] — 2026-08-04
+### 2026-08-04
 ### Tutorial: el descuadre era el `zoom` de la letra, no (solo) el portal
 
 Tercera tanda con foto (4/8): tras el portal a `body` **seguía igual** en su Oppo. Medido por
@@ -127,7 +127,7 @@ usa smalltext, por eso el e2e salía verde.
 (Portal a `body`, mensajes sin «verde»/«borde», barra forzada visible: siguen de la tanda
 anterior; no bastaban solos en su móvil.)
 
-## [Sin publicar] — 2026-08-01 (segunda vuelta)
+### 2026-08-01 (segunda vuelta)
 ### El rebote de las pestañas era el navegador todo el tiempo, y una tanda subida se queda del todo fuera de beta
 
 Tercer intento del rebote, y esta vez con la descripción exacta: «cuando bajas hasta abajo del
@@ -160,7 +160,7 @@ con `applicationIdSuffix ".debug"` la instala como `com.micartera.app.debug` —
 móvil, con su propio nombre («Mi Cartera (debug)») y sus propios datos, conviviendo con la de
 producción sin tocarla.
 
-## [Sin publicar] — 2026-08-01
+### 2026-08-01
 ### Repaso de la ronda 4.13.0: el panel de tandas contaba mal, y la promoción por tandas prometía algo que no podía hacer
 
 Revisión del trabajo hecho desde el móvil los días 28/7 → 1/8 (nueve commits). El grueso está bien
@@ -223,7 +223,7 @@ sincronizar; la trampa queda escrita en la memoria para no repetirla.
 
 ---
 
-## [4.13.0] — 2026-07-28
+### Base de la ronda (28 jul 2026)
 ### Importar una hoja de gastos, rebote en las pestañas y la rayita rodeando el +
 
 Tanda de su lista del 2026-07-28, con la app ya pulida («ahora que está tan pulida quería nuevas

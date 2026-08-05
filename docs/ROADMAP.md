@@ -1,6 +1,11 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-01 · **v4.13.0** — en **beta**: **el arranque YA está en producción como 4.12.3**
+> Estado a 2026-08-05 · **v4.13.0** — **EN PRODUCCIÓN**. Ronda beta cerrada: gestos (ola nativa
+> arriba/abajo, barra quieta, rayita) y plan-swipe aprobados 5/8 en `4.13.0.49`. Arranque ya había
+> subido como 4.12.3; import de hojas como 4.12.4; bancos/temporada/reservar/docx en la misma
+> 4.13.0. APK sigue en **35 / 4.12.0** (sin cambios nativos; llega por OTA).
+>
+> Anterior: 2026-08-01 · **v4.13.0** — en **beta**: **el arranque YA está en producción como 4.12.3**
 > (2026-08-01, primera vez que se sube por feature y no por tanda entera: el nombre ya no cambia
 > de forma a media carga —`font-display:swap`, la causa real de «algo raro antes del icono»—, el
 > patrimonio vuelve a contar hasta la cifra visible, el logo se va antes que el fondo, y las
@@ -43,8 +48,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.13.0** (beta) · producción en `main` = **4.12.3** (el arranque de esta ronda, subido solo) |
-| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.12.3: llegó por OTA sobre esta misma APK. |
+| Web / OTA (`VERSION`) | **4.13.0** (producción) |
+| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.13.0: llega por OTA sobre esta misma APK. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
 
@@ -73,11 +78,13 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> ✅ **4.13.0 en beta** — importar hojas de gastos, rebote en las pestañas, la rayita rodeando el +, iconos animados, temporadas que paran, contador del patrimonio visible otra vez. Producción = **4.12.1**.
+> ✅ **4.13.0 EN PRODUCCIÓN** (2026-08-05). Ola nativa, plan-swipe, bancos, tutorial, reserva,
+> temporadas. Producción = **4.13.0**. APK = **35 / 4.12.0**.
 > **Expediente del tirón CERRADO de verdad** (2026-07-28, suyo desde el móvil): «lo del tirón al deslizar arregladísimo» y «lo del perfil también va ultra fluido, sin stoppers». Histórico en **[LAG-DESLIZAR.md](LAG-DESLIZAR.md)** — se deja por lo que enseña sobre cómo medir, no porque quede nada que arreglar.
 
-1. Probar en el móvil la checklist de esta beta (sobre todo el importador con un Excel de verdad).
-2. Si OK → Promote beta → `main`.
+1. ~~Probar en el móvil la checklist de esta beta~~ → aprobada (gestos + plan-swipe 5/8).
+2. ~~Promote beta → `main`~~ → en curso / hecho.
+3. Siguiente: lo que diga el backlog vivo en `docs/memoria/` (crucero/liras, etc.).
 
 ### Pendiente de respuesta suya
 

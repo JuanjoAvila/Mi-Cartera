@@ -1424,42 +1424,13 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.13.0", d:"28 jul 2026",
+  {v:"4.13.0", d:"5 ago 2026",
    t:{es:"La app se mueve como te gusta, y tus bancos ya no se lían",
       en:"The app moves the way you like, and your banks stop getting mixed up",
       ca:"L'app es mou com t'agrada, i els teus bancs ja no s'embolica"},
-   /* TANDAS: varias betas a la vez, aprobables por separado (petición suya 2026-07-29: «que se
-      pudieran implementar varias betas a la vez y que me des la opción de aprobarlas por separado
-      pero que estén juntas»). Solo las ve ÉL, en el panel de revisión; la familia sigue viendo
-      `items` de corrido en Novedades, que es una lista de novedades y no un parte de trabajo. */
-   tandas:[
-    /* TANDA `import` QUITADA por la misma regla (2026-08-03): la aprobó (6/6 ok, sin fallos) el
-       3/8 y se promocionó sola a producción como 4.12.4 el mismo día, separada a mano de
-       gestos/bancos que siguen aquí. Su checklist de verdad, en el CHANGELOG de la 4.12.4 y en
-       docs/ROADMAP.md. */
-    /* TANDA `tutorial-gestos` QUITADA 2026-08-04 noche: aprobada 8/0 en 4.13.0.36 (zoom de la
-       letra + portal a body). Misma regla: aprobada → se BORRA del array, no se marca hecha. */
-    {id:"gestos", t:"🎯 Rebote y barra de abajo", items:[
-      "Gastos y Cartera: ola ARRIBA y ABAJO a la primera (igual que Ajustes), sin muro ni segundo tirón.",
-      "Un flick hacia abajo hasta el final: al llegar, la ola sale sola (como en Ajustes).",
-      "Resumen y Plan: ola SOLO ABAJO. Arriba de Resumen abre el perfil; arriba de Plan cambia de sección (Recibos→Deudas→Metas).",
-      "A mitad o abajo de una lista, deslizar de LADO sigue cambiando de pestaña; tirar hacia abajo/arriba scrollea o hace la ola.",
-      "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
-      "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
-      "La rayita de Gastos a Plan hace un ARCO por encima del + — si cambias a mitad, salta al sitio SIN atravesarlo.",
-      "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
-      "Si vas arriba del todo o cambias de pestaña, la barra se queda QUIETA (sin aparecer/desaparecer).",
-    ]},
-    {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
-      "Dentro de Plan, con la lista ARRIBA del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
-      "Abajo del todo en Plan: tirar más hace la OLA (como Gastos), NO cambia de sección.",
-      "A mitad de una lista larga de Deudas o Metas, tirar hacia abajo o arriba es scroll normal — NO cambia de sección NI de pestaña.",
-      "Deslizar de lado para cambiar entre Inicio/Gastos/Plan/Cartera sigue funcionando igual dentro de Plan.",
-    ]},
-    /* TANDA `arranque` QUITADA (aprobada → 4.12.3). `canal` QUITADA (aprobada 1/8).
-       `bancos` / `temporada` / `reservar` / `import-docx-pdf` QUITADAS 2026-08-04: aprobadas
-       todas en 4.13.0.31 (bancos 16/0, resto sin fallos). Regla: se BORRAN del array. */
-   ],
+   /* TANDAS: todas las de esta ronda ya están en producción (aprobadas → se BORRAN del array).
+      Últimas: gestos + plan-swipe el 5/8 en 4.13.0.49. */
+   tandas:[],
    items:{
    /* ⚠ SIN LOS 4 PUNTOS DE ARRANQUE (patrimonio, splash, temporadas, ambientación) NI LOS 3 DE
       IMPORTAR HOJA (Excel/CSV): esas dos partes de la ronda ya se promocionaron SOLAS a producción
@@ -1471,8 +1442,9 @@ var RELEASE_NOTES=[
     "🔌 Reconectar Trade Republic desde el aviso de Cartera ahora te lleva directo a su tarjeta.",
     "💾 Nuevo: Ajustes → Copia de seguridad → «Copias automáticas». Cada día se guarda una copia entera de tus datos, y ahora puedes verla y volver a un día anterior si algo se descuadra.",
     "🛒 Si cambias tu banco de gasto diario, sus compras ya aparecen en Gastos sin pasos de más.",
-    "🎯 Al llegar al final de cualquier pestaña la lista rebota, como en el resto de la app.",
+    "🎯 En Gastos y Cartera, al tirar arriba o abajo del todo la lista hace la misma ola que Ajustes.",
     "✨ La rayita de la barra de abajo ya no atraviesa el botón +: lo salta por encima (y si cambias a mitad, va al sitio sin cruzarlo).",
+    "👇 En Plan, arriba del todo, tira hacia abajo para pasar de Recibos a Deudas y a Metas.",
     "🐣 Los iconos de la barra hacen su gracia al entrar en cada pestaña.",
     "📊 El gasto del mes en Resumen (y en el widget) es el mismo número que ves en Gastos.",
    ],
@@ -1482,8 +1454,9 @@ var RELEASE_NOTES=[
     "🔌 Reconnecting Trade Republic from the Portfolio banner now takes you straight to its card.",
     "💾 New: Settings → Backup → «Automatic backups». A full copy of your data is saved every day, and now you can see it and go back to an earlier day if something gets out of sync.",
     "🛒 If you change your daily-spending bank, its purchases now show up in Expenses with no extra steps.",
-    "🎯 Reaching the end of any tab now bounces, like everywhere else in the app.",
+    "🎯 In Expenses and Portfolio, pulling past the top or bottom now gives the same wave as Settings.",
     "✨ The little bar underneath the tabs no longer crosses through the + button: it hops over it (and if you switch mid-hop, it jumps to place without cutting through).",
+    "👇 In Plan, at the very top, pull down to move from Bills to Debts to Goals.",
     "🐣 The tab icons do their thing when you land on each one.",
     "📊 Month spending on Overview (and the widget) matches the number you see in Expenses.",
    ],
@@ -1493,8 +1466,9 @@ var RELEASE_NOTES=[
     "🔌 Reconnectar Trade Republic des de l'avís de Cartera ara et porta directe a la seva targeta.",
     "💾 Nou: Ajustos → Còpia de seguretat → «Còpies automàtiques». Cada dia es desa una còpia sencera de les teves dades, i ara la pots veure i tornar a un dia anterior si alguna cosa es descuadra.",
     "🛒 Si canvies el teu banc de despesa diària, les seves compres ja apareixen a Despeses sense passos de més.",
-    "🎯 En arribar al final de qualsevol pestanya la llista rebota, com a la resta de l'app.",
+    "🎯 A Despeses i Cartera, en estirar amunt o avall del tot la llista fa la mateixa ona que Ajustos.",
     "✨ La ratlleta de la barra de sota ja no travessa el botó +: el salta per sobre (i si canvies a mitja, va al lloc sense travessar-lo).",
+    "👇 A Pla, amunt del tot, estira cap avall per passar de Rebuts a Deutes i a Metes.",
     "🐣 Les icones de la barra fan la seva gràcia en entrar a cada pestanya.",
     "📊 La despesa del mes al Resum (i al widget) és el mateix número que veus a Despeses.",
    ]}},
