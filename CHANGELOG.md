@@ -3,9 +3,9 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
 ## [4.15.0] — 2026-08-05
-### Ambientación suave + conversor FX + presupuesto alineado (beta)
+### Ambientación suave + conversor FX + presupuesto alineado + extracto total (beta)
 
-**Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`.
+**Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`.
 
 1. **Ambientación detrás** (`.season-amb` z-index 0): piezas muy suaves en bucle lento
    detrás de `.page`. Sin ráfagas al cambiar de pestaña (nada de `seasonEpoch`/`seasonrise`).
@@ -15,6 +15,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
    (misma cifra que Resumen/Gastos; sin neutras; resta reservas). Test:
    `tests/month-budget-stats.test.mjs`.
+4. **Extracto de todos los bancos:** `importObExpenses` apunta TODO lo sincronizado. Solo
+   `expenseBankEnts` resta del presupuesto/saldo (`expenseCountsCash`/`expenseCountsBudget`);
+   el resto se ve con marca «no afecta». Fijos modelados no se duplican en ningún banco.
 
 Sin APK nuevo (35 / 4.12.0).
 

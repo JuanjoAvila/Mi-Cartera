@@ -1,7 +1,7 @@
 # Roadmap — Mi Cartera
 
 > Estado a 2026-08-05 · **v4.15.0** — en **`beta`**: tandas `season-fx-soft`, `fx-converter`,
-> `presupuesto-resumen`. Producción = **4.14.1**. APK **35 / 4.12.0** (sin nativo).
+> `presupuesto-resumen`, `otros-bancos-vista`. Producción = **4.14.1**. APK **35 / 4.12.0**.
 >
 > Anterior: 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos
 > ¥/₺ + letra pequeña) que había entrado tras el sello 4.14.0. Multidivisa de la 4.14.0 sigue.
