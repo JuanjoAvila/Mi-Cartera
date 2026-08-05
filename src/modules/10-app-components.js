@@ -1495,6 +1495,12 @@ var RELEASE_NOTES=[
        "Prueba Halloween (ámbar/óxido), Navidad (rojo suave), Invierno (azul plateado) y Pascua (rosa/verde): cada una con su tono, mismo estilo de lavado amplio.",
        "La franja de los iconos junto a la cámara sigue del mismo tono que la app.",
        "Desliza entre pestañas y baja/sube en una lista: sin parpadeo del destello; la barra de abajo sin dejar ver la lista.",
+     ]},
+     {id:"fix-season-tabs", t:"🚫 Pestañas sin mezclarse", items:[
+       "Con temática activa, desliza Inicio ↔ Gastos: solo debe verse UNA pantalla a la vez — sin «Hola Juanjo» encima de «Tus gastos» ni cifras superpuestas.",
+       "El lavado cálido de arriba se mantiene; el fondo de cada pestaña sigue siendo opaco.",
+       "Scrollea dentro de Inicio o Gastos: sin parpadeo ni salto de píxeles.",
+       "La barra de abajo sigue limpia al cambiar de pestaña.",
      ]}
    ],
    items:{

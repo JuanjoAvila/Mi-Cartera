@@ -7,7 +7,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
 `gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`,
-`fix-season-portal`, `fix-season-glow-steady`, `fix-season-glow-soft`.
+`fix-season-portal`, `fix-season-glow-steady`, `fix-season-glow-soft`, `fix-season-tabs`.
 
 1. **Ambientación** (`.season-amb` + destello superior):
    **Incidentes 2026-08-05 (mismo día):**
@@ -22,6 +22,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
      `.season-glow` (Verano atardecer melocotón/ámbar; Halloween óxido; Invierno azul plateado;
      Pascua rosa/verde; Navidad/Mundial con acentos propios); host/app transparentes con
      temática; alfas ~.03–.13; el contenido pasa por encima.
+   - Build `.16`: host transparente reabrió Inicio+Gastos fusionados (mismo incidente del
+     5/8 mañana). Fix `.17`: host OPACO con el lavado pintado encima de `var(--bg)` (no agujero);
+     `.page` opaca en el gesto; portal sigue detrás para chrome.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`

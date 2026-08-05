@@ -15,6 +15,8 @@
  *         horizontal que tapaba texto al scrollear (rechazado 5/8 tarde).
  *   .16 — TRASFONDO: portal z-1, `#root` z-2; lavado ancho en `.season-glow`; host/app transparentes
  *         con temática; el contenido pasa por encima, nunca bloqueado.
+ *   .17 — host transparente (.16) reabrió Inicio+Gastos fusionados. Fix: host OPACO con el lavado
+ *         pintado encima de var(--bg); portal sigue detrás para chrome y gesto.
  *
  * Lo que vigila este fichero: destello detrás del contenido, sin hornear en host/app, sin cofia
  * encima, notch limpio, barra opaca.
@@ -92,11 +94,16 @@ assert.doesNotMatch(shell, /@keyframes\s+seasonglow/, "`seasonglow` no puede vol
 assert.match(shell, /\.season-amb\{[^}]*top:calc\(var\(--safe-top\)/,
   "las partículas arrancan bajo `--safe-top`");
 
-/* Host opaco SIN temática; transparente CON temática (portal lleva el fondo). */
+/* Host opaco SIEMPRE (incidente .16→.17: transparente → Inicio+Gastos). Con temática el lavado va
+   pintado encima de var(--bg), no como agujero. */
 assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/,
   "host opaco por defecto");
-assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{background:transparent;?\}/,
-  "host transparente con temática (portal = fondo)");
+assert.doesNotMatch(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{background:transparent/,
+  "host NO transparente con temática (fusión de pestañas)");
+assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{[\s\S]*?background-image:\s*var\(--season-glow-top\)/,
+  "host con temática: lavado pintado encima de var(--bg)");
+assert.match(shell, /html\[data-season\]\s+\.page\{background:var\(--bg\)/,
+  "`.page` opaca en gesto (sin scroll-host)");
 assert.match(shell, /html\[data-season\]\s+\.app\{background:transparent;?\}/,
   "`.app` transparente con temática");
 assert.match(shell, /\.app\{[^}]*padding-top:calc\(var\(--safe-top\) \+ 4px\)/,

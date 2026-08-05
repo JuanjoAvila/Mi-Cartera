@@ -311,10 +311,16 @@
   .season-glow{position:absolute;inset:0;z-index:0;pointer-events:none;
     background-color:var(--bg);background-image:var(--season-glow-top);
     background-repeat:no-repeat;background-size:100% 100%;}
-  /* Con temática el portal lleva el fondo; `.app` transparente evita doble capa opaca. En swipe
-     entre pestañas el track sigue encima del portal (z-2) — no vuelve el menta del body. */
+  /* Con temática `.app` transparente deja ver el portal en chrome; el host NO puede serlo
+     (incidente .16→.17: transparente → Inicio+Gastos fusionados al deslizar). El lavado va
+     PINTADO encima de var(--bg) en el host, no como agujero — misma receta que `.season-glow`. */
   html[data-season] .app{background:transparent;}
-  html[data-season] .page.page-scroll-host{background:transparent;}
+  html[data-season] .page.page-scroll-host{
+    background-color:var(--bg);
+    background-image:var(--season-glow-top);
+    background-repeat:no-repeat;background-size:100% 100%;
+  }
+  html[data-season] .page{background:var(--bg);}
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
      ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
      era el sitio equivocado + dejaba ver la lista a través). */
@@ -529,8 +535,8 @@
     background:var(--bg);
     padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
-  /* Con temática el destello vive en `.season-glow` (portal z-1), no hornearlo en host/app:
-     build .12 se apagaba al quitar `page-scroll-host`; la cofia .13 tapaba texto al scroll. */
+  /* Con temática el portal (z-1) lleva el lavado global; el host repite el destello OPACO en reposo
+     (build .12 lo ponía transparente y desaparecía al quitar la clase; .16 transparente → fusión). */
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
   .page.page-scroll-host.mc-touch-own{touch-action:none;}
