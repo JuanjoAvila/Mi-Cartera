@@ -345,7 +345,9 @@
   html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";}
   /* Ambientación detrás: fixed z-index 0 + cartillas encima. Solo translate3d/rotate/opacity
-     (compositor). Sin scale+filter a la vez — eso re-rasterizaba y cortaba en móviles (4.13). */
+     (compositor). Sin scale+filter a la vez — eso re-rasterizaba y cortaba en móviles (4.13).
+     Tiene que quedar POR DEBAJO de `.page-scroll-host` (z-index 35) y el host NO puede llevar
+     fondo opaco — si no, en reposo no se ve nada y solo aparece al deslizar tabs (bug 2026-08-05). */
   .season-amb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;}
   .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
@@ -505,8 +507,13 @@
     overflow-y:auto;-webkit-overflow-scrolling:touch;content-visibility:visible;
     /* Mismo safe-top que `.settings-push`: sin él el título («Tus gastos») se metía debajo
        de la barra de estado / iconos del sistema (feedback 5/8). El `.page` normal NO lo
-       necesita porque ya cuelga dentro de `.app` con padding-top. */
-    background:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
+       necesita porque ya cuelga dentro de `.app` con padding-top.
+       Fondo TRANSPARENTE a propósito (2026-08-05): con `background:var(--bg)` la pestaña en
+       reposo (z-index 35) tapaba del todo `.season-amb` (z-index 0) y el velo
+       `html[data-season]::before/::after` (z-index 1). Solo se veían al deslizar entre tabs,
+       cuando se sale de este modo. El `--bg` ya lo pinta `body`; las cartillas opacas siguen
+       tapando las piezas — la lluvia queda en los huecos, detrás del dinero. */
+    background:transparent;padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}

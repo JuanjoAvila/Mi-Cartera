@@ -1430,7 +1430,8 @@ var RELEASE_NOTES=[
       ca:"Ambientació, convertidor, pressupost, extracte i filtres de Despeses"},
    tandas:[
      {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
-       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo POR DETRÁS de las cartillas, sin tapar números.",
+       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo POR DETRÁS de las cartillas, sin tapar números — también quieto en una pestaña, no solo al deslizar.",
+       "El velo de color de la temática se queda de fondo (no desaparece al soltar el dedo).",
        "Cambia de pestaña: NO hay ráfaga nueva — la lluvia sigue quieta de fondo.",
        "Ajustes → Apariencia → Reducir animaciones: la lluvia desaparece del todo.",
        "Temática → Ninguna: vuelve el look normal, sin piezas.",

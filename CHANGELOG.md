@@ -11,6 +11,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 1. **Ambientación detrás** (`.season-amb` z-index 0): piezas muy suaves en bucle lento
    detrás de `.page`. Sin ráfagas al cambiar de pestaña (nada de `seasonEpoch`/`seasonrise`).
    Respeta reducir-animaciones. Guardián actualizado: `tests/season-detalle.test.mjs`.
+   **Fix 2026-08-05:** `.page-scroll-host` llevaba `background:var(--bg)` a z-index 35 y
+   tapaba lluvia + velo en reposo (solo se veían al deslizar tabs). Fondo transparente;
+   el `--bg` lo pinta `body`. Guardián: host sin fondo opaco.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
