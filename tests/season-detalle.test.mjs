@@ -40,7 +40,7 @@ assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)
 /* Barra: hide sin opacity (evita ver la lista a través) */
 assert.match(
   shell,
-  /\.botnav\.botnav-hidden\{transform:translateY\(120%\);pointer-events:none\}/,
+  /\.botnav\.botnav-hidden\{transform:translateY\(120%\);pointer-events:none;?\}/,
   "botnav-hidden SOLO translate, sin opacity:0"
 );
 assert.doesNotMatch(
