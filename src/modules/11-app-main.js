@@ -31,15 +31,35 @@ function App(){
   // · Abajo LENTO: ok. Abajo RÁPIDO (flick): `scrollend` disparaba el hide EN CUANTO
   //   scrollTop tocaba el fondo, ANTES del stretch → ola cortada. Ahora el hide en borde
   //   espera ~450 ms tras scrollend.
-  // · Arriba: la barra encima del stretch la mata. `botnav-ola-clear` SOLO con lock (una vez
-  //   por gesto) y se suelta en touchend/scrollend+400 ms — sin rearmar en cada scroll.
-  // · Con host: sin backdrop-filter (`.scroll-host-on`).
+  // · Arriba: la barra encima del stretch la mata. `botnav-ola-clear` SOLO si la barra estaba
+  //   ESCONDIDA (hay que revelarla sin tapar la ola). Si ya se ve, NO hacer clear — al ir
+  //   arriba/abajo a mil el clear↔unclear era el «amago de ocultar» (feedback 2026-08-05).
+  // · Rachas hide/reveal: si en <200 ms se pide lo contrario ≥3 veces, pin 800 ms visible.
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
   const navHideFastRef=useRef(false);
   const topClearOn=useRef(false);
   const topClearTimer=useRef(0);
   const revealAfterTopClear=useRef(false);
+  const navPinUntil=useRef(0);
+  const navFlipAt=useRef(0);
+  const navFlipN=useRef(0);
+  const navPinned=function(){ return Date.now()<navPinUntil.current; };
+  const pinNavVisible=function(ms){
+    navPinUntil.current=Date.now()+(ms||800);
+    if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+    navHideArmed.current=false;
+  };
+  const noteNavFlip=function(){
+    const now=Date.now();
+    if(now-navFlipAt.current<200){
+      navFlipN.current++;
+      if(navFlipN.current>=3) pinNavVisible(900);
+    } else {
+      navFlipN.current=1;
+    }
+    navFlipAt.current=now;
+  };
   const beginTopClear=function(){
     if(topClearOn.current) return;
     topClearOn.current=true;
@@ -81,6 +101,7 @@ function App(){
     }, 400);
   };
   const applyNavHide=function(){
+    if(navPinned()) return;
     navBotSync.current=0;
     navHideArmed.current=false;
     navHiddenRef.current=true;
@@ -96,6 +117,9 @@ function App(){
     setNavHiddenFast(fast);
   };
   const armNavHide=function(fast){
+    if(navPinned()) return;
+    if(!navHiddenRef.current && !navHideArmed.current) noteNavFlip();
+    if(navPinned()) return;
     navHideFastRef.current=!!fast;
     if(navHideArmed.current || navHiddenRef.current){
       if(fast) navHideFastRef.current=true;
@@ -107,6 +131,7 @@ function App(){
     navBotSync.current=setTimeout(applyNavHide, fast?800:550);
   };
   const revealNav=function(){
+    if(navHiddenRef.current || navHideArmed.current || topClearOn.current) noteNavFlip();
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
     revealAfterTopClear.current=false;
@@ -153,10 +178,11 @@ function App(){
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){
-      // Clear SOLO si venimos de abajo (fling/scroll al tope). En el tope quieto no tocar la barra.
-      if(dy<-2){
+      // Clear SOLO si la barra ESTABA escondida y hay que revelarla sin tapar la ola.
+      // Si ya se veía, beginTopClear parpadeaba opacity 0↔1 (amago al llegar arriba a mil).
+      if(dy<-2 && navHiddenRef.current){
         beginTopClear();
-        if(navHiddenRef.current) revealAfterTopClear.current=true;
+        revealAfterTopClear.current=true;
       } else if(navHiddenRef.current && !topClearOn.current){
         revealNav();
       }
@@ -1604,13 +1630,16 @@ function App(){
     try{ nat.setIngestUrl({url:url}).catch(function(){}); }catch(e){}
   },[state.settings&&state.settings.trIngest, state.settings&&state.settings.ingestToken]);
   // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
+  // Misma cifra que Gastos/Resumen (`monthBudgetStats`), no `thisMonthSpent` (neutras/ingresos).
+  const budW=monthBudgetStats(state);
   const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
   const widgetCash=trAccW ? Math.round((totals.bankBal[trAccW.ent]||0)*100)/100 : null;
   // «Lo que te puedes permitir» (petición 2026-07-18): lo que puedes gastar SIN pasarte ni quedarte
   // en rojo = mínimo entre lo que te deja el presupuesto y la liquidez segura de la cuenta de gasto
   // (su peor saldo del mes; no puedes gastar lo que no tienes). Nunca negativo.
   const widgetAfford=(function(){
-    const budgetLeft = (state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null;
+    const budgetLeft = budW.remaining!=null ? Math.max(0, budW.remaining)
+      : ((state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null);
     const dailyEnt = trAccW && trAccW.ent;
     const safeLiq = dailyEnt!=null
       ? Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0))
@@ -1621,7 +1650,10 @@ function App(){
   useEffect(function(){
     const nat=natPlugin();
     if(!nat || !nat.updateWidget) return;
-    const data={ spent:Math.round((totals.thisMonthSpent||0)*100)/100, budget:state.budget||0 };
+    const data={
+      spent:Math.round((budW.shown||0)*100)/100,
+      budget:budW.budget!=null?budW.budget:(state.budget||0)
+    };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
     if(widgetAfford!=null) data.afford=widgetAfford;
     const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
@@ -1632,7 +1664,7 @@ function App(){
     const onVis=function(){ if(document.visibilityState==="visible") push(); };
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
-  },[totals.thisMonthSpent,state.budget,widgetCash,widgetAfford]);
+  },[budW.shown,budW.budget,state.budget,widgetCash,widgetAfford]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos
@@ -2214,6 +2246,7 @@ function App(){
         } else {
           gestureMode.current="tab";
           endTopClearNow(true);  // barra visible al cambiar de tab (no «desaparece» al deslizar)
+          pinNavVisible(700);    // rachas lado+arriba: barra quieta
           leaveScrollHost();   // salir del fixed: el carrusel vuelve a translate3d
           if(trackRef.current) trackRef.current.classList.add("dragging");
           navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
@@ -2442,40 +2475,27 @@ function App(){
     const el=indRef.current;
     if(!el || antes===tab) return undefined;
     const cruza=(antes<=1)!==(tab<=1);
+    const span=el.firstElementChild;
+    /* Si el arco iba a mitad y llega OTRO cambio de pestaña, reiniciar `rodea` dejaba la rayita
+       a medias (Y ya subida, X a mitad) y el nuevo translate la atravesaba por el + — feedback
+       2026-08-05 «si lo hago muy rápido se corta y atraviesa». Arreglo: SNAP al destino (sin
+       transición ni animación) y NO relanzar el arco en esa interrupción. El siguiente cruce
+       limpio (sin `rodea` colgada) vuelve a saltar por encima. */
+    const snapInd=function(){
+      el.classList.remove("rodea");
+      el.style.transition="none";
+      if(span){ span.style.animation="none"; span.style.transform="none"; }
+      void el.offsetWidth;
+      el.style.transition="";
+      if(span){ span.style.animation=""; span.style.transform=""; }
+    };
     if(!cruza){
-      /* ⚠ BUG 1 DE VERDAD, no el acompasado de arriba (2026-08-03, «a velocidad alta la rayita
-         sigue atravesando el +»). Antes, este caso (un salto que NO pasa por encima del FAB) hacía
-         `return` sin más — y como React llama al cleanup del efecto ANTERIOR justo antes de correr
-         este (limpia el `clearTimeout` de una `rodea` que sí cruzaba), el `setTimeout` de 460 ms
-         que debía quitar la clase se cancelaba SIN que nadie la quitara en su lugar. Resultado: en
-         cuanto encadenabas dos o tres cambios de pestaña seguidos (justo lo que pasa "a velocidad
-         alta"), `rodea` se quedaba pegada al indicador para SIEMPRE — y el siguiente salto, aunque
-         no cruzara el +, heredaba su curva de 0,44 s Y el brinco vertical del span (`indrodear`)
-         seguía su curso por su cuenta, colándose en un movimiento que no le tocaba. Con varios
-         cruces reales seguidos, esa clase colgada además interfería con CUÁNDO se veía el arco del
-         cruce de verdad — que es justo lo que él describía como "atraviesa el +" y que "al ir más
-         despacio se arregla solo" (con hueco entre saltos, el `setTimeout` sí llegaba a limpiarla).
-         Arreglo: si no cruza, quitar "rodea" YA si estaba puesta — así solo vive durante la
-         transición del cruce que la causó, nunca más. */
-      if(el.classList.contains("rodea")) el.classList.remove("rodea");
+      if(el.classList.contains("rodea")) snapInd();
       return undefined;
     }
-    /* ⚠ EL `offsetWidth` FORZADO ERA EL BUG DE VERDAD, no solo el `useEffect` (2026-08-01, su
-       vídeo de las 12:11 — «sigue siendo diagonal, mira el video»). En el caso normal (un salto
-       suelto, que es el 99% de las veces) "rodea" NO está puesta todavía. Quitarla igualmente y
-       forzar `el.offsetWidth` justo ahí OBLIGA al navegador a recalcular estilos EN ESE INSTANTE:
-       ve el `translateX` ya nuevo (React lo escribió antes de que este efecto corra) pero
-       TODAVÍA sin "rodea", así que aplica la transición BASE (.32s, el muelle) y arranca la
-       transición con esa curva un instante — luego "rodea" entra y cambia la duración de una
-       transición YA EMPEZADA, que no se re-negocia desde cero. Ese primer instante con la curva
-       equivocada es justo lo que se ve como un tirón en diagonal.
-       Ahora el reflow SOLO se fuerza si "rodea" YA estaba puesta (dos saltos por encima del +
-       en menos de 460 ms, encadenados) — ahí sí hace falta para que el span reinicie su
-       animación. En el caso normal, un `add` directo entra en el MISMO commit que el
-       `translateX`, sin ningún recálculo de estilos entre medias que pueda ver el estado viejo. */
     if(el.classList.contains("rodea")){
-      el.classList.remove("rodea");
-      void el.offsetWidth;
+      snapInd();
+      return undefined;
     }
     el.classList.add("rodea");
     const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);

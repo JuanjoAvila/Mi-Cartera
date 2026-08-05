@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-05 (noche 4)
+### Rayita, cifra de presupuesto y barra a mil
+
+1. **Rayita Gastos↔Plan:** si el arco se interrumpe a mitad, snap al destino sin relanzar
+   `rodea` — ya no atraviesa el + en diagonal.
+2. **Resumen/widget = Gastos:** `monthBudgetStats` (excluye inversión/traspaso, resta reservas,
+   respeta `gTotalMode`). `thisMonthSpent` sigue para el efectivo TR.
+3. **Barra al tope a mil:** `botnav-ola-clear` solo si la barra estaba escondida; pin breve si
+   hide/reveal se pelean en <200 ms.
+
 ## [Sin publicar] — 2026-08-05 (noche 3)
 ### Ola nativa + barra usable
 

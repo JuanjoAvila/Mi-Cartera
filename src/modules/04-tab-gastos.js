@@ -354,27 +354,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 
   // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
+  // Cifras = `monthBudgetStats` (misma fuente que Resumen y el widget).
   const monthSummary=useMemo(function(){
-    const now=new Date(), startMs=startOfMonth(now).getTime();
-    let spent=0, income=0;
-    (state.expenses||[]).forEach(function(e){
-      if(dateMs(e.date)<startMs) return;
-      if(CAT_NEUTRAS[e.category]) return;   // inversión y traspaso mueven dinero: ni gasto ni ingreso
-      if(e.amount>0) spent+=e.amount;
-      else if(e.amount<0) income+=Math.abs(e.amount);
-    });
-    // «Reservar dinero» (2026-08-03): lo que ya se ha repartido a metas desde una nómina de este
-    // mes deja de contar como disponible — si no, aportar a una meta y ver que el presupuesto no
-    // se inmuta es justo la sensación de "esto no está reservado de verdad" que se quería arreglar.
-    const reserved=reservedSince(state, startMs);
-    const budgetRaw=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
-    const budget=budgetRaw==null?null:Math.max(0,+(budgetRaw-reserved).toFixed(2));
-    const mode=(state.settings&&state.settings.gTotalMode)||"split";
-    const balance=income-spent; // positivo = te queda / negativo = gastaste de más
+    const now=new Date();
+    const bs=monthBudgetStats(state);
     return {
-      spent:spent, income:income, balance:balance, mode:mode,
-      budget:budget, reserved:reserved,
-      remaining:budget==null?null:(mode==="net"?budget-spent+income:budget-spent),
+      spent:bs.spent, income:bs.income, balance:bs.balance, mode:bs.mode,
+      budget:bs.budget, reserved:bs.reserved, remaining:bs.remaining,
       day:now.getDate(),
       last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),
       month:monthLong(now.getMonth())

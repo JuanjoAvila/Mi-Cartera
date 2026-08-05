@@ -532,6 +532,30 @@ function applyReserva(state, income, plan, bankEnt){
 function reservedSince(state, fromMs){
   return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
 }
+/* Misma cifra en Gastos, Resumen y el widget (2026-08-05). `totals.thisMonthSpent` suma TODO
+   (ingresos en negativo + inversión/traspaso): sirve para el efectivo de TR, NO para «has gastado
+   X de tus Y». Aquí se excluyen neutras, se resta lo reservado al presupuesto, y `shown` es lo
+   que pinta la cabecera de Gastos (gasto bruto o |balance| según gTotalMode). */
+function monthBudgetStats(state){
+  const now=new Date(), startMs=startOfMonth(now).getTime();
+  let spent=0, income=0;
+  (state.expenses||[]).forEach(function(e){
+    if(dateMs(e.date)<startMs) return;
+    if(CAT_NEUTRAS[e.category]) return;
+    if(e.amount>0) spent+=e.amount;
+    else if(e.amount<0) income+=Math.abs(e.amount);
+  });
+  const reserved=reservedSince(state, startMs);
+  const budgetRaw=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+  const budget=budgetRaw==null?null:Math.max(0,+(budgetRaw-reserved).toFixed(2));
+  const mode=(state.settings&&state.settings.gTotalMode)||"split";
+  const balance=income-spent;
+  const against=mode==="net"?(spent-income):spent;
+  const shown=mode==="net"?Math.abs(balance):spent;
+  const remaining=budget==null?null:budget-against;
+  return {spent:spent, income:income, balance:balance, mode:mode, budget:budget, reserved:reserved,
+    remaining:remaining, against:against, shown:shown};
+}
 
 /* EL CASHBACK ENTRA Y LUEGO SALE — son DOS apuntes del banco, un solo movimiento de dinero
    (2026-08-04, caso real suyo: «el cashback me lo detecta duplicado en categoría inversiones y

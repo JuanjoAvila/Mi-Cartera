@@ -6398,15 +6398,19 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
     return ((parts[0]||"M").charAt(0)+(parts[1]||parts[0]||"C").charAt(0)).toUpperCase();
   })();
 
-  const ratio=state.budget>0 ? tt.thisMonthSpent/state.budget : 0;
+  // Misma cifra que la cabecera de Gastos / widget (no `thisMonthSpent`, que mete neutras).
+  const bud=monthBudgetStats(state);
+  const budAmt=bud.budget!=null?bud.budget:(state.budget||0);
+  const spentAgainst=Math.max(0, bud.against);
+  const ratio=budAmt>0 ? spentAgainst/budAmt : 0;
   const dim=new Date(tt.curYear, tt.curMonth, 0).getDate();
   const elapsed=Math.max(1, tt.today||1);
   const leftDays=Math.max(1, dim-elapsed);
-  const rem=state.budget-tt.thisMonthSpent;
+  const rem=bud.remaining!=null?bud.remaining:(budAmt-spentAgainst);
   const dailyAllow=rem/leftDays;
-  const pace=tt.thisMonthSpent/elapsed;
-  const projected=tt.thisMonthSpent+pace*leftDays;
-  const overTrack=projected>state.budget+0.5;
+  const pace=spentAgainst/elapsed;
+  const projected=spentAgainst+pace*leftDays;
+  const overTrack=projected>budAmt+0.5;
   let stCls="st", stHead=t("st_good_h");
   if(ratio>1 || overTrack&&ratio>0.85){ stCls="st bad"; stHead=t("st_over_h"); }
   else if(ratio>0.8 || !overTrack&&ratio>0.8){ stCls="st warn"; stHead=t("st_tight_h"); }
@@ -6497,7 +6501,7 @@ function Dashboard({state, totals, set, onOpenSettings, onOpenProfile, onGoGasto
         React.createElement("div",{className:"v4-budget-txt"},
           React.createElement("div",{className:stCls}, stHead),
           React.createElement("div",{className:"ph"},
-            tf("v4_budget_spent",{spent:eur0(tt.thisMonthSpent),budget:eur0(state.budget)}),
+            tf("v4_budget_spent",{spent:eur0(bud.shown),budget:eur0(budAmt)}),
             " ",
             rem>=0 ? tf("v4_budget_daily",{x:eur0(Math.max(0,dailyAllow))}) : t("st_over_l")
           )
@@ -6952,27 +6956,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
 
   // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
+  // Cifras = `monthBudgetStats` (misma fuente que Resumen y el widget).
   const monthSummary=useMemo(function(){
-    const now=new Date(), startMs=startOfMonth(now).getTime();
-    let spent=0, income=0;
-    (state.expenses||[]).forEach(function(e){
-      if(dateMs(e.date)<startMs) return;
-      if(CAT_NEUTRAS[e.category]) return;   // inversión y traspaso mueven dinero: ni gasto ni ingreso
-      if(e.amount>0) spent+=e.amount;
-      else if(e.amount<0) income+=Math.abs(e.amount);
-    });
-    // «Reservar dinero» (2026-08-03): lo que ya se ha repartido a metas desde una nómina de este
-    // mes deja de contar como disponible — si no, aportar a una meta y ver que el presupuesto no
-    // se inmuta es justo la sensación de "esto no está reservado de verdad" que se quería arreglar.
-    const reserved=reservedSince(state, startMs);
-    const budgetRaw=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
-    const budget=budgetRaw==null?null:Math.max(0,+(budgetRaw-reserved).toFixed(2));
-    const mode=(state.settings&&state.settings.gTotalMode)||"split";
-    const balance=income-spent; // positivo = te queda / negativo = gastaste de más
+    const now=new Date();
+    const bs=monthBudgetStats(state);
     return {
-      spent:spent, income:income, balance:balance, mode:mode,
-      budget:budget, reserved:reserved,
-      remaining:budget==null?null:(mode==="net"?budget-spent+income:budget-spent),
+      spent:bs.spent, income:bs.income, balance:bs.balance, mode:bs.mode,
+      budget:bs.budget, reserved:bs.reserved, remaining:bs.remaining,
       day:now.getDate(),
       last:new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),
       month:monthLong(now.getMonth())
@@ -9822,6 +9812,30 @@ function applyReserva(state, income, plan, bankEnt){
 // mirando, para que lo apartado se note de verdad en "lo que puedes gastar".
 function reservedSince(state, fromMs){
   return (state.reservaLog||[]).reduce(function(a,x){ return dateMs(x.date)>=fromMs ? a+(x.amount||0) : a; },0);
+}
+/* Misma cifra en Gastos, Resumen y el widget (2026-08-05). `totals.thisMonthSpent` suma TODO
+   (ingresos en negativo + inversión/traspaso): sirve para el efectivo de TR, NO para «has gastado
+   X de tus Y». Aquí se excluyen neutras, se resta lo reservado al presupuesto, y `shown` es lo
+   que pinta la cabecera de Gastos (gasto bruto o |balance| según gTotalMode). */
+function monthBudgetStats(state){
+  const now=new Date(), startMs=startOfMonth(now).getTime();
+  let spent=0, income=0;
+  (state.expenses||[]).forEach(function(e){
+    if(dateMs(e.date)<startMs) return;
+    if(CAT_NEUTRAS[e.category]) return;
+    if(e.amount>0) spent+=e.amount;
+    else if(e.amount<0) income+=Math.abs(e.amount);
+  });
+  const reserved=reservedSince(state, startMs);
+  const budgetRaw=typeof state.budget==="number" && state.budget>0 ? state.budget : null;
+  const budget=budgetRaw==null?null:Math.max(0,+(budgetRaw-reserved).toFixed(2));
+  const mode=(state.settings&&state.settings.gTotalMode)||"split";
+  const balance=income-spent;
+  const against=mode==="net"?(spent-income):spent;
+  const shown=mode==="net"?Math.abs(balance):spent;
+  const remaining=budget==null?null:budget-against;
+  return {spent:spent, income:income, balance:balance, mode:mode, budget:budget, reserved:reserved,
+    remaining:remaining, against:against, shown:shown};
 }
 
 /* EL CASHBACK ENTRA Y LUEGO SALE — son DOS apuntes del banco, un solo movimiento de dinero
@@ -13596,8 +13610,9 @@ var RELEASE_NOTES=[
       "A mitad o abajo de una lista, deslizar de LADO sigue cambiando de pestaña; tirar hacia abajo/arriba scrollea o hace la ola.",
       "Deslizar de lado para abrir Ajustes desde Resumen sigue yendo igual.",
       "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
-      "La rayita de Gastos a Plan hace un ARCO por encima del + — ya no cruza en diagonal, también a velocidad alta.",
+      "La rayita de Gastos a Plan hace un ARCO por encima del + — si cambias a mitad, salta al sitio SIN atravesarlo.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
+      "Si vas a mil arriba/abajo, la barra se queda QUIETA (sin amago de ocultar).",
     ]},
     {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
       "Dentro de Plan, con la lista ARRIBA del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
@@ -13621,8 +13636,9 @@ var RELEASE_NOTES=[
     "💾 Nuevo: Ajustes → Copia de seguridad → «Copias automáticas». Cada día se guarda una copia entera de tus datos, y ahora puedes verla y volver a un día anterior si algo se descuadra.",
     "🛒 Si cambias tu banco de gasto diario, sus compras ya aparecen en Gastos sin pasos de más.",
     "🎯 Al llegar al final de cualquier pestaña la lista rebota, como en el resto de la app.",
-    "✨ La rayita de la barra de abajo ya no atraviesa el botón +: lo salta por encima.",
+    "✨ La rayita de la barra de abajo ya no atraviesa el botón +: lo salta por encima (y si cambias a mitad, va al sitio sin cruzarlo).",
     "🐣 Los iconos de la barra hacen su gracia al entrar en cada pestaña.",
+    "📊 El gasto del mes en Resumen (y en el widget) es el mismo número que ves en Gastos.",
    ],
    en:[
     "🏦 Fixed a big mess with Trade Republic: connecting it from the bank search would sometimes log expenses backwards (counted as income). That's sorted, and you can now connect it there so your purchases log themselves: the balance still comes from its usual card.",
@@ -13631,8 +13647,9 @@ var RELEASE_NOTES=[
     "💾 New: Settings → Backup → «Automatic backups». A full copy of your data is saved every day, and now you can see it and go back to an earlier day if something gets out of sync.",
     "🛒 If you change your daily-spending bank, its purchases now show up in Expenses with no extra steps.",
     "🎯 Reaching the end of any tab now bounces, like everywhere else in the app.",
-    "✨ The little bar underneath the tabs no longer crosses through the + button: it hops over it.",
+    "✨ The little bar underneath the tabs no longer crosses through the + button: it hops over it (and if you switch mid-hop, it jumps to place without cutting through).",
     "🐣 The tab icons do their thing when you land on each one.",
+    "📊 Month spending on Overview (and the widget) matches the number you see in Expenses.",
    ],
    ca:[
     "🏦 Arreglat un embolic gros amb Trade Republic: en connectar-lo des del cercador de bancs, algunes despeses s'apuntaven al revés (comptades com si fossin ingressos). Ja està bé, i a més ara el pots connectar per aquí perquè les teves compres s'apuntin soles: el saldo el continua donant la seva targeta de sempre.",
@@ -13641,8 +13658,9 @@ var RELEASE_NOTES=[
     "💾 Nou: Ajustos → Còpia de seguretat → «Còpies automàtiques». Cada dia es desa una còpia sencera de les teves dades, i ara la pots veure i tornar a un dia anterior si alguna cosa es descuadra.",
     "🛒 Si canvies el teu banc de despesa diària, les seves compres ja apareixen a Despeses sense passos de més.",
     "🎯 En arribar al final de qualsevol pestanya la llista rebota, com a la resta de l'app.",
-    "✨ La ratlleta de la barra de sota ja no travessa el botó +: el salta per sobre.",
+    "✨ La ratlleta de la barra de sota ja no travessa el botó +: el salta per sobre (i si canvies a mitja, va al lloc sense travessar-lo).",
     "🐣 Les icones de la barra fan la seva gràcia en entrar a cada pestanya.",
+    "📊 La despesa del mes al Resum (i al widget) és el mateix número que veus a Despeses.",
    ]}},
   {v:"4.12.3", d:"1 ago 2026",
    t:{es:"Un arranque más limpio, y tu dinero subiendo hasta la cifra otra vez",
@@ -16141,15 +16159,35 @@ function App(){
   // · Abajo LENTO: ok. Abajo RÁPIDO (flick): `scrollend` disparaba el hide EN CUANTO
   //   scrollTop tocaba el fondo, ANTES del stretch → ola cortada. Ahora el hide en borde
   //   espera ~450 ms tras scrollend.
-  // · Arriba: la barra encima del stretch la mata. `botnav-ola-clear` SOLO con lock (una vez
-  //   por gesto) y se suelta en touchend/scrollend+400 ms — sin rearmar en cada scroll.
-  // · Con host: sin backdrop-filter (`.scroll-host-on`).
+  // · Arriba: la barra encima del stretch la mata. `botnav-ola-clear` SOLO si la barra estaba
+  //   ESCONDIDA (hay que revelarla sin tapar la ola). Si ya se ve, NO hacer clear — al ir
+  //   arriba/abajo a mil el clear↔unclear era el «amago de ocultar» (feedback 2026-08-05).
+  // · Rachas hide/reveal: si en <200 ms se pide lo contrario ≥3 veces, pin 800 ms visible.
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
   const navHideFastRef=useRef(false);
   const topClearOn=useRef(false);
   const topClearTimer=useRef(0);
   const revealAfterTopClear=useRef(false);
+  const navPinUntil=useRef(0);
+  const navFlipAt=useRef(0);
+  const navFlipN=useRef(0);
+  const navPinned=function(){ return Date.now()<navPinUntil.current; };
+  const pinNavVisible=function(ms){
+    navPinUntil.current=Date.now()+(ms||800);
+    if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+    navHideArmed.current=false;
+  };
+  const noteNavFlip=function(){
+    const now=Date.now();
+    if(now-navFlipAt.current<200){
+      navFlipN.current++;
+      if(navFlipN.current>=3) pinNavVisible(900);
+    } else {
+      navFlipN.current=1;
+    }
+    navFlipAt.current=now;
+  };
   const beginTopClear=function(){
     if(topClearOn.current) return;
     topClearOn.current=true;
@@ -16191,6 +16229,7 @@ function App(){
     }, 400);
   };
   const applyNavHide=function(){
+    if(navPinned()) return;
     navBotSync.current=0;
     navHideArmed.current=false;
     navHiddenRef.current=true;
@@ -16206,6 +16245,9 @@ function App(){
     setNavHiddenFast(fast);
   };
   const armNavHide=function(fast){
+    if(navPinned()) return;
+    if(!navHiddenRef.current && !navHideArmed.current) noteNavFlip();
+    if(navPinned()) return;
     navHideFastRef.current=!!fast;
     if(navHideArmed.current || navHiddenRef.current){
       if(fast) navHideFastRef.current=true;
@@ -16217,6 +16259,7 @@ function App(){
     navBotSync.current=setTimeout(applyNavHide, fast?800:550);
   };
   const revealNav=function(){
+    if(navHiddenRef.current || navHideArmed.current || topClearOn.current) noteNavFlip();
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
     revealAfterTopClear.current=false;
@@ -16263,10 +16306,11 @@ function App(){
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){
-      // Clear SOLO si venimos de abajo (fling/scroll al tope). En el tope quieto no tocar la barra.
-      if(dy<-2){
+      // Clear SOLO si la barra ESTABA escondida y hay que revelarla sin tapar la ola.
+      // Si ya se veía, beginTopClear parpadeaba opacity 0↔1 (amago al llegar arriba a mil).
+      if(dy<-2 && navHiddenRef.current){
         beginTopClear();
-        if(navHiddenRef.current) revealAfterTopClear.current=true;
+        revealAfterTopClear.current=true;
       } else if(navHiddenRef.current && !topClearOn.current){
         revealNav();
       }
@@ -17714,13 +17758,16 @@ function App(){
     try{ nat.setIngestUrl({url:url}).catch(function(){}); }catch(e){}
   },[state.settings&&state.settings.trIngest, state.settings&&state.settings.ingestToken]);
   // App Android: alimenta el widget de pantalla de inicio (gasto del mes + saldo de la cuenta diaria).
+  // Misma cifra que Gastos/Resumen (`monthBudgetStats`), no `thisMonthSpent` (neutras/ingresos).
+  const budW=monthBudgetStats(state);
   const trAccW=state.accounts.find(function(a){ return a.spendFrom; });
   const widgetCash=trAccW ? Math.round((totals.bankBal[trAccW.ent]||0)*100)/100 : null;
   // «Lo que te puedes permitir» (petición 2026-07-18): lo que puedes gastar SIN pasarte ni quedarte
   // en rojo = mínimo entre lo que te deja el presupuesto y la liquidez segura de la cuenta de gasto
   // (su peor saldo del mes; no puedes gastar lo que no tienes). Nunca negativo.
   const widgetAfford=(function(){
-    const budgetLeft = (state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null;
+    const budgetLeft = budW.remaining!=null ? Math.max(0, budW.remaining)
+      : ((state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null);
     const dailyEnt = trAccW && trAccW.ent;
     const safeLiq = dailyEnt!=null
       ? Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0))
@@ -17731,7 +17778,10 @@ function App(){
   useEffect(function(){
     const nat=natPlugin();
     if(!nat || !nat.updateWidget) return;
-    const data={ spent:Math.round((totals.thisMonthSpent||0)*100)/100, budget:state.budget||0 };
+    const data={
+      spent:Math.round((budW.shown||0)*100)/100,
+      budget:budW.budget!=null?budW.budget:(state.budget||0)
+    };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
     if(widgetAfford!=null) data.afford=widgetAfford;
     const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
@@ -17742,7 +17792,7 @@ function App(){
     const onVis=function(){ if(document.visibilityState==="visible") push(); };
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
-  },[totals.thisMonthSpent,state.budget,widgetCash,widgetAfford]);
+  },[budW.shown,budW.budget,state.budget,widgetCash,widgetAfford]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos
@@ -18324,6 +18374,7 @@ function App(){
         } else {
           gestureMode.current="tab";
           endTopClearNow(true);  // barra visible al cambiar de tab (no «desaparece» al deslizar)
+          pinNavVisible(700);    // rachas lado+arriba: barra quieta
           leaveScrollHost();   // salir del fixed: el carrusel vuelve a translate3d
           if(trackRef.current) trackRef.current.classList.add("dragging");
           navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME
@@ -18552,40 +18603,27 @@ function App(){
     const el=indRef.current;
     if(!el || antes===tab) return undefined;
     const cruza=(antes<=1)!==(tab<=1);
+    const span=el.firstElementChild;
+    /* Si el arco iba a mitad y llega OTRO cambio de pestaña, reiniciar `rodea` dejaba la rayita
+       a medias (Y ya subida, X a mitad) y el nuevo translate la atravesaba por el + — feedback
+       2026-08-05 «si lo hago muy rápido se corta y atraviesa». Arreglo: SNAP al destino (sin
+       transición ni animación) y NO relanzar el arco en esa interrupción. El siguiente cruce
+       limpio (sin `rodea` colgada) vuelve a saltar por encima. */
+    const snapInd=function(){
+      el.classList.remove("rodea");
+      el.style.transition="none";
+      if(span){ span.style.animation="none"; span.style.transform="none"; }
+      void el.offsetWidth;
+      el.style.transition="";
+      if(span){ span.style.animation=""; span.style.transform=""; }
+    };
     if(!cruza){
-      /* ⚠ BUG 1 DE VERDAD, no el acompasado de arriba (2026-08-03, «a velocidad alta la rayita
-         sigue atravesando el +»). Antes, este caso (un salto que NO pasa por encima del FAB) hacía
-         `return` sin más — y como React llama al cleanup del efecto ANTERIOR justo antes de correr
-         este (limpia el `clearTimeout` de una `rodea` que sí cruzaba), el `setTimeout` de 460 ms
-         que debía quitar la clase se cancelaba SIN que nadie la quitara en su lugar. Resultado: en
-         cuanto encadenabas dos o tres cambios de pestaña seguidos (justo lo que pasa "a velocidad
-         alta"), `rodea` se quedaba pegada al indicador para SIEMPRE — y el siguiente salto, aunque
-         no cruzara el +, heredaba su curva de 0,44 s Y el brinco vertical del span (`indrodear`)
-         seguía su curso por su cuenta, colándose en un movimiento que no le tocaba. Con varios
-         cruces reales seguidos, esa clase colgada además interfería con CUÁNDO se veía el arco del
-         cruce de verdad — que es justo lo que él describía como "atraviesa el +" y que "al ir más
-         despacio se arregla solo" (con hueco entre saltos, el `setTimeout` sí llegaba a limpiarla).
-         Arreglo: si no cruza, quitar "rodea" YA si estaba puesta — así solo vive durante la
-         transición del cruce que la causó, nunca más. */
-      if(el.classList.contains("rodea")) el.classList.remove("rodea");
+      if(el.classList.contains("rodea")) snapInd();
       return undefined;
     }
-    /* ⚠ EL `offsetWidth` FORZADO ERA EL BUG DE VERDAD, no solo el `useEffect` (2026-08-01, su
-       vídeo de las 12:11 — «sigue siendo diagonal, mira el video»). En el caso normal (un salto
-       suelto, que es el 99% de las veces) "rodea" NO está puesta todavía. Quitarla igualmente y
-       forzar `el.offsetWidth` justo ahí OBLIGA al navegador a recalcular estilos EN ESE INSTANTE:
-       ve el `translateX` ya nuevo (React lo escribió antes de que este efecto corra) pero
-       TODAVÍA sin "rodea", así que aplica la transición BASE (.32s, el muelle) y arranca la
-       transición con esa curva un instante — luego "rodea" entra y cambia la duración de una
-       transición YA EMPEZADA, que no se re-negocia desde cero. Ese primer instante con la curva
-       equivocada es justo lo que se ve como un tirón en diagonal.
-       Ahora el reflow SOLO se fuerza si "rodea" YA estaba puesta (dos saltos por encima del +
-       en menos de 460 ms, encadenados) — ahí sí hace falta para que el span reinicie su
-       animación. En el caso normal, un `add` directo entra en el MISMO commit que el
-       `translateX`, sin ningún recálculo de estilos entre medias que pueda ver el estado viejo. */
     if(el.classList.contains("rodea")){
-      el.classList.remove("rodea");
-      void el.offsetWidth;
+      snapInd();
+      return undefined;
     }
     el.classList.add("rodea");
     const id=setTimeout(function(){ el.classList.remove("rodea"); }, 460);

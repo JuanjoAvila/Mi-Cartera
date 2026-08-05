@@ -1,36 +1,22 @@
-/* LA RAYITA (indicador de pestaña activa) TIENE QUE ARQUEAR SOBRE EL + SIEMPRE, A CUALQUIER
- * VELOCIDAD — bug 1 de la sesión del 2026-08-03. Su descripción textual: «la rayita que se mueve
- * al moverse de tab en tab va de puta madre y salta el arco del + de puta madre PERO cuando
- * aumentas la velocidad en moverte entre tabs, sigue atravesando el +, luego si scrolleas más
- * lentamente otra vez, se "arregla" solo y vuelve otra vez a saltar la rayita el logo + de puta
- * madre».
+/* LA RAYITA (indicador de pestaña activa) TIENE QUE ARQUEAR SOBRE EL + — y si le cortas el
+ * salto a mitad, NO atravesarlo en diagonal (feedback 2026-08-05: «si lo hago muy rápido se
+ * corta y atraviesa»).
  *
- * Causa real encontrada (11-app-main.js, el `useLayoutEffect` de `indRef`, dep `[tab]`): el salto
- * añade la clase `rodea` (el arco) SOLO cuando el cambio de pestaña cruza el vano del FAB (de
- * Inicio/Gastos a Plan/Cartera o viceversa). Cuando NO cruza, el código hacía `return` sin más —
- * y como React llama al cleanup del efecto ANTERIOR justo antes de correr el siguiente, el
- * `setTimeout` de 460 ms que debía quitar `rodea` tras un cruce real se cancelaba sin que nadie la
- * quitase en su lugar. A velocidad alta (varios cambios de pestaña seguidos, sin dejar los 460 ms
- * de margen) la clase se quedaba PEGADA para siempre, colándose en saltos que no cruzan el + y
- * desordenando cuándo se ve el arco del cruce de verdad — que es justo lo que él describía.
+ * Historia: en 2026-08-03 el fallo a velocidad alta era `rodea` colgada (cleanup del efecto
+ * cancelaba el timer sin quitar la clase). Eso se arregló. Luego, al reiniciar `rodea` en cada
+ * cruce encadenado, el span seguía a medias (Y subida) mientras el X saltaba → diagonal por el +.
+ * Ahora un cruce LIMPIO arquea; uno INTERRUMPIDO hace snap al destino (sin arco ni diagonal).
  *
- * Se comprueba MIDIENDO EL translateY REAL del span (el que dibuja el arco) en continuo durante
- * una ráfaga de swipes reales sin ninguna pausa entre ellos — el caso "velocidad alta" llevado al
- * límite de lo que CDP permite simular. No se mira la clase `rodea` por sí sola (podría estar
- * puesta sin que el navegador llegue a pintar el arco): se mira el efecto visual de verdad.
- *
- * La verdad de qué es "cruce" se DERIVA de la secuencia REAL de posiciones observadas (no de un
- * guion fijo de swipes): a velocidad muy alta React puede fusionar varios cambios de pestaña en un
- * solo commit (p.ej. gastos→plan→cartera puede llegar de una sola vez como gastos→cartera), y ESO
- * también es un cruce de verdad. Asumir a priori qué swipe cae en qué commit sería frágil; mirar
- * la posición ANTES y DESPUÉS de cada tramo observado no lo es. */
+ * Se comprueba MIDIENDO EL translateY REAL del span. Un arco de verdad baja de -14 px; un snap
+ * limpio se queda ~0; lo que no queremos es un «ni fu ni fa» a medias atravesando el vano. */
 import { test, expect } from "@playwright/test";
 import { seedLoggedInDashboard, dismissNews } from "./fixtures.mjs";
 
-/* Umbral del arco: el keyframe llega a -26 px; el muestreo por rAF a veces pilla -14,7 en vez
-   de pasar de -15 (CI 2026-08-04: Expected < -15, Received -14.76 — el arco SÍ existía). -14
-   sigue distinguiendo un arco real de una línea recta (~0) y del bleed-through. */
+/* Umbral del arco: el keyframe llega a -26 px; el muestreo por rAF a veces pilla -14,7.
+   -14 sigue distinguiendo un arco real de una línea recta (~0). */
 const ARCO_UMBRAL = -14;
+/* Snap limpio: casi sin brinco vertical (tolerancia de redondeo / subpíxel). */
+const SNAP_TECHO = -3;
 
 async function appLista(page) {
   await expect(page.locator(".botnav")).toBeVisible({ timeout: 30_000 });
@@ -48,8 +34,6 @@ async function deslizar(page, cdp, sentido, { y = 200, pasos = 2 } = {}) {
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
 
-/** Arranca un muestreo continuo (rAF) del translateY computado del span del indicador, agrupado
- *  por tramos (cada vez que cambia la posición objetivo = un salto de pestaña distinto). */
 async function arrancarMuestreo(page) {
   await page.evaluate(() => {
     window.__samples = [];
@@ -67,8 +51,6 @@ async function arrancarMuestreo(page) {
   });
 }
 
-// translateX(N%) -> índice de pestaña, invirtiendo la fórmula del render (tab<=1 → tab*100,
-// tab>1 → (tab+1)*100). 200% no se usa nunca (es el hueco del FAB).
 function posATab(objetivo) {
   const m = objetivo && objetivo.match(/translateX\((-?[\d.]+)%\)/);
   if (!m) return null;
@@ -92,17 +74,45 @@ async function pararMuestreoYagrupar(page) {
   return tramos;
 }
 
-test("a velocidad alta, cada cruce real del + arquea y ninguno lo atraviesa recto", async ({ page }) => {
+function esArcoOSnap(minTy) {
+  return minTy < ARCO_UMBRAL || minTy > SNAP_TECHO;
+}
+
+test("un cruce limpio (sin interrumpir) arquea por encima del +", async ({ page }) => {
   await seedLoggedInDashboard(page);
   await page.goto("/");
   await appLista(page);
   const cdp = await page.context().newCDPSession(page);
 
-  await deslizar(page, cdp, "siguiente"); // inicio->gastos, punto de partida
+  await deslizar(page, cdp, "siguiente"); // inicio->gastos
+  await page.waitForTimeout(500);
+  await arrancarMuestreo(page);
+  await deslizar(page, cdp, "siguiente"); // gastos->plan (cruza)
+  await page.waitForTimeout(500);
+  const tramos = await pararMuestreoYagrupar(page);
+
+  let visto = false;
+  for (let i = 1; i < tramos.length; i++) {
+    const antes = posATab(tramos[i - 1].objetivo), ahora = posATab(tramos[i].objetivo);
+    if (antes == null || ahora == null || antes === ahora) continue;
+    if ((antes <= 1) !== (ahora <= 1)) {
+      visto = true;
+      expect(tramos[i].minTy, `cruce limpio ${tramos[i - 1].objetivo}→${tramos[i].objetivo} no arqueó (${tramos[i].minTy})`).toBeLessThan(ARCO_UMBRAL);
+    }
+  }
+  expect(visto, "tiene que haber un cruce gastos→plan").toBe(true);
+});
+
+test("a velocidad alta, cada cruce o arquea o snapea limpio (nunca atraviesa a medias)", async ({ page }) => {
+  await seedLoggedInDashboard(page);
+  await page.goto("/");
+  await appLista(page);
+  const cdp = await page.context().newCDPSession(page);
+
+  await deslizar(page, cdp, "siguiente"); // inicio->gastos
   await page.waitForTimeout(400);
   await arrancarMuestreo(page);
 
-  // Ráfaga de cruces reales gastos<->plan, uno tras otro, SIN esperar a que asiente el anterior.
   for (let i = 0; i < 6; i++) {
     await deslizar(page, cdp, "siguiente"); // gastos->plan (cruza)
     await deslizar(page, cdp, "anterior");  // plan->gastos (cruza)
@@ -111,15 +121,22 @@ test("a velocidad alta, cada cruce real del + arquea y ninguno lo atraviesa rect
   const tramos = await pararMuestreoYagrupar(page);
 
   let comprobados = 0;
+  let algunArco = 0;
   for (let i = 1; i < tramos.length; i++) {
     const antes = posATab(tramos[i - 1].objetivo), ahora = posATab(tramos[i].objetivo);
     if (antes == null || ahora == null || antes === ahora) continue;
     const cruza = (antes <= 1) !== (ahora <= 1);
-    if (!cruza) continue; // esta prueba solo tiene cruces reales en su guion
+    if (!cruza) continue;
     comprobados++;
-    expect(tramos[i].minTy, `salto ${tramos[i - 1].objetivo}→${tramos[i].objetivo} (CRUZA el +) no arqueó (translateY mínimo ${tramos[i].minTy}) — la rayita lo atravesó en línea recta`).toBeLessThan(ARCO_UMBRAL);
+    const ty = tramos[i].minTy;
+    if (ty < ARCO_UMBRAL) algunArco++;
+    expect(
+      esArcoOSnap(ty),
+      `salto ${tramos[i - 1].objetivo}→${tramos[i].objetivo}: ty=${ty} ni arco ni snap (atravesó a medias)`
+    ).toBe(true);
   }
-  expect(comprobados, "la ráfaga tiene que haber generado varios cruces reales que comprobar").toBeGreaterThan(5);
+  expect(comprobados, "la ráfaga tiene que haber generado varios cruces reales").toBeGreaterThan(5);
+  expect(algunArco, "al menos un cruce de la ráfaga tiene que haber arqueado").toBeGreaterThan(0);
 });
 
 test("un salto que NO cruza el + no hereda el arco de un cruce reciente (bleed-through)", async ({ page }) => {
@@ -132,14 +149,13 @@ test("un salto que NO cruza el + no hereda el arco de un cruce reciente (bleed-t
   await page.waitForTimeout(400);
   await arrancarMuestreo(page);
 
-  // Recorrido de ida y vuelta por las 4 pestañas, mezclando cruces y no-cruces, sin pausas.
   for (let i = 0; i < 4; i++) {
     await deslizar(page, cdp, "siguiente"); // gastos->plan (cruza)
     await deslizar(page, cdp, "siguiente"); // plan->cartera (no cruza)
     await deslizar(page, cdp, "anterior");  // cartera->plan (no cruza)
     await deslizar(page, cdp, "anterior");  // plan->gastos (cruza)
     await deslizar(page, cdp, "anterior");  // gastos->inicio (no cruza)
-    await deslizar(page, cdp, "siguiente"); // inicio->gastos (no cruza), vuelve al punto de partida
+    await deslizar(page, cdp, "siguiente"); // inicio->gastos (no cruza)
   }
   await page.waitForTimeout(500);
   const tramos = await pararMuestreoYagrupar(page);
@@ -151,12 +167,16 @@ test("un salto que NO cruza el + no hereda el arco de un cruce reciente (bleed-t
     const cruza = (antes <= 1) !== (ahora <= 1);
     if (cruza) {
       cruces++;
-      expect(tramos[i].minTy, `salto ${tramos[i - 1].objetivo}→${tramos[i].objetivo} (CRUZA) no arqueó (${tramos[i].minTy})`).toBeLessThan(ARCO_UMBRAL);
+      // Cruce limpio o interrumpido: arco o snap, nunca a medias.
+      expect(
+        esArcoOSnap(tramos[i].minTy),
+        `cruce ${tramos[i - 1].objetivo}→${tramos[i].objetivo}: ty=${tramos[i].minTy} a medias`
+      ).toBe(true);
     } else {
       noCruces++;
-      expect(tramos[i].minTy, `salto ${tramos[i - 1].objetivo}→${tramos[i].objetivo} (NO cruza) mostró un arco fantasma (${tramos[i].minTy}) heredado de un cruce anterior`).toBeGreaterThan(ARCO_UMBRAL);
+      expect(tramos[i].minTy, `salto ${tramos[i - 1].objetivo}→${tramos[i].objetivo} (NO cruza) mostró un arco fantasma (${tramos[i].minTy})`).toBeGreaterThan(ARCO_UMBRAL);
     }
   }
-  expect(cruces, "la ráfaga tiene que haber generado cruces reales que comprobar").toBeGreaterThan(2);
-  expect(noCruces, "la ráfaga tiene que haber generado saltos SIN cruce que comprobar").toBeGreaterThan(2);
+  expect(cruces, "la ráfaga tiene que haber generado cruces reales").toBeGreaterThan(2);
+  expect(noCruces, "la ráfaga tiene que haber generado saltos SIN cruce").toBeGreaterThan(2);
 });
