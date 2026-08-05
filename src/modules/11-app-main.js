@@ -2801,17 +2801,19 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
-  // Ambientación de temporada: capa POR pestaña (absolute z-index -1), montada siempre que
-  // `show` — no solo en `isHost`. Si solo iba en el host, al deslizar (`hostTab=-1`) se
-  // desmontaba y la lluvia se reiniciaba (feedback 2026-08-05). Host opaco siempre.
-  // Velos html::before/::after a z-index 36/39 = destello visible también en reposo.
+  // Ambientación: UNA sola capa GLOBAL (fixed z-36). Feedback 2026-08-05 (3ª): una copia
+  // por pestaña hacía que al swipe se viera OTRA fase («vuelve más arriba / se retrasa»).
+  // Host opaco siempre. Destello = botnav::before (sobrevive al fondo sólido de scroll-host-on).
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
-  const buildSeasonSpans=function(){
-    const pool=seasonPool, N=10, out=[];
+  // useMemo: mismos spans entre re-renders → el DOM de `.season-amb` no se recrea → la
+  // animación CSS no se reinicia al cambiar de tab / setState del botnav.
+  const seasonAmb=useMemo(function(){
+    if(!seasonPool) return null;
+    const N=10, out=[];
     for(let i=0;i<N;i++){
-      const em=pool[i%pool.length];
+      const em=seasonPool[i%seasonPool.length];
       const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
       const left=Math.round(rnd(12.9898)*96);
       const sz=14+Math.round(rnd(4.1)*8);
@@ -2824,8 +2826,8 @@ function App(){
         style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
           "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
     }
-    return out;
-  };
+    return React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out);
+  }, [seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
@@ -2833,8 +2835,6 @@ function App(){
     // `page-scroll-host` EN el className de React (no solo classList): si no, cualquier
     // setState de App (botnav al bajar) lo borra y el fling pierde la ola nativa.
     return React.createElement("div",{className:"page"+(show?" page-live":"")+(isHost?" page-scroll-host":""),key:id,onScroll:onPageScroll},
-      // Siempre que la pestaña esté montada (show), no solo isHost — si no, cada swipe reinicia la lluvia.
-      show && seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, buildSeasonSpans()) : null,
       show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
     );
   });
@@ -2847,6 +2847,7 @@ function App(){
   );
 
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
+    seasonAmb,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",

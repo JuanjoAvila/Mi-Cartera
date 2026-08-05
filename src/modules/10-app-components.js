@@ -1430,10 +1430,10 @@ var RELEASE_NOTES=[
       ca:"Ambientació, convertidor, pressupost, extracte i filtres de Despeses"},
    tandas:[
      {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
-       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo POR DETRÁS de las cartillas, sin tapar números — también quieto en una pestaña, no solo al deslizar.",
-       "El destello de luz bajo el + se queda fijo (no solo un instante al deslizar).",
-       "Cambia de pestaña: la lluvia sigue su camino — no se reinicia ni se corta.",
-       "Ajustes → Apariencia → Reducir animaciones: la lluvia desaparece del todo.",
+       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo, sin molestar — también quieto en una pestaña.",
+       "El destello de luz bajo el + se queda fijo SIEMPRE (también con la app quieta, no solo un instante al deslizar).",
+       "Cambia de pestaña: la lluvia sigue el MISMO camino — no salta atrás ni se reinicia.",
+       "Ajustes → Apariencia → Reducir animaciones: la lluvia y el destello desaparecen.",
        "Temática → Ninguna: vuelve el look normal, sin piezas.",
      ]},
      {id:"fx-converter", t:"🔁 Conversor de monedas", items:[

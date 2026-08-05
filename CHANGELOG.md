@@ -8,15 +8,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
 `gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`.
 
-1. **Ambientación detrás** (`.season-amb`): piezas muy suaves en bucle lento detrás de las
-   cartillas. Sin ráfagas al cambiar de pestaña. Respeta reducir-animaciones.
-   **Incidentes 2026-08-05 (mismo día):**
-   - Host transparente → Inicio+Gastos a la vez. Fix: host SIEMPRE `background:var(--bg)`.
-   - Destello solo un instante al deslizar + lluvia reiniciada en cada swipe (copia solo en
-     `isHost`, se desmontaba con `hostTab=-1`). Fix: velos `html[data-season]::before/::after`
-     a z-index **36/39** (sobre el host 35; el de abajo se filtra por el botnav); `.season-amb`
-     en cada pestaña con `show` (no solo isHost), `position:absolute; z-index:-1`.
-     Guardián: `tests/season-detalle.test.mjs`.
+1. **Ambientación detrás** (`.season-amb`): piezas muy suaves en bucle lento.
+   Sin ráfagas al cambiar de pestaña. Respeta reducir-animaciones.
+   **Incidentes 2026-08-05 (mismo día, varias pasadas):**
+   - Host transparente → Inicio+Gastos a la vez. Fix: host SIEMPRE opaco.
+   - Destello solo al swipe: z-39 «detrás del botnav» falló porque en reposo
+     `.scroll-host-on .botnav` pone `background:var(--bg-2)` SÓLIDO (ola nativa) y lo
+     tapaba. Fix: destello = `html[data-season] .botnav::before` (dentro del botnav).
+   - Lluvia «salta atrás / se retrasa» al swipe: una copia por pestaña = otra fase de
+     animación. Fix: UNA sola `.season-amb` GLOBAL `position:fixed; z-index:36` montada
+     con `useMemo` (no remount al cambiar tab). Guardián: `tests/season-detalle.test.mjs`.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
