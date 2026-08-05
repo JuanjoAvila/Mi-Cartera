@@ -1,6 +1,6 @@
 # Plan — Import histórico OB impecable
 
-**Estado:** pendiente de segunda opinión Claude (Opus) → luego implementa Cursor.  
+**Estado:** segunda opinión Claude (Opus max, 2026-08-05) **recibida**. Luz verde a codear **solo cuando A/B/C estén cerrados en el diseño**. Cursor implementa; Claude no toca destello.  
 **Rama:** `beta` · **No tocar:** destello / `src/shell.html` / portal season / `tests/season-detalle.test.mjs`.  
 **Brief origen:** [`brief-import-historico.md`](brief-import-historico.md)
 
@@ -8,14 +8,77 @@
 
 ## Decisiones cerradas (con el dueño, 2026-08-05)
 
-- **Fijos = híbrido C:** default = **Gasto** puntual. Si casa fuzzy con un Fijo/deuda/meta ya modelado → tachar como duplicado (no importar). Si no casa → el usuario puede marcar «Recibo» a mano y crear Fijo nuevo **solo tras confirmación** («esto se restará todos los meses»).
-- **Gastos = salir todo:** el preview trae movimientos de **todos los bancos OB conectados** (no solo `expenseBanks`). Al guardar como gasto/ingreso, el `ent` queda bien puesto y la contabilidad existente decide: gasto diario resta; el resto se ve en Gastos como «no afecta» (`expenseCountsForDaily` en `01-i18n.js` / pedido 2026-08-05). **No inventar otra regla.**
-- **Misma filosofía Excel ↔ bancos:** automático en lo seguro; Fijos configurables a mano cuando haga falta.
-- **Proceso:** Cursor deja el plan → Claude personal (Opus) revisa → Cursor ejecuta (sin pisar destello).
+- **Fijos = híbrido C:** default = **Gasto** puntual. Si casa fuzzy con un Fijo/deuda/meta ya modelado → tachar como duplicado (no importar). Si no casa → el usuario puede marcar «Recibo» a mano y crear Fijo nuevo **solo tras confirmación** («esto se restará todos los meses, también hacia atrás»).
+- **Gastos = salir todo:** preview de **todos los bancos OB conectados**. Contabilidad = `expenseCountsCash` / `expenseCountsBudget` (nombres reales; **no** existe `expenseCountsForDaily`). Con `ent` bien puesto, gasto diario resta y el resto se ve como «no afecta». **No inventar otra regla. No copiar `budgetSkip`** (flag muerto hoy).
+- **Misma filosofía Excel ↔ bancos:** automático en lo seguro; Fijos configurables a mano.
+- **Proceso:** plan → Claude revisa → Cursor ejecuta de **uno en uno** (regla 4/8), con su veredicto entre medias. **No cherry-pick** a main; ronda glow bloquea promote.
 
 ---
 
-## Problema real (evidencia)
+## Veredicto Claude (Opus) — resumen Cursor
+
+Arquitectura (helpers puros en `08-motor-bank.js`, UI orquesta) = **correcta, no la tocamos**.
+
+Los 4 agujeros originales siguen reales. Opus añadió **bloqueantes** que el plan v1 no veía. **Sin cerrar A/B/C no se implementa.**
+
+### Bloqueantes (hay que cerrarlos en el diseño antes de codear)
+
+#### A. Undo por terna puede borrar gastos buenos
+
+`cloud.addExpense` usa `onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true` (`00-core.js` ~514).  
+`cloud.deleteExpense` borra por la **misma terna**, no por id (~564).
+
+Si la importación choca con un gasto que ya tenía → el upsert **no crea fila** → «Deshacer» borra el **original**. Catastrófico.
+
+**Cierre obligatorio:**
+
+1. Preferido: `upsert`/`insert` con `.select('id')`, guardar **ids reales de tabla** en `lastHistImport`, borrar con `.eq('id',…)`.
+2. Si no es viable ya: antes de borrar por terna, comprobar que no queda otro gasto local con esa clave que **no** sea de este `batchId`; si hay ambigüedad → **no borrar nube** (solo quitar la fila local del batch) y avisar.
+3. Tests: undo con terna colisionando → preexistente vive en local y **no** entra en la lista de borrados cloud.
+
+#### B. Undo NO escribe en `state.deleted`
+
+Los tombstones (`fecha|importe|comercio`) filtran **todo** lo que llega del pull. Un tombstone del undo deja fuera para siempre (hasta rotar 500) gastos reales con esa clave. `reconcileObDupes` ya documentó que tombstones no bastan.
+
+**Cierre:** undo = quitar filas del batch en local + `deleteExpense` por id (o terna segura de A). **Cero** altas a `state.deleted`.
+
+#### C. Clasificar traspasos y aportes como el sync diario
+
+Hoy el histórico pone siempre `ingreso` / `autoCategory`. El sync diario (`importObExpenses` ~410–435):
+
+- Ingreso: `esTraspasoPropio` → `TRASPASO_CAT`, si no → `INGRESO_CAT`.
+- Gasto diario con importe ≈ `monthlyInvest` → categoría `inversion` (neutra).
+- **Copiar solo la categoría.** Nunca `applyInvestBuy` (duplicaría cartera).
+
+Sin esto: traspasos Sabadell→TR inflan ingresos; «Mi ciclo» se reancla a un traspaso; aportes destrozan presupuesto.
+
+### Importantes (cerrar en la misma feature, no como afterthought)
+
+| Id | Qué | Cierre |
+|----|-----|--------|
+| D | Nombre fantasma `expenseCountsForDaily` | Usar `expenseCountsCash` / `expenseCountsBudget` |
+| E | `entFromAspsp` → `null` fuera del catálogo ENT | Ent sintético desde aspsp **o** mensaje «banco no reconocido»; nunca lista vacía muda |
+| F | Servidor trunca (~12 pág / 2000 tx) | Devolver/avisar `truncated` o comparar fecha mínima vs `dateFrom` |
+| G | N× `addExpense` + `.catch(()=>{})` | Batch `addExpenses(rows)` + meterlo en `CLOUD_WRITES` (`00-core.js` ~914) o security/modo pruebas rompe |
+| H | `histCandExisting` mapa 1:N | Consumo **1 a 1** como `usadoDup` del sync |
+| I | `matchesModeled` es del mes **actual** | Versión por mes del candidato (`occursIn`/`occAmountIn`/`debtBalloonIn`/`oneoffOccurs`) |
+| J | Signo invertido por banco | Preview: totales por banco; si >~70 % «ingreso» → confirmación |
+| K | e2e `bancos-historico-filtro` | **Migrar** a Importaciones, no borrar |
+| L | `importBatchId` no va a la nube | Botón Deshacer solo mientras existan filas locales del batch |
+| M | Fijo sin inicio/fin | Texto de confirmación: resta **todos** los meses, también hacia atrás |
+
+### Confirmado NO tocar
+
+- Destello / shell / portal season / `tests/season-detalle.test.mjs`
+- Suelo 8 días de `importObExpenses` (sync diario ≠ histórico)
+- No reintroducir syncs automáticos (AGENTS §7)
+- No meter gastos en la clave principal (§7 bis)
+- `budgetSkip`: no copiarlo; limpiarlo es otra tanda
+- No cherry-pick a main; promote de ronda entera
+
+---
+
+## Problema real (evidencia original)
 
 Hoy en `BankHistoryImport` (`src/modules/10-app-components.js`):
 
@@ -27,18 +90,11 @@ const defDest=function(x){
 };
 ```
 
-Cuatro agujeros auditados (4/8) + prueba real (3/8):
-
-1. `defDest` → "recibo" en cargos no-tarjeta → Fijo mensual permanente.
-2. `fixNames` exacto (nombre+importe+cuenta) — «Luz» ≠ «RECIBO ENDESA…» → duplica.
-3. No cruza `state.debts` ni metas/ahorro.
-4. No hay deshacer.
-
-Botón duplicado: Mis bancos (~L756) **y** Ajustes → Importaciones (~L2681). Él pidió: histórico **solo** en Importaciones.
+Cuatro agujeros + botón duplicado Mis bancos / Importaciones.
 
 ---
 
-## Arquitectura objetivo
+## Arquitectura objetivo (sin cambio de forma)
 
 ```mermaid
 flowchart TD
@@ -46,97 +102,65 @@ flowchart TD
   settings --> hojaUI["SheetImport Excel"]
   histUI --> fetch["bankSyncHistory dateFrom 1-3m"]
   fetch --> classify["Clasificador puro"]
-  classify --> dup["dup: ext_id / dia+importe+comercio / MacroDroid pm3d / fuzzy fixed-debts-goals"]
+  classify --> dup["dup: ext_id / dia+importe+comercio 1a1 / MacroDroid pm3d / fuzzy modeled-by-month"]
+  classify --> cats["cats: traspaso / inversion / autoCategory"]
   classify --> safe["default: gasto o ingreso"]
-  classify --> suggest["sugerencia recibo si fuzzy casi-fijo"]
-  histUI --> preview["Preview: nuevos / repes / sugeridos"]
+  classify --> suggest["sugerencia recibo + confirm permanente"]
+  histUI --> preview["Preview: nuevos / repes / sugeridos / aviso truncado / signo"]
   preview --> confirm["Confirm si hay Fijos nuevos"]
-  confirm --> commit["Commit batchId + source ob-hist"]
-  commit --> undo["Deshacer ultima importacion"]
+  confirm --> commit["Batch cloud + batchId local"]
+  commit --> undo["Undo por id tabla; nunca deleted"]
 ```
 
-**Principio:** toda la lógica de riesgo (dedup, destino por defecto, match fuzzy, batch undo) vive en helpers **puros** en `src/modules/08-motor-bank.js`, testeables sin React. La UI solo orquesta.
+**Principio:** helpers puros en `08-motor-bank.js`; UI orquesta.
+
+API:
+
+- `histClassifyCandidates(cands, state)` → status, reason, match, defDest, suggestRecibo, category
+- `histBuildCommit(...)` → expAdds, fixAdds, batchId (no escribe)
+- `histUndoBatch(state, lastHistImport)` → nextState + `{ cloudDeleteById: [...] }` (nunca `deleted`)
+
+Commit: `source:"ob-hist"`, `ent`, categorías como sync diario, batch cloud. Undo: ids reales.
 
 ---
 
-## Cambios concretos
+## Tests que exigen Opus (antes de beta)
 
-### 1. UX / puertas (sin tocar destello)
+Ampliar `tests/hist-import-dup.test.mjs`:
 
-- **Quitar** «Importar histórico» de `BankPanel` / Mis bancos (botón + portal `histOpen` ahí).
-- **Dejar solo** Ajustes → Importaciones (`imphist`). Revolut CSV de inversiones se queda en Mis bancos (otro dominio).
-- Allow-list del fetch: **enlaces OB active/pending** (todas las cuentas del payload `accounts[]`), no `expenseBankEnts`.
-- Flujo tipo hoja: buscar → preview claro (nuevos / ya tienes / sugerido fijo) → confirmar → pantalla fin con **Deshacer**.
-- Default destino: `in`→ingreso, resto→**gasto**. «Recibo» nunca pre-marcado salvo sugerencia explícita + confirmación al commit si hay altas a `fixed`.
+1. Undo con terna colisionante → preexistente vivo; no en lista de borrados nube.
+2. Undo no escribe `state.deleted`.
+3. Undo idempotente; sin ids locales → no-op declarado (no «✓ deshecho»).
+4. Traspaso propio → `traspaso`, no `ingreso`.
+5. Aporte mensual → `inversion`; `investments` intacto (no `applyInvestBuy`).
+6. `matchesModeled` por mes del candidato (no solo mes actual).
+7. `histCandExisting` 1:1 (2 candidatos vs 1 guardado → un solo dup).
+8. Gemelo MacroDroid ±3d, 1:1.
+9. Fuzzy «RECIBO ENDESA…» vs Fijo «Luz»; vs deuda; vs meta.
+10. Default a ciegas → `state.fixed` intacto.
+11. Banco fuera de ENT → candidatos visibles o error claro.
+12. Signo sospechoso → preview lo marca.
 
-### 2. Motor de seguridad (núcleo)
+E2e: migrar `bancos-historico-filtro` a Importaciones; ampliar `ajustes-importaciones`; Mis bancos sin botón hist.
 
-En `src/modules/08-motor-bank.js`, ampliar / unificar:
+**Y lo que ningún test ve:** simular contra su estado real de la nube antes de cantar victoria (regla 4/8).
 
-| Capa | Criterio |
-|------|----------|
-| Cierto | `ext_id` ya en expenses → ocultar o tachar silencioso |
-| Misma fila | día + importe firmado + comercio NFD (como `histCandDupKey` / `hojaClave`) |
-| Gemelo aviso | importe exacto ±3 días, merchant vacío/`Movimiento`, `source` MacroDroid (mismo espíritu que sync diario) |
-| Modelado | reutilizar `recNameMatch` + `recAmtClose` / `matchesModeled` contra `fixed`, `debts`, oneoffs; metas/ahorro si tienen importe+nombre usable |
-| Lote | `dedupeHistRecibos` solo aplica si el destino elegido es recibo (no al default gasto) |
-
-API sugerida:
-
-- `histClassifyCandidates(cands, state)` → por índice: `{ status, reason, match?, defDest, suggestRecibo }`
-- `histBuildCommit(selected, dest, state)` → `{ expAdds, fixAdds, batchId }` (no escribe)
-- `histUndoBatch(state, batchId)` → estado sin esos ids + lista cloud a borrar
-
-Commit: `source:"ob-hist"`, `importBatchId`, `ent` correcto. Cloud: `addExpense` / al deshacer `deleteExpense` (lección TR: local solo no basta — ver `docs/memoria/tr-duplicados-saga.md`).
-
-### 3. Deshacer
-
-- Guardar última tanda en estado ligero (`lastHistImport: { batchId, at, expenseIds, fixedIds }`).
-- Toast / pantalla fin: «Deshacer» ~10 min o hasta la siguiente importación.
-- Deshacer = quitar expenses+fixed de esa tanda en local **y** nube.
-
-### 4. Excel alineado (mínimo necesario)
-
-- Misma filosofía de preview/repes; si el undo de lote es barato, `source:"hoja"` puede compartir `importBatchId` (mismo helper). No reescribir todo `15-import-hoja.js`: solo el gancho de batch + deshacer si encaja sin divertirse.
-
-### 5. Tests (obligatorio antes de beta)
-
-- Unitarios en `tests/hist-import-dup.test.mjs`: los 4 agujeros + fuzzy «Luz» vs «RECIBO ENDESA…» + debt match + default no-crea-fijo + undo idempotente.
-- E2e: `e2e/ajustes-importaciones.spec.mjs` — histórico solo en Importaciones; Mis bancos sin botón.
-- **No tocar** season / shell / portal glow.
-
-### 6. Versión / canal
-
-- Feature en **`beta`** (4.15.x o 4.16.0 — coordinar con destello; **no promote** de ronda glow hasta OK del dueño).
-- `RELEASE_NOTES` es/en/ca en cristiano + `CHANGELOG` técnico.
+Checklist versión: `VERSION` = package = CHANGELOG = RELEASE_NOTES = README «Estado actual» = ROADMAP (si no, `docs-frescura` falla).
 
 ---
 
-## Pedido a Claude (segunda opinión — NO implementar)
+## Orden de ejecución (uno en uno, con su OK entre tandas)
 
-Lee esto + `AGENTS.md` + `docs/briefs/brief-import-historico.md` + `BankHistoryImport` en `10-app-components.js` + dedup hist / `matchesModeled` / `recNameMatch` en `08-motor-bank.js`.
-
-Responde con:
-
-1. **Veredicto:** ¿el plan cuadra o se deja un agujero que pueda destrozar datos reales (pareja/padre)?
-2. **Riesgos que Cursor debe cubrir en tests** (lista corta, concretos).
-3. **Mejoras** al clasificador / undo / allow-list si ves algo más sólido.
-4. **Qué NO tocar** confirmar (destello, suelo 8d del sync diario, etc.).
-
-**NO implementes código.** Solo opinión. Tras tu veredicto, Cursor ajusta e implementa.
+1. **Tanda motor:** helpers + tests A/B/C/H/I/J (rojo→verde) — sin UI aún.
+2. **Tanda UI segura:** `BankHistoryImport` defaults, categorías, confirm Fijos, preview truncado/signo — él prueba en beta.
+3. **Tanda puertas + undo:** quitar Mis bancos; allow-list; batch cloud + undo por id — él prueba deshacer con datos reales.
+4. **Tanda ship:** i18n es/en/ca; e2e migrados; bump beta; NOTES/CHANGELOG/README/ROADMAP.
 
 ---
 
 ## Fuera de alcance
 
-- Destello / season / `shell.html` / promote 4.15 glow.
-- Widget, MyInvestor, Hogar, multidivisa crucero.
-- Meter Revolut CSV de inversiones en Importaciones.
-
-## Orden de ejecución (tras OK Claude + «adelante» del dueño)
-
-1. Helpers puros + tests de los 4 agujeros (rojo→verde).
-2. Cablear `BankHistoryImport` (defaults, confirm Fijos, batch, undo).
-3. Quitar entrada Mis bancos; allow-list todos OB.
-4. i18n es/en/ca; build + `npm test` + e2e importaciones.
-5. Bump versión beta + NOTES/CHANGELOG; push `beta` para prueba en móvil **antes** de promote.
+- Destello / season / promote glow.
+- Widget, MyInvestor, Hogar, multidivisa.
+- Revolut CSV inversiones en Importaciones.
+- Limpiar `budgetSkip` muerto.
