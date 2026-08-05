@@ -258,19 +258,13 @@
   html.hi-contrast[data-theme="light"]{ --muted:#33463C; --muted-2:#5A6E63; }
   html.hi-contrast[data-theme="dark"]{ --muted:#C7C7CE; --muted-2:#9C9CA6; }
   html.hi-contrast[data-theme="blue"]{ --muted:#BFD2E6; --muted-2:#93A8C2; }
-  /* Temáticas de temporada: YA NO hay una capa de piezas cayendo/subiendo por la pantalla —
-     quitada del todo (2026-08-03, petición suya textual: «Quítame lo de que caigan cosas cuando
-     aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación personalizada
-     incrustada en las secciones, como cuando se mueven los logos de las tabs»).
-     Tres intentos en fila con la misma queja de fondo (algo se mueve SOLO por moverse): caída
-     larga en bucle → una sola caída al abrir → ráfaga corta al cambiar de pestaña. Lo que pide
-     ahora es justo lo que ya tienen los iconos de la barra (`tabpop`/`tabpeina`/`tabmarca`/
-     `tabsube`, más abajo): un detalle que se pinta CON la sección, no una capa aparte animada por
-     su cuenta. Ver `--season-ico` en el bloque de `--season-tinte`, y el badge sobre `.v4-title`/
-     `.v4-inicio-hi` en «MÁS AMBIENTACIÓN», los dos más abajo.
-     Lo que desaparece con este commit: `.season-fx`, `@keyframes seasonfall`/`seasonrise` (y su
-     `.rising`) de aquí; `seasonEpoch`/`seasonFirstTab` (el JS que las disparaba) en
-     11-app-main.js; y el pool de emojis que caían (`SEASON_FX`) en 01-i18n.js. */
+  /* Temáticas de temporada — ambientación suave DETRÁS de las cartillas (2026-08-05).
+     Historial: la capa vieja (`.season-fx` z-index 36 ENCIMA de todo, ráfagas al cambiar de
+     pestaña con `seasonEpoch`/`seasonrise`) se quitó el 2026-08-03 («ya me cansé»). Ahora vuelve
+     SOLO como fondo: `.season-amb` a z-index 0, cartillas por encima (`position:relative;
+     z-index:2`), pocas piezas, opacidad baja, caída lenta en bucle. Cero JS al cambiar de tab.
+     El detalle incrustado en títulos (`--season-ico` / `seasonchip`) se queda. Se apaga con
+     «Reducir animaciones». */
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
   /* EL HALO DEL + AHORA ES UN ANILLO, NO UNA SOMBRA (2026-07-28). `fabpulse` animaba
@@ -350,7 +344,27 @@
   html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";}
   html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";}
-  @media (prefers-reduced-motion:reduce){ html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;} }
+  /* Ambientación detrás: fixed z-index 0 + cartillas encima. Solo translate3d/rotate/opacity
+     (compositor). Sin scale+filter a la vez — eso re-rasterizaba y cortaba en móviles (4.13). */
+  .season-amb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;}
+  .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
+    animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
+  @keyframes seasonDrift{
+    0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0;}
+    6%{opacity:var(--op,.22);}
+    92%{opacity:var(--op,.22);}
+    100%{transform:translate3d(var(--sway,8px),110vh,0) rotate(var(--spin,120deg));opacity:0;}
+  }
+  /* El contenido de cada pestaña pinta ENCIMA de la lluvia; sin esto el fixed a z-index 0
+     igual se come el stacking del flujo normal y las piezas taparían el dinero.
+     ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40` más abajo — `relative` lo rompería. */
+  .page{position:relative;z-index:2;}
+  @media (prefers-reduced-motion:reduce){
+    .season-amb{display:none;}
+    html[data-season]::before{display:none;} html[data-season]::after{display:none;}
+    html[data-season] .botnav-fab::after{animation:none;opacity:0;}
+    html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
+  }
   /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
   .beta-tanda{margin:0 0 22px;padding-top:2px;}
   .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
