@@ -35,6 +35,11 @@ assert.match(shell, /\.season-amb\s*\{/, "falta `.season-amb` (ambientación det
 assert.match(shell, /\.season-amb\{[^}]*z-index:\s*0/, "`.season-amb` debe ir a z-index 0 (detrás)");
 assert.match(shell, /@keyframes\s+seasonDrift\s*\{/, "falta el keyframe suave `seasonDrift`");
 assert.match(shell, /\.page\{[^}]*z-index:\s*2/, "`.page` debe pintar encima de la ambientación");
+assert.match(
+  shell,
+  /\.page\.page-scroll-host\{[^}]*background:\s*transparent/,
+  "`.page-scroll-host` no puede llevar fondo opaco: tapa `.season-amb` y el velo en reposo (solo se veían al deslizar)"
+);
 assert.match(i18n, /const\s+SEASON_AMB\s*=/, "falta el pool SEASON_AMB");
 assert.match(main, /className:"season-amb/, "11-app-main.js debe montar `.season-amb`");
 assert.doesNotMatch(main, /setSeasonEpoch/, "no debe haber JS que dispare al cambiar de tab");
