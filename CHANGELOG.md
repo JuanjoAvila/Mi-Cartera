@@ -8,9 +8,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 1. **Host fixed** + `hostTab` en React + safe-top + rise sin matrix.
 2. **Flick abajo:** hide del botnav diferido a `scrollend`.
 3. **Ola arriba:** candado anti-arco también en el tope.
-4. **Barra:** sin blur en host. Clear en el tope solo al VENIR de abajo (no en reposo);
-   suelta al instante al swipe de tabs. scrollend arriba ya no aplica hide (bug: escondía
-   la barra en el tope). Hide abajo tras scrollend+450 ms.
+5. **Host perdido random:** `enterScrollHost` fallaba si había dedo al acabar el settle →
+   estado «sin parches». Ahora solo bloquea en tab-drag activo + `ensureScrollHost` al tocar.
 
 ## [Sin publicar] — 2026-08-05 (noche 2)
 ### Ola nativa de verdad: la pestaña activa = como Ajustes (`position:fixed`)

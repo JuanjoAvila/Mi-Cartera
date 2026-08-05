@@ -1997,7 +1997,11 @@ function App(){
     try{ if(appShellRef.current) appShellRef.current.classList.remove("scroll-host-on"); }catch(e){}
   };
   const enterScrollHost=function(i){
-    const el=trackRef.current; if(!el||dragging.current) return;
+    const el=trackRef.current; if(!el) return;
+    // Solo bloquear si el carrusel se está ARRASTRANDO ahora. Antes: `if(dragging) return`
+    // y si el asentamiento (rAF) acababa con un dedo nuevo puesto, NUNCA se re-entraba —
+    // estado random «como sin parches» + tabs/ola muertos hasta ir a Resumen (5/8).
+    if(dragging.current && gestureMode.current==="tab") return;
     const w=trackW.current||trackAnchoAhora();
     const toX=-(i*w);
     el.classList.remove("dragging");
@@ -2013,14 +2017,19 @@ function App(){
     if(hostTabRef.current!==i){ hostTabRef.current=i; setHostTab(i); }
     try{ if(viewportRef.current) viewportRef.current.classList.add("scroll-host-open"); }catch(e){}
     try{ if(appShellRef.current) appShellRef.current.classList.add("scroll-host-on"); }catch(e){}
-    // Al aterrizar tras swipe: sin clear residual (si no, Gastos parece «sin el fix» un segundo).
     endTopClearNow(false);
     try{
       const nav=document.querySelector(".botnav");
       if(nav) nav.classList.remove("botnav-ola-clear");
     }catch(e){}
-    // Recolocar touch-action (perfil arriba en Inicio)
     if(pgs[i]) syncPageTouchAction(pgs[i], i);
+  };
+  // Red de seguridad: si el host se perdió (gesto cancelado / settle a medias), recuperarlo.
+  const ensureScrollHost=function(){
+    if(settleRaf.current) return;                         // el asentamiento ya lo pondrá
+    if(dragging.current && gestureMode.current==="tab") return;
+    if(scrollHostOn.current && hostTabRef.current===tabRef.current) return;
+    enterScrollHost(tabRef.current);
   };
   /* ASENTAR EL CARRUSEL CON rAF, NO CON transition CSS — 2026-07-27, medido en SU móvil.
      La transition de 0,42 s producía exactamente este ritmo al soltar el dedo:
@@ -2131,6 +2140,11 @@ function App(){
        encuentre la app bloqueada por el gesto anterior. Si algún día vuelve a haber una fuga,
        aquí se cura sola. */
     if(dragging.current) onCancel();
+    // Si un gesto anterior dejó el host/freeze/barra a medias, recuperar ANTES del nuevo dedo.
+    try{
+      if(appShellRef.current && appShellRef.current.classList.contains("gesture-freeze")) freezeShell(false);
+    }catch(e){}
+    ensureScrollHost();
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
     // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
@@ -2341,12 +2355,18 @@ function App(){
         let nt=tab;
         if((dist<-distTh || (flick&&dist<0)) && tab<tabIds.length-1) nt=tab+1;
         else if((dist>distTh || (flick&&dist>0)) && tab>0) nt=tab-1;
-        // Asentar YA (rAF), no esperar al setState: si no, el carrusel se queda un frame
-        // plantado donde lo soltó el dedo. goTab dispara el useEffect de `tab`, que vuelve a
-        // llamar asentarTrack con el mismo destino → no-op (ver settleTo).
+        // Limpiar modo ANTES de asentar: si no, enterScrollHost puede creer que seguimos en tab-drag.
+        gestureMode.current=null;
+        axis.current=null;
+        endTopClearNow(true);
         if(nt!==tab) goTab(nt);
         asentarTrack(nt);
+        return;
       }
+    } else {
+      // Scroll vertical normal: por si un leaveScrollHost quedó a medias, recuperar.
+      ensureScrollHost();
+      endTopClearNow(false);
     }
     gestureMode.current=null;
     axis.current=null;
@@ -2609,6 +2629,7 @@ function App(){
   const cancelSwipe=function(){
     if(!dragging.current) return;
     dragging.current=false; axis.current=null; gestureMode.current=null; dx.current=0;
+    endTopClearNow(true);
     // `tabRef` por lo mismo que en `goTab`: con el `tab` de cuando se construyó la página, cancelar
     // el gesto devolvería el carrusel a la pestaña equivocada. Asentar por rAF (no snap a pelo):
     // si no, el dedo ve un salto seco cuando el navegador se lleva el gesto.
