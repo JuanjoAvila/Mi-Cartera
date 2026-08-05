@@ -19,7 +19,7 @@
      ⚠ SI AÑADES UNA LLAMADA A UN DOMINIO NUEVO, AÑÁDELO AQUÍ o fallará en silencio.
      Inventario de lo que hay hoy (todo lo demás está auto-hospedado, regla de AGENTS.md §3):
        · supabase.co ........... nube: login, estado, gastos y Edge Functions
-       · api.frankfurter.app ... tipos de cambio del BCE
+       · api.frankfurter.dev ... tipos de cambio del BCE (antes .app; ese dominio redirige aquí)
        · juanjoavila.github.io . manifiestos OTA (version.json / apk.json) desde la app Android
        · github.com + objects.githubusercontent.com … manifiestos del canal BETA (release `beta`)
        · google.com / gstatic.com … reCAPTCHA del login de MyInvestor (se carga solo si entras ahí)
@@ -45,7 +45,12 @@
      contestaba tan tranquilo «✓ estás a la última». O sea, el canal beta llevaba sin funcionar
      desde ese cambio de GitHub, en silencio (el usuario lo cazó el 2026-07-25: canal activado,
      beta publicada y el móvil diciendo v4.10.0). Los DOS dominios se quedan: el viejo por si
-     alguna release antigua todavía redirige ahí. -->
+     alguna release antigua todavía redirige ahí.
+
+     ⚠ MISMO PATRÓN CON LOS TIPOS DE CAMBIO (2026-08-05): `api.frankfurter.app` hace **301 →
+     api.frankfurter.dev**. Sin `.dev` en connect-src, en el WebView el fetch moría y solo el
+     dólar «funcionaba» (tipo legacy `state.fx`). La URL canónica es ya `.dev`; `.app` se deja
+     por si queda algún redirect residual. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   base-uri 'none';
@@ -58,7 +63,7 @@
   font-src 'self' data:;
   img-src 'self' data: blob: https://www.gstatic.com;
   frame-src https://www.google.com;
-  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://release-assets.githubusercontent.com https://www.google.com https://www.gstatic.com;
+  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.dev https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://release-assets.githubusercontent.com https://www.google.com https://www.gstatic.com;
 " />
 <!-- Que no se filtre la URL de la app (ni sus parámetros) al salir hacia el banco. -->
 <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -14541,12 +14546,19 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
           CUR_LIST.map(function(c){
             return React.createElement("button",{key:c,onClick:function(){
-              // Sin tipo de cambio la app se quedaba en € en silencio («no hace nada»). Si falta,
-              // pedimos FX y solo entonces aplicamos; si sigue sin llegar, se lo decimos.
-              const applyCur=function(s){
-                const r=c==="EUR"?1:fxTableOf(s)[c];
+              // Sin tipo la app se quedaba en € en silencio. Pedimos FX y aplicamos con los
+              // rates DEVUELTOS (no solo con state): el set() de refreshFx puede ir un tick
+              // detrás y applyCur(s) vería todavía el estado viejo.
+              const applyCur=function(s, rates){
+                const tbl=rates?Object.assign({},fxTableOf(s),rates):fxTableOf(s);
+                const r=c==="EUR"?1:tbl[c];
                 if(c!=="EUR"&&!(r>0)) return null;
-                return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})});
+                const patch={settings:Object.assign({},s.settings,{currency:c})};
+                if(rates){
+                  patch.fxRates=Object.assign({},fxTableOf(s),rates);
+                  if(rates.USD>0) patch.fx=+(rates.USD.toFixed(4));
+                }
+                return Object.assign({},s,patch);
               };
               if(applyCur(state)){
                 set(function(s){ return applyCur(s)||s; });
@@ -14554,9 +14566,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
                 return;
               }
               showToast(t("fx_waiting"));
-              Promise.resolve(refreshFx&&refreshFx()).then(function(){
+              Promise.resolve(refreshFx&&refreshFx()).then(function(rates){
                 set(function(s){
-                  const next=applyCur(s);
+                  const next=applyCur(s, rates);
                   if(!next){ showToast(t("fx_no_rate")); return s; }
                   showToast(t("cur_"+c.toLowerCase()));
                   return next;
@@ -17725,13 +17737,15 @@ function App(){
      state.trRewardsTotal,state.fx,state.fxRates]);
 
   const [pricing,setPricing]=useState(false);
-  // Tipos de referencia del BCE vía frankfurter.app (gratis, sin key). La lista sale de CUR_LIST
-  // para que añadir una divisa (p. ej. TRY en 4.14.0) no deje el fetch desfasado del selector —
-  // eso es lo que hacía «Comparar monedas» enseñar filas vacías y la moneda elegida no cambiar nada
-  // (sin tipo → DISP se queda en € en silencio).
+  // Tipos BCE vía frankfurter (gratis, sin key). URL canónica: api.frankfurter.dev.
+  // ⚠ 2026-08-05: api.frankfurter.app hace 301 → .dev; la CSP solo tenía .app, así que en el
+  // WebView el fetch moría en el redirect (mismo patrón que release-assets de GitHub). El dólar
+  // «funcionaba» por el state.fx legacy; lira/libra/… daban «Sin tipo de cambio».
+  // La lista sale de CUR_LIST para no desfasar selector y BCE.
   const refreshFx=function(){
     const to=CUR_LIST.filter(function(c){ return c!=="EUR"; }).join(",");
-    return fetch("https://api.frankfurter.app/latest?from=EUR&to="+encodeURIComponent(to)).then(function(r){ return r.json(); }).then(function(d){
+    const url="https://api.frankfurter.dev/v1/latest?from=EUR&to="+encodeURIComponent(to);
+    return fetch(url).then(function(r){ if(!r||!r.ok) return null; return r.json(); }).then(function(d){
       const rates=d&&d.rates;
       if(!rates) return null;
       const fxRates={};

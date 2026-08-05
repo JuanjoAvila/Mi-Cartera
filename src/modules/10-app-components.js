@@ -2360,12 +2360,19 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
           CUR_LIST.map(function(c){
             return React.createElement("button",{key:c,onClick:function(){
-              // Sin tipo de cambio la app se quedaba en € en silencio («no hace nada»). Si falta,
-              // pedimos FX y solo entonces aplicamos; si sigue sin llegar, se lo decimos.
-              const applyCur=function(s){
-                const r=c==="EUR"?1:fxTableOf(s)[c];
+              // Sin tipo la app se quedaba en € en silencio. Pedimos FX y aplicamos con los
+              // rates DEVUELTOS (no solo con state): el set() de refreshFx puede ir un tick
+              // detrás y applyCur(s) vería todavía el estado viejo.
+              const applyCur=function(s, rates){
+                const tbl=rates?Object.assign({},fxTableOf(s),rates):fxTableOf(s);
+                const r=c==="EUR"?1:tbl[c];
                 if(c!=="EUR"&&!(r>0)) return null;
-                return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})});
+                const patch={settings:Object.assign({},s.settings,{currency:c})};
+                if(rates){
+                  patch.fxRates=Object.assign({},fxTableOf(s),rates);
+                  if(rates.USD>0) patch.fx=+(rates.USD.toFixed(4));
+                }
+                return Object.assign({},s,patch);
               };
               if(applyCur(state)){
                 set(function(s){ return applyCur(s)||s; });
@@ -2373,9 +2380,9 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
                 return;
               }
               showToast(t("fx_waiting"));
-              Promise.resolve(refreshFx&&refreshFx()).then(function(){
+              Promise.resolve(refreshFx&&refreshFx()).then(function(rates){
                 set(function(s){
-                  const next=applyCur(s);
+                  const next=applyCur(s, rates);
                   if(!next){ showToast(t("fx_no_rate")); return s; }
                   showToast(t("cur_"+c.toLowerCase()));
                   return next;
