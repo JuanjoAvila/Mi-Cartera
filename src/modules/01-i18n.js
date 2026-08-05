@@ -141,7 +141,7 @@ const LANG = {
     st_reduce_motion:"Reducir animaciones", st_reduce_motion_hint:"Quita deslizamientos y rebotes: la app va más sobria y directa. Útil si mareas.",
     st_contrast:"Más contraste", st_contrast_hint:"Sube el contraste del texto para que se lea mejor.",
     // Temáticas de temporada
-    st_theme_season:"Temática", st_theme_season_hint:"Cambia los colores y añade un detalle animado de temporada (nieve, hojas, balón…). Quítalo cuando quieras.",
+    st_theme_season:"Temática", st_theme_season_hint:"Cambia los colores y deja caer un detalle muy suave por detrás de las cartillas (nieve, hojas, sol…). Quítalo cuando quieras.",
     th_none:"Ninguna", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Navidad 🎄", th_verano:"Verano ☀️", th_invierno:"Invierno ❄️", th_pascua:"Pascua 🐣",
     // Bancos de gasto diario (varios)
     st_expense_banks:"Bancos de gasto diario", st_expense_banks_hint:"Marca todos los bancos cuyas compras cuentan en tu presupuesto del día a día (p. ej. Trade Republic + Revolut en un viaje). El saldo de gasto sigue saliendo del principal.",
@@ -153,6 +153,12 @@ const LANG = {
     st_cur_compare:"Comparar monedas", st_cur_compare_hint:"Tipos del BCE (referencia). Solo salen monedas con tipo cargado.",
     st_cur_compare_empty:"Aún no hay tipos de cambio. Comprueba la conexión y pulsa reintentar.",
     st_cur_compare_retry:"Reintentar",
+    st_cur_convert:"Conversor de monedas",
+    st_cur_convert_from:"De esta moneda",
+    st_cur_convert_to:"A esta moneda",
+    st_cur_convert_swap:"Intercambiar",
+    st_cur_convert_hint:"Tipos del BCE (referencia). El resultado usa el cambio del día.",
+    st_cur_convert_search_ph:"🔎 Buscar moneda…", st_cur_convert_search_none:"Ninguna moneda con ese nombre.",
     currency_hint:"Cambia cómo se ven los importes en toda la app (pantallas, totales, gráficos). Al apuntar un gasto eliges la moneda ahí mismo, aparte.",
     fx_waiting:"⏳ Trayendo el tipo de cambio…", fx_no_rate:"✕ Sin tipo de cambio para esa moneda. Prueba con conexión.",
     ap_cur_lbl:"Moneda del apunte", ap_fx_hint:"Se convierte a euros al guardar (tipo del BCE).",
@@ -282,7 +288,7 @@ const LANG = {
     ts_small:"Small", ts_normal:"Normal", ts_big:"Large", ts_huge:"Huge",
     st_reduce_motion:"Reduce motion", st_reduce_motion_hint:"Removes slides and bounces: the app feels calmer and more direct. Useful if motion bothers you.",
     st_contrast:"More contrast", st_contrast_hint:"Boosts text contrast for easier reading.",
-    st_theme_season:"Theme", st_theme_season_hint:"Changes colors and adds a seasonal animated touch (snow, leaves, football…). Turn it off anytime.",
+    st_theme_season:"Theme", st_theme_season_hint:"Changes colors and gently drifts a seasonal touch behind the cards (snow, leaves, sun…). Turn it off anytime.",
     th_none:"None", th_mundial:"World Cup 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Christmas 🎄", th_verano:"Summer ☀️", th_invierno:"Winter ❄️", th_pascua:"Easter 🐣",
     st_expense_banks:"Daily-spending banks", st_expense_banks_hint:"Tick every bank whose card spending counts toward your daily budget (e.g. Trade Republic + Revolut on a trip). The spending balance still comes from the main one.",
     st_expense_banks_none:"No accounts to choose yet.",
@@ -292,6 +298,12 @@ const LANG = {
     st_cur_compare:"Compare currencies", st_cur_compare_hint:"ECB reference rates. Only currencies with a loaded rate are listed.",
     st_cur_compare_empty:"No exchange rates yet. Check your connection and tap retry.",
     st_cur_compare_retry:"Retry",
+    st_cur_convert:"Currency converter",
+    st_cur_convert_from:"From this currency",
+    st_cur_convert_to:"To this currency",
+    st_cur_convert_swap:"Swap",
+    st_cur_convert_hint:"ECB reference rates. The result uses today's rate.",
+    st_cur_convert_search_ph:"🔎 Search currency…", st_cur_convert_search_none:"No currency with that name.",
     currency_hint:"Changes how amounts look across the app (screens, totals, charts). When you log an expense you pick the currency there, separately.",
     fx_waiting:"⏳ Fetching the exchange rate…", fx_no_rate:"✕ No exchange rate for that currency. Try again online.",
     ap_cur_lbl:"Expense currency", ap_fx_hint:"Converted to euros on save (ECB rate).",
@@ -421,7 +433,7 @@ const LANG = {
     ts_small:"Petita", ts_normal:"Normal", ts_big:"Gran", ts_huge:"Enorme",
     st_reduce_motion:"Reduir animacions", st_reduce_motion_hint:"Treu lliscaments i rebots: l'app va més sòbria i directa. Útil si et mareges.",
     st_contrast:"Més contrast", st_contrast_hint:"Puja el contrast del text perquè es llegeixi millor.",
-    st_theme_season:"Temàtica", st_theme_season_hint:"Canvia els colors i afegeix un detall animat de temporada (neu, fulles, pilota…). Treu-lo quan vulguis.",
+    st_theme_season:"Temàtica", st_theme_season_hint:"Canvia els colors i deixa caure un detall molt suau per darrere de les cartilles (neu, fulles, sol…). Treu-lo quan vulguis.",
     th_none:"Cap", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Nadal 🎄", th_verano:"Estiu ☀️", th_invierno:"Hivern ❄️", th_pascua:"Pasqua 🐣",
     st_expense_banks:"Bancs de despesa diària", st_expense_banks_hint:"Marca tots els bancs les compres dels quals compten al teu pressupost diari (p. ex. Trade Republic + Revolut en un viatge). El saldo de despesa continua sortint del principal.",
     st_expense_banks_none:"Encara no tens comptes per triar.",
@@ -431,6 +443,12 @@ const LANG = {
     st_cur_compare:"Comparar monedes", st_cur_compare_hint:"Tipus del BCE (referència). Només surten monedes amb tipus carregat.",
     st_cur_compare_empty:"Encara no hi ha tipus de canvi. Comprova la connexió i prem reintentar.",
     st_cur_compare_retry:"Reintentar",
+    st_cur_convert:"Convertidor de monedes",
+    st_cur_convert_from:"D'aquesta moneda",
+    st_cur_convert_to:"A aquesta moneda",
+    st_cur_convert_swap:"Intercanviar",
+    st_cur_convert_hint:"Tipus del BCE (referència). El resultat usa el canvi del dia.",
+    st_cur_convert_search_ph:"🔎 Cerca una moneda…", st_cur_convert_search_none:"Cap moneda amb aquest nom.",
     currency_hint:"Canvia com es veuen els imports a tota l'app (pantalles, totals, gràfics). En apuntar una despesa tries la moneda allà mateix, a part.",
     fx_waiting:"⏳ Portant el tipus de canvi…", fx_no_rate:"✕ Sense tipus de canvi per a aquesta moneda. Prova amb connexió.",
     ap_cur_lbl:"Moneda de l'apunt", ap_fx_hint:"Es converteix a euros en desar (tipus del BCE).",
@@ -1131,7 +1149,11 @@ Object.assign(LANG.es,{
   w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
+  g_no_budget:"no afecta",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
+  g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo (el banco de gasto diario viene marcado por defecto).",
+  g_filters_search:"Buscar categoría…", g_filters_cats:"categorías", g_filters_banks:"bancos",
+  g_filters_clear:"Limpiar", g_filters_done:"Listo",
   ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
   g_cycle_from:"Del {d} (cobro de {x}) a hoy",
   g_cycle_none_t:"Sin nómina detectada",
@@ -1151,7 +1173,7 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -1218,7 +1240,11 @@ Object.assign(LANG.en,{
   et_tabs:"✎ Edit tabs", et_intro:"Tabs used to move by pressing and holding one and dragging it (a hidden gesture, easy to trigger by accident). Now you edit them here: reorder with ▲▼, remove with ✕, or add back with +.", et_fixed:"fixed", et_hidden:"Hidden tabs (tap to add them):",
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
+  g_no_budget:"doesn't count",
   g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
+  g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all (your daily-spending bank is pre-selected).",
+  g_filters_search:"Search category…", g_filters_cats:"categories", g_filters_banks:"banks",
+  g_filters_clear:"Clear", g_filters_done:"Done",
   ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
   g_cycle_from:"From {d} (payday, {x}) to today",
   g_cycle_none_t:"No payday detected",
@@ -1238,7 +1264,7 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -1304,7 +1330,11 @@ Object.assign(LANG.ca,{
   et_tabs:"✎ Edita pestanyes", et_intro:"Abans les pestanyes es movien mantenint-ne una premuda i arrossegant-la (un gest ocult, fàcil de tocar sense voler). Ara s'editen aquí: reordena amb ▲▼, treu amb ✕ o torna a afegir amb +.", et_fixed:"fixa", et_hidden:"Pestanyes ocultes (toca per afegir-les):",
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
+  g_no_budget:"no afecta",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
+  g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot (el banc de despesa diària ve marcat per defecte).",
+  g_filters_search:"Cerca categoria…", g_filters_cats:"categories", g_filters_banks:"bancs",
+  g_filters_clear:"Netejar", g_filters_done:"Fet",
   ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
   g_cycle_from:"Del {d} (cobrament de {x}) a avui",
   g_cycle_none_t:"Sense nòmina detectada",
@@ -1324,7 +1354,7 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -2067,6 +2097,21 @@ function expenseBankEnts(s){
   if(daily&&daily.ent&&out.indexOf(daily.ent)<0) out.push(daily.ent);
   return out;
 }
+/* ¿Cuenta este movimiento para el EFECTIVO de la cuenta de gasto diario (saldo / round-up)?
+   Vista de Gastos: se ven TODOS los bancos. Contabilidad: solo los marcados como gasto diario
+   (`expenseBankEnts` = diaria + extras en settings.expenseBanks). A mano (sin ent) sí cuenta.
+   Pedido 2026-08-05: «que entre todo, pero que solo reste el de gasto diario». */
+function expenseCountsCash(e, s){
+  if(!e) return false;
+  const ent=expenseBankOf(e);
+  if(!ent) return true;
+  return expenseBankEnts(s).indexOf(ent)>=0;
+}
+/* Igual que cash, pero sin neutras (inversión/traspaso): es lo que pinta el presupuesto. */
+function expenseCountsBudget(e, s){
+  if(!e || CAT_NEUTRAS[e.category]) return false;
+  return expenseCountsCash(e, s);
+}
 // Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
 // despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si
 // otra lo era, pasa a «fijos» con el mismo re-anclaje. Transform PURO de estado — lo usan el
@@ -2256,7 +2301,7 @@ const SAVE_HITOS=[100,500,1000,5000];   // hitos de ahorro (medallas)
 const GM_LEVELS=[0,250,1000,3000,8000]; // umbrales de savedScore por nivel
 const GM_ICONS=["🐣","🐢","🦊","🦅","👑"];
 // Gasto mensual (solo gastos reales, amount>0) por clave YYYY-MM.
-function spendByMonth(expenses){ const m={}; (expenses||[]).forEach(function(e){ if(e.amount>0){ const k=mkOf(parseDate(e.date)); m[k]=(m[k]||0)+e.amount; } }); return m; }
+function spendByMonth(expenses){ const m={}; (expenses||[]).forEach(function(e){ if(e.amount>0 && !CAT_NEUTRAS[e.category]){ const k=mkOf(parseDate(e.date)); m[k]=(m[k]||0)+e.amount; } }); return m; }
 function median(arr){ const a=(arr||[]).slice().sort(function(x,y){return x-y;}); const n=a.length; if(!n) return 0; return n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2; }
 // Detector de SUSCRIPCIONES / cargos recurrentes: mismo comercio en ≥3 meses distintos con importe
 // estable (≥60% dentro de ±25% de la mediana). Devuelve {name,cat,amount,months,last,active,yearly}.
@@ -2302,7 +2347,10 @@ function gamifOf(state, totals){
   const nextMin = (lvl+1<GM_LEVELS.length) ? GM_LEVELS[lvl+1] : null;
   const base=GM_LEVELS[lvl];
   const lvlProg = nextMin!=null ? Math.min(100,Math.max(0,(savedScore-base)/(nextMin-base)*100)) : 100;
-  const budget=state.budget||0, spent=tt.thisMonthSpent||0;
+  // Misma cifra que Resumen/Gastos (no thisMonthSpent: mete neutras e ingresos).
+  const bs=monthBudgetStats(state);
+  const budget=bs.budget!=null?bs.budget:(state.budget||0);
+  const spent=Math.max(0, bs.against||0);
   const ruCur=+(((tt.roundupThisMonth||0)+(tt.savebackThisMonth||0))).toFixed(2);
   const budgetReto={ id:"budget", spent:spent, budget:budget, margin:+(budget-spent).toFixed(2), done:budget>0&&spent<=budget, pct: budget>0?Math.min(100,spent/budget*100):0 };
   const ruReto={ id:"roundup", cur:ruCur, goal:RU_GOAL, done:ruCur>=RU_GOAL, pct:Math.min(100,ruCur/RU_GOAL*100) };
@@ -2702,12 +2750,19 @@ function applyA11y(s){
   applySeason(s&&s.settings&&s.settings.season);
 }
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
-// Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
-// lo sigue mandando el tema de arriba; la temporada solo añade acentos + el icono incrustado en
-// cada sección (su detalle CSS, `--season-ico`, va en shell.html — mismo emoji que este chip).
-// ⚠ Ya NO hay una capa de piezas cayendo por la pantalla (quitada 2026-08-03): aquí vivía
-// `SEASON_FX`, el pool de emojis que caían, y ha desaparecido con ella.
-const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
+  // Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
+  // lo sigue mandando el tema de arriba; la temporada añade acentos + icono en títulos + ambientación
+  // suave DETRÁS de las cartillas (`.season-amb` en shell.html). El pool viejo `SEASON_FX` (capa
+  // encima + ráfagas al cambiar de tab) se retiró 2026-08-03; este es el suave de 2026-08-05.
+  const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
+  const SEASON_AMB={
+    mundial:["⚽","🇪🇸","🏆","⚽","🥅"],
+    halloween:["🎃","👻","🦇","🍬","🕷️"],
+    navidad:["❄️","🎄","⭐","🎁","❄️"],
+    verano:["☀️","🌴","🌊","🍦","🐚"],
+    invierno:["❄️","⛄","❄️","🧣","🌨️"],
+    pascua:["🐣","🥚","🐰","🌷","🌸"]
+  };
 function loadState(){
   const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){

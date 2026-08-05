@@ -2,6 +2,203 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.15.0] — 2026-08-05
+### Ambientación suave + conversor FX + presupuesto alineado + extracto total (beta)
+
+**Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
+`gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`,
+`fix-season-portal`, `fix-season-glow-steady`, `fix-season-glow-soft`, `fix-season-tabs`.
+
+1. **Ambientación** (`.season-amb` + destello superior):
+   **Incidentes 2026-08-05 (mismo día):**
+   - Host transparente → Inicio+Gastos. Fix: host SIEMPRE opaco.
+   - Lluvia saltaba de fase al swipe → UNA capa GLOBAL fixed + `useMemo`.
+   - Destello ARRIBA: `html::before` fixed fallaba en su WebView Oppo (CDP 2026-08-05:
+     computed=fixed z-36 y aun así se iba con el scroll). Fix: nodo real `.season-glow`.
+   - Fuga de lista en la barra ~1 s al scrollear: `botnav-hidden` usaba opacity→0 a mitad
+     de la transición. Fix: hide SOLO con translateY; lluvia recortada encima de la barra.
+   - Cofia opaca encima (.13/.15): sin parpadeo pero «ralla» horizontal que tapaba texto al
+     scroll. Fix `.16`: portal z-1 detrás de `#root` z-2; lavado ancho por temática en
+     `.season-glow` (Verano atardecer melocotón/ámbar; Halloween óxido; Invierno azul plateado;
+     Pascua rosa/verde; Navidad/Mundial con acentos propios); host/app transparentes con
+     temática; alfas ~.03–.13; el contenido pasa por encima.
+   - Build `.16`: host transparente reabrió Inicio+Gastos fusionados (mismo incidente del
+     5/8 mañana). Fix `.17`: host OPACO con el lavado pintado encima de `var(--bg)` (no agujero);
+     `.page` opaca en el gesto; portal sigue detrás para chrome.
+   - Build `.18`: el lavado del host (`.17`) se iba con el scroll (gradiente en `background-image`
+     del contenedor scrolleable). `background-attachment:fixed` lo arreglaba en desktop pero en
+     WebView Oppo tapaba el contenido al scrollear. Fix: host solo `var(--bg)` + lavado en
+     `::before` sticky (z-0) con hijos en z-1; portal `.season-glow` sin attachment:fixed.
+   - Build `.22` (glow22): portal dentro de `#root` z-0, host/app/page transparentes en reposo.
+     `visibility:hidden` en hermanas aparcadas rompía e2e (`listas-render`: «Internet» duplicado
+     en Inicio›Próximos vs Plan›Recibos). Fix `.18`: se quitó `visibility:hidden` y solo quedó
+     `overflow:hidden` + fondo opaco en `.track.dragging` → **regresión**: tabs fusionadas otra
+     vez en reposo. Fix `.19`: restaurar `.track.scroll-host-park .page:not(.page-scroll-host)
+     {visibility:hidden}` (8016d7df) y mantener e2e acotado a `.page-scroll-host`.
+2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
+   la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
+3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
+   (misma cifra que Resumen/Gastos; sin neutras; resta reservas). Test:
+   `tests/month-budget-stats.test.mjs`.
+4. **Extracto de todos los bancos:** `importObExpenses` apunta TODO lo sincronizado. Solo
+   `expenseBankEnts` resta del presupuesto/saldo (`expenseCountsCash`/`expenseCountsBudget`);
+   el resto se ve con marca «no afecta». Fijos modelados no se duplican en ningún banco.
+5. **Filtros + categorías:** sheet con buscador (adiós chips kilométricos); categorías
+   `viajes`/`mascotas`/`educacion`/`energia`; KW ampliado (cliente + `ingest_logic` + ALLOWED
+   de la Edge Function categorize).
+6. **Fix 2026-08-05 — popup de Novedades en bucle en beta:** «me sale en beta todo el rato
+   para actualizar, no sé porqué». La puerta que decide si toca enseñar ✨ Novedades
+   (`_seenVersion` en `11-app-main.js`) comparaba contra el sello EXACTO de `CONFIG.APP_VERSION`,
+   que en beta lleva sufijo de compilación (`beta.yml`: `VERSION.N`, sube en CADA push — hoy
+   4.15.0.1…4.15.0.4/5). El popup ya casaba por versión BASE al decidir qué entrada resaltar
+   (`mcVerBase`, fix 2026-07-26) pero la puerta que decide si DISPARA el popup se quedó con la
+   comparación vieja: cada compilación nueva de la MISMA beta reabría el mismo popup con las
+   MISMAS notas, sin nada que contar. Ahora `_seenVersion` se sella y compara por `mcVerBase`
+   (también en el sello silencioso de `Onboarding.finish`). En estable la base y el sello son
+   el mismo string — cero cambio para el resto de la familia. El resto del ruido de
+   actualizaciones (pill OTA, notificación nativa, `OtaCheckWorker`) SÍ correspondía a
+   compilaciones realmente nuevas publicadas hoy (4 tandas + esta), así que no se toca: es
+   exactamente lo esperado cuando se publica varias veces el mismo día.
+7. **Fix 2026-08-05 — destello + lluvia sin cortes** (`fix-season-glow`): ver punto 1
+   (segunda pasada del mismo día, feedback con 2 fotos).
+8. **Reubicación 2026-08-05 — botón «Filtros» de Gastos** (`gastos-filtros-ubicacion`):
+   `GastosFilterSheet` (punto 5) llegó con su botón en una fila propia, entre el buscador y
+   «Sincronizar» — ni pegado a uno ni al otro. Se movió a la misma fila que el buscador
+   (`04-tab-gastos.js`, `Expenses`): los dos acotan la lista de abajo (texto y categoría/banco),
+   así que forman un único bloque de "cómo filtras"; «Sincronizar» es una acción de red aparte y
+   se queda donde estaba. El resumen de categorías/bancos activos + «Borrar filtros» sigue
+   pintándose debajo, ahora sin el botón que antes lo acompañaba (ya vive junto al buscador).
+   Sin cambios de comportamiento en `GastosFilterSheet` ni claves i18n nuevas — solo maquetación.
+9. **Fix 2026-08-05 — tercera pasada, medida con capturas reales por CDP en su Oppo** (mismo
+   `fix-season-glow`): el feedback tras el punto 7 seguía diciendo lo mismo («el destello real
+   solo se ve un momento al deslizar de pestaña, luego desaparece») y sumaba una regresión nueva
+   («al hacer scroll veo la lista detrás de la barra un segundo»). Esta vez no se tocó a ciegas:
+   se instaló un APK de depuración (`MICARTERA_WEBDEBUG=1`), se conectó por `adb forward` +
+   WebSocket nativo (`tools/movil/*.mjs`) y se disparó un swipe real vía
+   `Input.dispatchTouchEvent` con capturas (`Page.captureScreenshot`) decodificadas a mano
+   (`tools/movil/png-pixel.mjs`, sin dependencias) para leer el RGB exacto de la esquina y de la
+   barra en cada instante — no solo `getComputedStyle`, que ya decía "fixed"/"opacity:1" y aun
+   así no explicaba lo que él veía.
+   - **Fuga de la barra, causa real:** `.app-shell.nav-sin-blur .botnav` (blur apagado durante
+     el swipe por rendimiento, ver AGENTS §7 bis) solo quitaba `backdrop-filter` y dejaba el
+     fondo por defecto — `color-mix(...88%,transparent)`, un 12 % transparente pensado para ir
+     SIEMPRE acompañado del blur que lo disimula. Sin blur, ese 12 % se ve limpio: medido con
+     touch real, la barra estuvo en ese estado desde el `touchstart` hasta 1,4 s después (hasta
+     que `scroll-host-on` vuelve a poner fondo sólido), justo el «~1 segundo» que describía. Fix:
+     `background:var(--bg-2)` también en `nav-sin-blur`, igual que en `scroll-host-on` — la barra
+     se ve IGUAL con o sin blur, que era la intención original.
+   - **Destello, causa real:** NO era un bug de posicionamiento — `.season-glow` medía `top:0`
+     fijo en cualquier punto del scroll, con o sin swipe. Era de INTENSIDAD: con `opacity` .32-.6
+     y los gradientes al .14-.2, el resultado en pantalla real eran ~10-15 puntos de RGB sobre
+     255 en la esquina (fondo oscuro), por debajo de lo que un ojo nota en reposo — solo se
+     percibía el CAMBIO durante el swipe (el `translateX`/respiro del `seasonglow`), no la mancha
+     en sí. Subido a `opacity` .55-.85 y gradientes .3-.42 (todas las temáticas): mismo diseño,
+     visible también quieto. `tests/season-detalle.test.mjs` ahora exige un mínimo de intensidad
+     y la barra sólida en `nav-sin-blur`, para que esto no se pueda volver a bajar sin que salte.
+10. **Fix 2026-08-05 — cuarta pasada, build .9 rechazada por el usuario** (`fix-season-portal`):
+    Tras publicar f589f89c (intensidad + `nav-sin-blur{background:var(--bg-2)}`), feedback:
+    «sigue pasando ambos problemas». Reproducido otra vez con ADB+CDP en su Oppo (4.15.0.9):
+    - **Destello al scroll:** `glowTop=0` y `position:fixed` en computed style, pero el RGB de
+      la esquina superior derecha saltaba +31 al bajar 600 px (19,28,20 → 26,41,31). Causa:
+      `.season-glow` vivía dentro de `#root{position:relative}` — en su WebView el compositor de
+      scroll trata fixed anclado a #root como si scrolleara. Fix: `ReactDOM.createPortal` a
+      `document.body` en `.season-portal` (fixed centrado max-width 520px); hijos absolute.
+      `seasonglow` solo anima opacity (sin `translateX`).
+    - **Fuga en barra al swipe:** durante `nav-sin-blur`, getComputedStyle seguía devolviendo
+      `color(srgb … / 0.88)` pese al override — la regla contextual no ganaba en su WebView.
+      Fix: `.botnav` default pasa a `background:var(--bg-2)` opaco siempre (sin color-mix 88%).
+      Tests actualizados en `tests/season-detalle.test.mjs`.
+11. **Fix 2026-08-05 — quinta pasada, destello que se intensificaba al scrollear**
+    (`fix-season-glow-steady`, build .12 rechazada): tras .11 el destello YA estaba fijo (portal
+    a `body`) y se veía en reposo, pero al bajar la lista «se ponía más intenso». Medido en su Oppo
+    (ADB, 4.15.0.11): capa translúcida a 38vh ENCIMA del contenido → composite ~+30 RGB al
+    scrollear. Build .12 probó cinta opaca + gradiente horneado en el host: franja oliva junto a la
+    cámara ([65,60,33] vs [20,38,30]) y destello que desaparecía al taparlo. Rechazada.
+12. **Fix 2026-08-05 — sexta pasada, la COFIA** (`fix-season-glow-steady`): lo que arregla esta
+    vez es que por fin se midió **el gesto correcto**. Él aclaró que el destello falla «scrolleando
+    entre tabs, no en la misma tab scrolleando hacia abajo», y ese gesto cambia el DOM: al arrastrar
+    el carrusel se QUITA `page-scroll-host` de la página activa. Todo lo que .12 había colgado del
+    fondo de esa clase se apagaba justo durante el gesto.
+    - **Método:** con el dedo CONGELADO a mitad de gesto (`Input.dispatchTouchEvent` sin `touchEnd`)
+      se apaga y enciende solo el gradiente y se restan las dos capturas. Esa resta es la aportación
+      exacta del destello en ese composite. Sin aislarlo, el Δ del píxel mide el contenido que se
+      desliza: medido, el mismo Δ de 228 salía con destello y **sin destello ninguno**, que es lo
+      que hizo perseguir un fantasma en .9/.11/.12.
+    - **Medido en la .12:** aporte del destello con el dedo puesto = **[0,0,0]** de y48 hacia abajo
+      (desaparecido) y **|91|** sobre la franja de la cámara (el tono oliva).
+    - **Descartado con datos:** el WIP que había en el árbol (portal a z-34 detrás del host +
+      `background-clip:content-box`) daba píxeles **idénticos a no tener destello**: el glow
+      arrancaba en `safe-top+10`, justo donde empieza la caja opaca del host. Y ponerlo *detrás*
+      del contenido tampoco vale — las cartillas lo tapan al pasar y «desaparece y vuelve a
+      aparecer», que él rechazó expresamente.
+    - **Fix:** el destello se pinta OPACO y POR ENCIMA de todo, en una cofia
+      (`--season-cofia: calc(var(--safe-top) + 36px)`) por la que el contenido no pasa nunca —
+      el host y `.app` reservan ese alto solo con temática puesta. Como no depende de lo que haya
+      debajo, es matemáticamente invariante: **62/62/62** de aporte en reposo, en pleno gesto entre
+      pestañas y scrolleando, y **0** sobre la franja de la cámara en los tres.
+    - **Los dos detalles que pidió:** base `var(--bg)` (mismo tono que la app → sin corte visible
+      con la barra de estado) y gradiente centrado en `calc(var(--safe-top) + 12px)` en vez de
+      `at 80% -20%`, para que valga 0 sobre los iconos. Se apaga con `mask-image` en los últimos
+      20 px: al scrollear el contenido se disuelve por debajo en vez de cortarse en seco.
+      Las partículas arrancan bajo la cofia (`top:var(--season-cofia)`): una hoja cruzando por
+      delante de los iconos del sistema es el mismo problema de esa franja.
+    - Alfas a .14/.09 (antes .3-.42): calibradas para que el pico mida lo mismo que en la .11,
+      que es la que él dio por buena en reposo. Sin `@keyframes seasonglow` — un destello que
+      respira es justo lo que pidió que no hiciera.
+    - Con reduce-motion la cofia SE QUEDA (es un degradado quieto, y si se fuera dejaría el hueco
+      reservado vacío); lo que se va son las partículas. `tests/season-detalle.test.mjs` reescrito
+      para vigilar los invariantes reales, no la implementación de turno.
+13. **Fix 2026-08-05 — séptima pasada: el verde y el salto** (`fix-season-glow-steady`): con la
+    .13 en el móvil, grabó la pantalla y salieron DOS fallos que el destello tapaba y que no eran
+    del destello. Los dos son de lo mismo: al arrastrar el carrusel se quita `page-scroll-host`, y
+    esa clase era **el único fondo opaco y la única referencia de posición** de toda la app.
+    - **«Ese verde clarito cuando scrolleas»:** `.app` era transparente, así que al irse el host
+      asomaba el degradado decorativo del `body` — menta al 18 % centrado justo arriba a la
+      derecha (`radial-gradient(130% 55% at 85% -8%, rgba(95,208,138,.18)…)`). Medido:
+      `[12,23,18]` → `[18,36,27]` en toda la franja derecha, solo durante el gesto. En reposo no
+      se ve nunca porque lo tapa el host, así que **no era una decisión de diseño, era una fuga**.
+      Fix: `.app{background:var(--bg)}`. El degradado del `body` sigue donde sí se ve y para lo
+      que se hizo (login y onboarding, que salen antes que `.app`).
+    - **«La pantalla se baja unos pixeles y luego vuelve»:** medido **5,5 px**. En reposo la
+      posición la manda el `padding-top` del host; al arrastrar la manda `.app` **más los 6 px que
+      `.page` pone por su cuenta** y el host no. Fix: `.app` lleva 6 px menos que el host
+      (`safe-top + 4px`, y `cofia - 6px` con temática) para que la suma cuadre. Medido después:
+      **0,0 px**. El desfase venía de antes (eran 4 px sin temática); la cofia solo lo hizo más
+      visible.
+    - Con `.app` ya opaca y colocada igual que el host, los dos fondos se turnan sin que se note:
+      por eso el gradiente pasa a ir en los DOS (misma regla, para que no se puedan desincronizar)
+      y el destello puede seguir por debajo de la cofia sin ser un velo encima del contenido.
+      Geometría nueva: elipse que vale 0 exactamente en `--safe-top` (centro a `+ry`), así no hay
+      escalón en el borde de la barra de estado y no hace falta recortar nada. Destello más
+      generoso —el de la .13 se quedaba en 76 px y él lo llamó «chiquito»— llegando ahora a ~150 px.
+    - **Comprobación nueva y mucho más dura** (`tools/movil/_tmp-glow13-fondo.mjs`): se esconde el
+      CONTENIDO de las páginas y se compara SOLO el fondo. Reposo vs gesto vs scroll, 33 puntos por
+      toda la pantalla: **diferencia máxima 0**.
+14. **Fix 2026-08-05 — octava pasada: el parpadeo del desvanecido, y verano en serio**
+    (`fix-season-glow-steady`): él cazó lo que quedaba — «es casi imperceptible pero hace un
+    parpadeo al scrollear» — y pidió más destello, «como un día caluroso de verano».
+    - **El parpadeo era la `mask`.** El desvanecido de 20 px del borde de abajo de la cofia sonaba
+      bien (el contenido se disuelve en vez de cortarse) pero vuelve TRANSLÚCIDOS esos 20 px, y es
+      justo donde el destello es más fuerte: el contenido pasando por debajo cambiaba el composite.
+      O sea, el velo de la .11 otra vez, en una franja estrecha. Fuera la `mask`: la cofia es opaca
+      de arriba abajo y el contenido se corta en su borde, que es lo que hace cualquier lista.
+    - **Método nuevo** (`tools/movil/_tmp-glow13-parpadeo.mjs`): grabar la pantalla por CDP
+      (`Page.startScreencast`) durante un fling REAL con inercia y comparar la zona del destello
+      fotograma a fotograma. Con la `mask`: desvío 0 a y=30 y **184** a y=70. Sin ella y con el
+      destello entero dentro de la cofia: **0 en toda la cofia, 119 fotogramas**.
+    - **El destello, entero DENTRO de la cofia.** Cada elipse vale 0 en `--safe-top` y se apaga
+      antes del borde de abajo (radio vertical === desplazamiento). Así no queda ni una cola que
+      las tarjetas puedan tapar al scrollear. Cofia a `safe-top + 76px`.
+    - **Forma:** tres capas — foco cálido arriba a la derecha con caída lenta, baño ancho muy tenue
+      (es lo que da el «aire caliente») y el segundo color de la temática a la izquierda. Con una
+      sola elipse ancha parecía una franja horizontal, no un resplandor. Verano al 100 % (pico
+      medido `[142,116,69]` contra `[52,48,27]` de la pasada anterior); el resto de temáticas, la
+      misma forma a media potencia hasta que él decida cada una.
+    - Guarda nueva en los tests: se parsea cada elipse y se exige radio vertical === desplazamiento.
+      Es LA regla que mantiene limpia la franja de la cámara, y a ojo no se ve en un diff.
+
+Sin APK nuevo (35 / 4.12.0).
+
 ## [4.14.1] — 2026-08-05
 ### Gastos: resumen sin desborde (OTA del pulido post-4.14.0)
 
@@ -44,10 +241,7 @@ filas etiqueta|importe (juntas, sin `space-between` a todo el ancho — eso abr�
 ridículo), columna izq con `min-width:0`, importe con `clamp`, presupuesto que puede partir
 palabra. Inicio ya usaba `clamp` en el patrimonio. Tanda `gastos-fx-overflow`.
 
-**Siguiente (otra tanda, pedida 2026-08-05):** conversor «de → a» en Comparar monedas (importe
-+ moneda origen + moneda destino), no solo «1 € = …».
-
-Rama: `tanda/multidivisa` (+ `tanda/gastos-fx-overflow`). Promote: `tandas=multidivisa` o ambas.
+Rama: `tanda/multidivisa` (+ `tanda/gastos-fx-overflow`). Promote: ya en prod (4.14.0/4.14.1).
 
 ## [4.13.0] — 2026-08-05
 ### Barra quieta de verdad al tope y al swipear tabs

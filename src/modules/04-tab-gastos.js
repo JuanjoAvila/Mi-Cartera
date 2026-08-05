@@ -92,6 +92,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   }); // ents o "_manual"; [] = todos los bancos
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [morePeriods,setMorePeriods]=useState(false);
+  const [filterOpen,setFilterOpen]=useState(false);
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
@@ -101,32 +102,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
   const heavyOkRef=useRef(false);
-  const catChipsRef=useRef(null), bankChipsRef=useRef(null);
-  const chipDrag=useRef({sx:0,sy:0,capturing:false});
   const heavyIdleGen=useRef(0);
-  // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
-  // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
-  const chipSwipe=function(ref){
-    return {
-      onTouchStart:function(e){
-        if(!(e.touches&&e.touches[0])) return;
-        chipDrag.current={sx:e.touches[0].clientX,sy:e.touches[0].clientY,capturing:false};
-      },
-      onTouchMove:function(e){
-        if(!ref.current||!(e.touches&&e.touches[0])) return;
-        const dx=e.touches[0].clientX-chipDrag.current.sx, dy=e.touches[0].clientY-chipDrag.current.sy;
-        if(Math.abs(dx)<6 && Math.abs(dy)<6) return;
-        if(Math.abs(dy)>=Math.abs(dx)*1.15) return;
-        chipDrag.current.capturing=true;
-        if(cancelSwipe) cancelSwipe();
-        e.stopPropagation();
-      },
-      onTouchEnd:function(e){
-        if(chipDrag.current.capturing) e.stopPropagation();
-        chipDrag.current.capturing=false;
-      }
-    };
-  };
   // Lo caro de Gastos (detectar suscripciones y pintar su tarjeta) esperaba a que la pestaña
   // estuviera ACTIVA, así que se pagaba AL LLEGAR: en la cola del gesto de deslizar. Medido con
   // la CPU estrangulada x6 y trazado con `Tracing` (2026-07-26): la primera entrada en Gastos
@@ -146,19 +122,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // justo su «Deudas→Gastos lagazo / Deudas→Cartera fluido»: hacia Cartera el memo de Gastos no
   // se tocaba; hacia Gastos sí. El expediente ya lo había medido («dejar active fijo quita la
   // asimetría») y lo descartó mal: se puede enterarse sin re-render vía `mcOnGastosActive`.
+  // Chips de banco/categoría: el scroll horizontal se quedó en el sheet de filtros
+  // (2026-08-05). Aquí solo se resetea al entrar si hubiera resto de scroll de versiones viejas.
   useEffect(function(){ heavyOkRef.current=heavyOk; },[heavyOk]);
   useEffect(function(){
-    var chipGen=0;
     var unsub=mcOnGastosActive(function(active){
-      // Chips: idle + solo si hay scroll que resetear (escribir scrollLeft en caliente costó
-      // 276 ms — ver comentario histórico en el CHANGELOG de la 4.12.0).
-      var cg=++chipGen;
-      mcScheduleIdle(function(){
-        if(cg!==chipGen) return;
-        var c=catChipsRef.current, b=bankChipsRef.current;
-        if(c&&c.scrollLeft) c.scrollLeft=0;
-        if(b&&b.scrollLeft) b.scrollLeft=0;
-      }, 300);
       if(heavyOkRef.current) return;
       var gen=++heavyIdleGen.current;
       mcScheduleIdle(function(){
@@ -166,7 +134,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         setHeavyOk(true);
       }, active?40:4000);
     });
-    return function(){ chipGen++; heavyIdleGen.current++; unsub(); };
+    return function(){ heavyIdleGen.current++; unsub(); };
   },[]);
   const expensesDef=useDeferredValue(state.expenses);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -419,6 +387,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // de globales que React.memo no ve).
   const l10nKey=CURLANG+"|"+DISP.sym;
 
+  // Resumen de filtros activos, para el botón "Filtros" (badge) y la línea de chips debajo.
+  // Se calcula aquí (no memoizado: sel/bankSel son arrays cortos) porque lo usan dos sitios:
+  // el botón junto al buscador y la línea de resumen + "Borrar filtros".
+  const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+  const nCatSel=sel.length;
+  const nBankSel=bankSelIsDefault?0:bankSel.length;
+  const nFilters=nCatSel+nBankSel;
+  const filterParts=[];
+  if(nCatSel===1) filterParts.push(catName(sel[0]));
+  else if(nCatSel>1) filterParts.push(nCatSel+" "+t("g_filters_cats"));
+  if(!bankSelIsDefault){
+    if(bankSel.length===1){
+      const b=bankSel[0];
+      filterParts.push(b==="_manual"?t("g_bank_manual"):(entOf(b).label||b));
+    } else if(bankSel.length>1) filterParts.push(bankSel.length+" "+t("g_filters_banks"));
+  }
+
   const shown=filtered.slice(0,visible);
   /* A LA FILA SE LE PASA EL NÚMERO, NO EL `Date` (2026-07-27, y esto llevaba roto desde siempre).
      `parseDate` cachea los MILISEGUNDOS pero devuelve `new Date(ms)`: un objeto NUEVO en cada
@@ -529,10 +514,20 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         DATE_PRESETS.slice(0,2).map(function(p){ return React.createElement("button",{key:p.id,className:"v4-period-btn"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); setMorePeriods(false); }},t("g_"+p.id)); }),
         React.createElement("button",{className:"v4-period-btn"+(morePeriods||DATE_PRESETS.slice(2).some(function(p){ return p.id===preset; })?" on":""),onClick:function(){ setMorePeriods(!morePeriods); }},t("v4_period_more"))
       ),
-      React.createElement("div",Object.assign({className:"searchbar"},stopSwipe),
-        React.createElement("span",{className:"searchbar-ic"},"🔍"),
-        React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
-        q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
+      // Filtros vive PEGADO al buscador (2026-08-05): los dos acotan la misma lista de abajo,
+      // así que van en la misma fila — antes el botón quedaba solo, en su propia línea entre el
+      // buscador y "Sincronizar", sin pertenecer claramente a ninguno de los dos (feedback: «se
+      // queda raro en medio»). Sincronizar es una acción de red (trae datos nuevos), no de
+      // filtrado, así que se queda donde estaba, lejos de este grupo.
+      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:9}},
+        React.createElement("div",Object.assign({className:"searchbar",style:{flex:1,minWidth:0,marginBottom:0}},stopSwipe),
+          React.createElement("span",{className:"searchbar-ic"},"🔍"),
+          React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
+          q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
+        ),
+        React.createElement("button",{type:"button",className:"v4-chip"+(nFilters?" on":""),onClick:function(){ setFilterOpen(true); },title:t("g_filters"),
+          style:{minHeight:0,padding:"0 14px",fontWeight:700,flex:"0 0 auto"}},
+          "🎛️"+(nFilters?" "+nFilters:""))
       ),
       // «Mi ciclo»: enseña QUÉ cobro ancla el ciclo (si el detectado no es el bueno, se corrige
       // apuntando la nómina real como ingreso, o usando Rango…).
@@ -550,20 +545,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
-      React.createElement("div",Object.assign({className:"v4-chips",ref:catChipsRef},chipSwipe(catChipsRef)),
-        React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
-        // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
-        // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
-      ),
-      // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
-      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
-        React.createElement("button",{className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
-        bankOpts.map(function(b){
-          const on=bankSel.indexOf(b)!==-1;
-          const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
-          return React.createElement("button",{key:b,className:"v4-chip"+(on?" on":""),onClick:function(){ setBankSel(function(prev){ const has=prev.indexOf(b)!==-1; return has?prev.filter(function(x){return x!==b;}):prev.concat([b]); }); }},lbl);
-        })
+      // Resumen de los filtros activos (categorías/bancos) + botón para quitarlos. El botón que
+      // ABRE el sheet ya no vive aquí: se movió junto al buscador (ver arriba).
+      nFilters>0 && React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",marginTop:2}},
+        React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.35,flex:"1 1 120px"}}, filterParts.join(" · ")),
+        React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
+          setSel([]);
+          setBankSel(dailyEnt?[dailyEnt]:[]);
+        },style:{padding:"8px 12px"}}, t("g_filters_clear"))
       )
     ),
     React.createElement("div",{className:"action-row"},
@@ -601,7 +590,6 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
               // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
               // (2026-08-03), no algo que el usuario haya elegido a mano.
-              const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
               const sinFiltros=!q.trim() && !sel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
@@ -611,11 +599,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
             })()
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey,
+                  countsBudget:expenseCountsBudget(g.e, state)}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
     React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
+    React.createElement(GastosFilterSheet,{
+      open:filterOpen, onClose:function(){ setFilterOpen(false); },
+      sel:sel, setSel:setSel, bankSel:bankSel, setBankSel:setBankSel,
+      bankOpts:bankOpts, dailyEnt:dailyEnt
+    }),
     detailId && React.createElement(ExpenseDetailSheet,{
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
@@ -636,20 +630,21 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, ms, onOpen}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
   // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
   // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
+  // `countsBudget` (bool) lo pasa el padre: si se pasara `state` entero, el memo no acertaría nunca.
   const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);
   const note=expenseNote(e);   // concepto del bizum / descripción del banco (2026-07-24)
-  return React.createElement("button",{type:"button",className:"v4-mov",onClick:function(){ onOpen(e); }},
+  const skip=countsBudget===false;
+  return React.createElement("button",{type:"button",className:"v4-mov"+(skip?" v4-mov-skip":""),onClick:function(){ onOpen(e); },
+      style:skip?{opacity:.72}:null},
     React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
     React.createElement("div",{className:"nm"},
       React.createElement("div",{className:"nm-title"}, e.merchant||"—"),
-      // El concepto va JUSTO debajo del título, antes que la categoría: es lo que se busca al
-      // repasar el histórico («¿de qué era este bizum de 40 €?»).
       note && React.createElement("div",{className:"nm-note"}, note),
       React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(e.category)),
       React.createElement("div",{className:"meta"},
@@ -657,12 +652,83 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen}){
         bk?React.createElement(React.Fragment,null,
           React.createElement("span",{className:"sep"},"·"),
           React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
+        ):null,
+        skip?React.createElement(React.Fragment,null,
+          React.createElement("span",{className:"sep"},"·"),
+          React.createElement("span",{style:{color:"var(--muted-2)"}}, t("g_no_budget"))
         ):null
       )
     ),
-    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
+    React.createElement("div",{className:"am num"+(isIncome?" pos":"")+(skip?" muted":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
   );
 });
+
+/* Sheet de filtros (2026-08-05): categorías + bancos con buscador, sin la fila infinita de chips.
+   Misma mecánica que PeriodMoreSheet (swipe abajo + atrás). */
+function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bankOpts, dailyEnt}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  const [qCat,setQCat]=useState("");
+  useEffect(function(){ if(!open) setQCat(""); },[open]);
+  if(!open) return null;
+  const allCats=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]);
+  const needle=qCat.trim().toLowerCase();
+  const cats=needle
+    ? allCats.filter(function(c){ return catName(c.id).toLowerCase().indexOf(needle)!==-1 || c.id.indexOf(needle)!==-1; })
+    : allCats;
+  const toggleCat=function(id){
+    setSel(function(prev){
+      const has=prev.indexOf(id)!==-1;
+      return has?prev.filter(function(x){ return x!==id; }):prev.concat([id]);
+    });
+  };
+  const toggleBank=function(b){
+    setBankSel(function(prev){
+      const has=prev.indexOf(b)!==-1;
+      return has?prev.filter(function(x){ return x!==b; }):prev.concat([b]);
+    });
+  };
+  const clearAll=function(){
+    setSel([]);
+    setBankSel(dailyEnt?[dailyEnt]:[]);
+  };
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); },style:{maxHeight:"88vh"}}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:6}}, t("g_filters")),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.45,marginBottom:12}}, t("g_filters_hint")),
+        React.createElement("div",Object.assign({className:"searchbar",style:{marginBottom:14}},{}),
+          React.createElement("span",{className:"searchbar-ic"},"🔍"),
+          React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_filters_search"),value:qCat,onChange:function(e){ setQCat(e.target.value); }}),
+          qCat && React.createElement("button",{className:"searchbar-x",type:"button",onClick:function(){ setQCat(""); }},"✕")
+        ),
+        React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_cats")),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+          React.createElement("button",{type:"button",className:"v4-chip"+(sel.length===0?" on":""),onClick:function(){ setSel([]); }}, t("g_allcats")),
+          cats.map(function(c){
+            return React.createElement("button",{key:c.id,type:"button",className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:function(){ toggleCat(c.id); }},
+              c.icon+" "+catName(c.id));
+          })
+        ),
+        bankOpts.length>0 && React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_banks")),
+          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+            React.createElement("button",{type:"button",className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }}, t("g_allbanks")),
+            bankOpts.map(function(b){
+              const on=bankSel.indexOf(b)!==-1;
+              const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
+              return React.createElement("button",{key:b,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBank(b); }}, lbl);
+            })
+          )
+        ),
+        React.createElement("div",{style:{display:"flex",gap:10,marginTop:8}},
+          React.createElement("button",{type:"button",className:"btn btn-ghost",style:{flex:1},onClick:clearAll}, t("g_filters_clear")),
+          React.createElement("button",{type:"button",className:"btn btn-primary",style:{flex:1.4},onClick:onClose}, t("g_filters_done"))
+        )
+      )
+    ), document.body);
+}
 
 /* Sheet «Más…» de períodos. Antes era un portal pelado SIN useSheetSwipe/useBackClose: era el
    único sheet que no se podía cerrar tirando hacia abajo («el más de la foto» — feedback

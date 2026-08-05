@@ -170,7 +170,18 @@
   input,select{font-family:inherit;}
   ::-webkit-scrollbar{width:0;height:0;}
 
-  .app{height:100vh;height:100dvh;display:flex;flex-direction:column;padding-top:calc(var(--safe-top) + 8px);}
+  /* FONDO OPACO (feedback 5/8 22:00: «sale ese verde clarito cuando scrolleas»). `.app` era
+     transparente, así que al deslizar entre pestañas —cuando se quita `page-scroll-host` y con él
+     el único fondo opaco— asomaba el degradado decorativo del `body`, que es menta al 18% y está
+     centrado justo arriba a la derecha: medido [12,23,18] → [18,36,27] en toda la franja. En
+     reposo no se veía nunca (lo tapa el host), así que pintarlo aquí no cambia el aspecto de la
+     app: lo que hace es que reposo y gesto se vean IGUAL. El degradado del body sigue vivo donde
+     sí se ve y para lo que se hizo: login y onboarding, que salen antes que `.app`.
+     El padding-top lleva 6px MENOS que el del host a propósito: `.page` pone 6px por su cuenta y
+     el host no, así que sin esta resta el contenido bajaba 5,5px al empezar el gesto y volvía al
+     soltar («la pantalla se baja unos pixeles y luego vuelve», mismo feedback). */
+  .app{height:100vh;height:100dvh;display:flex;flex-direction:column;
+    padding-top:calc(var(--safe-top) + 4px);background:var(--bg);}
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 14px;flex:0 0 auto;}
   .brand{display:flex;align-items:center;gap:11px;}
   .brand-mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;
@@ -258,19 +269,13 @@
   html.hi-contrast[data-theme="light"]{ --muted:#33463C; --muted-2:#5A6E63; }
   html.hi-contrast[data-theme="dark"]{ --muted:#C7C7CE; --muted-2:#9C9CA6; }
   html.hi-contrast[data-theme="blue"]{ --muted:#BFD2E6; --muted-2:#93A8C2; }
-  /* Temáticas de temporada: YA NO hay una capa de piezas cayendo/subiendo por la pantalla —
-     quitada del todo (2026-08-03, petición suya textual: «Quítame lo de que caigan cosas cuando
-     aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación personalizada
-     incrustada en las secciones, como cuando se mueven los logos de las tabs»).
-     Tres intentos en fila con la misma queja de fondo (algo se mueve SOLO por moverse): caída
-     larga en bucle → una sola caída al abrir → ráfaga corta al cambiar de pestaña. Lo que pide
-     ahora es justo lo que ya tienen los iconos de la barra (`tabpop`/`tabpeina`/`tabmarca`/
-     `tabsube`, más abajo): un detalle que se pinta CON la sección, no una capa aparte animada por
-     su cuenta. Ver `--season-ico` en el bloque de `--season-tinte`, y el badge sobre `.v4-title`/
-     `.v4-inicio-hi` en «MÁS AMBIENTACIÓN», los dos más abajo.
-     Lo que desaparece con este commit: `.season-fx`, `@keyframes seasonfall`/`seasonrise` (y su
-     `.rising`) de aquí; `seasonEpoch`/`seasonFirstTab` (el JS que las disparaba) en
-     11-app-main.js; y el pool de emojis que caían (`SEASON_FX`) en 01-i18n.js. */
+  /* Temáticas de temporada — ambientación suave DETRÁS de las cartillas (2026-08-05).
+     Historial: la capa vieja (`.season-fx` z-index 36 ENCIMA de todo, ráfagas al cambiar de
+     pestaña con `seasonEpoch`/`seasonrise`) se quitó el 2026-08-03 («ya me cansé»). Ahora vuelve
+     SOLO como fondo: `.season-amb` a z-index 0, cartillas por encima (`position:relative;
+     z-index:2`), pocas piezas, opacidad baja, caída lenta en bucle. Cero JS al cambiar de tab.
+     El detalle incrustado en títulos (`--season-ico` / `seasonchip`) se queda. Se apaga con
+     «Reducir animaciones». */
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
   /* EL HALO DEL + AHORA ES UN ANILLO, NO UNA SOMBRA (2026-07-28). `fabpulse` animaba
@@ -289,31 +294,44 @@
   html[data-season="verano"] .botnav-fab{background:linear-gradient(160deg,#FFB347,#39B6C9);}
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
-  /* Un velo de color muy tenue y vivo arriba, a juego con la temática (toque Revolut). */
-  html[data-season]::before{content:"";position:fixed;top:0;left:0;right:0;height:38vh;z-index:1;pointer-events:none;
-    opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;}
-  html[data-season="mundial"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.18), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.14), transparent 60%);}
-  html[data-season="halloween"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.16), transparent 60%);}
-  html[data-season="navidad"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.16), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.14), transparent 60%);}
-  html[data-season="verano"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.14), transparent 60%);}
-  html[data-season="invierno"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
-  html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
-  @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
-  /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29, repetida el
-     1/8: «decora el resto de la app de esa temática como hiciste con el botón + que está chulo»
-     · «que haya ambientación como la del botón +»).
-     El trato de esta tanda es ese: se quita lo que se mueve (las piezas cayendo, que él no
-     quiere más que al principio) y a cambio la temática se queda PUESTA en sitios fijos. Todo lo
-     de aquí es color plano y quieto: no anima nada, así que no repinta nada — al revés que la
-     capa que cae, que costaba frames todo el rato.
-     ⚠ NO SE TOCAN `--mint` NI `--coral`: pintan importes y saldos, y teñir el dinero de naranja
-     en Halloween es exactamente el tipo de gracia que hace dudar de una app de finanzas. Solo
-     se tiñen adornos: el halo de abajo, el borde superior de la barra y la rayita activa. */
-  /* El halo de abajo se construye con `--season-tinte` y no copiando el degradado de `::before`:
-     `background:inherit` en un ::after NO hereda el degradado del ::before hermano —son cajas
-     distintas— y habría salido transparente. */
-  html[data-season]::after{content:"";position:fixed;bottom:0;left:0;right:0;height:20vh;z-index:1;pointer-events:none;
-    background:radial-gradient(130% 95% at 50% 125%, color-mix(in srgb, var(--season-tinte,transparent) 16%, transparent), transparent 68%);}
+  /* DESTELLO DE ARRIBA (feedback 2026-08-05 — «arriba a la derecha», no la barra).
+     Seis intentos; cada uno descartó una vía, y todos se midieron en su Oppo con ADB+CDP.
+     ⚠ NO `html::before` fixed, NI fixed dentro de `#root{position:relative}` (build .9): el
+       compositor de su WebView los liga al scroll — computed decía `fixed` y el píxel saltaba +31.
+       Por eso vive portaleado a `document.body` en `.season-portal`.
+     ⚠ NO un velo TRANSLÚCIDO encima del contenido (build .11): el fallo NO era el scroll vertical
+       sino DESLIZAR ENTRE PESTAÑAS — la app entera pasa por debajo del velo y el composite se
+       aclara, que es lo que él veía como «se pone más intenso». Y como empezaba en y=0, teñía
+       también la barra de estado.
+     ⚠ NO hornear el gradiente en el fondo de `.page-scroll-host` (build .12): esa clase SE QUITA
+       mientras el carrusel se mueve, así que el destello se apagaba justo DURANTE el gesto
+       (medido con el dedo congelado: aporte [0,0,0]). Su cinta opaca, además, dejaba la franja
+       de la cámara oliva [66,64,37] contra un fondo [20,38,30].
+     ⚠ NI detrás del contenido (.16/.17/.18): las cartillas lo tapan al pasar y «desaparece y
+       vuelve a aparecer» — rechazado por él expresamente (5/8).
+     ⚠ NI cofia ENCIMA con padding (.13/.15/.19): z-36 tapaba texto o reservaba ~116px
+       bajo la barra — «Tus gastos» / el saludo demasiado abajo (rechazo 5/8).
+     ⚠ NI solo gradiente en el host (.12/.20): al scrollear se va con el contenido; la franja de
+       iconos del sistema ya se mantiene fija y él pide lo mismo en la app.
+     Fix .22: lavado fijo portaleado DENTRO de `#root` (z:0) — NO en body z-1 bajo `#root` z-2:
+     un hermano con z-index menor NUNCA se ve a través del stacking context del root, aunque
+     `.app` sea transparente (medido en pleno swipe: arriba OK por padding de `.app`, zona del
+     carrusel a [12,23,18] plano). `.app`/`.page` transparentes; el portal fixed NO cuelga del
+     `.track` transformado, así que el gesto no lo apaga. Sin `background-attachment:fixed`. */
+  html[data-season] #root{position:relative;}
+  html[data-season] .app{position:relative;z-index:1;background:transparent!important;}
+  html[data-season] .app-shell{position:relative;z-index:1;}
+  html[data-season] .page{background:transparent!important;}
+  .season-portal{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:520px;pointer-events:none;z-index:0;}
+  .season-glow{position:absolute;inset:0;z-index:1;pointer-events:none;
+    background-color:var(--bg);background-image:var(--season-glow-top);background-repeat:no-repeat;}
+  /* Intensidad calibrada al pico de la .11 (que él dio por bueno en reposo): alfas ~.10 miden
+     un aporte de ~60 RGB con los radiales elípticos ampliados (.19). Sin animación de opacidad —
+     un destello que respira es justo lo que pidió que no hiciera. */
+  /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
+     ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
+     era el sitio equivocado + dejaba ver la lista a través). */
   html[data-season] .botnav{border-top:1px solid var(--season-tinte,var(--line-soft));}
   html[data-season] .botnav-ind span{background:var(--season-tinte,var(--mint));}
   /* MÁS AMBIENTACIÓN, NO SOLO EN LA BARRA (petición suya 1/8, repetida: «ponle más ambientación
@@ -344,13 +362,38 @@
     60%{opacity:1;transform:scale(1.18) rotate(6deg);}
     100%{opacity:1;transform:scale(1) rotate(0deg);}
   }
-  html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";}
-  html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";}
-  html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";}
-  html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";}
-  html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";}
-  html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";}
-  @media (prefers-reduced-motion:reduce){ html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;} }
+  html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 80% calc(var(--safe-top) + 18px), rgba(241,196,15,.11) 0%, rgba(241,196,15,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 22% calc(var(--safe-top) + 100px), rgba(230,57,70,.05) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 62% calc(var(--safe-top) + 200px), rgba(241,196,15,.03) 0%, transparent 50%);}
+  html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 78% calc(var(--safe-top) + 18px), rgba(240,134,43,.12) 0%, rgba(210,95,30,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 28% calc(var(--safe-top) + 95px), rgba(180,70,20,.05) 0%, transparent 58%),radial-gradient(ellipse 75% 55% at 58% calc(var(--safe-top) + 190px), rgba(122,63,160,.04) 0%, transparent 50%);}
+  html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 80% calc(var(--safe-top) + 18px), rgba(214,69,80,.10) 0%, rgba(214,69,80,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 24% calc(var(--safe-top) + 100px), rgba(46,158,91,.05) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 65% calc(var(--safe-top) + 195px), rgba(214,69,80,.03) 0%, transparent 50%);}
+  html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";
+    --season-glow-top:radial-gradient(ellipse 135% 100% at 82% calc(var(--safe-top) + 16px), rgba(255,185,120,.13) 0%, rgba(255,155,90,.05) 38%, transparent 70%),radial-gradient(ellipse 100% 75% at 30% calc(var(--safe-top) + 90px), rgba(255,140,75,.06) 0%, transparent 55%),radial-gradient(ellipse 85% 60% at 70% calc(var(--safe-top) + 185px), rgba(255,210,130,.04) 0%, transparent 48%);}
+  html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 76% calc(var(--safe-top) + 18px), rgba(127,181,232,.10) 0%, rgba(160,200,240,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 32% calc(var(--safe-top) + 100px), rgba(183,224,242,.05) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 60% calc(var(--safe-top) + 190px), rgba(200,220,255,.04) 0%, transparent 50%);}
+  html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 78% calc(var(--safe-top) + 18px), rgba(247,198,217,.11) 0%, rgba(240,170,195,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 26% calc(var(--safe-top) + 95px), rgba(160,216,179,.06) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 64% calc(var(--safe-top) + 185px), rgba(247,198,217,.03) 0%, transparent 50%);}
+  /* Ambientación — portal fixed z-1 DETRÁS de `#root` (z-2). Las partículas van en z-2 del portal;
+     el contenido y el host (z-35) pasan por encima. bottom recortado bajo botnav (feedback 5/8). */
+  .season-amb{position:absolute;top:calc(var(--safe-top) + 8px);left:0;right:0;bottom:calc(72px + var(--safe-bottom,0px));z-index:2;pointer-events:none;overflow:hidden;contain:strict;}
+  .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
+    animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
+  @keyframes seasonDrift{
+    0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0;}
+    6%{opacity:var(--op,.22);}
+    92%{opacity:var(--op,.22);}
+    100%{transform:translate3d(var(--sway,8px),110vh,0) rotate(var(--spin,120deg));opacity:0;}
+  }
+  /* `.page` sigue con z-index 2 para el carrusel en swipe.
+     ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40`. */
+  .page{position:relative;z-index:2;}
+  @media (prefers-reduced-motion:reduce){
+    /* El degradado quieto del host se queda; lo que se va son las piezas que caen. */
+    .season-amb{display:none;}
+    html[data-season] .botnav-fab::after{animation:none;opacity:0;}
+    html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
+  }
   /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
   .beta-tanda{margin:0 0 22px;padding-top:2px;}
   .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
@@ -491,15 +534,27 @@
     overflow-y:auto;-webkit-overflow-scrolling:touch;content-visibility:visible;
     /* Mismo safe-top que `.settings-push`: sin él el título («Tus gastos») se metía debajo
        de la barra de estado / iconos del sistema (feedback 5/8). El `.page` normal NO lo
-       necesita porque ya cuelga dentro de `.app` con padding-top. */
-    background:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
+       necesita porque ya cuelga dentro de `.app` con padding-top.
+       FONDO OPACO, SIEMPRE (incidente 2026-08-05): transparente → Inicio+Gastos a la vez.
+       ⚠ NADA de gradiente aquí (build .12): esta clase se QUITA al deslizar entre pestañas y el
+       destello se apagaba en pleno gesto. El lavado fijo vive en `.season-glow` (portal z-1). */
+    background:var(--bg);
+    padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
+  /* Con temática: host transparente en reposo para que el lavado fijo se vea al scrollear; `.app`
+     opaca con el mismo gradiente mientras se desliza entre pestañas (evita fusionar tabs).
+     Sin padding extra — el título queda en safe-top + 10px. */
+  html[data-season] .page.page-scroll-host{background:transparent!important;}
+  /* Host transparente deja ver el lavado fijo (portal z-1) al scrollear; las hermanas montadas
+     por mountNeighbors se filtraban por debajo (Inicio sobre Gastos). Fuera del pintado.
+     e2e acota a `.page-scroll-host` (listas-render) — los nodos siguen en DOM pero hidden. */
+  .track.scroll-host-park .page:not(.page-scroll-host){visibility:hidden;pointer-events:none;}
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
   .page.page-scroll-host.mc-touch-own{touch-action:none;}
-  .track.scroll-host-park{transform:none !important;will-change:auto;}
-  /* Las hermanas quedan fuera del viewport (track con left); no hace falta visibility:hidden
-     — eso dejaba nodos «hidden» que confunden e2e (listas-render Recibos). */
+  .track.scroll-host-park{transform:none !important;will-change:auto;overflow:hidden;}
+  /* Gesto entre pestañas: refuerzo opaco mientras el dedo arrastra (host transparente glow22). */
+  html[data-season] .track.dragging .page{background:var(--bg)!important;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
   /* ===== v4: nav inferior + FAB + sheets (SPEC-v4 §1–2, §7) ===== */
@@ -508,13 +563,20 @@
      por debajo (la barra es translúcida con blur) y al esconderse se ve la app, no un hueco.
      El padding-bottom de .page ya reserva el espacio para que nada quede oculto al final. */
   .botnav{position:absolute;left:0;right:0;bottom:0;z-index:40;
-    background:color-mix(in srgb, var(--bg-2) 88%, transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    /* FONDO SIEMPRE OPACO (2026-08-05, cuarta pasada, ADB en su Oppo build .9): el arreglo de
+       `nav-sin-blur{background:var(--bg-2)}` NO bastó — getComputedStyle seguía devolviendo
+       color-mix al 88% durante el swipe y la lista se veía a través ~1 s. La barra no puede
+       depender de una regla contextual: el default ya es sólido; el blur queda de adorno. */
+    background:var(--bg-2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
     border-top:1px solid var(--line-soft);
     padding:8px 10px calc(10px + var(--safe-bottom));
     /* Se esconde al bajar y reaparece al subir. Curva suave y algo más lenta + fade: el ocultado
        de golpe se sentía «brusco» (feedback 2026-07-18). Ahora se desliza y desvanece con calma. */
     transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .4s ease;will-change:transform,opacity;}
-  .botnav.botnav-hidden{transform:translateY(120%);opacity:0;pointer-events:none;}
+  /* Se esconde al bajar y reaparece al subir. SOLO translate (sin fade de opacity):
+     con opacity→0 a mitad de la transición se veía la lista a través de la barra ~1 s
+     (feedback 2026-08-05, tras meter la lluvia a z-37 entre página y botnav). */
+  .botnav.botnav-hidden{transform:translateY(120%);pointer-events:none;}
   /* ESCONDIDO RÁPIDO (2026-08-03, bug «rebote raro»/«se queda atascado»): cuando el motivo de
      esconder la barra es «hemos llegado al final de la lista» (no un scroll normal hacia abajo),
      la barra tiene que APARTARSE YA, no con la calma de 0,55 s de más arriba. El rebote NATIVO (la
@@ -522,10 +584,10 @@
      misma duración de siempre, la barra se ve deslizándose/desvaneciéndose TODAVÍA por encima de
      la ola mientras esta ya está en marcha: dos animaciones a ritmos distintos compitiendo por el
      mismo trozo de pantalla, que es justo lo que él describió («se queda atascado un momento y
-     luego sí que hace la ola, pero es muy raro»). Misma transform/opacity de destino que
+     luego sí que hace la ola, pero es muy raro»). Misma transform de destino que
      `.botnav-hidden` (no cambia el diseño, solo cuánto tarda en llegar); el escondido por scroll
      normal (bajar leyendo la lista) sigue con su calma de siempre — eso nunca fue el problema. */
-  .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1),opacity .12s ease;}
+  .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1);}
   /* Con pestaña en host fixed (ola nativa): la barra SIGUE visible, pero sin backdrop-filter
      ni will-change — esa capa encima del stretch del WebView mataba la ola arriba y abajo
      (labs 5/8). Fondo sólido para que no se vea raro sin el blur. */
@@ -545,8 +607,15 @@
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
-     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar. */
-  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;}
+     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar.
+     ⚠ FONDO SÓLIDO OBLIGATORIO AQUÍ (feedback 2026-08-05, medido con capturas reales en su
+     Oppo): sin `background`, esta regla solo quitaba el blur y dejaba el fondo por defecto
+     `color-mix(...88%,transparent)` — un 12% transparente SIN blur que lo tape es la peor
+     combinación posible. Confirmado con el móvil por CDP: durante el swipe de pestaña y ~1,2 s
+     después (hasta que `scroll-host-on` vuelve a poner fondo sólido), la lista se veía A TRAVÉS
+     de la barra — la app entera («cuando hago scroll veo la lista detrás de la barra un
+     segundo»). Mismo sólido que `scroll-host-on`: la barra debe verse IGUAL con o sin blur. */
+  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg-2);}
   .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
@@ -720,6 +789,8 @@
   .v4-mov .meta{font-size:12.5px;color:var(--muted);margin-top:2px;}
   .v4-mov .am{font-family:'Fraunces',Georgia,serif;font-size:17px;font-weight:550;font-variant-numeric:tabular-nums;}
   .v4-mov .am.pos{color:var(--mint);}
+  .v4-mov .am.muted{color:var(--muted-2);}
+  .v4-mov.v4-mov-skip{border-style:dashed;}
   .v4-gastos-list{background:transparent;}
   .v4-gastos-list-body{padding:0;}
 

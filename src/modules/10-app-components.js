@@ -1424,6 +1424,107 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.15.0", d:"5 ago 2026",
+   t:{es:"Ambientación, conversor, presupuesto, extracto y filtros de Gastos",
+      en:"Ambience, converter, budget, bank statements and Spending filters",
+      ca:"Ambientació, convertidor, pressupost, extracte i filtres de Despeses"},
+   tandas:[
+     {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
+       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo, sin molestar — también quieto en una pestaña.",
+       "Arriba a la derecha hay un destello de luz suave que se QUEDA fijo (no aparece y desaparece al hacer scroll).",
+       "Cambia de pestaña: la lluvia sigue el MISMO camino — no salta atrás ni se reinicia.",
+       "Ajustes → Apariencia → Reducir animaciones: la lluvia y el destello desaparecen.",
+       "Temática → Ninguna: vuelve el look normal, sin piezas.",
+     ]},
+     {id:"fx-converter", t:"🔁 Conversor de monedas", items:[
+       "Ajustes → Dinero → Conversor de monedas: pon un importe, elige moneda de origen y de destino.",
+       "Prueba 150 ₺ → € (o al revés con Intercambiar): el resultado usa el cambio del día.",
+       "Ya NO está la lista fija «1 € → …»; el conversor la sustituye.",
+     ]},
+     {id:"presupuesto-resumen", t:"💶 Presupuesto: misma cifra en todos sitios", items:[
+       "En Resumen, la tarjeta de presupuesto muestra lo mismo que la cabecera de Gastos (sin inversión/traspasos).",
+       "Si tienes dinero reservado a metas, el presupuesto «que queda» ya lo descuenta.",
+       "Los avisos al 50/80/95/100 % usan esa misma cifra (no un total distinto).",
+       "El informe imagen y el reto de «mes bajo presupuesto» también cuadran con Resumen/Gastos.",
+     ]},
+     {id:"otros-bancos-vista", t:"🏦 Extracto de todos los bancos", items:[
+       "Conecta un banco que NO sea el de gasto diario y sincroniza: sus movimientos aparecen en Gastos.",
+       "Esos movimientos llevan la marca «no afecta»: no restan del presupuesto ni del saldo de gasto diario.",
+       "Los bancos marcados como gasto diario (Cartera → rol) SÍ restan, como siempre.",
+       "Ingresos de cualquier banco siguen entrando (para «Mi ciclo»).",
+     ]},
+     {id:"gastos-filtros-ia", t:"🎛️ Filtros y categorías más listos", items:[
+       "En Gastos, toca «Filtros»: sheet con buscador de categorías y bancos (ya no hay dos filas interminables de chips).",
+       "Nuevas categorías: Viajes, Mascotas, Educación, Luz/gas/agua — al apuntar y al filtrar.",
+       "Booking/Vueling → Viajes; Zooplus → Mascotas; Endesa → Energía (ya no caen en «Otros» u Ocio).",
+     ]},
+     {id:"gastos-filtros-ubicacion", t:"🎛️ El botón de Filtros ya no queda suelto", items:[
+       "En Gastos, «Filtros» se ha movido justo al lado del buscador — antes vivía solo, en su propia fila entre el buscador y «Sincronizar».",
+       "Si tienes categorías o bancos seleccionados, siguen viéndose debajo, con «Borrar filtros» a mano.",
+       "El resumen (gastado, presupuesto…) no ha perdido ni un milímetro de sitio.",
+     ]},
+     {id:"fix-novedades-nag", t:"🔔 Novedades ya no insiste sin motivo", items:[
+       "En el canal beta, el popup de ✨ Novedades salía otra vez en CADA compilación nueva (4.15.0.1, .2, .3…) aunque fueran las mismas notas — hoy con 4-5 compilaciones en un día, de ahí «todo el rato me sale para actualizar».",
+       "Ahora se marca como vista por versión base (4.15.0), no por el sello exacto de la compilación: si no hay una versión de verdad nueva, no vuelve a saltar.",
+       "Instala esta compilación y cierra/abre la app un par de veces: Novedades no debería reaparecer sola.",
+     ]},
+     {id:"fix-season-glow", t:"✨ Destello de arriba fijo (y la barra limpia)", items:[
+       "Con temática puesta, el destello suave de ARRIBA A LA DERECHA se queda fijo y se ve también parado, no solo al moverte por la app.",
+       "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni saltan atrás.",
+       "La barra de abajo ya no enseña la lista a través suyo un momento al cambiar de pestaña (efecto raro de un arreglo anterior).",
+     ]},
+     {id:"fix-season-portal", t:"✨ Destello y barra (arreglo definitivo)", items:[
+       "Con temática activa, baja y sube en Gastos: el destello de arriba a la derecha NO debería aparecer y desaparecer al hacer scroll.",
+       "Desliza de pestaña (Inicio ↔ Gastos ↔ Plan): la barra de abajo no debería dejar ver la lista a través suya ni un segundo.",
+       "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
+     ]},
+     {id:"fix-season-glow-steady", t:"✨ Destello que no cambia nunca", items:[
+       "Desliza de pestaña despacio (Inicio ↔ Gastos ↔ Plan): NO tiene que aparecer ningún verde claro arriba mientras se mueve. El fondo se queda exactamente igual de principio a fin.",
+       "En ese mismo gesto, el contenido NO puede bajar unos píxeles y volver a subir: los títulos se quedan clavados a la misma altura.",
+       "El destello de arriba a la derecha se queda igual durante todo el gesto — ni se enciende, ni se apaga, ni desaparece.",
+       "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
+       "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
+       "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
+       "En modo Verano el destello es ya de día caluroso: cálido y bien visible arriba a la derecha. Las demás temáticas llevan la misma forma más contenida, para decidirlas una a una.",
+       "Scrollea rápido dentro de una lista: el destello no puede dar ni un parpadeo.",
+       "La barra de abajo sigue limpia (sin ver la lista a través).",
+     ]},
+     {id:"fix-season-glow-soft", t:"🌅 Destello suave de fondo", items:[
+       "Ajustes → Apariencia → Temática → Verano: arriba se nota un lavado cálido tipo atardecer (melocotón/ámbar), suave y de fondo — no una raya encima del texto.",
+       "Scrollea Inicio o Gastos: el destello se queda arriba (no desaparece al bajar la lista); el texto pasa por delante, sin taparse.",
+       "Prueba Halloween (ámbar/óxido), Navidad (rojo suave), Invierno (azul plateado) y Pascua (rosa/verde): cada una con su tono, mismo estilo de lavado amplio.",
+       "La franja de los iconos junto a la cámara sigue del mismo tono que la app.",
+       "Desliza entre pestañas y baja/sube en una lista: sin parpadeo del destello; la barra de abajo sin dejar ver la lista.",
+     ]},
+     {id:"fix-season-tabs", t:"🚫 Pestañas sin mezclarse", items:[
+       "Con temática activa, desliza Inicio ↔ Gastos: solo debe verse UNA pantalla a la vez — sin «Hola Juanjo» encima de «Tus gastos» ni cifras superpuestas.",
+       "El lavado cálido de arriba se mantiene; el fondo de cada pestaña sigue siendo opaco.",
+       "Scrollea dentro de Inicio o Gastos: sin parpadeo ni salto de píxeles.",
+       "La barra de abajo sigue limpia al cambiar de pestaña.",
+     ]}
+   ],
+   items:{
+   es:[
+    "🍂 Con una temática de temporada, las piezas caen muy suaves — sin molestar. El destello de arriba a la derecha se queda fijo (también al hacer scroll) y la lluvia no salta al cambiar de pestaña.",
+    "🔁 En Ajustes → Dinero hay un conversor de verdad: eliges importe, moneda de origen y destino.",
+    "💶 El presupuesto del mes es la misma cifra en Resumen, Gastos, avisos e informe: sin mezclar inversiones ni traspasos, y descontando lo reservado a metas.",
+    "🏦 En Gastos ves el extracto de todos tus bancos. Solo el de gasto diario resta del presupuesto; el resto sale marcado como «no afecta».",
+    "🎛️ En Gastos, los filtros van en un sheet con buscador (adiós a la fila interminable de chips). Hay categorías nuevas (viajes, mascotas, educación, luz/gas) y el reconocimiento de comercios acierta más.",
+   ],
+   en:[
+    "🍂 With a seasonal theme on, pieces drift very softly. The soft glow at the top-right stays put (also when you scroll) and the drift doesn't jump when you switch tabs.",
+    "🔁 In Settings → Money there's a real converter: pick an amount, a from-currency and a to-currency.",
+    "💶 The monthly budget is the same figure on Home, Spending, alerts and the share image: investments and transfers stay out, and money reserved for goals is deducted.",
+    "🏦 On Spending you see every linked bank's statement. Only your daily-spending bank hits the budget; the rest is marked «doesn't count».",
+    "🎛️ On Spending, filters live in a searchable sheet (no more endless chip rows). New categories (travel, pets, education, utilities) and smarter merchant detection.",
+   ],
+   ca:[
+    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus. El destell de dalt a la dreta es queda fix (també en fer scroll) i la pluja no salta en canviar de pestanya.",
+    "🔁 A Ajustos → Diners hi ha un convertidor de veritat: tries import, moneda d'origen i de destí.",
+    "💶 El pressupost del mes és la mateixa xifra al Resum, Despeses, avisos i informe: sense barrejar inversions ni traspassos, i descomptant el reservat a metes.",
+    "🏦 A Despeses veus l'extracte de tots els teus bancs. Només el de despesa diària resta del pressupost; la resta surt marcada com a «no afecta».",
+    "🎛️ A Despeses, els filtres van en un full amb cercador (adéu a la fila interminable de xips). Hi ha categories noves (viatges, mascotes, educació, llum/gas) i el reconeixement de comerços encerta més.",
+   ]}},
   {v:"4.14.1", d:"5 ago 2026",
    t:{es:"El resumen de Gastos ya no se desborda",
       en:"The Spending summary no longer overflows",
@@ -2081,6 +2182,87 @@ function WhatsNew({onClose, showToast, set, state}){
   )), document.body);
 }
 
+/* Conversor de monedas: pantalla propia (mismo patrón que ActivityPanel/PrivacyPanel), NO un
+   acordeón dentro de Ajustes → Dinero. Con 16 monedas la lista de chips (×2, origen y destino)
+   hacía Ajustes interminable en el móvil — feedback 2026-08-05: «ponlo en una pantalla nueva,
+   hay un montón de divisas». El buscador filtra por código o nombre (p.ej. «lira», «try», «corona»)
+   y afecta a las DOS listas de chips a la vez, porque comparten el mismo catálogo. No inventa
+   tipos: reutiliza toEurAmt/fromEurAmt y los `fxRates` que ya trae Ajustes → Dinero. */
+function CurConverterPanel({state, onClose, refreshFx}){
+  useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
+  const [amt,setAmt]=useState("1");
+  const [from,setFrom]=useState("EUR");
+  const [to,setTo]=useState("TRY");
+  const [q,setQ]=useState("");
+  useEffect(function(){ if(refreshFx) refreshFx(); },[]);   // al entrar, tipos al día (igual que el acordeón antes)
+  const normQ=function(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); };
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const inp={width:"100%",padding:"10px 13px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:16,boxSizing:"border-box"};
+  const segBtn=function(on){ return {padding:"7px 10px",borderRadius:20,fontSize:12.5,fontWeight:700,cursor:"pointer",background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}; };
+  const tbl=fxTableOf(state);
+  const hasRates=CUR_LIST.some(function(c){ return c!=="EUR" && tbl[c]>0; });
+  const nq=normQ(q).trim();
+  const filtList=nq?CUR_LIST.filter(function(c){ return normQ(c+" "+t("cur_"+c.toLowerCase())).indexOf(nq)>=0; }):CUR_LIST;
+  const chipRow=function(cur, setCur){
+    if(nq && filtList.length===0){
+      return React.createElement("div",{style:{fontSize:12.5,color:"var(--muted-2)",padding:"10px 2px"}}, t("st_cur_convert_search_none"));
+    }
+    return React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}},
+      filtList.map(function(c){
+        const ok=c==="EUR"||tbl[c]>0;
+        return React.createElement("button",{key:c,type:"button",disabled:!ok,onClick:function(){ if(ok) setCur(c); },
+          style:Object.assign({},segBtn(cur===c),{flex:"0 0 auto",opacity:ok?1:.4})},
+          (CUR_SYM[c]||c)+" "+c);
+      }));
+  };
+  const raw=parseFloat(String(amt).replace(",","."))||0;
+  const needFrom=from!=="EUR" && !(tbl[from]>0);
+  const needTo=to!=="EUR" && !(tbl[to]>0);
+  const eurMid=(!needFrom && raw>0)?toEurAmt(raw, from, state):null;
+  const out=(!needTo && eurMid!=null)?fromEurAmt(eurMid, to, state):null;
+  const rateTxt=(function(){
+    if(needFrom||needTo||!(raw>0)||out==null) return null;
+    const one=fromEurAmt(toEurAmt(1, from, state), to, state);
+    if(!(one>0)) return null;
+    return "1 "+(CUR_SYM[from]||from)+" = "+NF.format(one)+" "+(CUR_SYM[to]||to);
+  })();
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🔁 "+t("st_cur_convert")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}}, t("st_cur_convert_hint")),
+    !hasRates
+      ? React.createElement("div",{style:{marginTop:4}},
+          React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
+          refreshFx && React.createElement("button",{type:"button",className:"btn btn-ghost",style:{marginTop:10,width:"100%"},onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")))
+      : React.createElement(React.Fragment,null,
+          React.createElement("input",{style:inp,placeholder:t("st_cur_convert_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"14px 0 4px"}}, t("st_cur_convert_from")),
+          React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+            React.createElement("input",{type:"text",inputMode:"decimal",value:amt,
+              onChange:function(e){ setAmt(e.target.value); },
+              style:{flex:"1 1 40%",minWidth:0,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontSize:16,fontWeight:700,fontVariantNumeric:"tabular-nums"}}),
+            React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:15,flex:"0 0 auto"}}, CUR_SYM[from]||from)
+          ),
+          chipRow(from, setFrom),
+          React.createElement("button",{type:"button",onClick:function(){ const a=from; setFrom(to); setTo(a); },
+            style:{marginTop:14,width:"100%",padding:"10px 12px",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer",background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"}}, "⇅ "+t("st_cur_convert_swap")),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"14px 0 4px"}}, t("st_cur_convert_to")),
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)"}},
+            React.createElement("span",{className:"num",style:{fontWeight:800,fontSize:22,letterSpacing:"-.3px",
+              color:(needFrom||needTo)?"var(--muted)":"var(--text)"}},
+              out!=null?NF.format(out):"—"),
+            React.createElement("span",{style:{fontWeight:700,fontSize:14}}, CUR_SYM[to]||to)
+          ),
+          chipRow(to, setTo),
+          (needFrom||needTo) && React.createElement("div",{style:{fontSize:12,color:"var(--coral)",marginTop:8,lineHeight:1.4}}, t("fx_no_rate")),
+          rateTxt && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:10}},
+            rateTxt+(state.fxDate?(" · "+state.fxDate):""))
+        )
+  ));
+}
+
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, refreshFx, goBanks, goBanksFocus, goGastos}){
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | "cur" | null
@@ -2257,7 +2439,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const curSeason=(state.settings&&state.settings.season)||"none";
   const curTextSize=textSizeOf(state);
   const simOn=!!(state.settings&&state.settings.simpleMode);
-  const [curCompare,setCurCompare]=useState(false);   // acordeón «comparar monedas» (Dinero)
+  // Conversor de monedas: pantalla propia (CurConverterPanel), no acordeón — ver su comentario.
+  const [convOpen,setConvOpen]=useState(false);
   const segBtn=function(on){ return Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}); };
   // ── Secciones colapsables + buscador (feedback 2026-07-13: «Ajustes se está haciendo
   // kilométrico»). Cada tarjeta es ahora un grupo plegado (estado en localStorage); el
@@ -2362,7 +2545,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_money")),
     // Dinero: moneda de visualización (ahora SÍ convierte) + comparativa + cómo se ve el total
     // de gastos. Presupuesto y bancos de gasto diario viven en Resumen / Cartera (2026-08-05).
-    grp("money","💱",t("v4_set_money"),"moneda divisa currency euro dolar lira try presupuesto comparar",t("cur_"+curCur.toLowerCase()),
+    grp("money","💱",t("v4_set_money"),"moneda divisa currency euro dolar lira try conversor convertir comparar",t("cur_"+curCur.toLowerCase()),
       row("cur","💱",t("currency"),t("cur_"+curCur.toLowerCase()),function(){ toggleExp("cur"); }),
       expand==="cur" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
@@ -2399,30 +2582,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
             },style:Object.assign({},segBtn(curCur===c),{flex:"1 1 44%"})}, t("cur_"+c.toLowerCase()));
           })),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"8px 2px 0"}}, t("currency_hint"))),
-      // Comparativa: 1 € al cambio. Solo filas CON tipo (si no hay FX aún, se pide y se explica).
-      row("curcmp","📊",t("st_cur_compare"),null,function(){
-        const open=!curCompare; setCurCompare(open);
-        if(open && refreshFx) refreshFx();
-      }),
-      curCompare && React.createElement("div",{className:"set-exp"},
-        (function(){
-          const tbl=fxTableOf(state);   // c → (1 c = tbl[c] €)
-          const rows=CUR_LIST.filter(function(c){ return c!=="EUR" && tbl[c]>0; }).map(function(c){
-            const per=1/tbl[c];   // 1 € = per c
-            return React.createElement("div",{key:c,style:{display:"flex",justifyContent:"space-between",padding:"7px 2px",borderBottom:"1px solid var(--line-soft)",fontSize:13.5}},
-              React.createElement("span",{style:{color:"var(--muted)"}}, "1 € → "+t("cur_"+c.toLowerCase())),
-              React.createElement("span",{className:"num",style:{fontWeight:700}}, NF.format(per)+" "+(CUR_SYM[c]||c)));
-          });
-          if(!rows.length){
-            return React.createElement("div",{style:{marginTop:8}},
-              React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
-              refreshFx && React.createElement("button",{type:"button",style:Object.assign({},segBtn(false),{marginTop:10,flex:"1 1 100%"}),onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")));
-          }
-          return React.createElement("div",{style:{marginTop:6}},
-            rows,
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}},
-              t("st_cur_compare_hint")+(state.fxDate?(" · "+state.fxDate):"")));
-        })()),
+      // Conversor: pantalla propia (CurConverterPanel) — ya NO es un acordeón aquí dentro.
+      // Con 16 monedas (×2 listas, origen y destino) Ajustes se hacía interminable en el móvil
+      // (feedback 2026-08-05). La fila solo abre la pantalla; el buscador vive allí.
+      row("curcmp","🔁",t("st_cur_convert"),null,function(){ setConvOpen(true); }),
       (function(){
         const gm=(state.settings&&state.settings.gTotalMode)||"split";
         return React.createElement(React.Fragment,null,
@@ -2698,6 +2861,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     autoBackOpen && ReactDOM.createPortal(React.createElement(AutoBackupsPanel,{state:state,set:set,showToast:showToast,uid:uid,onClose:function(){ setAutoBackOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
+    convOpen && ReactDOM.createPortal(React.createElement(CurConverterPanel,{state:state,refreshFx:refreshFx,onClose:function(){ setConvOpen(false); }}), document.body),
 
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,
@@ -2722,7 +2886,10 @@ function Onboarding({set, onCloud, onSignup}){
   const inner={maxWidth:480,margin:"0 auto",position:"relative"};
   const finish=function(b){
     const bud=Math.max(100, Math.round(b||budget)||700);
-    try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
+    // Base, no el sello con sufijo de compilación — mismo criterio que el popup de Novedades
+    // (ver comentario en 11-app-main.js, bug 2026-08-05) para que un usuario que se da de alta
+    // EN BETA no se lleve el popup de Novedades en la siguiente compilación sin haber nada nuevo.
+    try{ localStorage.setItem("_seenVersion",mcVerBase(CONFIG.APP_VERSION)); }catch(e){}
     set(function(s){
       return Object.assign({},s,{
         budget:bud, monthStartNet:0, history:[0],

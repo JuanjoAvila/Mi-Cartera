@@ -3,26 +3,15 @@
  * IMPORTAR DEL BANCO: compras E INGRESOS.
  *
  * Origen (2026-07-26): una sugerencia escrita desde la app el 16 de julio que estuvo DIEZ DÍAS sin
- * que la leyera nadie — «no me ha leído un ingreso de la caixa, he tenido notificación y todo pero
- * no lo ha leído». Era cierto: `importObExpenses` filtraba por `tx.card && tx.amount>0`, o sea
- * solo compras con tarjeta. El saldo del banco sí se aplicaba (el patrimonio salía bien), pero el
- * ingreso no aparecía como movimiento, así que desde fuera parecía que la app no se había enterado.
+ * que la leyera nadie — «no me ha leído un ingreso de la caixa…».
  *
- * Convención de signos (`_shared/enablebanking.ts` → `mapTransaction`): POSITIVO = gasto,
- * NEGATIVO = ingreso (CRDT → -amt). Estos tests la fijan por escrito, porque equivocarse de signo
- * aquí es cambiarle el dinero a alguien de sitio.
+ * Convención de signos: POSITIVO = gasto, NEGATIVO = ingreso.
  *
- * ★ 2026-08-03: dos reglas nuevas, pedidas directamente («que meta todo en gastos independientemente
- * del filtro» + «que se detecte en mi ciclo aunque cobre en un banco distinto al de gasto diario»):
- *   1) En la cuenta de GASTO DIARIO cuenta CUALQUIER cargo, no solo tarjeta — antes un cargo sin
- *      tarjeta (o cuyo concepto no decía "TARJETA", como pasa con bancos que avisan en inglés) se
- *      perdía en silencio. Para no duplicar un Fijo/deuda/puntual ya modelado en esa cuenta, se
- *      descarta si CASA por nombre+importe con uno de ese mes (`matchesModeled`).
- *   2) Los INGRESOS entran de CUALQUIER banco enlazado, no solo el de gasto — si tu nómina cae en un
- *      banco que no es el de gasto diario, antes no se apuntaba en ningún sitio y «Mi ciclo»
- *      (que se ancla al último ingreso real) nunca encontraba el cobro.
- * Los bancos EXTRA de `settings.expenseBanks` (añadidos aparte de la cuenta diaria) SIGUEN exigiendo
- * tarjeta para los GASTOS — ahí sí puede haber recibos domiciliados que ya sean Fijos.
+ * ★ 2026-08-05: entra TODO de cualquier banco (estilo extracto). Solo `expenseBankEnts`
+ *   (diario + extras marcados) resta del presupuesto/saldo; el resto se apunta con
+ *   `budgetSkip` y se ve como «no afecta». Los Fijos modelados no se duplican en ningún banco.
+ *
+ * ★ 2026-08-03 (histórico): en la cuenta diaria cualquier cargo; ingresos de cualquier banco.
  */
 import assert from "node:assert/strict";
 import { loadPureLogicFromFile } from "../scripts/load-pure-logic.mjs";
@@ -42,7 +31,6 @@ function t(name, fn) {
 console.log("ob-ingresos");
 
 const hoy = new Date().toISOString().slice(0, 10);
-// Estado mínimo: CaixaBank = cuenta de GASTO DIARIO; Sabadell = banco EXTRA opcional (settings.expenseBanks).
 const estado = {
   accounts: [{ id: "a1", ent: "caixa", name: "Cuenta", value: 1000, spendFrom: true, role: "diario" }],
   expenses: [],
@@ -82,12 +70,22 @@ t("...salvo que YA sea un Fijo modelado este mes en esa cuenta: no se duplica", 
   assert.equal(add, null, "ya está contado por el motor mensual — importarlo también sería doble conteo");
 });
 
-t("en un banco EXTRA (no el de gasto diario), un cargo sin tarjeta sigue fuera: podría ser un recibo ya modelado como Fijo", () => {
+t("en un banco EXTRA de gasto diario, un cargo SIN tarjeta también entra (2026-08-05: todo el extracto)", () => {
   const add = ctx.importObExpenses(estado, [tx({ ent: "sabadell", amount: 55, merchant: "SEGURO HOGAR", card: false, id: "x3c" })]);
+  assert.ok(add && add.length === 1);
+  assert.equal(add[0].budgetSkip, undefined);
+  assert.equal(ctx.expenseCountsBudget(add[0], estado), true);
+});
+
+t("...pero si YA es un Fijo modelado en ese banco extra, no se duplica", () => {
+  const conFijo = Object.assign({}, estado, {
+    fixed: [{ id: "f2", name: "Seguro hogar", amount: 55, freq: "mes", account: "sabadell" }],
+  });
+  const add = ctx.importObExpenses(conFijo, [tx({ ent: "sabadell", amount: 55, merchant: "SEGURO HOGAR", card: false, id: "x3c2" })]);
   assert.equal(add, null);
 });
 
-t("...pero una compra CON tarjeta en ese mismo banco extra sí cuenta", () => {
+t("una compra CON tarjeta en banco extra de gasto diario sí cuenta", () => {
   const add = ctx.importObExpenses(estado, [tx({ ent: "sabadell", amount: 12, merchant: "Bar Paco", card: true, id: "x3d" })]);
   assert.ok(add && add.length === 1);
 });
@@ -100,16 +98,21 @@ t("un ingreso ya importado no entra dos veces (dedup por ext_id)", () => {
   assert.equal(add, null);
 });
 
-t("un INGRESO entra de CUALQUIER banco enlazado, aunque no sea el de gasto ni esté en expenseBanks (2026-08-03: nómina de la pareja en otro banco, para que «Mi ciclo» la vea)", () => {
+t("un INGRESO entra de CUALQUIER banco enlazado (Mi ciclo), aunque no sea de gasto diario", () => {
   const add = ctx.importObExpenses(estado, [tx({ ent: "bbva", amount: -500, merchant: "TRANSFERENCIA", id: "x4" })]);
   assert.ok(add && add.length === 1);
   assert.equal(add[0].category, "ingreso");
   assert.equal(add[0].ent, "bbva");
+  assert.equal(add[0].budgetSkip, true);
+  assert.equal(ctx.expenseCountsBudget(add[0], estado), false);
 });
 
-t("en cambio, un GASTO de un banco que no es el diario ni está en expenseBanks sigue sin colarse", () => {
+t("un GASTO de un banco que NO es de gasto diario también entra, pero NO resta del presupuesto (2026-08-05)", () => {
   const add = ctx.importObExpenses(estado, [tx({ ent: "bbva", amount: 40, merchant: "Bar", card: true, id: "x4b" })]);
-  assert.equal(add, null);
+  assert.ok(add && add.length === 1);
+  assert.equal(add[0].budgetSkip, true);
+  assert.equal(ctx.expenseCountsCash(add[0], estado), false);
+  assert.equal(ctx.expenseCountsBudget(add[0], estado), false);
 });
 
 t("sin comercio, un ingreso se titula «Ingreso» y no «Compra»", () => {

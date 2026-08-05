@@ -1422,7 +1422,11 @@ function App(){
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
-    const thisMonthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth());
+    // Solo lo que sale de bancos de gasto diario (y a mano): si no, un cargo de Sabadell
+    // «solo para ver» restaría del efectivo de TR (2026-08-05).
+    const thisMonthExp=(state.expenses||[]).filter(function(e){
+      return parseDate(e.date)>=startOfMonth() && expenseCountsCash(e, state);
+    });
     const thisMonthSpent=thisMonthExp.reduce((a,e)=>a+e.amount,0);
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
     // El round-up & saveback (#19) se aplican al CERRAR el mes (reconcileTR), persistidos, para que
@@ -1682,14 +1686,23 @@ function App(){
     // Espera a que la app esté lista (no encima del onboarding/candado/login/tour).
     if(state.onboarded===false || locked || showAuth || tourOpen) return;
     var seen=null; try{ seen=localStorage.getItem("_seenVersion"); }catch(e){}
-    if(seen===CONFIG.APP_VERSION){ newsDone.current=true; return; }   // ya vista esta versión
+    /* SE COMPARA POR VERSIÓN BASE, NO por el sello exacto (bug 2026-08-05: «me sale en beta
+       todo el rato para actualizar, no sé porqué»). En beta el sello lleva sufijo de compilación
+       (4.15.0.4) que sube en CADA push aunque la versión de cara al usuario (VERSION, las notas)
+       sea la misma — hoy mismo salieron 4-5 compilaciones de la 4.15.0. Comparando el sello a
+       pelo, el popup de Novedades volvía a saltar en cada una de ellas con las MISMAS notas: no
+       hay nada nuevo que contar y aun así interrumpe. `betaChecklist`/`WhatsNew` ya casan por
+       base (`mcVerBase`) para saber qué versión estás viendo; a esta puerta le faltaba el mismo
+       criterio. En estable la base y el sello son el mismo string, así que no cambia nada para
+       el resto de la familia. */
+    if(seen===mcVerBase(CONFIG.APP_VERSION)){ newsDone.current=true; return; }   // ya vista esta versión
     if(newsTimer.current) return;                                     // ya programado: no reprogramar ni cancelar
     // OJO: NO sellamos aquí ni devolvemos cleanup que mate el timer — un re-render que cambie las
     // deps cancelaría el popup y, al re-entrar ya sellado, no volvería a disparar (bug 2026-07-12).
     // Sellamos al DISPARAR. Los usuarios nuevos ya vienen sellados por el onboarding (finish).
     newsTimer.current=setTimeout(function(){
       newsDone.current=true;
-      try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
+      try{ localStorage.setItem("_seenVersion",mcVerBase(CONFIG.APP_VERSION)); }catch(e){}
       setWhatsNew(true);
     },420);
   },[state.onboarded,locked,showAuth,tourOpen]);
@@ -1798,10 +1811,13 @@ function App(){
   // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
   // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
   // en silencio para no disparar tres de golpe). Suena también como toast en la app.
+  // Misma cifra que Resumen/Gastos (`monthBudgetStats`): sin neutras ni reservas, no
+  // `thisMonthSpent` (feedback «el presupuesto no cuadra» — 2026-08-05).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    const bud=state.budget||0; if(!(bud>0)) return;
-    const spent=totals.thisMonthSpent||0;
+    const bs=monthBudgetStats(state);
+    const bud=bs.budget!=null?bs.budget:0; if(!(bud>0)) return;
+    const spent=Math.max(0, bs.against||0);
     const pct=spent/bud*100;
     const ym=new Date().toISOString().slice(0,7);
     let fired=false;
@@ -1817,7 +1833,7 @@ function App(){
       const nat=natPlugin();
       if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} }
     });
-  },[state.onboarded,locked,totals.thisMonthSpent,state.budget]);
+  },[state.onboarded,locked,state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){
@@ -2785,12 +2801,48 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
+  // Build .22: portal en `#root` z-0; `.app`/`.page` transparentes; lavado en `.season-glow`.
+  const season=(state.settings&&state.settings.season)||"";
+  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
+  // El destello va SIEMPRE que haya temática: el portal lleva el fondo sólido + lavado; reduce-motion
+  // solo quita las partículas, no el degradado quieto.
+  const seasonOn=!!(season && season!=="none");
+  const seasonPool=(seasonOn && !reduceMo) ? SEASON_AMB[season] : null;
+  // useMemo: mismos spans entre re-renders → la animación CSS no se reinicia al cambiar de tab.
+  const seasonLayers=useMemo(function(){
+    if(!seasonOn) return null;
+    const N=10, out=[];
+    for(let i=0;seasonPool&&i<N;i++){
+      const em=seasonPool[i%seasonPool.length];
+      const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
+      const left=Math.round(rnd(12.9898)*96);
+      const sz=14+Math.round(rnd(4.1)*8);
+      const dur=16+rnd(7.7)*8;
+      const delay=-(rnd(3.3)*dur);
+      const sway=(4+Math.round(rnd(5.5)*14))*(rnd(9.1)>0.5?1:-1);
+      const spin=(rnd(2.2)>0.5?1:-1)*(60+Math.round(rnd(6.6)*100));
+      const op=0.14+rnd(1.7)*0.14;
+      out.push(React.createElement("span",{key:i,
+        style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
+          "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
+    }
+    // En `#root`, no en body: body z-1 bajo `#root` z-2 nunca se ve en el swipe (build .21).
+    var portalRoot=document.getElementById("root")||document.body;
+    return ReactDOM.createPortal(
+      React.createElement("div",{className:"season-portal","aria-hidden":"true"},
+        React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
+        seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out) : null
+      ),
+      portalRoot
+    );
+  }, [seasonOn, seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
+    var isHost=hostTab===i;
     // `page-scroll-host` EN el className de React (no solo classList): si no, cualquier
     // setState de App (botnav al bajar) lo borra y el fling pierde la ola nativa.
-    return React.createElement("div",{className:"page"+(show?" page-live":"")+(hostTab===i?" page-scroll-host":""),key:id,onScroll:onPageScroll},
+    return React.createElement("div",{className:"page"+(show?" page-live":"")+(isHost?" page-scroll-host":""),key:id,onScroll:onPageScroll},
       show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
     );
   });
@@ -2802,10 +2854,9 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // La capa ambiental de temporada (piezas cayendo/subiendo) SE QUITÓ del todo (2026-08-03): el
-  // detalle por temática ahora vive incrustado en cada sección, en CSS puro (ver `--season-ico`
-  // y el badge sobre `.v4-title`/`.v4-inicio-hi` en shell.html). Nada que montar ni disparar aquí.
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
+    // seasonLayers → portal en document.body (ver useMemo arriba)
+    seasonLayers,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",

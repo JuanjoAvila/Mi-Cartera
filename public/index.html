@@ -170,7 +170,18 @@
   input,select{font-family:inherit;}
   ::-webkit-scrollbar{width:0;height:0;}
 
-  .app{height:100vh;height:100dvh;display:flex;flex-direction:column;padding-top:calc(var(--safe-top) + 8px);}
+  /* FONDO OPACO (feedback 5/8 22:00: «sale ese verde clarito cuando scrolleas»). `.app` era
+     transparente, así que al deslizar entre pestañas —cuando se quita `page-scroll-host` y con él
+     el único fondo opaco— asomaba el degradado decorativo del `body`, que es menta al 18% y está
+     centrado justo arriba a la derecha: medido [12,23,18] → [18,36,27] en toda la franja. En
+     reposo no se veía nunca (lo tapa el host), así que pintarlo aquí no cambia el aspecto de la
+     app: lo que hace es que reposo y gesto se vean IGUAL. El degradado del body sigue vivo donde
+     sí se ve y para lo que se hizo: login y onboarding, que salen antes que `.app`.
+     El padding-top lleva 6px MENOS que el del host a propósito: `.page` pone 6px por su cuenta y
+     el host no, así que sin esta resta el contenido bajaba 5,5px al empezar el gesto y volvía al
+     soltar («la pantalla se baja unos pixeles y luego vuelve», mismo feedback). */
+  .app{height:100vh;height:100dvh;display:flex;flex-direction:column;
+    padding-top:calc(var(--safe-top) + 4px);background:var(--bg);}
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 14px;flex:0 0 auto;}
   .brand{display:flex;align-items:center;gap:11px;}
   .brand-mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;
@@ -258,19 +269,13 @@
   html.hi-contrast[data-theme="light"]{ --muted:#33463C; --muted-2:#5A6E63; }
   html.hi-contrast[data-theme="dark"]{ --muted:#C7C7CE; --muted-2:#9C9CA6; }
   html.hi-contrast[data-theme="blue"]{ --muted:#BFD2E6; --muted-2:#93A8C2; }
-  /* Temáticas de temporada: YA NO hay una capa de piezas cayendo/subiendo por la pantalla —
-     quitada del todo (2026-08-03, petición suya textual: «Quítame lo de que caigan cosas cuando
-     aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación personalizada
-     incrustada en las secciones, como cuando se mueven los logos de las tabs»).
-     Tres intentos en fila con la misma queja de fondo (algo se mueve SOLO por moverse): caída
-     larga en bucle → una sola caída al abrir → ráfaga corta al cambiar de pestaña. Lo que pide
-     ahora es justo lo que ya tienen los iconos de la barra (`tabpop`/`tabpeina`/`tabmarca`/
-     `tabsube`, más abajo): un detalle que se pinta CON la sección, no una capa aparte animada por
-     su cuenta. Ver `--season-ico` en el bloque de `--season-tinte`, y el badge sobre `.v4-title`/
-     `.v4-inicio-hi` en «MÁS AMBIENTACIÓN», los dos más abajo.
-     Lo que desaparece con este commit: `.season-fx`, `@keyframes seasonfall`/`seasonrise` (y su
-     `.rising`) de aquí; `seasonEpoch`/`seasonFirstTab` (el JS que las disparaba) en
-     11-app-main.js; y el pool de emojis que caían (`SEASON_FX`) en 01-i18n.js. */
+  /* Temáticas de temporada — ambientación suave DETRÁS de las cartillas (2026-08-05).
+     Historial: la capa vieja (`.season-fx` z-index 36 ENCIMA de todo, ráfagas al cambiar de
+     pestaña con `seasonEpoch`/`seasonrise`) se quitó el 2026-08-03 («ya me cansé»). Ahora vuelve
+     SOLO como fondo: `.season-amb` a z-index 0, cartillas por encima (`position:relative;
+     z-index:2`), pocas piezas, opacidad baja, caída lenta en bucle. Cero JS al cambiar de tab.
+     El detalle incrustado en títulos (`--season-ico` / `seasonchip`) se queda. Se apaga con
+     «Reducir animaciones». */
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
   /* EL HALO DEL + AHORA ES UN ANILLO, NO UNA SOMBRA (2026-07-28). `fabpulse` animaba
@@ -289,31 +294,44 @@
   html[data-season="verano"] .botnav-fab{background:linear-gradient(160deg,#FFB347,#39B6C9);}
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
-  /* Un velo de color muy tenue y vivo arriba, a juego con la temática (toque Revolut). */
-  html[data-season]::before{content:"";position:fixed;top:0;left:0;right:0;height:38vh;z-index:1;pointer-events:none;
-    opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;}
-  html[data-season="mundial"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.18), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.14), transparent 60%);}
-  html[data-season="halloween"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.16), transparent 60%);}
-  html[data-season="navidad"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.16), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.14), transparent 60%);}
-  html[data-season="verano"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.14), transparent 60%);}
-  html[data-season="invierno"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
-  html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
-  @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
-  /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29, repetida el
-     1/8: «decora el resto de la app de esa temática como hiciste con el botón + que está chulo»
-     · «que haya ambientación como la del botón +»).
-     El trato de esta tanda es ese: se quita lo que se mueve (las piezas cayendo, que él no
-     quiere más que al principio) y a cambio la temática se queda PUESTA en sitios fijos. Todo lo
-     de aquí es color plano y quieto: no anima nada, así que no repinta nada — al revés que la
-     capa que cae, que costaba frames todo el rato.
-     ⚠ NO SE TOCAN `--mint` NI `--coral`: pintan importes y saldos, y teñir el dinero de naranja
-     en Halloween es exactamente el tipo de gracia que hace dudar de una app de finanzas. Solo
-     se tiñen adornos: el halo de abajo, el borde superior de la barra y la rayita activa. */
-  /* El halo de abajo se construye con `--season-tinte` y no copiando el degradado de `::before`:
-     `background:inherit` en un ::after NO hereda el degradado del ::before hermano —son cajas
-     distintas— y habría salido transparente. */
-  html[data-season]::after{content:"";position:fixed;bottom:0;left:0;right:0;height:20vh;z-index:1;pointer-events:none;
-    background:radial-gradient(130% 95% at 50% 125%, color-mix(in srgb, var(--season-tinte,transparent) 16%, transparent), transparent 68%);}
+  /* DESTELLO DE ARRIBA (feedback 2026-08-05 — «arriba a la derecha», no la barra).
+     Seis intentos; cada uno descartó una vía, y todos se midieron en su Oppo con ADB+CDP.
+     ⚠ NO `html::before` fixed, NI fixed dentro de `#root{position:relative}` (build .9): el
+       compositor de su WebView los liga al scroll — computed decía `fixed` y el píxel saltaba +31.
+       Por eso vive portaleado a `document.body` en `.season-portal`.
+     ⚠ NO un velo TRANSLÚCIDO encima del contenido (build .11): el fallo NO era el scroll vertical
+       sino DESLIZAR ENTRE PESTAÑAS — la app entera pasa por debajo del velo y el composite se
+       aclara, que es lo que él veía como «se pone más intenso». Y como empezaba en y=0, teñía
+       también la barra de estado.
+     ⚠ NO hornear el gradiente en el fondo de `.page-scroll-host` (build .12): esa clase SE QUITA
+       mientras el carrusel se mueve, así que el destello se apagaba justo DURANTE el gesto
+       (medido con el dedo congelado: aporte [0,0,0]). Su cinta opaca, además, dejaba la franja
+       de la cámara oliva [66,64,37] contra un fondo [20,38,30].
+     ⚠ NI detrás del contenido (.16/.17/.18): las cartillas lo tapan al pasar y «desaparece y
+       vuelve a aparecer» — rechazado por él expresamente (5/8).
+     ⚠ NI cofia ENCIMA con padding (.13/.15/.19): z-36 tapaba texto o reservaba ~116px
+       bajo la barra — «Tus gastos» / el saludo demasiado abajo (rechazo 5/8).
+     ⚠ NI solo gradiente en el host (.12/.20): al scrollear se va con el contenido; la franja de
+       iconos del sistema ya se mantiene fija y él pide lo mismo en la app.
+     Fix .22: lavado fijo portaleado DENTRO de `#root` (z:0) — NO en body z-1 bajo `#root` z-2:
+     un hermano con z-index menor NUNCA se ve a través del stacking context del root, aunque
+     `.app` sea transparente (medido en pleno swipe: arriba OK por padding de `.app`, zona del
+     carrusel a [12,23,18] plano). `.app`/`.page` transparentes; el portal fixed NO cuelga del
+     `.track` transformado, así que el gesto no lo apaga. Sin `background-attachment:fixed`. */
+  html[data-season] #root{position:relative;}
+  html[data-season] .app{position:relative;z-index:1;background:transparent!important;}
+  html[data-season] .app-shell{position:relative;z-index:1;}
+  html[data-season] .page{background:transparent!important;}
+  .season-portal{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:520px;pointer-events:none;z-index:0;}
+  .season-glow{position:absolute;inset:0;z-index:1;pointer-events:none;
+    background-color:var(--bg);background-image:var(--season-glow-top);background-repeat:no-repeat;}
+  /* Intensidad calibrada al pico de la .11 (que él dio por bueno en reposo): alfas ~.10 miden
+     un aporte de ~60 RGB con los radiales elípticos ampliados (.19). Sin animación de opacidad —
+     un destello que respira es justo lo que pidió que no hiciera. */
+  /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
+     ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
+     era el sitio equivocado + dejaba ver la lista a través). */
   html[data-season] .botnav{border-top:1px solid var(--season-tinte,var(--line-soft));}
   html[data-season] .botnav-ind span{background:var(--season-tinte,var(--mint));}
   /* MÁS AMBIENTACIÓN, NO SOLO EN LA BARRA (petición suya 1/8, repetida: «ponle más ambientación
@@ -344,13 +362,38 @@
     60%{opacity:1;transform:scale(1.18) rotate(6deg);}
     100%{opacity:1;transform:scale(1) rotate(0deg);}
   }
-  html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";}
-  html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";}
-  html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";}
-  html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";}
-  html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";}
-  html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";}
-  @media (prefers-reduced-motion:reduce){ html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;} }
+  html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 80% calc(var(--safe-top) + 18px), rgba(241,196,15,.11) 0%, rgba(241,196,15,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 22% calc(var(--safe-top) + 100px), rgba(230,57,70,.05) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 62% calc(var(--safe-top) + 200px), rgba(241,196,15,.03) 0%, transparent 50%);}
+  html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 78% calc(var(--safe-top) + 18px), rgba(240,134,43,.12) 0%, rgba(210,95,30,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 28% calc(var(--safe-top) + 95px), rgba(180,70,20,.05) 0%, transparent 58%),radial-gradient(ellipse 75% 55% at 58% calc(var(--safe-top) + 190px), rgba(122,63,160,.04) 0%, transparent 50%);}
+  html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 80% calc(var(--safe-top) + 18px), rgba(214,69,80,.10) 0%, rgba(214,69,80,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 24% calc(var(--safe-top) + 100px), rgba(46,158,91,.05) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 65% calc(var(--safe-top) + 195px), rgba(214,69,80,.03) 0%, transparent 50%);}
+  html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";
+    --season-glow-top:radial-gradient(ellipse 135% 100% at 82% calc(var(--safe-top) + 16px), rgba(255,185,120,.13) 0%, rgba(255,155,90,.05) 38%, transparent 70%),radial-gradient(ellipse 100% 75% at 30% calc(var(--safe-top) + 90px), rgba(255,140,75,.06) 0%, transparent 55%),radial-gradient(ellipse 85% 60% at 70% calc(var(--safe-top) + 185px), rgba(255,210,130,.04) 0%, transparent 48%);}
+  html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 76% calc(var(--safe-top) + 18px), rgba(127,181,232,.10) 0%, rgba(160,200,240,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 32% calc(var(--safe-top) + 100px), rgba(183,224,242,.05) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 60% calc(var(--safe-top) + 190px), rgba(200,220,255,.04) 0%, transparent 50%);}
+  html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
+    --season-glow-top:radial-gradient(ellipse 130% 95% at 78% calc(var(--safe-top) + 18px), rgba(247,198,217,.11) 0%, rgba(240,170,195,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 26% calc(var(--safe-top) + 95px), rgba(160,216,179,.06) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 64% calc(var(--safe-top) + 185px), rgba(247,198,217,.03) 0%, transparent 50%);}
+  /* Ambientación — portal fixed z-1 DETRÁS de `#root` (z-2). Las partículas van en z-2 del portal;
+     el contenido y el host (z-35) pasan por encima. bottom recortado bajo botnav (feedback 5/8). */
+  .season-amb{position:absolute;top:calc(var(--safe-top) + 8px);left:0;right:0;bottom:calc(72px + var(--safe-bottom,0px));z-index:2;pointer-events:none;overflow:hidden;contain:strict;}
+  .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
+    animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
+  @keyframes seasonDrift{
+    0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0;}
+    6%{opacity:var(--op,.22);}
+    92%{opacity:var(--op,.22);}
+    100%{transform:translate3d(var(--sway,8px),110vh,0) rotate(var(--spin,120deg));opacity:0;}
+  }
+  /* `.page` sigue con z-index 2 para el carrusel en swipe.
+     ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40`. */
+  .page{position:relative;z-index:2;}
+  @media (prefers-reduced-motion:reduce){
+    /* El degradado quieto del host se queda; lo que se va son las piezas que caen. */
+    .season-amb{display:none;}
+    html[data-season] .botnav-fab::after{animation:none;opacity:0;}
+    html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
+  }
   /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
   .beta-tanda{margin:0 0 22px;padding-top:2px;}
   .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
@@ -491,15 +534,27 @@
     overflow-y:auto;-webkit-overflow-scrolling:touch;content-visibility:visible;
     /* Mismo safe-top que `.settings-push`: sin él el título («Tus gastos») se metía debajo
        de la barra de estado / iconos del sistema (feedback 5/8). El `.page` normal NO lo
-       necesita porque ya cuelga dentro de `.app` con padding-top. */
-    background:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
+       necesita porque ya cuelga dentro de `.app` con padding-top.
+       FONDO OPACO, SIEMPRE (incidente 2026-08-05): transparente → Inicio+Gastos a la vez.
+       ⚠ NADA de gradiente aquí (build .12): esta clase se QUITA al deslizar entre pestañas y el
+       destello se apagaba en pleno gesto. El lavado fijo vive en `.season-glow` (portal z-1). */
+    background:var(--bg);
+    padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
+  /* Con temática: host transparente en reposo para que el lavado fijo se vea al scrollear; `.app`
+     opaca con el mismo gradiente mientras se desliza entre pestañas (evita fusionar tabs).
+     Sin padding extra — el título queda en safe-top + 10px. */
+  html[data-season] .page.page-scroll-host{background:transparent!important;}
+  /* Host transparente deja ver el lavado fijo (portal z-1) al scrollear; las hermanas montadas
+     por mountNeighbors se filtraban por debajo (Inicio sobre Gastos). Fuera del pintado.
+     e2e acota a `.page-scroll-host` (listas-render) — los nodos siguen en DOM pero hidden. */
+  .track.scroll-host-park .page:not(.page-scroll-host){visibility:hidden;pointer-events:none;}
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
   .page.page-scroll-host.mc-touch-own{touch-action:none;}
-  .track.scroll-host-park{transform:none !important;will-change:auto;}
-  /* Las hermanas quedan fuera del viewport (track con left); no hace falta visibility:hidden
-     — eso dejaba nodos «hidden» que confunden e2e (listas-render Recibos). */
+  .track.scroll-host-park{transform:none !important;will-change:auto;overflow:hidden;}
+  /* Gesto entre pestañas: refuerzo opaco mientras el dedo arrastra (host transparente glow22). */
+  html[data-season] .track.dragging .page{background:var(--bg)!important;}
   @media (prefers-reduced-motion:reduce){.track{transition:none;}}
 
   /* ===== v4: nav inferior + FAB + sheets (SPEC-v4 §1–2, §7) ===== */
@@ -508,13 +563,20 @@
      por debajo (la barra es translúcida con blur) y al esconderse se ve la app, no un hueco.
      El padding-bottom de .page ya reserva el espacio para que nada quede oculto al final. */
   .botnav{position:absolute;left:0;right:0;bottom:0;z-index:40;
-    background:color-mix(in srgb, var(--bg-2) 88%, transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    /* FONDO SIEMPRE OPACO (2026-08-05, cuarta pasada, ADB en su Oppo build .9): el arreglo de
+       `nav-sin-blur{background:var(--bg-2)}` NO bastó — getComputedStyle seguía devolviendo
+       color-mix al 88% durante el swipe y la lista se veía a través ~1 s. La barra no puede
+       depender de una regla contextual: el default ya es sólido; el blur queda de adorno. */
+    background:var(--bg-2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
     border-top:1px solid var(--line-soft);
     padding:8px 10px calc(10px + var(--safe-bottom));
     /* Se esconde al bajar y reaparece al subir. Curva suave y algo más lenta + fade: el ocultado
        de golpe se sentía «brusco» (feedback 2026-07-18). Ahora se desliza y desvanece con calma. */
     transition:transform .55s cubic-bezier(.4,0,.2,1),opacity .4s ease;will-change:transform,opacity;}
-  .botnav.botnav-hidden{transform:translateY(120%);opacity:0;pointer-events:none;}
+  /* Se esconde al bajar y reaparece al subir. SOLO translate (sin fade de opacity):
+     con opacity→0 a mitad de la transición se veía la lista a través de la barra ~1 s
+     (feedback 2026-08-05, tras meter la lluvia a z-37 entre página y botnav). */
+  .botnav.botnav-hidden{transform:translateY(120%);pointer-events:none;}
   /* ESCONDIDO RÁPIDO (2026-08-03, bug «rebote raro»/«se queda atascado»): cuando el motivo de
      esconder la barra es «hemos llegado al final de la lista» (no un scroll normal hacia abajo),
      la barra tiene que APARTARSE YA, no con la calma de 0,55 s de más arriba. El rebote NATIVO (la
@@ -522,10 +584,10 @@
      misma duración de siempre, la barra se ve deslizándose/desvaneciéndose TODAVÍA por encima de
      la ola mientras esta ya está en marcha: dos animaciones a ritmos distintos compitiendo por el
      mismo trozo de pantalla, que es justo lo que él describió («se queda atascado un momento y
-     luego sí que hace la ola, pero es muy raro»). Misma transform/opacity de destino que
+     luego sí que hace la ola, pero es muy raro»). Misma transform de destino que
      `.botnav-hidden` (no cambia el diseño, solo cuánto tarda en llegar); el escondido por scroll
      normal (bajar leyendo la lista) sigue con su calma de siempre — eso nunca fue el problema. */
-  .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1),opacity .12s ease;}
+  .botnav.botnav-hidden-fast{transition:transform .16s cubic-bezier(.4,0,.2,1);}
   /* Con pestaña en host fixed (ola nativa): la barra SIGUE visible, pero sin backdrop-filter
      ni will-change — esa capa encima del stretch del WebView mataba la ola arriba y abajo
      (labs 5/8). Fondo sólido para que no se vea raro sin el blur. */
@@ -545,8 +607,15 @@
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
-     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar. */
-  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;}
+     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar.
+     ⚠ FONDO SÓLIDO OBLIGATORIO AQUÍ (feedback 2026-08-05, medido con capturas reales en su
+     Oppo): sin `background`, esta regla solo quitaba el blur y dejaba el fondo por defecto
+     `color-mix(...88%,transparent)` — un 12% transparente SIN blur que lo tape es la peor
+     combinación posible. Confirmado con el móvil por CDP: durante el swipe de pestaña y ~1,2 s
+     después (hasta que `scroll-host-on` vuelve a poner fondo sólido), la lista se veía A TRAVÉS
+     de la barra — la app entera («cuando hago scroll veo la lista detrás de la barra un
+     segundo»). Mismo sólido que `scroll-host-on`: la barra debe verse IGUAL con o sin blur. */
+  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg-2);}
   .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
@@ -720,6 +789,8 @@
   .v4-mov .meta{font-size:12.5px;color:var(--muted);margin-top:2px;}
   .v4-mov .am{font-family:'Fraunces',Georgia,serif;font-size:17px;font-weight:550;font-variant-numeric:tabular-nums;}
   .v4-mov .am.pos{color:var(--mint);}
+  .v4-mov .am.muted{color:var(--muted-2);}
+  .v4-mov.v4-mov-skip{border-style:dashed;}
   .v4-gastos-list{background:transparent;}
   .v4-gastos-list-body{padding:0;}
 
@@ -1833,12 +1904,16 @@ const CATEGORIES = [
   { id:"cine",       name:"Cine",                color:"#E8A0C8", icon:"🍿" },
   { id:"padel",      name:"Pádel",               color:"#6BCB77", icon:"🎾" },
   { id:"ocio",       name:"Ocio",                color:"#9BD0E0", icon:"🎮" },
+  { id:"viajes",     name:"Viajes",              color:"#5B8DEF", icon:"✈️" },
   { id:"transporte", name:"Transporte",          color:"#7FB5E8", icon:"🚇" },
   { id:"parking",    name:"Parking",             color:"#8AA0B8", icon:"🅿️" },
+  { id:"energia",    name:"Luz, gas y agua",     color:"#E8C547", icon:"⚡" },
   { id:"tasas",      name:"Impuestos y multas",  color:"#C97D5F", icon:"🏛️" },
   { id:"compras",    name:"Compras",             color:"#C9A0E0", icon:"🛍️" },
+  { id:"educacion",  name:"Educación",           color:"#6A9FD8", icon:"📚" },
   { id:"salud",      name:"Salud",               color:"#6FD6C9", icon:"💊" },
   { id:"pelu",       name:"Peluquería",          color:"#D8A3C8", icon:"💇" },
+  { id:"mascotas",   name:"Mascotas",            color:"#C4A574", icon:"🐾" },
   { id:"hogar",      name:"Hogar",               color:"#B7C98A", icon:"🏠" },
   { id:"regalos",    name:"Regalos",             color:"#E89CB0", icon:"🎁" },
   { id:"otros",      name:"Otros",               color:"#8FA89A", icon:"📦" },
@@ -1881,25 +1956,32 @@ const USO_OK=[
   "apunta_gasto","apunta_ingreso","crea_meta","crea_deuda","amortiza","edita_presupuesto",
   "sync_bancos","sync_brokers","import_hoja","import_csv","export_backup","informe_mes",
 ];
+/* Orden del objeto = prioridad al clasificar. Cosas finas ANTES que el cajón (pan/cine
+   antes que bares; padel DESPUÉS de bares —«restaurante de pádel» es comida; viajes antes
+   que ocio; mascotas/energía antes que hogar). Alineado con ingest_logic.ts. */
 const KW = {
-  // "pan" y "cine" ANTES que "bares": panadería/pastelería y Kinepolis no deben caer en bares.
-  pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano"],
-  cine:["cinema","cine","cinesa","yelmo","kinepolis","odeon","mk2","renoir","multicines","entradas.com","atrapalo","ticketmaster","imax"],
-  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans","wok","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","gin","vending","expendedor"],
-  super:["mercadona","lidl","aldi","carrefour","dia","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria"],
-  transporte:["renfe","fgc","tmb","metro","autobus","bus","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","vueling","iberia","ryanair","easyjet","aeropuerto","bicing","blablacar","flixbus","moove","bolt","ouigo","iryo","avlo","rodalies","emt ","alsa","avanza","ok mobility","sixt","hertz","europcar"],
-  parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal"],
-  tasas:["gencat","generalitat","atc ","agencia tributaria","aeat","ajuntament","ayuntamiento","diputacio","diputación","dgt","multa","multa transit","sancion","sanción","tribut","impost","impuesto","tax agency","taxes","ibi","ivtm","basura","residus","residuos","canon agua","canon de l'aigua","tasa","taxa","registro mercantil","registro civil","notaria","notaría","gestoria","gestoría","procurador","abogado","lexnet","catastro","seguretat social","seguridad social","tgss","recaudacion","recaudación","zona bajas emisiones","zbe"],
-  // Pádel ANTES que ocio: playtomic/padel no caen en 🎮 (feedback 2026-07-17).
-  // «Restaurante de pádel» sigue en bares porque «restaurante» se evalúa antes.
-  padel:["padel","pádel","playtomic","paddle","club de padel","club padel","pista padel","padel pro","world padel","premier padel"],
-  ocio:["spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","decathlon","gym","gimnasio","sport","bolera","anthropic","claude","claude.ai","openai","chatgpt","gpt-","google one","google play","googleplay","play store","playstore","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","cursor","midjourney","perplexity","hotel","hostal","booking","airbnb","apartament turistic","apartamento turistico","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio"],
-  compras:["zara","mango","primark","stradivarius","bershka","pull","el corte","amazon","amzn","openbank","open bank","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","saona","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis","papeleria","papelería","copisteria","copistería","liberia","libreria","druni","primor","sephora","perfumeria"],
-  hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","lampara","tintoreria","tintorería","lavanderia","lavandería","mrw","seur","correos","amazon locker","zooplus","kivet","tiendanimal","miscota"],
-  // "pelu" ANTES que salud: peluquería/estética dejan de caer en Salud (categoría propia, backlog 2026-07)
-  pelu:["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion"],
-  salud:["farmacia","clinica","clínica","medico","médico","doctor","dra.","dr.","consulta","ambulatorio","urgencias","hospital","optica","óptica","fisio","fisioterapia","masaje","podologo","podólogo","psicologo","psicólogo","psiquiatra","sanitas","adeslas","asisa","dkv","mutua","quiron","quirón","cima","cap ","centro medico","centro médico","laboratorio","analisis","análisis","radiologia","radiología","dentista","dental","ortodoncia","oculista","oftalmo"],
-  regalos:["regalo","flores","floristeria","joyeria","perfumeria","sephora","douglas"],
+  pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano","panaria","el forn","viena ","entpan","panetteria"],
+  cine:["cinema","cine","cinesa","yelmo","kinepolis","odeon","mk2","renoir","multicines","entradas.com","atrapalo","ticketmaster","imax","cinemes","filmotech"],
+  bares:["restaurante","bar ","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans &","pans ","wok ","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub ","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","vending","expendedor","deliveroo","too good to go","toogoodtogo","mcdonalds","mcdonald's","burger king","hamburgues","cervecer","cerveseria","fosters hollywood","ladydiana","100 montaditos","comida a domicilio"],
+  // Pádel DESPUÉS de bares: «restaurante de pádel» debe ser comida (feedback histórico).
+  padel:["padel","pádel","playtomic","paddle","club de padel","club padel","pista padel","padel pro","world padel","premier padel","indoor padel"],
+  super:["mercadona","lidl","aldi","carrefour","dia ","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria","hipercor","caprabo","condis","ahorramas","ahorramás","gadis","froiz","bm supermarket","family cash","supeco","costco","makro","amazon fresh","glovo market","compra online mercadona"],
+  // Viajes ANTES que ocio/transporte: booking/vueling no son «ocio» ni solo «metro».
+  viajes:["booking","airbnb","hotel","hostal","hostel","apartament turistic","apartamento turistico","vueling","iberia","ryanair","easyjet","vuelos","vuelo ","aeropuerto","airport","expedia","trivago","kayak","edreams","rumbo","logitravel","civitatis","getyourguide","amadeus","renfe ave","hotelbeds","marriott","hilton","ibis ","nh hotel","melia","meliá","barcelo","barceló","ac hotel","travelodge","pension ","pensión ","camping","ferry","balearia","grimaldi","cruise","crucero","tourist","turismo"],
+  transporte:["renfe","fgc","tmb","metro","autobus","bus ","taxi","cabify","uber","gasolina","repsol","cepsa","shell","bp ","galp","autopista","peaje","tram","bicing","blablacar","flixbus","moove","bolt","ouigo","iryo","avlo","rodalies","emt ","alsa","avanza","ok mobility","sixt","hertz","europcar","petrocat","ballenoil","plenergy","carrefour gas","gasoleo","gasóleo","diesel","diésel","carburante","recarga electr","electrolinera","tesla supercharger","free now","freenow","taxi barcelona","ambitus"],
+  parking:["parking","parquimetro","parkimetro","parquímetro","aparcament","aparcamiento","saba","b:sm","bsm","empark","interparking","apk2","apk80","onepark","elparking","easypark","telpark","zona azul","zona verde","area verde","àrea verda","grua municipal","indigo parking","secure parking"],
+  // Energía ANTES que hogar (luz/gas no es «muebles»).
+  energia:["endesa","iberdrola","naturgy","repsol luz","holaluz","octopus energy","octopus ","totalenergies","total energies","factor energia","factor energía","lucera","pepeenergy","pepe energy","energia ","energía ","gas natural","canal de isabel","aigues de barcelona","aigües de barcelona","agbar","aqualia","sorea","suministro electric","suministro eléctric","factura luz","factura gas","factura agua","factura aigua","tarifas luz","potencia contratada"],
+  tasas:["gencat","generalitat","atc ","agencia tributaria","aeat","ajuntament","ayuntamiento","diputacio","diputación","dgt","multa","multa transit","sancion","sanción","tribut","impost","impuesto","tax agency","taxes","ibi","ivtm","basura","residus","residuos","canon agua","canon de l'aigua","tasa","taxa","registro mercantil","registro civil","notaria","notaría","gestoria","gestoría","procurador","abogado","lexnet","catastro","seguretat social","seguridad social","tgss","recaudacion","recaudación","zona bajas emisiones","zbe","hacienda","hisenda","modelo 100","modelo 303","autoliquidacion","autoliquidación","plusvalia","plusvalía","impuesto circulacion"],
+  educacion:["universidad","universitat","uab ","upc ","upf ","ub ","uoc ","uned","campus","matricula","matrícula","academia","academía","curso ","cursos","formacion","formación","master ","máster","mba ","udemy","coursera","domestika","linkedin learning","skillshare","colegio","escola","guarderia","guardería","escuela infantil","libro de texto","libreria universitaria","openenglish","open english","british council","oxford house","academia de ingles","academia d'angles","autoescuela","autoescola","dgt examen","permiso conducir"],
+  ocio:["spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","decathlon","gym","gimnasio","sport","bolera","anthropic","claude","claude.ai","openai","chatgpt","gpt-","google one","google play","googleplay","play store","playstore","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","cursor","midjourney","perplexity","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio","basic fit","basic-fit","dir ","metropolitan","synergym","fitness park","puregym","mcfit","crossfit","bowling","karaoke","laser tag","minigolf","parque de atracciones","portaventura","ferrari land","tibidabo"],
+  compras:["zara","mango","primark","stradivarius","bershka","pull &","pull&","el corte","amazon","amzn","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis","papeleria","papelería","copisteria","copistería","liberia","libreria","druni","primor","sephora","perfumeria","fnac ","game ","xbox store","playstation store","app store","apple store","samsung store","xiaomi store","coolmod","versus gamers","uniqlo","h&m","hm ","pull and bear","bimba y lola","tous ","pandora","swatch"],
+  salud:["farmacia","clinica","clínica","medico","médico","doctor","dra.","dr.","consulta","ambulatorio","urgencias","hospital","optica","óptica","fisio","fisioterapia","masaje","podologo","podólogo","psicologo","psicólogo","psiquiatra","sanitas","adeslas","asisa","dkv","mutua","quiron","quirón","cima","cap ","centro medico","centro médico","laboratorio","analisis","análisis","radiologia","radiología","dentista","dental","ortodoncia","oculista","oftalmo","cruz verde","procare","vitaldent","vital dent","donte","dental company","general optic","multiopticas","multioptics","promofarma","dosfarma","atida","pocoyofarma"],
+  pelu:["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion","depilación","corte de pelo","tinte pelo","balayage"],
+  // Mascotas ANTES que hogar.
+  mascotas:["zooplus","kivet","tiendanimal","miscota","animalis","kiwoko","pienso","veterinario","veterinari","clinica veterinaria","clínica veterinaria","peluqueria canina","peluquería canina","petsia","dogfy","affinity pet","royal canin","hills pet","purina","advance dog","advance cat","gos ","gat ","perro","gato","mascota"],
+  hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","sofá","lampara","lámpara","tintoreria","tintorería","lavanderia","lavandería","mrw","seur","correos","amazon locker","bricodepot","bricodépôt","aki ","aki.","ferretería","manitas","limpieza hogar","limpiapro","blink ","dyson","rowenta","bosch electro","balay","teka"],
+  regalos:["regalo","flores","floristeria","floristería","joyeria","joyería","perfumeria","perfumería","interflora","teleflorist","rosas ","ramo "],
 };
 function autoCategory(merchant){
   const c=(merchant||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
@@ -2995,7 +3077,7 @@ const LANG = {
     st_reduce_motion:"Reducir animaciones", st_reduce_motion_hint:"Quita deslizamientos y rebotes: la app va más sobria y directa. Útil si mareas.",
     st_contrast:"Más contraste", st_contrast_hint:"Sube el contraste del texto para que se lea mejor.",
     // Temáticas de temporada
-    st_theme_season:"Temática", st_theme_season_hint:"Cambia los colores y añade un detalle animado de temporada (nieve, hojas, balón…). Quítalo cuando quieras.",
+    st_theme_season:"Temática", st_theme_season_hint:"Cambia los colores y deja caer un detalle muy suave por detrás de las cartillas (nieve, hojas, sol…). Quítalo cuando quieras.",
     th_none:"Ninguna", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Navidad 🎄", th_verano:"Verano ☀️", th_invierno:"Invierno ❄️", th_pascua:"Pascua 🐣",
     // Bancos de gasto diario (varios)
     st_expense_banks:"Bancos de gasto diario", st_expense_banks_hint:"Marca todos los bancos cuyas compras cuentan en tu presupuesto del día a día (p. ej. Trade Republic + Revolut en un viaje). El saldo de gasto sigue saliendo del principal.",
@@ -3007,6 +3089,12 @@ const LANG = {
     st_cur_compare:"Comparar monedas", st_cur_compare_hint:"Tipos del BCE (referencia). Solo salen monedas con tipo cargado.",
     st_cur_compare_empty:"Aún no hay tipos de cambio. Comprueba la conexión y pulsa reintentar.",
     st_cur_compare_retry:"Reintentar",
+    st_cur_convert:"Conversor de monedas",
+    st_cur_convert_from:"De esta moneda",
+    st_cur_convert_to:"A esta moneda",
+    st_cur_convert_swap:"Intercambiar",
+    st_cur_convert_hint:"Tipos del BCE (referencia). El resultado usa el cambio del día.",
+    st_cur_convert_search_ph:"🔎 Buscar moneda…", st_cur_convert_search_none:"Ninguna moneda con ese nombre.",
     currency_hint:"Cambia cómo se ven los importes en toda la app (pantallas, totales, gráficos). Al apuntar un gasto eliges la moneda ahí mismo, aparte.",
     fx_waiting:"⏳ Trayendo el tipo de cambio…", fx_no_rate:"✕ Sin tipo de cambio para esa moneda. Prueba con conexión.",
     ap_cur_lbl:"Moneda del apunte", ap_fx_hint:"Se convierte a euros al guardar (tipo del BCE).",
@@ -3136,7 +3224,7 @@ const LANG = {
     ts_small:"Small", ts_normal:"Normal", ts_big:"Large", ts_huge:"Huge",
     st_reduce_motion:"Reduce motion", st_reduce_motion_hint:"Removes slides and bounces: the app feels calmer and more direct. Useful if motion bothers you.",
     st_contrast:"More contrast", st_contrast_hint:"Boosts text contrast for easier reading.",
-    st_theme_season:"Theme", st_theme_season_hint:"Changes colors and adds a seasonal animated touch (snow, leaves, football…). Turn it off anytime.",
+    st_theme_season:"Theme", st_theme_season_hint:"Changes colors and gently drifts a seasonal touch behind the cards (snow, leaves, sun…). Turn it off anytime.",
     th_none:"None", th_mundial:"World Cup 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Christmas 🎄", th_verano:"Summer ☀️", th_invierno:"Winter ❄️", th_pascua:"Easter 🐣",
     st_expense_banks:"Daily-spending banks", st_expense_banks_hint:"Tick every bank whose card spending counts toward your daily budget (e.g. Trade Republic + Revolut on a trip). The spending balance still comes from the main one.",
     st_expense_banks_none:"No accounts to choose yet.",
@@ -3146,6 +3234,12 @@ const LANG = {
     st_cur_compare:"Compare currencies", st_cur_compare_hint:"ECB reference rates. Only currencies with a loaded rate are listed.",
     st_cur_compare_empty:"No exchange rates yet. Check your connection and tap retry.",
     st_cur_compare_retry:"Retry",
+    st_cur_convert:"Currency converter",
+    st_cur_convert_from:"From this currency",
+    st_cur_convert_to:"To this currency",
+    st_cur_convert_swap:"Swap",
+    st_cur_convert_hint:"ECB reference rates. The result uses today's rate.",
+    st_cur_convert_search_ph:"🔎 Search currency…", st_cur_convert_search_none:"No currency with that name.",
     currency_hint:"Changes how amounts look across the app (screens, totals, charts). When you log an expense you pick the currency there, separately.",
     fx_waiting:"⏳ Fetching the exchange rate…", fx_no_rate:"✕ No exchange rate for that currency. Try again online.",
     ap_cur_lbl:"Expense currency", ap_fx_hint:"Converted to euros on save (ECB rate).",
@@ -3275,7 +3369,7 @@ const LANG = {
     ts_small:"Petita", ts_normal:"Normal", ts_big:"Gran", ts_huge:"Enorme",
     st_reduce_motion:"Reduir animacions", st_reduce_motion_hint:"Treu lliscaments i rebots: l'app va més sòbria i directa. Útil si et mareges.",
     st_contrast:"Més contrast", st_contrast_hint:"Puja el contrast del text perquè es llegeixi millor.",
-    st_theme_season:"Temàtica", st_theme_season_hint:"Canvia els colors i afegeix un detall animat de temporada (neu, fulles, pilota…). Treu-lo quan vulguis.",
+    st_theme_season:"Temàtica", st_theme_season_hint:"Canvia els colors i deixa caure un detall molt suau per darrere de les cartilles (neu, fulles, sol…). Treu-lo quan vulguis.",
     th_none:"Cap", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Nadal 🎄", th_verano:"Estiu ☀️", th_invierno:"Hivern ❄️", th_pascua:"Pasqua 🐣",
     st_expense_banks:"Bancs de despesa diària", st_expense_banks_hint:"Marca tots els bancs les compres dels quals compten al teu pressupost diari (p. ex. Trade Republic + Revolut en un viatge). El saldo de despesa continua sortint del principal.",
     st_expense_banks_none:"Encara no tens comptes per triar.",
@@ -3285,6 +3379,12 @@ const LANG = {
     st_cur_compare:"Comparar monedes", st_cur_compare_hint:"Tipus del BCE (referència). Només surten monedes amb tipus carregat.",
     st_cur_compare_empty:"Encara no hi ha tipus de canvi. Comprova la connexió i prem reintentar.",
     st_cur_compare_retry:"Reintentar",
+    st_cur_convert:"Convertidor de monedes",
+    st_cur_convert_from:"D'aquesta moneda",
+    st_cur_convert_to:"A aquesta moneda",
+    st_cur_convert_swap:"Intercanviar",
+    st_cur_convert_hint:"Tipus del BCE (referència). El resultat usa el canvi del dia.",
+    st_cur_convert_search_ph:"🔎 Cerca una moneda…", st_cur_convert_search_none:"Cap moneda amb aquest nom.",
     currency_hint:"Canvia com es veuen els imports a tota l'app (pantalles, totals, gràfics). En apuntar una despesa tries la moneda allà mateix, a part.",
     fx_waiting:"⏳ Portant el tipus de canvi…", fx_no_rate:"✕ Sense tipus de canvi per a aquesta moneda. Prova amb connexió.",
     ap_cur_lbl:"Moneda de l'apunt", ap_fx_hint:"Es converteix a euros en desar (tipus del BCE).",
@@ -3985,7 +4085,11 @@ Object.assign(LANG.es,{
   w_fixed:"fijo", w_hide:"Ocultar", w_show:"Mostrar",
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
+  g_no_budget:"no afecta",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
+  g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo (el banco de gasto diario viene marcado por defecto).",
+  g_filters_search:"Buscar categoría…", g_filters_cats:"categorías", g_filters_banks:"bancos",
+  g_filters_clear:"Limpiar", g_filters_done:"Listo",
   ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
   g_cycle_from:"Del {d} (cobro de {x}) a hoy",
   g_cycle_none_t:"Sin nómina detectada",
@@ -4005,7 +4109,7 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_transporte:"Transporte", cat_parking:"Parking", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_salud:"Salud", cat_pelu:"Peluquería", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -4072,7 +4176,11 @@ Object.assign(LANG.en,{
   et_tabs:"✎ Edit tabs", et_intro:"Tabs used to move by pressing and holding one and dragging it (a hidden gesture, easy to trigger by accident). Now you edit them here: reorder with ▲▼, remove with ✕, or add back with +.", et_fixed:"fixed", et_hidden:"Hidden tabs (tap to add them):",
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
+  g_no_budget:"doesn't count",
   g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
+  g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all (your daily-spending bank is pre-selected).",
+  g_filters_search:"Search category…", g_filters_cats:"categories", g_filters_banks:"banks",
+  g_filters_clear:"Clear", g_filters_done:"Done",
   ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
   g_cycle_from:"From {d} (payday, {x}) to today",
   g_cycle_none_t:"No payday detected",
@@ -4092,7 +4200,7 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_transporte:"Transport", cat_parking:"Parking", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -4158,7 +4266,11 @@ Object.assign(LANG.ca,{
   et_tabs:"✎ Edita pestanyes", et_intro:"Abans les pestanyes es movien mantenint-ne una premuda i arrossegant-la (un gest ocult, fàcil de tocar sense voler). Ara s'editen aquí: reordena amb ▲▼, treu amb ✕ o torna a afegir amb +.", et_fixed:"fixa", et_hidden:"Pestanyes ocultes (toca per afegir-les):",
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
+  g_no_budget:"no afecta",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
+  g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot (el banc de despesa diària ve marcat per defecte).",
+  g_filters_search:"Cerca categoria…", g_filters_cats:"categories", g_filters_banks:"bancs",
+  g_filters_clear:"Netejar", g_filters_done:"Fet",
   ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
   g_cycle_from:"Del {d} (cobrament de {x}) a avui",
   g_cycle_none_t:"Sense nòmina detectada",
@@ -4178,7 +4290,7 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -4921,6 +5033,21 @@ function expenseBankEnts(s){
   if(daily&&daily.ent&&out.indexOf(daily.ent)<0) out.push(daily.ent);
   return out;
 }
+/* ¿Cuenta este movimiento para el EFECTIVO de la cuenta de gasto diario (saldo / round-up)?
+   Vista de Gastos: se ven TODOS los bancos. Contabilidad: solo los marcados como gasto diario
+   (`expenseBankEnts` = diaria + extras en settings.expenseBanks). A mano (sin ent) sí cuenta.
+   Pedido 2026-08-05: «que entre todo, pero que solo reste el de gasto diario». */
+function expenseCountsCash(e, s){
+  if(!e) return false;
+  const ent=expenseBankOf(e);
+  if(!ent) return true;
+  return expenseBankEnts(s).indexOf(ent)>=0;
+}
+/* Igual que cash, pero sin neutras (inversión/traspaso): es lo que pinta el presupuesto. */
+function expenseCountsBudget(e, s){
+  if(!e || CAT_NEUTRAS[e.category]) return false;
+  return expenseCountsCash(e, s);
+}
 // Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
 // despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si
 // otra lo era, pasa a «fijos» con el mismo re-anclaje. Transform PURO de estado — lo usan el
@@ -5110,7 +5237,7 @@ const SAVE_HITOS=[100,500,1000,5000];   // hitos de ahorro (medallas)
 const GM_LEVELS=[0,250,1000,3000,8000]; // umbrales de savedScore por nivel
 const GM_ICONS=["🐣","🐢","🦊","🦅","👑"];
 // Gasto mensual (solo gastos reales, amount>0) por clave YYYY-MM.
-function spendByMonth(expenses){ const m={}; (expenses||[]).forEach(function(e){ if(e.amount>0){ const k=mkOf(parseDate(e.date)); m[k]=(m[k]||0)+e.amount; } }); return m; }
+function spendByMonth(expenses){ const m={}; (expenses||[]).forEach(function(e){ if(e.amount>0 && !CAT_NEUTRAS[e.category]){ const k=mkOf(parseDate(e.date)); m[k]=(m[k]||0)+e.amount; } }); return m; }
 function median(arr){ const a=(arr||[]).slice().sort(function(x,y){return x-y;}); const n=a.length; if(!n) return 0; return n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2; }
 // Detector de SUSCRIPCIONES / cargos recurrentes: mismo comercio en ≥3 meses distintos con importe
 // estable (≥60% dentro de ±25% de la mediana). Devuelve {name,cat,amount,months,last,active,yearly}.
@@ -5156,7 +5283,10 @@ function gamifOf(state, totals){
   const nextMin = (lvl+1<GM_LEVELS.length) ? GM_LEVELS[lvl+1] : null;
   const base=GM_LEVELS[lvl];
   const lvlProg = nextMin!=null ? Math.min(100,Math.max(0,(savedScore-base)/(nextMin-base)*100)) : 100;
-  const budget=state.budget||0, spent=tt.thisMonthSpent||0;
+  // Misma cifra que Resumen/Gastos (no thisMonthSpent: mete neutras e ingresos).
+  const bs=monthBudgetStats(state);
+  const budget=bs.budget!=null?bs.budget:(state.budget||0);
+  const spent=Math.max(0, bs.against||0);
   const ruCur=+(((tt.roundupThisMonth||0)+(tt.savebackThisMonth||0))).toFixed(2);
   const budgetReto={ id:"budget", spent:spent, budget:budget, margin:+(budget-spent).toFixed(2), done:budget>0&&spent<=budget, pct: budget>0?Math.min(100,spent/budget*100):0 };
   const ruReto={ id:"roundup", cur:ruCur, goal:RU_GOAL, done:ruCur>=RU_GOAL, pct:Math.min(100,ruCur/RU_GOAL*100) };
@@ -5556,12 +5686,19 @@ function applyA11y(s){
   applySeason(s&&s.settings&&s.settings.season);
 }
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
-// Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
-// lo sigue mandando el tema de arriba; la temporada solo añade acentos + el icono incrustado en
-// cada sección (su detalle CSS, `--season-ico`, va en shell.html — mismo emoji que este chip).
-// ⚠ Ya NO hay una capa de piezas cayendo por la pantalla (quitada 2026-08-03): aquí vivía
-// `SEASON_FX`, el pool de emojis que caían, y ha desaparecido con ella.
-const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
+  // Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
+  // lo sigue mandando el tema de arriba; la temporada añade acentos + icono en títulos + ambientación
+  // suave DETRÁS de las cartillas (`.season-amb` en shell.html). El pool viejo `SEASON_FX` (capa
+  // encima + ráfagas al cambiar de tab) se retiró 2026-08-03; este es el suave de 2026-08-05.
+  const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
+  const SEASON_AMB={
+    mundial:["⚽","🇪🇸","🏆","⚽","🥅"],
+    halloween:["🎃","👻","🦇","🍬","🕷️"],
+    navidad:["❄️","🎄","⭐","🎁","❄️"],
+    verano:["☀️","🌴","🌊","🍦","🐚"],
+    invierno:["❄️","⛄","❄️","🧣","🌨️"],
+    pascua:["🐣","🥚","🐰","🌷","🌸"]
+  };
 function loadState(){
   const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){
@@ -5666,17 +5803,22 @@ function shareMonthReport(state, tt, showToast){
     // tarjeta: gastado este mes + barra de presupuesto
     g.fillStyle=surface; round(72,210,W-144,330,28); g.fill(); g.strokeStyle=line; g.lineWidth=2; round(72,210,W-144,330,28); g.stroke();
     g.fillStyle=muted; g.font="700 27px Manrope, sans-serif"; g.fillText(t("rp_spent").toUpperCase(), 116, 252);
-    g.fillStyle=text;  g.font="700 96px Manrope, sans-serif"; g.fillText(eur0(tt.thisMonthSpent), 112, 300);
-    const bud=state.budget||0;
+    // Misma cifra que Resumen/Gastos (`monthBudgetStats`), no thisMonthSpent.
+    const bs=monthBudgetStats(state);
+    const spentShown=bs.shown!=null?bs.shown:Math.max(0,bs.against||0);
+    g.fillStyle=text;  g.font="700 96px Manrope, sans-serif"; g.fillText(eur0(spentShown), 112, 300);
+    const bud=bs.budget!=null?bs.budget:(state.budget||0);
     if(bud>0){
-      const ratio=Math.min(1, (tt.thisMonthSpent||0)/bud);
+      const ratio=Math.min(1, Math.max(0, bs.against||0)/bud);
       g.fillStyle="rgba(128,128,128,.18)"; round(116,432,W-232,26,13); g.fill();
       g.fillStyle=ratio<1?mint:coral; round(116,432,Math.max(20,(W-232)*ratio),26,13); g.fill();
       g.fillStyle=muted; g.font="600 28px Manrope, sans-serif"; g.fillText(tf("rp_of_budget",{b:eur0(bud),p:Math.round(ratio*100)}), 116, 480);
     }
     // top 3 categorías del mes
     const byCat={};
-    (state.expenses||[]).filter(function(e){ return parseDate(e.date)>=startOfMonth() && e.amount>0; })
+    (state.expenses||[]).filter(function(e){
+      return parseDate(e.date)>=startOfMonth() && e.amount>0 && !CAT_NEUTRAS[e.category];
+    })
       .forEach(function(e){ byCat[e.category||"otros"]=(byCat[e.category||"otros"]||0)+e.amount; });
     const top=Object.keys(byCat).map(function(k){ return [k,byCat[k]]; }).sort(function(a,b){ return b[1]-a[1]; }).slice(0,3);
     let y=610;
@@ -6730,6 +6872,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   }); // ents o "_manual"; [] = todos los bancos
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [morePeriods,setMorePeriods]=useState(false);
+  const [filterOpen,setFilterOpen]=useState(false);
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
@@ -6739,32 +6882,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
   const heavyOkRef=useRef(false);
-  const catChipsRef=useRef(null), bankChipsRef=useRef(null);
-  const chipDrag=useRef({sx:0,sy:0,capturing:false});
   const heavyIdleGen=useRef(0);
-  // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
-  // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
-  const chipSwipe=function(ref){
-    return {
-      onTouchStart:function(e){
-        if(!(e.touches&&e.touches[0])) return;
-        chipDrag.current={sx:e.touches[0].clientX,sy:e.touches[0].clientY,capturing:false};
-      },
-      onTouchMove:function(e){
-        if(!ref.current||!(e.touches&&e.touches[0])) return;
-        const dx=e.touches[0].clientX-chipDrag.current.sx, dy=e.touches[0].clientY-chipDrag.current.sy;
-        if(Math.abs(dx)<6 && Math.abs(dy)<6) return;
-        if(Math.abs(dy)>=Math.abs(dx)*1.15) return;
-        chipDrag.current.capturing=true;
-        if(cancelSwipe) cancelSwipe();
-        e.stopPropagation();
-      },
-      onTouchEnd:function(e){
-        if(chipDrag.current.capturing) e.stopPropagation();
-        chipDrag.current.capturing=false;
-      }
-    };
-  };
   // Lo caro de Gastos (detectar suscripciones y pintar su tarjeta) esperaba a que la pestaña
   // estuviera ACTIVA, así que se pagaba AL LLEGAR: en la cola del gesto de deslizar. Medido con
   // la CPU estrangulada x6 y trazado con `Tracing` (2026-07-26): la primera entrada en Gastos
@@ -6784,19 +6902,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // justo su «Deudas→Gastos lagazo / Deudas→Cartera fluido»: hacia Cartera el memo de Gastos no
   // se tocaba; hacia Gastos sí. El expediente ya lo había medido («dejar active fijo quita la
   // asimetría») y lo descartó mal: se puede enterarse sin re-render vía `mcOnGastosActive`.
+  // Chips de banco/categoría: el scroll horizontal se quedó en el sheet de filtros
+  // (2026-08-05). Aquí solo se resetea al entrar si hubiera resto de scroll de versiones viejas.
   useEffect(function(){ heavyOkRef.current=heavyOk; },[heavyOk]);
   useEffect(function(){
-    var chipGen=0;
     var unsub=mcOnGastosActive(function(active){
-      // Chips: idle + solo si hay scroll que resetear (escribir scrollLeft en caliente costó
-      // 276 ms — ver comentario histórico en el CHANGELOG de la 4.12.0).
-      var cg=++chipGen;
-      mcScheduleIdle(function(){
-        if(cg!==chipGen) return;
-        var c=catChipsRef.current, b=bankChipsRef.current;
-        if(c&&c.scrollLeft) c.scrollLeft=0;
-        if(b&&b.scrollLeft) b.scrollLeft=0;
-      }, 300);
       if(heavyOkRef.current) return;
       var gen=++heavyIdleGen.current;
       mcScheduleIdle(function(){
@@ -6804,7 +6914,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         setHeavyOk(true);
       }, active?40:4000);
     });
-    return function(){ chipGen++; heavyIdleGen.current++; unsub(); };
+    return function(){ heavyIdleGen.current++; unsub(); };
   },[]);
   const expensesDef=useDeferredValue(state.expenses);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -7057,6 +7167,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // de globales que React.memo no ve).
   const l10nKey=CURLANG+"|"+DISP.sym;
 
+  // Resumen de filtros activos, para el botón "Filtros" (badge) y la línea de chips debajo.
+  // Se calcula aquí (no memoizado: sel/bankSel son arrays cortos) porque lo usan dos sitios:
+  // el botón junto al buscador y la línea de resumen + "Borrar filtros".
+  const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+  const nCatSel=sel.length;
+  const nBankSel=bankSelIsDefault?0:bankSel.length;
+  const nFilters=nCatSel+nBankSel;
+  const filterParts=[];
+  if(nCatSel===1) filterParts.push(catName(sel[0]));
+  else if(nCatSel>1) filterParts.push(nCatSel+" "+t("g_filters_cats"));
+  if(!bankSelIsDefault){
+    if(bankSel.length===1){
+      const b=bankSel[0];
+      filterParts.push(b==="_manual"?t("g_bank_manual"):(entOf(b).label||b));
+    } else if(bankSel.length>1) filterParts.push(bankSel.length+" "+t("g_filters_banks"));
+  }
+
   const shown=filtered.slice(0,visible);
   /* A LA FILA SE LE PASA EL NÚMERO, NO EL `Date` (2026-07-27, y esto llevaba roto desde siempre).
      `parseDate` cachea los MILISEGUNDOS pero devuelve `new Date(ms)`: un objeto NUEVO en cada
@@ -7167,10 +7294,20 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         DATE_PRESETS.slice(0,2).map(function(p){ return React.createElement("button",{key:p.id,className:"v4-period-btn"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); setMorePeriods(false); }},t("g_"+p.id)); }),
         React.createElement("button",{className:"v4-period-btn"+(morePeriods||DATE_PRESETS.slice(2).some(function(p){ return p.id===preset; })?" on":""),onClick:function(){ setMorePeriods(!morePeriods); }},t("v4_period_more"))
       ),
-      React.createElement("div",Object.assign({className:"searchbar"},stopSwipe),
-        React.createElement("span",{className:"searchbar-ic"},"🔍"),
-        React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
-        q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
+      // Filtros vive PEGADO al buscador (2026-08-05): los dos acotan la misma lista de abajo,
+      // así que van en la misma fila — antes el botón quedaba solo, en su propia línea entre el
+      // buscador y "Sincronizar", sin pertenecer claramente a ninguno de los dos (feedback: «se
+      // queda raro en medio»). Sincronizar es una acción de red (trae datos nuevos), no de
+      // filtrado, así que se queda donde estaba, lejos de este grupo.
+      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:9}},
+        React.createElement("div",Object.assign({className:"searchbar",style:{flex:1,minWidth:0,marginBottom:0}},stopSwipe),
+          React.createElement("span",{className:"searchbar-ic"},"🔍"),
+          React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
+          q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
+        ),
+        React.createElement("button",{type:"button",className:"v4-chip"+(nFilters?" on":""),onClick:function(){ setFilterOpen(true); },title:t("g_filters"),
+          style:{minHeight:0,padding:"0 14px",fontWeight:700,flex:"0 0 auto"}},
+          "🎛️"+(nFilters?" "+nFilters:""))
       ),
       // «Mi ciclo»: enseña QUÉ cobro ancla el ciclo (si el detectado no es el bueno, se corrige
       // apuntando la nómina real como ingreso, o usando Rango…).
@@ -7188,20 +7325,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
-      React.createElement("div",Object.assign({className:"v4-chips",ref:catChipsRef},chipSwipe(catChipsRef)),
-        React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
-        // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
-        // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
-      ),
-      // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
-      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
-        React.createElement("button",{className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
-        bankOpts.map(function(b){
-          const on=bankSel.indexOf(b)!==-1;
-          const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
-          return React.createElement("button",{key:b,className:"v4-chip"+(on?" on":""),onClick:function(){ setBankSel(function(prev){ const has=prev.indexOf(b)!==-1; return has?prev.filter(function(x){return x!==b;}):prev.concat([b]); }); }},lbl);
-        })
+      // Resumen de los filtros activos (categorías/bancos) + botón para quitarlos. El botón que
+      // ABRE el sheet ya no vive aquí: se movió junto al buscador (ver arriba).
+      nFilters>0 && React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",marginTop:2}},
+        React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.35,flex:"1 1 120px"}}, filterParts.join(" · ")),
+        React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
+          setSel([]);
+          setBankSel(dailyEnt?[dailyEnt]:[]);
+        },style:{padding:"8px 12px"}}, t("g_filters_clear"))
       )
     ),
     React.createElement("div",{className:"action-row"},
@@ -7239,7 +7370,6 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
               // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
               // (2026-08-03), no algo que el usuario haya elegido a mano.
-              const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
               const sinFiltros=!q.trim() && !sel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
@@ -7249,11 +7379,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
             })()
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey,
+                  countsBudget:expenseCountsBudget(g.e, state)}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
     React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
+    React.createElement(GastosFilterSheet,{
+      open:filterOpen, onClose:function(){ setFilterOpen(false); },
+      sel:sel, setSel:setSel, bankSel:bankSel, setBankSel:setBankSel,
+      bankOpts:bankOpts, dailyEnt:dailyEnt
+    }),
     detailId && React.createElement(ExpenseDetailSheet,{
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
@@ -7274,20 +7410,21 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, ms, onOpen}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
   // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
   // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
+  // `countsBudget` (bool) lo pasa el padre: si se pasara `state` entero, el memo no acertaría nunca.
   const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);
   const note=expenseNote(e);   // concepto del bizum / descripción del banco (2026-07-24)
-  return React.createElement("button",{type:"button",className:"v4-mov",onClick:function(){ onOpen(e); }},
+  const skip=countsBudget===false;
+  return React.createElement("button",{type:"button",className:"v4-mov"+(skip?" v4-mov-skip":""),onClick:function(){ onOpen(e); },
+      style:skip?{opacity:.72}:null},
     React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
     React.createElement("div",{className:"nm"},
       React.createElement("div",{className:"nm-title"}, e.merchant||"—"),
-      // El concepto va JUSTO debajo del título, antes que la categoría: es lo que se busca al
-      // repasar el histórico («¿de qué era este bizum de 40 €?»).
       note && React.createElement("div",{className:"nm-note"}, note),
       React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(e.category)),
       React.createElement("div",{className:"meta"},
@@ -7295,12 +7432,83 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen}){
         bk?React.createElement(React.Fragment,null,
           React.createElement("span",{className:"sep"},"·"),
           React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
+        ):null,
+        skip?React.createElement(React.Fragment,null,
+          React.createElement("span",{className:"sep"},"·"),
+          React.createElement("span",{style:{color:"var(--muted-2)"}}, t("g_no_budget"))
         ):null
       )
     ),
-    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
+    React.createElement("div",{className:"am num"+(isIncome?" pos":"")+(skip?" muted":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
   );
 });
+
+/* Sheet de filtros (2026-08-05): categorías + bancos con buscador, sin la fila infinita de chips.
+   Misma mecánica que PeriodMoreSheet (swipe abajo + atrás). */
+function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bankOpts, dailyEnt}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  const [qCat,setQCat]=useState("");
+  useEffect(function(){ if(!open) setQCat(""); },[open]);
+  if(!open) return null;
+  const allCats=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]);
+  const needle=qCat.trim().toLowerCase();
+  const cats=needle
+    ? allCats.filter(function(c){ return catName(c.id).toLowerCase().indexOf(needle)!==-1 || c.id.indexOf(needle)!==-1; })
+    : allCats;
+  const toggleCat=function(id){
+    setSel(function(prev){
+      const has=prev.indexOf(id)!==-1;
+      return has?prev.filter(function(x){ return x!==id; }):prev.concat([id]);
+    });
+  };
+  const toggleBank=function(b){
+    setBankSel(function(prev){
+      const has=prev.indexOf(b)!==-1;
+      return has?prev.filter(function(x){ return x!==b; }):prev.concat([b]);
+    });
+  };
+  const clearAll=function(){
+    setSel([]);
+    setBankSel(dailyEnt?[dailyEnt]:[]);
+  };
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); },style:{maxHeight:"88vh"}}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:6}}, t("g_filters")),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.45,marginBottom:12}}, t("g_filters_hint")),
+        React.createElement("div",Object.assign({className:"searchbar",style:{marginBottom:14}},{}),
+          React.createElement("span",{className:"searchbar-ic"},"🔍"),
+          React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_filters_search"),value:qCat,onChange:function(e){ setQCat(e.target.value); }}),
+          qCat && React.createElement("button",{className:"searchbar-x",type:"button",onClick:function(){ setQCat(""); }},"✕")
+        ),
+        React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_cats")),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+          React.createElement("button",{type:"button",className:"v4-chip"+(sel.length===0?" on":""),onClick:function(){ setSel([]); }}, t("g_allcats")),
+          cats.map(function(c){
+            return React.createElement("button",{key:c.id,type:"button",className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:function(){ toggleCat(c.id); }},
+              c.icon+" "+catName(c.id));
+          })
+        ),
+        bankOpts.length>0 && React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_banks")),
+          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+            React.createElement("button",{type:"button",className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }}, t("g_allbanks")),
+            bankOpts.map(function(b){
+              const on=bankSel.indexOf(b)!==-1;
+              const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
+              return React.createElement("button",{key:b,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBank(b); }}, lbl);
+            })
+          )
+        ),
+        React.createElement("div",{style:{display:"flex",gap:10,marginTop:8}},
+          React.createElement("button",{type:"button",className:"btn btn-ghost",style:{flex:1},onClick:clearAll}, t("g_filters_clear")),
+          React.createElement("button",{type:"button",className:"btn btn-primary",style:{flex:1.4},onClick:onClose}, t("g_filters_done"))
+        )
+      )
+    ), document.body);
+}
 
 /* Sheet «Más…» de períodos. Antes era un portal pelado SIN useSheetSwipe/useBackClose: era el
    único sheet que no se podía cerrar tirando hacia abajo («el más de la foto» — feedback
@@ -9667,23 +9875,16 @@ function flattenBankTx(links){
   return out.slice(0,150);   // últimos ~150 movimientos
 }
 
-/* GASTO VARIABLE VÍA OPEN BANKING: en el banco de GASTO DIARIO cuenta CUALQUIER cargo (petición
-   2026-08-03: «que meta todo en gastos, independientemente del filtro» — antes solo entraban las
-   COMPRAS CON TARJETA, y con bancos que avisan en inglés o sin el texto "TARJETA" en el concepto
-   los cargos se perdían en silencio). En los bancos EXTRA de settings.expenseBanks (opcionales,
-   añadidos aparte de la cuenta diaria) se mantiene la regla vieja —solo tarjeta— porque esos sí
-   suelen tener recibos domiciliados modelados como Fijos que no hay que duplicar. Para la cuenta
-   diaria, el único cargo que se descarta es el que YA case con un Fijo/deuda/puntual de ESE mes en
-   ESA cuenta (`matchesModeled`, mismo criterio de nombre+importe que la conciliación de arriba):
-   si no, un recibo pagado desde el banco de gasto diario se contaría dos veces. El motor de
-   presupuesto/round-up sigue anclado a UNA sola cuenta spendFrom — esto solo decide qué entra en
-   Gastos. Idempotente por ext_id (+ dedup fecha|importe|comercio).
+/* GASTO VARIABLE VÍA OPEN BANKING (2026-08-05): entra TODO de CUALQUIER banco sincronizado
+   (gastos e ingresos), estilo extracto de banca. Lo que RESTA del presupuesto y del saldo de
+   gasto diario es solo lo de `expenseBankEnts` (cuenta diaria + extras marcados). El resto se
+   apunta igual pero con `budgetSkip:true` → se ve en Gastos con marca «no afecta».
 
-   INGRESOS: de CUALQUIER banco enlazado, no solo el de gasto (petición 2026-08-03: la nómina de tu
-   pareja puede caer en un banco que no es el de gasto diario, y sin verla ahí «Mi ciclo» —que se
-   ancla al último ingreso real, ver `lastPaydayOf` en 04-tab-gastos.js— nunca encuentra el cobro).
-   Antes de esto un ingreso en un banco no-permitido no se apuntaba en ningún sitio: el saldo subía
-   pero en Gastos no aparecía nada y el ciclo se quedaba anclado al mes natural. */
+   En la cuenta diaria / extras de gasto: cualquier cargo, salvo si YA casa con un Fijo/deuda/
+   puntual de ese mes (`matchesModeled`) — si no, recibos se contarían dos veces.
+   En bancos fuera de gasto diario: también cualquier cargo (misma exclusión de modelados).
+
+   INGRESOS: de cualquier banco (para «Mi ciclo»). Idempotente por ext_id + dedup. */
 function importObExpenses(s, txs){
   if(!txs || !txs.length) return null;
   const ents=expenseBankEnts(s);
@@ -9735,8 +9936,7 @@ function importObExpenses(s, txs){
     usadoDup[hit]=1;
     return true;
   };
-  // Cargos ya modelados ESTE mes por entidad (Fijos/deudas/puntuales), para no duplicar un recibo
-  // de la cuenta diaria ahora que ya no exigimos "compra con tarjeta" ahí.
+  // Cargos ya modelados ESTE mes por entidad (Fijos/deudas/puntuales), para no duplicar un recibo.
   const now=new Date(), ym=now.getMonth()+1, yy=now.getFullYear();
   const modeledByEnt={};
   const pushModeled=function(ent,name,amount){ if(!ent||!(amount>0)) return; (modeledByEnt[ent]=modeledByEnt[ent]||[]).push({name:name,amount:amount}); };
@@ -9750,40 +9950,34 @@ function importObExpenses(s, txs){
   txs.forEach(function(tx){
     const esIngreso = tx.amount<0;
     if(esIngreso){
-      if(!tx.date || parseDate(tx.date)<som) return;              // mes en curso + margen de fin de mes
-      if(tx.id && seen[tx.id]) return;                            // ya importado (ext_id)
+      if(!tx.date || parseDate(tx.date)<som) return;
+      if(tx.id && seen[tx.id]) return;
       const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
         merchant:tx.merchant||"Ingreso", amount:tx.amount,
         category: esTraspasoPropio(s, tx) ? TRASPASO_CAT.id : INGRESO_CAT.id, source:"ob", ent:tx.ent };
+      // Ingresos fuera de gasto diario: se ven (Mi ciclo) pero no mueven el presupuesto «gastado».
+      if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
       if(tx.id) e.extId=tx.id;
       const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
       if(keys[kOf(e)]) return;
-      if(yaApuntadoPorOtraVia(tx)) return;                        // el mismo ingreso, ya apuntado por otra vía
+      if(yaApuntadoPorOtraVia(tx)) return;
       keys[kOf(e)]=1; add.push(e);
       return;
     }
-    // GASTO: la cuenta diaria admite cualquier cargo; las extra solo compras con tarjeta.
+    // GASTO: entra de cualquier banco. Modelados (Fijos/deudas) no se duplican.
+    if(matchesModeled(tx.ent, tx.merchant, tx.amount)) return;
+    if(!tx.date || parseDate(tx.date)<som) return;
+    if(tx.id && seen[tx.id]) return;
     const esDiario=tx.ent===dailyEnt;
-    const esCompra=tx.card && tx.amount>0;
-    if(!esDiario && !allow[tx.ent]) return;
-    if(!esDiario && !esCompra) return;
-    if(esDiario && !esCompra && matchesModeled(tx.ent, tx.merchant, tx.amount)) return;   // ya es un Fijo/deuda/puntual
-    if(!tx.date || parseDate(tx.date)<som) return;                // mes en curso + margen de fin de mes
-    if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
-    // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
-    // Aporte automático a inversión (2026-08-03): el importe EXACTO que el usuario configuró en
-    // `monthlyInvest` (p.ej. 50€/mes a un fondo) no es un gasto — es dinero que sale del efectivo
-    // camino de la inversión. Solo se reconoce el importe FIJO que él mismo puso (dato conocido, no
-    // una suposición sobre lo que manda el banco, que no manda nada). Round-up/cashback (variables)
-    // siguen entrando como gasto normal — el usuario los pasa a mano a "Inversión" desde la ficha.
     const esAporteInv = esDiario && daily && daily.monthlyInvest>0 && Math.abs(tx.amount-daily.monthlyInvest)<0.01;
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
       merchant:tx.merchant||"Compra", amount:tx.amount,
       category: esAporteInv ? "inversion" : autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+    if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
     if(tx.id) e.extId=tx.id;
-    const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
-    if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
-    if(yaApuntadoPorOtraVia(tx)) return;                          // el mismo gasto, ya apuntado por otra vía
+    const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
+    if(keys[kOf(e)]) return;
+    if(yaApuntadoPorOtraVia(tx)) return;
     keys[kOf(e)]=1;
     add.push(e);
   });
@@ -9873,7 +10067,8 @@ function monthBudgetStats(state){
   let spent=0, income=0;
   (state.expenses||[]).forEach(function(e){
     if(dateMs(e.date)<startMs) return;
-    if(CAT_NEUTRAS[e.category]) return;
+    // Solo bancos de gasto diario (+ a mano). El resto se ve en la lista pero no mueve la cifra.
+    if(!expenseCountsBudget(e, state)) return;
     if(e.amount>0) spent+=e.amount;
     else if(e.amount<0) income+=Math.abs(e.amount);
   });
@@ -13639,6 +13834,107 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.15.0", d:"5 ago 2026",
+   t:{es:"Ambientación, conversor, presupuesto, extracto y filtros de Gastos",
+      en:"Ambience, converter, budget, bank statements and Spending filters",
+      ca:"Ambientació, convertidor, pressupost, extracte i filtres de Despeses"},
+   tandas:[
+     {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
+       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo, sin molestar — también quieto en una pestaña.",
+       "Arriba a la derecha hay un destello de luz suave que se QUEDA fijo (no aparece y desaparece al hacer scroll).",
+       "Cambia de pestaña: la lluvia sigue el MISMO camino — no salta atrás ni se reinicia.",
+       "Ajustes → Apariencia → Reducir animaciones: la lluvia y el destello desaparecen.",
+       "Temática → Ninguna: vuelve el look normal, sin piezas.",
+     ]},
+     {id:"fx-converter", t:"🔁 Conversor de monedas", items:[
+       "Ajustes → Dinero → Conversor de monedas: pon un importe, elige moneda de origen y de destino.",
+       "Prueba 150 ₺ → € (o al revés con Intercambiar): el resultado usa el cambio del día.",
+       "Ya NO está la lista fija «1 € → …»; el conversor la sustituye.",
+     ]},
+     {id:"presupuesto-resumen", t:"💶 Presupuesto: misma cifra en todos sitios", items:[
+       "En Resumen, la tarjeta de presupuesto muestra lo mismo que la cabecera de Gastos (sin inversión/traspasos).",
+       "Si tienes dinero reservado a metas, el presupuesto «que queda» ya lo descuenta.",
+       "Los avisos al 50/80/95/100 % usan esa misma cifra (no un total distinto).",
+       "El informe imagen y el reto de «mes bajo presupuesto» también cuadran con Resumen/Gastos.",
+     ]},
+     {id:"otros-bancos-vista", t:"🏦 Extracto de todos los bancos", items:[
+       "Conecta un banco que NO sea el de gasto diario y sincroniza: sus movimientos aparecen en Gastos.",
+       "Esos movimientos llevan la marca «no afecta»: no restan del presupuesto ni del saldo de gasto diario.",
+       "Los bancos marcados como gasto diario (Cartera → rol) SÍ restan, como siempre.",
+       "Ingresos de cualquier banco siguen entrando (para «Mi ciclo»).",
+     ]},
+     {id:"gastos-filtros-ia", t:"🎛️ Filtros y categorías más listos", items:[
+       "En Gastos, toca «Filtros»: sheet con buscador de categorías y bancos (ya no hay dos filas interminables de chips).",
+       "Nuevas categorías: Viajes, Mascotas, Educación, Luz/gas/agua — al apuntar y al filtrar.",
+       "Booking/Vueling → Viajes; Zooplus → Mascotas; Endesa → Energía (ya no caen en «Otros» u Ocio).",
+     ]},
+     {id:"gastos-filtros-ubicacion", t:"🎛️ El botón de Filtros ya no queda suelto", items:[
+       "En Gastos, «Filtros» se ha movido justo al lado del buscador — antes vivía solo, en su propia fila entre el buscador y «Sincronizar».",
+       "Si tienes categorías o bancos seleccionados, siguen viéndose debajo, con «Borrar filtros» a mano.",
+       "El resumen (gastado, presupuesto…) no ha perdido ni un milímetro de sitio.",
+     ]},
+     {id:"fix-novedades-nag", t:"🔔 Novedades ya no insiste sin motivo", items:[
+       "En el canal beta, el popup de ✨ Novedades salía otra vez en CADA compilación nueva (4.15.0.1, .2, .3…) aunque fueran las mismas notas — hoy con 4-5 compilaciones en un día, de ahí «todo el rato me sale para actualizar».",
+       "Ahora se marca como vista por versión base (4.15.0), no por el sello exacto de la compilación: si no hay una versión de verdad nueva, no vuelve a saltar.",
+       "Instala esta compilación y cierra/abre la app un par de veces: Novedades no debería reaparecer sola.",
+     ]},
+     {id:"fix-season-glow", t:"✨ Destello de arriba fijo (y la barra limpia)", items:[
+       "Con temática puesta, el destello suave de ARRIBA A LA DERECHA se queda fijo y se ve también parado, no solo al moverte por la app.",
+       "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni saltan atrás.",
+       "La barra de abajo ya no enseña la lista a través suyo un momento al cambiar de pestaña (efecto raro de un arreglo anterior).",
+     ]},
+     {id:"fix-season-portal", t:"✨ Destello y barra (arreglo definitivo)", items:[
+       "Con temática activa, baja y sube en Gastos: el destello de arriba a la derecha NO debería aparecer y desaparecer al hacer scroll.",
+       "Desliza de pestaña (Inicio ↔ Gastos ↔ Plan): la barra de abajo no debería dejar ver la lista a través suya ni un segundo.",
+       "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
+     ]},
+     {id:"fix-season-glow-steady", t:"✨ Destello que no cambia nunca", items:[
+       "Desliza de pestaña despacio (Inicio ↔ Gastos ↔ Plan): NO tiene que aparecer ningún verde claro arriba mientras se mueve. El fondo se queda exactamente igual de principio a fin.",
+       "En ese mismo gesto, el contenido NO puede bajar unos píxeles y volver a subir: los títulos se quedan clavados a la misma altura.",
+       "El destello de arriba a la derecha se queda igual durante todo el gesto — ni se enciende, ni se apaga, ni desaparece.",
+       "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
+       "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
+       "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
+       "En modo Verano el destello es ya de día caluroso: cálido y bien visible arriba a la derecha. Las demás temáticas llevan la misma forma más contenida, para decidirlas una a una.",
+       "Scrollea rápido dentro de una lista: el destello no puede dar ni un parpadeo.",
+       "La barra de abajo sigue limpia (sin ver la lista a través).",
+     ]},
+     {id:"fix-season-glow-soft", t:"🌅 Destello suave de fondo", items:[
+       "Ajustes → Apariencia → Temática → Verano: arriba se nota un lavado cálido tipo atardecer (melocotón/ámbar), suave y de fondo — no una raya encima del texto.",
+       "Scrollea Inicio o Gastos: el destello se queda arriba (no desaparece al bajar la lista); el texto pasa por delante, sin taparse.",
+       "Prueba Halloween (ámbar/óxido), Navidad (rojo suave), Invierno (azul plateado) y Pascua (rosa/verde): cada una con su tono, mismo estilo de lavado amplio.",
+       "La franja de los iconos junto a la cámara sigue del mismo tono que la app.",
+       "Desliza entre pestañas y baja/sube en una lista: sin parpadeo del destello; la barra de abajo sin dejar ver la lista.",
+     ]},
+     {id:"fix-season-tabs", t:"🚫 Pestañas sin mezclarse", items:[
+       "Con temática activa, desliza Inicio ↔ Gastos: solo debe verse UNA pantalla a la vez — sin «Hola Juanjo» encima de «Tus gastos» ni cifras superpuestas.",
+       "El lavado cálido de arriba se mantiene; el fondo de cada pestaña sigue siendo opaco.",
+       "Scrollea dentro de Inicio o Gastos: sin parpadeo ni salto de píxeles.",
+       "La barra de abajo sigue limpia al cambiar de pestaña.",
+     ]}
+   ],
+   items:{
+   es:[
+    "🍂 Con una temática de temporada, las piezas caen muy suaves — sin molestar. El destello de arriba a la derecha se queda fijo (también al hacer scroll) y la lluvia no salta al cambiar de pestaña.",
+    "🔁 En Ajustes → Dinero hay un conversor de verdad: eliges importe, moneda de origen y destino.",
+    "💶 El presupuesto del mes es la misma cifra en Resumen, Gastos, avisos e informe: sin mezclar inversiones ni traspasos, y descontando lo reservado a metas.",
+    "🏦 En Gastos ves el extracto de todos tus bancos. Solo el de gasto diario resta del presupuesto; el resto sale marcado como «no afecta».",
+    "🎛️ En Gastos, los filtros van en un sheet con buscador (adiós a la fila interminable de chips). Hay categorías nuevas (viajes, mascotas, educación, luz/gas) y el reconocimiento de comercios acierta más.",
+   ],
+   en:[
+    "🍂 With a seasonal theme on, pieces drift very softly. The soft glow at the top-right stays put (also when you scroll) and the drift doesn't jump when you switch tabs.",
+    "🔁 In Settings → Money there's a real converter: pick an amount, a from-currency and a to-currency.",
+    "💶 The monthly budget is the same figure on Home, Spending, alerts and the share image: investments and transfers stay out, and money reserved for goals is deducted.",
+    "🏦 On Spending you see every linked bank's statement. Only your daily-spending bank hits the budget; the rest is marked «doesn't count».",
+    "🎛️ On Spending, filters live in a searchable sheet (no more endless chip rows). New categories (travel, pets, education, utilities) and smarter merchant detection.",
+   ],
+   ca:[
+    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus. El destell de dalt a la dreta es queda fix (també en fer scroll) i la pluja no salta en canviar de pestanya.",
+    "🔁 A Ajustos → Diners hi ha un convertidor de veritat: tries import, moneda d'origen i de destí.",
+    "💶 El pressupost del mes és la mateixa xifra al Resum, Despeses, avisos i informe: sense barrejar inversions ni traspassos, i descomptant el reservat a metes.",
+    "🏦 A Despeses veus l'extracte de tots els teus bancs. Només el de despesa diària resta del pressupost; la resta surt marcada com a «no afecta».",
+    "🎛️ A Despeses, els filtres van en un full amb cercador (adéu a la fila interminable de xips). Hi ha categories noves (viatges, mascotes, educació, llum/gas) i el reconeixement de comerços encerta més.",
+   ]}},
   {v:"4.14.1", d:"5 ago 2026",
    t:{es:"El resumen de Gastos ya no se desborda",
       en:"The Spending summary no longer overflows",
@@ -14296,6 +14592,87 @@ function WhatsNew({onClose, showToast, set, state}){
   )), document.body);
 }
 
+/* Conversor de monedas: pantalla propia (mismo patrón que ActivityPanel/PrivacyPanel), NO un
+   acordeón dentro de Ajustes → Dinero. Con 16 monedas la lista de chips (×2, origen y destino)
+   hacía Ajustes interminable en el móvil — feedback 2026-08-05: «ponlo en una pantalla nueva,
+   hay un montón de divisas». El buscador filtra por código o nombre (p.ej. «lira», «try», «corona»)
+   y afecta a las DOS listas de chips a la vez, porque comparten el mismo catálogo. No inventa
+   tipos: reutiliza toEurAmt/fromEurAmt y los `fxRates` que ya trae Ajustes → Dinero. */
+function CurConverterPanel({state, onClose, refreshFx}){
+  useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
+  const [amt,setAmt]=useState("1");
+  const [from,setFrom]=useState("EUR");
+  const [to,setTo]=useState("TRY");
+  const [q,setQ]=useState("");
+  useEffect(function(){ if(refreshFx) refreshFx(); },[]);   // al entrar, tipos al día (igual que el acordeón antes)
+  const normQ=function(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); };
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const inp={width:"100%",padding:"10px 13px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:16,boxSizing:"border-box"};
+  const segBtn=function(on){ return {padding:"7px 10px",borderRadius:20,fontSize:12.5,fontWeight:700,cursor:"pointer",background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}; };
+  const tbl=fxTableOf(state);
+  const hasRates=CUR_LIST.some(function(c){ return c!=="EUR" && tbl[c]>0; });
+  const nq=normQ(q).trim();
+  const filtList=nq?CUR_LIST.filter(function(c){ return normQ(c+" "+t("cur_"+c.toLowerCase())).indexOf(nq)>=0; }):CUR_LIST;
+  const chipRow=function(cur, setCur){
+    if(nq && filtList.length===0){
+      return React.createElement("div",{style:{fontSize:12.5,color:"var(--muted-2)",padding:"10px 2px"}}, t("st_cur_convert_search_none"));
+    }
+    return React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}},
+      filtList.map(function(c){
+        const ok=c==="EUR"||tbl[c]>0;
+        return React.createElement("button",{key:c,type:"button",disabled:!ok,onClick:function(){ if(ok) setCur(c); },
+          style:Object.assign({},segBtn(cur===c),{flex:"0 0 auto",opacity:ok?1:.4})},
+          (CUR_SYM[c]||c)+" "+c);
+      }));
+  };
+  const raw=parseFloat(String(amt).replace(",","."))||0;
+  const needFrom=from!=="EUR" && !(tbl[from]>0);
+  const needTo=to!=="EUR" && !(tbl[to]>0);
+  const eurMid=(!needFrom && raw>0)?toEurAmt(raw, from, state):null;
+  const out=(!needTo && eurMid!=null)?fromEurAmt(eurMid, to, state):null;
+  const rateTxt=(function(){
+    if(needFrom||needTo||!(raw>0)||out==null) return null;
+    const one=fromEurAmt(toEurAmt(1, from, state), to, state);
+    if(!(one>0)) return null;
+    return "1 "+(CUR_SYM[from]||from)+" = "+NF.format(one)+" "+(CUR_SYM[to]||to);
+  })();
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🔁 "+t("st_cur_convert")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}}, t("st_cur_convert_hint")),
+    !hasRates
+      ? React.createElement("div",{style:{marginTop:4}},
+          React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
+          refreshFx && React.createElement("button",{type:"button",className:"btn btn-ghost",style:{marginTop:10,width:"100%"},onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")))
+      : React.createElement(React.Fragment,null,
+          React.createElement("input",{style:inp,placeholder:t("st_cur_convert_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"14px 0 4px"}}, t("st_cur_convert_from")),
+          React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+            React.createElement("input",{type:"text",inputMode:"decimal",value:amt,
+              onChange:function(e){ setAmt(e.target.value); },
+              style:{flex:"1 1 40%",minWidth:0,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontSize:16,fontWeight:700,fontVariantNumeric:"tabular-nums"}}),
+            React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:15,flex:"0 0 auto"}}, CUR_SYM[from]||from)
+          ),
+          chipRow(from, setFrom),
+          React.createElement("button",{type:"button",onClick:function(){ const a=from; setFrom(to); setTo(a); },
+            style:{marginTop:14,width:"100%",padding:"10px 12px",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer",background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"}}, "⇅ "+t("st_cur_convert_swap")),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"14px 0 4px"}}, t("st_cur_convert_to")),
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)"}},
+            React.createElement("span",{className:"num",style:{fontWeight:800,fontSize:22,letterSpacing:"-.3px",
+              color:(needFrom||needTo)?"var(--muted)":"var(--text)"}},
+              out!=null?NF.format(out):"—"),
+            React.createElement("span",{style:{fontWeight:700,fontSize:14}}, CUR_SYM[to]||to)
+          ),
+          chipRow(to, setTo),
+          (needFrom||needTo) && React.createElement("div",{style:{fontSize:12,color:"var(--coral)",marginTop:8,lineHeight:1.4}}, t("fx_no_rate")),
+          rateTxt && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:10}},
+            rateTxt+(state.fxDate?(" · "+state.fxDate):""))
+        )
+  ));
+}
+
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, refreshFx, goBanks, goBanksFocus, goGastos}){
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | "cur" | null
@@ -14472,7 +14849,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const curSeason=(state.settings&&state.settings.season)||"none";
   const curTextSize=textSizeOf(state);
   const simOn=!!(state.settings&&state.settings.simpleMode);
-  const [curCompare,setCurCompare]=useState(false);   // acordeón «comparar monedas» (Dinero)
+  // Conversor de monedas: pantalla propia (CurConverterPanel), no acordeón — ver su comentario.
+  const [convOpen,setConvOpen]=useState(false);
   const segBtn=function(on){ return Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}); };
   // ── Secciones colapsables + buscador (feedback 2026-07-13: «Ajustes se está haciendo
   // kilométrico»). Cada tarjeta es ahora un grupo plegado (estado en localStorage); el
@@ -14577,7 +14955,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_money")),
     // Dinero: moneda de visualización (ahora SÍ convierte) + comparativa + cómo se ve el total
     // de gastos. Presupuesto y bancos de gasto diario viven en Resumen / Cartera (2026-08-05).
-    grp("money","💱",t("v4_set_money"),"moneda divisa currency euro dolar lira try presupuesto comparar",t("cur_"+curCur.toLowerCase()),
+    grp("money","💱",t("v4_set_money"),"moneda divisa currency euro dolar lira try conversor convertir comparar",t("cur_"+curCur.toLowerCase()),
       row("cur","💱",t("currency"),t("cur_"+curCur.toLowerCase()),function(){ toggleExp("cur"); }),
       expand==="cur" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
@@ -14614,30 +14992,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
             },style:Object.assign({},segBtn(curCur===c),{flex:"1 1 44%"})}, t("cur_"+c.toLowerCase()));
           })),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"8px 2px 0"}}, t("currency_hint"))),
-      // Comparativa: 1 € al cambio. Solo filas CON tipo (si no hay FX aún, se pide y se explica).
-      row("curcmp","📊",t("st_cur_compare"),null,function(){
-        const open=!curCompare; setCurCompare(open);
-        if(open && refreshFx) refreshFx();
-      }),
-      curCompare && React.createElement("div",{className:"set-exp"},
-        (function(){
-          const tbl=fxTableOf(state);   // c → (1 c = tbl[c] €)
-          const rows=CUR_LIST.filter(function(c){ return c!=="EUR" && tbl[c]>0; }).map(function(c){
-            const per=1/tbl[c];   // 1 € = per c
-            return React.createElement("div",{key:c,style:{display:"flex",justifyContent:"space-between",padding:"7px 2px",borderBottom:"1px solid var(--line-soft)",fontSize:13.5}},
-              React.createElement("span",{style:{color:"var(--muted)"}}, "1 € → "+t("cur_"+c.toLowerCase())),
-              React.createElement("span",{className:"num",style:{fontWeight:700}}, NF.format(per)+" "+(CUR_SYM[c]||c)));
-          });
-          if(!rows.length){
-            return React.createElement("div",{style:{marginTop:8}},
-              React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
-              refreshFx && React.createElement("button",{type:"button",style:Object.assign({},segBtn(false),{marginTop:10,flex:"1 1 100%"}),onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")));
-          }
-          return React.createElement("div",{style:{marginTop:6}},
-            rows,
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}},
-              t("st_cur_compare_hint")+(state.fxDate?(" · "+state.fxDate):"")));
-        })()),
+      // Conversor: pantalla propia (CurConverterPanel) — ya NO es un acordeón aquí dentro.
+      // Con 16 monedas (×2 listas, origen y destino) Ajustes se hacía interminable en el móvil
+      // (feedback 2026-08-05). La fila solo abre la pantalla; el buscador vive allí.
+      row("curcmp","🔁",t("st_cur_convert"),null,function(){ setConvOpen(true); }),
       (function(){
         const gm=(state.settings&&state.settings.gTotalMode)||"split";
         return React.createElement(React.Fragment,null,
@@ -14913,6 +15271,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     autoBackOpen && ReactDOM.createPortal(React.createElement(AutoBackupsPanel,{state:state,set:set,showToast:showToast,uid:uid,onClose:function(){ setAutoBackOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
+    convOpen && ReactDOM.createPortal(React.createElement(CurConverterPanel,{state:state,refreshFx:refreshFx,onClose:function(){ setConvOpen(false); }}), document.body),
 
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,
@@ -14937,7 +15296,10 @@ function Onboarding({set, onCloud, onSignup}){
   const inner={maxWidth:480,margin:"0 auto",position:"relative"};
   const finish=function(b){
     const bud=Math.max(100, Math.round(b||budget)||700);
-    try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
+    // Base, no el sello con sufijo de compilación — mismo criterio que el popup de Novedades
+    // (ver comentario en 11-app-main.js, bug 2026-08-05) para que un usuario que se da de alta
+    // EN BETA no se lleve el popup de Novedades en la siguiente compilación sin haber nada nuevo.
+    try{ localStorage.setItem("_seenVersion",mcVerBase(CONFIG.APP_VERSION)); }catch(e){}
     set(function(s){
       return Object.assign({},s,{
         budget:bud, monthStartNet:0, history:[0],
@@ -17660,7 +18022,11 @@ function App(){
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
-    const thisMonthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth());
+    // Solo lo que sale de bancos de gasto diario (y a mano): si no, un cargo de Sabadell
+    // «solo para ver» restaría del efectivo de TR (2026-08-05).
+    const thisMonthExp=(state.expenses||[]).filter(function(e){
+      return parseDate(e.date)>=startOfMonth() && expenseCountsCash(e, state);
+    });
     const thisMonthSpent=thisMonthExp.reduce((a,e)=>a+e.amount,0);
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
     // El round-up & saveback (#19) se aplican al CERRAR el mes (reconcileTR), persistidos, para que
@@ -17920,14 +18286,23 @@ function App(){
     // Espera a que la app esté lista (no encima del onboarding/candado/login/tour).
     if(state.onboarded===false || locked || showAuth || tourOpen) return;
     var seen=null; try{ seen=localStorage.getItem("_seenVersion"); }catch(e){}
-    if(seen===CONFIG.APP_VERSION){ newsDone.current=true; return; }   // ya vista esta versión
+    /* SE COMPARA POR VERSIÓN BASE, NO por el sello exacto (bug 2026-08-05: «me sale en beta
+       todo el rato para actualizar, no sé porqué»). En beta el sello lleva sufijo de compilación
+       (4.15.0.4) que sube en CADA push aunque la versión de cara al usuario (VERSION, las notas)
+       sea la misma — hoy mismo salieron 4-5 compilaciones de la 4.15.0. Comparando el sello a
+       pelo, el popup de Novedades volvía a saltar en cada una de ellas con las MISMAS notas: no
+       hay nada nuevo que contar y aun así interrumpe. `betaChecklist`/`WhatsNew` ya casan por
+       base (`mcVerBase`) para saber qué versión estás viendo; a esta puerta le faltaba el mismo
+       criterio. En estable la base y el sello son el mismo string, así que no cambia nada para
+       el resto de la familia. */
+    if(seen===mcVerBase(CONFIG.APP_VERSION)){ newsDone.current=true; return; }   // ya vista esta versión
     if(newsTimer.current) return;                                     // ya programado: no reprogramar ni cancelar
     // OJO: NO sellamos aquí ni devolvemos cleanup que mate el timer — un re-render que cambie las
     // deps cancelaría el popup y, al re-entrar ya sellado, no volvería a disparar (bug 2026-07-12).
     // Sellamos al DISPARAR. Los usuarios nuevos ya vienen sellados por el onboarding (finish).
     newsTimer.current=setTimeout(function(){
       newsDone.current=true;
-      try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
+      try{ localStorage.setItem("_seenVersion",mcVerBase(CONFIG.APP_VERSION)); }catch(e){}
       setWhatsNew(true);
     },420);
   },[state.onboarded,locked,showAuth,tourOpen]);
@@ -18036,10 +18411,13 @@ function App(){
   // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
   // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
   // en silencio para no disparar tres de golpe). Suena también como toast en la app.
+  // Misma cifra que Resumen/Gastos (`monthBudgetStats`): sin neutras ni reservas, no
+  // `thisMonthSpent` (feedback «el presupuesto no cuadra» — 2026-08-05).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    const bud=state.budget||0; if(!(bud>0)) return;
-    const spent=totals.thisMonthSpent||0;
+    const bs=monthBudgetStats(state);
+    const bud=bs.budget!=null?bs.budget:0; if(!(bud>0)) return;
+    const spent=Math.max(0, bs.against||0);
     const pct=spent/bud*100;
     const ym=new Date().toISOString().slice(0,7);
     let fired=false;
@@ -18055,7 +18433,7 @@ function App(){
       const nat=natPlugin();
       if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} }
     });
-  },[state.onboarded,locked,totals.thisMonthSpent,state.budget]);
+  },[state.onboarded,locked,state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){
@@ -19023,12 +19401,48 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
+  // Build .22: portal en `#root` z-0; `.app`/`.page` transparentes; lavado en `.season-glow`.
+  const season=(state.settings&&state.settings.season)||"";
+  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
+  // El destello va SIEMPRE que haya temática: el portal lleva el fondo sólido + lavado; reduce-motion
+  // solo quita las partículas, no el degradado quieto.
+  const seasonOn=!!(season && season!=="none");
+  const seasonPool=(seasonOn && !reduceMo) ? SEASON_AMB[season] : null;
+  // useMemo: mismos spans entre re-renders → la animación CSS no se reinicia al cambiar de tab.
+  const seasonLayers=useMemo(function(){
+    if(!seasonOn) return null;
+    const N=10, out=[];
+    for(let i=0;seasonPool&&i<N;i++){
+      const em=seasonPool[i%seasonPool.length];
+      const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
+      const left=Math.round(rnd(12.9898)*96);
+      const sz=14+Math.round(rnd(4.1)*8);
+      const dur=16+rnd(7.7)*8;
+      const delay=-(rnd(3.3)*dur);
+      const sway=(4+Math.round(rnd(5.5)*14))*(rnd(9.1)>0.5?1:-1);
+      const spin=(rnd(2.2)>0.5?1:-1)*(60+Math.round(rnd(6.6)*100));
+      const op=0.14+rnd(1.7)*0.14;
+      out.push(React.createElement("span",{key:i,
+        style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
+          "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
+    }
+    // En `#root`, no en body: body z-1 bajo `#root` z-2 nunca se ve en el swipe (build .21).
+    var portalRoot=document.getElementById("root")||document.body;
+    return ReactDOM.createPortal(
+      React.createElement("div",{className:"season-portal","aria-hidden":"true"},
+        React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
+        seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out) : null
+      ),
+      portalRoot
+    );
+  }, [seasonOn, seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
+    var isHost=hostTab===i;
     // `page-scroll-host` EN el className de React (no solo classList): si no, cualquier
     // setState de App (botnav al bajar) lo borra y el fling pierde la ola nativa.
-    return React.createElement("div",{className:"page"+(show?" page-live":"")+(hostTab===i?" page-scroll-host":""),key:id,onScroll:onPageScroll},
+    return React.createElement("div",{className:"page"+(show?" page-live":"")+(isHost?" page-scroll-host":""),key:id,onScroll:onPageScroll},
       show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
     );
   });
@@ -19040,10 +19454,9 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // La capa ambiental de temporada (piezas cayendo/subiendo) SE QUITÓ del todo (2026-08-03): el
-  // detalle por temática ahora vive incrustado en cada sección, en CSS puro (ver `--season-ico`
-  // y el badge sobre `.v4-title`/`.v4-inicio-hi` en shell.html). Nada que montar ni disparar aquí.
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
+    // seasonLayers → portal en document.body (ver useMemo arriba)
+    seasonLayers,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",
