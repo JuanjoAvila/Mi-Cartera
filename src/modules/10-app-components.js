@@ -1485,7 +1485,8 @@ var RELEASE_NOTES=[
        "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
        "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
        "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
-       "El destello es más amplio que en la compilación anterior. Si aun así lo ves pequeño, dilo y se agranda.",
+       "En modo Verano el destello es ya de día caluroso: cálido y bien visible arriba a la derecha. Las demás temáticas llevan la misma forma más contenida, para decidirlas una a una.",
+       "Scrollea rápido dentro de una lista: el destello no puede dar ni un parpadeo.",
        "La barra de abajo sigue limpia (sin ver la lista a través).",
      ]}
    ],

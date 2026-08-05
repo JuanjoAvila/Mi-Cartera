@@ -65,7 +65,11 @@ assert.match(main, /seasonPool\s*\?\s*React\.createElement\("div",\{className:"s
   assert.match(body, /background-color:\s*var\(--bg\)/, "la cofia es OPACA y del mismo tono que la app");
   assert.doesNotMatch(body, /opacity:\s*0?\.\d/, "nada de translucidez (velo .11: se aclaraba al deslizar entre pestañas)");
   assert.doesNotMatch(body, /animation:/, "sin animación: un destello que respira es justo lo que pidió que no hiciera");
-  assert.match(body, /mask-image:linear-gradient/, "se desvanece abajo (si no, el contenido se corta en seco al scrollear)");
+  /* ⚠ NADA de `mask` (lo llevó la .15 y él lo cazó: «hace un parpadeo al scrollear»). Un
+     desvanecido abajo vuelve translúcidos esos px, y justo ahí el destello es fuerte: el
+     contenido pasando por debajo cambiaba el composite. Medido con la pantalla grabada durante
+     un fling real: desvío 0 a y=30 y 184 a y=70. La cofia tiene que ser opaca de arriba abajo. */
+  assert.doesNotMatch(body, /mask-image/, "`.season-glow` sin mask: el desvanecido causaba parpadeo al scrollear");
 }
 assert.doesNotMatch(shell, /@keyframes\s+seasonglow/, "`seasonglow` no puede volver (pulso de opacidad)");
 assert.match(shell, /html\[data-season\]\{--season-cofia:calc\(var\(--safe-top\)/,
@@ -80,6 +84,17 @@ assert.match(shell, /html\[data-season\]\{--season-cofia:calc\(var\(--safe-top\)
       "gradiente centrado por encima del borde → tiñe la barra de estado (fallo de .11 y .12): " + d[1].slice(0, 70));
     assert.match(d[1], /calc\(var\(--safe-top\)/,
       "el destello tiene que empezar por debajo de `--safe-top`: " + d[1].slice(0, 70));
+    /* LA REGLA QUE MANTIENE LIMPIA LA FRANJA DE LA CÁMARA: cada elipse tiene que valer 0 justo
+       en `--safe-top`, y eso pasa cuando su radio vertical es EXACTAMENTE su desplazamiento
+       (centro a +ry → el borde de la elipse cae en `--safe-top`). Si alguien sube el radio sin
+       subir el desplazamiento, el degradado se mete entre los iconos del sistema y vuelve el
+       «no se ve del mismo tono» del 5/8. */
+    const capas = [...d[1].matchAll(/radial-gradient\(\s*\d+px\s+(\d+)px\s+at\s+\d+%\s+calc\(var\(--safe-top\)\s*\+\s*(\d+)px\s*\)/g)];
+    assert.ok(capas.length >= 2, "esperaba al menos 2 elipses medidas desde --safe-top: " + d[1].slice(0, 70));
+    for (const c of capas) {
+      assert.equal(c[1], c[2],
+        "elipse con radio " + c[1] + "px y desplazamiento " + c[2] + "px: tiene que valer 0 en `--safe-top` (radio === desplazamiento)");
+    }
   }
 }
 

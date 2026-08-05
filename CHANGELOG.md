@@ -156,6 +156,28 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
     - **Comprobación nueva y mucho más dura** (`tools/movil/_tmp-glow13-fondo.mjs`): se esconde el
       CONTENIDO de las páginas y se compara SOLO el fondo. Reposo vs gesto vs scroll, 33 puntos por
       toda la pantalla: **diferencia máxima 0**.
+14. **Fix 2026-08-05 — octava pasada: el parpadeo del desvanecido, y verano en serio**
+    (`fix-season-glow-steady`): él cazó lo que quedaba — «es casi imperceptible pero hace un
+    parpadeo al scrollear» — y pidió más destello, «como un día caluroso de verano».
+    - **El parpadeo era la `mask`.** El desvanecido de 20 px del borde de abajo de la cofia sonaba
+      bien (el contenido se disuelve en vez de cortarse) pero vuelve TRANSLÚCIDOS esos 20 px, y es
+      justo donde el destello es más fuerte: el contenido pasando por debajo cambiaba el composite.
+      O sea, el velo de la .11 otra vez, en una franja estrecha. Fuera la `mask`: la cofia es opaca
+      de arriba abajo y el contenido se corta en su borde, que es lo que hace cualquier lista.
+    - **Método nuevo** (`tools/movil/_tmp-glow13-parpadeo.mjs`): grabar la pantalla por CDP
+      (`Page.startScreencast`) durante un fling REAL con inercia y comparar la zona del destello
+      fotograma a fotograma. Con la `mask`: desvío 0 a y=30 y **184** a y=70. Sin ella y con el
+      destello entero dentro de la cofia: **0 en toda la cofia, 119 fotogramas**.
+    - **El destello, entero DENTRO de la cofia.** Cada elipse vale 0 en `--safe-top` y se apaga
+      antes del borde de abajo (radio vertical === desplazamiento). Así no queda ni una cola que
+      las tarjetas puedan tapar al scrollear. Cofia a `safe-top + 76px`.
+    - **Forma:** tres capas — foco cálido arriba a la derecha con caída lenta, baño ancho muy tenue
+      (es lo que da el «aire caliente») y el segundo color de la temática a la izquierda. Con una
+      sola elipse ancha parecía una franja horizontal, no un resplandor. Verano al 100 % (pico
+      medido `[142,116,69]` contra `[52,48,27]` de la pasada anterior); el resto de temáticas, la
+      misma forma a media potencia hasta que él decida cada una.
+    - Guarda nueva en los tests: se parsea cada elipse y se exige radio vertical === desplazamiento.
+      Es LA regla que mantiene limpia la franja de la cámara, y a ojo no se ve en un diff.
 
 Sin APK nuevo (35 / 4.12.0).
 

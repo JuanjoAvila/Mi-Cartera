@@ -315,16 +315,18 @@
      scrolleando — no puede cambiar. La base es `var(--bg)`, el mismo tono que la app, y el
      gradiente vale 0 a la altura de los iconos y se apaga con `mask` antes de terminar: ni tiñe
      la cámara ni deja una línea donde acaba (las dos cosas que él señaló el 5/8). */
-  html[data-season]{--season-cofia:calc(var(--safe-top) + 36px);}
+  html[data-season]{--season-cofia:calc(var(--safe-top) + 76px);}
   .season-portal{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
     width:100%;max-width:520px;pointer-events:none;z-index:36;}
   .season-glow{position:absolute;top:0;left:0;right:0;height:var(--season-cofia);
     z-index:1;pointer-events:none;background-color:var(--bg);
-    background-image:var(--season-glow-top);background-repeat:no-repeat;
-    /* Los últimos 20px se desvanecen: al scrollear el contenido se disuelve por debajo en vez de
-       cortarse en seco, que es otra forma de «corte» y también se nota. */
-    -webkit-mask-image:linear-gradient(to bottom,#000 calc(var(--season-cofia) - 20px),transparent var(--season-cofia));
-    mask-image:linear-gradient(to bottom,#000 calc(var(--season-cofia) - 20px),transparent var(--season-cofia));}
+    background-image:var(--season-glow-top);background-repeat:no-repeat;}
+  /* ⚠ NADA de `mask` aquí (lo llevó la .15 y él cazó el fallo: «hace un parpadeo al scrollear»).
+     Un desvanecido abajo suena bien —el contenido se disuelve en vez de cortarse— pero vuelve
+     translúcidos esos 20px, y justo ahí es donde el destello es más fuerte: el contenido pasando
+     por debajo cambiaba el composite. Medido con la pantalla grabada durante un fling real
+     (133 fotogramas): desvío 0 a y=30 y **184** a y=70. La cofia tiene que ser OPACA de arriba
+     abajo; el contenido se corta en su borde, que es lo que hace cualquier lista al llegar arriba. */
   /* Intensidad calibrada al pico de la .11 (que él dio por bueno en reposo): alfas .14/.09 miden
      un aporte de ~60 RGB. Sin animación de opacidad — un destello que respira es justo lo que
      pidió que no hiciera. */
@@ -362,17 +364,17 @@
     100%{opacity:1;transform:scale(1) rotate(0deg);}
   }
   html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";
-    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(241,196,15,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(230,57,70,.12), transparent);}
+    --season-glow-top:radial-gradient(250px 36px at 87% calc(var(--safe-top) + 36px), rgba(241,196,15,.34) 0%, rgba(241,196,15,.18) 40%, rgba(241,196,15,.06) 70%, transparent 100%),radial-gradient(600px 38px at 55% calc(var(--safe-top) + 38px), rgba(241,196,15,.08), transparent),radial-gradient(200px 30px at 2% calc(var(--safe-top) + 30px), rgba(230,57,70,.10), transparent);}
   html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";
-    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(240,134,43,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(122,63,160,.12), transparent);}
+    --season-glow-top:radial-gradient(250px 36px at 87% calc(var(--safe-top) + 36px), rgba(240,134,43,.34) 0%, rgba(240,134,43,.18) 40%, rgba(240,134,43,.06) 70%, transparent 100%),radial-gradient(600px 38px at 55% calc(var(--safe-top) + 38px), rgba(240,134,43,.08), transparent),radial-gradient(200px 30px at 2% calc(var(--safe-top) + 30px), rgba(122,63,160,.10), transparent);}
   html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";
-    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(214,69,80,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(46,158,91,.12), transparent);}
+    --season-glow-top:radial-gradient(250px 36px at 87% calc(var(--safe-top) + 36px), rgba(214,69,80,.34) 0%, rgba(214,69,80,.18) 40%, rgba(214,69,80,.06) 70%, transparent 100%),radial-gradient(600px 38px at 55% calc(var(--safe-top) + 38px), rgba(214,69,80,.08), transparent),radial-gradient(200px 30px at 2% calc(var(--safe-top) + 30px), rgba(46,158,91,.10), transparent);}
   html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";
-    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(255,179,71,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(57,182,201,.12), transparent);}
+    --season-glow-top:radial-gradient(250px 36px at 87% calc(var(--safe-top) + 36px), rgba(255,196,110,.55) 0%, rgba(255,196,110,.30) 40%, rgba(255,196,110,.10) 70%, transparent 100%),radial-gradient(600px 38px at 55% calc(var(--safe-top) + 38px), rgba(255,196,110,.12), transparent),radial-gradient(200px 30px at 2% calc(var(--safe-top) + 30px), rgba(57,182,201,.13), transparent);}
   html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";
-    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(127,181,232,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(183,224,242,.12), transparent);}
+    --season-glow-top:radial-gradient(250px 36px at 87% calc(var(--safe-top) + 36px), rgba(127,181,232,.34) 0%, rgba(127,181,232,.18) 40%, rgba(127,181,232,.06) 70%, transparent 100%),radial-gradient(600px 38px at 55% calc(var(--safe-top) + 38px), rgba(127,181,232,.08), transparent),radial-gradient(200px 30px at 2% calc(var(--safe-top) + 30px), rgba(183,224,242,.10), transparent);}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
-    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(247,198,217,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(160,216,179,.12), transparent);}
+    --season-glow-top:radial-gradient(250px 36px at 87% calc(var(--safe-top) + 36px), rgba(247,198,217,.34) 0%, rgba(247,198,217,.18) 40%, rgba(247,198,217,.06) 70%, transparent 100%),radial-gradient(600px 38px at 55% calc(var(--safe-top) + 38px), rgba(247,198,217,.08), transparent),radial-gradient(200px 30px at 2% calc(var(--safe-top) + 30px), rgba(160,216,179,.10), transparent);}
   /* Ambientación — UNA sola capa GLOBAL, dentro del portal (fixed, z-36): por encima del host
      (35) y por debajo del botnav (40); dentro del portal va en z-2, sobre la cofia (z-1).
      bottom recortado: si la lluvia pintaba debajo de la barra, al esconderse la barra con
@@ -13904,7 +13906,8 @@ var RELEASE_NOTES=[
        "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
        "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
        "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
-       "El destello es más amplio que en la compilación anterior. Si aun así lo ves pequeño, dilo y se agranda.",
+       "En modo Verano el destello es ya de día caluroso: cálido y bien visible arriba a la derecha. Las demás temáticas llevan la misma forma más contenida, para decidirlas una a una.",
+       "Scrollea rápido dentro de una lista: el destello no puede dar ni un parpadeo.",
        "La barra de abajo sigue limpia (sin ver la lista a través).",
      ]}
    ],
