@@ -130,6 +130,32 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
     - Con reduce-motion la cofia SE QUEDA (es un degradado quieto, y si se fuera dejaría el hueco
       reservado vacío); lo que se va son las partículas. `tests/season-detalle.test.mjs` reescrito
       para vigilar los invariantes reales, no la implementación de turno.
+13. **Fix 2026-08-05 — séptima pasada: el verde y el salto** (`fix-season-glow-steady`): con la
+    .13 en el móvil, grabó la pantalla y salieron DOS fallos que el destello tapaba y que no eran
+    del destello. Los dos son de lo mismo: al arrastrar el carrusel se quita `page-scroll-host`, y
+    esa clase era **el único fondo opaco y la única referencia de posición** de toda la app.
+    - **«Ese verde clarito cuando scrolleas»:** `.app` era transparente, así que al irse el host
+      asomaba el degradado decorativo del `body` — menta al 18 % centrado justo arriba a la
+      derecha (`radial-gradient(130% 55% at 85% -8%, rgba(95,208,138,.18)…)`). Medido:
+      `[12,23,18]` → `[18,36,27]` en toda la franja derecha, solo durante el gesto. En reposo no
+      se ve nunca porque lo tapa el host, así que **no era una decisión de diseño, era una fuga**.
+      Fix: `.app{background:var(--bg)}`. El degradado del `body` sigue donde sí se ve y para lo
+      que se hizo (login y onboarding, que salen antes que `.app`).
+    - **«La pantalla se baja unos pixeles y luego vuelve»:** medido **5,5 px**. En reposo la
+      posición la manda el `padding-top` del host; al arrastrar la manda `.app` **más los 6 px que
+      `.page` pone por su cuenta** y el host no. Fix: `.app` lleva 6 px menos que el host
+      (`safe-top + 4px`, y `cofia - 6px` con temática) para que la suma cuadre. Medido después:
+      **0,0 px**. El desfase venía de antes (eran 4 px sin temática); la cofia solo lo hizo más
+      visible.
+    - Con `.app` ya opaca y colocada igual que el host, los dos fondos se turnan sin que se note:
+      por eso el gradiente pasa a ir en los DOS (misma regla, para que no se puedan desincronizar)
+      y el destello puede seguir por debajo de la cofia sin ser un velo encima del contenido.
+      Geometría nueva: elipse que vale 0 exactamente en `--safe-top` (centro a `+ry`), así no hay
+      escalón en el borde de la barra de estado y no hace falta recortar nada. Destello más
+      generoso —el de la .13 se quedaba en 76 px y él lo llamó «chiquito»— llegando ahora a ~150 px.
+    - **Comprobación nueva y mucho más dura** (`tools/movil/_tmp-glow13-fondo.mjs`): se esconde el
+      CONTENIDO de las páginas y se compara SOLO el fondo. Reposo vs gesto vs scroll, 33 puntos por
+      toda la pantalla: **diferencia máxima 0**.
 
 Sin APK nuevo (35 / 4.12.0).
 

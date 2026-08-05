@@ -1479,11 +1479,13 @@ var RELEASE_NOTES=[
        "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
      ]},
      {id:"fix-season-glow-steady", t:"✨ Destello que no cambia nunca", items:[
-       "Con temática puesta, DESLIZA de pestaña despacio (Inicio ↔ Gastos ↔ Plan): el destello de arriba a la derecha tiene que quedarse EXACTAMENTE igual durante todo el gesto — ni encenderse, ni apagarse, ni desaparecer.",
+       "Desliza de pestaña despacio (Inicio ↔ Gastos ↔ Plan): NO tiene que aparecer ningún verde claro arriba mientras se mueve. El fondo se queda exactamente igual de principio a fin.",
+       "En ese mismo gesto, el contenido NO puede bajar unos píxeles y volver a subir: los títulos se quedan clavados a la misma altura.",
+       "El destello de arriba a la derecha se queda igual durante todo el gesto — ni se enciende, ni se apaga, ni desaparece.",
        "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
        "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
        "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
-       "Con temática puesta el contenido empieza un poco más abajo, para hacerle sitio al destello. Sin temática, todo se queda donde estaba.",
+       "El destello es más amplio que en la compilación anterior. Si aun así lo ves pequeño, dilo y se agranda.",
        "La barra de abajo sigue limpia (sin ver la lista a través).",
      ]}
    ],

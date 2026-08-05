@@ -86,22 +86,37 @@ assert.match(shell, /html\[data-season\]\{--season-cofia:calc\(var\(--safe-top\)
 /* Hueco reservado: sin él la cofia opaca taparía el saludo. */
 assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{padding-top:var\(--season-cofia\)/,
   "el host reserva el alto de la cofia");
-assert.match(shell, /html\[data-season\]\s+\.app\{padding-top:var\(--season-cofia\)/,
-  "`.app` reserva el mismo alto (es el que manda mientras se desliza entre pestañas)");
+/* `.app` reserva el mismo alto EFECTIVO (es la que manda mientras se desliza entre pestañas);
+   la resta de 6px y el porqué se comprueban más abajo. */
 /* Las partículas, por debajo de la cofia: una hoja cruzando los iconos del sistema es lo mismo
    que él señaló del tono de esa franja. */
 assert.match(shell, /\.season-amb\{[^}]*top:var\(--season-cofia/, "las partículas arrancan bajo la cofia");
 
-/* Host opaco y SIN gradiente: `.page-scroll-host` se quita durante el gesto (trampa de .12). */
+/* Host opaco. */
 assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/, "host opaco");
 assert.doesNotMatch(shell, /\.page\.page-scroll-host\{[\s\S]*?background-clip:\s*content-box/,
   "NO background-clip:content-box (dejaba el destello entero detrás del host: aporte 0)");
-assert.doesNotMatch(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{[^}]*--season-glow-top/,
-  "NO gradiente horneado en el host: esa clase se quita al deslizar entre pestañas");
-assert.doesNotMatch(shell, /html\[data-season\]\s+\.app\{[^}]*--season-glow-top/,
-  "NO gradiente horneado en .app");
+
+/* Los dos fondos que se turnan tienen que llevar el MISMO gradiente y en la MISMA regla.
+   El host manda en reposo y `.app` mientras se desliza; si solo lo lleva uno, el destello
+   cambia al cambiar de estado — que es exactamente lo que falló en .12. */
+assert.match(
+  shell,
+  /html\[data-season\] \.page\.page-scroll-host,\s*\n\s*html\[data-season\] \.app\{background-image:var\(--season-glow-top\)/,
+  "host y `.app` comparten regla de gradiente (si se separan, se desincronizan)"
+);
 assert.doesNotMatch(shell, /html\[data-season\]\s+body\{[^}]*--season-glow-top/,
   "NO gradiente en el body: en reposo lo tapa el host y saldría solo durante el gesto");
+
+/* `.app` OPACA: transparente dejaba asomar el degradado menta del `body` en pleno gesto
+   («ese verde clarito cuando scrolleas», 5/8). */
+assert.match(shell, /\.app\{[^}]*background:var\(--bg\)/, "`.app` con fondo opaco");
+/* Y 6px menos de padding que el host: `.page` añade los suyos y el host no. Sin esto el
+   contenido baja ~5,5px al empezar el gesto y vuelve al soltar. */
+assert.match(shell, /\.app\{[^}]*padding-top:calc\(var\(--safe-top\) \+ 4px\)/,
+  "`.app` sin temática: safe-top+4 (+6 de `.page` = los safe-top+10 del host)");
+assert.match(shell, /html\[data-season\] \.app\{padding-top:calc\(var\(--season-cofia\) - 6px\)/,
+  "`.app` con temática: cofia-6 (+6 de `.page` = la cofia entera)");
 
 /* Barra: hide sin opacity (evita ver la lista a través) */
 assert.match(

@@ -170,7 +170,18 @@
   input,select{font-family:inherit;}
   ::-webkit-scrollbar{width:0;height:0;}
 
-  .app{height:100vh;height:100dvh;display:flex;flex-direction:column;padding-top:calc(var(--safe-top) + 8px);}
+  /* FONDO OPACO (feedback 5/8 22:00: «sale ese verde clarito cuando scrolleas»). `.app` era
+     transparente, así que al deslizar entre pestañas —cuando se quita `page-scroll-host` y con él
+     el único fondo opaco— asomaba el degradado decorativo del `body`, que es menta al 18% y está
+     centrado justo arriba a la derecha: medido [12,23,18] → [18,36,27] en toda la franja. En
+     reposo no se veía nunca (lo tapa el host), así que pintarlo aquí no cambia el aspecto de la
+     app: lo que hace es que reposo y gesto se vean IGUAL. El degradado del body sigue vivo donde
+     sí se ve y para lo que se hizo: login y onboarding, que salen antes que `.app`.
+     El padding-top lleva 6px MENOS que el del host a propósito: `.page` pone 6px por su cuenta y
+     el host no, así que sin esta resta el contenido bajaba 5,5px al empezar el gesto y volvía al
+     soltar («la pantalla se baja unos pixeles y luego vuelve», mismo feedback). */
+  .app{height:100vh;height:100dvh;display:flex;flex-direction:column;
+    padding-top:calc(var(--safe-top) + 4px);background:var(--bg);}
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 14px;flex:0 0 auto;}
   .brand{display:flex;align-items:center;gap:11px;}
   .brand-mark{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;
@@ -351,17 +362,17 @@
     100%{opacity:1;transform:scale(1) rotate(0deg);}
   }
   html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";
-    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(241,196,15,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(230,57,70,.09), transparent);}
+    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(241,196,15,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(230,57,70,.12), transparent);}
   html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";
-    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(240,134,43,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(122,63,160,.09), transparent);}
+    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(240,134,43,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(122,63,160,.12), transparent);}
   html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";
-    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(214,69,80,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(46,158,91,.09), transparent);}
+    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(214,69,80,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(46,158,91,.12), transparent);}
   html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";
-    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(255,179,71,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(57,182,201,.09), transparent);}
+    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(255,179,71,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(57,182,201,.12), transparent);}
   html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";
-    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(127,181,232,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(183,224,242,.09), transparent);}
+    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(127,181,232,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(183,224,242,.12), transparent);}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
-    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(247,198,217,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(160,216,179,.09), transparent);}
+    --season-glow-top:radial-gradient(320px 56px at 84% calc(var(--safe-top) + 56px), rgba(247,198,217,.20), transparent),radial-gradient(240px 44px at 12% calc(var(--safe-top) + 44px), rgba(160,216,179,.12), transparent);}
   /* Ambientación — UNA sola capa GLOBAL, dentro del portal (fixed, z-36): por encima del host
      (35) y por debajo del botnav (40); dentro del portal va en z-2, sobre la cofia (z-1).
      bottom recortado: si la lluvia pintaba debajo de la barra, al esconderse la barra con
@@ -536,9 +547,17 @@
     padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
   /* Con temática, el contenido arranca por debajo de la cofia: así el destello puede ser opaco
-     (única forma de que no cambie nunca) sin tapar nada. Sin temática no se mueve ni un píxel. */
+     (única forma de que no cambie nunca) sin tapar nada. Sin temática no se mueve ni un píxel.
+     `.app` va 6px por debajo por lo de siempre: `.page` añade sus propios 6px y el host no. */
   html[data-season] .page.page-scroll-host{padding-top:var(--season-cofia);}
-  html[data-season] .app{padding-top:var(--season-cofia);}
+  html[data-season] .app{padding-top:calc(var(--season-cofia) - 6px);}
+  /* El MISMO gradiente en los dos fondos que se turnan — el host manda en reposo y `.app` mientras
+     se desliza entre pestañas. Así el destello sigue por debajo de la cofia sin ser un velo encima
+     del contenido, y los dos estados pintan exactamente lo mismo.
+     ⚠ Van SIEMPRE en pareja: el host solo no vale (build .12 — su clase se quita durante el gesto
+     y el destello se apagaba); `.app` sola tampoco (en reposo la tapa el host). */
+  html[data-season] .page.page-scroll-host,
+  html[data-season] .app{background-image:var(--season-glow-top);background-repeat:no-repeat;}
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
   .page.page-scroll-host.mc-touch-own{touch-action:none;}
@@ -13879,11 +13898,13 @@ var RELEASE_NOTES=[
        "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
      ]},
      {id:"fix-season-glow-steady", t:"✨ Destello que no cambia nunca", items:[
-       "Con temática puesta, DESLIZA de pestaña despacio (Inicio ↔ Gastos ↔ Plan): el destello de arriba a la derecha tiene que quedarse EXACTAMENTE igual durante todo el gesto — ni encenderse, ni apagarse, ni desaparecer.",
+       "Desliza de pestaña despacio (Inicio ↔ Gastos ↔ Plan): NO tiene que aparecer ningún verde claro arriba mientras se mueve. El fondo se queda exactamente igual de principio a fin.",
+       "En ese mismo gesto, el contenido NO puede bajar unos píxeles y volver a subir: los títulos se quedan clavados a la misma altura.",
+       "El destello de arriba a la derecha se queda igual durante todo el gesto — ni se enciende, ni se apaga, ni desaparece.",
        "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
        "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
        "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
-       "Con temática puesta el contenido empieza un poco más abajo, para hacerle sitio al destello. Sin temática, todo se queda donde estaba.",
+       "El destello es más amplio que en la compilación anterior. Si aun así lo ves pequeño, dilo y se agranda.",
        "La barra de abajo sigue limpia (sin ver la lista a través).",
      ]}
    ],
