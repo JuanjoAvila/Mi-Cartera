@@ -2,6 +2,43 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.14.0] — 2026-08-05
+### Multidivisa real (TRY) + Ajustes → Dinero limpio
+
+**Por qué:** el crucero del 7/8 paga en liras; `settings.currency` existía pero, si faltaba el
+tipo en `fxRates`, `DISP` se quedaba en € **en silencio** («la moneda no hace nada»). TRY no
+estaba en `CUR_LIST` ni en el fetch a frankfurter. «Comparar monedas» listaba todas las filas
+con «—» cuando no había FX. Y Ajustes → Dinero duplicaba presupuesto (ya en Resumen) y bancos
+de gasto diario (ya en Cartera).
+
+**Qué cambia:**
+1. **TRY** en `CUR_LIST` / `CUR_SYM` / i18n es·en·ca; el fetch FX se construye desde `CUR_LIST`
+   (añadir una divisa ya no deja el selector y el BCE desfasados).
+2. Elegir moneda **exige tipo**: si falta, pide FX y solo entonces aplica; si no llega, toast
+   (nada de quedarse en € callado). Se guarda `fxDate`.
+3. **Comparar monedas:** solo filas con tipo; al abrir refresca; vacío → mensaje + reintentar.
+4. **Apuntar:** moneda del apunte **independiente** de la de visualización (chips ₺/€/$…;
+   recuerda `settings.apuntarCur`). Guarda siempre en € vía `toEurAmt` (`origAmount`/`origCur`
+   informativos). Sin tipo no guarda. Así en el crucero apuntas liras y sigues viendo la app en €.
+5. **Ajustes → Dinero:** fuera presupuesto mensual y bancos de gasto diario; quedan moneda,
+   comparar y «Total de gastos».
+
+**Fix rechazo 4.14.0.1 (móvil):** el dólar iba y la lira no. Causa: `api.frankfurter.app` hace
+301 → `api.frankfurter.dev` y la CSP no tenía `.dev` (mismo patrón que el redirect de GitHub
+assets). El dólar «funcionaba» por `state.fx` legacy. Ahora el fetch va directo a `.dev` y la
+CSP lo deja pasar; al aplicar moneda se usan los rates devueltos (no solo el state).
+
+**Fix desborde Gastos (post-aprobación, letra Pequeña + ¥):** la línea «Gastos X · ingresos Y»
+era una sola frase con `nowrap` en el presupuesto → se partía a mitad y solapaba. Ahora
+filas etiqueta|importe (juntas, sin `space-between` a todo el ancho — eso abría un hueco
+ridículo), columna izq con `min-width:0`, importe con `clamp`, presupuesto que puede partir
+palabra. Inicio ya usaba `clamp` en el patrimonio. Tanda `gastos-fx-overflow`.
+
+**Siguiente (otra tanda, pedida 2026-08-05):** conversor «de → a» en Comparar monedas (importe
++ moneda origen + moneda destino), no solo «1 € = …».
+
+Rama: `tanda/multidivisa` (+ `tanda/gastos-fx-overflow`). Promote: `tandas=multidivisa` o ambas.
+
 ## [4.13.0] — 2026-08-05
 ### Barra quieta de verdad al tope y al swipear tabs
 

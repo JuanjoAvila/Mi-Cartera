@@ -124,7 +124,7 @@ console.log("security");
       const hosts = connect[1];
       const necesarios = [
         ["https://sfyfjagbnhbplrljpbvh.supabase.co", "la nube: estado, gastos y Edge Functions"],
-        ["https://api.frankfurter.app", "tipos de cambio"],
+        ["https://api.frankfurter.dev", "tipos de cambio (canónico; .app redirige aquí)"],
         ["https://github.com", "manifiestos y assets de las releases (canal beta, APK)"],
         ["https://release-assets.githubusercontent.com", "a donde REDIRIGE github.com al bajar un asset"],
       ];

@@ -1150,8 +1150,10 @@ const NF0 = new Intl.NumberFormat('es-ES',{maximumFractionDigits:0});
 // a la moneda elegida (k = factor sobre €, sym = símbolo). Se fija en App según ajustes + fx.
 let DISP = { sym:"€", k:1 };
 // Símbolos de las monedas de visualización (Ajustes → Dinero). Todas contra € vía fxRates (BCE).
-const CUR_SYM = { EUR:"€", USD:"$", GBP:"£", CHF:"CHF", JPY:"¥", CAD:"C$", AUD:"A$", CNY:"CN¥", MXN:"MX$", SEK:"kr", NOK:"kr", DKK:"kr", PLN:"zł", BRL:"R$", INR:"₹" };
-// Monedas ofrecidas en el selector y la comparativa (deben venir en el fetch del BCE).
-const CUR_LIST = ["EUR","USD","GBP","CHF","JPY","CAD","AUD","CNY","MXN","SEK","NOK","DKK","PLN","BRL","INR"];
+// TRY (lira turca) añadida 2026-08-05: crucero — sin ella el selector no ofrecía la divisa real
+// del viaje y la «moneda de visualización» parecía no hacer nada al no haber tipo.
+const CUR_SYM = { EUR:"€", USD:"$", GBP:"£", CHF:"CHF", JPY:"¥", CAD:"C$", AUD:"A$", CNY:"CN¥", MXN:"MX$", SEK:"kr", NOK:"kr", DKK:"kr", PLN:"zł", BRL:"R$", INR:"₹", TRY:"₺" };
+// Monedas ofrecidas en el selector y la comparativa (deben venir en el fetch del BCE / frankfurter).
+const CUR_LIST = ["EUR","USD","GBP","CHF","TRY","JPY","CAD","AUD","CNY","MXN","SEK","NOK","DKK","PLN","BRL","INR"];
 const eur  = (n)=> NF.format((n||0)*DISP.k)+" "+DISP.sym;
 const eur0 = (n)=> NF0.format(Math.round((n||0)*DISP.k))+" "+DISP.sym;
