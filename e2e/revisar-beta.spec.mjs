@@ -313,7 +313,9 @@ test("una versión sin tandas declaradas sigue siendo una sola checklist", async
   expect(r.items).toBe(r.total);             // la tanda implícita lo lleva todo
 });
 
-test("la versión en curso declara varias tandas y se reparten TODOS los puntos", async ({ page }) => {
+test("la versión en curso: tandas (o la implícita) cubren TODOS los puntos alineados", async ({ page }) => {
+  /* Con tandas[] vacías (ronda ya promocionada) betaTandas inventa una sola «todo».
+     Con varias, la lista plana TIENE que ser la concatenación exacta — regresión 2026-08-01. */
   await abrirRevisionBeta(page);
   const r = await page.evaluate(() => {
     const p = betaChecklist(CONFIG.APP_VERSION);
@@ -322,37 +324,44 @@ test("la versión en curso declara varias tandas y se reparten TODOS los puntos"
       ids: p.tandas.map((t) => t.id),
       suma: p.tandas.reduce((a, t) => a + t.items.length, 0),
       total: p.items.length,
-      titulos: p.tandas.every((t) => !!t.t),
-      /* Los índices GLOBALES tienen que caer sobre el mismo texto que la tanda enseña: es lo que
-         usan `marks`, el progreso y la herencia de ✓ (que casa por TEXTO). Si esto se desalinea,
-         el panel enseña un punto y guarda su ✓ bajo otro, en silencio. */
+      titulos: p.tandas.every((t) => t.id === "todo" || !!t.t),
       alineados: (() => {
         let i = 0;
         return p.tandas.every((g) => g.items.every((it) => p.items[i++] === it));
       })(),
     };
   });
-  expect(r.n).toBeGreaterThan(1);
+  expect(r.n).toBeGreaterThan(0);
   expect(new Set(r.ids).size, "los ids de tanda no se pueden repetir").toBe(r.n);
   expect(r.suma).toBeGreaterThan(0);
-  expect(r.titulos, "cada tanda necesita un título: es lo que él lee en el móvil").toBe(true);
-  /* EL FALLO DEL 2026-08-01, BLINDADO. Este test decía «se reparten TODOS los puntos» y solo
-     comprobaba `suma > 0`, así que no vio que la 4.13.0 tenía 21 puntos en tandas contra 14 en la
-     lista plana: sobraban 7 índices sin texto detrás y los otros 14 apuntaban a la nota
-     equivocada. Comparar los dos números Y el texto es lo que de verdad prueba el título. */
+  expect(r.titulos, "cada tanda con id propio necesita título; la implícita «todo» puede ir sin él").toBe(true);
   expect(r.suma, "la lista plana del panel TIENE que ser la concatenación de las tandas").toBe(r.total);
   expect(r.alineados, "cada índice global tiene que caer sobre el texto que enseña su tanda").toBe(true);
 });
 
+/** Siembra dos tandas de mentira en RELEASE_NOTES[0] para probar independencia del panel
+ *  cuando la versión en curso ya no declara tandas (aprobadas → array vacío). */
+async function conTandasDePrueba(page) {
+  await page.evaluate(() => {
+    const n = RELEASE_NOTES && RELEASE_NOTES[0];
+    if (!n) return;
+    n.tandas = [
+      { id: "a", t: "Tanda A de prueba", items: { es: ["Punto A1", "Punto A2"] } },
+      { id: "b", t: "Tanda B de prueba", items: { es: ["Punto B1", "Punto B2"] } },
+    ];
+  });
+}
+
 test("un fallo en una tanda NO bloquea aprobar las otras", async ({ page }) => {
   await abrirRevisionBeta(page);
+  await conTandasDePrueba(page);
   await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });
   const panel = await conProduccionEn(page, "0.0.1");
   await expect(panel).toBeVisible();
 
   const tandas = panel.locator(".beta-tanda");
   const n = await tandas.count();
-  expect(n, "esta versión tiene que traer varias tandas para que el test signifique algo").toBeGreaterThan(1);
+  expect(n, "esta prueba siembra 2 tandas").toBe(2);
 
   const primera = tandas.nth(0), segunda = tandas.nth(1);
   const aprobar = (t) => t.getByRole("button", { name: /Aprobar esta tanda/i });
@@ -373,6 +382,7 @@ test("un fallo en una tanda NO bloquea aprobar las otras", async ({ page }) => {
 
 test("cada tanda lleva su cuenta propia, no la de la beta entera", async ({ page }) => {
   await abrirRevisionBeta(page);
+  await conTandasDePrueba(page);
   await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });
   const panel = await conProduccionEn(page, "0.0.1");
   const primera = panel.locator(".beta-tanda").nth(0);
