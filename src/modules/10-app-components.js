@@ -1431,7 +1431,7 @@ var RELEASE_NOTES=[
    tandas:[
      {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
        "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo, sin molestar — también quieto en una pestaña.",
-       "El destello de luz bajo el + se queda fijo SIEMPRE (también con la app quieta, no solo un instante al deslizar).",
+       "Arriba a la derecha hay un destello de luz suave que se QUEDA fijo (no aparece y desaparece al hacer scroll).",
        "Cambia de pestaña: la lluvia sigue el MISMO camino — no salta atrás ni se reinicia.",
        "Ajustes → Apariencia → Reducir animaciones: la lluvia y el destello desaparecen.",
        "Temática → Ninguna: vuelve el look normal, sin piezas.",
@@ -1468,29 +1468,29 @@ var RELEASE_NOTES=[
        "Ahora se marca como vista por versión base (4.15.0), no por el sello exacto de la compilación: si no hay una versión de verdad nueva, no vuelve a saltar.",
        "Instala esta compilación y cierra/abre la app un par de veces: Novedades no debería reaparecer sola.",
      ]},
-     {id:"fix-season-glow", t:"✨ Destello fijo y lluvia sin cortes", items:[
-       "Con temática puesta, el destello de luz bajo el botón + se queda SIEMPRE — ya no solo un instante al deslizar entre pestañas.",
-       "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni se cortan en cada gesto.",
-       "Las pantallas no se mezclan (Inicio y Gastos a la vez): eso ya estaba corregido y se mantiene.",
+     {id:"fix-season-glow", t:"✨ Destello de arriba fijo (y la barra limpia)", items:[
+       "Con temática puesta, el destello suave de ARRIBA A LA DERECHA se queda fijo — ya no aparece y desaparece al hacer scroll.",
+       "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni saltan atrás.",
+       "La barra de abajo ya no enseña la lista a través un segundo al scrollear (efecto raro de un arreglo anterior).",
      ]}
    ],
    items:{
    es:[
-    "🍂 Con una temática de temporada, las piezas caen muy suaves por detrás de las cartillas — sin molestar ni tapar números. El destello de luz se queda fijo y la lluvia no se corta al cambiar de pestaña.",
+    "🍂 Con una temática de temporada, las piezas caen muy suaves — sin molestar. El destello de arriba a la derecha se queda fijo (también al hacer scroll) y la lluvia no salta al cambiar de pestaña.",
     "🔁 En Ajustes → Dinero hay un conversor de verdad: eliges importe, moneda de origen y destino.",
     "💶 El presupuesto del mes es la misma cifra en Resumen, Gastos, avisos e informe: sin mezclar inversiones ni traspasos, y descontando lo reservado a metas.",
     "🏦 En Gastos ves el extracto de todos tus bancos. Solo el de gasto diario resta del presupuesto; el resto sale marcado como «no afecta».",
     "🎛️ En Gastos, los filtros van en un sheet con buscador (adiós a la fila interminable de chips). Hay categorías nuevas (viajes, mascotas, educación, luz/gas) y el reconocimiento de comercios acierta más.",
    ],
    en:[
-    "🍂 With a seasonal theme on, pieces drift very softly behind the cards — without getting in the way or covering numbers. The soft glow stays put and the drift doesn't restart when you switch tabs.",
+    "🍂 With a seasonal theme on, pieces drift very softly. The soft glow at the top-right stays put (also when you scroll) and the drift doesn't jump when you switch tabs.",
     "🔁 In Settings → Money there's a real converter: pick an amount, a from-currency and a to-currency.",
     "💶 The monthly budget is the same figure on Home, Spending, alerts and the share image: investments and transfers stay out, and money reserved for goals is deducted.",
     "🏦 On Spending you see every linked bank's statement. Only your daily-spending bank hits the budget; the rest is marked «doesn't count».",
     "🎛️ On Spending, filters live in a searchable sheet (no more endless chip rows). New categories (travel, pets, education, utilities) and smarter merchant detection.",
    ],
    ca:[
-    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus per darrere de les cartilles — sense molestar ni tapar números. El destell de llum es queda fix i la pluja no es talla en canviar de pestanya.",
+    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus. El destell de dalt a la dreta es queda fix (també en fer scroll) i la pluja no salta en canviar de pestanya.",
     "🔁 A Ajustos → Diners hi ha un convertidor de veritat: tries import, moneda d'origen i de destí.",
     "💶 El pressupost del mes és la mateixa xifra al Resum, Despeses, avisos i informe: sense barrejar inversions ni traspassos, i descomptant el reservat a metes.",
     "🏦 A Despeses veus l'extracte de tots els teus bancs. Només el de despesa diària resta del pressupost; la resta surt marcada com a «no afecta».",

@@ -283,25 +283,20 @@
   html[data-season="verano"] .botnav-fab{background:linear-gradient(160deg,#FFB347,#39B6C9);}
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
-  /* Velo superior: z-index 1 (detrás del host). En reposo el host lo tapa — el mismo
-     degradado va cocido en el fondo del host (ver `.page-scroll-host` más abajo). Se asoma
-     al deslizar, cuando las páginas van sin fondo opaco. */
-  html[data-season]::before{content:"";position:fixed;top:0;left:0;right:0;height:38vh;z-index:1;pointer-events:none;
+  /* DESTELLO DE ARRIBA (feedback 2026-08-05, 4ª pasada — «es arriba a la derecha, NO la barra»).
+     Historial del día: z-1 lo tapaba el host; cocerlo en background-image del host hacía que
+     al SCROLLEAR se fuera con el contenido (aparece/desaparece). Un intento en botnav::before
+     era el sitio EQUIVOCADO y además dejaba ver la lista a través de la barra.
+     Fix: `position:fixed` a z-index 36 (encima del host 35, debajo del botnav 40) — pegado al
+     viewport, no al scroll. El degradado es suave en las esquinas; no tapa importes. */
+  html[data-season]::before{content:"";position:fixed;top:0;left:0;right:0;height:38vh;z-index:36;pointer-events:none;
     opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;background:var(--season-glow-top);}
   @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29, repetida el
      1/8: «decora el resto de la app de esa temática como hiciste con el botón + que está chulo»
      · «que haya ambientación como la del botón +»).
-     ⚠ NO SE TOCAN `--mint` NI `--coral`: pintan importes y saldos. Solo adornos. */
-  /* DESTELLO BAJO EL + — vive DENTRO del botnav (feedback 2026-08-05, 3ª pasada).
-     Historial del día: z-index 1 → solo al swipe; z-index 39 «detrás del botnav» → en reposo
-     `.scroll-host-on .botnav` pone `background:var(--bg-2)` SÓLIDO (para no matar la ola
-     nativa con el blur) y TAPABA el destello otra vez. Solución: pintar el halo como
-     `::before` DEL PROPIO botnav, encima de su fondo y debajo de la fila/FAB. Así sobrevive
-     al fondo sólido y se ve siempre, también quieto. */
-  html[data-season] .botnav::before{content:"";position:absolute;left:0;right:0;bottom:0;top:-48px;
-    pointer-events:none;z-index:0;
-    background:radial-gradient(95% 85% at 50% 78%, color-mix(in srgb, var(--season-tinte,transparent) 34%, transparent), transparent 72%);}
+     ⚠ NO SE TOCAN `--mint` NI `--coral`: pintan importes y saldos. Solo adornos.
+     Sin html::after ni botnav::before de halo: el destello que él quiere es el de ARRIBA. */
   html[data-season] .botnav{border-top:1px solid var(--season-tinte,var(--line-soft));}
   html[data-season] .botnav-ind span{background:var(--season-tinte,var(--mint));}
   /* MÁS AMBIENTACIÓN, NO SOLO EN LA BARRA (petición suya 1/8, repetida: «ponle más ambientación
@@ -345,13 +340,10 @@
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
     --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
   /* Ambientación — UNA sola capa GLOBAL fixed (hermana de `.app-shell`).
-     Feedback 2026-08-05 (3ª): una copia por pestaña hacía que al cambiar de tab se viera
-     OTRA fase de la animación («vuelve un poco más arriba / se retrasa») — cada page tenía
-     su propio reloj. Una sola capa no se remonta nunca → la lluvia sigue el mismo camino.
-     z-index 36 = encima del host opaco (35), debajo del botnav (40). Opacidad baja
-     (0.14–0.28) para no tapar números. Host sigue OPACO (bleed Inicio+Gastos).
-     Solo translate3d/rotate/opacity (compositor). */
-  .season-amb{position:fixed;inset:0;z-index:36;pointer-events:none;overflow:hidden;contain:strict;}
+     Feedback 2026-08-05: una copia por pestaña = salto de fase al swipe.
+     z-index 37 = encima del destello de arriba (36) y del host (35), debajo del botnav (40).
+     Host sigue OPACO. Solo translate3d/rotate/opacity (compositor). */
+  .season-amb{position:fixed;inset:0;z-index:37;pointer-events:none;overflow:hidden;contain:strict;}
   .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
   @keyframes seasonDrift{
@@ -361,14 +353,11 @@
     100%{transform:translate3d(var(--sway,8px),110vh,0) rotate(var(--spin,120deg));opacity:0;}
   }
   /* `.page` sigue con z-index 2 para el carrusel en swipe.
-     ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40`. La fila (`.botnav-row`)
-     lleva z-index:1 más abajo para pintar encima del destello `::before`. */
+     ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40`. */
   .page{position:relative;z-index:2;}
   @media (prefers-reduced-motion:reduce){
     .season-amb{display:none;}
     html[data-season]::before{display:none;}
-    html[data-season] .botnav::before{display:none;}
-    html[data-season] .page.page-scroll-host{background-image:none;}
     html[data-season] .botnav-fab::after{animation:none;opacity:0;}
     html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
   }
@@ -514,14 +503,8 @@
        de la barra de estado / iconos del sistema (feedback 5/8). El `.page` normal NO lo
        necesita porque ya cuelga dentro de `.app` con padding-top.
        FONDO OPACO, SIEMPRE (incidente 2026-08-05): transparente → Inicio+Gastos a la vez.
-       La lluvia va GLOBAL a z-index 36 (encima de este host). El destello vive en el botnav.
-       El velo de arriba se cuece aquí (background-image) para verse en reposo sin tapar
-       el dinero con una capa fixed encima. */
-    background-color:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
-  }
-  html[data-season] .page.page-scroll-host{
-    background-image:var(--season-glow-top);
-    background-repeat:no-repeat;background-size:100% 38vh;background-position:center top;
+       Lluvia global z-37; destello de ARRIBA = html::before fixed z-36 (no se va al scroll). */
+    background:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
@@ -576,8 +559,7 @@
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
      tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar. */
   .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;}
-  /* z-index:1 → encima del destello `html[data-season] .botnav::before` (z-0). */
-  .botnav-row{position:relative;z-index:1;display:flex;align-items:center;}
+  .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
   .botnav-ind span{width:34px;height:3px;border-radius:3px;background:var(--mint);display:block;}

@@ -8,16 +8,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
 `gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`.
 
-1. **Ambientación detrás** (`.season-amb`): piezas muy suaves en bucle lento.
-   Sin ráfagas al cambiar de pestaña. Respeta reducir-animaciones.
-   **Incidentes 2026-08-05 (mismo día, varias pasadas):**
-   - Host transparente → Inicio+Gastos a la vez. Fix: host SIEMPRE opaco.
-   - Destello solo al swipe: z-39 «detrás del botnav» falló porque en reposo
-     `.scroll-host-on .botnav` pone `background:var(--bg-2)` SÓLIDO (ola nativa) y lo
-     tapaba. Fix: destello = `html[data-season] .botnav::before` (dentro del botnav).
-   - Lluvia «salta atrás / se retrasa» al swipe: una copia por pestaña = otra fase de
-     animación. Fix: UNA sola `.season-amb` GLOBAL `position:fixed; z-index:36` montada
-     con `useMemo` (no remount al cambiar tab). Guardián: `tests/season-detalle.test.mjs`.
+1. **Ambientación** (`.season-amb` + destello superior):
+   **Incidentes 2026-08-05 (mismo día):**
+   - Host transparente → Inicio+Gastos. Fix: host SIEMPRE opaco.
+   - Lluvia saltaba de fase al swipe → UNA capa GLOBAL fixed + `useMemo`.
+   - Destello: él lo quiere ARRIBA A LA DERECHA, no en la barra. Cocerlo en
+     `background-image` del host hacía que al scrollear apareciera/desapareciera.
+     `botnav::before` era el sitio equivocado y dejaba ver la lista a través de la barra.
+     Fix: `html[data-season]::before` `position:fixed; z-index:36` (viewport). Lluvia z-37.
+     Guardián: `tests/season-detalle.test.mjs`.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`

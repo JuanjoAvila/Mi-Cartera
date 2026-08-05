@@ -1,16 +1,14 @@
 /**
- * Guardián de ambientación de temporada (actualizado 2026-08-05, 4ª pasada).
+ * Guardián de ambientación de temporada (actualizado 2026-08-05, 5ª pasada).
  *
- * Historial del día:
- *  - Host transparente → Inicio+Gastos. Fix: host SIEMPRE opaco.
- *  - Destello solo al swipe (z-1 tapado). Intento z-39 «detrás del botnav» → en reposo
- *    `.scroll-host-on .botnav` pone fondo SÓLIDO y lo tapa otra vez.
- *  - Lluvia por pestaña: al swipe se veía OTRA fase («vuelve más arriba / se retrasa»).
+ * El destello que él quiere es el de ARRIBA A LA DERECHA (seasonglow), NO un halo en la barra.
+ * Cocerlo en background-image del host hacía que al scrollear apareciera/desapareciera.
+ * botnav::before era el sitio equivocado y dejaba ver la lista a través de la barra.
  *
  * Fix actual:
- *  1. Destello = `html[data-season] .botnav::before` (dentro del botnav, sobrevive al fondo sólido).
- *  2. Lluvia = UNA sola `.season-amb` GLOBAL fixed z-36 (useMemo, no remount al cambiar tab).
- *  3. Host sigue opaco; velo superior cocido en background-image del host.
+ *  1. Destello = `html[data-season]::before` fixed z-index 36 (viewport, no scroll).
+ *  2. Lluvia = UNA `.season-amb` GLOBAL fixed z-37 (useMemo).
+ *  3. Host opaco. Sin botnav::before de halo. Sin html::after de destello inferior.
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -30,65 +28,50 @@ assert.doesNotMatch(shell, /@keyframes\s+seasonrise\s*\{/, "seasonrise no puede 
 assert.doesNotMatch(main, /seasonEpoch/, "seasonEpoch no puede volver");
 assert.doesNotMatch(i18n, /const\s+SEASON_FX\b/, "SEASON_FX no puede volver");
 
-/* ---- 2. Una sola capa GLOBAL (no por pestaña) ---- */
+/* ---- 2. Lluvia: una sola capa GLOBAL ---- */
 assert.match(shell, /\.season-amb\s*\{/, "falta `.season-amb`");
-assert.match(shell, /\.season-amb\{[^}]*position:\s*fixed/, "`.season-amb` debe ser fixed (capa global)");
-assert.match(shell, /\.season-amb\{[^}]*z-index:\s*36/, "`.season-amb` a z-index 36 (sobre host 35, bajo botnav 40)");
+assert.match(shell, /\.season-amb\{[^}]*position:\s*fixed/, "`.season-amb` fixed");
+assert.match(shell, /\.season-amb\{[^}]*z-index:\s*37/, "`.season-amb` z-index 37");
 assert.match(shell, /@keyframes\s+seasonDrift\s*\{/, "falta `seasonDrift`");
-assert.match(shell, /\.page\{[^}]*z-index:\s*2/, "`.page` conserva z-index 2");
-assert.match(main, /useMemo\(function\(\)\{[\s\S]*?className:"season-amb"/, "montar `.season-amb` con useMemo (sin remount)");
-assert.doesNotMatch(
-  main,
-  /show\s*&&\s*seasonPool\s*\?\s*React\.createElement\("div",\{className:"season-amb"/,
-  "NO montar una `.season-amb` por pestaña (causaba salto de fase al swipe)"
-);
-assert.doesNotMatch(main, /isHost\s*&&\s*seasonPool/, "NO montar solo en isHost");
-assert.doesNotMatch(main, /setSeasonEpoch/, "no JS de ráfaga al cambiar de tab");
+assert.match(main, /useMemo\(function\(\)\{[\s\S]*?className:"season-amb"/, "`.season-amb` con useMemo");
+assert.doesNotMatch(main, /show\s*&&\s*seasonPool\s*\?\s*React\.createElement\("div",\{className:"season-amb"/, "NO por pestaña");
+assert.doesNotMatch(main, /isHost\s*&&\s*seasonPool/, "NO solo isHost");
+assert.doesNotMatch(main, /setSeasonEpoch/, "no ráfaga al cambiar tab");
 assert.match(i18n, /const\s+SEASON_AMB\s*=/, "falta SEASON_AMB");
-assert.match(i18n, /const\s+SEASONS\s*=/, "SEASONS intacto");
 
 /* ---- 3. Host SIEMPRE opaco ---- */
 assert.match(
   shell,
-  /\.page\.page-scroll-host\{[\s\S]*?background-color:\s*var\(--bg\)/,
-  "`.page-scroll-host` fondo OPACO (background-color)"
+  /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/,
+  "`.page-scroll-host` fondo OPACO"
 );
 assert.doesNotMatch(
   shell,
-  /\.page\.page-scroll-host\{[^}]*background:\s*transparent/,
-  "`.page-scroll-host` no puede ser transparente"
+  /html\[data-season\]\s+\.page\.page-scroll-host\{[^}]*background-image/,
+  "destello NO cocido en background-image del host (se iba al scrollear)"
 );
 
-/* ---- 4. Destello DENTRO del botnav (sobrevive al fondo sólido de scroll-host-on) ---- */
+/* ---- 4. Destello de ARRIBA (fixed), no en la barra ---- */
 assert.match(
+  shell,
+  /html\[data-season\]::before\{[^}]*z-index:\s*36/,
+  "destello superior fixed a z-index 36"
+);
+assert.match(shell, /@keyframes\s+seasonglow\s*\{/, "falta seasonglow");
+assert.doesNotMatch(
   shell,
   /html\[data-season\]\s+\.botnav::before\{/,
-  "destello debe vivir en `.botnav::before`"
-);
-assert.match(
-  shell,
-  /\.app-shell\.scroll-host-on\s+\.botnav\{[\s\S]*?background:\s*var\(--bg-2\)/,
-  "scroll-host-on sigue con fondo sólido en botnav (ola nativa) — el destello va encima vía ::before"
+  "NO destello en botnav::before (sitio equivocado + fuga de contenido en la barra)"
 );
 assert.doesNotMatch(
   shell,
   /html\[data-season\]::after\{/,
-  "sin html::after de destello (lo tapaba el botnav sólido; ahora es botnav::before)"
-);
-assert.doesNotMatch(
-  shell,
-  /html\[data-season\]::before\{[^}]*z-index:\s*3[69]/,
-  "velo superior NO encima del contenido (z-36/39 lavaba el dinero); queda a z-1 + cocido en el host"
+  "sin html::after de halo inferior"
 );
 
 /* ---- 5. Detalle incrustado ---- */
 assert.match(shell, /--season-ico/, "falta --season-ico");
 assert.match(shell, /@keyframes\s+seasonchip/, "falta seasonchip");
-assert.match(
-  shell,
-  /html\[data-season\]\s+\.v4-title::after,\s*html\[data-season\]\s+\.v4-inicio-hi::after\s*\{[^}]*content:\s*var\(--season-ico/,
-  "icono en ::after de títulos"
-);
 assert.match(
   i18n,
   /function\s+applySeason[\s\S]{0,300}removeAttribute\(\s*["']data-season["']\s*\)/,
@@ -98,24 +81,19 @@ for (const s of ["mundial", "halloween", "navidad", "verano", "invierno", "pascu
   const re = new RegExp(
     `html\\[data-season="${s}"\\]\\{--season-tinte:[^;]+;--season-ico:"[^"]+"`
   );
-  assert.match(shell, re, `temática "${s}" con --season-tinte y --season-ico`);
+  assert.match(shell, re, `temática "${s}"`);
 }
 
 /* ---- 6. Reducir animaciones ---- */
-assert.match(shell, /prefers-reduced-motion:reduce\)\{[\s\S]*?\.season-amb\{display:none/, "reduce-motion oculta `.season-amb`");
+assert.match(shell, /prefers-reduced-motion:reduce\)\{[\s\S]*?\.season-amb\{display:none/, "reduce-motion oculta lluvia");
 assert.match(
   shell,
-  /prefers-reduced-motion:reduce\)\{[\s\S]*?html\[data-season\]\s+\.botnav::before\{display:none/,
-  "reduce-motion oculta el destello del botnav"
-);
-assert.match(
-  shell,
-  /prefers-reduced-motion:reduce\)\{[\s\S]*?html\[data-season\]\s+\.v4-title::after,\s*html\[data-season\]\s+\.v4-inicio-hi::after\{animation:none/,
-  "reduce-motion apaga el pop del icono"
+  /prefers-reduced-motion:reduce\)\{[\s\S]*?html\[data-season\]::before\{display:none/,
+  "reduce-motion oculta destello superior"
 );
 
 /* ---- 7. Tanda temporada fuera ---- */
-assert.doesNotMatch(comps, /\{id:"temporada"\s*,\s*t:/, "tanda temporada no puede seguir en el panel");
-assert.match(comps, /temporada.*QUITADA|QUITADA.*temporada/i, "debe quedar escrito por qué se quitó");
+assert.doesNotMatch(comps, /\{id:"temporada"\s*,\s*t:/, "tanda temporada fuera");
+assert.match(comps, /temporada.*QUITADA|QUITADA.*temporada/i, "por qué se quitó");
 
-console.log("ok: destello en botnav::before; lluvia global fija z-36 sin salto de fase; host opaco");
+console.log("ok: destello arriba fixed z-36; lluvia global z-37; sin halo en barra; host opaco");

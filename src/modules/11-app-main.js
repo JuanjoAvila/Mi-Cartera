@@ -2803,7 +2803,7 @@ function App(){
   },[tab, tabIds.join("|")]);
   // Ambientación: UNA sola capa GLOBAL (fixed z-36). Feedback 2026-08-05 (3ª): una copia
   // por pestaña hacía que al swipe se viera OTRA fase («vuelve más arriba / se retrasa»).
-  // Host opaco siempre. Destello = botnav::before (sobrevive al fondo sólido de scroll-host-on).
+  // Host opaco siempre. Destello de ARRIBA = html::before fixed (no botnav).
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
