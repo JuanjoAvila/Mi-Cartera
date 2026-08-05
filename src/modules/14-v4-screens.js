@@ -512,12 +512,18 @@ function InvToolsSheet({open, onClose, state, set, fetchPrices, pricing}){
     ), document.body);
 }
 
-/* Sheet FAB «Apuntar» — teclado propio, gasto/ingreso (SPEC §7). */
+/* Sheet FAB «Apuntar» — teclado propio, gasto/ingreso (SPEC §7).
+   La MONEDA DEL APUNTE es independiente de la de visualización (Ajustes → Dinero):
+   en el crucero apuntas en ₺ y sigues viendo la app en € (feedback 2026-08-05).
+   Se guarda siempre en €; sin tipo de cambio no se guarda — no inventamos el cambio. */
 function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   const [kind,setKind]=useState("gasto"); // gasto | ingreso
   const [raw,setRaw]=useState("");
   const [note,setNote]=useState("");
   const [cat,setCat]=useState("super");
+  // Moneda en la que tecleas el importe (NO la de pantalla). Por defecto la de visualización;
+  // se puede cambiar a liras/dólares/… sin tocar Ajustes.
+  const [entryCur,setEntryCur]=useState("EUR");
   // Banco del apunte (petición 2026-07-18: «poder elegir el banco si apuntas un gasto manual»).
   // Opciones = los bancos de tus cuentas; por defecto la de gasto diario (lo que ya hacía Gastos).
   const [bank,setBank]=useState(null);
@@ -531,11 +537,20 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
       setKind("gasto"); setRaw(""); setNote(""); setCat("super");
       const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
       setBank((daily&&daily.ent)||null);
+      // Arranca en la moneda de pantalla (o la última que usó al apuntar en este viaje).
+      const last=(state.settings&&state.settings.apuntarCur)||(state.settings&&state.settings.currency)||"EUR";
+      setEntryCur(String(last).toUpperCase());
     }
   },[open]);
   useBackClose(!!open, onClose);
   const swipe=useSheetSwipe(!!open, onClose);
   if(!open) return null;
+  const entrySym=CUR_SYM[entryCur]||entryCur;
+  // Chips: siempre EUR + las de viaje más usadas (aunque el FX aún no haya llegado — al
+  // guardar sin tipo sale toast, no inventamos el cambio). El resto, solo si hay tipo.
+  const tbl=fxTableOf(state);
+  const curAlways={ EUR:1, TRY:1, USD:1, GBP:1, CHF:1 };
+  const curChips=CUR_LIST.filter(function(c){ return curAlways[c] || c===entryCur || tbl[c]>0; });
   const tap=function(ch){
     if(ch==="⌫"){ setRaw(function(r){ return r.slice(0,-1); }); return; }
     setRaw(function(r){
@@ -545,17 +560,32 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
     });
   };
   const amt=parseFloat(String(raw).replace(/\./g,"").replace(",","."))||0;
+  const pickCur=function(c){
+    setEntryCur(c);
+    // Recuerda la última para el siguiente Apuntar (viaje: no volver a buscar la lira cada vez).
+    set(function(s){
+      return Object.assign({},s,{settings:Object.assign({},s.settings,{apuntarCur:c})});
+    });
+  };
   const save=function(){
     if(!(amt>0)){ showToast(t("v4_apuntar_need")); return; }
+    if(entryCur!=="EUR"){
+      const r=tbl[entryCur];
+      if(!(r>0)){ showToast(t("fx_no_rate")); return; }
+    }
     try{ if(navigator.vibrate) navigator.vibrate(12); }catch(e){}
     const isIn=kind==="ingreso";
+    // Guardamos en € (base de la app); lo tecleado iba en entryCur.
+    const amtEur=+toEurAmt(amt, entryCur, state).toFixed(2);
     const e={
       id:uid(), date:new Date().toISOString().slice(0,10),
-      amount:isIn?-Math.abs(amt):Math.abs(amt),
+      amount:isIn?-Math.abs(amtEur):Math.abs(amtEur),
       merchant:note.trim()||(isIn?t("cat_ingreso"):catName(cat)),
       category:isIn?"ingreso":cat, source:"manual", card:!isIn
     };
     if(bank) e.ent=bank;   // banco elegido → filtro por banco en Gastos (y viaja en source)
+    // Rastro del importe original (informativo; la lista sigue en la moneda de visualización).
+    if(entryCur!=="EUR"){ e.origAmount=amt; e.origCur=entryCur; }
     set(function(s){ return Object.assign({},s,{expenses:(s.expenses||[]).concat([e])}); });
     if(cloud.enabled()) cloud.addExpense(e).catch(function(){});
     onClose();
@@ -573,7 +603,15 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
           React.createElement("button",{className:kind==="ingreso"?"on":"",onClick:function(){ setKind("ingreso"); }},"💰 "+t("v4_ingreso"))
         ),
         React.createElement("div",{className:"v4-apuntar-amt serif num"},
-          raw?raw+" €":React.createElement("span",{style:{color:"var(--muted-2)"}},"0 €")),
+          raw?raw+" "+entrySym:React.createElement("span",{style:{color:"var(--muted-2)"}},"0 "+entrySym)),
+        entryCur!=="EUR" && React.createElement("div",{style:{fontSize:12,color:"var(--muted)",textAlign:"center",marginTop:-4,marginBottom:6}}, t("ap_fx_hint")),
+        // Moneda del apunte (independiente de Ajustes → Moneda de visualización).
+        React.createElement("div",{className:"v4-chips","aria-label":t("ap_cur_lbl")},
+          curChips.map(function(c){
+            return React.createElement("button",{key:c,type:"button",className:"v4-chip"+(entryCur===c?" on":""),onClick:function(){ pickCur(c); }},
+              (CUR_SYM[c]||c)+" "+c);
+          })
+        ),
         React.createElement("input",{className:"v4-input",placeholder:t("v4_apuntar_ph"),value:note,onChange:function(e){ setNote(e.target.value); }}),
         kind==="gasto" && React.createElement("div",{className:"v4-chips"},
           cats.map(function(c){

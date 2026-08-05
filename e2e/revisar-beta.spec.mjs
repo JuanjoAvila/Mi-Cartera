@@ -339,11 +339,16 @@ test("la versión en curso: tandas (o la implícita) cubren TODOS los puntos ali
   expect(r.alineados, "cada índice global tiene que caer sobre el texto que enseña su tanda").toBe(true);
 });
 
-/** Siembra dos tandas de mentira en RELEASE_NOTES[0] para probar independencia del panel
- *  cuando la versión en curso ya no declara tandas (aprobadas → array vacío). */
+/** Siembra dos tandas de mentira en la entrada de RELEASE_NOTES que resuelve la versión en curso.
+ *  Antes mutaba siempre RELEASE_NOTES[0]: valía mientras la ronda viva era esa. Con 4.14.0 delante
+ *  y el test clavando APP_VERSION a un .7 de otra base, el panel leía la entrada real (vacía o con
+ *  una sola tanda) y la siembra no llegaba. */
 async function conTandasDePrueba(page) {
   await page.evaluate(() => {
-    const n = RELEASE_NOTES && RELEASE_NOTES[0];
+    const base = typeof mcVerBase === "function"
+      ? mcVerBase(CONFIG.APP_VERSION)
+      : String(CONFIG.APP_VERSION || "").split(".").slice(0, 3).join(".");
+    const n = (RELEASE_NOTES || []).filter(function (x) { return x.v === base; })[0] || RELEASE_NOTES[0];
     if (!n) return;
     n.tandas = [
       { id: "a", t: "Tanda A de prueba", items: { es: ["Punto A1", "Punto A2"] } },
@@ -354,8 +359,9 @@ async function conTandasDePrueba(page) {
 
 test("un fallo en una tanda NO bloquea aprobar las otras", async ({ page }) => {
   await abrirRevisionBeta(page);
+  // Compilación de la ronda VIVA (RELEASE_NOTES[0]), no un número clavado de una ronda ya cerrada.
+  await page.evaluate(() => { CONFIG.APP_VERSION = RELEASE_NOTES[0].v + ".7"; });
   await conTandasDePrueba(page);
-  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });
   const panel = await conProduccionEn(page, "0.0.1");
   await expect(panel).toBeVisible();
 
@@ -382,8 +388,8 @@ test("un fallo en una tanda NO bloquea aprobar las otras", async ({ page }) => {
 
 test("cada tanda lleva su cuenta propia, no la de la beta entera", async ({ page }) => {
   await abrirRevisionBeta(page);
+  await page.evaluate(() => { CONFIG.APP_VERSION = RELEASE_NOTES[0].v + ".7"; });
   await conTandasDePrueba(page);
-  await page.evaluate(() => { CONFIG.APP_VERSION = "4.13.0.7"; });
   const panel = await conProduccionEn(page, "0.0.1");
   const primera = panel.locator(".beta-tanda").nth(0);
   const total = await primera.locator(".beta-item").count();

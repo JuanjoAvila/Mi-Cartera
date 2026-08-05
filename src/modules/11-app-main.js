@@ -1536,24 +1536,31 @@ function App(){
      state.trRewardsTotal,state.fx,state.fxRates]);
 
   const [pricing,setPricing]=useState(false);
-  // Cambio USD→EUR dinámico (tipos de referencia del BCE vía frankfurter.app, gratis y sin key).
+  // Tipos de referencia del BCE vía frankfurter.app (gratis, sin key). La lista sale de CUR_LIST
+  // para que añadir una divisa (p. ej. TRY en 4.14.0) no deje el fetch desfasado del selector —
+  // eso es lo que hacía «Comparar monedas» enseñar filas vacías y la moneda elegida no cambiar nada
+  // (sin tipo → DISP se queda en € en silencio).
   const refreshFx=function(){
-    fetch("https://api.frankfurter.app/latest?from=EUR&to=USD,GBP,CHF,JPY,CAD,AUD,CNY,MXN,SEK,NOK,DKK,PLN,BRL,INR").then(function(r){ return r.json(); }).then(function(d){
+    const to=CUR_LIST.filter(function(c){ return c!=="EUR"; }).join(",");
+    return fetch("https://api.frankfurter.app/latest?from=EUR&to="+encodeURIComponent(to)).then(function(r){ return r.json(); }).then(function(d){
       const rates=d&&d.rates;
-      if(!rates) return;
+      if(!rates) return null;
       const fxRates={};
       for(const c in rates){ if(rates[c]>0) fxRates[c]=+(1/rates[c]).toFixed(6); }   // XXX→EUR
       const usd=fxRates.USD;
+      const fxDate=d.date||null;
       set(function(s){
         const prev=fxTableOf(s);
         let changed=false;
         for(const k in fxRates){ if(Math.abs((prev[k]||0)-fxRates[k])>=0.000001){ changed=true; break; } }
-        if(!changed && (usd==null || Math.abs((s.fx||0)-(usd||0))<0.0001)) return s;
+        if(!changed && (usd==null || Math.abs((s.fx||0)-(usd||0))<0.0001) && s.fxDate===fxDate) return s;
         const patch={fxRates:fxRates};
         if(usd>0) patch.fx=+(usd.toFixed(4));
+        if(fxDate) patch.fxDate=fxDate;
         return Object.assign({},s,patch);
       });
-    }).catch(function(){});
+      return fxRates;
+    }).catch(function(){ return null; });
   };
   useEffect(function(){ mcScheduleIdle(refreshFx, 4000); },[]);   // FX tras primer pintado
   useEffect(function(){ applyTheme(state.settings&&state.settings.theme); },[state.settings&&state.settings.theme]);  // tema de color
@@ -2855,7 +2862,7 @@ function App(){
         React.createElement("button",{className:"back","aria-label":t("v4_back"),onClick:function(){ setDrawerOpen(false); }},"‹"),
         React.createElement("h1",null, t("settings"))
       ),
-      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,goBanks:banksGoto,goBanksFocus:banksFocus,
+      drawerMounted && React.createElement(SettingsPanel,{state:state,set:set,onClose:function(){ setDrawerOpen(false); },showToast:showToast,uid:uid,onBankSync:function(){ return runBankSync({manual:true}); },onTour:openTour,totals:totals,fetchPrices:fetchPrices,refreshFx:refreshFx,goBanks:banksGoto,goBanksFocus:banksFocus,
         goGastos:function(){ setDrawerOpen(false); setGastosForceAll(Date.now()); const i=tabIds.indexOf("gastos"); if(i>=0) goTabTop(i); }})
     ),
     React.createElement("div",{className:"profile-dim-layer"+(profileOpen?" on":""),ref:dimLayerRef,style:profileOpen?{opacity:"1"}:undefined,"aria-hidden":"true"}),

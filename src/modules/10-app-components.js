@@ -1424,6 +1424,39 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.14.0", d:"5 ago 2026",
+   t:{es:"Liras y monedas de verdad, y Ajustes → Dinero más claro",
+      en:"Real liras and currencies, and a clearer Settings → Money",
+      ca:"Lires i monedes de veritat, i Ajustos → Diners més clar"},
+   tandas:[
+     {id:"multidivisa", t:"💱 Multidivisa y Ajustes → Dinero", items:[
+       "Ajustes → Dinero → Moneda de visualización → Lira turca: los importes de toda la app pasan a ₺.",
+       "Vuelve a Euro: todo vuelve a €.",
+       "Abre «Comparar monedas»: ves 1 € → … con números (incluida la lira), no una lista de rayas vacías.",
+       "Apuntar: elige el chip ₺ TRY, escribe 150 y guarda — se convierte a € solos. La app puede seguir en euros.",
+       "En Ajustes → Dinero YA NO aparecen «Presupuesto mensual» ni «Bancos de gasto diario» (siguen en Resumen y Cartera).",
+       "«Total de gastos» sigue ahí y se puede cambiar entre las dos vistas.",
+     ]}
+   ],
+   items:{
+   es:[
+    "💱 Nueva moneda: la lira turca. Si cambias la moneda de visualización, toda la app se adapta (útil si alguien usa otra divisa de casa).",
+    "✍️ Al apuntar un gasto eliges la moneda ahí mismo (₺, $, €…) y se convierte a euros solo, con el cambio del día — sin tocar cómo se ve el resto de la app.",
+    "📊 «Comparar monedas» enseña el cambio real (ya no sale una lista vacía).",
+    "🧹 Ajustes → Dinero más limpio: fuera el presupuesto duplicado y los bancos de gasto diario (ya están en Resumen y Cartera). Se queda lo de la moneda y cómo se ve el total de gastos.",
+   ],
+   en:[
+    "💱 New currency: the Turkish lira. Change the display currency and the whole app follows (handy if someone's home currency isn't the euro).",
+    "✍️ When you log an expense you pick the currency right there (₺, $, €…) and it converts to euros on its own, at today's rate — without changing how the rest of the app looks.",
+    "📊 «Compare currencies» shows real rates (no more empty dashes).",
+    "🧹 Settings → Money is cleaner: the duplicate budget and daily-spending banks are gone (they already live on Overview and Portfolio). Currency and how the expenses total looks stay.",
+   ],
+   ca:[
+    "💱 Nova moneda: la lira turca. Si canvies la moneda de visualització, tota l'app s'hi adapta (útil si algú usa una altra divisa de casa).",
+    "✍️ En apuntar una despesa tries la moneda allà mateix (₺, $, €…) i es converteix a euros sola, amb el canvi del dia — sense tocar com es veu la resta de l'app.",
+    "📊 «Comparar monedes» ensenya el canvi real (ja no surt una llista buida).",
+    "🧹 Ajustos → Diners més net: fora el pressupost duplicat i els bancs de despesa diària (ja són al Resum i a Cartera). Es queda el de la moneda i com es veu el total de despeses.",
+   ]}},
   {v:"4.13.0", d:"5 ago 2026",
    t:{es:"La app se mueve como te gusta, y tus bancos ya no se lían",
       en:"The app moves the way you like, and your banks stop getting mixed up",
@@ -2041,9 +2074,8 @@ function WhatsNew({onClose, showToast, set, state}){
 }
 
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
-function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, goBanks, goBanksFocus, goGastos}){
-  const [budget,setBudget]=useState(String(state.budget||0));
-  const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | null
+function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, refreshFx, goBanks, goBanksFocus, goGastos}){
+  const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | "cur" | null
   const [newsOpen,setNewsOpen]=useState(false);   // histórico de Novedades (WhatsNew reabierto a mano)
   const [privOpen,setPrivOpen]=useState(false);    // política de privacidad DENTRO de la app (no _blank)
   const [sharedOpen,setSharedOpen]=useState(false);// Hogar + gastos compartidos (sin tab propia en v4)
@@ -2191,11 +2223,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   // bajan de tamaño para no parecer listones (feedback 2026-07-18).
   const inp={width:"100%",padding:"10px 13px",borderRadius:"12px",border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:"16px",boxSizing:"border-box"};
   const btn={width:"100%",padding:"10px 12px",borderRadius:"12px",border:"none",background:"var(--mint)",color:"#06120C",fontWeight:700,fontSize:"14px",marginTop:"10px",cursor:"pointer"};
-  const saveNums=function(){
-    const b=parseFloat(String(budget).replace(',','.'))||0;
-    set(function(s){ return Object.assign({},s,{budget:b}); });
-    showToast(t("st_budget_saved"));
-  };
+  /* Presupuesto mensual: se edita en Resumen (BudgetSheet). Bancos de gasto diario: en Cartera.
+     Quitados de aquí el 2026-08-05 — eran duplicados muertos / confusos (feedback suyo). */
   /* `doExport`/`doImport` (copia manual a fichero JSON) retirados el 2026-08-04 a petición suya:
      la copia automática diaria en la nube ya cubre el caso y se restaura desde Ajustes → Copia de
      seguridad. El importar a mano además sobrescribía el estado ENTERO de golpe, que es la clase de
@@ -2323,60 +2352,61 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     ),
 
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_money")),
-    grp("budget","💶",t("budget_month"),"presupuesto budget moneda divisa currency euro dolar",eur0(state.budget||0),
-      React.createElement("div",{style:{padding:"8px 14px 14px"}},
-        React.createElement("input",{style:inp,type:"number",inputMode:"decimal",value:budget,onChange:function(e){ setBudget(e.target.value); }}),
-        React.createElement("button",{style:btn,onClick:saveNums},t("save"))
-      ),
-      // Acordeón con TODAS las divisas del FX del BCE (ampliado 2026-07-18: «más monedas»).
+    // Dinero: moneda de visualización (ahora SÍ convierte) + comparativa + cómo se ve el total
+    // de gastos. Presupuesto y bancos de gasto diario viven en Resumen / Cartera (2026-08-05).
+    grp("money","💱",t("v4_set_money"),"moneda divisa currency euro dolar lira try presupuesto comparar",t("cur_"+curCur.toLowerCase()),
       row("cur","💱",t("currency"),t("cur_"+curCur.toLowerCase()),function(){ toggleExp("cur"); }),
       expand==="cur" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
           CUR_LIST.map(function(c){
-            return React.createElement("button",{key:c,onClick:function(){ setS({currency:c}); showToast(t("cur_"+c.toLowerCase())); },style:Object.assign({},segBtn(curCur===c),{flex:"1 1 44%"})}, t("cur_"+c.toLowerCase()));
-          }))),
-      // Comparativa: 1 € al cambio en cada moneda (tipos BCE ya guardados en fxRates).
-      row("curcmp","📊",t("st_cur_compare"),null,function(){ setCurCompare(!curCompare); }),
+            return React.createElement("button",{key:c,onClick:function(){
+              // Sin tipo de cambio la app se quedaba en € en silencio («no hace nada»). Si falta,
+              // pedimos FX y solo entonces aplicamos; si sigue sin llegar, se lo decimos.
+              const applyCur=function(s){
+                const r=c==="EUR"?1:fxTableOf(s)[c];
+                if(c!=="EUR"&&!(r>0)) return null;
+                return Object.assign({},s,{settings:Object.assign({},s.settings,{currency:c})});
+              };
+              if(applyCur(state)){
+                set(function(s){ return applyCur(s)||s; });
+                showToast(t("cur_"+c.toLowerCase()));
+                return;
+              }
+              showToast(t("fx_waiting"));
+              Promise.resolve(refreshFx&&refreshFx()).then(function(){
+                set(function(s){
+                  const next=applyCur(s);
+                  if(!next){ showToast(t("fx_no_rate")); return s; }
+                  showToast(t("cur_"+c.toLowerCase()));
+                  return next;
+                });
+              });
+            },style:Object.assign({},segBtn(curCur===c),{flex:"1 1 44%"})}, t("cur_"+c.toLowerCase()));
+          })),
+        React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"8px 2px 0"}}, t("currency_hint"))),
+      // Comparativa: 1 € al cambio. Solo filas CON tipo (si no hay FX aún, se pide y se explica).
+      row("curcmp","📊",t("st_cur_compare"),null,function(){
+        const open=!curCompare; setCurCompare(open);
+        if(open && refreshFx) refreshFx();
+      }),
       curCompare && React.createElement("div",{className:"set-exp"},
         (function(){
           const tbl=fxTableOf(state);   // c → (1 c = tbl[c] €)
-          const rows=CUR_LIST.filter(function(c){ return c!=="EUR"; }).map(function(c){
-            const per=tbl[c]>0 ? (1/tbl[c]) : null;   // 1 € = per c
+          const rows=CUR_LIST.filter(function(c){ return c!=="EUR" && tbl[c]>0; }).map(function(c){
+            const per=1/tbl[c];   // 1 € = per c
             return React.createElement("div",{key:c,style:{display:"flex",justifyContent:"space-between",padding:"7px 2px",borderBottom:"1px solid var(--line-soft)",fontSize:13.5}},
-              React.createElement("span",{style:{color:"var(--muted)"}}, "1 € ="),
-              React.createElement("span",{className:"num",style:{fontWeight:700}}, per!=null ? (NF.format(per)+" "+(CUR_SYM[c]||c)) : "—"));
+              React.createElement("span",{style:{color:"var(--muted)"}}, "1 € → "+t("cur_"+c.toLowerCase())),
+              React.createElement("span",{className:"num",style:{fontWeight:700}}, NF.format(per)+" "+(CUR_SYM[c]||c)));
           });
+          if(!rows.length){
+            return React.createElement("div",{style:{marginTop:8}},
+              React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
+              refreshFx && React.createElement("button",{type:"button",style:Object.assign({},segBtn(false),{marginTop:10,flex:"1 1 100%"}),onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")));
+          }
           return React.createElement("div",{style:{marginTop:6}},
             rows,
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}}, t("st_cur_compare_hint")));
-        })()),
-      // VARIOS bancos de gasto diario (petición 2026-07-18: TR + Revolut en un viaje, mismo
-      // presupuesto). Lista TODAS tus cuentas (no solo las de Open Banking): al marcar un banco,
-      // sus compras cuentan en el presupuesto y aparecen en Gastos. El saldo de gasto sigue
-      // saliendo de la cuenta «diario» principal; esto solo decide QUÉ compras se contabilizan.
-      row("expbanks","🪙",t("st_expense_banks"),null,function(){ toggleExp("expbanks"); }),
-      expand==="expbanks" && React.createElement("div",{className:"set-exp"},
-        (function(){
-          const ents=[]; (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&ents.indexOf(a.ent)<0) ents.push(a.ent); });
-          if(!ents.length) return React.createElement("div",{style:{fontSize:12,color:"var(--muted-2)",marginTop:8}}, t("st_expense_banks_none"));
-          const cur=expenseBankEnts(state);
-          const toggleEnt=function(ent){
-            set(function(s){
-              const base=expenseBankEnts(s).slice();
-              const i=base.indexOf(ent);
-              if(i>=0){ if(base.length===1) return s; base.splice(i,1); }   // no dejar 0 marcados
-              else base.push(ent);
-              return Object.assign({},s,{settings:Object.assign({},s.settings,{expenseBanks:base})});
-            });
-          };
-          return React.createElement(React.Fragment,null,
-            React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginTop:8}},
-              ents.map(function(ent){
-                const on=cur.indexOf(ent)>=0;
-                return React.createElement("button",{key:ent,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleEnt(ent); }},
-                  (on?"✓ ":"")+entOf(ent).label);
-              })),
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}}, t("st_expense_banks_hint")));
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}},
+              t("st_cur_compare_hint")+(state.fxDate?(" · "+state.fxDate):"")));
         })()),
       (function(){
         const gm=(state.settings&&state.settings.gTotalMode)||"split";

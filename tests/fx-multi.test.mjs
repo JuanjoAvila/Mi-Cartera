@@ -52,4 +52,13 @@ t("invCostEur: convierte cost nativo si no hay costEur", () => {
   assert.equal(ctx.invCostEur({ cost: 100, cur: "USD" }, { fx: 0.92 }), 92);
 });
 
+t("toEurAmt: TRY con fxRates", () => {
+  // 1 TRY = 0.018 EUR → 100 TRY = 1.8 EUR
+  assert.ok(Math.abs(ctx.toEurAmt(100, "TRY", { fxRates: { TRY: 0.018 } }) - 1.8) < 0.001);
+});
+
+t("fromEurAmt: TRY con fxRates", () => {
+  assert.ok(Math.abs(ctx.fromEurAmt(1.8, "TRY", { fxRates: { TRY: 0.018 } }) - 100) < 0.001);
+});
+
 console.log("\nfx-multi: OK");

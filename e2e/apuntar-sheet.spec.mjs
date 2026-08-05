@@ -51,6 +51,39 @@ test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }
   await expect(sheet).toHaveCount(0, { timeout: 3_000 });
 });
 
+// Multidivisa 4.14.0: la moneda del apunte es INDEPENDIENTE de la de visualización.
+// Apuntas en ₺ con la app en €; el gasto se guarda convertido a euros.
+test("Apuntar en ₺ con la app en €: convierte y guarda en euros", async ({ page }) => {
+  await seedLoggedInDashboard(page, {
+    settings: { autoPrices: false, theme: "green", currency: "EUR", lang: "es" },
+    // Tipo de mentira: 1 TRY = 0,02 € → 150 ₺ = 3 €.
+    fxRates: { TRY: 0.02, USD: 0.92, GBP: 1.15, CHF: 1.05 },
+  });
+  await page.goto("/");
+  await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+  const dismissNews = page.getByRole("button", { name: /Entendido|Got it/i });
+  if (await dismissNews.count()) await dismissNews.first().click();
+
+  await page.locator(".botnav-fab").click();
+  const sheet = page.locator(".v4-sheet");
+  await expect(sheet).toBeVisible();
+  await page.waitForTimeout(450);
+
+  await sheet.getByRole("button", { name: "₺ TRY", exact: true }).click();
+  await expect(sheet.locator(".v4-apuntar-amt")).toContainText("₺");
+  for (const d of ["1", "5", "0"]) {
+    await sheet.locator(".v4-keys").getByRole("button", { name: d, exact: true }).click();
+  }
+  await sheet.locator(".v4-input").fill("Café Estambul");
+  await sheet.locator(".v4-cta").click();
+  await expect(sheet).toHaveCount(0, { timeout: 3_000 });
+
+  // Apuntar navega a Gastos: 150 ₺ × 0,02 = 3 €. El DOM es la prueba (el guardado a
+  // localStorage va con debounce de 400 ms; asertar ahí es flaky).
+  await expect(page.getByText("Café Estambul").first()).toBeVisible({ timeout: 5_000 });
+  await expect(page.getByText("3,00 €").first()).toBeVisible();
+});
+
 // El sheet «Más…» de períodos en Gastos era el ÚNICO sin swipe-para-cerrar (feedback 2026-07-18,
 // «el más de la foto»): ahora usa el mismo patrón que el resto.
 test("Gastos › Más… (períodos): cierra tirando hacia abajo", async ({ page }) => {
