@@ -5139,7 +5139,7 @@ const SAVE_HITOS=[100,500,1000,5000];   // hitos de ahorro (medallas)
 const GM_LEVELS=[0,250,1000,3000,8000]; // umbrales de savedScore por nivel
 const GM_ICONS=["🐣","🐢","🦊","🦅","👑"];
 // Gasto mensual (solo gastos reales, amount>0) por clave YYYY-MM.
-function spendByMonth(expenses){ const m={}; (expenses||[]).forEach(function(e){ if(e.amount>0){ const k=mkOf(parseDate(e.date)); m[k]=(m[k]||0)+e.amount; } }); return m; }
+function spendByMonth(expenses){ const m={}; (expenses||[]).forEach(function(e){ if(e.amount>0 && !CAT_NEUTRAS[e.category]){ const k=mkOf(parseDate(e.date)); m[k]=(m[k]||0)+e.amount; } }); return m; }
 function median(arr){ const a=(arr||[]).slice().sort(function(x,y){return x-y;}); const n=a.length; if(!n) return 0; return n%2?a[(n-1)/2]:(a[n/2-1]+a[n/2])/2; }
 // Detector de SUSCRIPCIONES / cargos recurrentes: mismo comercio en ≥3 meses distintos con importe
 // estable (≥60% dentro de ±25% de la mediana). Devuelve {name,cat,amount,months,last,active,yearly}.
@@ -5185,7 +5185,10 @@ function gamifOf(state, totals){
   const nextMin = (lvl+1<GM_LEVELS.length) ? GM_LEVELS[lvl+1] : null;
   const base=GM_LEVELS[lvl];
   const lvlProg = nextMin!=null ? Math.min(100,Math.max(0,(savedScore-base)/(nextMin-base)*100)) : 100;
-  const budget=state.budget||0, spent=tt.thisMonthSpent||0;
+  // Misma cifra que Resumen/Gastos (no thisMonthSpent: mete neutras e ingresos).
+  const bs=monthBudgetStats(state);
+  const budget=bs.budget!=null?bs.budget:(state.budget||0);
+  const spent=Math.max(0, bs.against||0);
   const ruCur=+(((tt.roundupThisMonth||0)+(tt.savebackThisMonth||0))).toFixed(2);
   const budgetReto={ id:"budget", spent:spent, budget:budget, margin:+(budget-spent).toFixed(2), done:budget>0&&spent<=budget, pct: budget>0?Math.min(100,spent/budget*100):0 };
   const ruReto={ id:"roundup", cur:ruCur, goal:RU_GOAL, done:ruCur>=RU_GOAL, pct:Math.min(100,ruCur/RU_GOAL*100) };
@@ -5702,17 +5705,22 @@ function shareMonthReport(state, tt, showToast){
     // tarjeta: gastado este mes + barra de presupuesto
     g.fillStyle=surface; round(72,210,W-144,330,28); g.fill(); g.strokeStyle=line; g.lineWidth=2; round(72,210,W-144,330,28); g.stroke();
     g.fillStyle=muted; g.font="700 27px Manrope, sans-serif"; g.fillText(t("rp_spent").toUpperCase(), 116, 252);
-    g.fillStyle=text;  g.font="700 96px Manrope, sans-serif"; g.fillText(eur0(tt.thisMonthSpent), 112, 300);
-    const bud=state.budget||0;
+    // Misma cifra que Resumen/Gastos (`monthBudgetStats`), no thisMonthSpent.
+    const bs=monthBudgetStats(state);
+    const spentShown=bs.shown!=null?bs.shown:Math.max(0,bs.against||0);
+    g.fillStyle=text;  g.font="700 96px Manrope, sans-serif"; g.fillText(eur0(spentShown), 112, 300);
+    const bud=bs.budget!=null?bs.budget:(state.budget||0);
     if(bud>0){
-      const ratio=Math.min(1, (tt.thisMonthSpent||0)/bud);
+      const ratio=Math.min(1, Math.max(0, bs.against||0)/bud);
       g.fillStyle="rgba(128,128,128,.18)"; round(116,432,W-232,26,13); g.fill();
       g.fillStyle=ratio<1?mint:coral; round(116,432,Math.max(20,(W-232)*ratio),26,13); g.fill();
       g.fillStyle=muted; g.font="600 28px Manrope, sans-serif"; g.fillText(tf("rp_of_budget",{b:eur0(bud),p:Math.round(ratio*100)}), 116, 480);
     }
     // top 3 categorías del mes
     const byCat={};
-    (state.expenses||[]).filter(function(e){ return parseDate(e.date)>=startOfMonth() && e.amount>0; })
+    (state.expenses||[]).filter(function(e){
+      return parseDate(e.date)>=startOfMonth() && e.amount>0 && !CAT_NEUTRAS[e.category];
+    })
       .forEach(function(e){ byCat[e.category||"otros"]=(byCat[e.category||"otros"]||0)+e.amount; });
     const top=Object.keys(byCat).map(function(k){ return [k,byCat[k]]; }).sort(function(a,b){ return b[1]-a[1]; }).slice(0,3);
     let y=610;
@@ -13675,6 +13683,45 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.15.0", d:"5 ago 2026",
+   t:{es:"Ambientación suave, conversor de monedas, y presupuesto que cuadra",
+      en:"Soft seasonal ambience, a currency converter, and a budget that adds up",
+      ca:"Ambientació suau, convertidor de monedes, i pressupost que quadra"},
+   tandas:[
+     {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
+       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo POR DETRÁS de las cartillas, sin tapar números.",
+       "Cambia de pestaña: NO hay ráfaga nueva — la lluvia sigue quieta de fondo.",
+       "Ajustes → Apariencia → Reducir animaciones: la lluvia desaparece del todo.",
+       "Temática → Ninguna: vuelve el look normal, sin piezas.",
+     ]},
+     {id:"fx-converter", t:"🔁 Conversor de monedas", items:[
+       "Ajustes → Dinero → Conversor de monedas: pon un importe, elige moneda de origen y de destino.",
+       "Prueba 150 ₺ → € (o al revés con Intercambiar): el resultado usa el cambio del día.",
+       "Ya NO está la lista fija «1 € → …»; el conversor la sustituye.",
+     ]},
+     {id:"presupuesto-resumen", t:"💶 Presupuesto: misma cifra en todos sitios", items:[
+       "En Resumen, la tarjeta de presupuesto muestra lo mismo que la cabecera de Gastos (sin inversión/traspasos).",
+       "Si tienes dinero reservado a metas, el presupuesto «que queda» ya lo descuenta.",
+       "Los avisos al 50/80/95/100 % usan esa misma cifra (no un total distinto).",
+       "El informe imagen y el reto de «mes bajo presupuesto» también cuadran con Resumen/Gastos.",
+     ]}
+   ],
+   items:{
+   es:[
+    "🍂 Con una temática de temporada, las piezas caen muy suaves por detrás de las cartillas — sin molestar ni tapar números.",
+    "🔁 En Ajustes → Dinero hay un conversor de verdad: eliges importe, moneda de origen y destino.",
+    "💶 El presupuesto del mes es la misma cifra en Resumen, Gastos, avisos e informe: sin mezclar inversiones ni traspasos, y descontando lo reservado a metas.",
+   ],
+   en:[
+    "🍂 With a seasonal theme on, pieces drift very softly behind the cards — without getting in the way or covering numbers.",
+    "🔁 In Settings → Money there's a real converter: pick an amount, a from-currency and a to-currency.",
+    "💶 The monthly budget is the same figure on Home, Spending, alerts and the share image: investments and transfers stay out, and money reserved for goals is deducted.",
+   ],
+   ca:[
+    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus per darrere de les cartilles — sense molestar ni tapar números.",
+    "🔁 A Ajustos → Diners hi ha un convertidor de veritat: tries import, moneda d'origen i de destí.",
+    "💶 El pressupost del mes és la mateixa xifra al Resum, Despeses, avisos i informe: sense barrejar inversions ni traspassos, i descomptant el reservat a metes.",
+   ]}},
   {v:"4.14.1", d:"5 ago 2026",
    t:{es:"El resumen de Gastos ya no se desborda",
       en:"The Spending summary no longer overflows",
@@ -18112,10 +18159,13 @@ function App(){
   // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
   // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
   // en silencio para no disparar tres de golpe). Suena también como toast en la app.
+  // Misma cifra que Resumen/Gastos (`monthBudgetStats`): sin neutras ni reservas, no
+  // `thisMonthSpent` (feedback «el presupuesto no cuadra» — 2026-08-05).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    const bud=state.budget||0; if(!(bud>0)) return;
-    const spent=totals.thisMonthSpent||0;
+    const bs=monthBudgetStats(state);
+    const bud=bs.budget!=null?bs.budget:0; if(!(bud>0)) return;
+    const spent=Math.max(0, bs.against||0);
     const pct=spent/bud*100;
     const ym=new Date().toISOString().slice(0,7);
     let fired=false;
@@ -18131,7 +18181,7 @@ function App(){
       const nat=natPlugin();
       if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} }
     });
-  },[state.onboarded,locked,totals.thisMonthSpent,state.budget]);
+  },[state.onboarded,locked,state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){

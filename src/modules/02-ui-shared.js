@@ -82,17 +82,22 @@ function shareMonthReport(state, tt, showToast){
     // tarjeta: gastado este mes + barra de presupuesto
     g.fillStyle=surface; round(72,210,W-144,330,28); g.fill(); g.strokeStyle=line; g.lineWidth=2; round(72,210,W-144,330,28); g.stroke();
     g.fillStyle=muted; g.font="700 27px Manrope, sans-serif"; g.fillText(t("rp_spent").toUpperCase(), 116, 252);
-    g.fillStyle=text;  g.font="700 96px Manrope, sans-serif"; g.fillText(eur0(tt.thisMonthSpent), 112, 300);
-    const bud=state.budget||0;
+    // Misma cifra que Resumen/Gastos (`monthBudgetStats`), no thisMonthSpent.
+    const bs=monthBudgetStats(state);
+    const spentShown=bs.shown!=null?bs.shown:Math.max(0,bs.against||0);
+    g.fillStyle=text;  g.font="700 96px Manrope, sans-serif"; g.fillText(eur0(spentShown), 112, 300);
+    const bud=bs.budget!=null?bs.budget:(state.budget||0);
     if(bud>0){
-      const ratio=Math.min(1, (tt.thisMonthSpent||0)/bud);
+      const ratio=Math.min(1, Math.max(0, bs.against||0)/bud);
       g.fillStyle="rgba(128,128,128,.18)"; round(116,432,W-232,26,13); g.fill();
       g.fillStyle=ratio<1?mint:coral; round(116,432,Math.max(20,(W-232)*ratio),26,13); g.fill();
       g.fillStyle=muted; g.font="600 28px Manrope, sans-serif"; g.fillText(tf("rp_of_budget",{b:eur0(bud),p:Math.round(ratio*100)}), 116, 480);
     }
     // top 3 categorías del mes
     const byCat={};
-    (state.expenses||[]).filter(function(e){ return parseDate(e.date)>=startOfMonth() && e.amount>0; })
+    (state.expenses||[]).filter(function(e){
+      return parseDate(e.date)>=startOfMonth() && e.amount>0 && !CAT_NEUTRAS[e.category];
+    })
       .forEach(function(e){ byCat[e.category||"otros"]=(byCat[e.category||"otros"]||0)+e.amount; });
     const top=Object.keys(byCat).map(function(k){ return [k,byCat[k]]; }).sort(function(a,b){ return b[1]-a[1]; }).slice(0,3);
     let y=610;

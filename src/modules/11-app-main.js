@@ -1798,10 +1798,13 @@ function App(){
   // Avisos de presupuesto al cruzar 50/80/95/100% (petición 2026-07-18). Una noti por umbral
   // y mes; si al abrir ya vas por el 97%, solo suena el umbral MÁS ALTO (los demás se sellan
   // en silencio para no disparar tres de golpe). Suena también como toast en la app.
+  // Misma cifra que Resumen/Gastos (`monthBudgetStats`): sin neutras ni reservas, no
+  // `thisMonthSpent` (feedback «el presupuesto no cuadra» — 2026-08-05).
   useEffect(function(){
     if(state.onboarded===false||locked) return;
-    const bud=state.budget||0; if(!(bud>0)) return;
-    const spent=totals.thisMonthSpent||0;
+    const bs=monthBudgetStats(state);
+    const bud=bs.budget!=null?bs.budget:0; if(!(bud>0)) return;
+    const spent=Math.max(0, bs.against||0);
     const pct=spent/bud*100;
     const ym=new Date().toISOString().slice(0,7);
     let fired=false;
@@ -1817,7 +1820,7 @@ function App(){
       const nat=natPlugin();
       if(nat&&nat.showNotification){ try{ nat.showNotification({title:"Mi Cartera",body:msg}).catch(function(){}); }catch(e){} }
     });
-  },[state.onboarded,locked,totals.thisMonthSpent,state.budget]);
+  },[state.onboarded,locked,state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   // Snapshot diario del total invertido (€) para el gráfico de evolución (#6). Se actualiza si cambia valor/coste hoy.
   const invSnapRef=useRef("");
   useEffect(function(){

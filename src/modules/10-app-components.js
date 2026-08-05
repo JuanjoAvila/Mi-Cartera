@@ -1424,6 +1424,45 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.15.0", d:"5 ago 2026",
+   t:{es:"Ambientación suave, conversor de monedas, y presupuesto que cuadra",
+      en:"Soft seasonal ambience, a currency converter, and a budget that adds up",
+      ca:"Ambientació suau, convertidor de monedes, i pressupost que quadra"},
+   tandas:[
+     {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
+       "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo POR DETRÁS de las cartillas, sin tapar números.",
+       "Cambia de pestaña: NO hay ráfaga nueva — la lluvia sigue quieta de fondo.",
+       "Ajustes → Apariencia → Reducir animaciones: la lluvia desaparece del todo.",
+       "Temática → Ninguna: vuelve el look normal, sin piezas.",
+     ]},
+     {id:"fx-converter", t:"🔁 Conversor de monedas", items:[
+       "Ajustes → Dinero → Conversor de monedas: pon un importe, elige moneda de origen y de destino.",
+       "Prueba 150 ₺ → € (o al revés con Intercambiar): el resultado usa el cambio del día.",
+       "Ya NO está la lista fija «1 € → …»; el conversor la sustituye.",
+     ]},
+     {id:"presupuesto-resumen", t:"💶 Presupuesto: misma cifra en todos sitios", items:[
+       "En Resumen, la tarjeta de presupuesto muestra lo mismo que la cabecera de Gastos (sin inversión/traspasos).",
+       "Si tienes dinero reservado a metas, el presupuesto «que queda» ya lo descuenta.",
+       "Los avisos al 50/80/95/100 % usan esa misma cifra (no un total distinto).",
+       "El informe imagen y el reto de «mes bajo presupuesto» también cuadran con Resumen/Gastos.",
+     ]}
+   ],
+   items:{
+   es:[
+    "🍂 Con una temática de temporada, las piezas caen muy suaves por detrás de las cartillas — sin molestar ni tapar números.",
+    "🔁 En Ajustes → Dinero hay un conversor de verdad: eliges importe, moneda de origen y destino.",
+    "💶 El presupuesto del mes es la misma cifra en Resumen, Gastos, avisos e informe: sin mezclar inversiones ni traspasos, y descontando lo reservado a metas.",
+   ],
+   en:[
+    "🍂 With a seasonal theme on, pieces drift very softly behind the cards — without getting in the way or covering numbers.",
+    "🔁 In Settings → Money there's a real converter: pick an amount, a from-currency and a to-currency.",
+    "💶 The monthly budget is the same figure on Home, Spending, alerts and the share image: investments and transfers stay out, and money reserved for goals is deducted.",
+   ],
+   ca:[
+    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus per darrere de les cartilles — sense molestar ni tapar números.",
+    "🔁 A Ajustos → Diners hi ha un convertidor de veritat: tries import, moneda d'origen i de destí.",
+    "💶 El pressupost del mes és la mateixa xifra al Resum, Despeses, avisos i informe: sense barrejar inversions ni traspassos, i descomptant el reservat a metes.",
+   ]}},
   {v:"4.14.1", d:"5 ago 2026",
    t:{es:"El resumen de Gastos ya no se desborda",
       en:"The Spending summary no longer overflows",

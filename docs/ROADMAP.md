@@ -1,6 +1,9 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos
+> Estado a 2026-08-05 · **v4.15.0** — en **`beta`**: tandas `season-fx-soft`, `fx-converter`,
+> `presupuesto-resumen`. Producción = **4.14.1**. APK **35 / 4.12.0** (sin nativo).
+>
+> Anterior: 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos
 > ¥/₺ + letra pequeña) que había entrado tras el sello 4.14.0. Multidivisa de la 4.14.0 sigue.
 > APK **35 / 4.12.0** (sin nativo; llega por OTA).
 >
@@ -56,7 +59,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.14.1** (producción / `main`) |
+| Web / OTA (`VERSION`) | **4.15.0** (`beta`; prod = 4.14.1) |
 | APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.13.0: llega por OTA sobre esta misma APK. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
@@ -86,13 +89,13 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> ✅ **4.14.1 EN PRODUCCIÓN** (2026-08-05). Multidivisa (4.14.0) + OTA del pulido Gastos. APK = **35 / 4.12.0**.
->
-> Siguiente ronda: conversor FX «importe + origen → destino» (pedida); import histórico seguro;
-> lo que diga el backlog en `docs/memoria/`.
+> **4.15.0** en `beta`: ambientación suave + conversor FX + presupuesto alineado.
+> Producción = **4.14.1**. APK = **35 / 4.12.0**.
+> Probar checklist de las 3 tandas; promote cuando las apruebe.
 
-1. En el móvil: Mis bancos / Ajustes → ver **v4.14.1** (canal estable).
-2. Cuando pida varias cosas a la vez → tandas de verdad (`tanda/<id>` desde el primer commit).
+1. En el móvil (canal beta): Mis bancos / Ajustes → ver **v4.15.0.N**.
+2. Revisar las 3 tandas del panel.
+3. Siguiente: gastos de otros bancos (entrar todo, solo diario afecta) + filtro premium Gastos.
 
 ### Pendiente de respuesta suya
 

@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.15.0] — 2026-08-05
+### Ambientación suave + conversor FX + presupuesto alineado (beta)
+
+**Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`.
+
+1. **Ambientación detrás** (`.season-amb` z-index 0): piezas muy suaves en bucle lento
+   detrás de `.page`. Sin ráfagas al cambiar de pestaña (nada de `seasonEpoch`/`seasonrise`).
+   Respeta reducir-animaciones. Guardián actualizado: `tests/season-detalle.test.mjs`.
+2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
+   la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
+3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
+   (misma cifra que Resumen/Gastos; sin neutras; resta reservas). Test:
+   `tests/month-budget-stats.test.mjs`.
+
+Sin APK nuevo (35 / 4.12.0).
+
 ## [4.14.1] — 2026-08-05
 ### Gastos: resumen sin desborde (OTA del pulido post-4.14.0)
 
@@ -44,10 +60,7 @@ filas etiqueta|importe (juntas, sin `space-between` a todo el ancho — eso abr�
 ridículo), columna izq con `min-width:0`, importe con `clamp`, presupuesto que puede partir
 palabra. Inicio ya usaba `clamp` en el patrimonio. Tanda `gastos-fx-overflow`.
 
-**Siguiente (otra tanda, pedida 2026-08-05):** conversor «de → a» en Comparar monedas (importe
-+ moneda origen + moneda destino), no solo «1 € = …».
-
-Rama: `tanda/multidivisa` (+ `tanda/gastos-fx-overflow`). Promote: `tandas=multidivisa` o ambas.
+Rama: `tanda/multidivisa` (+ `tanda/gastos-fx-overflow`). Promote: ya en prod (4.14.0/4.14.1).
 
 ## [4.13.0] — 2026-08-05
 ### Barra quieta de verdad al tope y al swipear tabs
