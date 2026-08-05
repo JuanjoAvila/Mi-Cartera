@@ -611,7 +611,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
             })()
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
-              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey}); }),
+              : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey,
+                  countsBudget:expenseCountsBudget(g.e, state)}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
@@ -636,20 +637,21 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, ms, onOpen}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
   // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
   // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
+  // `countsBudget` (bool) lo pasa el padre: si se pasara `state` entero, el memo no acertaría nunca.
   const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);
   const note=expenseNote(e);   // concepto del bizum / descripción del banco (2026-07-24)
-  return React.createElement("button",{type:"button",className:"v4-mov",onClick:function(){ onOpen(e); }},
+  const skip=countsBudget===false;
+  return React.createElement("button",{type:"button",className:"v4-mov"+(skip?" v4-mov-skip":""),onClick:function(){ onOpen(e); },
+      style:skip?{opacity:.72}:null},
     React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
     React.createElement("div",{className:"nm"},
       React.createElement("div",{className:"nm-title"}, e.merchant||"—"),
-      // El concepto va JUSTO debajo del título, antes que la categoría: es lo que se busca al
-      // repasar el histórico («¿de qué era este bizum de 40 €?»).
       note && React.createElement("div",{className:"nm-note"}, note),
       React.createElement("div",{className:"nm-cat",style:{color:c.color}}, catName(e.category)),
       React.createElement("div",{className:"meta"},
@@ -657,10 +659,14 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen}){
         bk?React.createElement(React.Fragment,null,
           React.createElement("span",{className:"sep"},"·"),
           React.createElement("span",null,entOf(bk).label||entOf(bk).mono)
+        ):null,
+        skip?React.createElement(React.Fragment,null,
+          React.createElement("span",{className:"sep"},"·"),
+          React.createElement("span",{style:{color:"var(--muted-2)"}}, t("g_no_budget"))
         ):null
       )
     ),
-    React.createElement("div",{className:"am num"+(isIncome?" pos":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
+    React.createElement("div",{className:"am num"+(isIncome?" pos":"")+(skip?" muted":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
   );
 });
 
