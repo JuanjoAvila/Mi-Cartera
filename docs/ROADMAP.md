@@ -1,9 +1,12 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-05 · **v4.14.0** — en **`tanda/multidivisa`** (aún no en beta). Multidivisa real
-> (lira turca + moneda de visualización que de verdad convierte + comparar con tipos) y Ajustes →
-> Dinero limpio (fuera presupuesto/bancos duplicados). Producción sigue en **4.13.0**. APK **35 /
-> 4.12.0** (sin nativo).
+> Estado a 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos
+> ¥/₺ + letra pequeña) que había entrado tras el sello 4.14.0. Multidivisa de la 4.14.0 sigue.
+> APK **35 / 4.12.0** (sin nativo; llega por OTA).
+>
+> Anterior: 2026-08-05 · **v4.14.0** — **EN PRODUCCIÓN**. Multidivisa real (lira + moneda de
+> visualización que convierte + Apuntar en divisa aparte + comparar monedas) y Ajustes → Dinero
+> limpio. APK **35 / 4.12.0**.
 >
 > Anterior: 2026-08-05 · **v4.13.0** — **EN PRODUCCIÓN**. Ronda beta cerrada: gestos (ola nativa
 > arriba/abajo, barra quieta, rayita) y plan-swipe aprobados 5/8 en `4.13.0.49`. Arranque ya había
@@ -53,7 +56,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.14.0** (`tanda/multidivisa`; prod = 4.13.0) |
+| Web / OTA (`VERSION`) | **4.14.1** (producción / `main`) |
 | APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.13.0: llega por OTA sobre esta misma APK. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
@@ -83,15 +86,13 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> **4.14.0** en `beta`: multidivisa **aprobada** (4.14.0.2). Pulido pendiente antes de prod:
-> desborde del resumen de Gastos con letra pequeña + ¥/₺ (`tanda/gastos-fx-overflow`).
-> Producción = **4.13.0**. APK = **35 / 4.12.0**.
-> Promote: `tandas=multidivisa` (y `gastos-fx-overflow` cuando la apruebe).
+> ✅ **4.14.1 EN PRODUCCIÓN** (2026-08-05). Multidivisa (4.14.0) + OTA del pulido Gastos. APK = **35 / 4.12.0**.
+>
+> Siguiente ronda: conversor FX «importe + origen → destino» (pedida); import histórico seguro;
+> lo que diga el backlog en `docs/memoria/`.
 
-1. Probar checklist `gastos-fx-overflow` (letra Pequeña + Yen/Lira en Gastos).
-2. Promote con las tandas aprobadas.
-3. **Otra tanda (pedida):** conversor FX «importe + moneda origen → destino» en Comparar monedas
-   (no solo 1 € = …).
+1. En el móvil: Mis bancos / Ajustes → ver **v4.14.1** (canal estable).
+2. Cuando pida varias cosas a la vez → tandas de verdad (`tanda/<id>` desde el primer commit).
 
 ### Pendiente de respuesta suya
 
