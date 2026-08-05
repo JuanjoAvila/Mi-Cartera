@@ -7,7 +7,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
 `gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`,
-`fix-season-portal`, `fix-season-glow-steady`.
+`fix-season-portal`, `fix-season-glow-steady`, `fix-season-glow-soft`.
 
 1. **Ambientación** (`.season-amb` + destello superior):
    **Incidentes 2026-08-05 (mismo día):**
@@ -17,6 +17,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
      computed=fixed z-36 y aun así se iba con el scroll). Fix: nodo real `.season-glow`.
    - Fuga de lista en la barra ~1 s al scrollear: `botnav-hidden` usaba opacity→0 a mitad
      de la transición. Fix: hide SOLO con translateY; lluvia recortada encima de la barra.
+   - Cofia opaca encima (.13/.15): sin parpadeo pero «ralla» horizontal que tapaba texto al
+     scroll. Fix `.16`: portal z-1 detrás de `#root` z-2; lavado ancho por temática en
+     `.season-glow` (Verano atardecer melocotón/ámbar; Halloween óxido; Invierno azul plateado;
+     Pascua rosa/verde; Navidad/Mundial con acentos propios); host/app transparentes con
+     temática; alfas ~.03–.13; el contenido pasa por encima.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`

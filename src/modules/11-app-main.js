@@ -2804,13 +2804,13 @@ function App(){
   // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
   // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
   // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
-  // Build .11: velo translúcido encima → al DESLIZAR ENTRE PESTAÑAS la app pasa por debajo y el
-  // composite se aclara. Build .12: gradiente horneado en `.page-scroll-host` → esa clase se quita
-  // durante el gesto y el destello se apagaba. Build .13: cofia opaca por encima (ver shell.html).
+  // Build .11: velo translúcido encima → flash al scroll. Build .12: gradiente en host → desaparece
+  // al scroll. Build .13/.15: cofia opaca encima → sin parpadeo pero ralla que tapa texto.
+  // Build .16: portal z-1 detrás de `#root` z-2; lavado fijo en `.season-glow` (ver shell.html).
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
-  // El destello va SIEMPRE que haya temática: el hueco que reserva la cofia lo pinta el CSS por
-  // `html[data-season]`, así que si aquí no se montara, reduce-motion dejaría el hueco vacío.
+  // El destello va SIEMPRE que haya temática: el portal lleva el fondo sólido + lavado; reduce-motion
+  // solo quita las partículas, no el degradado quieto.
   const seasonOn=!!(season && season!=="none");
   const seasonPool=(seasonOn && !reduceMo) ? SEASON_AMB[season] : null;
   // useMemo: mismos spans entre re-renders → la animación CSS no se reinicia al cambiar de tab.

@@ -11,13 +11,13 @@
  *         carrusel se mueve → con el dedo congelado a mitad de gesto el aporte del destello medía
  *         [0,0,0]: desaparecía. Y la cinta dejaba la franja de la cámara oliva [66,64,37] contra
  *         un fondo [20,38,30].
- *   .13 — COFIA: el destello se pinta OPACO y POR ENCIMA de todo, en una franja por la que el
- *         contenido no pasa (host y `.app` reservan su alto). Como no depende de lo que haya
- *         debajo, no puede cambiar: medido 62/62/62 en reposo, en gesto entre pestañas y
- *         scrolleando, y 0 en la franja de la cámara en los tres.
+ *   .13 — COFIA: el destello se pinta OPACO y POR ENCIMA de todo → sin parpadeo pero «ralla»
+ *         horizontal que tapaba texto al scrollear (rechazado 5/8 tarde).
+ *   .16 — TRASFONDO: portal z-1, `#root` z-2; lavado ancho en `.season-glow`; host/app transparentes
+ *         con temática; el contenido pasa por encima, nunca bloqueado.
  *
- * Lo que vigila este fichero es justo eso: que el destello no vuelva a depender de lo que hay
- * debajo, que no invada la barra de estado y que la barra de abajo siga sin transparentar.
+ * Lo que vigila este fichero: destello detrás del contenido, sin hornear en host/app, sin cofia
+ * encima, notch limpio, barra opaca.
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -34,10 +34,12 @@ assert.doesNotMatch(shell, /\.season-fx\s*\{/, "`.season-fx` no puede volver");
 assert.doesNotMatch(main, /seasonEpoch/, "seasonEpoch no puede volver");
 assert.doesNotMatch(i18n, /const\s+SEASON_FX\b/, "SEASON_FX no puede volver");
 
-/* Portal fuera de #root y POR ENCIMA del host (35), debajo de la barra (40). */
+/* Portal fuera de #root y DETRÁS del contenido (#root z-2). */
 assert.match(shell, /\.season-portal\{[^}]*position:\s*fixed/, "`.season-portal` fixed en body");
-assert.match(shell, /\.season-portal\{[^}]*z-index:\s*36/, "`.season-portal` z-36 (encima del host)");
+assert.match(shell, /\.season-portal\{[^}]*z-index:\s*1[^0-9]/, "`.season-portal` z-1 (trasfondo)");
+assert.match(shell, /html\[data-season\]\s+#root\{[^}]*z-index:\s*2/, "`#root` z-2 encima del portal");
 assert.match(shell, /\.season-glow\{[^}]*position:\s*absolute/, "`.season-glow` absolute en portal");
+assert.match(shell, /\.season-glow\{[^}]*inset:\s*0/, "`.season-glow` cubre todo el portal");
 assert.match(shell, /\.season-amb\{[^}]*position:\s*absolute/, "`.season-amb` absolute en portal");
 assert.doesNotMatch(shell, /html\[data-season\]::before\{/, "NO html::before (fallaba en su WebView al scroll)");
 assert.doesNotMatch(shell, /html\[data-season\]\s+\.botnav::before\{/, "NO destello en botnav");
@@ -48,90 +50,57 @@ assert.match(main, /className:"season-portal"/, "montar `.season-portal`");
 assert.match(main, /document\.body/, "portal a document.body");
 assert.match(main, /className:"season-glow"/, "montar `.season-glow` en React");
 assert.doesNotMatch(main, /show\s*&&\s*seasonPool/, "NO por pestaña");
-/* El destello se monta con que HAYA temática; si dependiera del pool de partículas,
-   reduce-motion dejaría el hueco de la cofia vacío. */
 assert.match(main, /if\(!seasonOn\)\s*return null/, "el destello no depende del pool de partículas");
 assert.match(main, /seasonPool\s*\?\s*React\.createElement\("div",\{className:"season-amb"/,
   "las partículas sí son opcionales (reduce-motion)");
 
-/* ===== La cofia ===== */
+/* ===== Lavado de trasfondo (no cofia encima) ===== */
 {
   const glowRule = shell.match(/\.season-glow\{([^}]*)\}/);
   assert.ok(glowRule, "falta la regla `.season-glow`");
   const body = glowRule[1];
-  assert.match(body, /top:\s*0/, "la cofia empieza en y=0: si empezara más abajo, el contenido se vería sobre los iconos");
-  assert.match(body, /height:\s*var\(--season-cofia\)/, "alto de la cofia por variable (lo comparte con el hueco reservado)");
-  /* OPACA: es lo único que garantiza que no cambie con lo que pase por debajo. */
-  assert.match(body, /background-color:\s*var\(--bg\)/, "la cofia es OPACA y del mismo tono que la app");
-  assert.doesNotMatch(body, /opacity:\s*0?\.\d/, "nada de translucidez (velo .11: se aclaraba al deslizar entre pestañas)");
-  assert.doesNotMatch(body, /animation:/, "sin animación: un destello que respira es justo lo que pidió que no hiciera");
-  /* ⚠ NADA de `mask` (lo llevó la .15 y él lo cazó: «hace un parpadeo al scrollear»). Un
-     desvanecido abajo vuelve translúcidos esos px, y justo ahí el destello es fuerte: el
-     contenido pasando por debajo cambiaba el composite. Medido con la pantalla grabada durante
-     un fling real: desvío 0 a y=30 y 184 a y=70. La cofia tiene que ser opaca de arriba abajo. */
-  assert.doesNotMatch(body, /mask-image/, "`.season-glow` sin mask: el desvanecido causaba parpadeo al scrollear");
+  assert.match(body, /background-color:\s*var\(--bg\)/, "base sólida del mismo tono que la app");
+  assert.match(body, /background-image:\s*var\(--season-glow-top\)/, "lavado en variable por temática");
+  assert.doesNotMatch(body, /height:\s*var\(--season-cofia\)/, "NO cofia con alto fijo encima");
+  assert.doesNotMatch(body, /opacity:\s*0?\.\d/, "nada de translucidez en la capa entera");
+  assert.doesNotMatch(body, /animation:/, "sin animación de opacidad");
+  assert.doesNotMatch(body, /mask-image/, "`.season-glow` sin mask (parpadeo al scrollear)");
 }
+assert.doesNotMatch(shell, /--season-cofia/, "sin variable cofia (.13/.15 descartada)");
 assert.doesNotMatch(shell, /@keyframes\s+seasonglow/, "`seasonglow` no puede volver (pulso de opacidad)");
-assert.match(shell, /html\[data-season\]\{--season-cofia:calc\(var\(--safe-top\)/,
-  "la cofia se mide desde `--safe-top` (en otro móvil la barra de estado no mide 40px)");
 
-/* El gradiente arranca DEBAJO de los iconos: 0 sobre la cámara, en todos los estados. */
+/* Gradientes amplios, suaves, por debajo de `--safe-top` en el centro (notch limpio). */
 {
   const defs = [...shell.matchAll(/--season-glow-top:([^;]+);/g)];
   assert.ok(defs.length >= 6, "faltan temáticas con destello: " + defs.length);
   for (const d of defs) {
     assert.doesNotMatch(d[1], /at\s+\d+%\s+-\d+%/,
-      "gradiente centrado por encima del borde → tiñe la barra de estado (fallo de .11 y .12): " + d[1].slice(0, 70));
+      "gradiente centrado por encima del borde → tiñe la barra de estado: " + d[1].slice(0, 70));
     assert.match(d[1], /calc\(var\(--safe-top\)/,
-      "el destello tiene que empezar por debajo de `--safe-top`: " + d[1].slice(0, 70));
-    /* LA REGLA QUE MANTIENE LIMPIA LA FRANJA DE LA CÁMARA: cada elipse tiene que valer 0 justo
-       en `--safe-top`, y eso pasa cuando su radio vertical es EXACTAMENTE su desplazamiento
-       (centro a +ry → el borde de la elipse cae en `--safe-top`). Si alguien sube el radio sin
-       subir el desplazamiento, el degradado se mete entre los iconos del sistema y vuelve el
-       «no se ve del mismo tono» del 5/8. */
-    const capas = [...d[1].matchAll(/radial-gradient\(\s*\d+px\s+(\d+)px\s+at\s+\d+%\s+calc\(var\(--safe-top\)\s*\+\s*(\d+)px\s*\)/g)];
-    assert.ok(capas.length >= 2, "esperaba al menos 2 elipses medidas desde --safe-top: " + d[1].slice(0, 70));
-    for (const c of capas) {
-      assert.equal(c[1], c[2],
-        "elipse con radio " + c[1] + "px y desplazamiento " + c[2] + "px: tiene que valer 0 en `--safe-top` (radio === desplazamiento)");
-    }
+      "el destello arranca por debajo de `--safe-top`: " + d[1].slice(0, 70));
+    assert.match(d[1], /ellipse\s+\d+%\s+\d+%/,
+      "radiales amplios (no elipses planas tipo ralla): " + d[1].slice(0, 70));
+    assert.doesNotMatch(d[1], /\d+px\s+3[0-9]px\s+at/,
+      "NO elipses planas de ~36px (ralla horizontal): " + d[1].slice(0, 70));
+    /* Alfas contenidas: nada de .34/.55 como en la ralla fuerte. */
+    assert.doesNotMatch(d[1], /rgba\([^)]+\.(3[4-9]|4\d|5\d)\)/,
+      "alfas demasiado altas (ralla fuerte): " + d[1].slice(0, 70));
   }
 }
 
-/* Hueco reservado: sin él la cofia opaca taparía el saludo. */
-assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{padding-top:var\(--season-cofia\)/,
-  "el host reserva el alto de la cofia");
-/* `.app` reserva el mismo alto EFECTIVO (es la que manda mientras se desliza entre pestañas);
-   la resta de 6px y el porqué se comprueban más abajo. */
-/* Las partículas, por debajo de la cofia: una hoja cruzando los iconos del sistema es lo mismo
-   que él señaló del tono de esa franja. */
-assert.match(shell, /\.season-amb\{[^}]*top:var\(--season-cofia/, "las partículas arrancan bajo la cofia");
+/* Partículas bajo la franja de iconos del sistema. */
+assert.match(shell, /\.season-amb\{[^}]*top:calc\(var\(--safe-top\)/,
+  "las partículas arrancan bajo `--safe-top`");
 
-/* Host opaco. */
-assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/, "host opaco");
-assert.doesNotMatch(shell, /\.page\.page-scroll-host\{[\s\S]*?background-clip:\s*content-box/,
-  "NO background-clip:content-box (dejaba el destello entero detrás del host: aporte 0)");
-
-/* Los dos fondos que se turnan tienen que llevar el MISMO gradiente y en la MISMA regla.
-   El host manda en reposo y `.app` mientras se desliza; si solo lo lleva uno, el destello
-   cambia al cambiar de estado — que es exactamente lo que falló en .12. */
-assert.match(
-  shell,
-  /html\[data-season\] \.page\.page-scroll-host,\s*\n\s*html\[data-season\] \.app\{background-image:var\(--season-glow-top\)/,
-  "host y `.app` comparten regla de gradiente (si se separan, se desincronizan)"
-);
-assert.doesNotMatch(shell, /html\[data-season\]\s+body\{[^}]*--season-glow-top/,
-  "NO gradiente en el body: en reposo lo tapa el host y saldría solo durante el gesto");
-
-/* `.app` OPACA: transparente dejaba asomar el degradado menta del `body` en pleno gesto
-   («ese verde clarito cuando scrolleas», 5/8). */
-assert.match(shell, /\.app\{[^}]*background:var\(--bg\)/, "`.app` con fondo opaco");
-/* Y 6px menos de padding que el host: `.page` añade los suyos y el host no. Sin esto el
-   contenido baja ~5,5px al empezar el gesto y vuelve al soltar. */
+/* Host opaco SIN temática; transparente CON temática (portal lleva el fondo). */
+assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/,
+  "host opaco por defecto");
+assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{background:transparent;?\}/,
+  "host transparente con temática (portal = fondo)");
+assert.match(shell, /html\[data-season\]\s+\.app\{background:transparent;?\}/,
+  "`.app` transparente con temática");
 assert.match(shell, /\.app\{[^}]*padding-top:calc\(var\(--safe-top\) \+ 4px\)/,
   "`.app` sin temática: safe-top+4 (+6 de `.page` = los safe-top+10 del host)");
-assert.match(shell, /html\[data-season\] \.app\{padding-top:calc\(var\(--season-cofia\) - 6px\)/,
-  "`.app` con temática: cofia-6 (+6 de `.page` = la cofia entera)");
 
 /* Barra: hide sin opacity (evita ver la lista a través) */
 assert.match(
@@ -145,7 +114,7 @@ assert.doesNotMatch(
   "botnav-hidden no puede usar opacity:0 (fuga de contenido)"
 );
 
-/* Barra: fondo OPACO por defecto — nav-sin-blur solo en build .9 no bastó (WebView seguía 88%) */
+/* Barra: fondo OPACO por defecto */
 assert.match(
   shell,
   /\.botnav\{[^}]*background:\s*var\(--bg-2\)/,
@@ -168,4 +137,4 @@ assert.match(shell, /@keyframes\s+seasonDrift/, "seasonDrift");
 assert.doesNotMatch(comps, /\{id:"temporada"\s*,\s*t:/, "tanda temporada fuera");
 assert.match(comps, /temporada.*QUITADA|QUITADA.*temporada/i, "por qué se quitó");
 
-console.log("ok: season cofia opaca sobre el contenido; sin gradiente en host/app/body; botnav opaco");
+console.log("ok: season glow trasfondo (portal z-1); sin cofia; sin gradiente en host/app; botnav opaco");
