@@ -83,14 +83,15 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> **4.14.0** vive en `tanda/multidivisa` (aún no mergeada a `beta`). Multidivisa + limpieza Dinero.
+> **4.14.0** en `beta`: multidivisa **aprobada** (4.14.0.2). Pulido pendiente antes de prod:
+> desborde del resumen de Gastos con letra pequeña + ¥/₺ (`tanda/gastos-fx-overflow`).
 > Producción = **4.13.0**. APK = **35 / 4.12.0**.
-> Para probar: mergear la tanda a `beta`, publicar canal, checklist `multidivisa` en el panel.
-> Promote solo esta: Actions → Promocionar → `tandas=multidivisa`.
+> Promote: `tandas=multidivisa` (y `gastos-fx-overflow` cuando la apruebe).
 
-1. Commit + push `tanda/multidivisa` y merge a `beta` (cuando él diga).
-2. Probar checklist de la tanda en el móvil.
-3. Promote con `-f tandas=multidivisa` si aprueba solo esta.
+1. Probar checklist `gastos-fx-overflow` (letra Pequeña + Yen/Lira en Gastos).
+2. Promote con las tandas aprobadas.
+3. **Otra tanda (pedida):** conversor FX «importe + moneda origen → destino» en Comparar monedas
+   (no solo 1 € = …).
 
 ### Pendiente de respuesta suya
 

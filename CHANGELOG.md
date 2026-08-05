@@ -28,7 +28,15 @@ de gasto diario (ya en Cartera).
 assets). El dólar «funcionaba» por `state.fx` legacy. Ahora el fetch va directo a `.dev` y la
 CSP lo deja pasar; al aplicar moneda se usan los rates devueltos (no solo el state).
 
-Rama: `tanda/multidivisa` (promovible sola con `-f tandas=multidivisa`).
+**Fix desborde Gastos (post-aprobación, letra Pequeña + ¥):** la línea «Gastos X · ingresos Y»
+era una sola frase con `nowrap` en el presupuesto → se partía a mitad y solapaba. Ahora
+filas etiqueta|importe, columna izq con `min-width:0`, importe con `clamp`, presupuesto que
+puede partir palabra. Inicio ya usaba `clamp` en el patrimonio. Tanda `gastos-fx-overflow`.
+
+**Siguiente (otra tanda, pedida 2026-08-05):** conversor «de → a» en Comparar monedas (importe
++ moneda origen + moneda destino), no solo «1 € = …».
+
+Rama: `tanda/multidivisa` (+ `tanda/gastos-fx-overflow`). Promote: `tandas=multidivisa` o ambas.
 
 ## [4.13.0] — 2026-08-05
 ### Barra quieta de verdad al tope y al swipear tabs

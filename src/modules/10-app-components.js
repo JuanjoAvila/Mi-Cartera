@@ -1429,6 +1429,11 @@ var RELEASE_NOTES=[
       en:"Real liras and currencies, and a clearer Settings → Money",
       ca:"Lires i monedes de veritat, i Ajustos → Diners més clar"},
    tandas:[
+     {id:"gastos-fx-overflow", t:"📐 Gastos: importes largos no se desbordan", items:[
+       "Ajustes → letra Pequeña + moneda Yen (o lira): en Gastos, el resumen (balance / de / quedan) se lee entero, sin cortar ni solapar.",
+       "Modo Balance: Gastos e Ingresos salen en dos líneas claras (etiqueta | importe), no una frase partida.",
+       "Prueba también letra Normal y Grande: el número grande se encoge si no cabe, sin salirse de la tarjeta.",
+     ]},
      {id:"multidivisa", t:"💱 Multidivisa y Ajustes → Dinero", items:[
        "Ajustes → Dinero → Moneda de visualización → Lira turca: los importes de toda la app pasan a ₺.",
        "Vuelve a Euro: todo vuelve a €.",
@@ -1440,18 +1445,21 @@ var RELEASE_NOTES=[
    ],
    items:{
    es:[
+    "📐 En Gastos, con monedas de importes largos (yen, lira…) y letra pequeña, el resumen ya no se desborda ni parte las frases a medias.",
     "💱 Nueva moneda: la lira turca. Si cambias la moneda de visualización, toda la app se adapta (útil si alguien usa otra divisa de casa).",
     "✍️ Al apuntar un gasto eliges la moneda ahí mismo (₺, $, €…) y se convierte a euros solo, con el cambio del día — sin tocar cómo se ve el resto de la app.",
     "📊 «Comparar monedas» enseña el cambio real (ya no sale una lista vacía).",
     "🧹 Ajustes → Dinero más limpio: fuera el presupuesto duplicado y los bancos de gasto diario (ya están en Resumen y Cartera). Se queda lo de la moneda y cómo se ve el total de gastos.",
    ],
    en:[
+    "📐 On Spending, with long currency amounts (yen, lira…) and small text, the summary no longer overflows or splits mid-sentence.",
     "💱 New currency: the Turkish lira. Change the display currency and the whole app follows (handy if someone's home currency isn't the euro).",
     "✍️ When you log an expense you pick the currency right there (₺, $, €…) and it converts to euros on its own, at today's rate — without changing how the rest of the app looks.",
     "📊 «Compare currencies» shows real rates (no more empty dashes).",
     "🧹 Settings → Money is cleaner: the duplicate budget and daily-spending banks are gone (they already live on Overview and Portfolio). Currency and how the expenses total looks stay.",
    ],
    ca:[
+    "📐 A Despeses, amb monedes d'imports llargs (ien, lira…) i lletra petita, el resum ja no es desborda ni parteix les frases a mitges.",
     "💱 Nova moneda: la lira turca. Si canvies la moneda de visualització, tota l'app s'hi adapta (útil si algú usa una altra divisa de casa).",
     "✍️ En apuntar una despesa tries la moneda allà mateix (₺, $, €…) i es converteix a euros sola, amb el canvi del dia — sense tocar com es veu la resta de l'app.",
     "📊 «Comparar monedes» ensenya el canvi real (ja no surt una llista buida).",

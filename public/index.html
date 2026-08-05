@@ -627,13 +627,23 @@
   .v4-micro{font-size:12.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:700;}
   .v4-card{background:linear-gradient(180deg,var(--sur),var(--bg-2));border:1px solid var(--line-soft);border-radius:24px;padding:20px;box-shadow:var(--shadow);}
   .v4-gastos-summary{background:linear-gradient(180deg,var(--sur),var(--bg-2));border:1px solid var(--line-soft);border-radius:22px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow);}
-  .v4-gastos-summary-top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;}
+  .v4-gastos-summary-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;}
+  /* Columna izq crece y puede encoger (min-width:0): sin esto, importes largos en ¥/₺
+     con letra pequeña empujan el «de / quedan» y parten la línea de gastos·ingresos
+     a mitad de frase (rechazo visual post-multidivisa 2026-08-05). */
+  .v4-gastos-summary-main{flex:1 1 auto;min-width:0;}
   .v4-gastos-summary-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.1px;color:var(--muted-2);}
-  .v4-gastos-summary-amount{font-family:'Fraunces',Georgia,serif;font-size:40px;font-weight:550;letter-spacing:-1px;line-height:1.08;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--text);white-space:nowrap;}
-  /* Mismo blanco y peso que el entero (feedback 2026-07-17: céntimos/€ en gris desentonaban). */
-  .v4-gastos-summary-amount .cents{font-size:40px;color:inherit;font-weight:550;}
-  .v4-gastos-summary-budget{text-align:right;color:var(--muted);font-size:13px;font-weight:650;line-height:1.45;padding-bottom:3px;white-space:nowrap;}
+  .v4-gastos-summary-amount{font-family:'Fraunces',Georgia,serif;font-size:clamp(22px,8.2vw,40px);font-weight:550;letter-spacing:-1px;line-height:1.08;margin-top:4px;font-variant-numeric:tabular-nums;color:var(--text);white-space:nowrap;overflow:hidden;max-width:100%;}
+  /* Mismo blanco y peso que el entero (feedback 2026-07-17: céntimos/€ en gris desentonaban).
+     1em → sigue el clamp del padre (antes 40px fijo descuadraba al encoger). */
+  .v4-gastos-summary-amount .cents{font-size:1em;color:inherit;font-weight:550;}
+  .v4-gastos-summary-budget{flex:0 1 42%;max-width:42%;min-width:0;text-align:right;color:var(--muted);font-size:12.5px;font-weight:650;line-height:1.4;padding-bottom:3px;}
+  .v4-gastos-summary-budget > div{overflow-wrap:anywhere;word-break:break-word;}
   .v4-gastos-summary-left{color:var(--mint);font-weight:800;}
+  .v4-gastos-summary-sub{margin-top:6px;display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .v4-gastos-summary-pair{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:12.5px;font-weight:600;color:var(--muted);min-width:0;}
+  .v4-gastos-summary-pair .lbl{flex:0 1 auto;min-width:0;}
+  .v4-gastos-summary-pair .amt{flex:0 1 auto;min-width:0;text-align:right;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
   .v4-gastos-progress{height:10px;border-radius:6px;background:var(--sur2);overflow:hidden;margin-top:16px;}
   .v4-gastos-progress i{display:block;height:100%;border-radius:6px;background:var(--mint);transform-origin:left;animation:v4bar .8s var(--ease) both;}
   .v4-gastos-progress-marks{display:flex;justify-content:space-between;gap:8px;margin-top:7px;color:var(--muted-2);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.25px;}
@@ -1162,7 +1172,6 @@
   /* margen inferior 14px: el cartelito chocaba con los chips de categorías (feedback 2026-07-18) */
   .v4-cycle-box{margin:10px 2px 14px;padding:14px 16px;border-radius:16px;background:rgba(95,208,138,.08);border:1px solid rgba(95,208,138,.22);font-size:13.5px;line-height:1.5;color:var(--muted);}
   .v4-cycle-box strong{display:block;color:var(--text);font-weight:800;font-size:14px;margin-bottom:6px;}
-  .v4-gastos-summary-sub{font-size:12.5px;color:var(--muted);margin-top:4px;font-weight:600;}
   .v4-gastos-summary-amount.pos{color:var(--mint);}
   .v4-gastos-summary-amount.neg{color:var(--coral);}
   .v4-chips.meta-chips{flex-wrap:wrap;gap:8px;margin-bottom:12px;}
@@ -2864,6 +2873,7 @@ const LANG = {
     v4_ver_mas:"Ver más · {n}", v4_ver_menos:"Ver menos",
     v4_gastos_title:"Tus gastos", v4_gastos_spent_in:"Gastado en {month}", v4_gastos_net_in:"Balance en {month}", v4_gastos_of:"de {x}", v4_gastos_left:"quedan {x}", v4_gastos_today_mark:"hoy · día {d}", v4_period_more:"Más…",
     v4_gastos_inc_line:"Ingresos {x} · balance {bal}", v4_gastos_split_line:"Gastos {spent} · ingresos {income}",
+    v4_gastos_lbl_spent:"Gastos", v4_gastos_lbl_income:"Ingresos", v4_gastos_lbl_balance:"Balance",
     v4_cartera_title:"Tu cartera", v4_cuentas:"Tus cuentas", v4_inversiones:"Tus inversiones", v4_inv_positions:"{n} posiciones",
     v4_inv_tools:"Herramientas de inversión", v4_inv_tools_h:"Precios, redondeo, proyección y edición manual — lo que antes llenaba Cartera.",
     v4_sync_banks:"Sincronizar bancos", v4_sync_banks_done:"✓ Bancos sincronizados",
@@ -3015,6 +3025,7 @@ const LANG = {
     v4_ver_mas:"See more · {n}", v4_ver_menos:"See less",
     v4_gastos_title:"Your spending", v4_gastos_spent_in:"Spent in {month}", v4_gastos_net_in:"Balance in {month}", v4_gastos_of:"of {x}", v4_gastos_left:"{x} left", v4_gastos_today_mark:"today · day {d}", v4_period_more:"More…",
     v4_gastos_inc_line:"Income {x} · balance {bal}", v4_gastos_split_line:"Spent {spent} · income {income}",
+    v4_gastos_lbl_spent:"Spent", v4_gastos_lbl_income:"Income", v4_gastos_lbl_balance:"Balance",
     v4_cartera_title:"Your portfolio", v4_cuentas:"Your accounts", v4_inversiones:"Your investments", v4_inv_positions:"{n} positions",
     v4_inv_tools:"Investment tools", v4_inv_tools_h:"Prices, round-ups, projections and manual edit — what used to clutter Portfolio.",
     v4_sync_banks:"Sync banks", v4_sync_banks_done:"✓ Banks synced",
@@ -3153,6 +3164,7 @@ const LANG = {
     v4_ver_mas:"Veure més · {n}", v4_ver_menos:"Veure menys",
     v4_gastos_title:"Les teves despeses", v4_gastos_spent_in:"Gastat al {month}", v4_gastos_net_in:"Balanç al {month}", v4_gastos_of:"de {x}", v4_gastos_left:"queden {x}", v4_gastos_today_mark:"avui · dia {d}", v4_period_more:"Més…",
     v4_gastos_inc_line:"Ingressos {x} · balanç {bal}", v4_gastos_split_line:"Despeses {spent} · ingressos {income}",
+    v4_gastos_lbl_spent:"Despeses", v4_gastos_lbl_income:"Ingressos", v4_gastos_lbl_balance:"Balanç",
     v4_cartera_title:"La teva cartera", v4_cuentas:"Els teus comptes", v4_inversiones:"Les teves inversions", v4_inv_positions:"{n} posicions",
     v4_inv_tools:"Eines d’inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
     v4_sync_banks:"Sincronitza els bancs", v4_sync_banks_done:"✓ Bancs sincronitzats",
@@ -7100,7 +7112,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement("h1",{className:"v4-title serif"}, t("v4_gastos_title")),
     React.createElement("section",{className:"v4-gastos-summary"},
       React.createElement("div",{className:"v4-gastos-summary-top"},
-        React.createElement("div",null,
+        React.createElement("div",{className:"v4-gastos-summary-main"},
           React.createElement("div",{className:"v4-gastos-summary-label"},
             monthSummary.mode==="net"
               ? tf("v4_gastos_net_in",{month:monthSummary.month})
@@ -7113,11 +7125,26 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
             return React.createElement("div",{className:"v4-gastos-summary-amount num"},
               p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));
           })(),
-          monthSummary.mode==="net"
-            ? React.createElement("div",{className:"v4-gastos-summary-sub"},
-                tf("v4_gastos_split_line",{spent:eur(monthSummary.spent),income:eur(monthSummary.income)}))
-            : (monthSummary.income>0 && React.createElement("div",{className:"v4-gastos-summary-sub"},
-                tf("v4_gastos_inc_line",{x:eur(monthSummary.income),bal:(monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance))})))
+          // Dos filas (etiqueta | importe) en vez de una sola frase «Gastos X · ingresos Y»:
+          // con ¥/₺ y letra pequeña la frase se partía a mitad y solapaba el presupuesto
+          // (feedback 2026-08-05 tras multidivisa).
+          (function(){
+            const pair=function(lbl, amt){
+              return React.createElement("div",{className:"v4-gastos-summary-pair"},
+                React.createElement("span",{className:"lbl"}, lbl),
+                React.createElement("span",{className:"amt num"}, amt));
+            };
+            if(monthSummary.mode==="net"){
+              return React.createElement("div",{className:"v4-gastos-summary-sub"},
+                pair(t("v4_gastos_lbl_spent"), eur(monthSummary.spent)),
+                pair(t("v4_gastos_lbl_income"), eur(monthSummary.income)));
+            }
+            if(!(monthSummary.income>0)) return null;
+            return React.createElement("div",{className:"v4-gastos-summary-sub"},
+              pair(t("v4_gastos_lbl_income"), eur(monthSummary.income)),
+              pair(t("v4_gastos_lbl_balance"),
+                (monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance))));
+          })()
         ),
         React.createElement("div",{className:"v4-gastos-summary-budget"},
           React.createElement("div",null,tf("v4_gastos_of",{x:monthSummary.budget==null?"—":eur(monthSummary.budget)})),
@@ -13615,6 +13642,11 @@ var RELEASE_NOTES=[
       en:"Real liras and currencies, and a clearer Settings → Money",
       ca:"Lires i monedes de veritat, i Ajustos → Diners més clar"},
    tandas:[
+     {id:"gastos-fx-overflow", t:"📐 Gastos: importes largos no se desbordan", items:[
+       "Ajustes → letra Pequeña + moneda Yen (o lira): en Gastos, el resumen (balance / de / quedan) se lee entero, sin cortar ni solapar.",
+       "Modo Balance: Gastos e Ingresos salen en dos líneas claras (etiqueta | importe), no una frase partida.",
+       "Prueba también letra Normal y Grande: el número grande se encoge si no cabe, sin salirse de la tarjeta.",
+     ]},
      {id:"multidivisa", t:"💱 Multidivisa y Ajustes → Dinero", items:[
        "Ajustes → Dinero → Moneda de visualización → Lira turca: los importes de toda la app pasan a ₺.",
        "Vuelve a Euro: todo vuelve a €.",
@@ -13626,18 +13658,21 @@ var RELEASE_NOTES=[
    ],
    items:{
    es:[
+    "📐 En Gastos, con monedas de importes largos (yen, lira…) y letra pequeña, el resumen ya no se desborda ni parte las frases a medias.",
     "💱 Nueva moneda: la lira turca. Si cambias la moneda de visualización, toda la app se adapta (útil si alguien usa otra divisa de casa).",
     "✍️ Al apuntar un gasto eliges la moneda ahí mismo (₺, $, €…) y se convierte a euros solo, con el cambio del día — sin tocar cómo se ve el resto de la app.",
     "📊 «Comparar monedas» enseña el cambio real (ya no sale una lista vacía).",
     "🧹 Ajustes → Dinero más limpio: fuera el presupuesto duplicado y los bancos de gasto diario (ya están en Resumen y Cartera). Se queda lo de la moneda y cómo se ve el total de gastos.",
    ],
    en:[
+    "📐 On Spending, with long currency amounts (yen, lira…) and small text, the summary no longer overflows or splits mid-sentence.",
     "💱 New currency: the Turkish lira. Change the display currency and the whole app follows (handy if someone's home currency isn't the euro).",
     "✍️ When you log an expense you pick the currency right there (₺, $, €…) and it converts to euros on its own, at today's rate — without changing how the rest of the app looks.",
     "📊 «Compare currencies» shows real rates (no more empty dashes).",
     "🧹 Settings → Money is cleaner: the duplicate budget and daily-spending banks are gone (they already live on Overview and Portfolio). Currency and how the expenses total looks stay.",
    ],
    ca:[
+    "📐 A Despeses, amb monedes d'imports llargs (ien, lira…) i lletra petita, el resum ja no es desborda ni parteix les frases a mitges.",
     "💱 Nova moneda: la lira turca. Si canvies la moneda de visualització, tota l'app s'hi adapta (útil si algú usa una altra divisa de casa).",
     "✍️ En apuntar una despesa tries la moneda allà mateix (₺, $, €…) i es converteix a euros sola, amb el canvi del dia — sense tocar com es veu la resta de l'app.",
     "📊 «Comparar monedes» ensenya el canvi real (ja no surt una llista buida).",
