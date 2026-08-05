@@ -2801,12 +2801,7 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
-  // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
-  // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
-  // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
-  // Build .11: velo translúcido encima → flash al scroll. Build .12: gradiente en host → desaparece
-  // al scroll. Build .13/.15: cofia opaca encima → sin parpadeo pero ralla que tapa texto.
-  // Build .16: portal z-1 detrás de `#root` z-2; lavado fijo en `.season-glow` (ver shell.html).
+  // Build .22: portal en `#root` z-0; `.app`/`.page` transparentes; lavado en `.season-glow`.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   // El destello va SIEMPRE que haya temática: el portal lleva el fondo sólido + lavado; reduce-motion
@@ -2831,12 +2826,14 @@ function App(){
         style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
           "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
     }
+    // En `#root`, no en body: body z-1 bajo `#root` z-2 nunca se ve en el swipe (build .21).
+    var portalRoot=document.getElementById("root")||document.body;
     return ReactDOM.createPortal(
       React.createElement("div",{className:"season-portal","aria-hidden":"true"},
         React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
         seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out) : null
       ),
-      document.body
+      portalRoot
     );
   }, [seasonOn, seasonPool, season]);
   const paginas=tabIds.map(function(id,i){

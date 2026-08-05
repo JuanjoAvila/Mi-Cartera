@@ -294,33 +294,41 @@
   html[data-season="verano"] .botnav-fab{background:linear-gradient(160deg,#FFB347,#39B6C9);}
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
-  /* DESTELLO DE TEMPORADA — TRASFONDO (feedback 2026-08-05 tarde).
-     Historial: .11 velo encima → flash al scroll; .12 hornear en host → desaparece al scroll +
-     cinta notch; .13 cofia opaca encima → sin parpadeo pero «ralla» horizontal que tapa texto.
-     Fix .16: lavado fijo DETRÁS del contenido (portal z-1, `.page` z-2, host z-35). El portal
-     sustituye el fondo sólido de la app (`html[data-season] .app{background:transparent}`) con
-     `var(--bg)` + radiales muy suaves; las cartillas opacas pasan por encima y el destello se ve
-     en huecos y márgenes — nunca como overlay encima del texto.
-     ⚠ NO `html::before` fixed dentro de `#root` (build .9): su WebView liga fixed al scroll.
-     ⚠ NO velo translúcido encima (build .11). ⚠ NO hornear en `.page-scroll-host` (build .12).
-     ⚠ NO cofia opaca encima (.13/.15): bloqueaba el scroll. ⚠ NO `mask` en el glow (parpadeo). */
+  /* DESTELLO DE ARRIBA (feedback 2026-08-05 — «arriba a la derecha», no la barra).
+     Seis intentos; cada uno descartó una vía, y todos se midieron en su Oppo con ADB+CDP.
+     ⚠ NO `html::before` fixed, NI fixed dentro de `#root{position:relative}` (build .9): el
+       compositor de su WebView los liga al scroll — computed decía `fixed` y el píxel saltaba +31.
+       Por eso vive portaleado a `document.body` en `.season-portal`.
+     ⚠ NO un velo TRANSLÚCIDO encima del contenido (build .11): el fallo NO era el scroll vertical
+       sino DESLIZAR ENTRE PESTAÑAS — la app entera pasa por debajo del velo y el composite se
+       aclara, que es lo que él veía como «se pone más intenso». Y como empezaba en y=0, teñía
+       también la barra de estado.
+     ⚠ NO hornear el gradiente en el fondo de `.page-scroll-host` (build .12): esa clase SE QUITA
+       mientras el carrusel se mueve, así que el destello se apagaba justo DURANTE el gesto
+       (medido con el dedo congelado: aporte [0,0,0]). Su cinta opaca, además, dejaba la franja
+       de la cámara oliva [66,64,37] contra un fondo [20,38,30].
+     ⚠ NI detrás del contenido (.16/.17/.18): las cartillas lo tapan al pasar y «desaparece y
+       vuelve a aparecer» — rechazado por él expresamente (5/8).
+     ⚠ NI cofia ENCIMA con padding (.13/.15/.19): z-36 tapaba texto o reservaba ~116px
+       bajo la barra — «Tus gastos» / el saludo demasiado abajo (rechazo 5/8).
+     ⚠ NI solo gradiente en el host (.12/.20): al scrollear se va con el contenido; la franja de
+       iconos del sistema ya se mantiene fija y él pide lo mismo en la app.
+     Fix .22: lavado fijo portaleado DENTRO de `#root` (z:0) — NO en body z-1 bajo `#root` z-2:
+     un hermano con z-index menor NUNCA se ve a través del stacking context del root, aunque
+     `.app` sea transparente (medido en pleno swipe: arriba OK por padding de `.app`, zona del
+     carrusel a [12,23,18] plano). `.app`/`.page` transparentes; el portal fixed NO cuelga del
+     `.track` transformado, así que el gesto no lo apaga. Sin `background-attachment:fixed`. */
+  html[data-season] #root{position:relative;}
+  html[data-season] .app{position:relative;z-index:1;background:transparent!important;}
+  html[data-season] .app-shell{position:relative;z-index:1;}
+  html[data-season] .page{background:transparent!important;}
   .season-portal{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
-    width:100%;max-width:520px;pointer-events:none;z-index:1;}
-  /* El portal es hermano de `#root` en body: sin esto quedaría encima del contenido (z-auto=0). */
-  html[data-season] #root{position:relative;z-index:2;}
-  .season-glow{position:absolute;inset:0;z-index:0;pointer-events:none;
-    background-color:var(--bg);background-image:var(--season-glow-top);
-    background-repeat:no-repeat;background-size:100% 100%;}
-  /* Con temática `.app` transparente deja ver el portal en chrome; el host NO puede serlo
-     (incidente .16→.17: transparente → Inicio+Gastos fusionados al deslizar). El lavado va
-     PINTADO encima de var(--bg) en el host, no como agujero — misma receta que `.season-glow`. */
-  html[data-season] .app{background:transparent;}
-  html[data-season] .page.page-scroll-host{
-    background-color:var(--bg);
-    background-image:var(--season-glow-top);
-    background-repeat:no-repeat;background-size:100% 100%;
-  }
-  html[data-season] .page{background:var(--bg);}
+    width:100%;max-width:520px;pointer-events:none;z-index:0;}
+  .season-glow{position:absolute;inset:0;z-index:1;pointer-events:none;
+    background-color:var(--bg);background-image:var(--season-glow-top);background-repeat:no-repeat;}
+  /* Intensidad calibrada al pico de la .11 (que él dio por bueno en reposo): alfas ~.10 miden
+     un aporte de ~60 RGB con los radiales elípticos ampliados (.19). Sin animación de opacidad —
+     un destello que respira es justo lo que pidió que no hiciera. */
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
      ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
      era el sitio equivocado + dejaba ver la lista a través). */
@@ -366,10 +374,8 @@
     --season-glow-top:radial-gradient(ellipse 130% 95% at 76% calc(var(--safe-top) + 18px), rgba(127,181,232,.10) 0%, rgba(160,200,240,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 32% calc(var(--safe-top) + 100px), rgba(183,224,242,.05) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 60% calc(var(--safe-top) + 190px), rgba(200,220,255,.04) 0%, transparent 50%);}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
     --season-glow-top:radial-gradient(ellipse 130% 95% at 78% calc(var(--safe-top) + 18px), rgba(247,198,217,.11) 0%, rgba(240,170,195,.04) 42%, transparent 72%),radial-gradient(ellipse 95% 70% at 26% calc(var(--safe-top) + 95px), rgba(160,216,179,.06) 0%, transparent 58%),radial-gradient(ellipse 80% 55% at 64% calc(var(--safe-top) + 185px), rgba(247,198,217,.03) 0%, transparent 50%);}
-  /* Ambientación — UNA capa GLOBAL en el portal (z-1, DETRÁS de `.page` z-2). Partículas en
-     z-2 dentro del portal: quedan detrás del contenido pero delante del lavado de color.
-     bottom recortado: si pintaran debajo de la barra, al esconderse se veía la lista (2026-08-05).
-     Solo translate3d/rotate/opacity (compositor). */
+  /* Ambientación — portal fixed z-1 DETRÁS de `#root` (z-2). Las partículas van en z-2 del portal;
+     el contenido y el host (z-35) pasan por encima. bottom recortado bajo botnav (feedback 5/8). */
   .season-amb{position:absolute;top:calc(var(--safe-top) + 8px);left:0;right:0;bottom:calc(72px + var(--safe-bottom,0px));z-index:2;pointer-events:none;overflow:hidden;contain:strict;}
   .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
@@ -383,7 +389,7 @@
      ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40`. */
   .page{position:relative;z-index:2;}
   @media (prefers-reduced-motion:reduce){
-    /* El lavado de color SE QUEDA: es un degradado quieto. Lo que se va son las piezas que caen. */
+    /* El degradado quieto del host se queda; lo que se va son las piezas que caen. */
     .season-amb{display:none;}
     html[data-season] .botnav-fab::after{animation:none;opacity:0;}
     html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
@@ -531,12 +537,17 @@
        necesita porque ya cuelga dentro de `.app` con padding-top.
        FONDO OPACO, SIEMPRE (incidente 2026-08-05): transparente → Inicio+Gastos a la vez.
        ⚠ NADA de gradiente aquí (build .12): esta clase se QUITA al deslizar entre pestañas y el
-       destello se apagaba en pleno gesto. El destello vive en `.season-glow` (ver arriba). */
+       destello se apagaba en pleno gesto. El lavado fijo vive en `.season-glow` (portal z-1). */
     background:var(--bg);
     padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
-  /* Con temática el portal (z-1) lleva el lavado global; el host repite el destello OPACO en reposo
-     (build .12 lo ponía transparente y desaparecía al quitar la clase; .16 transparente → fusión). */
+  /* Con temática: host transparente en reposo para que el lavado fijo se vea al scrollear; `.app`
+     opaca con el mismo gradiente mientras se desliza entre pestañas (evita fusionar tabs).
+     Sin padding extra — el título queda en safe-top + 10px. */
+  html[data-season] .page.page-scroll-host{background:transparent!important;}
+  /* Host transparente deja ver el lavado fijo (portal z-1) al scrollear; las hermanas montadas
+     por mountNeighbors se filtraban por debajo (Inicio sobre Gastos). Fuera del pintado. */
+  .track.scroll-host-park .page:not(.page-scroll-host){visibility:hidden;pointer-events:none;}
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
   .page.page-scroll-host.mc-touch-own{touch-action:none;}
@@ -13889,7 +13900,7 @@ var RELEASE_NOTES=[
      ]},
      {id:"fix-season-glow-soft", t:"🌅 Destello suave de fondo", items:[
        "Ajustes → Apariencia → Temática → Verano: arriba se nota un lavado cálido tipo atardecer (melocotón/ámbar), suave y de fondo — no una raya encima del texto.",
-       "Scrollea Inicio o Gastos: el texto pasa por delante del destello; no se tapa ni se tiñe amarillo al subir la lista.",
+       "Scrollea Inicio o Gastos: el destello se queda arriba (no desaparece al bajar la lista); el texto pasa por delante, sin taparse.",
        "Prueba Halloween (ámbar/óxido), Navidad (rojo suave), Invierno (azul plateado) y Pascua (rosa/verde): cada una con su tono, mismo estilo de lavado amplio.",
        "La franja de los iconos junto a la cámara sigue del mismo tono que la app.",
        "Desliza entre pestañas y baja/sube en una lista: sin parpadeo del destello; la barra de abajo sin dejar ver la lista.",
@@ -19389,12 +19400,7 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
-  // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
-  // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
-  // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
-  // Build .11: velo translúcido encima → flash al scroll. Build .12: gradiente en host → desaparece
-  // al scroll. Build .13/.15: cofia opaca encima → sin parpadeo pero ralla que tapa texto.
-  // Build .16: portal z-1 detrás de `#root` z-2; lavado fijo en `.season-glow` (ver shell.html).
+  // Build .22: portal en `#root` z-0; `.app`/`.page` transparentes; lavado en `.season-glow`.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   // El destello va SIEMPRE que haya temática: el portal lleva el fondo sólido + lavado; reduce-motion
@@ -19419,12 +19425,14 @@ function App(){
         style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
           "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
     }
+    // En `#root`, no en body: body z-1 bajo `#root` z-2 nunca se ve en el swipe (build .21).
+    var portalRoot=document.getElementById("root")||document.body;
     return ReactDOM.createPortal(
       React.createElement("div",{className:"season-portal","aria-hidden":"true"},
         React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
         seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out) : null
       ),
-      document.body
+      portalRoot
     );
   }, [seasonOn, seasonPool, season]);
   const paginas=tabIds.map(function(id,i){

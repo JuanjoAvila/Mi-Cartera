@@ -1491,7 +1491,7 @@ var RELEASE_NOTES=[
      ]},
      {id:"fix-season-glow-soft", t:"🌅 Destello suave de fondo", items:[
        "Ajustes → Apariencia → Temática → Verano: arriba se nota un lavado cálido tipo atardecer (melocotón/ámbar), suave y de fondo — no una raya encima del texto.",
-       "Scrollea Inicio o Gastos: el texto pasa por delante del destello; no se tapa ni se tiñe amarillo al subir la lista.",
+       "Scrollea Inicio o Gastos: el destello se queda arriba (no desaparece al bajar la lista); el texto pasa por delante, sin taparse.",
        "Prueba Halloween (ámbar/óxido), Navidad (rojo suave), Invierno (azul plateado) y Pascua (rosa/verde): cada una con su tono, mismo estilo de lavado amplio.",
        "La franja de los iconos junto a la cámara sigue del mismo tono que la app.",
        "Desliza entre pestañas y baja/sube en una lista: sin parpadeo del destello; la barra de abajo sin dejar ver la lista.",

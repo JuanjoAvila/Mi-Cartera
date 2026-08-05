@@ -36,25 +36,25 @@ assert.doesNotMatch(shell, /\.season-fx\s*\{/, "`.season-fx` no puede volver");
 assert.doesNotMatch(main, /seasonEpoch/, "seasonEpoch no puede volver");
 assert.doesNotMatch(i18n, /const\s+SEASON_FX\b/, "SEASON_FX no puede volver");
 
-/* Portal fuera de #root y DETRÁS del contenido (#root z-2). */
-assert.match(shell, /\.season-portal\{[^}]*position:\s*fixed/, "`.season-portal` fixed en body");
-assert.match(shell, /\.season-portal\{[^}]*z-index:\s*1[^0-9]/, "`.season-portal` z-1 (trasfondo)");
-assert.match(shell, /html\[data-season\]\s+#root\{[^}]*z-index:\s*2/, "`#root` z-2 encima del portal");
-assert.match(shell, /\.season-glow\{[^}]*position:\s*absolute/, "`.season-glow` absolute en portal");
-assert.match(shell, /\.season-glow\{[^}]*inset:\s*0/, "`.season-glow` cubre todo el portal");
-assert.match(shell, /\.season-amb\{[^}]*position:\s*absolute/, "`.season-amb` absolute en portal");
-assert.doesNotMatch(shell, /html\[data-season\]::before\{/, "NO html::before (fallaba en su WebView al scroll)");
-assert.doesNotMatch(shell, /html\[data-season\]\s+\.botnav::before\{/, "NO destello en botnav");
-assert.doesNotMatch(shell, /html\[data-season\]::after\{/, "sin html::after de halo");
+/* Portal dentro de #root z-0 (build .22): en body z-1 bajo #root z-2 no se ve en el swipe. */
+assert.match(shell, /\.season-portal\{[^}]*position:\s*fixed/, "season-portal fixed");
+assert.match(shell, /\.season-portal\{[^}]*z-index:\s*0/, "season-portal z-0");
+assert.match(shell, /html\[data-season\]\s+#root\{[^}]*position:\s*relative/, "#root relative");
+assert.doesNotMatch(shell, /html\[data-season\]\s+#root\{[^}]*z-index:\s*2/, "no #root z-2");
+assert.match(shell, /\.season-glow\{[^}]*position:\s*absolute/, "season-glow absolute");
+assert.match(shell, /\.season-glow\{[^}]*inset:\s*0/, "season-glow inset 0");
+assert.match(shell, /\.season-amb\{[^}]*position:\s*absolute/, "season-amb absolute");
+assert.doesNotMatch(shell, /html\[data-season\]::before\{/, "no html::before");
+assert.doesNotMatch(shell, /html\[data-season\]\s+\.botnav::before\{/, "no botnav::before");
+assert.doesNotMatch(shell, /html\[data-season\]::after\{/, "no html::after");
 
-assert.match(main, /ReactDOM\.createPortal\(/, "portal ReactDOM");
-assert.match(main, /className:"season-portal"/, "montar `.season-portal`");
-assert.match(main, /document\.body/, "portal a document.body");
-assert.match(main, /className:"season-glow"/, "montar `.season-glow` en React");
-assert.doesNotMatch(main, /show\s*&&\s*seasonPool/, "NO por pestaña");
-assert.match(main, /if\(!seasonOn\)\s*return null/, "el destello no depende del pool de partículas");
-assert.match(main, /seasonPool\s*\?\s*React\.createElement\("div",\{className:"season-amb"/,
-  "las partículas sí son opcionales (reduce-motion)");
+assert.match(main, /ReactDOM\.createPortal\(/, "createPortal");
+assert.match(main, /className:"season-portal"/, "season-portal class");
+assert.match(main, /getElementById\("root"\)/, "portal en root");
+assert.match(main, /className:"season-glow"/, "season-glow class");
+assert.doesNotMatch(main, /show\s*&&\s*seasonPool/, "no show&&seasonPool");
+assert.match(main, /if\(!seasonOn\)\s*return null/, "seasonOn gate");
+assert.match(main, /seasonPool\s*\?\s*React\.createElement\("div",\{className:"season-amb"/, "season-amb optional");
 
 /* ===== Lavado de trasfondo (no cofia encima) ===== */
 {
@@ -63,6 +63,7 @@ assert.match(main, /seasonPool\s*\?\s*React\.createElement\("div",\{className:"s
   const body = glowRule[1];
   assert.match(body, /background-color:\s*var\(--bg\)/, "base sólida del mismo tono que la app");
   assert.match(body, /background-image:\s*var\(--season-glow-top\)/, "lavado en variable por temática");
+  assert.doesNotMatch(body, /background-attachment:\s*fixed/, "`.season-glow` sin attachment:fixed (Oppo tapa contenido)");
   assert.doesNotMatch(body, /height:\s*var\(--season-cofia\)/, "NO cofia con alto fijo encima");
   assert.doesNotMatch(body, /opacity:\s*0?\.\d/, "nada de translucidez en la capa entera");
   assert.doesNotMatch(body, /animation:/, "sin animación de opacidad");
@@ -94,20 +95,15 @@ assert.doesNotMatch(shell, /@keyframes\s+seasonglow/, "`seasonglow` no puede vol
 assert.match(shell, /\.season-amb\{[^}]*top:calc\(var\(--safe-top\)/,
   "las partículas arrancan bajo `--safe-top`");
 
-/* Host opaco SIEMPRE (incidente .16→.17: transparente → Inicio+Gastos). Con temática el lavado va
-   pintado encima de var(--bg), no como agujero. */
-assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/,
-  "host opaco por defecto");
-assert.doesNotMatch(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{background:transparent/,
-  "host NO transparente con temática (fusión de pestañas)");
-assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{[\s\S]*?background-image:\s*var\(--season-glow-top\)/,
-  "host con temática: lavado pintado encima de var(--bg)");
-assert.match(shell, /html\[data-season\]\s+\.page\{background:var\(--bg\)/,
-  "`.page` opaca en gesto (sin scroll-host)");
-assert.match(shell, /html\[data-season\]\s+\.app\{background:transparent;?\}/,
-  "`.app` transparente con temática");
-assert.match(shell, /\.app\{[^}]*padding-top:calc\(var\(--safe-top\) \+ 4px\)/,
-  "`.app` sin temática: safe-top+4 (+6 de `.page` = los safe-top+10 del host)");
+/* Host transparente en reposo: lavado fijo en .season-glow; scroll-host-park evita fusionar tabs. */
+assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/, "host opaco default");
+assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{background:transparent!important;/, "host transparente reposo");
+assert.match(shell, /\.track\.scroll-host-park \.page:not\(\.page-scroll-host\)\{visibility:hidden/, "scroll-host-park");
+assert.doesNotMatch(shell, /html\[data-season\]\s+\.page\.page-scroll-host::before/, "no ::before sticky");
+assert.doesNotMatch(shell.replace(/\/\*[\s\S]*?\*\//g, ""), /background-attachment:\s*fixed/, "no attachment fixed en reglas");
+assert.match(shell, /html\[data-season\]\s+\.page\{background:transparent!important;/, "page transparente");
+assert.match(shell, /html\[data-season\]\s+\.app\{[^}]*background:transparent!important;/, "app transparente");
+assert.match(shell, /\.app\{[^}]*padding-top:calc\(var\(--safe-top\) \+ 4px\)/, "app padding-top");
 
 /* Barra: hide sin opacity (evita ver la lista a través) */
 assert.match(
@@ -144,4 +140,4 @@ assert.match(shell, /@keyframes\s+seasonDrift/, "seasonDrift");
 assert.doesNotMatch(comps, /\{id:"temporada"\s*,\s*t:/, "tanda temporada fuera");
 assert.match(comps, /temporada.*QUITADA|QUITADA.*temporada/i, "por qué se quitó");
 
-console.log("ok: season glow trasfondo (portal z-1); sin cofia; sin gradiente en host/app; botnav opaco");
+console.log("ok: season glow .22 portal #root z-0; sin cofia; botnav opaco");
