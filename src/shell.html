@@ -529,8 +529,8 @@
     will-change:auto !important;
     background:var(--bg-2);
   }
-  /* Tope: apartar barra del compositing SOLO durante el gesto de ola (ver beginTopClear).
-     Lock en JS — no rearmar en cada scroll o no vuelve nunca. */
+  /* Tope: clase residual por si queda colgada de una beta anterior. Ya no se arma
+     (parpadeaba al llegar arriba / al swipear tabs — 2026-08-05). */
   .botnav.botnav-ola-clear{
     opacity:0 !important;visibility:hidden !important;pointer-events:none !important;
     transition:none !important;transform:none !important;

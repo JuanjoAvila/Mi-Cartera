@@ -74,9 +74,15 @@ async function scrollear(page, scrollTop) {
   }, scrollTop);
 }
 
-/** Espera a que el botnav asiente tras un scroll a borde (hide diferido ~450 ms / clear tope ~400 ms). */
+/** Espera a que el botnav asiente tras un scroll a borde (hide diferido ~450 ms / pin tope ~1 s). */
 async function esperarBarra(page) {
   await page.waitForTimeout(550);
+}
+
+/** Tras estar en el tope la barra queda pineada ~0,7–1 s (anti-parpadeo). Hay que dejar caducar
+ *  el pin antes de medir un hide por scroll hacia abajo. */
+async function esperarPinTope(page) {
+  await page.waitForTimeout(1100);
 }
 
 const alturaMax = (page) => page.evaluate(() => {
@@ -115,10 +121,11 @@ test("llegar al final esconde la barra con una transición RÁPIDA, no con la ca
   // Primer scroll tras cambiar de pestaña: solo sincroniza (scrollTab.current!==tab), no actúa.
   await scrollear(page, 0);
   await page.waitForTimeout(60);
+  await esperarPinTope(page);
 
   // Scroll normal hacia abajo, SIN llegar al final: tiene que esconder con la curva calmada.
   await scrollear(page, Math.round(max * 0.4));
-  await page.waitForTimeout(80);
+  await esperarBarra(page);
   const normal = await estadoBarra(page);
   expect(normal.escondida, "un scroll normal hacia abajo tiene que esconder la barra").toBe(true);
   expect(normal.rapida, "un scroll normal (sin llegar al final) NO debe usar la transición rápida").toBe(false);
@@ -126,7 +133,8 @@ test("llegar al final esconde la barra con una transición RÁPIDA, no con la ca
 
   // Vuelve a enseñar la barra (sube) antes de medir el caso del final, para partir de "visible".
   await scrollear(page, 0);
-  await esperarBarra(page); // clear tope + reveal diferido
+  await esperarBarra(page);
+  await esperarPinTope(page);
   const trasSubir = await estadoBarra(page);
   expect(trasSubir.escondida, "subir tiene que volver a enseñar la barra").toBe(false);
 
@@ -149,6 +157,7 @@ test("al alejarse del final y volver a bajar hasta abajo, la transición sigue s
 
   await scrollear(page, 0); // sincroniza
   await page.waitForTimeout(60);
+  await esperarPinTope(page);
   await scrollear(page, max); // llega al final
   await esperarBarra(page);
   let estado = await estadoBarra(page);
@@ -159,6 +168,7 @@ test("al alejarse del final y volver a bajar hasta abajo, la transición sigue s
   // valor viejo aterrizaría por DEBAJO del nuevo final — dando el escondido "normal", no el rápido.
   await scrollear(page, 0);
   await esperarBarra(page);
+  await esperarPinTope(page);
   await scrollear(page, await alturaMax(page));
   await esperarBarra(page);
   estado = await estadoBarra(page);

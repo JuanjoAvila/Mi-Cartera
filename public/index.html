@@ -529,8 +529,8 @@
     will-change:auto !important;
     background:var(--bg-2);
   }
-  /* Tope: apartar barra del compositing SOLO durante el gesto de ola (ver beginTopClear).
-     Lock en JS — no rearmar en cada scroll o no vuelve nunca. */
+  /* Tope: clase residual por si queda colgada de una beta anterior. Ya no se arma
+     (parpadeaba al llegar arriba / al swipear tabs — 2026-08-05). */
   .botnav.botnav-ola-clear{
     opacity:0 !important;visibility:hidden !important;pointer-events:none !important;
     transition:none !important;transform:none !important;
@@ -13612,7 +13612,7 @@ var RELEASE_NOTES=[
       "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — si cambias a mitad, salta al sitio SIN atravesarlo.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
-      "Si vas a mil arriba/abajo, la barra se queda QUIETA (sin amago de ocultar).",
+      "Si vas arriba del todo o cambias de pestaña, la barra se queda QUIETA (sin aparecer/desaparecer).",
     ]},
     {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
       "Dentro de Plan, con la lista ARRIBA del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",
@@ -16155,14 +16155,12 @@ function App(){
   // `botnav-hidden-fast` (ver shell.html) pone una transición corta SOLO para este caso; el
   // escondido normal al bajar sigue con su calma de siempre.
   const [navHiddenFast,setNavHiddenFast]=useState(false);
-  // Botnav y ola nativa (5/8 noche):
-  // · Abajo LENTO: ok. Abajo RÁPIDO (flick): `scrollend` disparaba el hide EN CUANTO
-  //   scrollTop tocaba el fondo, ANTES del stretch → ola cortada. Ahora el hide en borde
-  //   espera ~450 ms tras scrollend.
-  // · Arriba: la barra encima del stretch la mata. `botnav-ola-clear` SOLO si la barra estaba
-  //   ESCONDIDA (hay que revelarla sin tapar la ola). Si ya se ve, NO hacer clear — al ir
-  //   arriba/abajo a mil el clear↔unclear era el «amago de ocultar» (feedback 2026-08-05).
-  // · Rachas hide/reveal: si en <200 ms se pide lo contrario ≥3 veces, pin 800 ms visible.
+  // Botnav y ola nativa (5/8 noche + pulido 5/8 madrugada):
+  // · Abajo LENTO: ok. Abajo RÁPIDO (flick): hide diferido ~450 ms tras scrollend.
+  // · ARRIBA / swipe de tabs: NUNCA `botnav-ola-clear`. Ese clear↔unclear era el
+  //   «aparece y desaparece todo el rato» al llegar al tope y al cambiar de pestaña
+  //   (feedback 2026-08-05). La barra se queda; la ola sigue debajo.
+  // · Pin breve al llegar al tope / al swipear tabs: ni hide ni clear en la racha.
   const navBotSync=useRef(0);
   const navHideArmed=useRef(false);
   const navHideFastRef=useRef(false);
@@ -16170,34 +16168,23 @@ function App(){
   const topClearTimer=useRef(0);
   const revealAfterTopClear=useRef(false);
   const navPinUntil=useRef(0);
-  const navFlipAt=useRef(0);
-  const navFlipN=useRef(0);
   const navPinned=function(){ return Date.now()<navPinUntil.current; };
   const pinNavVisible=function(ms){
-    navPinUntil.current=Date.now()+(ms||800);
+    navPinUntil.current=Date.now()+(ms||1200);
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
-  };
-  const noteNavFlip=function(){
-    const now=Date.now();
-    if(now-navFlipAt.current<200){
-      navFlipN.current++;
-      if(navFlipN.current>=3) pinNavVisible(900);
-    } else {
-      navFlipN.current=1;
-    }
-    navFlipAt.current=now;
-  };
-  const beginTopClear=function(){
-    if(topClearOn.current) return;
-    topClearOn.current=true;
+    revealAfterTopClear.current=false;
+    if(topClearTimer.current){ clearTimeout(topClearTimer.current); topClearTimer.current=0; }
+    topClearOn.current=false;
     try{
       const nav=document.querySelector(".botnav");
-      if(nav) nav.classList.add("botnav-ola-clear");
+      if(nav) nav.classList.remove("botnav-hidden","botnav-hidden-fast","botnav-ola-clear");
     }catch(e){}
+    if(navHiddenRef.current){ navHiddenRef.current=false; setNavHidden(false); setNavHiddenFast(false); }
   };
-  // Cortar el clear YA (swipe de tabs, cambio de pestaña): si no, la barra «desaparece»
-  // al deslizar de lado o queda rara hasta ir a Resumen (feedback 5/8).
+  // clear del tope: solo API residual (enterScrollHost / swipe). Ya no se ARMA en scroll ni
+  // en touchmove — eso era el parpadeo.
+  const beginTopClear=function(){ /* no-op: ver comentario botnav arriba */ };
   const endTopClearNow=function(doReveal){
     if(topClearTimer.current){ clearTimeout(topClearTimer.current); topClearTimer.current=0; }
     topClearOn.current=false;
@@ -16205,7 +16192,7 @@ function App(){
       const nav=document.querySelector(".botnav");
       if(nav) nav.classList.remove("botnav-ola-clear");
     }catch(e){}
-    if(doReveal && (revealAfterTopClear.current || navHiddenRef.current)){
+    if(doReveal && navHiddenRef.current){
       revealAfterTopClear.current=false;
       revealNav();
     } else {
@@ -16246,8 +16233,6 @@ function App(){
   };
   const armNavHide=function(fast){
     if(navPinned()) return;
-    if(!navHiddenRef.current && !navHideArmed.current) noteNavFlip();
-    if(navPinned()) return;
     navHideFastRef.current=!!fast;
     if(navHideArmed.current || navHiddenRef.current){
       if(fast) navHideFastRef.current=true;
@@ -16259,7 +16244,6 @@ function App(){
     navBotSync.current=setTimeout(applyNavHide, fast?800:550);
   };
   const revealNav=function(){
-    if(navHiddenRef.current || navHideArmed.current || topClearOn.current) noteNavFlip();
     if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
     navHideArmed.current=false;
     revealAfterTopClear.current=false;
@@ -16302,20 +16286,20 @@ function App(){
     syncPageTouchAction(e.currentTarget, tab);
     // Cambió la pestaña (o es la primera lectura): sincroniza sin actuar. Cada .page tiene su propio
     // scrollTop y sin esto pasar de una tab scrolleada a otra escondería la barra de golpe.
-    if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); return; }
+    if(scrollTab.current!==tab){ scrollTab.current=tab; lastScrollY.current=y; revealNav(); pinNavVisible(1000); return; }
     const dy=y-lastScrollY.current;
     lastScrollY.current=y;
     if(y<=8){
-      // Clear SOLO si la barra ESTABA escondida y hay que revelarla sin tapar la ola.
-      // Si ya se veía, beginTopClear parpadeaba opacity 0↔1 (amago al llegar arriba a mil).
-      if(dy<-2 && navHiddenRef.current){
-        beginTopClear();
-        revealAfterTopClear.current=true;
-      } else if(navHiddenRef.current && !topClearOn.current){
+      // Tope: barra QUIETA y visible. Sin ola-clear. Pin solo al aterrizar / al revelar,
+      // no en cada frame del rubber-band (si no el pin no caduca nunca).
+      if(navHiddenRef.current){
         revealNav();
+        pinNavVisible(1000);
+      } else {
+        if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
+        navHideArmed.current=false;
+        if(dy<-2) pinNavVisible(700);
       }
-      if(navBotSync.current){ clearTimeout(navBotSync.current); navBotSync.current=0; }
-      navHideArmed.current=false;
       return;
     }
     const max=e.currentTarget.scrollHeight-e.currentTarget.clientHeight;
@@ -18322,12 +18306,7 @@ function App(){
     const x=e.touches?e.touches[0].clientX:e.clientX;
     const y=e.touches?e.touches[0].clientY:e.clientY;
     const ddx=x-startX.current, ddy=y-startY.current;
-    // Tirón en el tope (ola arriba): apartar barra una vez (lock).
-    if(ddy>8){
-      const pagesT=trackRef.current&&trackRef.current.children;
-      const pgT=pagesT&&pagesT[tabRef.current];
-      if(pgT && (pgT.scrollTop||0)<=2) beginTopClear();
-    }
+    // (antes: beginTopClear en tirón al tope → barra off/on en cada swipe y en la ola)
     // Inicio arriba: cortar overscroll/rebote ANTES de fijar eje (vídeo 2026-07-18).
     if(axis.current===null && tab===0 && ddy>0 && Math.abs(ddy)>=Math.abs(ddx)){
       const pages=trackRef.current&&trackRef.current.children;
@@ -18373,8 +18352,7 @@ function App(){
           freezeShell(true,"drawer");
         } else {
           gestureMode.current="tab";
-          endTopClearNow(true);  // barra visible al cambiar de tab (no «desaparece» al deslizar)
-          pinNavVisible(700);    // rachas lado+arriba: barra quieta
+          pinNavVisible(1400);   // barra fija durante el swipe y el asiento
           leaveScrollHost();   // salir del fixed: el carrusel vuelve a translate3d
           if(trackRef.current) trackRef.current.classList.add("dragging");
           navSinBlur(true);   // ver `navSinBlur`: el desenfoque de la barra se paga POR FRAME

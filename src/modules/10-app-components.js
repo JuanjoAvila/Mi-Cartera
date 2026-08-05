@@ -1448,7 +1448,7 @@ var RELEASE_NOTES=[
       "Al llegar abajo del todo, la barra de navegación se aparta YA (rápido).",
       "La rayita de Gastos a Plan hace un ARCO por encima del + — si cambias a mitad, salta al sitio SIN atravesarlo.",
       "Los iconos de la barra hacen su animación al entrar en cada pestaña.",
-      "Si vas a mil arriba/abajo, la barra se queda QUIETA (sin amago de ocultar).",
+      "Si vas arriba del todo o cambias de pestaña, la barra se queda QUIETA (sin aparecer/desaparecer).",
     ]},
     {id:"plan-swipe", t:"👇 Deslizar en Plan cambia de sección", items:[
       "Dentro de Plan, con la lista ARRIBA del todo, tira del dedo hacia abajo: pasa a Deudas (y de Deudas a Metas, y de Metas otra vez a Recibos).",

@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar] — 2026-08-05 (noche 5)
+### Barra quieta de verdad al tope y al swipear tabs
+
+Causa del parpadeo: `botnav-ola-clear` se armaba en el tirón al tope (también con
+deriva al cambiar de pestaña) y en el scroll al llegar arriba → opacity 0↔1 en bucle.
+Ya no se arma: al tope solo reveal + pin breve; al swipe de tabs, pin 1,4 s forzado
+visible. La ola sigue; la barra no pelea.
+
 ## [Sin publicar] — 2026-08-05 (noche 4)
 ### Rayita, cifra de presupuesto y barra a mil
 
