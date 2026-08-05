@@ -1431,8 +1431,8 @@ var RELEASE_NOTES=[
    tandas:[
      {id:"season-fx-soft", t:"🍂 Ambientación detrás de las cartillas", items:[
        "Ajustes → Apariencia → Temática → Verano (o Navidad/Halloween…): ves piezas muy suaves cayendo POR DETRÁS de las cartillas, sin tapar números — también quieto en una pestaña, no solo al deslizar.",
-       "El velo de color de la temática se queda de fondo (no desaparece al soltar el dedo).",
-       "Cambia de pestaña: NO hay ráfaga nueva — la lluvia sigue quieta de fondo.",
+       "El destello de luz bajo el + se queda fijo (no solo un instante al deslizar).",
+       "Cambia de pestaña: la lluvia sigue su camino — no se reinicia ni se corta.",
        "Ajustes → Apariencia → Reducir animaciones: la lluvia desaparece del todo.",
        "Temática → Ninguna: vuelve el look normal, sin piezas.",
      ]},
@@ -1458,29 +1458,39 @@ var RELEASE_NOTES=[
        "Nuevas categorías: Viajes, Mascotas, Educación, Luz/gas/agua — al apuntar y al filtrar.",
        "Booking/Vueling → Viajes; Zooplus → Mascotas; Endesa → Energía (ya no caen en «Otros» u Ocio).",
      ]},
+     {id:"gastos-filtros-ubicacion", t:"🎛️ El botón de Filtros ya no queda suelto", items:[
+       "En Gastos, «Filtros» se ha movido justo al lado del buscador — antes vivía solo, en su propia fila entre el buscador y «Sincronizar».",
+       "Si tienes categorías o bancos seleccionados, siguen viéndose debajo, con «Borrar filtros» a mano.",
+       "El resumen (gastado, presupuesto…) no ha perdido ni un milímetro de sitio.",
+     ]},
      {id:"fix-novedades-nag", t:"🔔 Novedades ya no insiste sin motivo", items:[
        "En el canal beta, el popup de ✨ Novedades salía otra vez en CADA compilación nueva (4.15.0.1, .2, .3…) aunque fueran las mismas notas — hoy con 4-5 compilaciones en un día, de ahí «todo el rato me sale para actualizar».",
        "Ahora se marca como vista por versión base (4.15.0), no por el sello exacto de la compilación: si no hay una versión de verdad nueva, no vuelve a saltar.",
        "Instala esta compilación y cierra/abre la app un par de veces: Novedades no debería reaparecer sola.",
+     ]},
+     {id:"fix-season-glow", t:"✨ Destello fijo y lluvia sin cortes", items:[
+       "Con temática puesta, el destello de luz bajo el botón + se queda SIEMPRE — ya no solo un instante al deslizar entre pestañas.",
+       "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni se cortan en cada gesto.",
+       "Las pantallas no se mezclan (Inicio y Gastos a la vez): eso ya estaba corregido y se mantiene.",
      ]}
    ],
    items:{
    es:[
-    "🍂 Con una temática de temporada, las piezas caen muy suaves por detrás de las cartillas — sin molestar ni tapar números.",
+    "🍂 Con una temática de temporada, las piezas caen muy suaves por detrás de las cartillas — sin molestar ni tapar números. El destello de luz se queda fijo y la lluvia no se corta al cambiar de pestaña.",
     "🔁 En Ajustes → Dinero hay un conversor de verdad: eliges importe, moneda de origen y destino.",
     "💶 El presupuesto del mes es la misma cifra en Resumen, Gastos, avisos e informe: sin mezclar inversiones ni traspasos, y descontando lo reservado a metas.",
     "🏦 En Gastos ves el extracto de todos tus bancos. Solo el de gasto diario resta del presupuesto; el resto sale marcado como «no afecta».",
     "🎛️ En Gastos, los filtros van en un sheet con buscador (adiós a la fila interminable de chips). Hay categorías nuevas (viajes, mascotas, educación, luz/gas) y el reconocimiento de comercios acierta más.",
    ],
    en:[
-    "🍂 With a seasonal theme on, pieces drift very softly behind the cards — without getting in the way or covering numbers.",
+    "🍂 With a seasonal theme on, pieces drift very softly behind the cards — without getting in the way or covering numbers. The soft glow stays put and the drift doesn't restart when you switch tabs.",
     "🔁 In Settings → Money there's a real converter: pick an amount, a from-currency and a to-currency.",
     "💶 The monthly budget is the same figure on Home, Spending, alerts and the share image: investments and transfers stay out, and money reserved for goals is deducted.",
     "🏦 On Spending you see every linked bank's statement. Only your daily-spending bank hits the budget; the rest is marked «doesn't count».",
     "🎛️ On Spending, filters live in a searchable sheet (no more endless chip rows). New categories (travel, pets, education, utilities) and smarter merchant detection.",
    ],
    ca:[
-    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus per darrere de les cartilles — sense molestar ni tapar números.",
+    "🍂 Amb una temàtica de temporada, les peces cauen molt suaus per darrere de les cartilles — sense molestar ni tapar números. El destell de llum es queda fix i la pluja no es talla en canviar de pestanya.",
     "🔁 A Ajustos → Diners hi ha un convertidor de veritat: tries import, moneda d'origen i de destí.",
     "💶 El pressupost del mes és la mateixa xifra al Resum, Despeses, avisos i informe: sense barrejar inversions ni traspassos, i descomptant el reservat a metes.",
     "🏦 A Despeses veus l'extracte de tots els teus bancs. Només el de despesa diària resta del pressupost; la resta surt marcada com a «no afecta».",
@@ -2143,6 +2153,87 @@ function WhatsNew({onClose, showToast, set, state}){
   )), document.body);
 }
 
+/* Conversor de monedas: pantalla propia (mismo patrón que ActivityPanel/PrivacyPanel), NO un
+   acordeón dentro de Ajustes → Dinero. Con 16 monedas la lista de chips (×2, origen y destino)
+   hacía Ajustes interminable en el móvil — feedback 2026-08-05: «ponlo en una pantalla nueva,
+   hay un montón de divisas». El buscador filtra por código o nombre (p.ej. «lira», «try», «corona»)
+   y afecta a las DOS listas de chips a la vez, porque comparten el mismo catálogo. No inventa
+   tipos: reutiliza toEurAmt/fromEurAmt y los `fxRates` que ya trae Ajustes → Dinero. */
+function CurConverterPanel({state, onClose, refreshFx}){
+  useBackClose(true, onClose);   // gesto atrás del móvil: cierra esta pantalla
+  const [amt,setAmt]=useState("1");
+  const [from,setFrom]=useState("EUR");
+  const [to,setTo]=useState("TRY");
+  const [q,setQ]=useState("");
+  useEffect(function(){ if(refreshFx) refreshFx(); },[]);   // al entrar, tipos al día (igual que el acordeón antes)
+  const normQ=function(s){ return String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,""); };
+  const wrap={position:"fixed",inset:0,zIndex:96,overflowY:"auto",background:"var(--bg)",color:"var(--text)",padding:"calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 28px)",fontFamily:"'Manrope',sans-serif"};
+  const inner={maxWidth:480,margin:"0 auto"};
+  const back={background:"none",border:"none",color:"var(--blue)",fontSize:15,fontWeight:700,cursor:"pointer",padding:"6px 0",marginBottom:6};
+  const inp={width:"100%",padding:"10px 13px",borderRadius:12,border:"1px solid var(--line)",background:"var(--bg-2)",color:"var(--text)",fontSize:16,boxSizing:"border-box"};
+  const segBtn=function(on){ return {padding:"7px 10px",borderRadius:20,fontSize:12.5,fontWeight:700,cursor:"pointer",background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}; };
+  const tbl=fxTableOf(state);
+  const hasRates=CUR_LIST.some(function(c){ return c!=="EUR" && tbl[c]>0; });
+  const nq=normQ(q).trim();
+  const filtList=nq?CUR_LIST.filter(function(c){ return normQ(c+" "+t("cur_"+c.toLowerCase())).indexOf(nq)>=0; }):CUR_LIST;
+  const chipRow=function(cur, setCur){
+    if(nq && filtList.length===0){
+      return React.createElement("div",{style:{fontSize:12.5,color:"var(--muted-2)",padding:"10px 2px"}}, t("st_cur_convert_search_none"));
+    }
+    return React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}},
+      filtList.map(function(c){
+        const ok=c==="EUR"||tbl[c]>0;
+        return React.createElement("button",{key:c,type:"button",disabled:!ok,onClick:function(){ if(ok) setCur(c); },
+          style:Object.assign({},segBtn(cur===c),{flex:"0 0 auto",opacity:ok?1:.4})},
+          (CUR_SYM[c]||c)+" "+c);
+      }));
+  };
+  const raw=parseFloat(String(amt).replace(",","."))||0;
+  const needFrom=from!=="EUR" && !(tbl[from]>0);
+  const needTo=to!=="EUR" && !(tbl[to]>0);
+  const eurMid=(!needFrom && raw>0)?toEurAmt(raw, from, state):null;
+  const out=(!needTo && eurMid!=null)?fromEurAmt(eurMid, to, state):null;
+  const rateTxt=(function(){
+    if(needFrom||needTo||!(raw>0)||out==null) return null;
+    const one=fromEurAmt(toEurAmt(1, from, state), to, state);
+    if(!(one>0)) return null;
+    return "1 "+(CUR_SYM[from]||from)+" = "+NF.format(one)+" "+(CUR_SYM[to]||to);
+  })();
+  return React.createElement("div",{style:wrap}, React.createElement("div",{style:inner},
+    React.createElement("button",{style:back,onClick:onClose}, "‹ "+t("st_back_settings")),
+    React.createElement("div",{className:"serif",style:{fontSize:25,margin:"2px 0 2px"}}, "🔁 "+t("st_cur_convert")),
+    React.createElement("div",{style:{color:"var(--muted)",fontSize:13,lineHeight:1.5,marginBottom:12}}, t("st_cur_convert_hint")),
+    !hasRates
+      ? React.createElement("div",{style:{marginTop:4}},
+          React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
+          refreshFx && React.createElement("button",{type:"button",className:"btn btn-ghost",style:{marginTop:10,width:"100%"},onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")))
+      : React.createElement(React.Fragment,null,
+          React.createElement("input",{style:inp,placeholder:t("st_cur_convert_search_ph"),value:q,onChange:function(e){ setQ(e.target.value); }}),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"14px 0 4px"}}, t("st_cur_convert_from")),
+          React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+            React.createElement("input",{type:"text",inputMode:"decimal",value:amt,
+              onChange:function(e){ setAmt(e.target.value); },
+              style:{flex:"1 1 40%",minWidth:0,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontSize:16,fontWeight:700,fontVariantNumeric:"tabular-nums"}}),
+            React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:15,flex:"0 0 auto"}}, CUR_SYM[from]||from)
+          ),
+          chipRow(from, setFrom),
+          React.createElement("button",{type:"button",onClick:function(){ const a=from; setFrom(to); setTo(a); },
+            style:{marginTop:14,width:"100%",padding:"10px 12px",borderRadius:12,fontSize:14,fontWeight:700,cursor:"pointer",background:"var(--surface-2)",color:"var(--text)",border:"1px solid var(--line)"}}, "⇅ "+t("st_cur_convert_swap")),
+          React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"14px 0 4px"}}, t("st_cur_convert_to")),
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)"}},
+            React.createElement("span",{className:"num",style:{fontWeight:800,fontSize:22,letterSpacing:"-.3px",
+              color:(needFrom||needTo)?"var(--muted)":"var(--text)"}},
+              out!=null?NF.format(out):"—"),
+            React.createElement("span",{style:{fontWeight:700,fontSize:14}}, CUR_SYM[to]||to)
+          ),
+          chipRow(to, setTo),
+          (needFrom||needTo) && React.createElement("div",{style:{fontSize:12,color:"var(--coral)",marginTop:8,lineHeight:1.4}}, t("fx_no_rate")),
+          rateTxt && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:10}},
+            rateTxt+(state.fxDate?(" · "+state.fxDate):""))
+        )
+  ));
+}
+
 /* Contenido del cajón de Ajustes (el cajón deslizante lo gestiona App). */
 function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour, totals, fetchPrices, refreshFx, goBanks, goBanksFocus, goGastos}){
   const [expand,setExpand]=useState(null);   // fila-acordeón abierta: "lang" | "gview" | "tabs" | "cur" | null
@@ -2319,11 +2410,8 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const curSeason=(state.settings&&state.settings.season)||"none";
   const curTextSize=textSizeOf(state);
   const simOn=!!(state.settings&&state.settings.simpleMode);
-  const [curCompare,setCurCompare]=useState(false);   // acordeón conversor FX (Dinero)
-  // Conversor: importe + moneda origen → moneda destino (reutiliza toEurAmt/fromEurAmt).
-  const [fxAmt,setFxAmt]=useState("1");
-  const [fxFrom,setFxFrom]=useState("EUR");
-  const [fxTo,setFxTo]=useState("TRY");
+  // Conversor de monedas: pantalla propia (CurConverterPanel), no acordeón — ver su comentario.
+  const [convOpen,setConvOpen]=useState(false);
   const segBtn=function(on){ return Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}); };
   // ── Secciones colapsables + buscador (feedback 2026-07-13: «Ajustes se está haciendo
   // kilométrico»). Cada tarjeta es ahora un grupo plegado (estado en localStorage); el
@@ -2465,66 +2553,10 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
             },style:Object.assign({},segBtn(curCur===c),{flex:"1 1 44%"})}, t("cur_"+c.toLowerCase()));
           })),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"8px 2px 0"}}, t("currency_hint"))),
-      // Conversor: importe + origen → destino. Sustituye la lista fija «1 € → …» (pedida 2026-08-05).
-      row("curcmp","🔁",t("st_cur_convert"),null,function(){
-        const open=!curCompare; setCurCompare(open);
-        if(open && refreshFx) refreshFx();
-      }),
-      curCompare && React.createElement("div",{className:"set-exp"},
-        (function(){
-          const tbl=fxTableOf(state);
-          const hasRates=CUR_LIST.some(function(c){ return c!=="EUR" && tbl[c]>0; });
-          if(!hasRates){
-            return React.createElement("div",{style:{marginTop:8}},
-              React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
-              refreshFx && React.createElement("button",{type:"button",style:Object.assign({},segBtn(false),{marginTop:10,flex:"1 1 100%"}),onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")));
-          }
-          const raw=parseFloat(String(fxAmt).replace(",","."))||0;
-          const needFrom=fxFrom!=="EUR" && !(tbl[fxFrom]>0);
-          const needTo=fxTo!=="EUR" && !(tbl[fxTo]>0);
-          const eurMid=(!needFrom && raw>0)?toEurAmt(raw, fxFrom, state):null;
-          const out=(!needTo && eurMid!=null)?fromEurAmt(eurMid, fxTo, state):null;
-          const rateTxt=(function(){
-            if(needFrom||needTo||!(raw>0)||out==null) return null;
-            // 1 unidad origen = X destino (legible, sin inventar si falta tipo)
-            const one=fromEurAmt(toEurAmt(1, fxFrom, state), fxTo, state);
-            if(!(one>0)) return null;
-            return "1 "+(CUR_SYM[fxFrom]||fxFrom)+" = "+NF.format(one)+" "+(CUR_SYM[fxTo]||fxTo);
-          })();
-          const chipRow=function(cur, setCur){
-            return React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}},
-              CUR_LIST.map(function(c){
-                const ok=c==="EUR"||tbl[c]>0;
-                return React.createElement("button",{key:c,type:"button",disabled:!ok,onClick:function(){ if(ok) setCur(c); },
-                  style:Object.assign({},segBtn(cur===c),{flex:"0 0 auto",opacity:ok?1:.4,padding:"7px 10px",fontSize:12.5})},
-                  (CUR_SYM[c]||c)+" "+c);
-              }));
-          };
-          return React.createElement("div",{style:{marginTop:6}},
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginBottom:4}}, t("st_cur_convert_from")),
-            React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
-              React.createElement("input",{type:"text",inputMode:"decimal",value:fxAmt,
-                onChange:function(e){ setFxAmt(e.target.value); },
-                style:{flex:"1 1 40%",minWidth:0,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontSize:16,fontWeight:700,fontVariantNumeric:"tabular-nums"}}),
-              React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:15,flex:"0 0 auto"}}, CUR_SYM[fxFrom]||fxFrom)
-            ),
-            chipRow(fxFrom, setFxFrom),
-            React.createElement("button",{type:"button",onClick:function(){ const a=fxFrom; setFxFrom(fxTo); setFxTo(a); },
-              style:Object.assign({},segBtn(false),{marginTop:12,flex:"1 1 100%",fontSize:14})}, "⇅ "+t("st_cur_convert_swap")),
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"12px 0 4px"}}, t("st_cur_convert_to")),
-            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)"}},
-              React.createElement("span",{className:"num",style:{fontWeight:800,fontSize:22,letterSpacing:"-.3px",
-                color:(needFrom||needTo)?"var(--muted)":"var(--text)"}},
-                out!=null?NF.format(out):(needFrom||needTo?"—":"—")),
-              React.createElement("span",{style:{fontWeight:700,fontSize:14}}, CUR_SYM[fxTo]||fxTo)
-            ),
-            chipRow(fxTo, setFxTo),
-            (needFrom||needTo) && React.createElement("div",{style:{fontSize:12,color:"var(--coral)",marginTop:8,lineHeight:1.4}}, t("fx_no_rate")),
-            rateTxt && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:10}},
-              rateTxt+(state.fxDate?(" · "+state.fxDate):"")),
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}}, t("st_cur_convert_hint"))
-          );
-        })()),
+      // Conversor: pantalla propia (CurConverterPanel) — ya NO es un acordeón aquí dentro.
+      // Con 16 monedas (×2 listas, origen y destino) Ajustes se hacía interminable en el móvil
+      // (feedback 2026-08-05). La fila solo abre la pantalla; el buscador vive allí.
+      row("curcmp","🔁",t("st_cur_convert"),null,function(){ setConvOpen(true); }),
       (function(){
         const gm=(state.settings&&state.settings.gTotalMode)||"split";
         return React.createElement(React.Fragment,null,
@@ -2800,6 +2832,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     autoBackOpen && ReactDOM.createPortal(React.createElement(AutoBackupsPanel,{state:state,set:set,showToast:showToast,uid:uid,onClose:function(){ setAutoBackOpen(false); }}), document.body),
     actOpen && ReactDOM.createPortal(React.createElement(ActivityPanel,{events:events,onReload:loadEvents,onClose:function(){ setActOpen(false); }}), document.body),
     privOpen && ReactDOM.createPortal(React.createElement(PrivacyPanel,{onClose:function(){ setPrivOpen(false); }}), document.body),
+    convOpen && ReactDOM.createPortal(React.createElement(CurConverterPanel,{state:state,refreshFx:refreshFx,onClose:function(){ setConvOpen(false); }}), document.body),
 
     (function(){ const nq=normQ(q).trim(); return (nq&&grpMatches===0)?React.createElement("div",{className:"hint",style:{marginTop:14,textAlign:"center"}},t("st_search_none")):null; })(),
     // El canal y las DOS versiones (OTA + APK) se cantan en el pie: si el icono no cambia,

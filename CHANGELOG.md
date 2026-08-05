@@ -6,28 +6,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ### Ambientación suave + conversor FX + presupuesto alineado + extracto total (beta)
 
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
-`gastos-filtros-ia`, `fix-novedades-nag`.
+`gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`.
 
-1. **Ambientación detrás** (`.season-amb` z-index 0): piezas muy suaves en bucle lento
-   detrás de `.page`. Sin ráfagas al cambiar de pestaña (nada de `seasonEpoch`/`seasonrise`).
-   Respeta reducir-animaciones. Guardián actualizado: `tests/season-detalle.test.mjs`.
-   **Incidente 2026-08-05 (autocorregido el mismo día):** para que la ambientación se viera
-   también en reposo (no solo al deslizar tabs) se puso `background:transparent` en
-   `.page-scroll-host` — y en vez de lluvia se vio **Inicio y Gastos pintados a la vez**
-   (bleed-through real, reportado con captura: «dios menuda liada»). El host es
-   `position:fixed` a pantalla completa (z-index 35): su fondo es la ÚNICA pared entre la
-   pestaña activa y lo que sigue montado detrás en `.track` (vecinas para el swipe); hacerlo
-   transparente deja ver TODO lo de detrás, no solo la ambientación. Fix de verdad: el host
-   vuelve a `background:var(--bg)` (opaco, siempre) y la ambientación se monta una SEGUNDA
-   vez, LOCAL, dentro del propio host (`isHost && seasonPool` en `11-app-main.js`), a
-   z-index **negativo** (`.page-scroll-host>.season-amb{z-index:-1}` y
-   `.page-scroll-host::before/::after` para el velo, ambos en `shell.html`) — con el host como
-   su propio contexto de apilamiento, un hijo con z-index negativo pinta encima del fondo del
-   host (regla nº1 del orden de apilamiento) y debajo de las cartillas (contenido normal, sin
-   z-index, regla nº3), sin envolver nada ni tocar `.page`. El degradado del velo por temática
-   pasa a vivir en `--season-glow-top` (junto a `--season-tinte`) para no duplicar los seis
-   gradientes en las dos ubicaciones. Guardián reforzado: `tests/season-detalle.test.mjs`
-   ahora exige host opaco explícitamente y prohíbe que vuelva a ser transparente.
+1. **Ambientación detrás** (`.season-amb`): piezas muy suaves en bucle lento detrás de las
+   cartillas. Sin ráfagas al cambiar de pestaña. Respeta reducir-animaciones.
+   **Incidentes 2026-08-05 (mismo día):**
+   - Host transparente → Inicio+Gastos a la vez. Fix: host SIEMPRE `background:var(--bg)`.
+   - Destello solo un instante al deslizar + lluvia reiniciada en cada swipe (copia solo en
+     `isHost`, se desmontaba con `hostTab=-1`). Fix: velos `html[data-season]::before/::after`
+     a z-index **36/39** (sobre el host 35; el de abajo se filtra por el botnav); `.season-amb`
+     en cada pestaña con `show` (no solo isHost), `position:absolute; z-index:-1`.
+     Guardián: `tests/season-detalle.test.mjs`.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
@@ -52,6 +41,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
    actualizaciones (pill OTA, notificación nativa, `OtaCheckWorker`) SÍ correspondía a
    compilaciones realmente nuevas publicadas hoy (4 tandas + esta), así que no se toca: es
    exactamente lo esperado cuando se publica varias veces el mismo día.
+7. **Fix 2026-08-05 — destello + lluvia sin cortes** (`fix-season-glow`): ver punto 1
+   (segunda pasada del mismo día, feedback con 2 fotos).
+8. **Reubicación 2026-08-05 — botón «Filtros» de Gastos** (`gastos-filtros-ubicacion`):
+   `GastosFilterSheet` (punto 5) llegó con su botón en una fila propia, entre el buscador y
+   «Sincronizar» — ni pegado a uno ni al otro. Se movió a la misma fila que el buscador
+   (`04-tab-gastos.js`, `Expenses`): los dos acotan la lista de abajo (texto y categoría/banco),
+   así que forman un único bloque de "cómo filtras"; «Sincronizar» es una acción de red aparte y
+   se queda donde estaba. El resumen de categorías/bancos activos + «Borrar filtros» sigue
+   pintándose debajo, ahora sin el botón que antes lo acompañaba (ya vive junto al buscador).
+   Sin cambios de comportamiento en `GastosFilterSheet` ni claves i18n nuevas — solo maquetación.
 
 Sin APK nuevo (35 / 4.12.0).
 

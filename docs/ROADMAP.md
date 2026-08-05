@@ -1,9 +1,9 @@
 # Roadmap — Mi Cartera
 
 > Estado a 2026-08-05 · **v4.15.0** — en **`beta`**: tandas `season-fx-soft`, `fx-converter`,
-> `presupuesto-resumen`, `otros-bancos-vista`, `gastos-filtros-ia`, `fix-novedades-nag` (el
-> popup de ✨ Novedades ya no reaparecía sin motivo en cada compilación de la misma beta).
-> Producción = **4.14.1**. APK **35 / 4.12.0**.
+> `presupuesto-resumen`, `otros-bancos-vista`, `gastos-filtros-ia`, `fix-novedades-nag`,
+> `fix-season-glow` (destello fijo + lluvia sin reinicio al swipe). Producción = **4.14.1**.
+> APK **35 / 4.12.0**.
 >
 > Anterior: 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos
 > ¥/₺ + letra pequeña) que había entrado tras el sello 4.14.0. Multidivisa de la 4.14.0 sigue.
@@ -92,13 +92,13 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 ## Lo siguiente
 
 > **4.15.0** en `beta`: ambientación suave + conversor FX + presupuesto alineado + extracto de
-> todos los bancos + filtros de Gastos + fix del popup de Novedades en bucle.
+> todos los bancos + filtros de Gastos + fix Novedades + fix destello/lluvia al swipe.
 > Producción = **4.14.1**. APK = **35 / 4.12.0**.
-> Probar checklist de las 6 tandas; promote cuando las apruebe.
+> Probar checklist de las tandas; promote cuando las apruebe.
 
 1. En el móvil (canal beta): Mis bancos / Ajustes → ver **v4.15.0.N**.
-2. Revisar las 6 tandas del panel (incluye `fix-novedades-nag`: confirmar que Novedades no
-   vuelve a saltar sola al abrir la app tras esta compilación).
+2. Revisar las tandas del panel (incluye `fix-season-glow`: destello fijo bajo el + y lluvia
+   que no se reinicia al cambiar de pestaña; y `fix-novedades-nag`).
 
 ### Pendiente de respuesta suya
 

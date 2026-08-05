@@ -2801,17 +2801,10 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
-  // Ambientación de temporada DETRÁS de las cartillas (2026-08-05): suave, pocas piezas, en
-  // bucle lento. Sin ráfagas al cambiar de pestaña (eso es lo que cansó en la capa vieja).
-  // Se calcula ANTES de `paginas` porque hace falta DOS VECES: la capa global de aquí abajo
-  // (se asoma en los huecos del swipe, eso ya iba bien) y una copia LOCAL dentro de la pestaña
-  // que hace de host, para que también se vea en reposo.
-  // Incidente 2026-08-05: para que se viera en reposo, un intento anterior hizo transparente
-  // `.page-scroll-host` — y en vez de ambientación se vio Inicio y Gastos pintados a la vez (el
-  // host es la única pared opaca entre la pestaña activa y lo que hay montado detrás en el
-  // carrusel). El fix de verdad es este: el host se queda SIEMPRE opaco y la copia local se monta
-  // DENTRO de él con z-index negativo (`.page-scroll-host>.season-amb` en shell.html), así pinta
-  // encima de su propio fondo y debajo de las cartillas sin arriesgar el fondo del host.
+  // Ambientación de temporada: capa POR pestaña (absolute z-index -1), montada siempre que
+  // `show` — no solo en `isHost`. Si solo iba en el host, al deslizar (`hostTab=-1`) se
+  // desmontaba y la lluvia se reiniciaba (feedback 2026-08-05). Host opaco siempre.
+  // Velos html::before/::after a z-index 36/39 = destello visible también en reposo.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
@@ -2822,20 +2815,17 @@ function App(){
       const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
       const left=Math.round(rnd(12.9898)*96);
       const sz=14+Math.round(rnd(4.1)*8);
-      const dur=16+rnd(7.7)*8;          // 16–24 s: lento a propósito
-      const delay=-(rnd(3.3)*dur);      // negativo = ya repartidas al montar (sin «arranque»)
+      const dur=16+rnd(7.7)*8;
+      const delay=-(rnd(3.3)*dur);
       const sway=(4+Math.round(rnd(5.5)*14))*(rnd(9.1)>0.5?1:-1);
       const spin=(rnd(2.2)>0.5?1:-1)*(60+Math.round(rnd(6.6)*100));
-      const op=0.14+rnd(1.7)*0.14;      // 0.14–0.28: casi wallpaper
+      const op=0.14+rnd(1.7)*0.14;
       out.push(React.createElement("span",{key:i,
         style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
           "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
     }
     return out;
   };
-  const seasonAmb=seasonPool
-    ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, buildSeasonSpans())
-    : null;
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
@@ -2843,8 +2833,8 @@ function App(){
     // `page-scroll-host` EN el className de React (no solo classList): si no, cualquier
     // setState de App (botnav al bajar) lo borra y el fling pierde la ola nativa.
     return React.createElement("div",{className:"page"+(show?" page-live":"")+(isHost?" page-scroll-host":""),key:id,onScroll:onPageScroll},
-      // Copia local de la ambientación, solo en la pestaña que hace de host (ver comentario arriba).
-      isHost && seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, buildSeasonSpans()) : null,
+      // Siempre que la pestaña esté montada (show), no solo isHost — si no, cada swipe reinicia la lluvia.
+      show && seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, buildSeasonSpans()) : null,
       show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
     );
   });
@@ -2857,7 +2847,6 @@ function App(){
   );
 
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
-    seasonAmb,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",

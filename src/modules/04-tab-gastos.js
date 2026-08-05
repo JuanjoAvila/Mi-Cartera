@@ -387,6 +387,23 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // de globales que React.memo no ve).
   const l10nKey=CURLANG+"|"+DISP.sym;
 
+  // Resumen de filtros activos, para el botón "Filtros" (badge) y la línea de chips debajo.
+  // Se calcula aquí (no memoizado: sel/bankSel son arrays cortos) porque lo usan dos sitios:
+  // el botón junto al buscador y la línea de resumen + "Borrar filtros".
+  const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+  const nCatSel=sel.length;
+  const nBankSel=bankSelIsDefault?0:bankSel.length;
+  const nFilters=nCatSel+nBankSel;
+  const filterParts=[];
+  if(nCatSel===1) filterParts.push(catName(sel[0]));
+  else if(nCatSel>1) filterParts.push(nCatSel+" "+t("g_filters_cats"));
+  if(!bankSelIsDefault){
+    if(bankSel.length===1){
+      const b=bankSel[0];
+      filterParts.push(b==="_manual"?t("g_bank_manual"):(entOf(b).label||b));
+    } else if(bankSel.length>1) filterParts.push(bankSel.length+" "+t("g_filters_banks"));
+  }
+
   const shown=filtered.slice(0,visible);
   /* A LA FILA SE LE PASA EL NÚMERO, NO EL `Date` (2026-07-27, y esto llevaba roto desde siempre).
      `parseDate` cachea los MILISEGUNDOS pero devuelve `new Date(ms)`: un objeto NUEVO en cada
@@ -497,10 +514,20 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         DATE_PRESETS.slice(0,2).map(function(p){ return React.createElement("button",{key:p.id,className:"v4-period-btn"+(preset===p.id?" on":""),onClick:function(){ setPreset(p.id); setMorePeriods(false); }},t("g_"+p.id)); }),
         React.createElement("button",{className:"v4-period-btn"+(morePeriods||DATE_PRESETS.slice(2).some(function(p){ return p.id===preset; })?" on":""),onClick:function(){ setMorePeriods(!morePeriods); }},t("v4_period_more"))
       ),
-      React.createElement("div",Object.assign({className:"searchbar"},stopSwipe),
-        React.createElement("span",{className:"searchbar-ic"},"🔍"),
-        React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
-        q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
+      // Filtros vive PEGADO al buscador (2026-08-05): los dos acotan la misma lista de abajo,
+      // así que van en la misma fila — antes el botón quedaba solo, en su propia línea entre el
+      // buscador y "Sincronizar", sin pertenecer claramente a ninguno de los dos (feedback: «se
+      // queda raro en medio»). Sincronizar es una acción de red (trae datos nuevos), no de
+      // filtrado, así que se queda donde estaba, lejos de este grupo.
+      React.createElement("div",{style:{display:"flex",gap:8,marginBottom:9}},
+        React.createElement("div",Object.assign({className:"searchbar",style:{flex:1,minWidth:0,marginBottom:0}},stopSwipe),
+          React.createElement("span",{className:"searchbar-ic"},"🔍"),
+          React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_search"),value:q,onChange:e=>setQ(e.target.value)}),
+          q && React.createElement("button",{className:"searchbar-x",onClick:()=>setQ(""),title:"×"},"✕")
+        ),
+        React.createElement("button",{type:"button",className:"v4-chip"+(nFilters?" on":""),onClick:function(){ setFilterOpen(true); },title:t("g_filters"),
+          style:{minHeight:0,padding:"0 14px",fontWeight:700,flex:"0 0 auto"}},
+          "🎛️"+(nFilters?" "+nFilters:""))
       ),
       // «Mi ciclo»: enseña QUÉ cobro ancla el ciclo (si el detectado no es el bueno, se corrige
       // apuntando la nómina real como ingreso, o usando Rango…).
@@ -518,33 +545,15 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
-      // Filtros premium (2026-08-05): un botón + resumen, en vez de dos filas interminables
-      // de chips de categorías y bancos. El detalle vive en GastosFilterSheet.
-      (function(){
-        const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
-        const nCat=sel.length;
-        const nBank=bankSelIsDefault?0:bankSel.length;
-        const n=nCat+nBank;
-        const parts=[];
-        if(nCat===1) parts.push(catName(sel[0]));
-        else if(nCat>1) parts.push(nCat+" "+t("g_filters_cats"));
-        if(!bankSelIsDefault){
-          if(bankSel.length===1){
-            const b=bankSel[0];
-            parts.push(b==="_manual"?t("g_bank_manual"):(entOf(b).label||b));
-          } else if(bankSel.length>1) parts.push(bankSel.length+" "+t("g_filters_banks"));
-        }
-        return React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",marginTop:4}},
-          React.createElement("button",{type:"button",className:"v4-chip"+(n?" on":""),onClick:function(){ setFilterOpen(true); },
-            style:{padding:"8px 14px",fontWeight:700}},
-            "🎛️ "+t("g_filters")+(n?" · "+n:"")),
-          parts.length>0 && React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.35,flex:"1 1 120px"}}, parts.join(" · ")),
-          n>0 && React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
-            setSel([]);
-            setBankSel(dailyEnt?[dailyEnt]:[]);
-          },style:{padding:"8px 12px"}}, t("g_filters_clear"))
-        );
-      })()
+      // Resumen de los filtros activos (categorías/bancos) + botón para quitarlos. El botón que
+      // ABRE el sheet ya no vive aquí: se movió junto al buscador (ver arriba).
+      nFilters>0 && React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",marginTop:2}},
+        React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.35,flex:"1 1 120px"}}, filterParts.join(" · ")),
+        React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
+          setSel([]);
+          setBankSel(dailyEnt?[dailyEnt]:[]);
+        },style:{padding:"8px 12px"}}, t("g_filters_clear"))
+      )
     ),
     React.createElement("div",{className:"action-row"},
       React.createElement("button",{className:"btn btn-ghost",onClick:onSync,disabled:syncing}, syncing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),t("g_syncing")):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:16,height:16}),t("g_sync")))
@@ -581,7 +590,6 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
               // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
               // (2026-08-03), no algo que el usuario haya elegido a mano.
-              const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
               const sinFiltros=!q.trim() && !sel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
