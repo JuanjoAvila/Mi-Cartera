@@ -89,6 +89,9 @@ jobs:
         run: |
           git checkout -B beta origin/beta
           git log -1 --oneline
+          # docs-frescura mira la rama chequeada; el workflow_dispatch nace en `main` y si no
+          # forzamos esto, GITHUB_REF_NAME=main exige un bump absurdo de toda la ronda beta.
+          echo "GITHUB_REF_NAME=beta" >> "$GITHUB_ENV"
           npm ci
           npx playwright install chromium --with-deps
           node scripts/run-tests.mjs
