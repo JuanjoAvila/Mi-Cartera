@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.14.1] — 2026-08-05
+### Gastos: resumen sin desborde (OTA del pulido post-4.14.0)
+
+**Por qué:** el arreglo del resumen de Gastos (filas etiqueta|importe, sin `space-between` a
+todo el ancho, `clamp` en importes largos) entró en `main` **después** del bump a 4.14.0. Sin
+subir el número, `docs-frescura` falla y el OTA no avisa a quien ya tenía 4.14.0 sin ese CSS.
+
+**Qué cambia:** sello 4.14.1 + nota de versión; tandas `multidivisa` / `gastos-fx-overflow`
+quitadas del panel (ya en prod). Sin APK nuevo (35 / 4.12.0).
+
 ## [4.14.0] — 2026-08-05
 ### Multidivisa real (TRY) + Ajustes → Dinero limpio
 

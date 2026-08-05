@@ -258,19 +258,13 @@
   html.hi-contrast[data-theme="light"]{ --muted:#33463C; --muted-2:#5A6E63; }
   html.hi-contrast[data-theme="dark"]{ --muted:#C7C7CE; --muted-2:#9C9CA6; }
   html.hi-contrast[data-theme="blue"]{ --muted:#BFD2E6; --muted-2:#93A8C2; }
-  /* Temáticas de temporada: YA NO hay una capa de piezas cayendo/subiendo por la pantalla —
-     quitada del todo (2026-08-03, petición suya textual: «Quítame lo de que caigan cosas cuando
-     aplicas una animación ya me cansé jajaja quiero que sea algo chulo con animación personalizada
-     incrustada en las secciones, como cuando se mueven los logos de las tabs»).
-     Tres intentos en fila con la misma queja de fondo (algo se mueve SOLO por moverse): caída
-     larga en bucle → una sola caída al abrir → ráfaga corta al cambiar de pestaña. Lo que pide
-     ahora es justo lo que ya tienen los iconos de la barra (`tabpop`/`tabpeina`/`tabmarca`/
-     `tabsube`, más abajo): un detalle que se pinta CON la sección, no una capa aparte animada por
-     su cuenta. Ver `--season-ico` en el bloque de `--season-tinte`, y el badge sobre `.v4-title`/
-     `.v4-inicio-hi` en «MÁS AMBIENTACIÓN», los dos más abajo.
-     Lo que desaparece con este commit: `.season-fx`, `@keyframes seasonfall`/`seasonrise` (y su
-     `.rising`) de aquí; `seasonEpoch`/`seasonFirstTab` (el JS que las disparaba) en
-     11-app-main.js; y el pool de emojis que caían (`SEASON_FX`) en 01-i18n.js. */
+  /* Temáticas de temporada — ambientación suave DETRÁS de las cartillas (2026-08-05).
+     Historial: la capa vieja (`.season-fx` z-index 36 ENCIMA de todo, ráfagas al cambiar de
+     pestaña con `seasonEpoch`/`seasonrise`) se quitó el 2026-08-03 («ya me cansé»). Ahora vuelve
+     SOLO como fondo: `.season-amb` a z-index 0, cartillas por encima (`position:relative;
+     z-index:2`), pocas piezas, opacidad baja, caída lenta en bucle. Cero JS al cambiar de tab.
+     El detalle incrustado en títulos (`--season-ico` / `seasonchip`) se queda. Se apaga con
+     «Reducir animaciones». */
   /* Guiño de color por temática en el botón + (sin tocar mint/coral, que pintan importes),
      con un halo que respira suavemente para dar vida (se apaga con reducir-animaciones). */
   /* EL HALO DEL + AHORA ES UN ANILLO, NO UNA SOMBRA (2026-07-28). `fabpulse` animaba
@@ -350,7 +344,27 @@
   html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";}
   html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";}
-  @media (prefers-reduced-motion:reduce){ html[data-season]::before{display:none;} html[data-season]::after{display:none;} html[data-season] .botnav-fab::after{animation:none;opacity:0;} html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;} }
+  /* Ambientación detrás: fixed z-index 0 + cartillas encima. Solo translate3d/rotate/opacity
+     (compositor). Sin scale+filter a la vez — eso re-rasterizaba y cortaba en móviles (4.13). */
+  .season-amb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;}
+  .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
+    animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
+  @keyframes seasonDrift{
+    0%{transform:translate3d(0,-8vh,0) rotate(0deg);opacity:0;}
+    6%{opacity:var(--op,.22);}
+    92%{opacity:var(--op,.22);}
+    100%{transform:translate3d(var(--sway,8px),110vh,0) rotate(var(--spin,120deg));opacity:0;}
+  }
+  /* El contenido de cada pestaña pinta ENCIMA de la lluvia; sin esto el fixed a z-index 0
+     igual se come el stacking del flujo normal y las piezas taparían el dinero.
+     ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40` más abajo — `relative` lo rompería. */
+  .page{position:relative;z-index:2;}
+  @media (prefers-reduced-motion:reduce){
+    .season-amb{display:none;}
+    html[data-season]::before{display:none;} html[data-season]::after{display:none;}
+    html[data-season] .botnav-fab::after{animation:none;opacity:0;}
+    html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
+  }
   /* ===== Panel de revisión: una tanda por bloque (varias betas a la vez, 2026-07-29) ===== */
   .beta-tanda{margin:0 0 22px;padding-top:2px;}
   .beta-tanda+.beta-tanda{border-top:1px solid var(--line-soft);padding-top:18px;}
@@ -2995,7 +3009,7 @@ const LANG = {
     st_reduce_motion:"Reducir animaciones", st_reduce_motion_hint:"Quita deslizamientos y rebotes: la app va más sobria y directa. Útil si mareas.",
     st_contrast:"Más contraste", st_contrast_hint:"Sube el contraste del texto para que se lea mejor.",
     // Temáticas de temporada
-    st_theme_season:"Temática", st_theme_season_hint:"Cambia los colores y añade un detalle animado de temporada (nieve, hojas, balón…). Quítalo cuando quieras.",
+    st_theme_season:"Temática", st_theme_season_hint:"Cambia los colores y deja caer un detalle muy suave por detrás de las cartillas (nieve, hojas, sol…). Quítalo cuando quieras.",
     th_none:"Ninguna", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Navidad 🎄", th_verano:"Verano ☀️", th_invierno:"Invierno ❄️", th_pascua:"Pascua 🐣",
     // Bancos de gasto diario (varios)
     st_expense_banks:"Bancos de gasto diario", st_expense_banks_hint:"Marca todos los bancos cuyas compras cuentan en tu presupuesto del día a día (p. ej. Trade Republic + Revolut en un viaje). El saldo de gasto sigue saliendo del principal.",
@@ -3136,7 +3150,7 @@ const LANG = {
     ts_small:"Small", ts_normal:"Normal", ts_big:"Large", ts_huge:"Huge",
     st_reduce_motion:"Reduce motion", st_reduce_motion_hint:"Removes slides and bounces: the app feels calmer and more direct. Useful if motion bothers you.",
     st_contrast:"More contrast", st_contrast_hint:"Boosts text contrast for easier reading.",
-    st_theme_season:"Theme", st_theme_season_hint:"Changes colors and adds a seasonal animated touch (snow, leaves, football…). Turn it off anytime.",
+    st_theme_season:"Theme", st_theme_season_hint:"Changes colors and gently drifts a seasonal touch behind the cards (snow, leaves, sun…). Turn it off anytime.",
     th_none:"None", th_mundial:"World Cup 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Christmas 🎄", th_verano:"Summer ☀️", th_invierno:"Winter ❄️", th_pascua:"Easter 🐣",
     st_expense_banks:"Daily-spending banks", st_expense_banks_hint:"Tick every bank whose card spending counts toward your daily budget (e.g. Trade Republic + Revolut on a trip). The spending balance still comes from the main one.",
     st_expense_banks_none:"No accounts to choose yet.",
@@ -3275,7 +3289,7 @@ const LANG = {
     ts_small:"Petita", ts_normal:"Normal", ts_big:"Gran", ts_huge:"Enorme",
     st_reduce_motion:"Reduir animacions", st_reduce_motion_hint:"Treu lliscaments i rebots: l'app va més sòbria i directa. Útil si et mareges.",
     st_contrast:"Més contrast", st_contrast_hint:"Puja el contrast del text perquè es llegeixi millor.",
-    st_theme_season:"Temàtica", st_theme_season_hint:"Canvia els colors i afegeix un detall animat de temporada (neu, fulles, pilota…). Treu-lo quan vulguis.",
+    st_theme_season:"Temàtica", st_theme_season_hint:"Canvia els colors i deixa caure un detall molt suau per darrere de les cartilles (neu, fulles, sol…). Treu-lo quan vulguis.",
     th_none:"Cap", th_mundial:"Mundial 🇪🇸", th_halloween:"Halloween 🎃", th_navidad:"Nadal 🎄", th_verano:"Estiu ☀️", th_invierno:"Hivern ❄️", th_pascua:"Pasqua 🐣",
     st_expense_banks:"Bancs de despesa diària", st_expense_banks_hint:"Marca tots els bancs les compres dels quals compten al teu pressupost diari (p. ex. Trade Republic + Revolut en un viatge). El saldo de despesa continua sortint del principal.",
     st_expense_banks_none:"Encara no tens comptes per triar.",
@@ -5556,12 +5570,19 @@ function applyA11y(s){
   applySeason(s&&s.settings&&s.settings.season);
 }
 const THEMES=[["green","Verde","#5FD08A"],["dark","Oscuro","#3A3A40"],["light","Claro","#F2F4F2"],["blue","Azul","#7FB5E8"]];
-// Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
-// lo sigue mandando el tema de arriba; la temporada solo añade acentos + el icono incrustado en
-// cada sección (su detalle CSS, `--season-ico`, va en shell.html — mismo emoji que este chip).
-// ⚠ Ya NO hay una capa de piezas cayendo por la pantalla (quitada 2026-08-03): aquí vivía
-// `SEASON_FX`, el pool de emojis que caían, y ha desaparecido con ella.
-const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
+  // Temáticas de temporada seleccionables (id, emoji para el chip). El color base (claro/oscuro)
+  // lo sigue mandando el tema de arriba; la temporada añade acentos + icono en títulos + ambientación
+  // suave DETRÁS de las cartillas (`.season-amb` en shell.html). El pool viejo `SEASON_FX` (capa
+  // encima + ráfagas al cambiar de tab) se retiró 2026-08-03; este es el suave de 2026-08-05.
+  const SEASONS=[["none","—"],["mundial","🇪🇸"],["halloween","🎃"],["navidad","🎄"],["verano","☀️"],["invierno","❄️"],["pascua","🐣"]];
+  const SEASON_AMB={
+    mundial:["⚽","🇪🇸","🏆","⚽","🥅"],
+    halloween:["🎃","👻","🦇","🍬","🕷️"],
+    navidad:["❄️","🎄","⭐","🎁","❄️"],
+    verano:["☀️","🌴","🌊","🍦","🐚"],
+    invierno:["❄️","⛄","❄️","🧣","🌨️"],
+    pascua:["🐣","🥚","🐰","🌷","🌸"]
+  };
 function loadState(){
   const saved = mcLoadRaw(mcStateKey());
   if(saved && saved.accounts){
@@ -13639,42 +13660,42 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.14.1", d:"5 ago 2026",
+   t:{es:"El resumen de Gastos ya no se desborda",
+      en:"The Spending summary no longer overflows",
+      ca:"El resum de Despeses ja no es desborda"},
+   tandas:[],
+   items:{
+   es:[
+    "📐 En Gastos, con monedas de importes largos (yen, lira…) y letra pequeña, el resumen ya no se desborda ni deja huecos raros entre la etiqueta y el importe.",
+   ],
+   en:[
+    "📐 On Spending, with long currency amounts (yen, lira…) and small text, the summary no longer overflows or leaves odd gaps between the label and the amount.",
+   ],
+   ca:[
+    "📐 A Despeses, amb monedes d'imports llargs (ien, lira…) i lletra petita, el resum ja no es desborda ni deixa forats rares entre l'etiqueta i l'import.",
+   ]}},
   {v:"4.14.0", d:"5 ago 2026",
    t:{es:"Liras y monedas de verdad, y Ajustes → Dinero más claro",
       en:"Real liras and currencies, and a clearer Settings → Money",
       ca:"Lires i monedes de veritat, i Ajustos → Diners més clar"},
-   tandas:[
-     {id:"gastos-fx-overflow", t:"📐 Gastos: importes largos no se desbordan", items:[
-       "Ajustes → letra Pequeña + moneda Yen (o lira): en Gastos, el resumen (balance / de / quedan) se lee entero, sin cortar ni solapar.",
-       "Modo Balance: Gastos e Ingresos salen en dos líneas claras (etiqueta | importe), no una frase partida.",
-       "Prueba también letra Normal y Grande: el número grande se encoge si no cabe, sin salirse de la tarjeta.",
-     ]},
-     {id:"multidivisa", t:"💱 Multidivisa y Ajustes → Dinero", items:[
-       "Ajustes → Dinero → Moneda de visualización → Lira turca: los importes de toda la app pasan a ₺.",
-       "Vuelve a Euro: todo vuelve a €.",
-       "Abre «Comparar monedas»: ves 1 € → … con números (incluida la lira), no una lista de rayas vacías.",
-       "Apuntar: elige el chip ₺ TRY, escribe 150 y guarda — se convierte a € solos. La app puede seguir en euros.",
-       "En Ajustes → Dinero YA NO aparecen «Presupuesto mensual» ni «Bancos de gasto diario» (siguen en Resumen y Cartera).",
-       "«Total de gastos» sigue ahí y se puede cambiar entre las dos vistas.",
-     ]}
-   ],
+   /* TANDAS: multidivisa + gastos-fx-overflow SUBIDAS a prod 2026-08-05 → quitadas del array
+      (no se marcan hechas: se BORRAN; si no, el panel las sigue pidiendo). */
+   tandas:[],
    items:{
    es:[
-    "📐 En Gastos, con monedas de importes largos (yen, lira…) y letra pequeña, el resumen ya no se desborda ni parte las frases a medias.",
     "💱 Nueva moneda: la lira turca. Si cambias la moneda de visualización, toda la app se adapta (útil si alguien usa otra divisa de casa).",
     "✍️ Al apuntar un gasto eliges la moneda ahí mismo (₺, $, €…) y se convierte a euros solo, con el cambio del día — sin tocar cómo se ve el resto de la app.",
     "📊 «Comparar monedas» enseña el cambio real (ya no sale una lista vacía).",
-    "🧹 Ajustes → Dinero más limpio: fuera el presupuesto duplicado y los bancos de gasto diario (ya están en Resumen y Cartera). Se queda lo de la moneda y cómo se ve el total de gastos.",
+    "🧹 Ajustes → Dinero más limpio: fuera el presupuesto duplicado y los bancos de gasto diario (ya estaban en Resumen y Cartera). Se queda lo de la moneda y cómo se ve el total de gastos.",
    ],
    en:[
-    "📐 On Spending, with long currency amounts (yen, lira…) and small text, the summary no longer overflows or splits mid-sentence.",
     "💱 New currency: the Turkish lira. Change the display currency and the whole app follows (handy if someone's home currency isn't the euro).",
     "✍️ When you log an expense you pick the currency right there (₺, $, €…) and it converts to euros on its own, at today's rate — without changing how the rest of the app looks.",
     "📊 «Compare currencies» shows real rates (no more empty dashes).",
     "🧹 Settings → Money is cleaner: the duplicate budget and daily-spending banks are gone (they already live on Overview and Portfolio). Currency and how the expenses total looks stay.",
    ],
    ca:[
-    "📐 A Despeses, amb monedes d'imports llargs (ien, lira…) i lletra petita, el resum ja no es desborda ni parteix les frases a mitges.",
     "💱 Nova moneda: la lira turca. Si canvies la moneda de visualització, tota l'app s'hi adapta (útil si algú usa una altra divisa de casa).",
     "✍️ En apuntar una despesa tries la moneda allà mateix (₺, $, €…) i es converteix a euros sola, amb el canvi del dia — sense tocar com es veu la resta de l'app.",
     "📊 «Comparar monedes» ensenya el canvi real (ja no surt una llista buida).",
@@ -19040,10 +19061,33 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // La capa ambiental de temporada (piezas cayendo/subiendo) SE QUITÓ del todo (2026-08-03): el
-  // detalle por temática ahora vive incrustado en cada sección, en CSS puro (ver `--season-ico`
-  // y el badge sobre `.v4-title`/`.v4-inicio-hi` en shell.html). Nada que montar ni disparar aquí.
+  // Ambientación de temporada DETRÁS de las cartillas (2026-08-05): suave, pocas piezas, en
+  // bucle lento. Sin ráfagas al cambiar de pestaña (eso es lo que cansó en la capa vieja).
+  const season=(state.settings&&state.settings.season)||"";
+  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
+  const seasonAmb=(season && season!=="none" && !reduceMo && SEASON_AMB[season])
+    ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"},
+        (function(){
+          const pool=SEASON_AMB[season], N=10, out=[];
+          for(let i=0;i<N;i++){
+            const em=pool[i%pool.length];
+            const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
+            const left=Math.round(rnd(12.9898)*96);
+            const sz=14+Math.round(rnd(4.1)*8);
+            const dur=16+rnd(7.7)*8;          // 16–24 s: lento a propósito
+            const delay=-(rnd(3.3)*dur);      // negativo = ya repartidas al montar (sin «arranque»)
+            const sway=(4+Math.round(rnd(5.5)*14))*(rnd(9.1)>0.5?1:-1);
+            const spin=(rnd(2.2)>0.5?1:-1)*(60+Math.round(rnd(6.6)*100));
+            const op=0.14+rnd(1.7)*0.14;      // 0.14–0.28: casi wallpaper
+            out.push(React.createElement("span",{key:i,
+              style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
+                "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
+          }
+          return out;
+        })())
+    : null;
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
+    seasonAmb,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",

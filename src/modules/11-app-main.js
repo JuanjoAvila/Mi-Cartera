@@ -2802,10 +2802,33 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // La capa ambiental de temporada (piezas cayendo/subiendo) SE QUITÓ del todo (2026-08-03): el
-  // detalle por temática ahora vive incrustado en cada sección, en CSS puro (ver `--season-ico`
-  // y el badge sobre `.v4-title`/`.v4-inicio-hi` en shell.html). Nada que montar ni disparar aquí.
+  // Ambientación de temporada DETRÁS de las cartillas (2026-08-05): suave, pocas piezas, en
+  // bucle lento. Sin ráfagas al cambiar de pestaña (eso es lo que cansó en la capa vieja).
+  const season=(state.settings&&state.settings.season)||"";
+  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
+  const seasonAmb=(season && season!=="none" && !reduceMo && SEASON_AMB[season])
+    ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"},
+        (function(){
+          const pool=SEASON_AMB[season], N=10, out=[];
+          for(let i=0;i<N;i++){
+            const em=pool[i%pool.length];
+            const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
+            const left=Math.round(rnd(12.9898)*96);
+            const sz=14+Math.round(rnd(4.1)*8);
+            const dur=16+rnd(7.7)*8;          // 16–24 s: lento a propósito
+            const delay=-(rnd(3.3)*dur);      // negativo = ya repartidas al montar (sin «arranque»)
+            const sway=(4+Math.round(rnd(5.5)*14))*(rnd(9.1)>0.5?1:-1);
+            const spin=(rnd(2.2)>0.5?1:-1)*(60+Math.round(rnd(6.6)*100));
+            const op=0.14+rnd(1.7)*0.14;      // 0.14–0.28: casi wallpaper
+            out.push(React.createElement("span",{key:i,
+              style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
+                "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
+          }
+          return out;
+        })())
+    : null;
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
+    seasonAmb,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
     mcSandbox() && React.createElement("button",{type:"button",className:"sandbox-bar",
