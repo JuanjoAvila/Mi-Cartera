@@ -25,6 +25,17 @@ de gasto diario (ya en Cartera).
 
 Rama: `tanda/multidivisa` (promovible sola con `-f tandas=multidivisa`).
 
+### Presupuesto: misma cifra en avisos, reto e informe (tanda `presupuesto-resumen`)
+
+**Por qué:** Resumen/Gastos/widget ya compartían `monthBudgetStats` (4.13.0), pero los avisos
+al 50/80/95/100 %, el reto de gamificación y el informe imagen seguían con `thisMonthSpent`
+(suma bruta con neutras). Él veía una cifra en Resumen y otra en el aviso.
+
+**Qué cambia:** avisos, `gamifOf`, informe imagen y `spendByMonth` (rachas) usan la misma
+regla (excluye `CAT_NEUTRAS`, resta reservas). Guardián: `tests/month-budget-stats.test.mjs`.
+
+Rama: `tanda/presupuesto-resumen` (promovible sola con `-f tandas=presupuesto-resumen`).
+
 ## [4.13.0] — 2026-08-05
 ### Barra quieta de verdad al tope y al swipear tabs
 

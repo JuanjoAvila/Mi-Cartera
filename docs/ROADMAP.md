@@ -1,9 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-05 · **v4.14.0** — en **`tanda/multidivisa`** (aún no en beta). Multidivisa real
-> (lira turca + moneda de visualización que de verdad convierte + comparar con tipos) y Ajustes →
-> Dinero limpio (fuera presupuesto/bancos duplicados). Producción sigue en **4.13.0**. APK **35 /
-> 4.12.0** (sin nativo).
+> Estado a 2026-08-05 · **v4.14.0** — en **`beta`**: tanda `multidivisa` (en prueba en el móvil) +
+> tanda `presupuesto-resumen` lista en su rama (avisos/reto/informe alineados con
+> `monthBudgetStats`). Producción sigue en **4.13.0**. APK **35 / 4.12.0** (sin nativo).
 >
 > Anterior: 2026-08-05 · **v4.13.0** — **EN PRODUCCIÓN**. Ronda beta cerrada: gestos (ola nativa
 > arriba/abajo, barra quieta, rayita) y plan-swipe aprobados 5/8 en `4.13.0.49`. Arranque ya había

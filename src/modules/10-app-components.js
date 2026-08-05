@@ -1425,10 +1425,16 @@ function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
   {v:"4.14.0", d:"5 ago 2026",
-   t:{es:"Liras y monedas de verdad, y Ajustes → Dinero más claro",
-      en:"Real liras and currencies, and a clearer Settings → Money",
-      ca:"Lires i monedes de veritat, i Ajustos → Diners més clar"},
+   t:{es:"Liras, presupuesto que cuadra, y Ajustes → Dinero más claro",
+      en:"Liras, a budget that adds up, and clearer Settings → Money",
+      ca:"Lires, pressupost que quadra, i Ajustos → Diners més clar"},
    tandas:[
+     {id:"presupuesto-resumen", t:"💶 Presupuesto: misma cifra en todos sitios", items:[
+       "En Resumen, la tarjeta de presupuesto muestra lo mismo que la cabecera de Gastos (sin inversión/traspasos).",
+       "Si tienes dinero reservado a metas, el presupuesto «que queda» ya lo descuenta.",
+       "Los avisos al 50/80/95/100 % usan esa misma cifra (no un total distinto).",
+       "El informe imagen y el reto de «mes bajo presupuesto» también cuadran con Resumen/Gastos.",
+     ]},
      {id:"multidivisa", t:"💱 Multidivisa y Ajustes → Dinero", items:[
        "Ajustes → Dinero → Moneda de visualización → Lira turca: los importes de toda la app pasan a ₺.",
        "Vuelve a Euro: todo vuelve a €.",
@@ -1443,19 +1449,22 @@ var RELEASE_NOTES=[
     "💱 Nueva moneda: la lira turca. Si cambias la moneda de visualización, toda la app se adapta (útil si alguien usa otra divisa de casa).",
     "✍️ Al apuntar un gasto eliges la moneda ahí mismo (₺, $, €…) y se convierte a euros solo, con el cambio del día — sin tocar cómo se ve el resto de la app.",
     "📊 «Comparar monedas» enseña el cambio real (ya no sale una lista vacía).",
-    "🧹 Ajustes → Dinero más limpio: fuera el presupuesto duplicado y los bancos de gasto diario (ya están en Resumen y Cartera). Se queda lo de la moneda y cómo se ve el total de gastos.",
+    "🧹 Ajustes → Dinero más limpio: fuera el presupuesto duplicado y los bancos de gasto diario (ya estaban en Resumen y Cartera). Se queda lo de la moneda y cómo se ve el total de gastos.",
+    "💶 El presupuesto del mes es la misma cifra en Resumen, Gastos, avisos e informe: sin mezclar inversiones ni traspasos, y descontando lo reservado a metas.",
    ],
    en:[
     "💱 New currency: the Turkish lira. Change the display currency and the whole app follows (handy if someone's home currency isn't the euro).",
     "✍️ When you log an expense you pick the currency right there (₺, $, €…) and it converts to euros on its own, at today's rate — without changing how the rest of the app looks.",
     "📊 «Compare currencies» shows real rates (no more empty dashes).",
     "🧹 Settings → Money is cleaner: the duplicate budget and daily-spending banks are gone (they already live on Overview and Portfolio). Currency and how the expenses total looks stay.",
+    "💶 The monthly budget is the same figure on Home, Spending, alerts and the share image: investments and transfers stay out, and money reserved for goals is deducted.",
    ],
    ca:[
     "💱 Nova moneda: la lira turca. Si canvies la moneda de visualització, tota l'app s'hi adapta (útil si algú usa una altra divisa de casa).",
     "✍️ En apuntar una despesa tries la moneda allà mateix (₺, $, €…) i es converteix a euros sola, amb el canvi del dia — sense tocar com es veu la resta de l'app.",
     "📊 «Comparar monedes» ensenya el canvi real (ja no surt una llista buida).",
     "🧹 Ajustos → Diners més net: fora el pressupost duplicat i els bancs de despesa diària (ja són al Resum i a Cartera). Es queda el de la moneda i com es veu el total de despeses.",
+    "💶 El pressupost del mes és la mateixa xifra al Resum, Despeses, avisos i informe: sense barrejar inversions ni traspassos, i descomptant el reservat a metes.",
    ]}},
   {v:"4.13.0", d:"5 ago 2026",
    t:{es:"La app se mueve como te gusta, y tus bancos ya no se lían",
