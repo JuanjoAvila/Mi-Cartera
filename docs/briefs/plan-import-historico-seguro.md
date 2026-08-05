@@ -139,7 +139,7 @@ API:
 - `histClassifyCandidates(cands, state)` → status, reason, match, defDest, suggestRecibo, category
 - `histBuildCommit(...)` → expAdds, fixAdds, batchId (no escribe)
 - `histUndoBatch(state, lastHistImport)` → nextState + `{ cloudDeleteById: [...] }` (nunca `deleted`)
-- Ajuste: `reconcileObDupes` → dups solo si `source==="ob"` (cashback twin: decidir si también se limita a `ob` o se deja; default = mismo alcance `ob` para no tocar hist)
+- Ajuste: `reconcileObDupes` → **tanto (a) dups como (b) gemelo cashback** solo si `source==="ob"`. Misma razón: (b) usa el mismo `esOb` y acaba en `borrar` + `pushDeleted`; dejarlo abierto a `ob-hist` reabre N. Consecuencia aceptada: el histórico puede enseñar las dos líneas del par de cashback → él destilda una en el preview («lo que el preview no resuelva, que se VEA»). Colapsar el par en el clasificador = **tanda 2**, hueco conocido no bug.
 
 Commit: `source:"ob-hist"`, `ent`, categorías como sync diario, batch cloud con `.select('id')`. Undo: solo esos ids.
 
@@ -165,7 +165,7 @@ Ampliar `tests/hist-import-dup.test.mjs`:
 
 E2e (tandas posteriores): migrar `bancos-historico-filtro` a Importaciones; ampliar `ajustes-importaciones`; Mis bancos sin botón hist.
 
-**Y lo que ningún test ve:** simular contra su estado real de la nube antes de cantar victoria (regla 4/8).
+**Y lo que ningún test ve:** simular contra su estado real de la nube antes de cantar victoria (regla 4/8). Incluye mirar **restos del pasado** (prueba 3/8): `expenses` con `source:"ob-hist"` y sobre todo `state.fixed` (donde dolió; `reconcileObDupes` nunca entra ahí). Restringir a `ob` congela basura vieja, no la limpia — limpieza puntual = decisión aparte, no bloquea tanda 1.
 
 Checklist versión: `VERSION` = package = CHANGELOG = RELEASE_NOTES = README «Estado actual» = ROADMAP (si no, `docs-frescura` falla).
 
