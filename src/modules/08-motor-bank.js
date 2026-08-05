@@ -335,23 +335,16 @@ function flattenBankTx(links){
   return out.slice(0,150);   // últimos ~150 movimientos
 }
 
-/* GASTO VARIABLE VÍA OPEN BANKING: en el banco de GASTO DIARIO cuenta CUALQUIER cargo (petición
-   2026-08-03: «que meta todo en gastos, independientemente del filtro» — antes solo entraban las
-   COMPRAS CON TARJETA, y con bancos que avisan en inglés o sin el texto "TARJETA" en el concepto
-   los cargos se perdían en silencio). En los bancos EXTRA de settings.expenseBanks (opcionales,
-   añadidos aparte de la cuenta diaria) se mantiene la regla vieja —solo tarjeta— porque esos sí
-   suelen tener recibos domiciliados modelados como Fijos que no hay que duplicar. Para la cuenta
-   diaria, el único cargo que se descarta es el que YA case con un Fijo/deuda/puntual de ESE mes en
-   ESA cuenta (`matchesModeled`, mismo criterio de nombre+importe que la conciliación de arriba):
-   si no, un recibo pagado desde el banco de gasto diario se contaría dos veces. El motor de
-   presupuesto/round-up sigue anclado a UNA sola cuenta spendFrom — esto solo decide qué entra en
-   Gastos. Idempotente por ext_id (+ dedup fecha|importe|comercio).
+/* GASTO VARIABLE VÍA OPEN BANKING (2026-08-05): entra TODO de CUALQUIER banco sincronizado
+   (gastos e ingresos), estilo extracto de banca. Lo que RESTA del presupuesto y del saldo de
+   gasto diario es solo lo de `expenseBankEnts` (cuenta diaria + extras marcados). El resto se
+   apunta igual pero con `budgetSkip:true` → se ve en Gastos con marca «no afecta».
 
-   INGRESOS: de CUALQUIER banco enlazado, no solo el de gasto (petición 2026-08-03: la nómina de tu
-   pareja puede caer en un banco que no es el de gasto diario, y sin verla ahí «Mi ciclo» —que se
-   ancla al último ingreso real, ver `lastPaydayOf` en 04-tab-gastos.js— nunca encuentra el cobro).
-   Antes de esto un ingreso en un banco no-permitido no se apuntaba en ningún sitio: el saldo subía
-   pero en Gastos no aparecía nada y el ciclo se quedaba anclado al mes natural. */
+   En la cuenta diaria / extras de gasto: cualquier cargo, salvo si YA casa con un Fijo/deuda/
+   puntual de ese mes (`matchesModeled`) — si no, recibos se contarían dos veces.
+   En bancos fuera de gasto diario: también cualquier cargo (misma exclusión de modelados).
+
+   INGRESOS: de cualquier banco (para «Mi ciclo»). Idempotente por ext_id + dedup. */
 function importObExpenses(s, txs){
   if(!txs || !txs.length) return null;
   const ents=expenseBankEnts(s);
@@ -403,8 +396,7 @@ function importObExpenses(s, txs){
     usadoDup[hit]=1;
     return true;
   };
-  // Cargos ya modelados ESTE mes por entidad (Fijos/deudas/puntuales), para no duplicar un recibo
-  // de la cuenta diaria ahora que ya no exigimos "compra con tarjeta" ahí.
+  // Cargos ya modelados ESTE mes por entidad (Fijos/deudas/puntuales), para no duplicar un recibo.
   const now=new Date(), ym=now.getMonth()+1, yy=now.getFullYear();
   const modeledByEnt={};
   const pushModeled=function(ent,name,amount){ if(!ent||!(amount>0)) return; (modeledByEnt[ent]=modeledByEnt[ent]||[]).push({name:name,amount:amount}); };
@@ -418,40 +410,34 @@ function importObExpenses(s, txs){
   txs.forEach(function(tx){
     const esIngreso = tx.amount<0;
     if(esIngreso){
-      if(!tx.date || parseDate(tx.date)<som) return;              // mes en curso + margen de fin de mes
-      if(tx.id && seen[tx.id]) return;                            // ya importado (ext_id)
+      if(!tx.date || parseDate(tx.date)<som) return;
+      if(tx.id && seen[tx.id]) return;
       const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
         merchant:tx.merchant||"Ingreso", amount:tx.amount,
         category: esTraspasoPropio(s, tx) ? TRASPASO_CAT.id : INGRESO_CAT.id, source:"ob", ent:tx.ent };
+      // Ingresos fuera de gasto diario: se ven (Mi ciclo) pero no mueven el presupuesto «gastado».
+      if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
       if(tx.id) e.extId=tx.id;
       const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
       if(keys[kOf(e)]) return;
-      if(yaApuntadoPorOtraVia(tx)) return;                        // el mismo ingreso, ya apuntado por otra vía
+      if(yaApuntadoPorOtraVia(tx)) return;
       keys[kOf(e)]=1; add.push(e);
       return;
     }
-    // GASTO: la cuenta diaria admite cualquier cargo; las extra solo compras con tarjeta.
+    // GASTO: entra de cualquier banco. Modelados (Fijos/deudas) no se duplican.
+    if(matchesModeled(tx.ent, tx.merchant, tx.amount)) return;
+    if(!tx.date || parseDate(tx.date)<som) return;
+    if(tx.id && seen[tx.id]) return;
     const esDiario=tx.ent===dailyEnt;
-    const esCompra=tx.card && tx.amount>0;
-    if(!esDiario && !allow[tx.ent]) return;
-    if(!esDiario && !esCompra) return;
-    if(esDiario && !esCompra && matchesModeled(tx.ent, tx.merchant, tx.amount)) return;   // ya es un Fijo/deuda/puntual
-    if(!tx.date || parseDate(tx.date)<som) return;                // mes en curso + margen de fin de mes
-    if(tx.id && seen[tx.id]) return;                              // ya importado (ext_id)
-    // ent + source ob:… en nube → filtro por banco en Gastos (2026-07-16)
-    // Aporte automático a inversión (2026-08-03): el importe EXACTO que el usuario configuró en
-    // `monthlyInvest` (p.ej. 50€/mes a un fondo) no es un gasto — es dinero que sale del efectivo
-    // camino de la inversión. Solo se reconoce el importe FIJO que él mismo puso (dato conocido, no
-    // una suposición sobre lo que manda el banco, que no manda nada). Round-up/cashback (variables)
-    // siguen entrando como gasto normal — el usuario los pasa a mano a "Inversión" desde la ficha.
     const esAporteInv = esDiario && daily && daily.monthlyInvest>0 && Math.abs(tx.amount-daily.monthlyInvest)<0.01;
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
       merchant:tx.merchant||"Compra", amount:tx.amount,
       category: esAporteInv ? "inversion" : autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+    if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
     if(tx.id) e.extId=tx.id;
-    const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;   // concepto del banco (2026-07-24)
-    if(keys[kOf(e)]) return;                                      // dedup extra por clave clásica
-    if(yaApuntadoPorOtraVia(tx)) return;                          // el mismo gasto, ya apuntado por otra vía
+    const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
+    if(keys[kOf(e)]) return;
+    if(yaApuntadoPorOtraVia(tx)) return;
     keys[kOf(e)]=1;
     add.push(e);
   });
@@ -541,7 +527,8 @@ function monthBudgetStats(state){
   let spent=0, income=0;
   (state.expenses||[]).forEach(function(e){
     if(dateMs(e.date)<startMs) return;
-    if(CAT_NEUTRAS[e.category]) return;
+    // Solo bancos de gasto diario (+ a mano). El resto se ve en la lista pero no mueve la cifra.
+    if(!expenseCountsBudget(e, state)) return;
     if(e.amount>0) spent+=e.amount;
     else if(e.amount<0) income+=Math.abs(e.amount);
   });

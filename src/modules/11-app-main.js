@@ -1422,7 +1422,11 @@ function App(){
   const tabbarRef=useRef(null);
 
   const totals=useMemo(()=>{
-    const thisMonthExp=(state.expenses||[]).filter(e=>parseDate(e.date)>=startOfMonth());
+    // Solo lo que sale de bancos de gasto diario (y a mano): si no, un cargo de Sabadell
+    // «solo para ver» restaría del efectivo de TR (2026-08-05).
+    const thisMonthExp=(state.expenses||[]).filter(function(e){
+      return parseDate(e.date)>=startOfMonth() && expenseCountsCash(e, state);
+    });
     const thisMonthSpent=thisMonthExp.reduce((a,e)=>a+e.amount,0);
     // Efectivo de TR = base del mes + nómina (si ya entró el último día laborable) − gasto del mes.
     // El round-up & saveback (#19) se aplican al CERRAR el mes (reconcileTR), persistidos, para que
