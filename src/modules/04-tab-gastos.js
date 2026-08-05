@@ -476,7 +476,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement("h1",{className:"v4-title serif"}, t("v4_gastos_title")),
     React.createElement("section",{className:"v4-gastos-summary"},
       React.createElement("div",{className:"v4-gastos-summary-top"},
-        React.createElement("div",null,
+        React.createElement("div",{className:"v4-gastos-summary-main"},
           React.createElement("div",{className:"v4-gastos-summary-label"},
             monthSummary.mode==="net"
               ? tf("v4_gastos_net_in",{month:monthSummary.month})
@@ -489,11 +489,26 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
             return React.createElement("div",{className:"v4-gastos-summary-amount num"},
               p.ent, React.createElement("span",{className:"cents"},","+p.dec+" "+p.sym));
           })(),
-          monthSummary.mode==="net"
-            ? React.createElement("div",{className:"v4-gastos-summary-sub"},
-                tf("v4_gastos_split_line",{spent:eur(monthSummary.spent),income:eur(monthSummary.income)}))
-            : (monthSummary.income>0 && React.createElement("div",{className:"v4-gastos-summary-sub"},
-                tf("v4_gastos_inc_line",{x:eur(monthSummary.income),bal:(monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance))})))
+          // Dos filas (etiqueta | importe) en vez de una sola frase «Gastos X · ingresos Y»:
+          // con ¥/₺ y letra pequeña la frase se partía a mitad y solapaba el presupuesto
+          // (feedback 2026-08-05 tras multidivisa).
+          (function(){
+            const pair=function(lbl, amt){
+              return React.createElement("div",{className:"v4-gastos-summary-pair"},
+                React.createElement("span",{className:"lbl"}, lbl),
+                React.createElement("span",{className:"amt num"}, amt));
+            };
+            if(monthSummary.mode==="net"){
+              return React.createElement("div",{className:"v4-gastos-summary-sub"},
+                pair(t("v4_gastos_lbl_spent"), eur(monthSummary.spent)),
+                pair(t("v4_gastos_lbl_income"), eur(monthSummary.income)));
+            }
+            if(!(monthSummary.income>0)) return null;
+            return React.createElement("div",{className:"v4-gastos-summary-sub"},
+              pair(t("v4_gastos_lbl_income"), eur(monthSummary.income)),
+              pair(t("v4_gastos_lbl_balance"),
+                (monthSummary.balance>=0?"+":"−")+eur(Math.abs(monthSummary.balance))));
+          })()
         ),
         React.createElement("div",{className:"v4-gastos-summary-budget"},
           React.createElement("div",null,tf("v4_gastos_of",{x:monthSummary.budget==null?"—":eur(monthSummary.budget)})),
