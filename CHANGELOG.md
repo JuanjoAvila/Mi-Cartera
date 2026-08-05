@@ -50,6 +50,32 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
    se queda donde estaba. El resumen de categorías/bancos activos + «Borrar filtros» sigue
    pintándose debajo, ahora sin el botón que antes lo acompañaba (ya vive junto al buscador).
    Sin cambios de comportamiento en `GastosFilterSheet` ni claves i18n nuevas — solo maquetación.
+9. **Fix 2026-08-05 — tercera pasada, medida con capturas reales por CDP en su Oppo** (mismo
+   `fix-season-glow`): el feedback tras el punto 7 seguía diciendo lo mismo («el destello real
+   solo se ve un momento al deslizar de pestaña, luego desaparece») y sumaba una regresión nueva
+   («al hacer scroll veo la lista detrás de la barra un segundo»). Esta vez no se tocó a ciegas:
+   se instaló un APK de depuración (`MICARTERA_WEBDEBUG=1`), se conectó por `adb forward` +
+   WebSocket nativo (`tools/movil/*.mjs`) y se disparó un swipe real vía
+   `Input.dispatchTouchEvent` con capturas (`Page.captureScreenshot`) decodificadas a mano
+   (`tools/movil/png-pixel.mjs`, sin dependencias) para leer el RGB exacto de la esquina y de la
+   barra en cada instante — no solo `getComputedStyle`, que ya decía "fixed"/"opacity:1" y aun
+   así no explicaba lo que él veía.
+   - **Fuga de la barra, causa real:** `.app-shell.nav-sin-blur .botnav` (blur apagado durante
+     el swipe por rendimiento, ver AGENTS §7 bis) solo quitaba `backdrop-filter` y dejaba el
+     fondo por defecto — `color-mix(...88%,transparent)`, un 12 % transparente pensado para ir
+     SIEMPRE acompañado del blur que lo disimula. Sin blur, ese 12 % se ve limpio: medido con
+     touch real, la barra estuvo en ese estado desde el `touchstart` hasta 1,4 s después (hasta
+     que `scroll-host-on` vuelve a poner fondo sólido), justo el «~1 segundo» que describía. Fix:
+     `background:var(--bg-2)` también en `nav-sin-blur`, igual que en `scroll-host-on` — la barra
+     se ve IGUAL con o sin blur, que era la intención original.
+   - **Destello, causa real:** NO era un bug de posicionamiento — `.season-glow` medía `top:0`
+     fijo en cualquier punto del scroll, con o sin swipe. Era de INTENSIDAD: con `opacity` .32-.6
+     y los gradientes al .14-.2, el resultado en pantalla real eran ~10-15 puntos de RGB sobre
+     255 en la esquina (fondo oscuro), por debajo de lo que un ojo nota en reposo — solo se
+     percibía el CAMBIO durante el swipe (el `translateX`/respiro del `seasonglow`), no la mancha
+     en sí. Subido a `opacity` .55-.85 y gradientes .3-.42 (todas las temáticas): mismo diseño,
+     visible también quieto. `tests/season-detalle.test.mjs` ahora exige un mínimo de intensidad
+     y la barra sólida en `nav-sin-blur`, para que esto no se pueda volver a bajar sin que salte.
 
 Sin APK nuevo (35 / 4.12.0).
 

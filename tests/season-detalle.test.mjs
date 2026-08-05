@@ -49,8 +49,37 @@ assert.doesNotMatch(
   "botnav-hidden no puede usar opacity:0 (fuga de contenido)"
 );
 
+/* Barra: `nav-sin-blur` (swipe de pestaña) tiene que quedar TAN opaca como `scroll-host-on`.
+   Medido por CDP en su Oppo (2026-08-05): sin `background` aquí, quitar el blur durante el
+   swipe dejaba el 12% transparente por defecto SIN nada que lo tape → la lista se veía a
+   través de la barra ~1-1,5 s (desde el touchstart hasta que `scroll-host-on` vuelve). */
+assert.match(
+  shell,
+  /\.app-shell\.nav-sin-blur \.botnav\{[^}]*background:\s*var\(--bg-2\)/,
+  "nav-sin-blur tiene que forzar fondo sólido (si no, fuga de lista durante el swipe)"
+);
+
 assert.match(shell, /@keyframes\s+seasonglow/, "seasonglow");
 assert.match(shell, /@keyframes\s+seasonDrift/, "seasonDrift");
+
+/* Intensidad mínima del destello (2026-08-05): con los valores originales (opacity .32-.6,
+   gradientes al .14-.2) el resultado medido en pantalla real por CDP era ~10-15 puntos de RGB
+   sobre 255 — invisible en reposo, solo se notaba el CAMBIO durante el swipe, no la mancha en
+   sí («solo se ve un momento al deslizar, luego desaparece»). No dejar que baje de ahí otra vez. */
+{
+  const glowRule = shell.match(/\.season-glow\{([^}]*)\}/);
+  assert.ok(glowRule, "falta la regla `.season-glow`");
+  const baseOp = parseFloat((glowRule[1].match(/opacity:\s*([\d.]+)/) || [])[1] || "0");
+  assert.ok(baseOp >= 0.6, "`.season-glow` demasiado tenue en reposo (opacity base < 0.6): " + baseOp);
+  const kf = shell.match(/@keyframes\s+seasonglow\{([\s\S]*?)\}\s*(?=\/\*|@|\.)/);
+  const minOp = kf ? Math.min(...[...kf[1].matchAll(/opacity:\s*([\d.]+)/g)].map((m) => parseFloat(m[1]))) : 0;
+  assert.ok(minOp >= 0.45, "el mínimo del respiro de `seasonglow` es demasiado tenue: " + minOp);
+  for (const line of shell.matchAll(/--season-glow-top:([^;]+);/g)) {
+    for (const m of line[1].matchAll(/rgba\([^)]+,([\d.]+)\)/g)) {
+      assert.ok(parseFloat(m[1]) >= 0.3, "gradiente de temporada demasiado tenue (< .3): " + line[1].slice(0, 80));
+    }
+  }
+}
 assert.doesNotMatch(comps, /\{id:"temporada"\s*,\s*t:/, "tanda temporada fuera");
 assert.match(comps, /temporada.*QUITADA|QUITADA.*temporada/i, "por qué se quitó");
 

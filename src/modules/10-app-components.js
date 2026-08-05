@@ -1469,9 +1469,9 @@ var RELEASE_NOTES=[
        "Instala esta compilación y cierra/abre la app un par de veces: Novedades no debería reaparecer sola.",
      ]},
      {id:"fix-season-glow", t:"✨ Destello de arriba fijo (y la barra limpia)", items:[
-       "Con temática puesta, el destello suave de ARRIBA A LA DERECHA se queda fijo — ya no aparece y desaparece al hacer scroll.",
+       "Con temática puesta, el destello suave de ARRIBA A LA DERECHA se queda fijo y se ve también parado, no solo al moverte por la app.",
        "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni saltan atrás.",
-       "La barra de abajo ya no enseña la lista a través un segundo al scrollear (efecto raro de un arreglo anterior).",
+       "La barra de abajo ya no enseña la lista a través suyo un momento al cambiar de pestaña (efecto raro de un arreglo anterior).",
      ]}
    ],
    items:{

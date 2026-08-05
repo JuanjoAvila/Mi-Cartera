@@ -288,9 +288,14 @@
      si scrolleara con el contenido (aparece/desaparece al subir/bajar) aunque el CSS dijera
      position:fixed. Lo medimos por CDP el 2026-08-05: computed style = fixed z-36 y AUN ASÍ
      él lo veía irse. Solución: nodo real `.season-glow` (hermano de `.season-amb`). */
+  /* Intensidad (2026-08-05): medido en su Oppo con capturas reales por CDP — con los valores
+     de antes (opacity .32-.6, gradientes al .14-.2) el resultado en pantalla eran unos 10-15
+     puntos de RGB sobre 255 en la esquina, indistinguible del fondo salvo con el dedo moviendo
+     la pantalla (el ojo nota el CAMBIO, no la mancha en sí). Subido a algo que se vea también
+     QUIETO: opacity .55-.85 + gradientes más cargados (ver cada `--season-glow-top` abajo). */
   .season-glow{position:fixed;top:0;left:0;right:0;height:38vh;z-index:36;pointer-events:none;
-    opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;background:var(--season-glow-top);}
-  @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
+    opacity:.7;animation:seasonglow 9s ease-in-out infinite alternate;background:var(--season-glow-top);}
+  @keyframes seasonglow{0%{opacity:.55;transform:translateX(-3%);}100%{opacity:.85;transform:translateX(3%);}}
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
      ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
      era el sitio equivocado + dejaba ver la lista a través). */
@@ -325,17 +330,17 @@
     100%{opacity:1;transform:scale(1) rotate(0deg);}
   }
   html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.18), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.14), transparent 60%);}
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.4), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.3), transparent 60%);}
   html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.16), transparent 60%);}
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.34), transparent 60%);}
   html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.16), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.14), transparent 60%);}
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.36), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.3), transparent 60%);}
   html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.14), transparent 60%);}
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.3), transparent 60%);}
   html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.34), transparent 60%);}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.34), transparent 60%);}
   /* Ambientación — UNA sola capa GLOBAL fixed.
      z-index 37 = encima del destello (36) y del host (35), debajo del botnav (40).
      bottom recortado: si la lluvia pintaba debajo de la barra, al esconderse la barra con
@@ -557,8 +562,15 @@
   /* Desenfoque de la barra APAGADO mientras el carrusel se mueve (ver `navSinBlur` en
      11-app-main.js): `backdrop-filter` se recalcula en cada frame en que cambia lo que hay
      detrás, y al deslizar detrás se mueve la app entera. Medido: 181 → 145 ms por gesto, con el
-     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar. */
-  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;}
+     tope teórico —la barra sin pintar— en 141. El diseño no cambia: vuelve al parar.
+     ⚠ FONDO SÓLIDO OBLIGATORIO AQUÍ (feedback 2026-08-05, medido con capturas reales en su
+     Oppo): sin `background`, esta regla solo quitaba el blur y dejaba el fondo por defecto
+     `color-mix(...88%,transparent)` — un 12% transparente SIN blur que lo tape es la peor
+     combinación posible. Confirmado con el móvil por CDP: durante el swipe de pestaña y ~1,2 s
+     después (hasta que `scroll-host-on` vuelve a poner fondo sólido), la lista se veía A TRAVÉS
+     de la barra — la app entera («cuando hago scroll veo la lista detrás de la barra un
+     segundo»). Mismo sólido que `scroll-host-on`: la barra debe verse IGUAL con o sin blur. */
+  .app-shell.nav-sin-blur .botnav{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg-2);}
   .botnav-row{position:relative;display:flex;align-items:center;}
   .botnav-ind{position:absolute;top:-9px;left:0;width:20%;height:3px;display:flex;justify-content:center;
     transition:transform .32s var(--spring),opacity .2s;pointer-events:none;}
