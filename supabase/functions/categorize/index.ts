@@ -12,8 +12,9 @@ import { categorizar } from "../_shared/ingest_logic.ts";
 import { withCors } from "../_shared/cors.ts";
 
 const ALLOWED = [
-  "super", "pan", "bares", "ocio", "transporte", "parking",
-  "compras", "salud", "pelu", "hogar", "regalos", "otros",
+  "super", "pan", "bares", "cine", "padel", "ocio", "viajes", "transporte", "parking",
+  "energia", "tasas", "compras", "educacion", "salud", "pelu", "mascotas", "hogar",
+  "regalos", "otros",
 ] as const;
 
 // El origen permitido lo pone `withCors` en la respuesta (lista blanca, ../_shared/cors.ts).
