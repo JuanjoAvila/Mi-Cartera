@@ -415,6 +415,14 @@ Flujo completo en [docs/TESTING.md](docs/TESTING.md).
   navegador —descomprimir y `DOMParser`— no la puede cubrir un unitario, y es justo la que decide si
   el Excel se abre o no.
 
+## [4.12.4] — 2026-08-03
+### Importar una hoja de gastos (Excel/CSV), separado del resto de la 4.13.0 en curso
+
+Misma receta que la 4.12.2 (arranque): la tanda `import` de la 4.13.0 —aprobada por él en el móvil,
+6/6 ok, sin fallos— se saca a mano de entre los commits mezclados de `beta` y se aplica sola sobre
+`main`. Trae Ajustes → «Importar una hoja de gastos» (Excel/CSV, mapeo + previsualización +
+deduplicado). El lector .xlsx es propio (`DecompressionStream`), sin librería.
+
 ## [4.12.3] — 2026-08-01
 ### Mantenimiento: el guardián de versión atrapó su propio efecto secundario
 
