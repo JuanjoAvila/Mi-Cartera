@@ -2,6 +2,29 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.14.0] — 2026-08-05
+### Multidivisa real (TRY) + Ajustes → Dinero limpio
+
+**Por qué:** el crucero del 7/8 paga en liras; `settings.currency` existía pero, si faltaba el
+tipo en `fxRates`, `DISP` se quedaba en € **en silencio** («la moneda no hace nada»). TRY no
+estaba en `CUR_LIST` ni en el fetch a frankfurter. «Comparar monedas» listaba todas las filas
+con «—» cuando no había FX. Y Ajustes → Dinero duplicaba presupuesto (ya en Resumen) y bancos
+de gasto diario (ya en Cartera).
+
+**Qué cambia:**
+1. **TRY** en `CUR_LIST` / `CUR_SYM` / i18n es·en·ca; el fetch FX se construye desde `CUR_LIST`
+   (añadir una divisa ya no deja el selector y el BCE desfasados).
+2. Elegir moneda **exige tipo**: si falta, pide FX y solo entonces aplica; si no llega, toast
+   (nada de quedarse en € callado). Se guarda `fxDate`.
+3. **Comparar monedas:** solo filas con tipo; al abrir refresca; vacío → mensaje + reintentar.
+4. **Apuntar:** moneda del apunte **independiente** de la de visualización (chips ₺/€/$…;
+   recuerda `settings.apuntarCur`). Guarda siempre en € vía `toEurAmt` (`origAmount`/`origCur`
+   informativos). Sin tipo no guarda. Así en el crucero apuntas liras y sigues viendo la app en €.
+5. **Ajustes → Dinero:** fuera presupuesto mensual y bancos de gasto diario; quedan moneda,
+   comparar y «Total de gastos».
+
+Rama: `tanda/multidivisa` (promovible sola con `-f tandas=multidivisa`).
+
 ## [4.13.0] — 2026-08-05
 ### Barra quieta de verdad al tope y al swipear tabs
 
