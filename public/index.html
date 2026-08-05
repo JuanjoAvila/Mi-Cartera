@@ -3007,6 +3007,11 @@ const LANG = {
     st_cur_compare:"Comparar monedas", st_cur_compare_hint:"Tipos del BCE (referencia). Solo salen monedas con tipo cargado.",
     st_cur_compare_empty:"Aún no hay tipos de cambio. Comprueba la conexión y pulsa reintentar.",
     st_cur_compare_retry:"Reintentar",
+    st_cur_convert:"Conversor de monedas",
+    st_cur_convert_from:"De esta moneda",
+    st_cur_convert_to:"A esta moneda",
+    st_cur_convert_swap:"Intercambiar",
+    st_cur_convert_hint:"Tipos del BCE (referencia). El resultado usa el cambio del día.",
     currency_hint:"Cambia cómo se ven los importes en toda la app (pantallas, totales, gráficos). Al apuntar un gasto eliges la moneda ahí mismo, aparte.",
     fx_waiting:"⏳ Trayendo el tipo de cambio…", fx_no_rate:"✕ Sin tipo de cambio para esa moneda. Prueba con conexión.",
     ap_cur_lbl:"Moneda del apunte", ap_fx_hint:"Se convierte a euros al guardar (tipo del BCE).",
@@ -3146,6 +3151,11 @@ const LANG = {
     st_cur_compare:"Compare currencies", st_cur_compare_hint:"ECB reference rates. Only currencies with a loaded rate are listed.",
     st_cur_compare_empty:"No exchange rates yet. Check your connection and tap retry.",
     st_cur_compare_retry:"Retry",
+    st_cur_convert:"Currency converter",
+    st_cur_convert_from:"From this currency",
+    st_cur_convert_to:"To this currency",
+    st_cur_convert_swap:"Swap",
+    st_cur_convert_hint:"ECB reference rates. The result uses today's rate.",
     currency_hint:"Changes how amounts look across the app (screens, totals, charts). When you log an expense you pick the currency there, separately.",
     fx_waiting:"⏳ Fetching the exchange rate…", fx_no_rate:"✕ No exchange rate for that currency. Try again online.",
     ap_cur_lbl:"Expense currency", ap_fx_hint:"Converted to euros on save (ECB rate).",
@@ -3285,6 +3295,11 @@ const LANG = {
     st_cur_compare:"Comparar monedes", st_cur_compare_hint:"Tipus del BCE (referència). Només surten monedes amb tipus carregat.",
     st_cur_compare_empty:"Encara no hi ha tipus de canvi. Comprova la connexió i prem reintentar.",
     st_cur_compare_retry:"Reintentar",
+    st_cur_convert:"Convertidor de monedes",
+    st_cur_convert_from:"D'aquesta moneda",
+    st_cur_convert_to:"A aquesta moneda",
+    st_cur_convert_swap:"Intercanviar",
+    st_cur_convert_hint:"Tipus del BCE (referència). El resultat usa el canvi del dia.",
     currency_hint:"Canvia com es veuen els imports a tota l'app (pantalles, totals, gràfics). En apuntar una despesa tries la moneda allà mateix, a part.",
     fx_waiting:"⏳ Portant el tipus de canvi…", fx_no_rate:"✕ Sense tipus de canvi per a aquesta moneda. Prova amb connexió.",
     ap_cur_lbl:"Moneda de l'apunt", ap_fx_hint:"Es converteix a euros en desar (tipus del BCE).",
@@ -14472,7 +14487,11 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const curSeason=(state.settings&&state.settings.season)||"none";
   const curTextSize=textSizeOf(state);
   const simOn=!!(state.settings&&state.settings.simpleMode);
-  const [curCompare,setCurCompare]=useState(false);   // acordeón «comparar monedas» (Dinero)
+  const [curCompare,setCurCompare]=useState(false);   // acordeón conversor FX (Dinero)
+  // Conversor: importe + moneda origen → moneda destino (reutiliza toEurAmt/fromEurAmt).
+  const [fxAmt,setFxAmt]=useState("1");
+  const [fxFrom,setFxFrom]=useState("EUR");
+  const [fxTo,setFxTo]=useState("TRY");
   const segBtn=function(on){ return Object.assign({},btn,{flex:"1 1 30%",marginTop:0,background:on?"var(--mint)":"var(--surface-2)",color:on?"#06120C":"var(--text)",border:on?"none":"1px solid var(--line)"}); };
   // ── Secciones colapsables + buscador (feedback 2026-07-13: «Ajustes se está haciendo
   // kilométrico»). Cada tarjeta es ahora un grupo plegado (estado en localStorage); el
@@ -14577,7 +14596,7 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     React.createElement("div",{className:"v4-set-sec"}, t("v4_set_money")),
     // Dinero: moneda de visualización (ahora SÍ convierte) + comparativa + cómo se ve el total
     // de gastos. Presupuesto y bancos de gasto diario viven en Resumen / Cartera (2026-08-05).
-    grp("money","💱",t("v4_set_money"),"moneda divisa currency euro dolar lira try presupuesto comparar",t("cur_"+curCur.toLowerCase()),
+    grp("money","💱",t("v4_set_money"),"moneda divisa currency euro dolar lira try conversor convertir comparar",t("cur_"+curCur.toLowerCase()),
       row("cur","💱",t("currency"),t("cur_"+curCur.toLowerCase()),function(){ toggleExp("cur"); }),
       expand==="cur" && React.createElement("div",{className:"set-exp"},
         React.createElement("div",{style:{display:"flex",gap:8,flexWrap:"wrap",marginTop:8}},
@@ -14614,29 +14633,65 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
             },style:Object.assign({},segBtn(curCur===c),{flex:"1 1 44%"})}, t("cur_"+c.toLowerCase()));
           })),
         React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,margin:"8px 2px 0"}}, t("currency_hint"))),
-      // Comparativa: 1 € al cambio. Solo filas CON tipo (si no hay FX aún, se pide y se explica).
-      row("curcmp","📊",t("st_cur_compare"),null,function(){
+      // Conversor: importe + origen → destino. Sustituye la lista fija «1 € → …» (pedida 2026-08-05).
+      row("curcmp","🔁",t("st_cur_convert"),null,function(){
         const open=!curCompare; setCurCompare(open);
         if(open && refreshFx) refreshFx();
       }),
       curCompare && React.createElement("div",{className:"set-exp"},
         (function(){
-          const tbl=fxTableOf(state);   // c → (1 c = tbl[c] €)
-          const rows=CUR_LIST.filter(function(c){ return c!=="EUR" && tbl[c]>0; }).map(function(c){
-            const per=1/tbl[c];   // 1 € = per c
-            return React.createElement("div",{key:c,style:{display:"flex",justifyContent:"space-between",padding:"7px 2px",borderBottom:"1px solid var(--line-soft)",fontSize:13.5}},
-              React.createElement("span",{style:{color:"var(--muted)"}}, "1 € → "+t("cur_"+c.toLowerCase())),
-              React.createElement("span",{className:"num",style:{fontWeight:700}}, NF.format(per)+" "+(CUR_SYM[c]||c)));
-          });
-          if(!rows.length){
+          const tbl=fxTableOf(state);
+          const hasRates=CUR_LIST.some(function(c){ return c!=="EUR" && tbl[c]>0; });
+          if(!hasRates){
             return React.createElement("div",{style:{marginTop:8}},
               React.createElement("div",{style:{fontSize:13,color:"var(--muted)",lineHeight:1.45}}, t("st_cur_compare_empty")),
               refreshFx && React.createElement("button",{type:"button",style:Object.assign({},segBtn(false),{marginTop:10,flex:"1 1 100%"}),onClick:function(){ refreshFx(); }}, t("st_cur_compare_retry")));
           }
+          const raw=parseFloat(String(fxAmt).replace(",","."))||0;
+          const needFrom=fxFrom!=="EUR" && !(tbl[fxFrom]>0);
+          const needTo=fxTo!=="EUR" && !(tbl[fxTo]>0);
+          const eurMid=(!needFrom && raw>0)?toEurAmt(raw, fxFrom, state):null;
+          const out=(!needTo && eurMid!=null)?fromEurAmt(eurMid, fxTo, state):null;
+          const rateTxt=(function(){
+            if(needFrom||needTo||!(raw>0)||out==null) return null;
+            // 1 unidad origen = X destino (legible, sin inventar si falta tipo)
+            const one=fromEurAmt(toEurAmt(1, fxFrom, state), fxTo, state);
+            if(!(one>0)) return null;
+            return "1 "+(CUR_SYM[fxFrom]||fxFrom)+" = "+NF.format(one)+" "+(CUR_SYM[fxTo]||fxTo);
+          })();
+          const chipRow=function(cur, setCur){
+            return React.createElement("div",{style:{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}},
+              CUR_LIST.map(function(c){
+                const ok=c==="EUR"||tbl[c]>0;
+                return React.createElement("button",{key:c,type:"button",disabled:!ok,onClick:function(){ if(ok) setCur(c); },
+                  style:Object.assign({},segBtn(cur===c),{flex:"0 0 auto",opacity:ok?1:.4,padding:"7px 10px",fontSize:12.5})},
+                  (CUR_SYM[c]||c)+" "+c);
+              }));
+          };
           return React.createElement("div",{style:{marginTop:6}},
-            rows,
-            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}},
-              t("st_cur_compare_hint")+(state.fxDate?(" · "+state.fxDate):"")));
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",marginBottom:4}}, t("st_cur_convert_from")),
+            React.createElement("div",{style:{display:"flex",gap:8,alignItems:"center"}},
+              React.createElement("input",{type:"text",inputMode:"decimal",value:fxAmt,
+                onChange:function(e){ setFxAmt(e.target.value); },
+                style:{flex:"1 1 40%",minWidth:0,padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface-2)",color:"var(--text)",fontSize:16,fontWeight:700,fontVariantNumeric:"tabular-nums"}}),
+              React.createElement("span",{className:"num",style:{fontWeight:700,fontSize:15,flex:"0 0 auto"}}, CUR_SYM[fxFrom]||fxFrom)
+            ),
+            chipRow(fxFrom, setFxFrom),
+            React.createElement("button",{type:"button",onClick:function(){ const a=fxFrom; setFxFrom(fxTo); setFxTo(a); },
+              style:Object.assign({},segBtn(false),{marginTop:12,flex:"1 1 100%",fontSize:14})}, "⇅ "+t("st_cur_convert_swap")),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",margin:"12px 0 4px"}}, t("st_cur_convert_to")),
+            React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",padding:"10px 12px",borderRadius:12,border:"1px solid var(--line)",background:"var(--surface)"}},
+              React.createElement("span",{className:"num",style:{fontWeight:800,fontSize:22,letterSpacing:"-.3px",
+                color:(needFrom||needTo)?"var(--muted)":"var(--text)"}},
+                out!=null?NF.format(out):(needFrom||needTo?"—":"—")),
+              React.createElement("span",{style:{fontWeight:700,fontSize:14}}, CUR_SYM[fxTo]||fxTo)
+            ),
+            chipRow(fxTo, setFxTo),
+            (needFrom||needTo) && React.createElement("div",{style:{fontSize:12,color:"var(--coral)",marginTop:8,lineHeight:1.4}}, t("fx_no_rate")),
+            rateTxt && React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:10}},
+              rateTxt+(state.fxDate?(" · "+state.fxDate):"")),
+            React.createElement("div",{style:{fontSize:11.5,color:"var(--muted-2)",lineHeight:1.5,marginTop:8}}, t("st_cur_convert_hint"))
+          );
         })()),
       (function(){
         const gm=(state.settings&&state.settings.gTotalMode)||"split";

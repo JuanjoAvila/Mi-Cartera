@@ -61,4 +61,11 @@ t("fromEurAmt: TRY con fxRates", () => {
   assert.ok(Math.abs(ctx.fromEurAmt(1.8, "TRY", { fxRates: { TRY: 0.018 } }) - 100) < 0.001);
 });
 
+t("conversor cruzado: TRY → USD vía EUR (sin inventar)", () => {
+  const s = { fxRates: { TRY: 0.025, USD: 0.92 } }; // 1 TRY=0.025€, 1 USD=0.92€
+  const eur = ctx.toEurAmt(100, "TRY", s);           // 2.5 €
+  const usd = ctx.fromEurAmt(eur, "USD", s);         // 2.5/0.92
+  assert.ok(Math.abs(usd - (2.5 / 0.92)) < 0.001);
+});
+
 console.log("\nfx-multi: OK");
