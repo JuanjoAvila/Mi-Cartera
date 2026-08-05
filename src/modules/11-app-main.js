@@ -1536,13 +1536,15 @@ function App(){
      state.trRewardsTotal,state.fx,state.fxRates]);
 
   const [pricing,setPricing]=useState(false);
-  // Tipos de referencia del BCE vía frankfurter.app (gratis, sin key). La lista sale de CUR_LIST
-  // para que añadir una divisa (p. ej. TRY en 4.14.0) no deje el fetch desfasado del selector —
-  // eso es lo que hacía «Comparar monedas» enseñar filas vacías y la moneda elegida no cambiar nada
-  // (sin tipo → DISP se queda en € en silencio).
+  // Tipos BCE vía frankfurter (gratis, sin key). URL canónica: api.frankfurter.dev.
+  // ⚠ 2026-08-05: api.frankfurter.app hace 301 → .dev; la CSP solo tenía .app, así que en el
+  // WebView el fetch moría en el redirect (mismo patrón que release-assets de GitHub). El dólar
+  // «funcionaba» por el state.fx legacy; lira/libra/… daban «Sin tipo de cambio».
+  // La lista sale de CUR_LIST para no desfasar selector y BCE.
   const refreshFx=function(){
     const to=CUR_LIST.filter(function(c){ return c!=="EUR"; }).join(",");
-    return fetch("https://api.frankfurter.app/latest?from=EUR&to="+encodeURIComponent(to)).then(function(r){ return r.json(); }).then(function(d){
+    const url="https://api.frankfurter.dev/v1/latest?from=EUR&to="+encodeURIComponent(to);
+    return fetch(url).then(function(r){ if(!r||!r.ok) return null; return r.json(); }).then(function(d){
       const rates=d&&d.rates;
       if(!rates) return null;
       const fxRates={};

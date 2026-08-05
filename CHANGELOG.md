@@ -23,6 +23,11 @@ de gasto diario (ya en Cartera).
 5. **Ajustes → Dinero:** fuera presupuesto mensual y bancos de gasto diario; quedan moneda,
    comparar y «Total de gastos».
 
+**Fix rechazo 4.14.0.1 (móvil):** el dólar iba y la lira no. Causa: `api.frankfurter.app` hace
+301 → `api.frankfurter.dev` y la CSP no tenía `.dev` (mismo patrón que el redirect de GitHub
+assets). El dólar «funcionaba» por `state.fx` legacy. Ahora el fetch va directo a `.dev` y la
+CSP lo deja pasar; al aplicar moneda se usan los rates devueltos (no solo el state).
+
 Rama: `tanda/multidivisa` (promovible sola con `-f tandas=multidivisa`).
 
 ## [4.13.0] — 2026-08-05

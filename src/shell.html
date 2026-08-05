@@ -19,7 +19,7 @@
      ⚠ SI AÑADES UNA LLAMADA A UN DOMINIO NUEVO, AÑÁDELO AQUÍ o fallará en silencio.
      Inventario de lo que hay hoy (todo lo demás está auto-hospedado, regla de AGENTS.md §3):
        · supabase.co ........... nube: login, estado, gastos y Edge Functions
-       · api.frankfurter.app ... tipos de cambio del BCE
+       · api.frankfurter.dev ... tipos de cambio del BCE (antes .app; ese dominio redirige aquí)
        · juanjoavila.github.io . manifiestos OTA (version.json / apk.json) desde la app Android
        · github.com + objects.githubusercontent.com … manifiestos del canal BETA (release `beta`)
        · google.com / gstatic.com … reCAPTCHA del login de MyInvestor (se carga solo si entras ahí)
@@ -45,7 +45,12 @@
      contestaba tan tranquilo «✓ estás a la última». O sea, el canal beta llevaba sin funcionar
      desde ese cambio de GitHub, en silencio (el usuario lo cazó el 2026-07-25: canal activado,
      beta publicada y el móvil diciendo v4.10.0). Los DOS dominios se quedan: el viejo por si
-     alguna release antigua todavía redirige ahí. -->
+     alguna release antigua todavía redirige ahí.
+
+     ⚠ MISMO PATRÓN CON LOS TIPOS DE CAMBIO (2026-08-05): `api.frankfurter.app` hace **301 →
+     api.frankfurter.dev**. Sin `.dev` en connect-src, en el WebView el fetch moría y solo el
+     dólar «funcionaba» (tipo legacy `state.fx`). La URL canónica es ya `.dev`; `.app` se deja
+     por si queda algún redirect residual. -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self';
   base-uri 'none';
@@ -58,7 +63,7 @@
   font-src 'self' data:;
   img-src 'self' data: blob: https://www.gstatic.com;
   frame-src https://www.google.com;
-  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://release-assets.githubusercontent.com https://www.google.com https://www.gstatic.com;
+  connect-src 'self' blob: https://sfyfjagbnhbplrljpbvh.supabase.co https://api.frankfurter.dev https://api.frankfurter.app https://juanjoavila.github.io https://github.com https://objects.githubusercontent.com https://release-assets.githubusercontent.com https://www.google.com https://www.gstatic.com;
 " />
 <!-- Que no se filtre la URL de la app (ni sus parámetros) al salir hacia el banco. -->
 <meta name="referrer" content="strict-origin-when-cross-origin" />
