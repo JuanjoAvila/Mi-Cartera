@@ -92,6 +92,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   }); // ents o "_manual"; [] = todos los bancos
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [morePeriods,setMorePeriods]=useState(false);
+  const [filterOpen,setFilterOpen]=useState(false);
   const [visible,setVisible]=useState(CONFIG.PAGE_SIZE);
   const [adding,setAdding]=useState(false);
   const [form,setForm]=useState({merchant:"",amount:"",category:"super",income:false,noCard:false,date:""});
@@ -101,32 +102,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // salir: si no, los chips de banco parpadean al ir Resumen↔Gastos (feedback 2026-07-16).
   const [heavyOk,setHeavyOk]=useState(false);
   const heavyOkRef=useRef(false);
-  const catChipsRef=useRef(null), bankChipsRef=useRef(null);
-  const chipDrag=useRef({sx:0,sy:0,capturing:false});
   const heavyIdleGen=useRef(0);
-  // Chips: cualquier horizontal cancela el gesto de tabs (sin «amago»). El swipe de tabs
-  // se hace en el listado, no encima de categorías/bancos (feedback 2026-07-17).
-  const chipSwipe=function(ref){
-    return {
-      onTouchStart:function(e){
-        if(!(e.touches&&e.touches[0])) return;
-        chipDrag.current={sx:e.touches[0].clientX,sy:e.touches[0].clientY,capturing:false};
-      },
-      onTouchMove:function(e){
-        if(!ref.current||!(e.touches&&e.touches[0])) return;
-        const dx=e.touches[0].clientX-chipDrag.current.sx, dy=e.touches[0].clientY-chipDrag.current.sy;
-        if(Math.abs(dx)<6 && Math.abs(dy)<6) return;
-        if(Math.abs(dy)>=Math.abs(dx)*1.15) return;
-        chipDrag.current.capturing=true;
-        if(cancelSwipe) cancelSwipe();
-        e.stopPropagation();
-      },
-      onTouchEnd:function(e){
-        if(chipDrag.current.capturing) e.stopPropagation();
-        chipDrag.current.capturing=false;
-      }
-    };
-  };
   // Lo caro de Gastos (detectar suscripciones y pintar su tarjeta) esperaba a que la pestaña
   // estuviera ACTIVA, así que se pagaba AL LLEGAR: en la cola del gesto de deslizar. Medido con
   // la CPU estrangulada x6 y trazado con `Tracing` (2026-07-26): la primera entrada en Gastos
@@ -146,19 +122,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // justo su «Deudas→Gastos lagazo / Deudas→Cartera fluido»: hacia Cartera el memo de Gastos no
   // se tocaba; hacia Gastos sí. El expediente ya lo había medido («dejar active fijo quita la
   // asimetría») y lo descartó mal: se puede enterarse sin re-render vía `mcOnGastosActive`.
+  // Chips de banco/categoría: el scroll horizontal se quedó en el sheet de filtros
+  // (2026-08-05). Aquí solo se resetea al entrar si hubiera resto de scroll de versiones viejas.
   useEffect(function(){ heavyOkRef.current=heavyOk; },[heavyOk]);
   useEffect(function(){
-    var chipGen=0;
     var unsub=mcOnGastosActive(function(active){
-      // Chips: idle + solo si hay scroll que resetear (escribir scrollLeft en caliente costó
-      // 276 ms — ver comentario histórico en el CHANGELOG de la 4.12.0).
-      var cg=++chipGen;
-      mcScheduleIdle(function(){
-        if(cg!==chipGen) return;
-        var c=catChipsRef.current, b=bankChipsRef.current;
-        if(c&&c.scrollLeft) c.scrollLeft=0;
-        if(b&&b.scrollLeft) b.scrollLeft=0;
-      }, 300);
       if(heavyOkRef.current) return;
       var gen=++heavyIdleGen.current;
       mcScheduleIdle(function(){
@@ -166,7 +134,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         setHeavyOk(true);
       }, active?40:4000);
     });
-    return function(){ chipGen++; heavyIdleGen.current++; unsub(); };
+    return function(){ heavyIdleGen.current++; unsub(); };
   },[]);
   const expensesDef=useDeferredValue(state.expenses);
   const keyOfE=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
@@ -550,21 +518,33 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",null,"→"),
         React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
       ),
-      React.createElement("div",Object.assign({className:"v4-chips",ref:catChipsRef},chipSwipe(catChipsRef)),
-        React.createElement("button",{className:"v4-chip"+(sel.length===0?" on":""),onClick:()=>setSel([])},t("g_allcats")),
-        // "Ingreso" no vive en CATEGORIES (es la categoría especial de importes negativos) pero
-        // también se filtra (petición 2026-07-11: no había forma de ver solo los ingresos).
-        CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]).map(c=>React.createElement("button",{key:c.id,className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:()=>setSel(function(prev){ const has=prev.indexOf(c.id)!==-1; return has?prev.filter(function(x){return x!==c.id;}):prev.concat([c.id]); })},c.icon+" "+catName(c.id).split(" ")[0]))
-      ),
-      // Filtro por banco (varios bancos de tarjeta OB + TR + a mano) — sin mezclar Fijos aquí.
-      bankOpts.length>1 && React.createElement("div",Object.assign({className:"v4-chips",ref:bankChipsRef},chipSwipe(bankChipsRef)),
-        React.createElement("button",{className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }},t("g_allbanks")),
-        bankOpts.map(function(b){
-          const on=bankSel.indexOf(b)!==-1;
-          const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
-          return React.createElement("button",{key:b,className:"v4-chip"+(on?" on":""),onClick:function(){ setBankSel(function(prev){ const has=prev.indexOf(b)!==-1; return has?prev.filter(function(x){return x!==b;}):prev.concat([b]); }); }},lbl);
-        })
-      )
+      // Filtros premium (2026-08-05): un botón + resumen, en vez de dos filas interminables
+      // de chips de categorías y bancos. El detalle vive en GastosFilterSheet.
+      (function(){
+        const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+        const nCat=sel.length;
+        const nBank=bankSelIsDefault?0:bankSel.length;
+        const n=nCat+nBank;
+        const parts=[];
+        if(nCat===1) parts.push(catName(sel[0]));
+        else if(nCat>1) parts.push(nCat+" "+t("g_filters_cats"));
+        if(!bankSelIsDefault){
+          if(bankSel.length===1){
+            const b=bankSel[0];
+            parts.push(b==="_manual"?t("g_bank_manual"):(entOf(b).label||b));
+          } else if(bankSel.length>1) parts.push(bankSel.length+" "+t("g_filters_banks"));
+        }
+        return React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,alignItems:"center",marginTop:4}},
+          React.createElement("button",{type:"button",className:"v4-chip"+(n?" on":""),onClick:function(){ setFilterOpen(true); },
+            style:{padding:"8px 14px",fontWeight:700}},
+            "🎛️ "+t("g_filters")+(n?" · "+n:"")),
+          parts.length>0 && React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.35,flex:"1 1 120px"}}, parts.join(" · ")),
+          n>0 && React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
+            setSel([]);
+            setBankSel(dailyEnt?[dailyEnt]:[]);
+          },style:{padding:"8px 12px"}}, t("g_filters_clear"))
+        );
+      })()
     ),
     React.createElement("div",{className:"action-row"},
       React.createElement("button",{className:"btn btn-ghost",onClick:onSync,disabled:syncing}, syncing?React.createElement(React.Fragment,null,React.createElement("span",{className:"spin"}),t("g_syncing")):React.createElement(React.Fragment,null,React.createElement(I.sync,{width:16,height:16}),t("g_sync")))
@@ -617,6 +597,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       )
     ),
     React.createElement(PeriodMoreSheet,{open:morePeriods,onClose:function(){ setMorePeriods(false); },preset:preset,setPreset:setPreset}),
+    React.createElement(GastosFilterSheet,{
+      open:filterOpen, onClose:function(){ setFilterOpen(false); },
+      sel:sel, setSel:setSel, bankSel:bankSel, setBankSel:setBankSel,
+      bankOpts:bankOpts, dailyEnt:dailyEnt
+    }),
     detailId && React.createElement(ExpenseDetailSheet,{
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
       editExp:editExp, setEditExp:setEditExp,
@@ -669,6 +654,73 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
     React.createElement("div",{className:"am num"+(isIncome?" pos":"")+(skip?" muted":"")}, (isIncome?"+":"")+eur(Math.abs(e.amount)))
   );
 });
+
+/* Sheet de filtros (2026-08-05): categorías + bancos con buscador, sin la fila infinita de chips.
+   Misma mecánica que PeriodMoreSheet (swipe abajo + atrás). */
+function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bankOpts, dailyEnt}){
+  useBackClose(!!open, onClose);
+  const swipe=useSheetSwipe(!!open, onClose);
+  const [qCat,setQCat]=useState("");
+  useEffect(function(){ if(!open) setQCat(""); },[open]);
+  if(!open) return null;
+  const allCats=CATEGORIES.concat([INGRESO_CAT,INVERSION_CAT,TRASPASO_CAT]);
+  const needle=qCat.trim().toLowerCase();
+  const cats=needle
+    ? allCats.filter(function(c){ return catName(c.id).toLowerCase().indexOf(needle)!==-1 || c.id.indexOf(needle)!==-1; })
+    : allCats;
+  const toggleCat=function(id){
+    setSel(function(prev){
+      const has=prev.indexOf(id)!==-1;
+      return has?prev.filter(function(x){ return x!==id; }):prev.concat([id]);
+    });
+  };
+  const toggleBank=function(b){
+    setBankSel(function(prev){
+      const has=prev.indexOf(b)!==-1;
+      return has?prev.filter(function(x){ return x!==b; }):prev.concat([b]);
+    });
+  };
+  const clearAll=function(){
+    setSel([]);
+    setBankSel(dailyEnt?[dailyEnt]:[]);
+  };
+  return ReactDOM.createPortal(
+    React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
+      React.createElement("div",Object.assign({className:"v4-sheet",ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); },style:{maxHeight:"88vh"}}, swipe.sheetTouch),
+        React.createElement("div",{className:"v4-sheet-handle"}),
+        React.createElement("div",{className:"serif",style:{fontSize:22,fontWeight:550,marginBottom:6}}, t("g_filters")),
+        React.createElement("div",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.45,marginBottom:12}}, t("g_filters_hint")),
+        React.createElement("div",Object.assign({className:"searchbar",style:{marginBottom:14}},{}),
+          React.createElement("span",{className:"searchbar-ic"},"🔍"),
+          React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_filters_search"),value:qCat,onChange:function(e){ setQCat(e.target.value); }}),
+          qCat && React.createElement("button",{className:"searchbar-x",type:"button",onClick:function(){ setQCat(""); }},"✕")
+        ),
+        React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_cats")),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+          React.createElement("button",{type:"button",className:"v4-chip"+(sel.length===0?" on":""),onClick:function(){ setSel([]); }}, t("g_allcats")),
+          cats.map(function(c){
+            return React.createElement("button",{key:c.id,type:"button",className:"v4-chip"+(sel.indexOf(c.id)!==-1?" on":""),onClick:function(){ toggleCat(c.id); }},
+              c.icon+" "+catName(c.id));
+          })
+        ),
+        bankOpts.length>0 && React.createElement(React.Fragment,null,
+          React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_banks")),
+          React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+            React.createElement("button",{type:"button",className:"v4-chip"+(bankSel.length===0?" on":""),onClick:function(){ setBankSel([]); }}, t("g_allbanks")),
+            bankOpts.map(function(b){
+              const on=bankSel.indexOf(b)!==-1;
+              const lbl=b==="_manual"?t("g_bank_manual"):entOf(b).label;
+              return React.createElement("button",{key:b,type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBank(b); }}, lbl);
+            })
+          )
+        ),
+        React.createElement("div",{style:{display:"flex",gap:10,marginTop:8}},
+          React.createElement("button",{type:"button",className:"btn btn-ghost",style:{flex:1},onClick:clearAll}, t("g_filters_clear")),
+          React.createElement("button",{type:"button",className:"btn btn-primary",style:{flex:1.4},onClick:onClose}, t("g_filters_done"))
+        )
+      )
+    ), document.body);
+}
 
 /* Sheet «Más…» de períodos. Antes era un portal pelado SIN useSheetSwipe/useBackClose: era el
    único sheet que no se podía cerrar tirando hacia abajo («el más de la foto» — feedback
