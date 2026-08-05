@@ -29,6 +29,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
      del contenedor scrolleable). `background-attachment:fixed` lo arreglaba en desktop pero en
      WebView Oppo tapaba el contenido al scrollear. Fix: host solo `var(--bg)` + lavado en
      `::before` sticky (z-0) con hijos en z-1; portal `.season-glow` sin attachment:fixed.
+   - Build `.22` (glow22): portal dentro de `#root` z-0, host/app/page transparentes en reposo.
+     `visibility:hidden` en hermanas aparcadas rompía e2e (`listas-render`: «Internet» duplicado
+     en Inicio›Próximos vs Plan›Recibos). Fix: recorte con `overflow:hidden` en
+     `.track.scroll-host-park` + fondo opaco en `.track.dragging` (solo gesto); e2e acota a
+     `.page-scroll-host`.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`

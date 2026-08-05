@@ -95,10 +95,13 @@ assert.doesNotMatch(shell, /@keyframes\s+seasonglow/, "`seasonglow` no puede vol
 assert.match(shell, /\.season-amb\{[^}]*top:calc\(var\(--safe-top\)/,
   "las partículas arrancan bajo `--safe-top`");
 
-/* Host transparente en reposo: lavado fijo en .season-glow; scroll-host-park evita fusionar tabs. */
+/* Host transparente en reposo: lavado fijo en .season-glow; scroll-host-park recorta hermanas
+   (sin visibility:hidden — rompe e2e listas-render). Gesto: .page opaca. */
 assert.match(shell, /\.page\.page-scroll-host\{[\s\S]*?background:\s*var\(--bg\)/, "host opaco default");
 assert.match(shell, /html\[data-season\]\s+\.page\.page-scroll-host\{background:transparent!important;/, "host transparente reposo");
-assert.match(shell, /\.track\.scroll-host-park \.page:not\(\.page-scroll-host\)\{visibility:hidden/, "scroll-host-park");
+assert.match(shell, /\.track\.scroll-host-park\{[^}]*overflow:\s*hidden/, "scroll-host-park recorta hermanas");
+assert.doesNotMatch(shell, /\.track\.scroll-host-park \.page:not\(\.page-scroll-host\)\{visibility:hidden/, "no visibility:hidden en park (e2e)");
+assert.match(shell, /html\[data-season\]\s+\.track\.dragging \.page\{background:var\(--bg\)!important;/, "page opaca en gesto");
 assert.doesNotMatch(shell, /html\[data-season\]\s+\.page\.page-scroll-host::before/, "no ::before sticky");
 assert.doesNotMatch(shell.replace(/\/\*[\s\S]*?\*\//g, ""), /background-attachment:\s*fixed/, "no attachment fixed en reglas");
 assert.match(shell, /html\[data-season\]\s+\.page\{background:transparent!important;/, "page transparente");

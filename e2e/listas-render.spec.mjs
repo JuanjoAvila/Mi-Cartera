@@ -28,6 +28,12 @@ async function abrirPlan(page, segmento, overrides) {
   await page.locator(".v4-seg-btn").filter({ hasText: segmento }).click();
 }
 
+// Con mountNeighbors las pestañas vecinas siguen montadas; acotar a la activa evita coger
+// textos duplicados (p. ej. «Internet» en Inicio›Próximos y en Plan›Recibos).
+function paginaActiva(page) {
+  return page.locator(".page-scroll-host");
+}
+
 /* ---------------- Deudas ---------------- */
 const debts = [
   { id: "d1", name: "Coche", total: 12000, monthly: 250, rate: 6, start: "2026-01", months: 48, account: "sabadell" },
@@ -77,16 +83,17 @@ const fixed = [
 
 test("Plan › Recibos: salen los fijos mensuales, con su importe", async ({ page }) => {
   await abrirPlan(page, /Recibos|Bills|Rebuts/i, { fixed });
-  await expect(page.getByText("Alquiler", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText("Internet", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText("850", { exact: false }).first()).toBeVisible();
+  const activa = paginaActiva(page);
+  await expect(activa.getByText("Alquiler", { exact: false }).first()).toBeVisible();
+  await expect(activa.getByText("Internet", { exact: false }).first()).toBeVisible();
+  await expect(activa.getByText("850", { exact: false }).first()).toBeVisible();
 });
 
 test("Plan › Recibos: un anual de otro mes NO se cuela en el mes en curso", async ({ page }) => {
   // Salvo que hoy sea marzo, claro: el test se adapta en vez de fallar tres semanas al año.
   const esMarzo = new Date().getMonth() === 2;
   await abrirPlan(page, /Recibos|Bills|Rebuts/i, { fixed });
-  await expect(page.getByText("Seguro coche anual", { exact: false })).toHaveCount(esMarzo ? 1 : 0);
+  await expect(paginaActiva(page).getByText("Seguro coche anual", { exact: false })).toHaveCount(esMarzo ? 1 : 0);
 });
 
 /* ---------------- Cartera › Tus cuentas ---------------- */
