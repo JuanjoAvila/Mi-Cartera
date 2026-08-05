@@ -284,18 +284,17 @@
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
   /* DESTELLO DE ARRIBA (feedback 2026-08-05 — «arriba a la derecha», no la barra).
-     ⚠ NO usar `html::before` fixed: en la WebView de su Oppo el pseudo se comportaba como
-     si scrolleara con el contenido (aparece/desaparece al subir/bajar) aunque el CSS dijera
-     position:fixed. Lo medimos por CDP el 2026-08-05: computed style = fixed z-36 y AUN ASÍ
-     él lo veía irse. Solución: nodo real `.season-glow` (hermano de `.season-amb`). */
-  /* Intensidad (2026-08-05): medido en su Oppo con capturas reales por CDP — con los valores
-     de antes (opacity .32-.6, gradientes al .14-.2) el resultado en pantalla eran unos 10-15
-     puntos de RGB sobre 255 en la esquina, indistinguible del fondo salvo con el dedo moviendo
-     la pantalla (el ojo nota el CAMBIO, no la mancha en sí). Subido a algo que se vea también
-     QUIETO: opacity .55-.85 + gradientes más cargados (ver cada `--season-glow-top` abajo). */
-  .season-glow{position:fixed;top:0;left:0;right:0;height:38vh;z-index:36;pointer-events:none;
+     ⚠ NO usar `html::before` fixed: en su WebView el pseudo se iba con el scroll.
+     ⚠ NO montar fixed DENTRO de `#root` (`position:relative`): medido 2026-08-05 en su Oppo
+     con ADB+CDP en la build .9 (f589f89c) — computed=fixed, glowTop=0, PERO el RGB de la
+     esquina saltaba +31 al hacer scroll (19,28,20 → 26,41,31) y él lo veía aparecer/desaparecer.
+     Mismo patrón que los sheets: portal a `document.body` en `.season-portal` (centra 520px). */
+  /* Intensidad: opacity .55-.85 + gradientes .3-.42 — si baja de ahí, en reposo no se ve. */
+  .season-portal{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:520px;pointer-events:none;z-index:36;}
+  .season-glow{position:absolute;top:0;left:0;right:0;height:38vh;z-index:1;pointer-events:none;
     opacity:.7;animation:seasonglow 9s ease-in-out infinite alternate;background:var(--season-glow-top);}
-  @keyframes seasonglow{0%{opacity:.55;transform:translateX(-3%);}100%{opacity:.85;transform:translateX(3%);}}
+  @keyframes seasonglow{0%{opacity:.55;}100%{opacity:.85;}}
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
      ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
      era el sitio equivocado + dejaba ver la lista a través). */
@@ -346,7 +345,7 @@
      bottom recortado: si la lluvia pintaba debajo de la barra, al esconderse la barra con
      opacity (botnav-hidden) se veía la lista+piezas «en trasfondo» un rato (feedback 2026-08-05).
      Host sigue OPACO. Solo translate3d/rotate/opacity (compositor). */
-  .season-amb{position:fixed;top:0;left:0;right:0;bottom:calc(72px + var(--safe-bottom,0px));z-index:37;pointer-events:none;overflow:hidden;contain:strict;}
+  .season-amb{position:absolute;top:0;left:0;right:0;bottom:calc(72px + var(--safe-bottom,0px));z-index:2;pointer-events:none;overflow:hidden;contain:strict;}
   .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
   @keyframes seasonDrift{
@@ -359,6 +358,7 @@
      ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40`. */
   .page{position:relative;z-index:2;}
   @media (prefers-reduced-motion:reduce){
+    .season-portal{display:none;}
     .season-amb,.season-glow{display:none;}
     html[data-season] .botnav-fab::after{animation:none;opacity:0;}
     html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
@@ -522,7 +522,11 @@
      por debajo (la barra es translúcida con blur) y al esconderse se ve la app, no un hueco.
      El padding-bottom de .page ya reserva el espacio para que nada quede oculto al final. */
   .botnav{position:absolute;left:0;right:0;bottom:0;z-index:40;
-    background:color-mix(in srgb, var(--bg-2) 88%, transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    /* FONDO SIEMPRE OPACO (2026-08-05, cuarta pasada, ADB en su Oppo build .9): el arreglo de
+       `nav-sin-blur{background:var(--bg-2)}` NO bastó — getComputedStyle seguía devolviendo
+       color-mix al 88% durante el swipe y la lista se veía a través ~1 s. La barra no puede
+       depender de una regla contextual: el default ya es sólido; el blur queda de adorno. */
+    background:var(--bg-2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
     border-top:1px solid var(--line-soft);
     padding:8px 10px calc(10px + var(--safe-bottom));
     /* Se esconde al bajar y reaparece al subir. Curva suave y algo más lenta + fade: el ocultado
@@ -13837,6 +13841,11 @@ var RELEASE_NOTES=[
        "Con temática puesta, el destello suave de ARRIBA A LA DERECHA se queda fijo y se ve también parado, no solo al moverte por la app.",
        "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni saltan atrás.",
        "La barra de abajo ya no enseña la lista a través suyo un momento al cambiar de pestaña (efecto raro de un arreglo anterior).",
+     ]},
+     {id:"fix-season-portal", t:"✨ Destello y barra (arreglo definitivo)", items:[
+       "Con temática activa, baja y sube en Gastos: el destello de arriba a la derecha NO debería aparecer y desaparecer al hacer scroll.",
+       "Desliza de pestaña (Inicio ↔ Gastos ↔ Plan): la barra de abajo no debería dejar ver la lista a través suya ni un segundo.",
+       "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
      ]}
    ],
    items:{
@@ -19327,9 +19336,9 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
-  // Ambientación: destello `.season-glow` + lluvia `.season-amb` (nodos reales fixed).
-  // Feedback 2026-08-05: html::before fixed FALLABA en su WebView (se iba con el scroll
-  // aunque computed style dijera fixed — medido por CDP). Host opaco siempre.
+  // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
+  // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
+  // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
@@ -19351,9 +19360,12 @@ function App(){
         style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
           "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
     }
-    return React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
-      React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out)
+    return ReactDOM.createPortal(
+      React.createElement("div",{className:"season-portal","aria-hidden":"true"},
+        React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
+        React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out)
+      ),
+      document.body
     );
   }, [seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
@@ -19375,6 +19387,7 @@ function App(){
   );
 
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
+    // seasonLayers → portal en document.body (ver useMemo arriba)
     seasonLayers,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.

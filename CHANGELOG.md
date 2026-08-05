@@ -6,7 +6,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ### Ambientación suave + conversor FX + presupuesto alineado + extracto total (beta)
 
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
-`gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`.
+`gastos-filtros-ia`, `fix-novedades-nag`, `fix-season-glow`, `gastos-filtros-ubicacion`,
+`fix-season-portal`.
 
 1. **Ambientación** (`.season-amb` + destello superior):
    **Incidentes 2026-08-05 (mismo día):**
@@ -76,6 +77,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
      en sí. Subido a `opacity` .55-.85 y gradientes .3-.42 (todas las temáticas): mismo diseño,
      visible también quieto. `tests/season-detalle.test.mjs` ahora exige un mínimo de intensidad
      y la barra sólida en `nav-sin-blur`, para que esto no se pueda volver a bajar sin que salte.
+10. **Fix 2026-08-05 — cuarta pasada, build .9 rechazada por el usuario** (`fix-season-portal`):
+    Tras publicar f589f89c (intensidad + `nav-sin-blur{background:var(--bg-2)}`), feedback:
+    «sigue pasando ambos problemas». Reproducido otra vez con ADB+CDP en su Oppo (4.15.0.9):
+    - **Destello al scroll:** `glowTop=0` y `position:fixed` en computed style, pero el RGB de
+      la esquina superior derecha saltaba +31 al bajar 600 px (19,28,20 → 26,41,31). Causa:
+      `.season-glow` vivía dentro de `#root{position:relative}` — en su WebView el compositor de
+      scroll trata fixed anclado a #root como si scrolleara. Fix: `ReactDOM.createPortal` a
+      `document.body` en `.season-portal` (fixed centrado max-width 520px); hijos absolute.
+      `seasonglow` solo anima opacity (sin `translateX`).
+    - **Fuga en barra al swipe:** durante `nav-sin-blur`, getComputedStyle seguía devolviendo
+      `color(srgb … / 0.88)` pese al override — la regla contextual no ganaba en su WebView.
+      Fix: `.botnav` default pasa a `background:var(--bg-2)` opaco siempre (sin color-mix 88%).
+      Tests actualizados en `tests/season-detalle.test.mjs`.
 
 Sin APK nuevo (35 / 4.12.0).
 

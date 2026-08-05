@@ -1472,6 +1472,11 @@ var RELEASE_NOTES=[
        "Con temática puesta, el destello suave de ARRIBA A LA DERECHA se queda fijo y se ve también parado, no solo al moverte por la app.",
        "Al cambiar de pestaña, las piezas que caen siguen su camino: no se reinician ni saltan atrás.",
        "La barra de abajo ya no enseña la lista a través suyo un momento al cambiar de pestaña (efecto raro de un arreglo anterior).",
+     ]},
+     {id:"fix-season-portal", t:"✨ Destello y barra (arreglo definitivo)", items:[
+       "Con temática activa, baja y sube en Gastos: el destello de arriba a la derecha NO debería aparecer y desaparecer al hacer scroll.",
+       "Desliza de pestaña (Inicio ↔ Gastos ↔ Plan): la barra de abajo no debería dejar ver la lista a través suya ni un segundo.",
+       "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
      ]}
    ],
    items:{

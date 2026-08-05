@@ -2801,9 +2801,9 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
-  // Ambientación: destello `.season-glow` + lluvia `.season-amb` (nodos reales fixed).
-  // Feedback 2026-08-05: html::before fixed FALLABA en su WebView (se iba con el scroll
-  // aunque computed style dijera fixed — medido por CDP). Host opaco siempre.
+  // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
+  // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
+  // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
   const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
@@ -2825,9 +2825,12 @@ function App(){
         style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
           "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
     }
-    return React.createElement(React.Fragment,null,
-      React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
-      React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out)
+    return ReactDOM.createPortal(
+      React.createElement("div",{className:"season-portal","aria-hidden":"true"},
+        React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
+        React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out)
+      ),
+      document.body
     );
   }, [seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
@@ -2849,6 +2852,7 @@ function App(){
   );
 
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
+    // seasonLayers → portal en document.body (ver useMemo arriba)
     seasonLayers,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
     // un gasto de verdad en la cartera de mentira y volverse loco buscándolo. Tocarla te saca.
