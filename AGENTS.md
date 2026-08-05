@@ -125,6 +125,29 @@ Va directo a `main` **solo** lo que no puede afectar a lo que él ve: documentac
 
 **Solo se pushea trabajo TERMINADO y verificado.** Nunca a medias. OTA web ≠ APK: si el fix es Java/Kotlin, sin APK nuevo el móvil no lo tiene.
 
+### ⚠ El promote mezcla con `-X theirs`: revisa el diff, no te fíes del verde
+
+`promote-beta.yml` hace `git merge --no-ff -X theirs origin/beta`. Ese `-X theirs` significa
+**«en cualquier conflicto gana beta, sin avisar»**. Se puso el 2026-08-05 porque el promote de la
+4.13.0 chocó de frente: `main` llevaba cherry-picks parciales de 4.12.3/4.12.4 (se habían subido
+features sueltas antes que la ronda entera) y al mezclar la ronda completa salieron **`USO_OK`,
+`gastosForceAll` y `hojaOpen` declarados dos veces**. Un `const` repetido en el mismo ámbito es un
+**SyntaxError**: el bundle promocionado no arrancaba, y los tests de la rama pasaban igual porque
+el destrozo nace EN el merge, no en ninguna de las dos ramas.
+
+Lo que hay que saber al usarlo:
+
+- **`-X theirs` se traga en silencio todo lo que solo exista en `main`.** No es teórico: ese mismo
+  día se perdió la entrada de 4.12.4 del `CHANGELOG.md` y hubo que rescatarla a mano en un commit
+  aparte (`1340e53`).
+- Los que más lo van a sufrir son **`CHANGELOG.md` y `RELEASE_NOTES`**, porque se escriben siempre
+  arriba del todo: conflictan en cada promote y pierden la parte de `main` sin decir nada.
+- Después de promocionar, **abre el diff `main` vs `beta` y `npm run test:syntax`** antes de dar por
+  buena la subida. Que Actions esté en verde no basta: un duplicado de merge no lo ve ningún test
+  de rama.
+- La cura de fondo es **no cherry-pickear de `beta` a `main`**: promociona rondas enteras. Cada
+  feature suelta que se adelanta deja una mina para el promote siguiente.
+
 ## 6 bis. La documentación es parte del cambio, no un extra
 
 **Un cambio no está terminado hasta que la doc que lo describe dice la verdad.** Esta regla ya

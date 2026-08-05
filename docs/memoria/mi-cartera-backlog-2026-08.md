@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d6ae387e-f9d4-460d-b8dc-c43511bd8b4c
-  modified: 2026-08-04T19:05:31.722Z
+  modified: 2026-08-05T01:26:59.519Z
 ---
 
 **⚠ ESTE FICHERO ES LA LISTA ÚNICA. Si aparece algo nuevo, va aquí.** Se armó porque el 4/8 le di un
@@ -17,7 +17,7 @@ inventario que se dejaba fuera sus veredictos rechazados y el backlog histórico
 «te he dicho TODO y que esté bien por escrito para que sesiones nuevas lo tengan bien estructuradito».
 
 **Regla de trabajo (suya, 4/8): de UNO EN UNO.** Ver [[feedback-de-uno-en-uno]].
-**Estado:** producción **4.12.4** · beta **4.13.0** · APK **35**.
+**Estado (5/8):** producción **4.13.0** · APK **35 / 4.12.0** (sin cambios nativos, llega por OTA).
 Fuentes que alimentan esto: `node scripts/errores.mjs --kind=beta` (sus veredictos),
 [[mi-cartera-backlog]] (histórico + review ChatGPT), `docs/ROADMAP.md`, y lo que pida en sesión.
 
@@ -32,28 +32,26 @@ futuro» y **ahora tiene fecha**. Es lo único que se pierde si no llega a tiemp
 
 ---
 
-# 🔁 1. LAS TRES RECHAZADAS DEL 4/8 — dos arregladas, una bloqueada
+# ✅ 1. RONDA 4.13.0 CERRADA — TODO EN PRODUCCIÓN (5/8 de madrugada)
+Las tres rechazadas del 4/8 están arregladas, aprobadas por él en el móvil (`4.13.0.49`) y
+promocionadas. **Producción = 4.13.0.** El array `tandas` quedó vacío, como debe ser.
 
-**`tutorial-gestos` 🎓 ✅ ARREGLADO** (commit `9c7c569`, pendiente de su veredicto). Causa real: el
-tour medía el elemento UNA vez tras una espera fija de 520 ms; si esa foto caía con el carrusel aún
-deslizándose (móvil lento), el recorte se quedaba clavado a medio camino **para siempre**. Ahora se
-pega al elemento fotograma a fotograma hasta que está quieto. Medido: a 400 ms de tocar «Siguiente»,
-antes 298 px de desvío, ahora 8 px.
+- **`tutorial-gestos` 🎓** — el tour medía el elemento UNA vez tras una espera fija de 520 ms; si esa
+  foto caía con el carrusel aún deslizándose, el recorte se quedaba clavado a medio camino **para
+  siempre**. Ahora se pega al elemento fotograma a fotograma hasta que está quieto (`9c7c569`).
+- **`plan-swipe` 👇** — los dos gestos decidían el eje **por proporción a los 10 px**, y el arco del
+  pulgar sale de lado primero → «horizontal» para siempre. Ahora `gestureAxis` en `00-core.js`, una
+  sola función para ambos, por ventaja en píxeles (`2cbc091`).
+- **`gestos` 🎯** — lo cerró **Cursor** de madrugada, 35 commits (ola nativa arriba/abajo, barra
+  quieta, rayita). Yo lo había dejado sin tocar a propósito.
 
-**`plan-swipe` 👇 ✅ ARREGLADO** (commit `2cbc091`, pendiente de su veredicto). Causa real: los dos
-gestos (swipe de pestañas y vertical de Plan) decidían el eje **por proporción a los 10 px**, y el
-arco del pulgar sale de lado primero → «horizontal» para siempre. Ahora `gestureAxis` en
-`00-core.js`, UNA función para los dos, por ventaja en píxeles.
-
-**`gestos` 🎯 ⛔ BLOQUEADO — no se puede verificar en el portátil.** El «muro invisible» y la «ola»
-son inercia y compositor, y **los toques sintéticos de CDP no generan scroll por momentum**
-(medido 4/8: un tirón deja Gastos en 0 y Deudas en 425 de 3695, solo lo que arrastra el dedo).
-Cuarta ronda a ciegas = cuarto rechazo. **Necesita su móvil** → [[depurar-webview-en-su-movil]].
-⚠ **Candidato con causa medida:** a mitad de lista con 40 px de deriva lateral el scroll no se mueve
-NI UN PÍXEL y **nadie de nuestro código cancela el evento** — es el navegador bloqueando la
-dirección del gesto. El arreglo candidato es `touch-action:pan-y` en `.page`, ya escrito y explicado
-en `src/shell.html` (sin poner). Riesgo: puede romper el tirón del perfil y el segmento de Plan, que
-dependen de cancelar el scroll vertical. Probar en su aparato antes de dejarlo.
+⚠ **Por qué yo no pude con `gestos`, que es la lección reutilizable:** el «muro invisible» y la «ola»
+son **inercia y compositor**, y los toques sintéticos de CDP **no generan scroll por momentum**
+(medido: un tirón deja Deudas en 425 de 3695, solo lo que arrastra el dedo). Con la sonda sobre su
+móvil real quedó además desmentida mi hipótesis: **la deriva lateral NO bloquea el scroll en su
+aparato** (gesto real con 90 px de deriva scrolleó perfecto) — era un artefacto del entorno de
+pruebas. Menos mal que no subí el `touch-action:pan-y`. Queda el comentario en `src/shell.html`
+explicando por qué NO está puesto.
 
 **Aprobadas y ya subidas (4/8):** `bancos` 🏦 (16 ok / 0 fallo — **por fin aprobada**, cierra
 [[tr-duplicados-saga]] y el signo en positivo; 3 ítems marcados "no probable" sin tocar: detección de
