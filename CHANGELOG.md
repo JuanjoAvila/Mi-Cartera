@@ -5,7 +5,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ## [4.15.0] — 2026-08-05
 ### Ambientación suave + conversor FX + presupuesto alineado + extracto total (beta)
 
-**Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`.
+**Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
+`gastos-filtros-ia`.
 
 1. **Ambientación detrás** (`.season-amb` z-index 0): piezas muy suaves en bucle lento
    detrás de `.page`. Sin ráfagas al cambiar de pestaña (nada de `seasonEpoch`/`seasonrise`).
@@ -18,6 +19,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 4. **Extracto de todos los bancos:** `importObExpenses` apunta TODO lo sincronizado. Solo
    `expenseBankEnts` resta del presupuesto/saldo (`expenseCountsCash`/`expenseCountsBudget`);
    el resto se ve con marca «no afecta». Fijos modelados no se duplican en ningún banco.
+5. **Filtros + categorías:** sheet con buscador (adiós chips kilométricos); categorías
+   `viajes`/`mascotas`/`educacion`/`energia`; KW ampliado (cliente + `ingest_logic` + ALLOWED
+   de la Edge Function categorize).
 
 Sin APK nuevo (35 / 4.12.0).
 
