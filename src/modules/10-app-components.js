@@ -2048,7 +2048,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
   const [privOpen,setPrivOpen]=useState(false);    // política de privacidad DENTRO de la app (no _blank)
   const [sharedOpen,setSharedOpen]=useState(false);// Hogar + gastos compartidos (sin tab propia en v4)
   const [fbOpen,setFbOpen]=useState(false);        // sugerencias (mudadas fuera de Novedades, 2026-07-18)
-  const [hojaOpen,setHojaOpen]=useState(false);    // importar una hoja de gastos (Excel/CSV), 2026-07-28
   const [bioOn,setBioOn]=useState(bio.enabled());  // candado con huella (volvió a Ajustes, 2026-07-18)
   const toggleBio=function(){
     if(bioOn){ bio.disable(); setBioOn(false); showToast(t("au_bio_dis")); return; }
@@ -2496,7 +2495,6 @@ function SettingsPanel({state, set, onClose, showToast, uid, onBankSync, onTour,
     cloud.enabled() && uid && grp("backup","🗄️",t("backup"),"copia seguridad backup restaurar automatica",null,
       row("autoback","🕐",t("bk_auto_title"),null,function(){ setAutoBackOpen(true); })
     ),
-    hojaOpen && ReactDOM.createPortal(React.createElement(SheetImport,{state:state,set:set,showToast:showToast,onClose:function(){ setHojaOpen(false); },goGastos:goGastos}), document.body),
     cloud.enabled() && uid && grp("account","👤",t("st_account"),"cuenta privacidad borrar delete privacy huella biometria fingerprint cerrar sesion logout salir",null,
       meEmail && React.createElement("div",{style:{padding:"0 16px 10px",fontSize:12.5,color:"var(--muted)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}, meEmail),
       // Huella y cerrar sesión volvieron aquí (2026-07-18): con el rediseño solo existían

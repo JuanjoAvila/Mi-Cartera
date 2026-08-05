@@ -171,13 +171,6 @@ const MERCHANT_OVERRIDES = {};
 // Overrides PERSONALES del usuario (comercio→categoría), que aprende al recategorizar a mano.
 // Se puebla desde state.catOverrides al cargar. Tiene prioridad sobre las keywords.
 let USER_OVERRIDES = {};
-/* EL VOCABULARIO CERRADO DE LAS MÉTRICAS DE USO (ver `cloud.logUso`, más abajo).
-   Todo lo que se puede medir está en esta lista y en ningún otro sitio. Es a propósito: con una
-   etiqueta libre, el primer `logUso("gasto en "+comercio)` que alguien escriba con buena
-   intención se lleva el nombre de una tienda a una tabla de la nube, y esto es una app de
-   finanzas de una familia. Añadir una métrica es añadir una línea AQUÍ, donde se ve en el diff y
-   se puede discutir antes de que viaje nada. */
-const USO_OK=["import_hoja"];
 function catKey(merchant){ return (merchant||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").trim(); }
 /* EL VOCABULARIO CERRADO DE LAS MÉTRICAS DE USO (ver `cloud.logUso`, más abajo).
    Todo lo que se puede medir está en esta lista y en ningún otro sitio. Es a propósito: con una

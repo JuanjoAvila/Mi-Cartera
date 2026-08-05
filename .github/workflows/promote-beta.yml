@@ -138,7 +138,9 @@ jobs:
           git checkout main
           TANDAS="$(printf '%s' "$TANDAS_IN" | tr -d '[:space:]')"
           if [ -z "$TANDAS" ]; then
-            git merge --no-ff origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
+            # Preferir beta en conflictos: main a veces tiene cherry-picks parciales
+            # (4.12.3/4.12.4) que chocan con la ronda entera (falló el promote 5/8).
+            git merge --no-ff -X theirs origin/beta -m "Promocionar beta a producción (probada y aprobada en el móvil)"
           else
             echo "$TANDAS" | tr ',' '\n' | while read -r T; do
               [ -n "$T" ] || continue
