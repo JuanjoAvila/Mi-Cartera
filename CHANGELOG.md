@@ -91,18 +91,45 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
       Fix: `.botnav` default pasa a `background:var(--bg-2)` opaco siempre (sin color-mix 88%).
       Tests actualizados en `tests/season-detalle.test.mjs`.
 11. **Fix 2026-08-05 — quinta pasada, destello que se intensificaba al scrollear**
-    (`fix-season-glow-steady`): tras .11 el destello YA estaba fijo (portal a `body`) y se
-    veía en reposo, pero al bajar la lista «se ponía más intenso». Medido otra vez en su Oppo
-    (ADB screencap + CDP, 4.15.0.11): congelar `seasonglow` y ocultar partículas NO bajaba el
-    salto RGB (~33). Apagar el destello y scrollear seguía saltando — el muestreo pillaba
-    cartillas/gráfico. Causa real: capa TRANSLÚCIDA a 38vh ENCIMA del contenido; al pasar el
-    gráfico mint o una cartilla por debajo, el composite se iluminaba (flash percibido). Fix:
-    ambiente en el fondo OPACO del host (`html[data-season] .page-scroll-host` con
-    `--season-glow-top, var(--bg)`); cinta `.season-glow` corta (`safe-top + 8px`, debajo del
-    saludo/avatar ~70px) con el mismo gradiente + `var(--bg)` bake, `opacity:1` fija y SIN
-    animación; `background-size` ampliado para que el radial se note en la cinta. Evidencia
-    post-inyección: delta RGB esquina rest→scroll ≈ 0–4 (antes ~33), mid-fling 0, presencia
-    ≥55, saludo/JA visibles. Tests en `tests/season-detalle.test.mjs`.
+    (`fix-season-glow-steady`, build .12 rechazada): tras .11 el destello YA estaba fijo (portal
+    a `body`) y se veía en reposo, pero al bajar la lista «se ponía más intenso». Medido en su Oppo
+    (ADB, 4.15.0.11): capa translúcida a 38vh ENCIMA del contenido → composite ~+30 RGB al
+    scrollear. Build .12 probó cinta opaca + gradiente horneado en el host: franja oliva junto a la
+    cámara ([65,60,33] vs [20,38,30]) y destello que desaparecía al taparlo. Rechazada.
+12. **Fix 2026-08-05 — sexta pasada, la COFIA** (`fix-season-glow-steady`): lo que arregla esta
+    vez es que por fin se midió **el gesto correcto**. Él aclaró que el destello falla «scrolleando
+    entre tabs, no en la misma tab scrolleando hacia abajo», y ese gesto cambia el DOM: al arrastrar
+    el carrusel se QUITA `page-scroll-host` de la página activa. Todo lo que .12 había colgado del
+    fondo de esa clase se apagaba justo durante el gesto.
+    - **Método:** con el dedo CONGELADO a mitad de gesto (`Input.dispatchTouchEvent` sin `touchEnd`)
+      se apaga y enciende solo el gradiente y se restan las dos capturas. Esa resta es la aportación
+      exacta del destello en ese composite. Sin aislarlo, el Δ del píxel mide el contenido que se
+      desliza: medido, el mismo Δ de 228 salía con destello y **sin destello ninguno**, que es lo
+      que hizo perseguir un fantasma en .9/.11/.12.
+    - **Medido en la .12:** aporte del destello con el dedo puesto = **[0,0,0]** de y48 hacia abajo
+      (desaparecido) y **|91|** sobre la franja de la cámara (el tono oliva).
+    - **Descartado con datos:** el WIP que había en el árbol (portal a z-34 detrás del host +
+      `background-clip:content-box`) daba píxeles **idénticos a no tener destello**: el glow
+      arrancaba en `safe-top+10`, justo donde empieza la caja opaca del host. Y ponerlo *detrás*
+      del contenido tampoco vale — las cartillas lo tapan al pasar y «desaparece y vuelve a
+      aparecer», que él rechazó expresamente.
+    - **Fix:** el destello se pinta OPACO y POR ENCIMA de todo, en una cofia
+      (`--season-cofia: calc(var(--safe-top) + 36px)`) por la que el contenido no pasa nunca —
+      el host y `.app` reservan ese alto solo con temática puesta. Como no depende de lo que haya
+      debajo, es matemáticamente invariante: **62/62/62** de aporte en reposo, en pleno gesto entre
+      pestañas y scrolleando, y **0** sobre la franja de la cámara en los tres.
+    - **Los dos detalles que pidió:** base `var(--bg)` (mismo tono que la app → sin corte visible
+      con la barra de estado) y gradiente centrado en `calc(var(--safe-top) + 12px)` en vez de
+      `at 80% -20%`, para que valga 0 sobre los iconos. Se apaga con `mask-image` en los últimos
+      20 px: al scrollear el contenido se disuelve por debajo en vez de cortarse en seco.
+      Las partículas arrancan bajo la cofia (`top:var(--season-cofia)`): una hoja cruzando por
+      delante de los iconos del sistema es el mismo problema de esa franja.
+    - Alfas a .14/.09 (antes .3-.42): calibradas para que el pico mida lo mismo que en la .11,
+      que es la que él dio por buena en reposo. Sin `@keyframes seasonglow` — un destello que
+      respira es justo lo que pidió que no hiciera.
+    - Con reduce-motion la cofia SE QUEDA (es un degradado quieto, y si se fuera dejaría el hueco
+      reservado vacío); lo que se va son las partículas. `tests/season-detalle.test.mjs` reescrito
+      para vigilar los invariantes reales, no la implementación de turno.
 
 Sin APK nuevo (35 / 4.12.0).
 

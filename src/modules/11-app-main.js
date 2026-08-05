@@ -2804,16 +2804,20 @@ function App(){
   // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
   // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
   // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
-  // Build .11: portal OK, pero capa translúcida 38vh encima del contenido → flash al scrollear
-  // (gráfico/cartillas iluminaban el composite). Cinta opaca corta + gradiente en fondo del host.
+  // Build .11: velo translúcido encima → al DESLIZAR ENTRE PESTAÑAS la app pasa por debajo y el
+  // composite se aclara. Build .12: gradiente horneado en `.page-scroll-host` → esa clase se quita
+  // durante el gesto y el destello se apagaba. Build .13: cofia opaca por encima (ver shell.html).
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
-  const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
+  // El destello va SIEMPRE que haya temática: el hueco que reserva la cofia lo pinta el CSS por
+  // `html[data-season]`, así que si aquí no se montara, reduce-motion dejaría el hueco vacío.
+  const seasonOn=!!(season && season!=="none");
+  const seasonPool=(seasonOn && !reduceMo) ? SEASON_AMB[season] : null;
   // useMemo: mismos spans entre re-renders → la animación CSS no se reinicia al cambiar de tab.
   const seasonLayers=useMemo(function(){
-    if(!seasonPool) return null;
+    if(!seasonOn) return null;
     const N=10, out=[];
-    for(let i=0;i<N;i++){
+    for(let i=0;seasonPool&&i<N;i++){
       const em=seasonPool[i%seasonPool.length];
       const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
       const left=Math.round(rnd(12.9898)*96);
@@ -2830,11 +2834,11 @@ function App(){
     return ReactDOM.createPortal(
       React.createElement("div",{className:"season-portal","aria-hidden":"true"},
         React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
-        React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out)
+        seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out) : null
       ),
       document.body
     );
-  }, [seasonPool, season]);
+  }, [seasonOn, seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];

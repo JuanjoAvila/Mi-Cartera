@@ -284,23 +284,39 @@
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
   /* DESTELLO DE ARRIBA (feedback 2026-08-05 — «arriba a la derecha», no la barra).
-     ⚠ NO usar `html::before` fixed: en su WebView el pseudo se iba con el scroll.
-     ⚠ NO montar fixed DENTRO de `#root` (`position:relative`): medido 2026-08-05 en su Oppo
-     con ADB+CDP en la build .9 (f589f89c) — computed=fixed, glowTop=0, PERO el RGB de la
-     esquina saltaba +31 al hacer scroll (19,28,20 → 26,41,31) y él lo veía aparecer/desaparecer.
-     Mismo patrón que los sheets: portal a `document.body` en `.season-portal` (centra 520px).
-     ⚠ NO dejar el destello TRANSLÚCIDO a 38vh encima del contenido (build .11): el gráfico y
-     las cartillas al pasar por debajo iluminaban el composite (~+30 RGB) y él lo veía como un
-     flash al scrollear. Animación y partículas NO eran la causa (congelándolas el salto seguía).
-     Fix 2026-08-05: ambiente en el fondo OPACO del host + cinta corta opaca (safe-top+8px) con
-     el gradiente encima de `var(--bg)`. Saludo/avatar empiezan ~70px → debajo de la cinta.
-     `background-size` ampliado: el radial nació para 38vh y en la cinta corta no se notaba. */
+     Seis intentos; cada uno descartó una vía, y todos se midieron en su Oppo con ADB+CDP.
+     ⚠ NO `html::before` fixed, NI fixed dentro de `#root{position:relative}` (build .9): el
+       compositor de su WebView los liga al scroll — computed decía `fixed` y el píxel saltaba +31.
+       Por eso vive portaleado a `document.body` en `.season-portal`.
+     ⚠ NO un velo TRANSLÚCIDO encima del contenido (build .11): el fallo NO era el scroll vertical
+       sino DESLIZAR ENTRE PESTAÑAS — la app entera pasa por debajo del velo y el composite se
+       aclara, que es lo que él veía como «se pone más intenso». Y como empezaba en y=0, teñía
+       también la barra de estado.
+     ⚠ NO hornear el gradiente en el fondo de `.page-scroll-host` (build .12): esa clase SE QUITA
+       mientras el carrusel se mueve, así que el destello se apagaba justo DURANTE el gesto
+       (medido con el dedo congelado: aporte [0,0,0]). Su cinta opaca, además, dejaba la franja
+       de la cámara oliva [66,64,37] contra un fondo [20,38,30].
+     ⚠ NI detrás del contenido: las cartillas lo tapan al pasar y «desaparece y vuelve a aparecer»
+       — rechazado por él expresamente (5/8).
+     Fix .13: el destello se pinta OPACO y POR ENCIMA de todo, dentro de una COFIA por la que el
+     contenido no pasa nunca (el host y `.app` reservan su alto). Lo que haya debajo da igual
+     porque no se ve: medido, el aporte es 60/60/60 en reposo, en pleno gesto entre pestañas y
+     scrolleando — no puede cambiar. La base es `var(--bg)`, el mismo tono que la app, y el
+     gradiente vale 0 a la altura de los iconos y se apaga con `mask` antes de terminar: ni tiñe
+     la cámara ni deja una línea donde acaba (las dos cosas que él señaló el 5/8). */
+  html[data-season]{--season-cofia:calc(var(--safe-top) + 36px);}
   .season-portal{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);
     width:100%;max-width:520px;pointer-events:none;z-index:36;}
-  .season-glow{position:absolute;top:0;left:0;right:0;height:calc(var(--safe-top) + 8px);z-index:1;pointer-events:none;
-    opacity:1;background:var(--season-glow-top),var(--bg);
-    background-size:200% 600%,160% 500%,auto;background-position:100% 0,0 0,0 0;}
-  /* Gradientes .3-.42: si bajan de ahí, en reposo la cinta no se distingue del fondo. */
+  .season-glow{position:absolute;top:0;left:0;right:0;height:var(--season-cofia);
+    z-index:1;pointer-events:none;background-color:var(--bg);
+    background-image:var(--season-glow-top);background-repeat:no-repeat;
+    /* Los últimos 20px se desvanecen: al scrollear el contenido se disuelve por debajo en vez de
+       cortarse en seco, que es otra forma de «corte» y también se nota. */
+    -webkit-mask-image:linear-gradient(to bottom,#000 calc(var(--season-cofia) - 20px),transparent var(--season-cofia));
+    mask-image:linear-gradient(to bottom,#000 calc(var(--season-cofia) - 20px),transparent var(--season-cofia));}
+  /* Intensidad calibrada al pico de la .11 (que él dio por bueno en reposo): alfas .14/.09 miden
+     un aporte de ~60 RGB. Sin animación de opacidad — un destello que respira es justo lo que
+     pidió que no hiciera. */
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29).
      ⚠ NO SE TOCAN `--mint` NI `--coral`. Sin halo en la barra (botnav::before se probó y
      era el sitio equivocado + dejaba ver la lista a través). */
@@ -335,23 +351,25 @@
     100%{opacity:1;transform:scale(1) rotate(0deg);}
   }
   html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.4), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.3), transparent 60%);}
+    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(241,196,15,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(230,57,70,.09), transparent);}
   html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.34), transparent 60%);}
+    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(240,134,43,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(122,63,160,.09), transparent);}
   html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.36), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.3), transparent 60%);}
+    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(214,69,80,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(46,158,91,.09), transparent);}
   html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.3), transparent 60%);}
+    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(255,179,71,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(57,182,201,.09), transparent);}
   html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.34), transparent 60%);}
+    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(127,181,232,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(183,224,242,.09), transparent);}
   html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
-    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.42), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.34), transparent 60%);}
-  /* Ambientación — UNA sola capa GLOBAL fixed.
-     z-index 37 = encima del destello (36) y del host (35), debajo del botnav (40).
+    --season-glow-top:radial-gradient(300px 34px at 84% calc(var(--safe-top) + 12px), rgba(247,198,217,.14), transparent),radial-gradient(220px 30px at 14% calc(var(--safe-top) + 10px), rgba(160,216,179,.09), transparent);}
+  /* Ambientación — UNA sola capa GLOBAL, dentro del portal (fixed, z-36): por encima del host
+     (35) y por debajo del botnav (40); dentro del portal va en z-2, sobre la cofia (z-1).
      bottom recortado: si la lluvia pintaba debajo de la barra, al esconderse la barra con
      opacity (botnav-hidden) se veía la lista+piezas «en trasfondo» un rato (feedback 2026-08-05).
      Host sigue OPACO. Solo translate3d/rotate/opacity (compositor). */
-  .season-amb{position:absolute;top:0;left:0;right:0;bottom:calc(72px + var(--safe-bottom,0px));z-index:2;pointer-events:none;overflow:hidden;contain:strict;}
+  /* Arrancan DEBAJO de la cofia (`overflow:hidden` las recorta): una hoja cruzando por delante de
+     los iconos del sistema es justo lo que él señaló el 5/8 — esa franja no se puede mover. */
+  .season-amb{position:absolute;top:var(--season-cofia,0px);left:0;right:0;bottom:calc(72px + var(--safe-bottom,0px));z-index:2;pointer-events:none;overflow:hidden;contain:strict;}
   .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
   @keyframes seasonDrift{
@@ -364,9 +382,9 @@
      ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40`. */
   .page{position:relative;z-index:2;}
   @media (prefers-reduced-motion:reduce){
-    .season-portal{display:none;}
-    .season-amb,.season-glow{display:none;}
-    html[data-season] .page.page-scroll-host{background:var(--bg);}
+    /* La cofia SE QUEDA: es un degradado quieto, no movimiento — y si se fuera dejaría el hueco
+       que reservan el host y `.app` vacío. Lo que se va son las piezas que caen. */
+    .season-amb{display:none;}
     html[data-season] .botnav-fab::after{animation:none;opacity:0;}
     html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
   }
@@ -512,12 +530,15 @@
        de la barra de estado / iconos del sistema (feedback 5/8). El `.page` normal NO lo
        necesita porque ya cuelga dentro de `.app` con padding-top.
        FONDO OPACO, SIEMPRE (incidente 2026-08-05): transparente → Inicio+Gastos a la vez.
-       Con temática, el gradiente va EN este fondo (detrás de cartillas): así el destello no
-       se mezcla encima del gráfico al scrollear (flash medido en 4.15.0.11). */
-    background:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
+       ⚠ NADA de gradiente aquí (build .12): esta clase se QUITA al deslizar entre pestañas y el
+       destello se apagaba en pleno gesto. El destello vive en `.season-glow` (ver arriba). */
+    background:var(--bg);
+    padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
-  html[data-season] .page.page-scroll-host{background:var(--season-glow-top),var(--bg);}
-  html.reduce-motion .page.page-scroll-host{background:var(--bg);}
+  /* Con temática, el contenido arranca por debajo de la cofia: así el destello puede ser opaco
+     (única forma de que no cambie nunca) sin tapar nada. Sin temática no se mueve ni un píxel. */
+  html[data-season] .page.page-scroll-host{padding-top:var(--season-cofia);}
+  html[data-season] .app{padding-top:var(--season-cofia);}
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}
   .page.page-scroll-host.mc-touch-own{touch-action:none;}
@@ -13857,9 +13878,12 @@ var RELEASE_NOTES=[
        "Desliza de pestaña (Inicio ↔ Gastos ↔ Plan): la barra de abajo no debería dejar ver la lista a través suya ni un segundo.",
        "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
      ]},
-     {id:"fix-season-glow-steady", t:"✨ Destello estable al hacer scroll", items:[
-       "Con temática puesta, el destello de arriba a la derecha se ve igual parado y mientras bajas/subes la lista — ya no se pone más intenso al scrollear.",
-       "El saludo y el botón del perfil siguen bien visibles debajo del destello.",
+     {id:"fix-season-glow-steady", t:"✨ Destello que no cambia nunca", items:[
+       "Con temática puesta, DESLIZA de pestaña despacio (Inicio ↔ Gastos ↔ Plan): el destello de arriba a la derecha tiene que quedarse EXACTAMENTE igual durante todo el gesto — ni encenderse, ni apagarse, ni desaparecer.",
+       "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
+       "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
+       "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
+       "Con temática puesta el contenido empieza un poco más abajo, para hacerle sitio al destello. Sin temática, todo se queda donde estaba.",
        "La barra de abajo sigue limpia (sin ver la lista a través).",
      ]}
    ],
@@ -19354,16 +19378,20 @@ function App(){
   // Ambientación: destello + lluvia portaleados a document.body (`.season-portal`).
   // Feedback 2026-08-05 build .9: dentro de `#root{position:relative}` el fixed medía top:0
   // pero el píxel de la esquina saltaba al scroll — mismo fallo que html::before. Fuera de #root.
-  // Build .11: portal OK, pero capa translúcida 38vh encima del contenido → flash al scrollear
-  // (gráfico/cartillas iluminaban el composite). Cinta opaca corta + gradiente en fondo del host.
+  // Build .11: velo translúcido encima → al DESLIZAR ENTRE PESTAÑAS la app pasa por debajo y el
+  // composite se aclara. Build .12: gradiente horneado en `.page-scroll-host` → esa clase se quita
+  // durante el gesto y el destello se apagaba. Build .13: cofia opaca por encima (ver shell.html).
   const season=(state.settings&&state.settings.season)||"";
   const reduceMo=!!(state.settings&&state.settings.reduceMotion);
-  const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
+  // El destello va SIEMPRE que haya temática: el hueco que reserva la cofia lo pinta el CSS por
+  // `html[data-season]`, así que si aquí no se montara, reduce-motion dejaría el hueco vacío.
+  const seasonOn=!!(season && season!=="none");
+  const seasonPool=(seasonOn && !reduceMo) ? SEASON_AMB[season] : null;
   // useMemo: mismos spans entre re-renders → la animación CSS no se reinicia al cambiar de tab.
   const seasonLayers=useMemo(function(){
-    if(!seasonPool) return null;
+    if(!seasonOn) return null;
     const N=10, out=[];
-    for(let i=0;i<N;i++){
+    for(let i=0;seasonPool&&i<N;i++){
       const em=seasonPool[i%seasonPool.length];
       const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
       const left=Math.round(rnd(12.9898)*96);
@@ -19380,11 +19408,11 @@ function App(){
     return ReactDOM.createPortal(
       React.createElement("div",{className:"season-portal","aria-hidden":"true"},
         React.createElement("div",{className:"season-glow","data-season":season,"aria-hidden":"true"}),
-        React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out)
+        seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, out) : null
       ),
       document.body
     );
-  }, [seasonPool, season]);
+  }, [seasonOn, seasonPool, season]);
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];

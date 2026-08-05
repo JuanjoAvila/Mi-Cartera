@@ -1478,9 +1478,12 @@ var RELEASE_NOTES=[
        "Desliza de pestaña (Inicio ↔ Gastos ↔ Plan): la barra de abajo no debería dejar ver la lista a través suya ni un segundo.",
        "Si algo sigue fallando, anótalo en la revisión beta con la versión que ves en Mis bancos.",
      ]},
-     {id:"fix-season-glow-steady", t:"✨ Destello estable al hacer scroll", items:[
-       "Con temática puesta, el destello de arriba a la derecha se ve igual parado y mientras bajas/subes la lista — ya no se pone más intenso al scrollear.",
-       "El saludo y el botón del perfil siguen bien visibles debajo del destello.",
+     {id:"fix-season-glow-steady", t:"✨ Destello que no cambia nunca", items:[
+       "Con temática puesta, DESLIZA de pestaña despacio (Inicio ↔ Gastos ↔ Plan): el destello de arriba a la derecha tiene que quedarse EXACTAMENTE igual durante todo el gesto — ni encenderse, ni apagarse, ni desaparecer.",
+       "Baja y sube dentro de una pestaña: igual, el destello no se mueve ni cambia de fuerza.",
+       "La franja de los iconos de arriba (al lado de la cámara) es del mismo tono que el resto de la app, y no se nota ningún corte entre esa zona y la app.",
+       "Nada cruza por delante de los iconos de arriba: las piezas de la temática caen ya por debajo.",
+       "Con temática puesta el contenido empieza un poco más abajo, para hacerle sitio al destello. Sin temática, todo se queda donde estaba.",
        "La barra de abajo sigue limpia (sin ver la lista a través).",
      ]}
    ],
