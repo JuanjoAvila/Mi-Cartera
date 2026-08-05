@@ -283,15 +283,13 @@
   html[data-season="verano"] .botnav-fab{background:linear-gradient(160deg,#FFB347,#39B6C9);}
   html[data-season="invierno"] .botnav-fab{background:linear-gradient(160deg,#7FB5E8,#B7E0F2);}
   html[data-season="pascua"] .botnav-fab{background:linear-gradient(160deg,#F7C6D9,#A0D8B3);}
-  /* Un velo de color muy tenue y vivo arriba, a juego con la temática (toque Revolut). */
+  /* Un velo de color muy tenue y vivo arriba, a juego con la temática (toque Revolut).
+     El degradado por temática vive en `--season-glow-top` (declarado junto a `--season-tinte`
+     más abajo) para poder repintarlo DOS VECES sin duplicar seis gradientes: aquí, fijo a la
+     ventana entera (se ve al deslizar entre pestañas, cuando no hay host tapando), y otra vez
+     dentro de `.page-scroll-host` (más abajo) para que se vea también en reposo. */
   html[data-season]::before{content:"";position:fixed;top:0;left:0;right:0;height:38vh;z-index:1;pointer-events:none;
-    opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;}
-  html[data-season="mundial"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.18), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.14), transparent 60%);}
-  html[data-season="halloween"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.16), transparent 60%);}
-  html[data-season="navidad"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.16), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.14), transparent 60%);}
-  html[data-season="verano"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.14), transparent 60%);}
-  html[data-season="invierno"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
-  html[data-season="pascua"]::before{background:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
+    opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;background:var(--season-glow-top);}
   @keyframes seasonglow{0%{opacity:.32;transform:translateX(-3%);}100%{opacity:.6;transform:translateX(3%);}}
   /* LA TEMÁTICA SE NOTA EN LA APP, NO SOLO EN EL BOTÓN + (petición suya 2026-07-29, repetida el
      1/8: «decora el resto de la app de esa temática como hiciste con el botón + que está chulo»
@@ -338,17 +336,39 @@
     60%{opacity:1;transform:scale(1.18) rotate(6deg);}
     100%{opacity:1;transform:scale(1) rotate(0deg);}
   }
-  html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";}
-  html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";}
-  html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";}
-  html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";}
-  html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";}
-  html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";}
-  /* Ambientación detrás: fixed z-index 0 + cartillas encima. Solo translate3d/rotate/opacity
-     (compositor). Sin scale+filter a la vez — eso re-rasterizaba y cortaba en móviles (4.13).
-     Tiene que quedar POR DEBAJO de `.page-scroll-host` (z-index 35) y el host NO puede llevar
-     fondo opaco — si no, en reposo no se ve nada y solo aparece al deslizar tabs (bug 2026-08-05). */
+  html[data-season="mundial"]{--season-tinte:#F1C40F;--season-ico:"⚽";
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(241,196,15,.18), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(230,57,70,.14), transparent 60%);}
+  html[data-season="halloween"]{--season-tinte:#F0862B;--season-ico:"🎃";
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(240,134,43,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(122,63,160,.16), transparent 60%);}
+  html[data-season="navidad"]{--season-tinte:#D64550;--season-ico:"🎄";
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(214,69,80,.16), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(46,158,91,.14), transparent 60%);}
+  html[data-season="verano"]{--season-tinte:#FFB347;--season-ico:"☀️";
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(255,179,71,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(57,182,201,.14), transparent 60%);}
+  html[data-season="invierno"]{--season-tinte:#7FB5E8;--season-ico:"❄️";
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(127,181,232,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(183,224,242,.16), transparent 60%);}
+  html[data-season="pascua"]{--season-tinte:#F7C6D9;--season-ico:"🐣";
+    --season-glow-top:radial-gradient(120% 80% at 80% -20%, rgba(247,198,217,.2), transparent 60%),radial-gradient(90% 70% at 10% -10%, rgba(160,216,179,.16), transparent 60%);}
+  /* Ambientación detrás — DOS montajes de la misma pieza, tras el incidente 2026-08-05 (ver el
+     comentario largo en `.page-scroll-host`, más arriba, sobre por qué el host tiene que ser
+     opaco SIEMPRE):
+       1) esta capa GLOBAL (hermana de `.app-shell`, fuera de `.track`): fixed a toda la pantalla,
+          z-index 0. Con `.page` normal a z-index 2, esta capa solo se asoma en los HUECOS de
+          fuera del host — o sea, mientras se desliza entre pestañas. Eso ya funcionaba bien y no
+          se toca.
+       2) una copia LOCAL, montada por React DENTRO de la propia `.page-scroll-host` (11-app-main.js,
+          `paginas`), para que se vea también en REPOSO — el caso que se rompió al hacer
+          transparente el host. Esta copia usa las mismas reglas de abajo (mismo selector
+          `.season-amb`) pero a z-index NEGATIVO vía `.page-scroll-host>.season-amb`: como
+          `.page-scroll-host` es su propio contexto de apilamiento (position:fixed + z-index:35),
+          un z-index negativo ahí pinta ENCIMA del fondo opaco del host (que se pinta primero,
+          regla nº1 del orden de apilamiento) y DEBAJO de las cartillas — que no llevan z-index
+          propio, así que van en la regla nº3 (contenido no posicionado), por encima de cualquier
+          descendiente con z-index negativo. Cero necesidad de envolver el contenido ni tocar el
+          z-index de `.page`.
+     Solo translate3d/rotate/opacity (compositor). Sin scale+filter a la vez — eso re-rasterizaba
+     y cortaba en móviles (4.13). */
   .season-amb{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict;}
+  .page-scroll-host>.season-amb{z-index:-1;}
   .season-amb span{position:absolute;top:-10vh;opacity:0;will-change:transform,opacity;
     animation-name:seasonDrift;animation-timing-function:linear;animation-iteration-count:infinite;}
   @keyframes seasonDrift{
@@ -357,12 +377,23 @@
     92%{opacity:var(--op,.22);}
     100%{transform:translate3d(var(--sway,8px),110vh,0) rotate(var(--spin,120deg));opacity:0;}
   }
+  /* Velo local (el mismo degradado de `html[data-season]::before/::after`, más arriba, vía las
+     variables `--season-glow-top`/`--season-tinte`) pintado DENTRO de `.page-scroll-host` a
+     z-index negativo, por la misma razón que la copia local de `.season-amb`: el velo de fuera
+     (z-index 1, fijo a `html`) queda tapado por el host opaco (z-index 35) y solo se veía al
+     deslizar. Mismo truco: negativo dentro del contexto del host = encima de su fondo, debajo de
+     sus cartillas. */
+  html[data-season] .page-scroll-host::before{content:"";position:fixed;top:0;left:0;right:0;height:38vh;z-index:-1;pointer-events:none;
+    opacity:.5;animation:seasonglow 9s ease-in-out infinite alternate;background:var(--season-glow-top);}
+  html[data-season] .page-scroll-host::after{content:"";position:fixed;bottom:0;left:0;right:0;height:20vh;z-index:-1;pointer-events:none;
+    background:radial-gradient(130% 95% at 50% 125%, color-mix(in srgb, var(--season-tinte,transparent) 16%, transparent), transparent 68%);}
   /* El contenido de cada pestaña pinta ENCIMA de la lluvia; sin esto el fixed a z-index 0
      igual se come el stacking del flujo normal y las piezas taparían el dinero.
      ⚠ NO tocar `.botnav`: ya es `position:absolute; z-index:40` más abajo — `relative` lo rompería. */
   .page{position:relative;z-index:2;}
   @media (prefers-reduced-motion:reduce){
     .season-amb{display:none;}
+    .page-scroll-host::before,.page-scroll-host::after{display:none;}
     html[data-season]::before{display:none;} html[data-season]::after{display:none;}
     html[data-season] .botnav-fab::after{animation:none;opacity:0;}
     html[data-season] .v4-title::after,html[data-season] .v4-inicio-hi::after{animation:none;opacity:1;transform:none;}
@@ -508,12 +539,17 @@
     /* Mismo safe-top que `.settings-push`: sin él el título («Tus gastos») se metía debajo
        de la barra de estado / iconos del sistema (feedback 5/8). El `.page` normal NO lo
        necesita porque ya cuelga dentro de `.app` con padding-top.
-       Fondo TRANSPARENTE a propósito (2026-08-05): con `background:var(--bg)` la pestaña en
-       reposo (z-index 35) tapaba del todo `.season-amb` (z-index 0) y el velo
-       `html[data-season]::before/::after` (z-index 1). Solo se veían al deslizar entre tabs,
-       cuando se sale de este modo. El `--bg` ya lo pinta `body`; las cartillas opacas siguen
-       tapando las piezas — la lluvia queda en los huecos, detrás del dinero. */
-    background:transparent;padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
+       FONDO OPACO, SIEMPRE (incidente 2026-08-05): se probó dejar este fondo TRANSPARENTE para
+       que se viera `.season-amb` en reposo y en vez de eso se vio Inicio Y Gastos pintados a la vez
+       — con el host transparente, el `.page` de detrás (misma pestaña vieja o la siguiente,
+       montada en `.track` para el swipe) se transparentaba de golpe. El host es `position:fixed`
+       a pantalla completa (z-index 35): SU fondo es el único muro entre la pestaña activa y lo
+       que hay montado detrás en el carrusel, y tiene que ser opaco siempre. La ambientación de
+       temporada NO se soluciona aquí — vive DENTRO de este mismo host como capa local (ver
+       `.season-amb` más abajo y `.page-scroll-host::before/::after`), a z-index NEGATIVO, así
+       que pinta encima de este fondo y por debajo de las cartillas sin tener que arriesgar el
+       fondo del host. */
+    background:var(--bg);padding:calc(var(--safe-top) + 10px) 18px calc(108px + var(--safe-bottom));
   }
   /* Con el host fixed, no recortar el estirón nativo (Ajustes NO vive dentro de overflow:hidden). */
   .viewport.scroll-host-open{overflow:visible;}

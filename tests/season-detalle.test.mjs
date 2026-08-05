@@ -1,16 +1,25 @@
 /**
- * Guardián de ambientación de temporada (actualizado 2026-08-05).
+ * Guardián de ambientación de temporada (actualizado 2026-08-05, dos veces el mismo día).
  *
  * Historial: la lluvia agresiva (`.season-fx` encima de todo + `seasonEpoch`/`seasonrise` al
  * cambiar de tab) se quitó el 2026-08-03 («ya me cansé»). El 2026-08-05 vuelve SOLO como fondo
  * suave (`.season-amb` z-index 0, detrás de `.page`), sin ráfagas al cambiar de pestaña.
  *
+ * Incidente el mismo día: para que esa ambientación se viera también EN REPOSO (no solo al
+ * deslizar entre pestañas) se hizo `background:transparent` en `.page-scroll-host` — y coló
+ * Inicio y Gastos pintados a la vez, porque el host (position:fixed a pantalla completa) es la
+ * única pared opaca entre la pestaña activa y lo que hay montado detrás en el carrusel. El fix
+ * de verdad: el host se queda SIEMPRE opaco, y la ambientación se monta una SEGUNDA vez, LOCAL,
+ * dentro del propio host, a z-index negativo (pinta encima de su fondo, debajo de sus cartillas).
+ *
  * Este test comprueba:
  *  1. Que la lluvia VIEJA (encima + ráfagas) NO vuelve.
  *  2. Que la ambientación NUEVA existe, va detrás y es suave (bucle, pocas piezas).
- *  3. Que el detalle incrustado en títulos (`--season-ico` / seasonchip) sigue.
- *  4. Que respeta «reducir animaciones».
- *  5. Que la tanda «temporada» YA NO está en el panel (aprobada → se BORRA).
+ *  3. Que `.page-scroll-host` es SIEMPRE opaco (no puede volver la fuga de pestañas) y que la
+ *     ambientación tiene una copia local a z-index negativo dentro de él.
+ *  4. Que el detalle incrustado en títulos (`--season-ico` / seasonchip) sigue.
+ *  5. Que respeta «reducir animaciones».
+ *  6. Que la tanda «temporada» YA NO está en el panel (aprobada → se BORRA).
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -35,17 +44,41 @@ assert.match(shell, /\.season-amb\s*\{/, "falta `.season-amb` (ambientación det
 assert.match(shell, /\.season-amb\{[^}]*z-index:\s*0/, "`.season-amb` debe ir a z-index 0 (detrás)");
 assert.match(shell, /@keyframes\s+seasonDrift\s*\{/, "falta el keyframe suave `seasonDrift`");
 assert.match(shell, /\.page\{[^}]*z-index:\s*2/, "`.page` debe pintar encima de la ambientación");
+/* ---- 2 bis. El host tiene que ser SIEMPRE opaco (incidente 2026-08-05: bleed-through de tabs) ---- */
 assert.match(
   shell,
+  /\.page\.page-scroll-host\{[^}]*background:\s*var\(--bg\)/,
+  "`.page-scroll-host` tiene que llevar fondo OPACO siempre: es la única pared entre la pestaña " +
+  "activa y lo que hay montado detrás en el carrusel — transparente coló Inicio+Gastos a la vez (2026-08-05)"
+);
+assert.doesNotMatch(
+  shell,
   /\.page\.page-scroll-host\{[^}]*background:\s*transparent/,
-  "`.page-scroll-host` no puede llevar fondo opaco: tapa `.season-amb` y el velo en reposo (solo se veían al deslizar)"
+  "`.page-scroll-host` no puede volver a llevar fondo transparente (bug de bleed-through 2026-08-05)"
+);
+/* La ambientación en reposo se resuelve con una copia LOCAL a z-index NEGATIVO dentro del host,
+   no arriesgando el fondo del host. */
+assert.match(
+  shell,
+  /\.page-scroll-host>\.season-amb\{z-index:\s*-1/,
+  "falta la copia local de `.season-amb` a z-index negativo dentro de `.page-scroll-host`"
+);
+assert.match(
+  shell,
+  /html\[data-season\]\s+\.page-scroll-host::before\{[^}]*z-index:\s*-1/,
+  "falta el velo local (`::before`) a z-index negativo dentro de `.page-scroll-host`"
 );
 assert.match(i18n, /const\s+SEASON_AMB\s*=/, "falta el pool SEASON_AMB");
 assert.match(main, /className:"season-amb/, "11-app-main.js debe montar `.season-amb`");
+assert.match(
+  main,
+  /isHost\s*&&\s*seasonPool\s*\?\s*React\.createElement\("div",\{className:"season-amb/,
+  "11-app-main.js debe montar una copia de `.season-amb` DENTRO de la pestaña host (reposo)"
+);
 assert.doesNotMatch(main, /setSeasonEpoch/, "no debe haber JS que dispare al cambiar de tab");
 assert.match(i18n, /const\s+SEASONS\s*=/, "SEASONS (selector en Ajustes) no debe tocarse");
 
-/* ---- 3. Detalle incrustado en títulos sigue ---- */
+/* ---- 4. Detalle incrustado en títulos sigue ---- */
 assert.match(shell, /--season-ico/, "falta --season-ico");
 assert.match(shell, /@keyframes\s+seasonchip/, "falta seasonchip");
 assert.match(
@@ -65,15 +98,20 @@ for (const s of ["mundial", "halloween", "navidad", "verano", "invierno", "pascu
   assert.match(shell, re, `la temática "${s}" debe declarar --season-tinte y --season-ico`);
 }
 
-/* ---- 4. Reducir animaciones apaga ambientación e icono ---- */
+/* ---- 5. Reducir animaciones apaga ambientación e icono ---- */
 assert.match(shell, /prefers-reduced-motion:reduce\)\{[\s\S]*?\.season-amb\{display:none/, "reduce-motion debe ocultar `.season-amb`");
+assert.match(
+  shell,
+  /prefers-reduced-motion:reduce\)\{[\s\S]*?\.page-scroll-host::before,\.page-scroll-host::after\{display:none/,
+  "reduce-motion debe ocultar también el velo local dentro de `.page-scroll-host`"
+);
 assert.match(
   shell,
   /prefers-reduced-motion:reduce\)\{[\s\S]*?html\[data-season\]\s+\.v4-title::after,\s*html\[data-season\]\s+\.v4-inicio-hi::after\{animation:none/,
   "reduce-motion debe apagar el pop del icono"
 );
 
-/* ---- 5. Tanda «temporada» QUITADA del panel ---- */
+/* ---- 6. Tanda «temporada» QUITADA del panel ---- */
 assert.doesNotMatch(
   comps,
   /\{id:"temporada"\s*,\s*t:/,

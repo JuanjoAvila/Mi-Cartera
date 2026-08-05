@@ -6,14 +6,28 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 ### Ambientación suave + conversor FX + presupuesto alineado + extracto total (beta)
 
 **Tandas:** `season-fx-soft`, `fx-converter`, `presupuesto-resumen`, `otros-bancos-vista`,
-`gastos-filtros-ia`.
+`gastos-filtros-ia`, `fix-novedades-nag`.
 
 1. **Ambientación detrás** (`.season-amb` z-index 0): piezas muy suaves en bucle lento
    detrás de `.page`. Sin ráfagas al cambiar de pestaña (nada de `seasonEpoch`/`seasonrise`).
    Respeta reducir-animaciones. Guardián actualizado: `tests/season-detalle.test.mjs`.
-   **Fix 2026-08-05:** `.page-scroll-host` llevaba `background:var(--bg)` a z-index 35 y
-   tapaba lluvia + velo en reposo (solo se veían al deslizar tabs). Fondo transparente;
-   el `--bg` lo pinta `body`. Guardián: host sin fondo opaco.
+   **Incidente 2026-08-05 (autocorregido el mismo día):** para que la ambientación se viera
+   también en reposo (no solo al deslizar tabs) se puso `background:transparent` en
+   `.page-scroll-host` — y en vez de lluvia se vio **Inicio y Gastos pintados a la vez**
+   (bleed-through real, reportado con captura: «dios menuda liada»). El host es
+   `position:fixed` a pantalla completa (z-index 35): su fondo es la ÚNICA pared entre la
+   pestaña activa y lo que sigue montado detrás en `.track` (vecinas para el swipe); hacerlo
+   transparente deja ver TODO lo de detrás, no solo la ambientación. Fix de verdad: el host
+   vuelve a `background:var(--bg)` (opaco, siempre) y la ambientación se monta una SEGUNDA
+   vez, LOCAL, dentro del propio host (`isHost && seasonPool` en `11-app-main.js`), a
+   z-index **negativo** (`.page-scroll-host>.season-amb{z-index:-1}` y
+   `.page-scroll-host::before/::after` para el velo, ambos en `shell.html`) — con el host como
+   su propio contexto de apilamiento, un hijo con z-index negativo pinta encima del fondo del
+   host (regla nº1 del orden de apilamiento) y debajo de las cartillas (contenido normal, sin
+   z-index, regla nº3), sin envolver nada ni tocar `.page`. El degradado del velo por temática
+   pasa a vivir en `--season-glow-top` (junto a `--season-tinte`) para no duplicar los seis
+   gradientes en las dos ubicaciones. Guardián reforzado: `tests/season-detalle.test.mjs`
+   ahora exige host opaco explícitamente y prohíbe que vuelva a ser transparente.
 2. **Conversor** en Ajustes → Dinero: importe + origen → destino (chips + swap). Sustituye
    la lista fija «1 € → …». Reutiliza `toEurAmt`/`fromEurAmt`.
 3. **Presupuesto:** avisos 50/80/95/100 %, reto gamif e informe imagen usan `monthBudgetStats`
@@ -25,6 +39,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y ver
 5. **Filtros + categorías:** sheet con buscador (adiós chips kilométricos); categorías
    `viajes`/`mascotas`/`educacion`/`energia`; KW ampliado (cliente + `ingest_logic` + ALLOWED
    de la Edge Function categorize).
+6. **Fix 2026-08-05 — popup de Novedades en bucle en beta:** «me sale en beta todo el rato
+   para actualizar, no sé porqué». La puerta que decide si toca enseñar ✨ Novedades
+   (`_seenVersion` en `11-app-main.js`) comparaba contra el sello EXACTO de `CONFIG.APP_VERSION`,
+   que en beta lleva sufijo de compilación (`beta.yml`: `VERSION.N`, sube en CADA push — hoy
+   4.15.0.1…4.15.0.4/5). El popup ya casaba por versión BASE al decidir qué entrada resaltar
+   (`mcVerBase`, fix 2026-07-26) pero la puerta que decide si DISPARA el popup se quedó con la
+   comparación vieja: cada compilación nueva de la MISMA beta reabría el mismo popup con las
+   MISMAS notas, sin nada que contar. Ahora `_seenVersion` se sella y compara por `mcVerBase`
+   (también en el sello silencioso de `Onboarding.finish`). En estable la base y el sello son
+   el mismo string — cero cambio para el resto de la familia. El resto del ruido de
+   actualizaciones (pill OTA, notificación nativa, `OtaCheckWorker`) SÍ correspondía a
+   compilaciones realmente nuevas publicadas hoy (4 tandas + esta), así que no se toca: es
+   exactamente lo esperado cuando se publica varias veces el mismo día.
 
 Sin APK nuevo (35 / 4.12.0).
 

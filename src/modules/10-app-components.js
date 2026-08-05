@@ -1457,6 +1457,11 @@ var RELEASE_NOTES=[
        "En Gastos, toca «Filtros»: sheet con buscador de categorías y bancos (ya no hay dos filas interminables de chips).",
        "Nuevas categorías: Viajes, Mascotas, Educación, Luz/gas/agua — al apuntar y al filtrar.",
        "Booking/Vueling → Viajes; Zooplus → Mascotas; Endesa → Energía (ya no caen en «Otros» u Ocio).",
+     ]},
+     {id:"fix-novedades-nag", t:"🔔 Novedades ya no insiste sin motivo", items:[
+       "En el canal beta, el popup de ✨ Novedades salía otra vez en CADA compilación nueva (4.15.0.1, .2, .3…) aunque fueran las mismas notas — hoy con 4-5 compilaciones en un día, de ahí «todo el rato me sale para actualizar».",
+       "Ahora se marca como vista por versión base (4.15.0), no por el sello exacto de la compilación: si no hay una versión de verdad nueva, no vuelve a saltar.",
+       "Instala esta compilación y cierra/abre la app un par de veces: Novedades no debería reaparecer sola.",
      ]}
    ],
    items:{
@@ -2819,7 +2824,10 @@ function Onboarding({set, onCloud, onSignup}){
   const inner={maxWidth:480,margin:"0 auto",position:"relative"};
   const finish=function(b){
     const bud=Math.max(100, Math.round(b||budget)||700);
-    try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
+    // Base, no el sello con sufijo de compilación — mismo criterio que el popup de Novedades
+    // (ver comentario en 11-app-main.js, bug 2026-08-05) para que un usuario que se da de alta
+    // EN BETA no se lleve el popup de Novedades en la siguiente compilación sin haber nada nuevo.
+    try{ localStorage.setItem("_seenVersion",mcVerBase(CONFIG.APP_VERSION)); }catch(e){}
     set(function(s){
       return Object.assign({},s,{
         budget:bud, monthStartNet:0, history:[0],

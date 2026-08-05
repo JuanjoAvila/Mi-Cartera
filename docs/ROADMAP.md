@@ -1,7 +1,9 @@
 # Roadmap — Mi Cartera
 
 > Estado a 2026-08-05 · **v4.15.0** — en **`beta`**: tandas `season-fx-soft`, `fx-converter`,
-> `presupuesto-resumen`, `otros-bancos-vista`. Producción = **4.14.1**. APK **35 / 4.12.0**.
+> `presupuesto-resumen`, `otros-bancos-vista`, `gastos-filtros-ia`, `fix-novedades-nag` (el
+> popup de ✨ Novedades ya no reaparecía sin motivo en cada compilación de la misma beta).
+> Producción = **4.14.1**. APK **35 / 4.12.0**.
 >
 > Anterior: 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos
 > ¥/₺ + letra pequeña) que había entrado tras el sello 4.14.0. Multidivisa de la 4.14.0 sigue.
@@ -89,13 +91,14 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> **4.15.0** en `beta`: ambientación suave + conversor FX + presupuesto alineado.
+> **4.15.0** en `beta`: ambientación suave + conversor FX + presupuesto alineado + extracto de
+> todos los bancos + filtros de Gastos + fix del popup de Novedades en bucle.
 > Producción = **4.14.1**. APK = **35 / 4.12.0**.
-> Probar checklist de las 3 tandas; promote cuando las apruebe.
+> Probar checklist de las 6 tandas; promote cuando las apruebe.
 
 1. En el móvil (canal beta): Mis bancos / Ajustes → ver **v4.15.0.N**.
-2. Revisar las 3 tandas del panel.
-3. Siguiente: gastos de otros bancos (entrar todo, solo diario afecta) + filtro premium Gastos.
+2. Revisar las 6 tandas del panel (incluye `fix-novedades-nag`: confirmar que Novedades no
+   vuelve a saltar sola al abrir la app tras esta compilación).
 
 ### Pendiente de respuesta suya
 

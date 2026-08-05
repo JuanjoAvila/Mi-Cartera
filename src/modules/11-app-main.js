@@ -1686,14 +1686,23 @@ function App(){
     // Espera a que la app esté lista (no encima del onboarding/candado/login/tour).
     if(state.onboarded===false || locked || showAuth || tourOpen) return;
     var seen=null; try{ seen=localStorage.getItem("_seenVersion"); }catch(e){}
-    if(seen===CONFIG.APP_VERSION){ newsDone.current=true; return; }   // ya vista esta versión
+    /* SE COMPARA POR VERSIÓN BASE, NO por el sello exacto (bug 2026-08-05: «me sale en beta
+       todo el rato para actualizar, no sé porqué»). En beta el sello lleva sufijo de compilación
+       (4.15.0.4) que sube en CADA push aunque la versión de cara al usuario (VERSION, las notas)
+       sea la misma — hoy mismo salieron 4-5 compilaciones de la 4.15.0. Comparando el sello a
+       pelo, el popup de Novedades volvía a saltar en cada una de ellas con las MISMAS notas: no
+       hay nada nuevo que contar y aun así interrumpe. `betaChecklist`/`WhatsNew` ya casan por
+       base (`mcVerBase`) para saber qué versión estás viendo; a esta puerta le faltaba el mismo
+       criterio. En estable la base y el sello son el mismo string, así que no cambia nada para
+       el resto de la familia. */
+    if(seen===mcVerBase(CONFIG.APP_VERSION)){ newsDone.current=true; return; }   // ya vista esta versión
     if(newsTimer.current) return;                                     // ya programado: no reprogramar ni cancelar
     // OJO: NO sellamos aquí ni devolvemos cleanup que mate el timer — un re-render que cambie las
     // deps cancelaría el popup y, al re-entrar ya sellado, no volvería a disparar (bug 2026-07-12).
     // Sellamos al DISPARAR. Los usuarios nuevos ya vienen sellados por el onboarding (finish).
     newsTimer.current=setTimeout(function(){
       newsDone.current=true;
-      try{ localStorage.setItem("_seenVersion",CONFIG.APP_VERSION); }catch(e){}
+      try{ localStorage.setItem("_seenVersion",mcVerBase(CONFIG.APP_VERSION)); }catch(e){}
       setWhatsNew(true);
     },420);
   },[state.onboarded,locked,showAuth,tourOpen]);
@@ -2792,12 +2801,50 @@ function App(){
     if(!pages) return;
     for(let i=0;i<pages.length;i++) syncPageTouchAction(pages[i], i);
   },[tab, tabIds.join("|")]);
+  // Ambientación de temporada DETRÁS de las cartillas (2026-08-05): suave, pocas piezas, en
+  // bucle lento. Sin ráfagas al cambiar de pestaña (eso es lo que cansó en la capa vieja).
+  // Se calcula ANTES de `paginas` porque hace falta DOS VECES: la capa global de aquí abajo
+  // (se asoma en los huecos del swipe, eso ya iba bien) y una copia LOCAL dentro de la pestaña
+  // que hace de host, para que también se vea en reposo.
+  // Incidente 2026-08-05: para que se viera en reposo, un intento anterior hizo transparente
+  // `.page-scroll-host` — y en vez de ambientación se vio Inicio y Gastos pintados a la vez (el
+  // host es la única pared opaca entre la pestaña activa y lo que hay montado detrás en el
+  // carrusel). El fix de verdad es este: el host se queda SIEMPRE opaco y la copia local se monta
+  // DENTRO de él con z-index negativo (`.page-scroll-host>.season-amb` en shell.html), así pinta
+  // encima de su propio fondo y debajo de las cartillas sin arriesgar el fondo del host.
+  const season=(state.settings&&state.settings.season)||"";
+  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
+  const seasonPool=(season && season!=="none" && !reduceMo) ? SEASON_AMB[season] : null;
+  const buildSeasonSpans=function(){
+    const pool=seasonPool, N=10, out=[];
+    for(let i=0;i<N;i++){
+      const em=pool[i%pool.length];
+      const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
+      const left=Math.round(rnd(12.9898)*96);
+      const sz=14+Math.round(rnd(4.1)*8);
+      const dur=16+rnd(7.7)*8;          // 16–24 s: lento a propósito
+      const delay=-(rnd(3.3)*dur);      // negativo = ya repartidas al montar (sin «arranque»)
+      const sway=(4+Math.round(rnd(5.5)*14))*(rnd(9.1)>0.5?1:-1);
+      const spin=(rnd(2.2)>0.5?1:-1)*(60+Math.round(rnd(6.6)*100));
+      const op=0.14+rnd(1.7)*0.14;      // 0.14–0.28: casi wallpaper
+      out.push(React.createElement("span",{key:i,
+        style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
+          "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
+    }
+    return out;
+  };
+  const seasonAmb=seasonPool
+    ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, buildSeasonSpans())
+    : null;
   const paginas=tabIds.map(function(id,i){
     var live=mountNeighbors ? Math.abs(tab-i)<=1 : (i===tab);
     var show=live||!!mountedTabs[id];
+    var isHost=hostTab===i;
     // `page-scroll-host` EN el className de React (no solo classList): si no, cualquier
     // setState de App (botnav al bajar) lo borra y el fling pierde la ola nativa.
-    return React.createElement("div",{className:"page"+(show?" page-live":"")+(hostTab===i?" page-scroll-host":""),key:id,onScroll:onPageScroll},
+    return React.createElement("div",{className:"page"+(show?" page-live":"")+(isHost?" page-scroll-host":""),key:id,onScroll:onPageScroll},
+      // Copia local de la ambientación, solo en la pestaña que hace de host (ver comentario arriba).
+      isHost && seasonPool ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"}, buildSeasonSpans()) : null,
       show ? (id==="gastos"?contenidoGastos:contenidos[id]) : null
     );
   });
@@ -2809,31 +2856,6 @@ function App(){
     toast && React.createElement("div",{className:"toast"},toast)
   );
 
-  // Ambientación de temporada DETRÁS de las cartillas (2026-08-05): suave, pocas piezas, en
-  // bucle lento. Sin ráfagas al cambiar de pestaña (eso es lo que cansó en la capa vieja).
-  const season=(state.settings&&state.settings.season)||"";
-  const reduceMo=!!(state.settings&&state.settings.reduceMotion);
-  const seasonAmb=(season && season!=="none" && !reduceMo && SEASON_AMB[season])
-    ? React.createElement("div",{className:"season-amb","data-season":season,"aria-hidden":"true"},
-        (function(){
-          const pool=SEASON_AMB[season], N=10, out=[];
-          for(let i=0;i<N;i++){
-            const em=pool[i%pool.length];
-            const rnd=function(seed){ const x=Math.sin((i+1)*seed)*10000; return x-Math.floor(x); };
-            const left=Math.round(rnd(12.9898)*96);
-            const sz=14+Math.round(rnd(4.1)*8);
-            const dur=16+rnd(7.7)*8;          // 16–24 s: lento a propósito
-            const delay=-(rnd(3.3)*dur);      // negativo = ya repartidas al montar (sin «arranque»)
-            const sway=(4+Math.round(rnd(5.5)*14))*(rnd(9.1)>0.5?1:-1);
-            const spin=(rnd(2.2)>0.5?1:-1)*(60+Math.round(rnd(6.6)*100));
-            const op=0.14+rnd(1.7)*0.14;      // 0.14–0.28: casi wallpaper
-            out.push(React.createElement("span",{key:i,
-              style:{left:left+"vw",fontSize:sz+"px",animationDuration:dur+"s",animationDelay:delay+"s",
-                "--sway":sway+"px","--spin":spin+"deg","--op":op}}, em));
-          }
-          return out;
-        })())
-    : null;
   return React.createElement("div",{className:"app v4"+(mcSandbox()?" sandbox":"")},
     seasonAmb,
     // Banda de MODO PRUEBAS, siempre visible (2026-07-24). Sin ella es cuestión de tiempo apuntar
