@@ -30,8 +30,9 @@ CSP lo deja pasar; al aplicar moneda se usan los rates devueltos (no solo el sta
 
 **Fix desborde Gastos (post-aprobación, letra Pequeña + ¥):** la línea «Gastos X · ingresos Y»
 era una sola frase con `nowrap` en el presupuesto → se partía a mitad y solapaba. Ahora
-filas etiqueta|importe, columna izq con `min-width:0`, importe con `clamp`, presupuesto que
-puede partir palabra. Inicio ya usaba `clamp` en el patrimonio. Tanda `gastos-fx-overflow`.
+filas etiqueta|importe (juntas, sin `space-between` a todo el ancho — eso abría un hueco
+ridículo), columna izq con `min-width:0`, importe con `clamp`, presupuesto que puede partir
+palabra. Inicio ya usaba `clamp` en el patrimonio. Tanda `gastos-fx-overflow`.
 
 **Siguiente (otra tanda, pedida 2026-08-05):** conversor «de → a» en Comparar monedas (importe
 + moneda origen + moneda destino), no solo «1 € = …».
