@@ -54,9 +54,22 @@ test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }
 // Multidivisa 4.14.0: la moneda del apunte es INDEPENDIENTE de la de visualización.
 // Apuntas en ₺ con la app en €; el gasto se guarda convertido a euros.
 test("Apuntar en ₺ con la app en €: convierte y guarda en euros", async ({ page }) => {
+  // Sin esto, refreshFx (idle o al tocar ₺) pisa el fxRates sembrado con el BCE real
+  // → 150 ₺ deja de ser 3,00 € y el assert falla en CI (flaky desde que .dev está en la CSP).
+  await page.route(/api\.frankfurter\.(dev|app)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        amount: 1, base: "EUR", date: "2026-08-04",
+        // frankfurter: 1 EUR = N divisa → la app guarda XXX→EUR = 1/N. TRY:50 → 0,02 €/₺.
+        rates: { TRY: 50, USD: 1.1, GBP: 0.85, CHF: 0.95, JPY: 160, CAD: 1.5, AUD: 1.6,
+          CNY: 7.5, MXN: 20, SEK: 11, NOK: 11, DKK: 7.5, PLN: 4.3, BRL: 6, INR: 90 },
+      }),
+    });
+  });
   await seedLoggedInDashboard(page, {
     settings: { autoPrices: false, theme: "green", currency: "EUR", lang: "es" },
-    // Tipo de mentira: 1 TRY = 0,02 € → 150 ₺ = 3 €.
     fxRates: { TRY: 0.02, USD: 0.92, GBP: 1.15, CHF: 1.05 },
   });
   await page.goto("/");
@@ -78,8 +91,7 @@ test("Apuntar en ₺ con la app en €: convierte y guarda en euros", async ({ p
   await sheet.locator(".v4-cta").click();
   await expect(sheet).toHaveCount(0, { timeout: 3_000 });
 
-  // Apuntar navega a Gastos: 150 ₺ × 0,02 = 3 €. El DOM es la prueba (el guardado a
-  // localStorage va con debounce de 400 ms; asertar ahí es flaky).
+  // 150 ₺ × 0,02 = 3 €. Café visible + importe (el debounce de localStorage no entra).
   await expect(page.getByText("Café Estambul").first()).toBeVisible({ timeout: 5_000 });
   await expect(page.getByText("3,00 €").first()).toBeVisible();
 });
