@@ -13,6 +13,12 @@ bajo la cámara encima de la WebView. Fix: WEB_DEBUG off en release, `postSplash
 APK **39 / 4.16.1**; la release `v4.16.0` se deja atrás (asset sustituido en su momento; esta es
 la canónica limpia).
 
+### Antídoto de publicación (mismo día, tooling)
+
+Tras el calvario del promote: guardián Gradle/`apk:prep` que **aborta** si `WEBDEBUG=1`,
+`npm run release:apk` (prep→firma→`gh release`→`apk.json` real), `docs/RELEASE.md` y test
+`webdebug-guard` para que no se vuelva a colar.
+
 ## [4.16.0] — 2026-08-06
 ### Aviso de presupuesto que cuadra + divisa que sobrevive + notis de Google Wallet (beta)
 

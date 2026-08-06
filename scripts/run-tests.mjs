@@ -19,6 +19,7 @@ const steps = [
   // el script sale en verde sin hacer nada, así que esto solo pincha aquí, que es donde se arregla.
   ["memoria-espejo", ["node", "scripts/sync-memoria.mjs", "--check"]],
   ["security", ["node", "tests/security.test.mjs"]],
+  ["webdebug-guard", ["node", "tests/webdebug-guard.test.mjs"]],
   ["gastos-active-bus", ["node", "tests/gastos-active-bus.test.mjs"]],
   ["track-asentar-raf", ["node", "tests/track-asentar-raf.test.mjs"]],
   ["season-detalle", ["node", "tests/season-detalle.test.mjs"]],

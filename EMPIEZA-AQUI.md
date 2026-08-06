@@ -42,11 +42,13 @@ tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versi�
 
 ## 3. Cómo se publica
 
+Circuito corto y trampas: **[`docs/RELEASE.md`](docs/RELEASE.md)**. Resumen:
+
 | Quieres… | Haces |
 |---|---|
 | Que lo pruebe él en su móvil | push a `beta` → el workflow publica el bundle en la release `beta` |
 | Subirlo a producción | workflow «Promocionar beta a producción» (`gh workflow run promote-beta.yml -f confirmar=SUBIR`) |
-| Cambiar algo NATIVO (iconos, Java, permisos) | hace falta **APK nueva**: no viaja por OTA |
+| Cambiar algo NATIVO (iconos, Java, permisos) o APK alineada | **`npm run release:apk`** (WEBDEBUG off, firma, release GitHub, `apk.json` real) |
 
 **No se promociona nada sin que él lo apruebe** desde Ajustes → «Revisar esta beta».
 El veredicto se lee con `node scripts/errores.mjs --kind=beta`, y las sugerencias que escribe la

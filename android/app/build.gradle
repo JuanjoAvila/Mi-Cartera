@@ -12,10 +12,12 @@ def ingestUrl = localProps.getProperty('MICARTERA_INGEST_URL', '')
 // MICARTERA_WEBDEBUG=1 en local.properties, que no va al repo: así una APK compilada aquí para
 // depurar en su móvil se puede mirar por dentro, y la que publica el CI nunca lleva el socket
 // abierto. Ver docs/LAG-DESLIZAR.md §0 — sin esto no hay forma de medir el lag donde ocurre.
-// ⚠ 2026-08-06: si dejas WEBDEBUG=1 al hacer assembleRelease, esa APK SALE A SU MÓVIL REAL
-// con el socket abierto (BuildConfig.WEB_DEBUG=true). Antes de CUALQUIER release: confirma
-// MICARTERA_WEBDEBUG=0 (o borra la clave) y mira BuildConfig.java → WEB_DEBUG = false.
+// ⚠ 2026-08-06: WEBDEBUG=1 en assembleRelease metió el socket de depuración en la APK real
+// (barra/chrome raro bajo la cámara + riesgo). Guardián abajo: assembleRelease FALLA si
+// WEBDEBUG=1, salvo MICARTERA_ALLOW_WEBDEBUG_RELEASE=1 (solo para CDP a propósito).
+// Para publicar: `npm run release:apk` (exige WEB_DEBUG off y no admite el bypass).
 def webDebug = localProps.getProperty('MICARTERA_WEBDEBUG', '0') == '1'
+def allowWebDebugRelease = localProps.getProperty('MICARTERA_ALLOW_WEBDEBUG_RELEASE', '0') == '1'
 
 android {
     namespace "com.micartera.app"
@@ -99,6 +101,21 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+/* Guardián WEB_DEBUG (2026-08-06): no se puede sacar una release «de depuración» sin querer.
+   MICARTERA_ALLOW_WEBDEBUG_RELEASE=1 solo para CDP/lag a propósito (docs/LAG-DESLIZAR.md).
+   `npm run release:apk` NO usa ese bypass: aborta antes si WEBDEBUG=1. */
+gradle.taskGraph.whenReady { graph ->
+    def releasing = graph.allTasks.any { it.name == 'assembleRelease' || it.name == 'bundleRelease' }
+    if (releasing && webDebug && !allowWebDebugRelease) {
+        throw new GradleException(
+            "MICARTERA_WEBDEBUG=1 bloquea assembleRelease (incidente 2026-08-06: APK real con socket abierto).\n" +
+            "  → Para publicar: deja MICARTERA_WEBDEBUG=0 (o borra la clave) y usa npm run release:apk.\n" +
+            "  → Para depurar WebView a propósito: MICARTERA_ALLOW_WEBDEBUG_RELEASE=1 en local.properties\n" +
+            "    (esa APK NO se sube a GitHub Releases)."
+        )
+    }
+}
 
 try {
     def servicesJSON = file('google-services.json')

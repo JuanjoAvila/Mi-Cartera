@@ -14,9 +14,10 @@ nuevo vía `apk.json` → `installApk`.
 > tras publicar el release, actualiza `public/apk.json` al asset real (nunca a un tag vacío).
 >
 > ⚠ **Antes de `assembleRelease`:** en `android/local.properties` deja `MICARTERA_WEBDEBUG=0`
-> (o borra la clave). Si está en `1`, la APK de release sale con el socket de depuración de la
-> WebView abierto (incidente 2026-08-06: se coló en la 36; canónica limpia = APK **39 / 4.16.1**).
-> Comprueba `BuildConfig.java` → `WEB_DEBUG = false`. El tema de splash debe llevar
+> (o borra la clave). Si está en `1`, **Gradle aborta** (salvo `MICARTERA_ALLOW_WEBDEBUG_RELEASE=1`
+> para CDP a propósito). Incidente 2026-08-06: se coló en la 36; canónica limpia = APK **39 / 4.16.1**.
+> Para publicar: **`npm run release:apk`** (ver [`docs/RELEASE.md`](RELEASE.md)). Comprueba
+> `BuildConfig.java` → `WEB_DEBUG = false`. El tema de splash debe llevar
 > `postSplashScreenTheme` → `AppTheme.NoActionBar` o tras el arranque puede quedar una franja
 > nativa bajo la cámara.
 
