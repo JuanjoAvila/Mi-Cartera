@@ -91,3 +91,11 @@ Migración importante: `0020_expenses_divisa.sql`. Sin tipo FX en Ajustes → Di
 
 Pendientes grandes **aparte** de este fleco: inventario en `docs/memoria/mi-cartera-backlog-2026-08.md` y `docs/ROADMAP.md`.  
 Este brief **solo** cierra el espejo Pages / familia OTA de la 4.16.x.
+
+### Parpadeo al tocar / deslizar pestañas (apuntado 2026-08-06 noche)
+
+Él grabó vídeo (`tools/movil/_flicker_tabs.mp4`). **También le pasa a la pareja en 4.15.0** → no es
+de la APK de Wallet de esta noche. En fotogramas se ve Inicio+Gastos a la vez (p. ej. barra en
+Inicio mientras el cuerpo es Gastos) — misma familia que el host transparente / season-glow
+(glow22). **Prueba barata al volver:** Ajustes → Apariencia → Temática → **Ninguna**; si el
+parpadeo desaparece, el culpable es la ruta `html[data-season]`. No abrir fix gordo en el crucero.
