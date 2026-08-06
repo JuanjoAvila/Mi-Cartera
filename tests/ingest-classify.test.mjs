@@ -127,6 +127,15 @@ t("limpiarTexto: invisibles fuera, texto normal intacto", () => {
   assert.equal(limpiarTexto(null), "");
 });
 
+/* El bar del padre, segunda parte (2026-08-06): entraba como gasto, pero la categoría salía
+   «otros» porque la keyword era `"bar "` con espacio y este nombre ACABA en bar. */
+t("«1331 BAR» cae en bares, no en otros", () => {
+  assert.equal(categorizar("1331 BAR"), "bares");
+  assert.equal(categorizar("SNACK BAR"), "bares");
+  assert.equal(categorizar("SPORTS BAR"), "bares");      // antes se iba a ocio por "sport"
+  assert.notEqual(categorizar("Parking Barcelona Centro"), "bares");   // y «Barcelona» sigue fuera
+});
+
 t("el comercio limpio sigue categorizando igual", () => {
   assert.equal(categorizar(extraerComercio("Has gastado 3,20 € en BAR STOP", "")), "bares");
   assert.equal(categorizar(extraerComercio("Has gastado 3,20 € en PANADERIA" + CTRL + " LA ESQUINA", "")), "pan");

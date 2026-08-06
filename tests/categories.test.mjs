@@ -70,6 +70,14 @@ t("Restaurante de pádel sigue en bares", () => {
   assert.equal(ctx.autoCategory("Restaurante de padel"), "bares");
 });
 
+/* El bar del padre (2026-08-06): con la keyword `"bar "` sólo picaban los nombres que SIGUEN con
+   algo. Los que acaban en «bar» —que son legión— se iban a «otros», y «SPORTS BAR» a ocio. */
+for (const nombre of ["1331 BAR", "SNACK BAR", "EL RACO BAR", "LA BOMBETA BAR", "SPORTS BAR", "BAR"]) {
+  t(`«${nombre}» cae en bares aunque acabe en «bar»`, () => {
+    assert.equal(ctx.autoCategory(nombre), "bares");
+  });
+}
+
 t("Barcelona no cae en bares por el substring «bar»", () => {
   assert.notEqual(ctx.autoCategory("Parking Barcelona Centro"), "bares");
 });
