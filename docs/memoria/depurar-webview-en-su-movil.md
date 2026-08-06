@@ -19,6 +19,10 @@ Receta, con las dos trampas que cuestan una hora si no las sabes:
 
 1. `MICARTERA_WEBDEBUG=1` en `android/local.properties` (no va al repo) → `assembleRelease` →
    `adb install -r`. Misma firma que la suya, **no pierde datos ni el bundle OTA**.
+   ⚠ **Antes de CUALQUIER release pública** (2026-08-06): vuelve a `MICARTERA_WEBDEBUG=0`
+   (o borra la clave) y confirma `BuildConfig.WEB_DEBUG = false`. Si dejas el 1, la APK firmada
+   que subes a GitHub Releases abre el socket de depuración en el móvil real. Incidente: APK 36
+   de la 4.16.0. Canónica limpia: **39 / 4.16.1** (+ `postSplashScreenTheme` en el splash).
 2. `WebView.setWebContentsDebuggingEnabled(true)` va **DESPUÉS de `super.onCreate()`**: Capacitor lo
    apaga al montar el puente (`Bridge.java:599`) y si va antes, el socket no aparece nunca.
 3. `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>` → `http://localhost:9222/json/list`
