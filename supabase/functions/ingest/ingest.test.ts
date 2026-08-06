@@ -1,5 +1,39 @@
 import { assertEquals } from "jsr:@std/assert";
-import { clasificar, extraerConcepto, extraerImporte, categorizar } from "../_shared/ingest_logic.ts";
+import {
+  categorizar, clasificar, extraerComercio, extraerConcepto, extraerImporte, limpiarTexto,
+} from "../_shared/ingest_logic.ts";
+
+// ---- El bar del padre y el gasto de Splau (2026-08-06) ----
+// Dos formas de perder un gasto SIN DEJAR RASTRO, que es lo que las hacía indiagnosticables:
+// un `ignorado` no se guarda ni avisa, y un INSERT rechazado solo deja un error en el panel.
+
+Deno.test("el nombre del comercio NO se mira buscando ruido", () => {
+  // «BAR STOP» picaba en "stop" y «BAR EL DEPÓSITO» en "deposito": el gasto se tiraba entero.
+  assertEquals(clasificar("Has gastado 9,90 € en BAR STOP", "Trade Republic"), "gasto");
+  assertEquals(clasificar("Has gastado 9,90 € en BAR EL DEPOSITO", "Trade Republic"), "gasto");
+  assertEquals(clasificar("Has gastado 9,90 € en RESTAURANT EL LIMITE", ""), "gasto");
+});
+
+Deno.test("…y el ruido de TR se sigue tirando igual", () => {
+  assertEquals(clasificar("Se ha invertido tu redondeo de 0,42 € en iShares Core", ""), "ignorado");
+  assertEquals(clasificar("Tu plan de inversión ha ejecutado 50 € en Vanguard", ""), "ignorado");
+  assertEquals(clasificar("Nuevo inicio de sesión en tu cuenta", ""), "ignorado");
+});
+
+Deno.test("comercio sucio del datáfono: se limpia, no tumba el INSERT", () => {
+  const ctrl = String.fromCharCode(0x85);   // el invisible que salió en la compra de Splau
+  const nul = String.fromCharCode(0);       // este además hace que Postgres RECHACE la fila
+  assertEquals(
+    extraerComercio("Has gastado 76,08 € en 10638 CORNELLA" + ctrl + " SPLAU SC", ""),
+    "10638 CORNELLA SPLAU SC",
+  );
+  assertEquals(limpiarTexto("CORNELLA" + nul + " SPLAU").includes(nul), false);
+});
+
+Deno.test("extraerComercio: «en» de otra palabra no parte el nombre", () => {
+  // Sin el \b, «Orden ejecutada en Apple» daba comercio = «ejecutada en Apple».
+  assertEquals(extraerComercio("Orden ejecutada en Apple", ""), "Apple");
+});
 
 Deno.test("clasificar: bizum enviado vs recibido", () => {
   assertEquals(clasificar("Has enviado 12,50 € a María por bizum", ""), "gasto_nocard");
