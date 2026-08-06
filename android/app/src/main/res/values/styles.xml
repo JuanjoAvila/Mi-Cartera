@@ -40,6 +40,11 @@
         <item name="android:background">@drawable/splash</item>
         <item name="windowSplashScreenBackground">@color/colorPrimary</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <!-- ⚠ SIN ESTO (2026-08-06): tras el splash Android NO cambia al tema sin ActionBar.
+             En su Oppo quedaba una franja nativa bajo la cámara (ActionBar / chrome del
+             Theme.SplashScreen) encima de la WebView — la «ralla gigante» que no era temática
+             ni batería. postSplashScreenTheme es el eslabón que pide la lib de splash. -->
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <!-- Sigue siendo una mitigación honesta, no una garantía, para el resto de lo reportado:
              el atenuado al REANUDAR desde el multitarea (no al ARRANCAR en frío) puede seguir
              siendo la animación propia del selector de apps de MIUI/HyperOS, ajena a esta app. -->

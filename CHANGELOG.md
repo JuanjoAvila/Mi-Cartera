@@ -2,6 +2,17 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.16.1] — 2026-08-06
+### Arranque sin franja bajo la cámara (APK)
+
+La build 36 de la 4.16.0 se compiló con `MICARTERA_WEBDEBUG=1` en `local.properties` (socket de
+depuración de la WebView en una release real) y el tema de splash **no tenía
+`postSplashScreenTheme`**, así que tras el arranque podía quedar chrome nativo (ActionBar / franja)
+bajo la cámara encima de la WebView. Fix: WEB_DEBUG off en release, `postSplashScreenTheme` →
+`AppTheme.NoActionBar`, y `getSupportActionBar().hide()` por si un OEM no encadena el tema.
+APK **39 / 4.16.1**; la release `v4.16.0` se deja atrás (asset sustituido en su momento; esta es
+la canónica limpia).
+
 ## [4.16.0] — 2026-08-06
 ### Aviso de presupuesto que cuadra + divisa que sobrevive + notis de Google Wallet (beta)
 

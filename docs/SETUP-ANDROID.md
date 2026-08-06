@@ -12,6 +12,13 @@ nuevo vía `apk.json` → `installApk`.
 > ⚠️ El build del APK se hace en **tu PC** (Android Studio / Gradle). Ver secciones siguientes.
 > **Alineación:** `versionName` en `android/app/build.gradle` = `VERSION` del repo; `versionCode` sube +1;
 > tras publicar el release, actualiza `public/apk.json` al asset real (nunca a un tag vacío).
+>
+> ⚠ **Antes de `assembleRelease`:** en `android/local.properties` deja `MICARTERA_WEBDEBUG=0`
+> (o borra la clave). Si está en `1`, la APK de release sale con el socket de depuración de la
+> WebView abierto (incidente 2026-08-06: se coló en la 36; canónica limpia = APK **39 / 4.16.1**).
+> Comprueba `BuildConfig.java` → `WEB_DEBUG = false`. El tema de splash debe llevar
+> `postSplashScreenTheme` → `AppTheme.NoActionBar` o tras el arranque puede quedar una franja
+> nativa bajo la cámara.
 
 ---
 

@@ -1,8 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-06 · **v4.16.0** — **EN PRODUCCIÓN** (aprobada en el móvil y promocionada).
-> Aviso de presupuesto que cuadra, divisa original que sobrevive a la nube (migración 0020) y
-> notis de Google Wallet (ruta nativa). APK **36 / 4.16.0** (release `v4.16.0`).
+> Estado a 2026-08-06 · **v4.16.1** — **EN PRODUCCIÓN**. APK limpia **39 / 4.16.1**: sin
+> franja nativa bajo la cámara (`postSplashScreenTheme` + WEB_DEBUG off en release). La 4.16.0
+> trae presupuesto que cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
 >
 > Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
 > presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
@@ -64,10 +64,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.16.0** (producción) |
-| APK (`versionName` / `versionCode`) | **4.16.0** / **36** — release `v4.16.0`. Trae la ruta nativa de Google Wallet (`TrExpenseListener`). Firma `CN=Mi Cartera`, se instala encima sin perder datos. |
-| Anterior | **4.12.0 / 35** (release `v4.12.0`, icono/splash nativos). Antes: **4.11.0 / 34** (notis duplicadas). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
-| `public/apk.json` | **36** / 4.16.0 → release `v4.16.0` / `Mi-Cartera-4.16.0.apk` |
+| Web / OTA (`VERSION`) | **4.16.1** (producción) |
+| APK (`versionName` / `versionCode`) | **4.16.1** / **39** — release `v4.16.1`. Arranque sin franja bajo la cámara + Wallet nativo. Firma `CN=Mi Cartera`. |
+| Anterior | **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
+| `public/apk.json` | **39** / 4.16.1 → release `v4.16.1` / `Mi-Cartera-4.16.1.apk` |
 
 ## Pendiente / limitaciones conocidas
 

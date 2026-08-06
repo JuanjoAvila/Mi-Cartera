@@ -28,6 +28,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(MiCarteraPlugin.class);       // antes de super.onCreate (así lo pide Capacitor)
         registerPlugin(TradeRepublicPlugin.class);   // puente TR (beta)
         super.onCreate(savedInstanceState);
+        /* Si el splash no encadenó bien al NoActionBar (falta postSplashScreenTheme o OEM raro),
+           la ActionBar nativa deja una franja bajo la cámara encima de la WebView (2026-08-06). */
+        try {
+            if (getSupportActionBar() != null) getSupportActionBar().hide();
+        } catch (Throwable ignored) {}
         /* INSPECCIÓN DE LA WEBVIEW EN EL MÓVIL DE VERDAD (2026-07-27). Sin esto no hay forma de
            medir el lag donde ocurre: `dumpsys gfxinfo` da 120 fps aunque la web esté congelada,
            porque una WebView pinta siempre su ÚLTIMO fotograma disponible y Android lo cuenta como

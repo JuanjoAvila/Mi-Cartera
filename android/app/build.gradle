@@ -12,6 +12,9 @@ def ingestUrl = localProps.getProperty('MICARTERA_INGEST_URL', '')
 // MICARTERA_WEBDEBUG=1 en local.properties, que no va al repo: así una APK compilada aquí para
 // depurar en su móvil se puede mirar por dentro, y la que publica el CI nunca lleva el socket
 // abierto. Ver docs/LAG-DESLIZAR.md §0 — sin esto no hay forma de medir el lag donde ocurre.
+// ⚠ 2026-08-06: si dejas WEBDEBUG=1 al hacer assembleRelease, esa APK SALE A SU MÓVIL REAL
+// con el socket abierto (BuildConfig.WEB_DEBUG=true). Antes de CUALQUIER release: confirma
+// MICARTERA_WEBDEBUG=0 (o borra la clave) y mira BuildConfig.java → WEB_DEBUG = false.
 def webDebug = localProps.getProperty('MICARTERA_WEBDEBUG', '0') == '1'
 
 android {
@@ -24,8 +27,8 @@ android {
         applicationId "com.micartera.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 36
-        versionName "4.16.0"
+        versionCode 39
+        versionName "4.16.1"
         buildConfigField "String", "INGEST_URL", "\"${ingestUrl}\""
         buildConfigField "boolean", "WEB_DEBUG", "${webDebug}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
