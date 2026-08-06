@@ -90,8 +90,25 @@ export function categorizar(comercio: string): string {
 
 export type Tipo = "gasto" | "gasto_nocard" | "ingreso" | "ignorado";
 
-export function clasificar(texto: string, titulo: string): Tipo {
-  const t = norm(titulo + " " + texto);
+/**
+ * De qué app venía la notificación. Cambia DÓNDE se puede buscar, no solo cómo se parsea.
+ *
+ * · "tr"     → Trade Republic. El título es siempre «Trade Republic» y todo va en la frase
+ *              («Has gastado 12,50 € en Mercadona»).
+ * · "wallet" → Google Wallet. **El título ES el nombre del comercio** y el importe va en el texto
+ *              («10638 CORNELLA SPLAU SC» / «76,08 € con Trade Republic Visa Card ••9116»).
+ */
+export type Fuente = "tr" | "wallet";
+
+export function clasificar(texto: string, titulo: string, fuente: Fuente = "tr"): Tipo {
+  /* EN WALLET EL TÍTULO NO SE ESCANEA (2026-08-06).
+     El 6/8 se arregló que el ruido de TR no se buscara en el nombre del comercio, porque «BAR STOP»
+     picaba en "stop" y el gasto se tiraba en silencio. Ese arreglo saca el comercio del TEXTO, de
+     detrás del « en ». Pero en Wallet el comercio va en el TÍTULO, así que el mismo bug volvería
+     entero por la otra puerta: un «BAR STOP» o un «CÓDIGO BCN» en el título de Wallet se
+     descartaría como ruido. Con `wallet` el título se deja fuera de las dos búsquedas. */
+  const escaneable = fuente === "wallet" ? "" : titulo;
+  const t = norm(escaneable + " " + texto);
   const IGNORAR = [
     "interes", "dividendo", "rendimiento", "rentabilidad",
     "saveback", "redondeo", "round up", "roundup", "round-up",
@@ -114,7 +131,7 @@ export function clasificar(texto: string, titulo: string): Tipo {
      falla es DÓNDE se mira. Lo que TR describe (intereses, dividendo, round-up, 3DS, orden
      ejecutada…) va SIEMPRE en la frase; el nombre del comercio es dato del datáfono, no
      descripción. Así que se mira la frase y se deja fuera lo que va detrás del « en ». */
-  const frase = norm(titulo + " " + limpiarTexto(texto).replace(TRAS_EN, "en"));
+  const frase = norm(escaneable + " " + limpiarTexto(texto).replace(TRAS_EN, "en"));
   if (IGNORAR.some((k) => frase.includes(k))) return "ignorado";
   const esBizum  = t.includes("bizum");
   const recibido = /(has recibido|recibido|recibiste|te ha enviado|te envio|te ha hecho|has rebut|t'ha enviat|received|sent you)/.test(t);

@@ -31,8 +31,10 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  categorizar, clasificar, extraerComercio, extraerConcepto, extraerImporte, extraerPersona, type Tipo,
+  categorizar, clasificar, extraerComercio, extraerConcepto, extraerImporte, extraerPersona,
+  limpiarTexto, type Fuente, type Tipo,
 } from "../_shared/ingest_logic.ts";
+import { aEuros, parseWallet } from "../_shared/wallet.ts";
 import { bucketKey, callerIp, rateLimit } from "../_shared/ratelimit.ts";
 import { bancosDeGastoDiario, cuentaParaPresupuesto, statsDelMes } from "../_shared/presupuesto.ts";
 
@@ -117,32 +119,68 @@ Deno.serve(async (req) => {
   const titulo = data.titulo || data.notiTitle || "";
   const triggertime = data.fecha || data.triggertime || "";
 
-  const tipo = clasificar(texto, titulo);
+  /* DE QUÉ APP VENÍA (2026-08-06). El lector nativo lo manda desde la 4.16.0; sin el campo se
+     asume Trade Republic, que es lo único que había antes — así una APK vieja sigue funcionando
+     exactamente igual y no hay que actualizar para que nada se rompa. */
+  const fuente: Fuente = data.fuente === "wallet" ? "wallet" : "tr";
+
+  const tipo = clasificar(texto, titulo, fuente);
   if (tipo === "ignorado") return json({ ok: true, tipo, skipped: true });
 
-  const bruto = extraerImporte(texto);
-  if (!(bruto > 0)) return json({ ok: true, tipo: "ignorado", skipped: true, error: "sin importe" });
-
   const fecha = parseFecha(triggertime);
-  let importe = bruto;
+  let importe = 0;
   let comercio: string;
   let cat: string;
   let noCard = false;
+  let importeOrig: number | null = null;      // lo que marcaba el precio, si no fue en euros
+  let divisaOrig: string | null = null;
 
-  if (tipo === "ingreso") {
-    importe = -bruto;                                   // resta del gasto del mes
-    const quien = extraerPersona(texto, "de");
-    comercio = quien ? "Bizum de " + quien : "Bizum recibido";
-    cat = "ingreso";
-    noCard = true;
-  } else if (tipo === "gasto_nocard") {
-    const quien = extraerPersona(texto, "a");
-    comercio = quien ? "Bizum a " + quien : "Bizum enviado";
-    cat = "otros";
-    noCard = true;                                      // no alimenta el round-up
-  } else {
-    comercio = extraerComercio(texto, titulo);
+  if (fuente === "wallet") {
+    /* WALLET VA AL REVÉS QUE TR: el comercio en el TÍTULO y el importe en el TEXTO. Y puede venir
+       en otra moneda, que es justo el caso del crucero pagando con Revolut. */
+    const pago = parseWallet(titulo, texto, limpiarTexto);
+    if (!pago) return json({ ok: true, tipo: "ignorado", skipped: true, error: "wallet: sin importe reconocible" });
+    let eur: number | null = pago.divisa === "EUR" ? +pago.importe.toFixed(2) : null;
+    if (pago.divisa !== "EUR") {
+      const { data: stFx } = await supabase.from("app_state").select("data").eq("user_id", userId).maybeSingle();
+      eur = aEuros(pago.importe, pago.divisa, stFx?.data);
+      if (eur === null) {
+        /* SIN TIPO NO SE GUARDA — misma regla que el botón de apuntar. Convertir «a lo que sea»
+           metería 1.520 € por 1.520 ₺ y no lo cazaría ningún test: se descubre semanas después
+           mirando un histórico que ya no se puede reconstruir. Pero callarse tampoco vale, que es
+           como se perdió el gasto de Splau: queda el rastro en el panel para poder apuntarlo a
+           mano. */
+        await logIngestError(supabase, userId,
+          "sin tipo de cambio para " + pago.divisa + ": el gasto NO se ha apuntado",
+          pago.comercio + " · " + pago.importe + " " + pago.divisa);
+        return json({ ok: true, tipo: "ignorado", skipped: true, error: "sin tipo para " + pago.divisa });
+      }
+      importeOrig = pago.importe;
+      divisaOrig = pago.divisa;
+    }
+    importe = eur;
+    comercio = pago.comercio;
     cat = categorizar(comercio);
+  } else {
+    // Camino de Trade Republic, el de siempre: la frase lo lleva todo y el importe sale del texto.
+    const bruto = extraerImporte(texto);
+    if (!(bruto > 0)) return json({ ok: true, tipo: "ignorado", skipped: true, error: "sin importe" });
+    importe = bruto;
+    if (tipo === "ingreso") {
+      importe = -bruto;                                   // resta del gasto del mes
+      const quien = extraerPersona(texto, "de");
+      comercio = quien ? "Bizum de " + quien : "Bizum recibido";
+      cat = "ingreso";
+      noCard = true;
+    } else if (tipo === "gasto_nocard") {
+      const quien = extraerPersona(texto, "a");
+      comercio = quien ? "Bizum a " + quien : "Bizum enviado";
+      cat = "otros";
+      noCard = true;                                      // no alimenta el round-up
+    } else {
+      comercio = extraerComercio(texto, titulo);
+      cat = categorizar(comercio);
+    }
   }
 
   // CONCEPTO (2026-07-24): el mensaje del bizum / la descripción que venía en la noti. Se guarda
@@ -155,21 +193,41 @@ Deno.serve(async (req) => {
   // (autorizar → cargo) y entraba dos veces. Mismo usuario + mismo importe a <10 min = el
   // mismo movimiento → se ignora. (Dos compras REALES idénticas en <10 min es rarísimo;
   // si pasa, se apunta a mano — mejor eso que cobros fantasma duplicados.)
+  //
+  // WALLET DUPLICA LAS DE TR (2026-08-06): una compra con la tarjeta de Trade Republic dispara LAS
+  // DOS notis. Mientras las dos digan el mismo euro, esta ventana ya las junta. Pero si una viene
+  // en divisa, el euro convertido puede bailar un céntimo contra el que anuncia TR y entrarían las
+  // dos. Por eso se compara con margen de 2 céntimos en vez de exacto: dos compras REALES en menos
+  // de 10 minutos que además se parezcan en dos céntimos no pasa, y un cobro fantasma duplicado
+  // sí que se nota.
   const t0 = new Date(fecha).getTime();
   const { data: dupRows } = await supabase
     .from("expenses").select("fecha")
-    .eq("user_id", userId).eq("importe", importe)
+    .eq("user_id", userId)
+    .gte("importe", importe - 0.02).lte("importe", importe + 0.02)
     .gte("fecha", new Date(t0 - 10 * 60 * 1000).toISOString())
     .lte("fecha", new Date(t0 + 10 * 60 * 1000).toISOString())
     .limit(1);
   if (dupRows && dupRows.length) return json({ ok: true, tipo, skipped: true, dup: true });
 
-  const { error } = await supabase
+  const fila: Record<string, unknown> = {
+    user_id: userId, fecha, importe, comercio, cat, source: "macrodroid", no_card: noCard, nota: nota || null,
+  };
+  // Solo cuando hubo divisa de verdad: así una noti normal en euros escribe EXACTAMENTE las mismas
+  // columnas que antes y no depende de que la migración 0020 esté aplicada.
+  if (divisaOrig) { fila.importe_orig = importeOrig; fila.divisa = divisaOrig; }
+  const guardar = () => supabase
     .from("expenses")
-    .upsert(
-      { user_id: userId, fecha, importe, comercio, cat, source: "macrodroid", no_card: noCard, nota: nota || null },
-      { onConflict: "user_id,fecha,importe,comercio", ignoreDuplicates: true },
-    );
+    .upsert(fila, { onConflict: "user_id,fecha,importe,comercio", ignoreDuplicates: true });
+  let { error } = await guardar();
+  // Si la migración 0020 va por detrás de la función, se reintenta SIN el rastro de la divisa:
+  // mejor el gasto sin «eran liras» que ningún gasto. El aviso queda en el panel.
+  if (error && divisaOrig && /importe_orig|divisa/i.test(String(error.message || ""))) {
+    await logIngestError(supabase, userId, "faltan las columnas de divisa (migración 0020): apuntado solo en euros",
+      comercio + " · " + importeOrig + " " + divisaOrig);
+    delete fila.importe_orig; delete fila.divisa;
+    ({ error } = await guardar());
+  }
   if (error) {
     await logIngestError(supabase, userId, "no se pudo guardar el gasto: " + error.message, comercio + " · " + importe + "€");
     return json({ ok: false, error: error.message }, 500);
