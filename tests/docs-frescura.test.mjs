@@ -158,8 +158,24 @@ ok(`VERSION = ${VERSION}`);
   const rama = (git(["branch", "--show-current"]) || process.env.GITHUB_REF_NAME || git(["rev-parse", "--abbrev-ref", "HEAD"]) || "")
     .replace(/^heads\//, "");
   const lastBump = rama === "beta" ? null : git(["log", "-1", "--format=%H", "--", "VERSION"]);
+  /* EL PROMOTE DE UNA RONDA BETA NO ES CÓDIGO SIN VERSIONAR (falso positivo, 2026-08-06).
+     Una ronda beta bumpea VERSION UNA vez y después sigue arreglando cosas DENTRO de la misma
+     ronda: los 5 fixes de glow22 entraron tras el bump a 4.15.0 y se publicaron como 4.15.0. Al
+     promocionar, `git log -1 -- VERSION` (con simplificación de historia) encuentra el bump al
+     principio de la ronda y esta comprobación cantaba «5 ficheros cambiados después del último
+     bump» sobre commits YA publicados. Se repetía en CADA promote, y un test que falla siempre por
+     lo mismo es un test que se acaba ignorando — justo el que tiene que gritar el día que de
+     verdad se suba código sin versión.
+     La pregunta correcta en un merge no es «¿el bump es lo último?» sino «¿esta fusión sube la
+     versión respecto a lo que ya había?». Si la sube, toda la ronda viaja con número nuevo. Si no
+     la sube, sigue siendo el fallo de siempre y se canta igual. */
+  const padres = (git(["rev-list", "--parents", "-n", "1", "HEAD"]) || "").split(/\s+/).filter(Boolean);
+  const verDe = (ref) => git(["show", `${ref}:VERSION`]);
+  const versionSubeEnElMerge = padres.length > 2 && verDe("HEAD") && verDe("HEAD") !== verDe("HEAD^1");
   if (rama === "beta") {
     console.log("  ⊘ rama beta: cada push publica VERSION.RUN_NUMBER, no hace falta bump");
+  } else if (versionSubeEnElMerge) {
+    console.log(`  ⊘ promote de una ronda beta: VERSION sube en la fusión (${verDe("HEAD^1")} → ${verDe("HEAD")})`);
   } else if (!lastBump) {
     console.log("  ⊘ sin historia de git: no se comprueba el bump");
   } else {

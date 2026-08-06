@@ -101,6 +101,15 @@ Antes de leer nada más, lanza **`npm run salud`**: te dice esto mismo pero comp
 - **Sigue pendiente**: MyInvestor nativo, y validar la entrada de las diez Edge Functions (el único
   rojo de `docs/AMENAZAS.md`).
 
+**Abierto ahora mismo (2026-08-06), rama `claude/gasto-no-registrado-az0b8z`:** dos gastos reales que
+no entraron —uno suyo y otro de su padre— destaparon que un gasto se puede perder **sin dejar rastro
+ninguno**: ni fila, ni aviso, ni error en el panel. Arreglado el clasificador (el nombre del comercio
+se comía el gasto: «BAR STOP» picaba en `stop`), la basura de codificación del datáfono (un NUL tumba
+el INSERT entero) y la cola de reintentos del lector de notis. **Falta compilar la APK, mirar el panel
+de errores y publicar** → [`docs/briefs/brief-gastos-que-no-entran.md`](docs/briefs/brief-gastos-que-no-entran.md).
+Y pidió que el lector deje de leer solo Trade Republic y lea **Google Wallet** (o sea, cualquier
+tarjeta) apuntando en su divisa → [`docs/briefs/plan-notis-wallet-multidivisa.md`](docs/briefs/plan-notis-wallet-multidivisa.md).
+
 ⚠ `docs/memoria/pendiente-manana-4-12-0.md` retrata una noche de julio y es un espejo generado
 (`npm run memoria`, **no se edita a mano**): sus puntos ya están hechos.
 **La foto de ahora es `docs/ROADMAP.md`.**

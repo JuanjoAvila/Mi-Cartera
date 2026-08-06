@@ -2,6 +2,49 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.16.0] — 2026-08-06
+### Aviso de presupuesto que cuadra + divisa que sobrevive + notis de Google Wallet (beta)
+
+**Tandas:** `presupuesto-aviso`, `divisa-original`, `notis-wallet`.
+
+1. **El aviso de presupuesto contaba lo que la app no cuenta** (`ingest/index.ts:187`).
+   Le saltó «¡95% del presupuesto! 965 € de 1.000 €» en la noti y en el widget, y al abrir la
+   app no llegaba al 30%. Las dos cifras salían de la MISMA nube: `ingest` sumaba TODAS las
+   filas del mes mientras `monthBudgetStats()` descarta tres cosas. Medido contra sus datos
+   reales de agosto (32 filas): **964,58 € → 96%** contra **234,30 € → 23%**.
+   Se colaban Sabadell (448,39 €, banco de recibos) y la categoría Inversión (281,89 €); además
+   el presupuesto iba en bruto, sin restar lo reservado, y el widget enseñaba el gasto bruto en
+   vez de la cifra que pinta la cabecera de Gastos. La regla vive ahora en
+   `_shared/presupuesto.ts` y el test carga LAS DOS implementaciones y exige el mismo número
+   (un test de constantes se queda verde cuando alguien cambia una y se olvida de la otra —
+   que es exactamente cómo nació este bug).
+
+2. **Notis de Google Wallet** (`_shared/wallet.ts`, `TrExpenseListener.java`).
+   El lector solo escuchaba `de.traderepublic.app`, así que Revolut y Google Pay no entraban por
+   ningún lado. El gasto de 76,08 € de Splau del 6/8 era esto: la noti se leyó del móvil con
+   `dumpsys notification --noredact` y estaba intacta, de `com.google.android.apps.walletnfcrel`.
+   Ni `limpiarTexto()` ni la cola de reintentos la habrían salvado — el lector ni la vio.
+   - Filtro por CANAL (`tapandpay`), no por texto: los pases de embarque y las fidelización
+     ni se miran.
+   - `clasificar()` recibe la fuente: con Wallet el título NO se escanea (ahí el título es el
+     nombre del comercio, y escanearlo resucitaría el bug del bar por la otra puerta).
+   - Divisa: cuatro formatos aceptados; **sin tipo de cambio NO se guarda** y queda aviso en el
+     panel. «kr» se rechaza por ambigua (sueca/noruega/danesa).
+   - Dedup TR+Wallet con margen de 2 céntimos (el euro convertido puede bailar uno).
+
+3. **La divisa original sobrevive a la nube** (migración `0020`).
+   `origAmount`/`origCur` vivían solo en memoria: apuntabas 1.520 ₺, se guardaban 41,80 € y en
+   el primer pull el rastro desaparecía. Columnas `importe_orig` + `divisa`, con CHECK que impide
+   media pareja, red de seguridad si la migración va por detrás del bundle, y borrado del rastro
+   si se edita el importe en euros a mano.
+
+4. **Mojibake del datáfono con los bytes de verdad**: el título era `CORNELLA` + `C2 9F`, o sea
+   UTF-8 leído como Latin-1 — un carácter partido en dos. Quitando solo el control invisible
+   quedaba la otra mitad (una A con acento circunflejo) suelta en mitad del nombre y para siempre
+   en el histórico; ahora se va la pareja entera, sustituida por un espacio para no pegar palabras.
+   (Y de paso: `U+009F` no es un NUL, así que Postgres lo habría aceptado; esa fila no se perdió
+   por la codificación.)
+
 ## [4.15.0] — 2026-08-05
 ### Ambientación suave + conversor FX + presupuesto alineado + extracto total (beta)
 

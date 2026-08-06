@@ -192,11 +192,16 @@ const USO_OK=[
 ];
 /* Orden del objeto = prioridad al clasificar. Cosas finas ANTES que el cajón (pan/cine
    antes que bares; padel DESPUÉS de bares —«restaurante de pádel» es comida; viajes antes
-   que ocio; mascotas/energía antes que hogar). Alineado con ingest_logic.ts. */
+   que ocio; mascotas/energía antes que hogar). Alineado con ingest_logic.ts.
+
+   «bar» va SIN espacio detrás (2026-08-06): con `"bar "` sólo picaban los nombres que siguen con
+   algo («BAR PEPE»), y los que ACABAN en bar —«1331 BAR», «SNACK BAR»— caían en «otros». Sin
+   espacio son 3 letras y entra por el `hit()` de abajo, con límite de palabra: el mismo que evita
+   que «Barcelona» acabe en bares. */
 const KW = {
   pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano","panaria","el forn","viena ","entpan","panetteria"],
   cine:["cinema","cine","cinesa","yelmo","kinepolis","odeon","mk2","renoir","multicines","entradas.com","atrapalo","ticketmaster","imax","cinemes","filmotech"],
-  bares:["restaurante","bar ","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans &","pans ","wok ","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub ","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","vending","expendedor","deliveroo","too good to go","toogoodtogo","mcdonalds","mcdonald's","burger king","hamburgues","cervecer","cerveseria","fosters hollywood","ladydiana","100 montaditos","comida a domicilio"],
+  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans &","pans ","wok ","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub ","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","vending","expendedor","deliveroo","too good to go","toogoodtogo","mcdonalds","mcdonald's","burger king","hamburgues","cervecer","cerveseria","fosters hollywood","ladydiana","100 montaditos","comida a domicilio"],
   // Pádel DESPUÉS de bares: «restaurante de pádel» debe ser comida (feedback histórico).
   padel:["padel","pádel","playtomic","paddle","club de padel","club padel","pista padel","padel pro","world padel","premier padel","indoor padel"],
   super:["mercadona","lidl","aldi","carrefour","dia ","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria","hipercor","caprabo","condis","ahorramas","ahorramás","gadis","froiz","bm supermarket","family cash","supeco","costco","makro","amazon fresh","glovo market","compra online mercadona"],
@@ -440,11 +445,24 @@ function _isMissingNotaCol(err){
   const m=String((err&&err.message)||err||"").toLowerCase();
   return m.indexOf("nota")>=0 && (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
 }
+/* Lo mismo para la divisa original (`importe_orig`/`divisa`, migración 0020, 2026-08-06). Mismo
+   razonamiento y misma prioridad: en un viaje, perder «eran 1.520 ₺» es una lástima; perder el
+   gasto entero porque la migración va un rato por detrás del bundle es inaceptable. */
+var _mcDivisaCols=true;
+function _isMissingDivisaCol(err){
+  const m=String((err&&err.message)||err||"").toLowerCase();
+  return (m.indexOf("importe_orig")>=0 || m.indexOf("divisa")>=0) &&
+         (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
+}
 async function withNotaFallback(run){
-  let r=await run(_mcNotaCols);
+  let r=await run(_mcNotaCols, _mcDivisaCols);
   if(r && r.error && _mcNotaCols && _isMissingNotaCol(r.error)){
     _mcNotaCols=false;                       // esta sesión ya no lo intenta más
-    r=await run(false);
+    r=await run(false, _mcDivisaCols);
+  }
+  if(r && r.error && _mcDivisaCols && _isMissingDivisaCol(r.error)){
+    _mcDivisaCols=false;
+    r=await run(_mcNotaCols, false);
   }
   if(r && r.error) throw r.error;
   return r;
@@ -509,10 +527,17 @@ const cloud = (function(){
       // sin columna nueva en Supabase (feedback 2026-07-16).
       const base={ user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard };
       const nota={ nota:(e.note?String(e.note).slice(0,160):null), nota_edit:!!e.noteEdited };
+      // Lo que tecleó de verdad, cuando no fue en euros (migración 0020). El `importe` sigue siendo
+      // el euro convertido —la app cuenta en euros— pero sin esto, en cuanto el gasto daba la
+      // vuelta por la nube ya no constaba que fueran liras: un viaje entero en € pelados.
+      const divisa={ importe_orig:(e.origCur?Math.abs(Number(e.origAmount)||0):null), divisa:(e.origCur||null) };
       await withNotaFallback(
-        function(conNota){
+        function(conNota, conDivisa){
+          let fila=base;
+          if(conNota) fila=Object.assign({},fila,nota);
+          if(conDivisa) fila=Object.assign({},fila,divisa);
           return sb.from('expenses').upsert(
-            conNota ? Object.assign({},base,nota) : base,
+            fila,
             { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
           );
         }
@@ -1038,6 +1063,10 @@ function expenseFromRow(r){
     noCard: r.no_card ? true : undefined,   // bizum/transfer: fuera del round-up (columna 0005)
     note: r.nota || undefined,              // concepto del banco / mensaje del bizum (columna 0017)
     noteEdited: r.nota_edit ? true : undefined,
+    // La divisa de verdad del apunte (columna 0020). Sin leerla de vuelta, el rastro se perdía en
+    // el primer pull: se escribía al subir y nadie lo bajaba.
+    origAmount: r.importe_orig!=null ? Number(r.importe_orig) : undefined,
+    origCur: r.divisa || undefined,
   };
 }
 
