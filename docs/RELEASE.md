@@ -43,6 +43,8 @@ OTA web ≠ APK: un fix en `android/**` **no** llega por Pages.
 - `version.json` / `apk.json` **live** no cambian hasta que Pages recupere.
 - Reintenta `gh workflow run deploy.yml --ref main` con paciencia (backoff), no spamees.
 - Parte claro: «APK en GitHub OK; OTA pendiente de outage».
+- Desde el móvil / viaje: checklist lista en
+  [`docs/briefs/brief-crucero-verificar-pages.md`](briefs/brief-crucero-verificar-pages.md).
 
 ## Comandos útiles
 

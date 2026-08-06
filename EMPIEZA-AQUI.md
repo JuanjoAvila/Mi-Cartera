@@ -82,38 +82,28 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy (2026-08-01):** `VERSION` = **4.13.0** en rama `beta`, pendiente de su veredicto en el panel.
-Producción (`main`) va por la **4.12.1** (APK 35, que es de la 4.12.0: la .1 viajó por OTA).
-Antes de leer nada más, lanza **`npm run salud`**: te dice esto mismo pero comprobado.
+**Hoy (2026-08-06, noche — sale de crucero):** `VERSION` = **4.16.1** en `main` (Wallet + divisa +
+aviso de presupuesto + APK sin franja bajo la cámara). Circuito de release: [`docs/RELEASE.md`](docs/RELEASE.md).
+Antes de tocar nada, **`npm run salud`**.
 
-- **El tirón al deslizar y el stopper del perfil están CERRADOS**, dichos por él desde el móvil
-  («arregladísimo» los dos). `docs/LAG-DESLIZAR.md` se queda por lo que enseña sobre **cómo medir**
-  el rendimiento en su móvil de verdad, no porque quede nada pendiente ahí.
-- **La 4.13.0 lleva cuatro tandas** (`import`, `gestos`, `arranque`, `bancos`), cada una con su
-  botón en «Revisar esta beta». ⚠ **Pero sus commits van mezclados en `beta`, así que esta ronda
-  solo puede subir ENTERA** (`tandas` vacío en el workflow). Para poder trocear la SIGUIENTE, cada
-  tanda tiene que nacer en su rama `tanda/<id>` **antes del primer commit** — regla y motivo en
-  [`docs/TESTING.md`](docs/TESTING.md).
-- **Lo gordo de la tanda `bancos`** salió de probar con dinero real: gastos apuntados como ingresos
-  al conectar Trade Republic por Open Banking, recibos duplicados del histórico (una factura de 3
-  meses creaba 3 Fijos que se cobraban los 3 cada mes) y el banco de gasto diario que se quedaba
-  pegado al anterior. Los tres, en el `CHANGELOG` con su porqué.
-- **Sigue abierto**: «Gastos se queda a medio pintar». **No se ha reproducido** — está medido en el
-  `CHANGELOG` y en `docs/ROADMAP.md` («Abierto, con lo medido»). No lo toques a ciegas.
-- **Sigue pendiente**: MyInvestor nativo, y validar la entrada de las diez Edge Functions (el único
-  rojo de `docs/AMENAZAS.md`).
+### Si él escribe desde el viaje («¿ya está Pages?»)
 
-**Abierto ahora mismo (2026-08-06), rama `claude/gasto-no-registrado-az0b8z`:** dos gastos reales que
-no entraron —uno suyo y otro de su padre— destaparon que un gasto se puede perder **sin dejar rastro
-ninguno**: ni fila, ni aviso, ni error en el panel. Arreglado el clasificador (el nombre del comercio
-se comía el gasto: «BAR STOP» picaba en `stop`), la basura de codificación del datáfono (un NUL tumba
-el INSERT entero) y la cola de reintentos del lector de notis. **Falta compilar la APK, mirar el panel
-de errores y publicar** → [`docs/briefs/brief-gastos-que-no-entran.md`](docs/briefs/brief-gastos-que-no-entran.md).
-Y pidió que el lector deje de leer solo Trade Republic y lea **Google Wallet** (o sea, cualquier
-tarjeta) apuntando en su divisa → [`docs/briefs/plan-notis-wallet-multidivisa.md`](docs/briefs/plan-notis-wallet-multidivisa.md).
+→ **[`docs/briefs/brief-crucero-verificar-pages.md`](docs/briefs/brief-crucero-verificar-pages.md)**  
+Solo verificar / relanzar deploy. **No features.** Al salir, Pages aún podía servir **4.15.0** por
+outage de GitHub (no por cuota de minutos). Supabase/Wallet ya OK. Frase para pegarle al Claude del
+móvil: *«Mira docs/briefs/brief-crucero-verificar-pages.md y comprueba Pages 4.16.1»*.
 
-⚠ `docs/memoria/pendiente-manana-4-12-0.md` retrata una noche de julio y es un espejo generado
-(`npm run memoria`, **no se edita a mano**): sus puntos ya están hechos.
+### Hecho esta noche (no reabrir)
+
+- 4.16.0/4.16.1 en `main`: notis Google Wallet, migración 0020, presupuesto servidor=app, APK 39.
+- Guardián WEBDEBUG + `npm run release:apk` (para que el próximo deploy no sea otro calvario).
+
+### Al volver del crucero (semana siguiente)
+
+Inventario único: [`docs/memoria/mi-cartera-backlog-2026-08.md`](docs/memoria/mi-cartera-backlog-2026-08.md)
++ foto en `docs/ROADMAP.md`. MyInvestor nativo y el resto **no** se tocan en el viaje.
+
+⚠ `docs/memoria/pendiente-manana-4-12-0.md` es espejo viejo (**no editar a mano**).
 **La foto de ahora es `docs/ROADMAP.md`.**
 
 Detalle y checklist en `docs/ROADMAP.md` y `docs/TESTING.md`. **No promocionar sin su OK** en el panel.

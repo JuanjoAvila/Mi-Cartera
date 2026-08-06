@@ -1,8 +1,10 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-06 · **v4.16.1** — **EN PRODUCCIÓN**. APK limpia **39 / 4.16.1**: sin
-> franja nativa bajo la cámara (`postSplashScreenTheme` + WEB_DEBUG off en release). La 4.16.0
-> trae presupuesto que cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
+> Estado a 2026-08-06 · **v4.16.1** — **EN `main` / APK 39**. Si Pages aún enseña 4.15.0, es
+> outage de GitHub (no cuota de minutos): verificar con
+> [`docs/briefs/brief-crucero-verificar-pages.md`](briefs/brief-crucero-verificar-pages.md).
+> APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae presupuesto que
+> cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
 >
 > Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
 > presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
