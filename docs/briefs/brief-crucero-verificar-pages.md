@@ -99,3 +99,16 @@ de la APK de Wallet de esta noche. En fotogramas se ve Inicio+Gastos a la vez (p
 Inicio mientras el cuerpo es Gastos) — misma familia que el host transparente / season-glow
 (glow22). **Prueba barata al volver:** Ajustes → Apariencia → Temática → **Ninguna**; si el
 parpadeo desaparece, el culpable es la ruta `html[data-season]`. No abrir fix gordo en el crucero.
+
+**Pista 2026-08-06 21:55 (su captura):** en **Cartera** (última pestaña), si tiras **más a la
+derecha** (no hay tab) y mantienes el dedo, se ve una **franja/capa negra** al borde derecho —
+el contenido se desplaza y deja ver lo que hay detrás del carrusel (`.viewport` / portal
+`.season-glow` / `--bg`). Sospecha suya: esa misma capa es la que **parpadea** al scrollear en
+cualquier tab. Hipótesis de trabajo al volver:
+
+1. El gesto de tabs **no clampa** el `translate` en el borde (rubber-band más allá de 0…n−1).
+2. Al tocar / empezar gesto, un frame con host transparente o sin `visibility:hidden` en hermanas
+   deja ver ese fondo negro → “flicker”.
+3. Repro mínimo: Cartera → arrastrar hacia la derecha hasta ver la franja; A/B con temática Ninguna.
+
+Captura de referencia: la que mandó por chat (Cartera con hueco negro a la derecha).
