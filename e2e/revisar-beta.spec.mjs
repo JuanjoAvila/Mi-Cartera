@@ -217,7 +217,18 @@ test("✓, «no lo puedo probar» Y los ✗ con su comentario se heredan entre c
      acababa de escribir a mano — el panel no sabe si la compilación nueva ha tocado ese punto, así
      que resetear la cruz es apostar SU trabajo a que sí. */
   await abrirRevisionBeta(page);
+  /* Un hotfix corto (p. ej. 4.16.1 con 2 viñetas) no llega a 3 puntos: el escenario de herencia
+     necesita tres. Rellenamos la nota en memoria SOLO para este test — no toca el bundle real. */
   await page.evaluate(() => {
+    const base = mcVerBase(CONFIG.APP_VERSION);
+    const notes = (RELEASE_NOTES || []).find(function(n){ return n.v === base; }) || RELEASE_NOTES[0];
+    if (notes && notes.items) {
+      ["es", "en", "ca"].forEach(function(lang) {
+        const arr = notes.items[lang];
+        if (!Array.isArray(arr)) return;
+        while (arr.length < 3) arr.push("punto sintético e2e " + arr.length);
+      });
+    }
     const items = betaChecklist(CONFIG.APP_VERSION).items;
     store.set("_betaReviewOk", { [items[0]]: "ok", [items[1]]: "na", [items[2]]: "ko" });
     store.set("_betaReviewNotas", { [items[2]]: "sigue pasando igual" });
