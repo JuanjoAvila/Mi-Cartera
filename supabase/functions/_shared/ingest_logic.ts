@@ -55,7 +55,14 @@ const TRAS_EN = /\ben\s+(.+)$/i;
  * dejan al quitarlos.
  */
 export function limpiarTexto(s: string): string {
+  // MOJIBAKE (bytes reales de su móvil, `dumpsys notification --noredact`, 2026-08-06): el título
+  // era `10638 CORNELLA` + U+00C2 + U+009F + ` SPLAU SC`. Es UTF-8 (C2 9F) leído como Latin-1, o
+  // sea UN carácter partido en dos. Quitando solo el control quedaba «CORNELLAÂ SPLAU SC», con la
+  // Â huérfana en mitad del nombre y para siempre en el histórico: la pareja se sustituye ENTERA
+  // por UN ESPACIO, no por nada: cuando lo partido era un espacio duro (C2 A0) quitarlo del todo
+  // pegaba las palabras («CAFEÂ CENTRAL» → «CAFECENTRAL»). Rango 0x80-0xA0 = lo que deja C2 xx.
   return String(s || "")
+    .replace(/Â./g, (m) => { const c = m.codePointAt(1) || 0; return c >= 0x80 && c <= 0xa0 ? " " : m; })
     .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028\u2029\ufeff]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

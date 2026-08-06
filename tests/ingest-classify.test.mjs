@@ -24,7 +24,9 @@ const { clasificar, extraerComercio, categorizar, limpiarTexto } =
 // Los caracteres sucios se construyen, no se escriben: si se pegan tal cual, el propio fichero de
 // test se vuelve binario para git y el diff deja de leerse.
 const NUL = String.fromCharCode(0);          // tumba el INSERT en Postgres
-const CTRL = String.fromCharCode(0x85);      // la «cajita» invisible de la noti de Splau
+const CTRL = String.fromCharCode(0x9f);      // el control REAL de la noti de Splau, leído del móvil
+const MOJI = String.fromCharCode(0xc2);      // la «Â» que deja el UTF-8 leído como Latin-1
+const NBSP = String.fromCharCode(0xa0);      // espacio duro: la otra mitad del mismo destrozo
 const ZWSP = String.fromCharCode(0x200b);    // espacio de ancho cero
 
 function t(name, fn) {
@@ -107,11 +109,30 @@ for (const [texto, titulo] of RUIDO) {
 
 /* ── El gasto de Splau (2026-08-06) ───────────────────────────────────────────────────────────
    El nombre llegó del datáfono con basura de codificación. Un invisible en medio ensucia el
-   histórico; un NUL tumba el INSERT en Postgres y el gasto no se apunta en ningún sitio. */
+   histórico; un NUL tumba el INSERT en Postgres y el gasto no se apunta en ningún sitio.
+
+   Los bytes de aquí abajo NO son un ejemplo: son los que llevaba la notificación de verdad, leídos
+   de su móvil con `adb shell dumpsys notification --noredact`. El título era
+   `10638 CORNELLA` + U+00C2 + U+009F + ` SPLAU SC`, o sea UTF-8 (C2 9F) leído como Latin-1: un
+   carácter partido en dos. Antes se quitaba solo el control y quedaba «CORNELLAÂ SPLAU SC», con la
+   Â huérfana metida en el histórico para siempre; ahora se va la pareja entera.
+
+   (Y de paso: U+009F no es un NUL, así que Postgres lo habría aceptado. Esta fila no se perdió por
+   la codificación — se perdió porque la noti era de Google Wallet y el lector no la escuchaba.) */
 t("comercio con basura de codificación → se limpia, no se pierde", () => {
-  const texto = "Has gastado 76,08 € en 10638 CORNELLAÂ" + CTRL + " SPLAU SC";
+  const texto = "Has gastado 76,08 € en 10638 CORNELLA" + MOJI + CTRL + " SPLAU SC";
   assert.equal(clasificar(texto, "Trade Republic"), "gasto");
-  assert.equal(extraerComercio(texto, "Trade Republic"), "10638 CORNELLAÂ SPLAU SC");
+  assert.equal(extraerComercio(texto, "Trade Republic"), "10638 CORNELLA SPLAU SC");
+});
+
+t("una Â de verdad no se toca", () => {
+  assert.equal(limpiarTexto("MÂCON VINS"), "MÂCON VINS");
+  assert.equal(limpiarTexto("CORNELLÀ SPLAU"), "CORNELLÀ SPLAU");
+});
+
+t("el espacio duro partido separa, no pega las palabras", () => {
+  // C2 A0 mal descodificado: si se quitara entero saldría «CAFECENTRAL».
+  assert.equal(limpiarTexto("CAFE" + MOJI + NBSP + "CENTRAL"), "CAFE CENTRAL");
 });
 
 t("un NUL en el nombre no llega nunca a la base de datos", () => {

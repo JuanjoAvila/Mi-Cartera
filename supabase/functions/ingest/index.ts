@@ -34,6 +34,7 @@ import {
   categorizar, clasificar, extraerComercio, extraerConcepto, extraerImporte, extraerPersona, type Tipo,
 } from "../_shared/ingest_logic.ts";
 import { bucketKey, callerIp, rateLimit } from "../_shared/ratelimit.ts";
+import { bancosDeGastoDiario, cuentaParaPresupuesto, statsDelMes } from "../_shared/presupuesto.ts";
 
 /**
  * Comparación en tiempo CONSTANTE del token (2026-07-24).
@@ -181,15 +182,26 @@ Deno.serve(async (req) => {
   let month: Record<string, number> | null = null;
   try {
     const { data: st } = await supabase.from("app_state").select("data").eq("user_id", userId).maybeSingle();
-    const budget = Number(st?.data?.budget) || 0;
     const now = new Date(fecha);
-    const desde = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+    const desdeMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    const desde = new Date(desdeMs).toISOString();
+    // `cat` y `source` hacen falta para contar como cuenta la app: sin ellos esto sumaba TODO
+    // —los recibos del banco de fijos y las inversiones— y el aviso salía por las nubes.
     const { data: rows } = await supabase
-      .from("expenses").select("importe")
+      .from("expenses").select("importe,cat,source")
       .eq("user_id", userId).gte("fecha", desde);
-    const after = (rows || []).reduce((a, r) => a + (Number(r.importe) || 0), 0);
-    month = { spent: Math.round(after * 100) / 100, budget };
-    if (tipo === "gasto" && budget > 0) {
+    const stats = statsDelMes(rows || [], st?.data, desdeMs);
+    const budget = stats.budget;
+    const after = stats.against;
+    // `spent` va con la cifra que PINTA la app (shown), no con el bruto: el widget y la cabecera
+    // de Gastos tienen que decir lo mismo («misma cifra en todos sitios», 2026-08-05).
+    month = { spent: stats.shown, budget, against: after };
+    // Y si el gasto recién apuntado NO cuenta para el presupuesto —banco de recibos, inversión,
+    // traspaso— la cifra no se ha movido: avisar sería avisar por algo que él no ve subir.
+    const mueveElPresupuesto = cuentaParaPresupuesto(
+      { importe, cat, source: "macrodroid" }, bancosDeGastoDiario(st?.data),
+    );
+    if (tipo === "gasto" && budget > 0 && mueveElPresupuesto) {
       const before = after - importe;
       // Umbrales 50/95 añadidos 2026-07-18 (petición: avisos aunque la app esté cerrada —
       // esta respuesta la renderiza el lector nativo, así que funciona en frío).
