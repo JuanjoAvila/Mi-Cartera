@@ -126,37 +126,133 @@ public class TrExpenseListener extends NotificationListenerService {
         dd.edit().putInt("sig", sig).putLong("ts", now).apply();
 
         new Thread(() -> {
+            String body;
             try {
-                String body = new JSONObject()
+                /* La FECHA se sella AQUÍ, con el reloj del momento de la compra, y viaja en el
+                   cuerpo. Por eso un reintento tardío sigue apuntando el gasto en su día y su hora
+                   —no en la de la reconexión— y el dedup del servidor (mismo importe a <10 min) lo
+                   reconoce como el mismo movimiento si el primer envío llegó a colarse. */
+                body = new JSONObject()
                         .put("texto", text)
                         .put("titulo", title)
                         .put("fecha", String.valueOf(System.currentTimeMillis()))
                         .toString();
-
-                // EL TOKEN VIAJA EN CABECERA, NO EN LA URL (seguridad, 2026-07-25). Un `?token=…`
-                // acaba en sitios donde no debería: logs de acceso del proxy, historial de
-                // peticiones, trazas de error, cabeceras Referer. Es la única credencial que
-                // protege la función que apunta gastos en tu cuenta, así que fuera del query
-                // string. La Edge Function ya aceptaba `x-ingest-token` desde el principio, de
-                // modo que un APK viejo con el token en la URL SIGUE FUNCIONANDO: se puede
-                // desplegar sin coordinar versiones.
-                String[] parts = splitIngest(INGEST_URL);
-                HttpURLConnection conn = (HttpURLConnection) new URL(parts[0]).openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                if (!parts[1].isEmpty()) conn.setRequestProperty("x-ingest-token", parts[1]);
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
-                conn.setDoOutput(true);
-                conn.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
-                int code = conn.getResponseCode();
-                String resp = readAll(code >= 400 ? conn.getErrorStream() : conn.getInputStream());
-                conn.disconnect();
-                if (code >= 200 && code < 300 && !resp.isEmpty()) handleResponse(resp);
-            } catch (Exception ignored) {
-                // v1: se ignora; más adelante, cola de reintentos.
+            } catch (Exception e) {
+                return;   // JSONObject.put solo lanza con claves nulas; aquí no puede pasar.
             }
+            if (postIngest(INGEST_URL, body) == REINTENTAR) encolar(INGEST_URL, body);
+            vaciarCola();
         }).start();
+    }
+
+    // ---- Envío + COLA DE REINTENTOS -------------------------------------------------------
+    // Hasta ahora un fallo de red se tragaba con `catch (Exception ignored)` y ahí moría el gasto:
+    // sin fila, sin aviso y sin error en el panel, porque el error pasaba en el móvil y nunca
+    // llegaba a contarse. Es la explicación de un gasto suelto que no entra y que no se puede
+    // diagnosticar después (el de Splau, 2026-08-06): dentro de un centro comercial la cobertura
+    // va y viene justo cuando llega la noti del pago. Ahora lo que no sale se guarda y se
+    // reintenta en la siguiente noti y al reconectar el lector.
+
+    private static final int OK = 0;
+    private static final int REINTENTAR = 1;   // red caída, timeout, 5xx, 429 → vuelve a intentarse
+    private static final int DESCARTAR = 2;    // 4xx de verdad (token inválido…): reintentar no arregla nada
+
+    /** Prefs de la cola. Una sola clave con un JSONArray: son pocos elementos y raros. */
+    private static final String COLA_PREFS = "micartera_ingest_cola";
+    private static final int COLA_MAX = 30;
+    private static final long COLA_TTL = 7L * 24 * 60 * 60 * 1000;   // una semana
+
+    private int postIngest(String ingestUrl, String body) {
+        HttpURLConnection conn = null;
+        try {
+            // EL TOKEN VIAJA EN CABECERA, NO EN LA URL (seguridad, 2026-07-25). Un `?token=…`
+            // acaba en sitios donde no debería: logs de acceso del proxy, historial de
+            // peticiones, trazas de error, cabeceras Referer. Es la única credencial que
+            // protege la función que apunta gastos en tu cuenta, así que fuera del query
+            // string. La Edge Function ya aceptaba `x-ingest-token` desde el principio, de
+            // modo que un APK viejo con el token en la URL SIGUE FUNCIONANDO: se puede
+            // desplegar sin coordinar versiones.
+            String[] parts = splitIngest(ingestUrl);
+            conn = (HttpURLConnection) new URL(parts[0]).openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            if (!parts[1].isEmpty()) conn.setRequestProperty("x-ingest-token", parts[1]);
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setDoOutput(true);
+            conn.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
+            int code = conn.getResponseCode();
+            String resp = readAll(code >= 400 ? conn.getErrorStream() : conn.getInputStream());
+            if (code >= 200 && code < 300) {
+                if (!resp.isEmpty()) handleResponse(resp);
+                return OK;
+            }
+            // 429 es el freno por IP de la Edge Function y 408 un timeout: ambos pasan solos.
+            if (code >= 500 || code == 429 || code == 408) return REINTENTAR;
+            return DESCARTAR;
+        } catch (Exception e) {
+            return REINTENTAR;   // sin red, DNS caído, timeout… todo esto se cura esperando
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    /** Guarda un envío fallido para más tarde. Con la URL: el token puede cambiar entre medias. */
+    private void encolar(String ingestUrl, String body) {
+        try {
+            android.content.SharedPreferences p = getSharedPreferences(COLA_PREFS, MODE_PRIVATE);
+            org.json.JSONArray cola = leerCola(p);
+            cola.put(new JSONObject().put("u", ingestUrl).put("b", body).put("ts", System.currentTimeMillis()));
+            // Si se desborda se tiran los MÁS VIEJOS: un gasto de hace días ya se habrá apuntado
+            // a mano, el de hace un minuto no.
+            while (cola.length() > COLA_MAX) cola.remove(0);
+            p.edit().putString("items", cola.toString()).apply();
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Reintenta lo que quedó pendiente. Se llama tras cada noti de TR y al conectar el lector
+     * (que es cuando el móvil suele recuperar la red o volver de una reinstalación).
+     * Lo que sigue fallando se queda en la cola; lo caducado se tira.
+     */
+    private void vaciarCola() {
+        android.content.SharedPreferences p = getSharedPreferences(COLA_PREFS, MODE_PRIVATE);
+        org.json.JSONArray cola = leerCola(p);
+        if (cola.length() == 0) return;
+
+        org.json.JSONArray quedan = new org.json.JSONArray();
+        long now = System.currentTimeMillis();
+        for (int i = 0; i < cola.length(); i++) {
+            JSONObject it = cola.optJSONObject(i);
+            if (it == null) continue;
+            String body = it.optString("b", "");
+            String url = it.optString("u", "");
+            if (body.isEmpty() || url.isEmpty()) continue;
+            // Caducado: una semana después el gasto ya no lo arregla nadie desde aquí, y seguir
+            // reintentando en cada noti es martillear al servidor para nada.
+            if (now - it.optLong("ts", now) > COLA_TTL) continue;
+            if (postIngest(url, body) == REINTENTAR) quedan.put(it);
+        }
+        if (quedan.length() == 0) p.edit().remove("items").apply();
+        else p.edit().putString("items", quedan.toString()).apply();
+    }
+
+    private static org.json.JSONArray leerCola(android.content.SharedPreferences p) {
+        try {
+            return new org.json.JSONArray(p.getString("items", "[]"));
+        } catch (Exception e) {
+            return new org.json.JSONArray();
+        }
+    }
+
+    /**
+     * Android desconecta y reconecta este servicio por su cuenta (actualizaciones, memoria, boot).
+     * Reconectar es la mejor pista de que hay red otra vez, así que es el momento de vaciar cola.
+     */
+    @Override
+    public void onListenerConnected() {
+        super.onListenerConnected();
+        new Thread(this::vaciarCola).start();
     }
 
     /**

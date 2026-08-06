@@ -137,6 +137,30 @@ Si no entra:
 - Verifica el **paquete de TR** (`TR_PACKAGE`) — puede no ser `de.traderepublic.app`.
 - Revisa que el **texto** de la notificación contiene el importe (ajusta el filtro del paso 3.1).
 - Confirma que el permiso de *Acceso a notificaciones* está activado.
+- Mira el panel de errores (`npm run errores`): si el gasto llegó al servidor y falló al guardarse,
+  ahí sale. **Si no sale nada, es que no llegó** — y entonces solo hay dos culpables posibles.
+
+### Las dos formas de perder un gasto sin dejar rastro (2026-08-06)
+
+Cuestan de diagnosticar porque no dejan ni fila, ni aviso, ni error en el panel. Las dos están
+arregladas, pero conviene saberlas porque el síntoma es el mismo: «este gasto no me ha entrado».
+
+1. **El comercio se comía la clasificación.** `ingest` tira las notis de ruido de TR (intereses,
+   round-up, 3DS…) buscando palabras clave, y las buscaba en el texto ENTERO. Como el nombre del
+   comercio va en ese texto, un **«BAR STOP»** picaba en `stop` y se descartaba como ruido; igual
+   «EL LÍMITE» (`limit`), «BAR EL DEPÓSITO» (`deposito`) o «CÓDIGO BCN» (`codigo`). Un gasto
+   recurrente en un sitio así **no entra nunca**. Ahora el ruido solo se busca en la frase, no en
+   el nombre del comercio (`clasificar()` en `_shared/ingest_logic.ts`).
+2. **El envío se perdía y nadie lo reintentaba.** El POST a `ingest` iba dentro de un
+   `catch (Exception ignored)`: sin cobertura —dentro de un centro comercial, por ejemplo— el
+   gasto moría ahí. Ahora lo que falla por red, timeout, 5xx o 429 se guarda en una cola local
+   (`micartera_ingest_cola`, una semana de margen) y se reintenta con la siguiente notificación y
+   al reconectar el lector. Un 4xx de verdad (token inválido) no se reintenta: no se arregla solo.
+
+Y un tercero que sí deja error en el panel: el nombre del comercio llega del datáfono y a veces
+trae **basura de codificación** (una compra real salió como `10638 CORNELLAÂ▯ SPLAU SC`). Si lo
+que cuela es un NUL, **Postgres rechaza el INSERT entero**. `limpiarTexto()` los quita antes de
+guardar.
 
 ## 7. Distribuir (para que la usen otros)
 

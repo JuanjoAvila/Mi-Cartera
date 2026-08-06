@@ -2,11 +2,17 @@
 
 // Mantener alineado con KW en src/modules/00-core.js (cliente). Orden importa
 // (pan/cine antes que bares; padel DESPUÉS de bares; viajes antes que ocio; mascotas/energía antes que hogar).
+//
+// «bar» va SIN espacio detrás (2026-08-06). Con `"bar "` sólo picaban los nombres que siguen con
+// algo («BAR PEPE»), y los que ACABAN en bar —«1331 BAR», «SNACK BAR», «LA BOMBETA BAR»— caían en
+// «otros»; «SPORTS BAR» era aún peor, se iba a ocio por "sport". Es el bar de su padre. Sin
+// espacio son 3 letras, así que entra por el camino de `hit()` con límite de palabra, que es
+// justo el que evita que «Barcelona» acabe en bares (bug Kinepolis 2026-07-17).
 export const CATEGORIAS: Record<string, string[]> = {
   pan:        ["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano","panaria","el forn","viena ","entpan","panetteria"],
   cine:       ["cinema","cine","cinesa","yelmo","kinepolis","odeon","mk2","renoir","multicines","entradas.com","atrapalo","ticketmaster","imax","cinemes","filmotech"],
 
-  bares:      ["restaurante","bar ","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans &","pans ","wok ","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub ","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","vending","expendedor","deliveroo","too good to go","toogoodtogo","mcdonalds","burger king","hamburgues","cervecer","cerveseria","fosters hollywood","100 montaditos","comida a domicilio"],
+  bares:      ["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans &","pans ","wok ","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub ","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","vending","expendedor","deliveroo","too good to go","toogoodtogo","mcdonalds","burger king","hamburgues","cervecer","cerveseria","fosters hollywood","100 montaditos","comida a domicilio"],
   padel:      ["padel","pádel","playtomic","paddle","club de padel","club padel","pista padel","padel pro","world padel","premier padel","indoor padel"],
   super:      ["mercadona","lidl","aldi","carrefour","dia ","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria","hipercor","caprabo","condis","ahorramas","gadis","froiz","bm supermarket","family cash","supeco","costco","makro","amazon fresh","glovo market"],
   viajes:     ["booking","airbnb","hotel","hostal","hostel","apartament turistic","apartamento turistico","vueling","iberia","ryanair","easyjet","vuelos","vuelo ","aeropuerto","airport","expedia","trivago","kayak","edreams","rumbo","logitravel","civitatis","getyourguide","marriott","hilton","ibis ","nh hotel","melia","barcelo","ac hotel","travelodge","camping","ferry","balearia","crucero","cruise","turismo"],
@@ -26,6 +32,33 @@ export const CATEGORIAS: Record<string, string[]> = {
 
 export function norm(s: string): string {
   return (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
+}
+
+/**
+ * Dónde EMPIEZA el nombre del comercio dentro del texto de la noti: justo detrás del « en » de la
+ * frase («Has gastado 12,50 € en Mercadona»). Con `\b` delante para que no lo dispare el final de
+ * OTRA palabra — sin él, «Orden ejecutada en Apple» partía por el «en» de «ordEN» y el comercio
+ * salía siendo «ejecutada en Apple».
+ */
+const TRAS_EN = /\ben\s+(.+)$/i;
+
+/**
+ * Deja el texto de la noti en condiciones de guardarse (2026-08-06).
+ *
+ * El nombre que manda la red de tarjetas sale del datáfono y NO siempre es texto limpio: llega
+ * con basura de codificación en medio. En una compra real de Splau el comercio venía como
+ * «10638 CORNELLAÂ▯ SPLAU SC» — una «Â» y un carácter invisible donde iba la «à» de Cornellà.
+ * Eso ensucia el histórico, y si el carácter que cuela es un NUL (`\u0000`) **Postgres rechaza el
+ * INSERT entero**: el gasto no se apunta y lo único que queda es un error en el panel de admin.
+ *
+ * Fuera, pues: controles C0/C1, marcas de dirección y anchos-cero, y los espacios repetidos que
+ * dejan al quitarlos.
+ */
+export function limpiarTexto(s: string): string {
+  return String(s || "")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028\u2029\ufeff]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function categorizar(comercio: string): string {
@@ -64,7 +97,18 @@ export function clasificar(texto: string, titulo: string): Tipo {
     "confirma", "confirmar", "autoriza", "autorizacion", "aprueba", "aprobacion",
     "verifica el pago", "verificacion", "3d secure", "3ds", "pendiente de confirmacion",
   ];
-  if (IGNORAR.some((k) => t.includes(k))) return "ignorado";
+  /* EL RUIDO SE BUSCA EN LA FRASE, NUNCA EN EL NOMBRE DEL COMERCIO (bug 2026-08-06).
+     Antes esta lista se pasaba por el texto ENTERO con `includes`, sin límite de palabra, así que
+     cualquier tienda que llevara una de estas palabras dentro se tiraba a la basura EN SILENCIO:
+     un «BAR STOP» pica en "stop", «EL LÍMITE» en "limit", «BAR EL DEPÓSITO» en "deposito",
+     «CÓDIGO BCN» en "codigo"… Es el gasto del bar que a su padre no le entraba NUNCA, y sin
+     rastro que seguir: un `ignorado` ni se guarda, ni avisa, ni deja error en el panel.
+     Poner límite de palabra no arregla nada —"stop" en «BAR STOP» ya es palabra entera—: lo que
+     falla es DÓNDE se mira. Lo que TR describe (intereses, dividendo, round-up, 3DS, orden
+     ejecutada…) va SIEMPRE en la frase; el nombre del comercio es dato del datáfono, no
+     descripción. Así que se mira la frase y se deja fuera lo que va detrás del « en ». */
+  const frase = norm(titulo + " " + limpiarTexto(texto).replace(TRAS_EN, "en"));
+  if (IGNORAR.some((k) => frase.includes(k))) return "ignorado";
   const esBizum  = t.includes("bizum");
   const recibido = /(has recibido|recibido|recibiste|te ha enviado|te envio|te ha hecho|has rebut|t'ha enviat|received|sent you)/.test(t);
   const enviado  = /(has enviado|enviaste|le has enviado|has hecho un bizum|has fet un bizum|you sent|enviado a)/.test(t);
@@ -86,15 +130,16 @@ export function extraerImporte(texto: string): number {
 }
 
 export function extraerComercio(texto: string, titulo: string): string {
-  const m = (texto || "").match(/en\s+(.+)$/i);
-  if (m) return m[1].trim();
-  return (titulo || "Desconocido").trim();
+  const m = limpiarTexto(texto).match(TRAS_EN);
+  // `limpiarTexto` también en el título: es el otro sitio de donde sale el nombre del comercio,
+  // y viene igual de sucio (es el mismo dato del datáfono).
+  return (m ? limpiarTexto(m[1]) : limpiarTexto(titulo)) || "Desconocido";
 }
 
 export function extraerPersona(texto: string, prep: "de" | "a"): string {
   const re = new RegExp("\\b" + prep + "\\s+([^.\\d€]+?)\\s*(?:por\\s+bizum)?\\s*[.!]?$", "i");
-  const m = (texto || "").match(re);
-  return m ? m[1].trim() : "";
+  const m = limpiarTexto(texto).match(re);
+  return m ? limpiarTexto(m[1]) : "";
 }
 
 /**
@@ -108,7 +153,7 @@ export function extraerPersona(texto: string, prep: "de" | "a"): string {
  * casa — si no lo sabes, no te lo inventes).
  */
 export function extraerConcepto(texto: string, titulo = ""): string {
-  const raw = String(texto || "").replace(/\s+/g, " ").trim();
+  const raw = limpiarTexto(texto);
   if (!raw) return "";
 
   // 1) «concepto: X» / «motivo: X» / «mensaje: X» — lo más explícito, gana siempre.
@@ -128,8 +173,7 @@ export function extraerConcepto(texto: string, titulo = ""): string {
 }
 
 function limpiarConcepto(s: string): string {
-  const out = String(s || "")
-    .replace(/\s+/g, " ")
+  const out = limpiarTexto(s)
     .replace(/^[\s:,;.\-–—]+|[\s:,;.\-–—]+$/g, "")
     .trim();
   // Coletillas que no aportan nada (son el «cómo», no el «qué»).
