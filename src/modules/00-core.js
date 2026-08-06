@@ -445,11 +445,24 @@ function _isMissingNotaCol(err){
   const m=String((err&&err.message)||err||"").toLowerCase();
   return m.indexOf("nota")>=0 && (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
 }
+/* Lo mismo para la divisa original (`importe_orig`/`divisa`, migración 0020, 2026-08-06). Mismo
+   razonamiento y misma prioridad: en un viaje, perder «eran 1.520 ₺» es una lástima; perder el
+   gasto entero porque la migración va un rato por detrás del bundle es inaceptable. */
+var _mcDivisaCols=true;
+function _isMissingDivisaCol(err){
+  const m=String((err&&err.message)||err||"").toLowerCase();
+  return (m.indexOf("importe_orig")>=0 || m.indexOf("divisa")>=0) &&
+         (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
+}
 async function withNotaFallback(run){
-  let r=await run(_mcNotaCols);
+  let r=await run(_mcNotaCols, _mcDivisaCols);
   if(r && r.error && _mcNotaCols && _isMissingNotaCol(r.error)){
     _mcNotaCols=false;                       // esta sesión ya no lo intenta más
-    r=await run(false);
+    r=await run(false, _mcDivisaCols);
+  }
+  if(r && r.error && _mcDivisaCols && _isMissingDivisaCol(r.error)){
+    _mcDivisaCols=false;
+    r=await run(_mcNotaCols, false);
   }
   if(r && r.error) throw r.error;
   return r;
@@ -514,10 +527,17 @@ const cloud = (function(){
       // sin columna nueva en Supabase (feedback 2026-07-16).
       const base={ user_id:session.user.id, fecha:e.date, importe:e.amount, comercio:e.merchant, cat:e.category, source:expenseSourceForCloud(e), no_card:!!e.noCard };
       const nota={ nota:(e.note?String(e.note).slice(0,160):null), nota_edit:!!e.noteEdited };
+      // Lo que tecleó de verdad, cuando no fue en euros (migración 0020). El `importe` sigue siendo
+      // el euro convertido —la app cuenta en euros— pero sin esto, en cuanto el gasto daba la
+      // vuelta por la nube ya no constaba que fueran liras: un viaje entero en € pelados.
+      const divisa={ importe_orig:(e.origCur?Math.abs(Number(e.origAmount)||0):null), divisa:(e.origCur||null) };
       await withNotaFallback(
-        function(conNota){
+        function(conNota, conDivisa){
+          let fila=base;
+          if(conNota) fila=Object.assign({},fila,nota);
+          if(conDivisa) fila=Object.assign({},fila,divisa);
           return sb.from('expenses').upsert(
-            conNota ? Object.assign({},base,nota) : base,
+            fila,
             { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
           );
         }
@@ -1043,6 +1063,10 @@ function expenseFromRow(r){
     noCard: r.no_card ? true : undefined,   // bizum/transfer: fuera del round-up (columna 0005)
     note: r.nota || undefined,              // concepto del banco / mensaje del bizum (columna 0017)
     noteEdited: r.nota_edit ? true : undefined,
+    // La divisa de verdad del apunte (columna 0020). Sin leerla de vuelta, el rastro se perdía en
+    // el primer pull: se escribía al subir y nadie lo bajaba.
+    origAmount: r.importe_orig!=null ? Number(r.importe_orig) : undefined,
+    origCur: r.divisa || undefined,
   };
 }
 

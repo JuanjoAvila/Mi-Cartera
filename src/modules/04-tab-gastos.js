@@ -262,6 +262,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     const cat = editExp.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
     const upd=Object.assign({},orig,{merchant:merch, amount:signed, category:cat});
     if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
+    /* Si toca el importe en euros a mano, el rastro «eran 1.520 ₺» deja de corresponderse: se
+       borra en vez de arrastrarlo. Un dato viejo al lado de uno nuevo no es media verdad, es una
+       mentira — y en el detalle se leerían juntos como si fueran el mismo pago. */
+    if(signed!==orig.amount){ delete upd.origAmount; delete upd.origCur; }
     set(function(s){ return Object.assign({},s,{
       expenses:s.expenses.map(function(x){ return x.id===orig.id?upd:x; }),
       deleted:pushDeleted(s.deleted, keyOfE(orig))
@@ -768,7 +772,14 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
     askConfirm({ title:tf("v4_exp_del_q",{name:(exp.merchant||"—")+" · "+eur(Math.abs(exp.amount))}), sub:t("v4_exp_del_sub"), ok:t("v4_exp_del"), danger:true })
       .then(function(yes){ if(!yes) return; delExpense(exp); onClose(); });
   };
-  const metaBits=[dateLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
+  /* LO QUE MARCABA EL PRECIO (2026-08-06, para el crucero). El importe de arriba es el euro
+     convertido —la app cuenta en euros— pero si el apunte se hizo en otra moneda, aquí se ve lo
+     que ponía de verdad: «1.520,00 ₺». Sin esto, un viaje entero queda en el histórico como euros
+     pelados y no hay forma de saber qué se pagó en qué. */
+  const origLbl=(exp.origCur && exp.origAmount>0)
+    ? NF.format(Math.abs(exp.origAmount))+" "+(CUR_SYM[exp.origCur]||exp.origCur)
+    : null;
+  const metaBits=[dateLbl, origLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
       React.createElement("div",Object.assign({className:"v4-sheet v4-exp-sheet",style:{maxHeight:"90dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
