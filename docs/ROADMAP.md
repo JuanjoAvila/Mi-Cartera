@@ -1,10 +1,18 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-05 · **v4.15.0** — en **`beta`**: tandas `season-fx-soft`, `fx-converter`,
-> `presupuesto-resumen`, `otros-bancos-vista`, `gastos-filtros-ia`, `fix-novedades-nag`,
-> `fix-season-glow`, `gastos-filtros-ubicacion`, `fix-season-portal`, `fix-season-glow-steady`
-> (destello estable al scroll, sin flash). Producción = **4.14.1**.
-> APK **35 / 4.12.0**.
+> Estado a 2026-08-06 · **v4.16.0** — en **`beta`**: tandas `presupuesto-aviso` (el aviso del
+> presupuesto contaba los recibos del banco de fijos y las inversiones: 96% contra el 23% real),
+> `divisa-original` (migración 0020: lo pagado en otra moneda deja de perderse al pasar por la
+> nube) y `notis-wallet` (Google Wallet → Revolut y Google Pay se apuntan solos; el gasto de Splau
+> del 6/8 se perdió por no escuchar ese paquete). Producción = **4.15.0**.
+> APK sigue en **35 / 4.12.0** en `apk.json`: la ruta de Wallet es NATIVA y necesita APK nueva, pero
+> `apk.json` no puede apuntar a una release que todavía no existe (el propio `beta.yml` aborta si lo
+> hace, y el botón de actualizar moriría en un 404). Se compila y se instala por USB para probarla;
+> el bump a **36 / 4.16.0** va cuando se publique la release de verdad.
+>
+> Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
+> presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
+> móvil (4.15.0.19, APK 35) con 12 tandas a cero fallos.
 >
 > Anterior: 2026-08-05 · **v4.14.1** — **EN PRODUCCIÓN**. OTA del pulido de Gastos (importes largos
 > ¥/₺ + letra pequeña) que había entrado tras el sello 4.14.0. Multidivisa de la 4.14.0 sigue.
@@ -62,8 +70,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.15.0** (`beta`; prod = 4.14.1) |
-| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. Sin cambios nativos en la 4.13.0: llega por OTA sobre esta misma APK. |
+| Web / OTA (`VERSION`) | **4.16.0** (`beta`; prod = 4.15.0) |
+| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. ⚠ **La 4.16.0 SÍ trae cambio nativo** (ruta de Google Wallet en `TrExpenseListener`): por OTA NO llega. Se compila igual (35/4.12.0) y se instala por USB para probarla; el bump a 36/4.16.0 y `apk.json` van juntos cuando se publique la release. |
 | Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
 | `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
 

@@ -1,6 +1,7 @@
 package com.micartera.app;
 
 import android.content.Intent;
+import android.os.Build;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 
@@ -59,16 +60,54 @@ public class TrExpenseListener extends NotificationListenerService {
             "com.db.pbc.mibanco"
     ));
 
+    /* GOOGLE WALLET (2026-08-06). El paquete NO está adivinado: se leyó del móvil del usuario con
+       `adb shell pm list packages`. Los otros dos son variantes históricas del mismo Wallet, por si
+       una actualización o un cambio de país devuelve el ID viejo; si no existen, no molestan.
+
+       Wallet importa porque notifica TODAS las tarjetas —incluida Revolut, que aquí no tiene Open
+       Banking— y porque es lo que salta al pagar con Google Pay. El gasto de 76,08 € de Splau del
+       6/8 «desapareció» exactamente por no escuchar aquí: la noti estaba en el móvil, intacta. */
+    private static final Set<String> WALLET_PACKAGES = new HashSet<>(Arrays.asList(
+            "com.google.android.apps.walletnfcrel",   // el de su móvil, verificado
+            "com.google.android.apps.wallet",
+            "com.google.android.gms"
+    ));
+
+    /* El canal de las notis de PAGO de Wallet, leído del móvil con `dumpsys notification`:
+       `tapandpay.transactions.low`. Filtrar por canal es mucho más fino que filtrar por texto —
+       los pases de embarque, las tarjetas de fidelización y los avisos de «tarjeta añadida» van por
+       canales distintos y ni se miran. Si algún día Google lo renombra, Wallet dejará de entrar y
+       ESTA es la línea que hay que mirar (no habrá falsos positivos, solo silencio). */
+    private static final String WALLET_CHANNEL = "tapandpay";
+
     @Override
     public void onNotificationPosted(StatusBarNotification sbn) {
         String pkg = sbn.getPackageName();
         if (TR_PACKAGE.equals(pkg)) {
-            handleTradeRepublic(sbn);
+            handleNotiGasto(sbn, "tr");
+            return;
+        }
+        if (WALLET_PACKAGES.contains(pkg)) {
+            if (esPagoDeWallet(sbn)) handleNotiGasto(sbn, "wallet");
             return;
         }
         if (BANK_PACKAGES.contains(pkg)) {
             handleBankWake(pkg);
         }
+    }
+
+    /**
+     * ¿Esta noti de Wallet es una compra? Se decide por el CANAL, no por el texto.
+     *
+     * `com.google.android.gms` está en la lista de paquetes y publica notificaciones de mil cosas;
+     * sin este filtro entraría cualquiera que llevara un número con decimales. Con el canal, solo
+     * pasan las de pago. Si el móvil es tan viejo que no hay canales (anterior a Android 8), se
+     * prefiere no apuntar nada antes que apuntar basura.
+     */
+    private boolean esPagoDeWallet(StatusBarNotification sbn) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false;
+        String canal = sbn.getNotification().getChannelId();
+        return canal != null && canal.contains(WALLET_CHANNEL);
     }
 
     /**
@@ -95,7 +134,13 @@ public class TrExpenseListener extends NotificationListenerService {
         sendBroadcast(i);
     }
 
-    private void handleTradeRepublic(StatusBarNotification sbn) {
+    /**
+     * Una noti que representa un gasto → `ingest`. `fuente` dice de dónde viene, porque el formato
+     * cambia: Trade Republic lo mete todo en la frase («Has gastado 12,50 € en Mercadona») y Wallet
+     * pone el comercio en el TÍTULO y el importe en el texto. El servidor necesita saberlo para no
+     * escanear el título de Wallet buscando ruido (ahí el título es el nombre del bar).
+     */
+    private void handleNotiGasto(StatusBarNotification sbn, String fuente) {
         // MULTIUSUARIO (migración 0008): la URL de `ingest` con el token del usuario la guarda la
         // web en estas prefs (Ajustes → "Apuntar aquí mis gastos de TR"). Si no la hay, caemos a
         // BuildConfig.INGEST_URL (solo la tiene el APK del creador). Sin ninguna de las dos, no hay
@@ -135,6 +180,7 @@ public class TrExpenseListener extends NotificationListenerService {
                 body = new JSONObject()
                         .put("texto", text)
                         .put("titulo", title)
+                        .put("fuente", fuente)
                         .put("fecha", String.valueOf(System.currentTimeMillis()))
                         .toString();
             } catch (Exception e) {
