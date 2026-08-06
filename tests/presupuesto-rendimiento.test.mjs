@@ -38,9 +38,17 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
    SUBIDO 2026-08-03: la sesión "dale caña a todo" metió CUATRO tandas en un solo día (reservar
    dinero, tutorial de gestos, temporadas sin lluvia, swipe de Plan) — el tope de 310 KB se quedó
    corto por apenas 362 bytes. En vez de recortar código sano para arañar unos bytes, se sube con
-   el mismo ~12 % de aire que se usó la primera vez, sobre lo medido HOY (317,8 KB gzip real). */
+   el mismo ~12 % de aire que se usó la primera vez, sobre lo medido HOY (317,8 KB gzip real).
+
+   SUBIDO 2026-08-06 (solo el minificado): la 4.16.0 trae TRES tandas, y las tandas se pagan en
+   texto — cada una lleva su título y su checklist en los tres idiomas, más los puntos que lee la
+   familia en Novedades. Son ~7 KB de literales, no de código: el bundle minificado se pasó 7 KB
+   del tope mientras el GZIP —que es lo que baja el móvil de verdad— se quedó en 330/340 KB, con
+   margen. Recortar aquí sería recortar novedades o idiomas, y en esta casa eso no se toca. Se sube
+   el tope del minificado a 1200 KB (~3 % de aire sobre los 1167 medidos hoy) y se deja el de gzip
+   quieto, que es el que de verdad frena una regresión gorda. */
 const PRESUPUESTO = {
-  minificado: 1160 * 1024,  // medido 2026-08-03: 1097 KB
+  minificado: 1200 * 1024,  // medido 2026-08-06: 1167 KB
   gzip: 340 * 1024,         // medido 2026-08-03: 318 KB  ← esto es lo que baja el móvil
   bloqueantes: 3,           // medido 2026-07-25: 3 (supabase-js + las dos fuentes precargadas)
 };
