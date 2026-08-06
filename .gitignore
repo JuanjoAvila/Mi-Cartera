@@ -44,3 +44,11 @@ test-results/
 # Caché de Gradle al compilar la APK aquí mismo (GRADLE_USER_HOME local). Son decenas de miles
 # de ficheros de dependencias descargadas: un `git add -A` despistado se los lleva enteros.
 .gradle-local/
+
+# Capturas/scripts de depuración del móvil (destello, gestos, A/B visual…). Un `git add -A`
+# se los tragó enteros el 2026-08-06 (~500 PNG) y hubo que rehacer el commit. No son código.
+/tools/movil/_*.png
+/tools/movil/_*.mjs
+/tools/movil/_vid/
+/tools/movil/verify_*.png
+/tools/movil/diag-*.mjs

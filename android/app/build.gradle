@@ -24,8 +24,8 @@ android {
         applicationId "com.micartera.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 35
-        versionName "4.12.0"
+        versionCode 36
+        versionName "4.16.0"
         buildConfigField "String", "INGEST_URL", "\"${ingestUrl}\""
         buildConfigField "boolean", "WEB_DEBUG", "${webDebug}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

@@ -1,14 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-06 · **v4.16.0** — en **`beta`**: tandas `presupuesto-aviso` (el aviso del
-> presupuesto contaba los recibos del banco de fijos y las inversiones: 96% contra el 23% real),
-> `divisa-original` (migración 0020: lo pagado en otra moneda deja de perderse al pasar por la
-> nube) y `notis-wallet` (Google Wallet → Revolut y Google Pay se apuntan solos; el gasto de Splau
-> del 6/8 se perdió por no escuchar ese paquete). Producción = **4.15.0**.
-> APK sigue en **35 / 4.12.0** en `apk.json`: la ruta de Wallet es NATIVA y necesita APK nueva, pero
-> `apk.json` no puede apuntar a una release que todavía no existe (el propio `beta.yml` aborta si lo
-> hace, y el botón de actualizar moriría en un 404). Se compila y se instala por USB para probarla;
-> el bump a **36 / 4.16.0** va cuando se publique la release de verdad.
+> Estado a 2026-08-06 · **v4.16.0** — **EN PRODUCCIÓN** (aprobada en el móvil y promocionada).
+> Aviso de presupuesto que cuadra, divisa original que sobrevive a la nube (migración 0020) y
+> notis de Google Wallet (ruta nativa). APK **36 / 4.16.0** (release `v4.16.0`).
 >
 > Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
 > presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
@@ -70,10 +64,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.16.0** (`beta`; prod = 4.15.0) |
-| APK (`versionName` / `versionCode`) | **4.12.0** / **35** — release de producción `v4.12.0`. Misma APK que la prerelease `v4.12.0-beta35` (icono/splash nativos). Firma `CN=Mi Cartera`, se instala encima sin perder datos. ⚠ **La 4.16.0 SÍ trae cambio nativo** (ruta de Google Wallet en `TrExpenseListener`): por OTA NO llega. Se compila igual (35/4.12.0) y se instala por USB para probarla; el bump a 36/4.16.0 y `apk.json` van juntos cuando se publique la release. |
-| Anterior | **4.11.0 / 34** (release `v4.11.0`). Trae el arreglo NATIVO de las notis duplicadas (`Notif.idFor` + el worker de fondo respeta el canal). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
-| `public/apk.json` | **35** / 4.12.0 → release `v4.12.0` / `Mi-Cartera-4.12.0.apk` |
+| Web / OTA (`VERSION`) | **4.16.0** (producción) |
+| APK (`versionName` / `versionCode`) | **4.16.0** / **36** — release `v4.16.0`. Trae la ruta nativa de Google Wallet (`TrExpenseListener`). Firma `CN=Mi Cartera`, se instala encima sin perder datos. |
+| Anterior | **4.12.0 / 35** (release `v4.12.0`, icono/splash nativos). Antes: **4.11.0 / 34** (notis duplicadas). ⚠ La **32 quedó inservible** (sin sellar → nunca se actualiza) y su release está retirada. |
+| `public/apk.json` | **36** / 4.16.0 → release `v4.16.0` / `Mi-Cartera-4.16.0.apk` |
 
 ## Pendiente / limitaciones conocidas
 

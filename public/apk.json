@@ -1,6 +1,6 @@
 {
-  "versionCode": 35,
-  "versionName": "4.12.0",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.12.0/Mi-Cartera-4.12.0.apk",
-  "notes": "APK 4.12.0 (35): la app estrena su icono de verdad, en el escritorio y en la pantalla de arranque. Hasta ahora eran el genérico de la herramienta con la que está hecha, y eso no se puede cambiar por actualización web: hace falta instalar la app nueva. Se instala encima de la anterior sin desinstalar nada ni perder datos."
+  "versionCode": 36,
+  "versionName": "4.16.0",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.16.0/Mi-Cartera-4.16.0.apk",
+  "notes": "APK 4.16.0 (36): las compras con Google Pay se apuntan solas (antes solo entraban las de Trade Republic). El aviso del presupuesto cuadra con lo que ves en Gastos, y lo pagado en otra moneda queda guardado. Se instala encima sin desinstalar ni perder datos."
 }
