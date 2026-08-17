@@ -29,7 +29,23 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 **Play Store no se mueve de última.** Pedido 17/8 noche. Sideload / APK de GitHub sigue valiendo.
 
 **Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.18.1** (tandas 3+4 + Recibos/IA/banco del +). El ingest/widget **4.17.2** sigue en el historial de `beta` pero **no se promociona** con esta tanda (misma trampa que la 2: cherry-pick, no `beta` entera).
-Migración **0021** (`ob_name`) entra con el push a `main` (ya en 4.17.1). El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
+Migración **0021** (`ob_name`) ya está en `main` (4.17.0). El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
+
+### ⚠ NO PULSAR «Promocionar beta» VACÍO (17/8 noche, Claude asustó con razón)
+
+`e282ec59` (widget 4.17.2: `presupuesto.ts` + `ingest/index.ts`) está **solo en `beta`**, no en `main`. Comprobado: `git merge-base --is-ancestor e282ec59 origin/main` falla.
+
+Si Actions → Promocionar beta se lanza **sin** `tandas` ni `commits`, hace `merge -X theirs origin/beta`. Eso **sí** mete el widget en `main`.
+
+Matices que Claude mezcló:
+
+1. Ese merge **no despliega Edge Functions al momento.** El push del promote usa `GITHUB_TOKEN` y GitHub no dispara otros workflows (por eso el promote lanza `deploy.yml` a mano para Pages). **No** lanza `supabase.yml`.
+2. El susto de verdad es el **siguiente** `supabase functions deploy` (push humano a `supabase/**` o «Run workflow» de Deploy Supabase): despliega **todas** las funciones del árbol de `main`. Si el widget ya está en `main`, se va a prod aunque nadie lo haya aprobado.
+3. Hay **un** proyecto Supabase. La app en canal beta habla con las mismas funciones que la familia. El widget con la app **cerrada** no se puede re-probar de verdad sin desplegar ingest, y eso lo ven todos.
+
+**Para subir las tandas 3+4 a la familia sin el widget:** vía `commits` del promote (o cherry-pick a mano) de `a2cf7367` + `302f2784` (tocan `ingest_logic.ts` y `categorize`, **no** `ingest/index.ts` ni `presupuesto.ts`). **No** mezclar `e282ec59`. **No** dejar que una IA pulse el promote vacío «porque prod ya está mal».
+
+**No se promociona nada hasta que él lo pida** tras revisar 4.18.1 en el móvil.
 
 ### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
 
