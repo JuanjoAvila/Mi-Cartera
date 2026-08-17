@@ -35,7 +35,9 @@ export const CORE = [
 ];
 
 /**
- * Módulo de UI → specs que lo pintan. Si añades un e2e nuevo, o un módulo nuevo, una línea aquí.
+ * Módulo de UI → specs que lo pintan. Si añades un e2e nuevo, o un módulo nuevo, una línea aquí
+ * (o en CROSSCUTTING si no es de una pantalla). El test `relevant-tests` recorre el disco y
+ * aborta si un spec se queda fuera: es el mismo agujero que un unitario huérfano.
  * Si un módulo no está ni en CORE ni aquí, el planificador se asusta y corre la suite entera
  * (mejor un minuto de más que un verde ciego).
  */
@@ -69,6 +71,16 @@ export const E2E_MAP = [
     "e2e/cartera-inversiones.spec.mjs", "e2e/cartera-orden-hogar.spec.mjs",
   ] },
   { file: "src/modules/15-import-hoja.js", specs: ["e2e/import-hoja.spec.mjs", "e2e/import-docx-pdf.spec.mjs"] },
+];
+
+/** Specs que no son de una pantalla: persistencia, swipes, frames. Si se toca CUALQUIER
+ *  módulo de src (no el núcleo: ese ya dispara todo), van con el recorte. */
+export const CROSSCUTTING = [
+  "e2e/persistencia.spec.mjs",
+  "e2e/swipe-pestanas.spec.mjs",
+  "e2e/rebote-barra-inferior.spec.mjs",
+  "e2e/rendimiento.spec.mjs",
+  "e2e/rendimiento-tabs.spec.mjs",
 ];
 
 const STEPS_DOCS = ["guard-privacy", "docs-frescura", "memoria-espejo"];
@@ -195,6 +207,9 @@ export function planFromFiles(files) {
     else unmapped.push(f);
   }
   if (unmapped.length) return full("módulo sin mapa e2e: " + unmapped[0] + " (añádelo a E2E_MAP o a CORE)");
+
+  // Un cambio de pantalla también puede romper persistencia / swipe / frames.
+  if (srcFiles.length) CROSSCUTTING.forEach((s) => specs.add(s));
 
   const e2e = specs.size ? [...specs].sort() : "none";
   return {

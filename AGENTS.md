@@ -56,9 +56,11 @@ Antes de dar una tanda por terminada, repasa que no dejas:
 - **Ramas y worktrees**: la `tanda/<id>` fusionada, el worktree de un agente que ya entregó.
   ⚠ **Esto sí se pregunta antes de borrar** — puede haber trabajo sin subir de otra sesión.
 - **Un test que nadie ejecuta.** Si escribes `tests/x.test.mjs`, va a `steps` en
-  `scripts/run-tests.mjs`. El runner ya lo comprueba solo y **aborta** si encuentra huérfanos
-  (pasó con `widget-coherente` y `ob-renombrar`: dos guardianes de bugs de dinero publicados sin
-  que nadie los corriera; el verde de Actions decía que vigilaban y no vigilaban nada).
+  `scripts/run-tests.mjs`. Si escribes `e2e/x.spec.mjs`, va a `E2E_MAP` o `CROSSCUTTING` en
+  `scripts/relevant-tests.mjs` (si no, en beta no corre al tocar la pantalla). Si escribes un
+  `*.test.ts` de Deno, va a `denoTests` en el runner. Los tres los comprueba el disco y **abortan**
+  si falta uno (pasó con `widget-coherente` y `ob-renombrar`: dos guardianes de bugs de dinero
+  publicados sin que nadie los corriera; el verde de Actions decía que vigilaban y no vigilaban nada).
 
 La limpieza a fondo de lo ya acumulado es una tarea aparte, apuntada en el inventario. Esta norma
 es para que esa tarea no haga falta una segunda vez.
@@ -196,6 +198,7 @@ Lo que el test **no** puede comprobar, y por tanto va en la checklist de quien e
 |-----------|------------------------------|
 | Una pantalla o dónde se llega a ella | `README.md` (notas rápidas) y `docs/ROADMAP.md` (dónde vive cada cosa) |
 | Estructura de carpetas, scripts o tests | el árbol del `README.md` y `docs/TESTING.md` |
+| Un e2e o un módulo de `src/` nuevo | `E2E_MAP` / `CROSSCUTTING` / `CORE` en `scripts/relevant-tests.mjs` (el test aborta si falta) |
 | Arquitectura, flujo de datos, sincronizaciones | `docs/ARQUITECTURA.md` |
 | Backend, migraciones, secretos o Edge Functions | `docs/SETUP-SUPABASE.md` (y `docs/SETUP-INGEST-TOKEN.md` si es el token) |
 | Nativo Android | `docs/SETUP-ANDROID.md` |
@@ -229,7 +232,7 @@ otra IA, eso **no existe**.
 
 ## 7. Verificar de verdad (no «debería funcionar»)
 
-- **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre **entero** en CI de `main` y al promocionar. En la rama `beta`, `relevant-tests` recorta por carpetas (docs sin Chromium, ingest sin e2e, Gastos solo sus specs); si se toca el núcleo o un workflow, corre todo igual. El mapa vive en `scripts/relevant-tests.mjs`.
+- **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre **entero** en CI de `main` y al promocionar. En la rama `beta`, `relevant-tests` recorta por carpetas (docs sin Chromium, ingest sin e2e, Gastos solo sus specs + transversales). Si se toca el núcleo o un workflow, corre todo igual. El mapa vive en `scripts/relevant-tests.mjs`: **un e2e nuevo sin línea ahí no corre al tocar la pantalla**, y el test `relevant-tests` aborta para que no se duerma. Módulo nuevo de `src/` igual: o `CORE` o `E2E_MAP`, si no, suite entera + el test falla.
 - Sintaxis del monolito: extrae los `<script>` y pásalos por `new vm.Script(...)`. Un `node --check`
   del HTML no vale.
 - Pruébalo **en el navegador** con datos reales antes de cantar victoria. En la v3.100.0, el parser
@@ -343,8 +346,10 @@ son render puro y `npm test` no abre pantallas.
 **Si tocas o rediseñas cualquiera de esas listas, añade un e2e** siguiendo el patrón de
 `e2e/cartera-inversiones.spec.mjs`: siembra estado con `seedLoggedInDashboard(page, overrides)`
 (acepta overrides desde 4.7.1 — no dupliques el objeto de estado entero), navega a la pantalla
-real y asere `toHaveCount`/`toContainText` contra el DOM, no contra el código. No hace falta
-migrar todo de golpe: añade cobertura de la zona que toques, así el hueco se va cerrando solo.
+real y asere `toHaveCount`/`toContainText` contra el DOM, no contra el código. **Y en el mismo
+commit**, una línea en `E2E_MAP` (o `CROSSCUTTING` si no es de una pantalla) — si no, en beta no
+corre al tocar ese módulo. No hace falta migrar todo de golpe: añade cobertura de la zona que
+toques, así el hueco se va cerrando solo.
 
 **Estado en 4.8.0: el hueco de §8 está cerrado** (Deudas, Metas, Recibos y «Tus cuentas» tienen
 e2e en `listas-render.spec.mjs`). El suite pasó de 10 a 34 pruebas. Mapa de lo que hay:

@@ -101,6 +101,23 @@ if (huerfanos.length) {
   process.exit(1);
 }
 
+const denoEnLista = [
+  "supabase/functions/ingest/ingest.test.ts",
+  "supabase/functions/_shared/crypto.test.ts",
+  "supabase/functions/_shared/enablebanking.test.ts",
+  "supabase/functions/delete-account/delete-account.test.ts",
+];
+const buscaDeno = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true })
+  .flatMap((d) => d.isDirectory() ? buscaDeno(dir + "/" + d.name)
+    : (d.name.endsWith(".test.ts") ? [dir + "/" + d.name] : []));
+const denoHuerfanos = buscaDeno("supabase").filter((p) => !denoEnLista.includes(p));
+if (denoHuerfanos.length) {
+  console.error("\n✕ tests Deno que existen pero NADIE ejecuta:\n" +
+    denoHuerfanos.map((p) => "    · " + p).join("\n") +
+    "\n  Añádelos a `denoTests` en scripts/run-tests.mjs.");
+  process.exit(1);
+}
+
 let failed = false;
 const runSteps = plan.steps === "all" || !plan.steps
   ? steps
@@ -116,12 +133,7 @@ for (const [name, cmd] of runSteps) {
 
 if (plan.deno !== false) {
   console.log("\n── ingest-deno ──");
-  const denoTests = [
-    "supabase/functions/ingest/ingest.test.ts",
-    "supabase/functions/_shared/crypto.test.ts",
-    "supabase/functions/_shared/enablebanking.test.ts",
-    "supabase/functions/delete-account/delete-account.test.ts",
-  ];
+  const denoTests = denoEnLista;
   for (const testFile of denoTests) {
     const denoArgs = testFile.includes("crypto.test")
       ? ["test", "--allow-env", testFile]

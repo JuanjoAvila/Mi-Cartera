@@ -119,9 +119,11 @@ Tras v3.108.0 la lógica vive en **`src/modules/*.js`**. No edites `public/index
 - `.github/workflows/test.yml` — push/PR a **main**: suite **entera**
 - `.github/workflows/promote-beta.yml` — al subir a producción: suite **entera**
 - `.github/workflows/beta.yml` — push a **beta**: recorte por carpetas (`scripts/relevant-tests.mjs`).
-  Docs → sin Chromium. Ingest → Deno, sin e2e. Gastos → sus specs. Núcleo (motor, i18n, shell,
-  runner) o un workflow → todo. El mapa e2e se mantiene a mano; un módulo nuevo sin línea en
-  `E2E_MAP`/`CORE` obliga la suite entera a propósito.
+  Docs → sin Chromium. Ingest → Deno, sin e2e. Gastos → sus specs + transversales (persistencia,
+  swipe, frames). Núcleo (motor, i18n, shell, runner) o un workflow → todo.
+  **Si añades un e2e o un módulo de `src/`**, una línea en `E2E_MAP` / `CROSSCUTTING` / `CORE`
+  en el mismo commit: el test `relevant-tests` recorre el disco y aborta si falta. Un unitario
+  nuevo va a `steps` en `run-tests.mjs` (igual: aborta). Un `*.test.ts` de Deno, a `denoTests`.
 
 ## Playwright en modo visual (opcional)
 

@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { planFromFiles, CORE, E2E_MAP } from "../scripts/relevant-tests.mjs";
+import { planFromFiles, CORE, E2E_MAP, CROSSCUTTING } from "../scripts/relevant-tests.mjs";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -49,6 +49,7 @@ t("Gastos acota a sus e2e, no a los 139", () => {
   assert.equal(p.steps, "all");
   assert.ok(Array.isArray(p.e2e));
   assert.ok(p.e2e.includes("e2e/gastos-cajones.spec.mjs"));
+  assert.ok(p.e2e.includes("e2e/persistencia.spec.mjs"), "transversal va con cualquier src");
   assert.ok(!p.e2e.includes("e2e/splash.spec.mjs"), "splash no es de Gastos");
   assert.equal(p.e2e.includes("all"), false);
 });
@@ -89,6 +90,17 @@ t(".gitignore cuenta como meta, no como desconocido", () => {
   const p = planFromFiles([".gitignore", "docs/TESTING.md"]);
   assert.equal(p.playwright, false);
   assert.equal(p.e2e, "none");
+});
+
+t("todo e2e está en el mapa o en transversales (si no, el siguiente se duerme)", () => {
+  const classified = new Set(E2E_MAP.flatMap((m) => m.specs).concat(CROSSCUTTING));
+  const specs = fs.readdirSync(path.join(root, "e2e"))
+    .filter((n) => n.endsWith(".spec.mjs"))
+    .map((n) => "e2e/" + n);
+  const faltan = specs.filter((s) => !classified.has(s));
+  assert.deepEqual(faltan, [], "añádelos a E2E_MAP o a CROSSCUTTING: " + faltan.join(", "));
+  const fantasma = [...classified].filter((s) => !fs.existsSync(path.join(root, s)));
+  assert.deepEqual(fantasma, [], "ruta de spec que no existe: " + fantasma.join(", "));
 });
 
 console.log("  ok");
