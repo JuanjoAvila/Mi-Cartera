@@ -1,7 +1,9 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.16.2** — **EN `beta` / APK 40**, pendiente de su veredicto. El widget
-> de la pantalla de inicio ya no se contradice con la app cerrada (tanda `widget-coherente`).
+> Estado a 2026-08-17 · **v4.17.0** — **EN `beta`**, pendiente de su veredicto. Dos tandas en la
+> misma beta, cada una con su veredicto: `widget-coherente` (el widget ya no se contradice con la
+> app cerrada, **necesita la APK 40**) y `gastos-orden` (qué cuenta y qué no en Gastos, renombrar
+> el «Movimiento» de TR sin duplicar — **solo web + migración 0021**, sin APK nueva).
 >
 > ⚠ **Pages sigue sirviendo 4.15.0 y `apk.json` live apunta a 4.12.0 / código 35**: los tres deploys
 > del 6/8 murieron en el outage de Actions (`job was not acquired by Runner`), no en un build roto.
@@ -72,8 +74,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.16.2** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
-| APK (`versionName` / `versionCode`) | **4.16.2** / **40** — widget coherente con la app cerrada. Firma `CN=Mi Cartera`. |
+| Web / OTA (`VERSION`) | **4.17.0** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
+| APK (`versionName` / `versionCode`) | **4.16.2** / **40** — widget coherente con la app cerrada. Firma `CN=Mi Cartera`. La 4.17.0 no toca nativo: va por OTA sobre esta misma APK. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | repo **40** / 4.16.2 · **live: 35 / 4.12.0** ⚠ — no se movió desde el outage del 6/8 |
 

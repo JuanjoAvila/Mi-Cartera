@@ -1150,6 +1150,12 @@ Object.assign(LANG.es,{
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
   g_no_budget:"no afecta",
+  // Por qué un movimiento no se come el presupuesto (2026-08-17). Van en la línea pequeña de la
+  // fila, así que cortos; el filtro usa los mismos cajones con nombre largo (g_bk_*).
+  g_skip_neutra:"no es un gasto", g_skip_otrobanco:"no es del día a día",
+  g_bk_cuenta:"Gastos que cuentan", g_bk_ingreso:"Ingresos",
+  g_bk_neutra:"Inversión y traspasos", g_bk_otrobanco:"De otros bancos",
+  g_bk_title:"Qué contar", g_bk_all:"Todo",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
   g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo (el banco de gasto diario viene marcado por defecto).",
   g_filters_search:"Buscar categoría…", g_filters_cats:"categorías", g_filters_banks:"bancos",
@@ -1241,6 +1247,10 @@ Object.assign(LANG.en,{
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
   g_no_budget:"doesn't count",
+  g_skip_neutra:"not spending", g_skip_otrobanco:"not day-to-day",
+  g_bk_cuenta:"Spending that counts", g_bk_ingreso:"Income",
+  g_bk_neutra:"Investing and transfers", g_bk_otrobanco:"From other banks",
+  g_bk_title:"What to count", g_bk_all:"Everything",
   g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
   g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all (your daily-spending bank is pre-selected).",
   g_filters_search:"Search category…", g_filters_cats:"categories", g_filters_banks:"banks",
@@ -1331,6 +1341,10 @@ Object.assign(LANG.ca,{
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
   g_no_budget:"no afecta",
+  g_skip_neutra:"no és una despesa", g_skip_otrobanco:"no és del dia a dia",
+  g_bk_cuenta:"Despeses que compten", g_bk_ingreso:"Ingressos",
+  g_bk_neutra:"Inversió i traspassos", g_bk_otrobanco:"D'altres bancs",
+  g_bk_title:"Què comptar", g_bk_all:"Tot",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
   g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot (el banc de despesa diària ve marcat per defecte).",
   g_filters_search:"Cerca categoria…", g_filters_cats:"categories", g_filters_banks:"bancs",
@@ -2111,6 +2125,26 @@ function expenseCountsCash(e, s){
 function expenseCountsBudget(e, s){
   if(!e || CAT_NEUTRAS[e.category]) return false;
   return expenseCountsCash(e, s);
+}
+/* EN QUÉ CAJÓN VA CADA MOVIMIENTO (2026-08-17).
+   Su queja al volver del crucero: «hay bastante caos entre gastos que cuentan, ingresos y
+   movimientos que no cuentan, sean inversiones o movimientos sin más». Y tenía razón: la lista
+   marcaba con un «no afecta» genérico tanto una inversión como un recibo de Sabadell, que no se
+   parecen en nada. Uno es dinero tuyo cambiando de sitio; el otro es un gasto de verdad que
+   simplemente no sale del banco del día a día.
+   Cuatro cajones, excluyentes y en este orden:
+     "ingreso"   → entra dinero.
+     "neutra"    → inversión o traspaso: se mueve, no se gasta.
+     "otrobanco" → gasto real, pero de un banco que no es de gasto diario (los recibos).
+     "cuenta"    → lo que de verdad se come el presupuesto del mes.
+   Devuelve una etiqueta, no un booleano: la fila necesita decir POR QUÉ, y el filtro necesita
+   agrupar por lo mismo. Una sola función para las dos cosas, para que no se separen. */
+function expenseBucket(e, s){
+  if(!e) return "cuenta";
+  if((e.amount||0)<0) return "ingreso";
+  if(CAT_NEUTRAS[e.category]) return "neutra";
+  if(!expenseCountsCash(e, s)) return "otrobanco";
+  return "cuenta";
 }
 // Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
 // despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si

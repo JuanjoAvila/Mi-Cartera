@@ -364,7 +364,18 @@ function importObExpenses(s, txs){
      (mismo importe ±3 días contra lo que entró por otra vía) más el dedup por ext_id y clave. */
   const som=new Date(startOfMonth().getTime() - 8*86400000);
   const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
-  const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
+  /* EL DEDUP USA EL NOMBRE DEL BANCO, NO EL QUE VE EL USUARIO (2026-08-17).
+     Petición suya: poder renombrar el «Movimiento» que deja Trade Republic, que «queda feo». El
+     problema es que renombrar rompía LAS TRES capas de dedup a la vez y el siguiente sync recreaba
+     la fila: TR no manda `ext_id` (todo null, verificado), la clave día|importe|comercio deja de
+     casar en cuanto cambias el comercio, y la red de «sin nombre ±3 días» solo mira gastos de OTRA
+     fuente — el renombrado sigue siendo `ob`. Resultado: el gasto duplicado.
+     Por eso la fila guarda `obName` = lo que dijo el banco, y la clave se calcula con eso. El
+     usuario cambia `merchant` (lo que se lee en pantalla) y el dedup sigue viendo lo de siempre.
+     Las filas de antes de este cambio no tienen `obName`: caen a `merchant`, que en ellas todavía
+     es lo que puso el banco porque nadie las había podido renombrar sin romperlo. */
+  const nameForKey=function(e){ return e.obName!=null ? e.obName : (e.merchant||""); };
+  const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+nameForKey(e); };
   const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
   /* EL MISMO GASTO, CONTADO DOS VECES POR DOS CAMINOS (2026-08-04, caso real medido).
      Sus gastos de Trade Republic YA entran por las notificaciones del móvil (MacroDroid) con el
@@ -415,6 +426,7 @@ function importObExpenses(s, txs){
       const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
         merchant:tx.merchant||"Ingreso", amount:tx.amount,
         category: esTraspasoPropio(s, tx) ? TRASPASO_CAT.id : INGRESO_CAT.id, source:"ob", ent:tx.ent };
+      e.obName=e.merchant;   // lo que dijo el banco: el dedup se queda con esto aunque él lo renombre
       // Ingresos fuera de gasto diario: se ven (Mi ciclo) pero no mueven el presupuesto «gastado».
       if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
       if(tx.id) e.extId=tx.id;
@@ -433,6 +445,7 @@ function importObExpenses(s, txs){
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
       merchant:tx.merchant||"Compra", amount:tx.amount,
       category: esAporteInv ? "inversion" : autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+    e.obName=e.merchant;   // lo que dijo el banco: el dedup se queda con esto aunque él lo renombre
     if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;

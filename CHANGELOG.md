@@ -2,6 +2,38 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.17.0] — 2026-08-17
+### Orden en Gastos (tanda `gastos-orden`)
+
+Tres de las doce cosas que apuntó en el crucero. Sale sin APK nueva: todo es web + una migración.
+La tanda `widget-coherente` de la 4.16.2 sigue en el panel sin aprobar, con sus puntos escritos
+igual para que hereden los ✓ que ya tenía.
+
+1. **La lista metía en el mismo saco cosas que no se parecen.** Sus palabras: «hay bastante caos
+   entre gastos que cuentan, ingresos y movimientos que no cuentan sean inversiones o movimientos
+   sin más». Y era literal: un `no afecta` genérico marcaba igual una inversión (dinero suyo
+   cambiando de sitio) que un recibo de Sabadell (gasto real que no sale del banco del día a día).
+   Ahora hay **cuatro cajones** (`expenseBucket`, 01-i18n.js) y cada fila dice el suyo: «no es un
+   gasto» / «no es del día a día». Un **ingreso ya no se pinta apagado** — entra dinero, no es un
+   gasto descartado.
+2. **Filtro «Qué contar»** al principio del sheet de filtros: cuentan / ingresos / inversión y
+   traspasos / de otros bancos. Misma función que pinta la fila, para que no se separen nunca.
+   Entra en el contador de filtros y en «Limpiar».
+3. **Renombrar el «Movimiento» de Trade Republic sin duplicar el gasto.** Renombrar ya se podía;
+   lo que no se podía era hacerlo sin consecuencias, y esto era un bug de verdad. El dedup de
+   `importObExpenses` tiene tres capas y renombrar **las rompía las tres**: TR no manda `ext_id`
+   (todo null), la clave `día|importe|comercio` deja de casar al cambiar el comercio, y la red de
+   «sin nombre ±3 días» solo mira gastos de otra fuente. Resultado medido: el siguiente sync metía
+   el gasto otra vez.
+   Arreglo: la fila recuerda cómo la llamaba el banco (`obName`, **migración 0021** `ob_name`) y el
+   dedup usa ese nombre. Las filas que ya tenía en el móvil se sellan la primera vez que las toca.
+   Se lee de vuelta en `expenseFromRow` a propósito: no leerla es exactamente lo que le pasó al
+   rastro de la divisa, y aquí perderla significa duplicar el gasto.
+
+Tests: `ob-renombrar` (6 casos, incluido que dos cargos iguales de verdad siguen entrando los dos y
+que el gemelo de MacroDroid sigue tapado) y e2e `gastos-cajones` (4 casos sobre el DOM real).
+Comprobado que el duplicado ocurre con el código anterior y no con este.
+
 ## [4.16.2] — 2026-08-17
 ### El widget se contradecía a sí mismo (tanda `widget-coherente`)
 
