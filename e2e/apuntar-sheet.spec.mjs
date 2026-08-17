@@ -5,7 +5,7 @@ import { seedLoggedInDashboard } from "./fixtures.mjs";
 // ficha de editar gasto (petición 2026-07-18). Y desde 4.2.0 lleva chips de banco.
 test.use({ viewport: { width: 375, height: 812 }, hasTouch: true });
 
-test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }) => {
+test("Apuntar (+): banco en pastilla que se despliega y cierre tirando hacia abajo", async ({ page }) => {
   await seedLoggedInDashboard(page);
   await page.goto("/");
   await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
@@ -18,13 +18,15 @@ test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }
   // Esperar sheetup (.3s): si mides/arrastras a mitad de animación el gesto no cierra (flaky).
   await page.waitForTimeout(450);
 
-  // Banco del apunte: un cuadradito (como filtros en Gastos). Cerrado enseña el banco
-  // de la cuenta sembrada (Sabadell); al tocarlo se despliegan «Sin banco» y el resto.
-  await expect(sheet.locator('[data-testid="ap-bank"]')).toContainText(/Sabadell/);
+  // Banco del apunte: una pastilla (como filtros en Gastos). Al tocarla salen
+  // «Sin banco» y los bancos de las cuentas (Sabadell en el seed).
+  await expect(sheet.locator('[data-testid="ap-bank"]')).toBeVisible();
   await expect(sheet.locator('[data-testid="ap-bank-list"]')).toHaveCount(0);
   await sheet.locator('[data-testid="ap-bank"]').click();
-  await expect(sheet.locator('[data-testid="ap-bank-list"]')).toBeVisible();
-  await expect(sheet.getByRole("button", { name: /Sin banco|No bank|Sense banc/ })).toBeVisible();
+  const bankList = sheet.locator('[data-testid="ap-bank-list"]');
+  await expect(bankList).toBeVisible();
+  await expect(bankList.getByRole("button", { name: /Sabadell/ })).toBeVisible();
+  await expect(bankList.getByRole("button", { name: /Sin banco|No bank|Sense banc/ })).toBeVisible();
 
   // Tirar hacia abajo desde la zona del importe → el sheet se va (mismo gesto que editar gasto).
   const bb = await sheet.boundingBox();
