@@ -14,7 +14,7 @@ git fetch --all --prune && git log --oneline -5 refs/heads/beta && cat VERSION
 suele ir una versión por detrás. Si cortas una rama de `main` estás trabajando sobre código viejo:
 tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versión a la gente.
 
-## 2. Las seis trampas que más caro salen
+## 2. Las siete trampas que más caro salen
 
 1. **`beta` es rama Y tag a la vez.** El tag lo usa el workflow del canal de pruebas para publicar
    los assets, así que **no se borra** aunque apunte a un commit viejo. Efecto diario:
@@ -31,6 +31,11 @@ tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versi�
 6. **En `beta` los tests se recortan.** Un `e2e/*.spec.mjs` nuevo va a `E2E_MAP` o `CROSSCUTTING`
    en `scripts/relevant-tests.mjs`; un unitario, a `steps` en `run-tests.mjs`. Si te olvidas, el
    CI aborta (no se duerme). Promote y `main` siguen corriendo la suite entera.
+7. **No afirmar como hecho lo que solo está en el disco.** «En beta», «subido», «EN 4.18.0 beta»
+   en una tabla de estado = el commit está en `origin/beta` (y el móvil lo puede bajar cuando
+   Actions publique). Codeado en esta sesión, sin push, se dice **sin commit / sin push**. Pasó
+   el 17/8 con las tandas 3 y 4: la tabla mentía y él lo cazó. Piénsalo dos veces antes de
+   afirmárselo.
 
 > **Atajo para las de golpe: `npm run salud`** (desde 4.13.0). Contesta en veinte segundos
 > lo que si no se comprueba a mano: si los cuatro sitios donde vive la versión cuadran, si la APK

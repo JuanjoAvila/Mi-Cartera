@@ -1,0 +1,23 @@
+---
+description: No afirmar como hecho lo que solo está en el disco o en esta sesión
+alwaysApply: true
+---
+
+# Hechos, no intenciones (2026-08-17)
+
+Él lo dijo claro: **si se lo afirmas, piénsalo dos veces.** Una tabla de «estado» que pinta algo
+como hecho cuando solo está en el working tree es mentira, y ya pasó: se escribió «EN 4.18.0 beta»
+con las tandas 3 y 4 sin commit y sin push.
+
+## Qué cuenta como real
+
+| Frase | Solo es verdad si… |
+|-------|---------------------|
+| «está en `beta`» / «subido» | `origin/refs/heads/beta` tiene el commit (`git log -1 origin/beta` o el push acabó OK) |
+| «lo puede bajar el móvil» | además, Actions de `beta.yml` publicó `version.json` de esa VERSION |
+| «en producción» / «en Pages» | `main` + Pages, no el disco |
+| «EN vX.Y.Z beta» en un plan o tabla | lo de arriba, no «lo acabo de codear en esta sesión» |
+
+Si está solo en el disco: **«en el working tree, sin commit / sin push»**. Nunca lo disfraces de
+canal. Un plan, un ROADMAP o una tabla de tandas **son afirmaciones**: si no lo has comprobado
+hace un momento, no lo des por sentado.
