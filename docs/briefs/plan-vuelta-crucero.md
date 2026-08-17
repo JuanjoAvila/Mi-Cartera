@@ -1,28 +1,24 @@
 # Plan — Vuelta del crucero (2026-08-17)
 
-## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.17.2)
+## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.17.1 a prod)
 
 Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin preguntar a nadie.
 
 | Tanda | Estado | Notas |
 |---|---|---|
-| 0 · Pages | ⏸ **A PROPÓSITO SIN LANZAR** | Decisión suya: la familia salta de golpe al promocionar. Live sigue 4.15.0 / apk.json 4.12.0 |
-| 1a · Widget coherente | 🔁 **RECHAZADA (17/8 noche)** — incoherencia interna OK; desfase 907 vs 709 | 4.16.2 APK 40. **Causa REAL abajo** (no eran dos compras). Arreglo en **4.17.2** (ingest) |
-| 1b · Revolut −204 del padre | 🔴 **BLOQUEADA** | Su padre corre el NATIVO de 4.12.0: no se puede diagnosticar hasta que promocionemos |
-| 2 · Gastos: qué cuenta / «Movimiento» / banco | 🔁 **RECHAZADA 4.17.0.1** (7 ok / 2 fallos) → arreglada en **4.17.1**, esperando re-prueba | Sin APK (web + migración 0021) |
-| 3 · Filtro en `+` y editar + calendario propio | ⬜ Siguiente candidata | No depende de nada |
+| 0 · Pages | 🚀 **4.17.1 subiendo a producción** | Familia: 4.15.0 → 4.17.1. APK **41**. Widget NO entra. |
+| 1a · Widget coherente | ⏸ **PARADA** — compra mañana | Rechazada 4.16.2 (907 vs 709). Arreglo ingest **4.17.2** sigue en `beta`. **Causa REAL abajo** |
+| 1b · Revolut −204 del padre | 🟡 **Ya se puede mirar** cuando instale APK 41 | Deja el nativo de 4.12.0 |
+| 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 (10 ok / 0 fallos) |
+| 3 · Filtro en `+` y editar + calendario propio | 🔧 **SIGUIENTE** (Cursor) | Reutilizar sheet de Gastos; calendario de la casa, no el nativo |
 | 4 · Más categorías + IA | ⬜ Libre | Buena para Cursor: anchura mecánica × 3 idiomas |
-| 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`, que es lo que estabiliza la 1a. Esperar a que la 1a esté aprobada |
+| 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`. Esperar a que la 1a esté aprobada |
 | 6 · Efectivo | ⬜ Libre | |
 | 7 · Import histórico | ⬜ Plan sellado | `plan-import-historico-seguro.md`, tanda 1 motor |
-| 8 · Parpadeo tabs / overscroll | ⬜ Libre | Necesita que él grabe |
+| 8 · Parpadeo tabs / overscroll / destello | 📌 **NO OLVIDAR** (después de la 3) | Se nota MÁS con temporada, **también SIN**. Flash al scroll + capa rara. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. No mezclar con la 3 |
 
-**Estado del repo:** `beta` = **4.17.2** (por delante de `main` = 4.16.1). APK publicada: **40 / 4.16.2**.
-Migración **0021** (`ob_name`) en el repo — ⚠ las Edge Functions y las migraciones **solo se
-despliegan al pushear a `main`**; `ingest` hay que redesplegarlo a mano desde `beta` para que el
-widget coja el arreglo de las notis gemelas. La 0021 **NO está aplicada todavía**: el cliente
-reintenta sin la columna (`_isMissingObNameCol`), así que el renombrado funciona pero sin la
-protección anti-duplicado hasta que se aplique.
+**Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.17.2** (widget ingest, tanda 1 parada).
+Migración **0021** (`ob_name`) entra con el push a `main`. El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
 
 ### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
 
