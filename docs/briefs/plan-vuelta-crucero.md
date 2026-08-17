@@ -6,30 +6,31 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 
 | Tanda | Estado | Notas |
 |---|---|---|
-| 0 · Pages / familia | ✅ **Prod 4.17.1** · APK **41** | Él: «subió perfecta a prod». Widget NO entra. |
+| 0 · Pages / familia | ✅ **Prod 4.18.1** · APK **41** | Pages `version.json` = 4.18.1. Widget NO entra. |
 | 1a · Widget coherente | ⏸ **PARADA** — hasta que compre y re-pruebe | Rechazada 4.16.2 (907 vs 709). Arreglo ingest **4.17.2** sigue en `beta`, **no** va en 4.18.x. Causa real más abajo. |
 | 1b · Revolut −204 del padre | 🟡 **Se puede mirar** con APK 41 | Dejaba el nativo de 4.12.0 |
 | 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 |
-| 3 · Fecha en `+`/editar + calendario + filtro gasto diario | 🔧 **EN 4.18.1 beta** (re-revisión) | Aprobó el filtro y el calendario. Extra: el banco al apuntar es pastilla que se despliega (como filtros de Gastos), no la fila de chips. |
-| 4 · Más categorías + KW | 🔧 **EN 4.18.1 beta** (re-revisión) | Aprobó heladería/joyería/videojuegos. Extra: **Recibos** + IA en cualquier gasto (ALLOWED completo). |
+| 3 · Fecha en `+`/editar + calendario + filtro gasto diario | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Calendario de la casa. Default = todos los de gasto diario. |
+| 4 · Más categorías + KW | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Heladería, joyería, videojuegos, Recibos. IA en cualquier gasto. |
 | 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`. Esperar a que la 1a esté aprobada |
 | 6 · Efectivo | ⬜ Libre | Opus 1 página, Cursor v1 |
 | 7 · Import histórico 3 meses | ⬜ Plan sellado | `plan-import-historico-seguro.md`. La 3 deja Gastos listo para que entre como un banco más. |
 | 8 · Destello / scroll / overscroll | 📌 **Después de probar la 3** | Se nota MÁS con temporada, **también SIN**. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. |
 | 9 · Ajustes → Dinero | ✅ **HECHO en 4.14.0** | No hay tanda. El plan viejo estaba rancio: presupuesto y bancos de gasto diario ya salieron de Ajustes (viven en Resumen / Cartera); comparar monedas es el conversor. |
 | 10 · MyInvestor nativo | ⬜ Más adelante | WebView nativa si el reCAPTCHA OTA no cuela (ver ROADMAP) |
-| 11 · Hogar · diseño | ⬜ Más adelante | Funciona; falta diseño OK (Claude Design) |
+| 11 · Hogar · diseño | ⬜ Va en la **17** | Funciona; el look entra en la tanda de diseño (mock Claude Design). |
 | 12 · Push FCM | ⬜ Más adelante | Notis reales con la app cerrada, no solo el listener de Wallet |
 | 13 · Pensiones | ⬜ Más adelante | |
 | 14 · Informe mensual | ⬜ Más adelante | Favorito de la pareja. Ya hay imagen WhatsApp; pulir / automatizar |
 | 15 · Splash nativo | ⬜ Más adelante | APK: el hueco antes del icono en Android 12+ |
 | 16 · Limpieza del repo | ⬜ Otra tanda, no visual | Basura + docs rancio. **No** es Clean Code de libro ni va a hacer la app más rápida. Alcance abajo. |
+| 17 · Diseño (mock Claude Design) | ⬜ **Tanda propia** | `docs/design/handoff/` (SPEC-v4 + mockup HTML). No Cursor a ciegas. Lo que no convenza del `+` / Gastos / Hogar. |
 | ∞ · Play Store | ⬜ **LO ÚLTIMO** | Data safety + NotificationListener. **Nunca se adelanta.** Si entra algo nuevo, se inserta ANTES. Si se implementa, él se tienta de publicar, y no quiere hasta que esté hiper pulida a su criterio. |
 
 **Play Store no se mueve de última.** Pedido 17/8 noche. Sideload / APK de GitHub sigue valiendo.
 
-**Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.18.1** (tandas 3+4 + Recibos/IA/banco del +). El ingest/widget **4.17.2** sigue en el historial de `beta` pero **no se promociona** con esta tanda (misma trampa que la 2: cherry-pick, no `beta` entera).
-Migración **0021** (`ob_name`) ya está en `main` (4.17.0). El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
+**Estado del repo:** `origin/main` + Pages = **4.18.1** (`c2e74dc7`, tandas 3+4 **sin** widget). `beta` = **4.18.1** + ingest/widget **4.17.2** en el historial (sigue parado). El ingest 4.17.2 **NO** se redesplegó: el push de `main` llevó `ingest_logic.ts` y `categorize` (Recibos / IA), **no** `ingest/index.ts` ni `presupuesto.ts`.
+Migración **0021** (`ob_name`) ya está en `main` (4.17.0).
 
 ### ⚠ NO PULSAR «Promocionar beta» VACÍO (17/8 noche, Claude asustó con razón)
 
@@ -43,9 +44,7 @@ Matices que Claude mezcló:
 2. El susto de verdad es el **siguiente** `supabase functions deploy` (push humano a `supabase/**` o «Run workflow» de Deploy Supabase): despliega **todas** las funciones del árbol de `main`. Si el widget ya está en `main`, se va a prod aunque nadie lo haya aprobado.
 3. Hay **un** proyecto Supabase. La app en canal beta habla con las mismas funciones que la familia. El widget con la app **cerrada** no se puede re-probar de verdad sin desplegar ingest, y eso lo ven todos.
 
-**Para subir las tandas 3+4 a la familia sin el widget:** vía `commits` del promote (o cherry-pick a mano) de `a2cf7367` + `302f2784` (tocan `ingest_logic.ts` y `categorize`, **no** `ingest/index.ts` ni `presupuesto.ts`). **No** mezclar `e282ec59`. **No** dejar que una IA pulse el promote vacío «porque prod ya está mal».
-
-**No se promociona nada hasta que él lo pida** tras revisar 4.18.1 en el móvil.
+**3+4 ya están en `origin/main`** (`c2e74dc7`, rama `promote/4.18.1` desde `main`, no el botón vacío). Siguen **fuera** `ingest/index.ts` y `presupuesto.ts`. **Sigue sin pulsar Promocionar beta vacío:** eso metería `e282ec59`. **No** dejar que una IA lo pulse «porque prod ya está mal».
 
 ### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
 
@@ -102,11 +101,11 @@ se ve al pedirlo y no come el techo. Así el import de 3 meses entra como un ban
 
 | Qué | Estado real |
 |-----|-------------|
-| `VERSION` en esta rama | **4.18.0** (`beta`, tandas 3+4) |
-| Pages live / familia | **4.17.1** · APK **41** |
-| Widget 4.17.2 | En historial de `beta`, **no** promocionar con la 4.18.0 |
-| Pareja / padre | 4.17.1 por OTA |
-| Crucero pendiente | Destello/overscroll = tanda 8 |
+| `VERSION` en `beta` | **4.18.1** |
+| `origin/main` | **4.18.1** (`c2e74dc7`) · APK **41** |
+| Pages live / familia | **4.18.1** (`version.json` comprobado) · APK **41** |
+| Widget 4.17.2 | En historial de `beta`, **no** está en `main` |
+| Crucero pendiente | Destello = tanda 8. Diseño (mock) = tanda **17**. Play Store = última. |
 
 ---
 
@@ -184,8 +183,8 @@ El plan del 4/8 pedía quitar «Presupuesto mensual» y «Bancos de gasto diario
 ### 10. MyInvestor nativo — más adelante
 Si el intento OTA de reCAPTCHA (4.6.4) no cuela, WebView nativa que cargue myinvestor.es. APK nueva.
 
-### 11. Hogar · diseño — más adelante
-La función existe (Perfil → Tu gente). Falta que se vea bien. Claude Design, no Cursor a ciegas.
+### 11. Hogar · diseño — entra en la tanda **17**
+La función existe (Perfil → Tu gente). El look no se improvisa aquí: va con el mock.
 
 ### 12. Push FCM — más adelante
 Notis de verdad con la app cerrada (presupuesto, bancos caídos), no solo el listener de Wallet/TR.
@@ -213,9 +212,20 @@ Borrar docs y volcados **no acelera el móvil**. Si un día duele el tamaño, es
 - Scripts de un solo uso que se quedaron (`_algo.mjs` en raíz, sondas).
 - ⚠ Ramas y worktrees: **preguntar antes**. Puede haber trabajo sin subir.
 
-**No entra:** reescribir Gastos/Cartera «bonito», extraer servicios, prettier masivo, tocar fórmulas de dinero «de paso».
+**No entra:** reescribir Gastos/Cartera «bonito», extraer servicios, prettier masivo, tocar fórmulas de dinero «de paso». Eso visual es la tanda **17**.
 
-Ya había un 1-BIS en `docs/memoria/mi-cartera-backlog-2026-08.md`. Esta tanda es esa, con el corte de arriba. Cursor o Claude barato; **no** Opus. **No** mezclar con destello (8) ni con import (7).
+Ya había un 1-BIS en `docs/memoria/mi-cartera-backlog-2026-08.md`. Esta tanda es esa, con el corte de arriba. Cursor o Claude barato; **no** Opus. **No** mezclar con destello (8) ni con import (7) ni con diseño (17).
+
+### 17. Diseño — tanda propia, **el mock manda**
+Pedido 17/8 noche: lo que no convenza del `+` / filtros / pantallas **es diseño**, no se mezcla con las tandas de Gastos. Hay mucha chicha ya maquetada:
+
+- Spec: [`docs/design/handoff/SPEC-v4.md`](../design/handoff/SPEC-v4.md) (30 secciones).
+- Mock interactivo: [`docs/design/handoff/mockup-mi-cartera-v4.html`](../design/handoff/mockup-mi-cartera-v4.html) (abrir en el navegador).
+- Capturas de referencia en `docs/design/handoff/capturas/` (gitignoreadas: llevan datos reales).
+
+**Quién:** Claude Design, no Cursor a ciegas. Criterio: pantalla al lado de su captura → indistinguible. Incluye Hogar (tanda 11), el sheet de Apuntar, Gastos, Plan, Cartera, Ajustes.
+
+**No entra:** lógica de dinero, ingest, widget, Play Store.
 
 ### ∞. Play Store — **lo último de lo último**
 Formulario Data safety + justificar NotificationListener. Nombre nuevo (ya hay otra «Mi Cartera» en Play) — ver ROADMAP.

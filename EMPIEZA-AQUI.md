@@ -99,8 +99,7 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy (2026-08-06, noche — sale de crucero):** `VERSION` = **4.16.1** en `main` (Wallet + divisa +
-aviso de presupuesto + APK sin franja bajo la cámara). Circuito de release: [`docs/RELEASE.md`](docs/RELEASE.md).
+**Hoy:** `VERSION` = **4.18.1** en `main` y en Pages (tandas 3+4, sin widget). Circuito: [`docs/RELEASE.md`](docs/RELEASE.md).
 Antes de tocar nada, **`npm run salud`**.
 
 ### Si él escribe desde el viaje («¿ya está Pages?»)
@@ -119,9 +118,10 @@ móvil: *«Mira docs/briefs/brief-crucero-verificar-pages.md y comprueba Pages 4
 
 Plan de tandas + reparto Cursor/Claude:
 [`docs/briefs/plan-vuelta-crucero.md`](docs/briefs/plan-vuelta-crucero.md).
+**Tanda 17 = diseño** (mock Claude Design, `docs/design/handoff/`). No mezclar con dinero ni destello.
+Play Store sigue **la última**. Widget 4.17.2 **no** está en `main`.
 Inventario largo: [`docs/memoria/mi-cartera-backlog-2026-08.md`](docs/memoria/mi-cartera-backlog-2026-08.md).
 Import histórico (ya diseñado): [`docs/briefs/plan-import-historico-seguro.md`](docs/briefs/plan-import-historico-seguro.md).
-Pages live puede seguir en 4.15.0 aunque el repo esté en 4.16.1 — relanzar deploy.
 
 ⚠ `docs/memoria/pendiente-manana-4-12-0.md` es espejo viejo (**no editar a mano**).
 **La foto de ahora es `docs/ROADMAP.md`.**

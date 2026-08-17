@@ -1,6 +1,6 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.18.1** — **EN `beta`**. Tras aprobar las tandas 3 y 4: categoría Recibos, sugerir categoría en cualquier gasto (la IA ya conoce todas las categorías) y el banco al apuntar es una pastilla que se despliega, como los filtros de Gastos. Producción sigue en **4.17.1**. El widget de 4.17.2 **no entra**.
+> Estado a 2026-08-17 · **v4.18.1** — **EN PRODUCCIÓN**. Tandas 3 y 4: Gastos enseña todos los bancos de gasto diario, calendario al apuntar, Recibos, sugerir categoría en cualquier gasto, banco del `+` en pastilla. El widget de 4.17.2 **no entra** (sigue solo en `beta`).
 >
 > Anterior: 2026-08-17 · **v4.18.0** — **EN `beta`**. Tandas 3 y 4: Gastos enseña todos los bancos
 > marcados como gasto diario (no solo el principal), fecha al apuntar/editar con calendario de la
@@ -81,7 +81,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.18.1** (en `beta`) · **live en Pages: 4.17.1** |
+| Web / OTA (`VERSION`) | **4.18.1** (producción / Pages) · `beta` sigue en 4.18.1 con el widget 4.17.2 **sin** promocionar |
 | APK (`versionName` / `versionCode`) | Repo: **4.16.2 / 40**. Live en su móvil: **4.17.1 / 41** (tanda 2). La 4.18.x no toca nativo: va por OTA. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | repo **40** / 4.16.2 (esta rama no ha corrido `release:apk`) |
@@ -95,7 +95,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | **Widget «Puedes gastar»** | El código va en el APK 30 (verificado: strings `Puedes gastar`/`te quedan` en `classes.dex`). Si en el móvil sigue saliendo solo el gasto: el widget se alimenta de `updateWidget` (app → plugin) y MIUI/HyperOS a veces no lo re-pinta. 4.6.2 re-empuja al volver a primer plano; si aún falla, **quitar y re-añadir el widget**. No es bug de código OTA. |
 | **Limpieza del repo (tanda 16)** | Basura, docs rancio, código muerto. **No visual, no es rendimiento, no es Clean Code de libro.** El monolito es a propósito (`docs/adr/0002-monolito.md`). Alcance en `docs/briefs/plan-vuelta-crucero.md` §16. |
 | **Play Store** | **Lo último.** Data safety + NotificationListener. No adelantar: si se implementa, se tienta de publicar antes de que esté pulida a su criterio. Cualquier tanda nueva va **antes**. |
-| **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
+| **Pulido de diseño (tanda 17)** | Mock Claude Design: `docs/design/handoff/` (SPEC-v4 + mockup HTML). **No tocar a ciegas.** Hogar, Apuntar, Gastos, el look. Tanda propia, no mezclar con dinero. |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
 
 ## Lo que apuntó él el 2026-07-26 — HECHO en la 4.12.0
