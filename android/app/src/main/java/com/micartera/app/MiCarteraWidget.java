@@ -43,11 +43,46 @@ public class MiCarteraWidget extends AppWidgetProvider {
         } catch (Exception ignored) {}
     }
 
-    /** Lo llama el lector de notis de TR con el total del mes que devuelve `ingest`. */
-    static void saveMonth(Context ctx, double spent, double budget) {
-        SharedPreferences.Editor ed = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
+    /**
+     * Lo llama el lector de notis (TR / Google Wallet) con lo que devuelve `ingest`, con la app
+     * CERRADA.
+     *
+     * EL WIDGET SE CONTRADECÍA A SÍ MISMO (bug 2026-08-17, visto en el crucero): enseñaba
+     * «891 € de 1.000 · te quedan 109» y justo debajo «✅ Puedes gastar 324 €». Dos cifras que no
+     * pueden salir del mismo cálculo. La causa era que aquí SOLO se escribían `spent` y `budget`,
+     * mientras `build()` seguía leyendo `afford` y `cash` del último push de la app. Al abrir la
+     * app todo cuadraba (un push escribe las cinco cosas a la vez) y a la primera noti volvía a
+     * mentir — exactamente el «se arregla y al rato vuelve» que él describía.
+     *
+     * Ahora esta función mantiene TODAS las piezas que mueve un gasto nuevo:
+     *   · `budgetLeft` viene calculado del servidor (exacto, misma regla que la cabecera de Gastos).
+     *   · `safeLiq` y `cash` los baja aquí el importe del gasto: un gasto de la cuenta diaria hunde
+     *     el saldo de hoy y todo el resto del mes en la misma cantidad, así que restar es exacto
+     *     sin tener que resimular el mes (que es cosa de la app, no de aquí).
+     * Si el gasto no cuenta para el presupuesto (`counts=false`: recibo, inversión, traspaso), no
+     * se toca ninguna de las dos: no ha salido de la cuenta de gasto diario.
+     */
+    static void saveMonth(Context ctx, double spent, double budget, double budgetLeft,
+                          double importe, boolean counts) {
+        SharedPreferences p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        SharedPreferences.Editor ed = p.edit();
         ed.putFloat("spent", (float) spent);
         if (budget > 0) ed.putFloat("budget", (float) budget);
+        // `budgetLeft < 0` es la sentinela de «este ingest no lo manda» (APK nueva + función sin
+        // desplegar). Ahí se deja el último bueno en vez de pintar «Puedes gastar 0 €».
+        if (budgetLeft >= 0) ed.putFloat("budgetLeft", (float) budgetLeft);
+        if (counts && importe != 0) {
+            // Se resta el importe: un gasto va en positivo (baja el saldo) y un ingreso en
+            // negativo (lo sube), que es como los manda `ingest`.
+            // Solo si la app las había dejado puestas: sin base no hay nada que mover, y un 0
+            // inventado aquí sería otra cifra mentirosa.
+            if (p.contains("safeLiq")) {
+                ed.putFloat("safeLiq", (float) Math.max(0, p.getFloat("safeLiq", 0f) - importe));
+            }
+            if (p.contains("cash")) {
+                ed.putFloat("cash", (float) (p.getFloat("cash", 0f) - importe));
+            }
+        }
         ed.putLong("updated", System.currentTimeMillis());
         ed.apply();
         refreshAll(ctx);
@@ -68,8 +103,20 @@ public class MiCarteraWidget extends AppWidgetProvider {
         String cashLabel = p.getString("cashLabel", "");
         long updated = p.getLong("updated", 0L);
 
-        boolean hasAfford = p.contains("afford");
-        double afford = p.getFloat("afford", 0f);
+        /* «PUEDES GASTAR» SE CALCULA AQUÍ, NO SE RECIBE HECHO (2026-08-17).
+           Antes la app empujaba un `afford` ya cocinado y la noti no sabía rehacerlo, así que se
+           quedaba clavado del push anterior mientras `spent` sí avanzaba → el widget se
+           contradecía. Ahora los dos escritores mantienen las mismas dos PRIMITIVAS y la fórmula
+           («lo menor entre lo que te deja el presupuesto y la liquidez que no te deja en rojo»)
+           vive solo aquí. Da igual quién escribió el último: el número siempre es coherente.
+           Es la misma cuenta que hace la app en 11-app-main.js (`widgetAfford`). */
+        boolean hasBudgetLeft = p.contains("budgetLeft");
+        boolean hasSafeLiq = p.contains("safeLiq");
+        double budgetLeft = Math.max(0, p.getFloat("budgetLeft", 0f));
+        double safeLiq = Math.max(0, p.getFloat("safeLiq", 0f));
+        boolean hasAfford = hasBudgetLeft || hasSafeLiq;
+        double afford = hasBudgetLeft && hasSafeLiq ? Math.min(budgetLeft, safeLiq)
+                      : (hasBudgetLeft ? budgetLeft : safeLiq);
 
         /* EL MES CAMBIA Y EL WIDGET NO SE ENTERA (2026-08-01, feedback de su pareja: sale -2 €
            el día 1 y no se resetea hasta que gasta más de lo que le sobró el mes anterior).

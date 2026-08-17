@@ -410,7 +410,19 @@ public class TrExpenseListener extends NotificationListenerService {
 
             JSONObject month = r.optJSONObject("month");
             if (month != null) {
-                MiCarteraWidget.saveMonth(this, month.optDouble("spent", 0), month.optDouble("budget", 0));
+                // `counts` lo decide el servidor con la misma regla que la app (un recibo o una
+                // inversión no mueven el presupuesto ni salen de la cuenta de gasto diario). Si
+                // `ingest` es viejo y no lo manda, se asume que sí cuenta solo cuando es un gasto:
+                // un ingreso nunca debe bajar el saldo del widget.
+                boolean counts = month.has("counts")
+                        ? month.optInt("counts", 0) == 1
+                        : tipo.startsWith("gasto");
+                MiCarteraWidget.saveMonth(this,
+                        month.optDouble("spent", 0),
+                        month.optDouble("budget", 0),
+                        month.optDouble("budgetLeft", -1),   // −1 = ingest viejo, no lo manda
+                        importe,
+                        counts);
             }
         } catch (Exception ignored) {}
     }
