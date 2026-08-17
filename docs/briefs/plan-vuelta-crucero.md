@@ -9,7 +9,7 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | 0 · Pages | ⏸ **A PROPÓSITO SIN LANZAR** | Decisión suya: la familia salta de golpe al promocionar. Live sigue 4.15.0 / apk.json 4.12.0 |
 | 1a · Widget coherente | 🧪 **EN BETA, sin veredicto** | 4.16.2 · **APK 40** · probó 2 de 6 puntos; los 3 que faltan piden un pago real (lo hará mañana en el desayuno) |
 | 1b · Revolut −204 del padre | 🔴 **BLOQUEADA** | Su padre corre el NATIVO de 4.12.0: no se puede diagnosticar hasta que promocionemos |
-| 2 · Gastos: qué cuenta / «Movimiento» / banco | 🧪 **EN BETA, sin veredicto** | 4.17.0 · **sin APK** (web + migración 0021) |
+| 2 · Gastos: qué cuenta / «Movimiento» / banco | 🔁 **RECHAZADA 4.17.0.1** (7 ok / 2 fallos) → arreglada en **4.17.1**, esperando re-prueba | Sin APK (web + migración 0021) |
 | 3 · Filtro en `+` y editar + calendario propio | ⬜ Siguiente candidata | No depende de nada |
 | 4 · Más categorías + IA | ⬜ Libre | Buena para Cursor: anchura mecánica × 3 idiomas |
 | 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`, que es lo que estabiliza la 1a. Esperar a que la 1a esté aprobada |
@@ -23,6 +23,19 @@ despliegan al pushear a `main`**; `ingest` se desplegó a mano el 17/8 con
 `gh workflow run supabase.yml --ref beta`, pero **la 0021 NO está aplicada todavía**: el cliente
 reintenta sin la columna (`_isMissingObNameCol`), así que el renombrado funciona pero sin la
 protección anti-duplicado hasta que se aplique.
+
+**Su rechazo de la 4.17.0.1 y qué se hizo** (`node scripts/errores.mjs --kind=beta`):
+
+1. *«De otros bancos no hace nada y tampoco se ve para qué está, dado que ya puedes elegir los
+   bancos abajo»* → **chip retirado**. No hacía nada porque el filtro de bancos arranca
+   preseleccionado en la cuenta diaria y «de otros bancos» es justo lo contrario: cruce vacío
+   siempre. El cajón `otrobanco` sigue vivo (es el que pinta «no es del día a día» en la fila).
+2. *«Al modificarlo y guardarlo se bloquea la pantalla… solo si tiras para atrás puedes seguir»* →
+   ⚠ **no era de la tanda**: viene de la **v3.108.0** y saltaba con cualquier blur del importe o
+   del nombre. `ExpenseDetailSheet` se pintaba con `!exp || !editExp` pero sus candados iban con
+   `!!exp`; al vaciar `editExp` el sheet desaparecía dejando `overflow:hidden` y el
+   `preventDefault` de todo `touchmove`. Arreglado por los dos lados y con e2e que **cae** con el
+   código anterior.
 
 **Dos flakes de e2e cerrados el 17/8** (los arreglaron dos sesiones aparte, verificados y traídos a
 `beta`): `rendimiento.spec.mjs` (la pasada «fría» usaba fechas que la app ya había parseado → medía

@@ -1424,7 +1424,7 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.17.0", d:"17 ago 2026",
+  {v:"4.17.1", d:"17 ago 2026",
    t:{es:"Orden en Gastos: qué cuenta, qué no, y de qué banco sale",
       en:"Order in Spending: what counts, what doesn't, and which bank it came from",
       ca:"Ordre a Despeses: què compta, què no, i de quin banc surt"},
@@ -1446,9 +1446,10 @@ var RELEASE_NOTES=[
        "Un ingreso NO sale apagado: se ve en verde con su «+», porque entra dinero.",
        "Cada movimiento dice de qué banco sale, también los que apuntas a mano.",
        "Filtros (🎛️) → arriba del todo hay «Qué contar»: elige «Inversión y traspasos» y solo quedan esos.",
-       "Prueba también «Ingresos» y «De otros bancos»; con «Todo» vuelves a verlo entero.",
+       "Prueba también «Ingresos»; con «Todo» vuelves a verlo entero. Ya no está «De otros bancos»: lo quitamos porque para eso valen los chips de banco de abajo.",
        "«Limpiar» quita también ese filtro, no solo las categorías y los bancos.",
-       "Abre un movimiento de Trade Republic que ponga «Movimiento», cámbiale el nombre y guarda.",
+       "★ Abre un movimiento, cámbiale el nombre y guarda: la pantalla SIGUE respondiendo (antes se quedaba muerta hasta darle a atrás).",
+       "Con el nombre ya cambiado, cierra la ficha y vuelve a abrirla: el nombre nuevo sigue puesto.",
        "★ Sincroniza los bancos después de renombrarlo: el gasto NO puede aparecer duplicado (ese era el fallo).",
      ]},
    ],

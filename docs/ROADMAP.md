@@ -1,9 +1,13 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.17.0** — **EN `beta`**, pendiente de su veredicto. Dos tandas en la
-> misma beta, cada una con su veredicto: `widget-coherente` (el widget ya no se contradice con la
-> app cerrada, **necesita la APK 40**) y `gastos-orden` (qué cuenta y qué no en Gastos, renombrar
-> el «Movimiento» de TR sin duplicar — **solo web + migración 0021**, sin APK nueva).
+> Estado a 2026-08-17 · **v4.17.1** — **EN `beta`**. Dos tandas, cada una con su veredicto:
+> `widget-coherente` (el widget ya no se contradice con la app cerrada, **necesita la APK 40**,
+> sin veredicto) y `gastos-orden` (**rechazada en 4.17.0.1** con 7 ok / 2 fallos; los dos
+> arreglados en la 4.17.1 — solo web + migración 0021, sin APK nueva).
+>
+> ⚠ El fallo del **bloqueo de pantalla al guardar** que encontró NO era de la tanda: venía de la
+> v3.108.0 y saltaba con cualquier edición de importe o nombre. El sheet de detalle tenía dos
+> nociones de «abierto» que discrepaban y dejaba el candado de `touchmove` puesto.
 >
 > ⚠ **Pages sigue sirviendo 4.15.0 y `apk.json` live apunta a 4.12.0 / código 35**: los tres deploys
 > del 6/8 murieron en el outage de Actions (`job was not acquired by Runner`), no en un build roto.
@@ -74,7 +78,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.17.0** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
+| Web / OTA (`VERSION`) | **4.17.1** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
 | APK (`versionName` / `versionCode`) | **4.16.2** / **40** — widget coherente con la app cerrada. Firma `CN=Mi Cartera`. La 4.17.0 no toca nativo: va por OTA sobre esta misma APK. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | repo **40** / 4.16.2 · **live: 35 / 4.12.0** ⚠ — no se movió desde el outage del 6/8 |

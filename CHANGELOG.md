@@ -2,6 +2,37 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.17.1] — 2026-08-17
+### Los dos fallos de su rechazo de la 4.17.0.1 (7 ok / 2 fallos)
+
+**1. «Al modificarlo y guardarlo se bloquea la pantalla, no deja hacer nada, solo si tiras para
+atrás ahí puedes seguir».** ⚠ **No era de la tanda: viene de la v3.108.0** (`git log -S` sobre
+`setEditExp(null)`) y saltaba con cualquier blur del importe o del nombre. Se destapó ahora porque
+renombrar el «Movimiento» es lo primero que le da un motivo para editar.
+
+`ExpenseDetailSheet` tenía **dos nociones de «abierto» que podían discrepar**: se pintaba con
+`!exp || !editExp`, pero sus candados (`useBackClose`, y sobre todo `useSheetSwipe`, que pone
+`overflow:hidden` y hace `preventDefault` de **todo** `touchmove` fuera del sheet) iban con `!!exp`
+a secas. `saveEdit` acababa con `setEditExp(null)` → el sheet dejaba de pintarse, `sheetRef` pasaba
+a `null` —así que ningún toque contaba ya como «dentro del sheet»— y el bloqueo se quedaba puesto
+sobre una pantalla vacía. Atrás lo liberaba porque ahí sí se cierra de verdad.
+
+Dos arreglos: `saveEdit` deja `editExp` **sincronizado con lo guardado** en vez de vaciarlo (que
+además es lo que el comentario de `closeSave` prometía: «al perder el foco se guarda, no se
+cierra»), y el sheet usa **una sola condición** para pintarse y para sus candados, de modo que
+ninguna otra vía pueda repetirlo.
+
+**2. «De otros bancos no hace nada y tampoco se ve para qué está, dado que ya puedes elegir los
+bancos abajo».** Las dos cosas ciertas. No hacía nada porque el filtro de bancos arranca
+preseleccionado en la cuenta de gasto diario y «de otros bancos» significa justo «que NO es esa»:
+el cruce salía siempre vacío. Y es el único de los cuatro que ya se podía pedir con los chips de
+banco. **Chip retirado**; el cajón `otrobanco` sigue vivo porque es el que hace que la fila diga
+«no es del día a día», que es la parte que sí servía.
+
+Test e2e nuevo `★ guardar un cambio NO deja la pantalla muerta`: comprueba que tras guardar el
+sheet sigue en pie con lo escrito dentro, y que al cerrarlo la app responde (sin `sheet-open`, sin
+`overflow:hidden`, y se puede cambiar de pestaña). Verificado que **cae** con el código anterior.
+
 ## [4.17.0] — 2026-08-17
 ### Orden en Gastos (tanda `gastos-orden`)
 

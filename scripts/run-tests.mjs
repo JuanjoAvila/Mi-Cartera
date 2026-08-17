@@ -69,12 +69,12 @@ const steps = [
    beta sin que nadie los corriera. Un guardián dormido es peor que ninguno, porque el verde de
    Actions te dice que están vigilando.
    Esto se comprueba ANTES de correr nada: si falta uno, no hay informe que valga. */
-const testsEnDisco = fs.readdirSync(path.join(root, "tests"))
-  .filter((f) => f.endsWith(".test.mjs")).map((f) => "tests/" + f)
-  .concat(fs.existsSync(path.join(root, "tests", "parsers"))
-    ? fs.readdirSync(path.join(root, "tests", "parsers"))
-        .filter((f) => f.endsWith(".test.mjs")).map((f) => "tests/parsers/" + f)
-    : []);
+// Recursivo, y no «tests/ + tests/parsers/ a mano»: con la lista fija, un `tests/loquesea/x.test.mjs`
+// en una carpeta nueva se colaba igual — el mismo agujero, una capa más abajo (aviso de Cursor).
+const buscaTests = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true })
+  .flatMap((d) => d.isDirectory() ? buscaTests(dir + "/" + d.name)
+    : (d.name.endsWith(".test.mjs") ? [dir + "/" + d.name] : []));
+const testsEnDisco = buscaTests("tests");
 const enLaLista = new Set(steps.flatMap(([, cmd]) => cmd.slice(1)));
 const huerfanos = testsEnDisco.filter((p) => !enLaLista.has(p));
 if (huerfanos.length) {
