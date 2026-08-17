@@ -8,6 +8,12 @@
  * de e2e se mantiene a mano, y si se toca el NÚCLEO (dinero, shell, i18n, el runner) se corre
  * TODO. Promote y `main` no usan esto: ahí la suite entera, siempre.
  *
+ * AGUJERO QUE QUEDA (a propósito, 2026-08-17): el guardián caza un spec HUÉRFANO, no uno
+ * MAL COLGADO. Si `gastos-cajones.spec.mjs` se pone bajo `13-hogar.js`, el disco está
+ * contento y `beta` sale verde sin haber abierto Gastos. El mapa es a mano porque un
+ * detector automático mentiría (un spec cubre a veces varios módulos). Un verde en
+ * `beta` ya no pesa lo mismo que un verde en `main`: al promocionar corre la suite entera.
+ *
  * Uso:
  *   node scripts/relevant-tests.mjs --files a.md b.md
  *   node scripts/relevant-tests.mjs --git          (diff HEAD~1, local)

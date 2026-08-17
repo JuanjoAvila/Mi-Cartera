@@ -31,6 +31,9 @@ tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versi�
 6. **En `beta` los tests se recortan.** Un `e2e/*.spec.mjs` nuevo va a `E2E_MAP` o `CROSSCUTTING`
    en `scripts/relevant-tests.mjs`; un unitario, a `steps` en `run-tests.mjs`. Si te olvidas, el
    CI aborta (no se duerme). Promote y `main` siguen corriendo la suite entera.
+   ⚠ El guardián caza el spec **huérfano**, no el **mal colgado**: si `gastos-cajones` se pone
+   bajo otro módulo, `beta` sale verde sin abrir Gastos. Un verde en `beta` no pesa lo mismo
+   que un verde en `main`.
 7. **No afirmar como hecho lo que solo está en el disco.** «En beta», «subido», «EN 4.18.0 beta»
    en una tabla de estado = el commit está en `origin/beta` (y el móvil lo puede bajar cuando
    Actions publique). Codeado en esta sesión, sin push, se dice **sin commit / sin push**. Pasó

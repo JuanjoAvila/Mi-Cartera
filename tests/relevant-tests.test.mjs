@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * El recorte de tests de la rama beta no puede callarse: un mapa mal escrito es el mismo
- * agujero que un test que nadie ejecuta. Estos casos clavan el contrato — docs sin Chromium,
- * ingest sin e2e, Gastos con SUS specs, núcleo con la suite entera.
+ * El recorte de tests de la rama beta no puede callarse: un spec HUÉRFANO (sin línea en
+ * el mapa) es el mismo agujero que un test que nadie ejecuta. Un spec MAL COLGADO (en el
+ * módulo equivocado) NO lo caza este fichero — el mapa es a mano. Un verde en `beta` no
+ * pesa lo mismo que un verde en `main`.
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
