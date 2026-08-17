@@ -66,6 +66,10 @@ El veredicto se lee con `node scripts/errores.mjs --kind=beta`, y las sugerencia
 familia desde la app con `npm run sugerencias`. **Míralas al empezar**: dos de su pareja pasaron
 diez días sin que las leyera nadie, y una era un bug de verdad.
 
+**Play Store es lo último de lo último** (17/8). Sideload sí; publicar en Google no, hasta que él
+diga que está hiper pulida. Si aparece una tanda nueva, va **antes** de Play Store, nunca después.
+Si se implementa Play Store pronto, se tienta de colgarla y no quiere.
+
 ## 4. Cómo se escribe para él
 
 - **Las notas de versión (`RELEASE_NOTES`) las lee toda la familia.** Genéricas y en cristiano:

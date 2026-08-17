@@ -23,8 +23,10 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | 13 · Pensiones | ⬜ Más adelante | |
 | 14 · Informe mensual | ⬜ Más adelante | Favorito de la pareja. Ya hay imagen WhatsApp; pulir / automatizar |
 | 15 · Splash nativo | ⬜ Más adelante | APK: el hueco antes del icono en Android 12+ |
-| 16 · Play Store | ⬜ Más adelante | Data safety + justificar NotificationListener |
-| 17 · Limpieza del repo | ⬜ **Otra tanda**, no visual | Basura + docs rancio. **No** es Clean Code de libro ni va a hacer la app más rápida. Alcance abajo. |
+| 16 · Limpieza del repo | ⬜ Otra tanda, no visual | Basura + docs rancio. **No** es Clean Code de libro ni va a hacer la app más rápida. Alcance abajo. |
+| ∞ · Play Store | ⬜ **LO ÚLTIMO** | Data safety + NotificationListener. **Nunca se adelanta.** Si entra algo nuevo, se inserta ANTES. Si se implementa, él se tienta de publicar, y no quiere hasta que esté hiper pulida a su criterio. |
+
+**Play Store no se mueve de última.** Pedido 17/8 noche. Sideload / APK de GitHub sigue valiendo.
 
 **Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.18.0** (tandas 3+4). El ingest/widget **4.17.2** sigue en el historial de `beta` pero **no se promociona** con esta tanda (misma trampa que la 2: cherry-pick, no `beta` entera).
 Migración **0021** (`ob_name`) entra con el push a `main` (ya en 4.17.1). El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
@@ -180,10 +182,7 @@ Ya hay imagen para WhatsApp (Ajustes → Avanzado + popup día 1). Pulir / que s
 ### 15. Splash nativo — más adelante
 El hueco «algo raro antes del icono» con la app cerrada es `Theme.SplashScreen` en Android 12+. No viaja por OTA → APK.
 
-### 16. Play Store — más adelante
-Formulario Data safety + justificar NotificationListener.
-
-### 17. Limpieza del repo — otra tanda, **no visual**, **no es rendimiento**
+### 16. Limpieza del repo — otra tanda, **no visual**, **no es rendimiento**
 Pedido 17/8 noche: «limpiarme toda la basura, organizarmelo y Clean Code, es un caos a simple vista».
 
 **Qué es (y qué no).** A simple vista parece un caos porque la fuente son 16 JS concatenados a un HTML, i18n a paladas y `10`/`11` gordos. Eso **no es suciedad**: está decidido ([`docs/adr/0002-monolito.md`](../adr/0002-monolito.md)) para que Pages + offline + cualquier IA toquen el mismo repo. Las prácticas de *esta* casa están en `AGENTS.md` (sin JSX, sin deps nuevas, tres idiomas, no inventar euros, tests que abortan si nadie los corre). Un Clean Code de libro (capas, TypeScript, JSX, renombrar módulos por dominio) **rompería** eso y no entra en esta tanda. El ROADMAP ya dice: se reagrupa por dominio **cuando duela**, no antes.
@@ -200,6 +199,11 @@ Borrar docs y volcados **no acelera el móvil**. Si un día duele el tamaño, es
 **No entra:** reescribir Gastos/Cartera «bonito», extraer servicios, prettier masivo, tocar fórmulas de dinero «de paso».
 
 Ya había un 1-BIS en `docs/memoria/mi-cartera-backlog-2026-08.md`. Esta tanda es esa, con el corte de arriba. Cursor o Claude barato; **no** Opus. **No** mezclar con destello (8) ni con import (7).
+
+### ∞. Play Store — **lo último de lo último**
+Formulario Data safety + justificar NotificationListener. Nombre nuevo (ya hay otra «Mi Cartera» en Play) — ver ROADMAP.
+
+**No se implementa hasta que él diga que la app está hiper pulida**, a su criterio. Si se hace antes, se tienta de publicar. Cualquier tanda nueva (limpieza, destello, lo que salga) se inserta **delante**, nunca detrás. El sideload / la APK de GitHub no esperan a esto.
 
 ---
 

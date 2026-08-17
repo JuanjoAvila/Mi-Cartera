@@ -91,8 +91,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 | **MyInvestor reCAPTCHA** | **4.6.4:** intento OTA — la app carga el reCAPTCHA de Google bajo demanda con el **site key de MyInvestor** (que el usuario pega en la tarjeta MI; su web va tras Incapsula y no se puede extraer desde el CI), ejecuta la acción, y reintenta el login con `X-Recaptcha-Token`. **Riesgo:** reCAPTCHA v3 suele atar el token al dominio registrado (`myinvestor.es`); si MI valida el origen, rechazará el token de nuestra WebView → entonces el único camino es una **WebView nativa** que cargue la web de MI (APK). El intento OTA se prueba en 1 min: si el token cuela, resuelto sin tocar nativo. Palancas previas: `x-myinvestor-app`=3.150.0, mensaje humano, `captchaToken` en cabeceras (plumbing listo). |
 | **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
 | **Widget «Puedes gastar»** | El código va en el APK 30 (verificado: strings `Puedes gastar`/`te quedan` en `classes.dex`). Si en el móvil sigue saliendo solo el gasto: el widget se alimenta de `updateWidget` (app → plugin) y MIUI/HyperOS a veces no lo re-pinta. 4.6.2 re-empuja al volver a primer plano; si aún falla, **quitar y re-añadir el widget**. No es bug de código OTA. |
-| **Play Store** | Formulario Data safety + justificar NotificationListener |
-| **Limpieza del repo (tanda 17)** | Basura, docs rancio, código muerto. **No visual, no es rendimiento, no es Clean Code de libro.** El monolito es a propósito (`docs/adr/0002-monolito.md`). Alcance en `docs/briefs/plan-vuelta-crucero.md` §17. |
+| **Limpieza del repo (tanda 16)** | Basura, docs rancio, código muerto. **No visual, no es rendimiento, no es Clean Code de libro.** El monolito es a propósito (`docs/adr/0002-monolito.md`). Alcance en `docs/briefs/plan-vuelta-crucero.md` §16. |
+| **Play Store** | **Lo último.** Data safety + NotificationListener. No adelantar: si se implementa, se tienta de publicar antes de que esté pulida a su criterio. Cualquier tanda nueva va **antes**. |
 | **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
 
@@ -194,7 +194,7 @@ la elección es suya. El registro real lo confirma un agente de la propiedad ind
 
 | Tema | Notas |
 |------|--------|
-| **Play Store** | Cuando quieras publicar |
+| **Play Store** | **Lo último**, cuando él diga que está hiper pulida. No adelantar. |
 | **Pulido visual gordo** | SPEC-v4 / handoff en `docs/design/` |
 | **Logos de banco reales** | Idea 2026-07-18: sustituir el monograma (Sb/Cx…) por el logo del banco. Regla de la casa: cero CDNs → habría que auto-hospedar los ~8 logos habituales en `public/vendor/banks/` (los de Enable Banking vienen de fuera y solo se usan en el picker). |
 | **Freemium / suscripciones** | Idea 2026-07-18 (medio en broma, medio en serio): gratis = cuentas manuales (importe editable a mano); plan de pago = sync bancaria automática. El nombre editable en ambos. La 4.1.0 ya deja la semántica lista (manual = saldo editable; conectada = solo nombre/rol). Para monetizar de verdad faltan pasarela de pago + entitlements en Supabase — se diseña cuando lo pidas, no se mete de tapadillo. |
@@ -218,6 +218,6 @@ Muestra gasto del mes vs presupuesto + saldo de la cuenta diaria.
 1. Bugs en uso (feedback real)  
 2. Features pedidas  
 3. **Cada release:** alinear `VERSION` + `package.json` + `CHANGELOG` + `RELEASE_NOTES` + APK (`build.gradle` + `apk.json` + release GitHub) + `docs/ROADMAP.md`  
-4. Preparación Play Store (cuando quieras)
+4. Play Store: **siempre lo último**. Si se añade algo, va antes. Sideload/APK GitHub no esperan.
 
 Ver [CHANGELOG.md](../CHANGELOG.md) · [ARQUITECTURA.md](ARQUITECTURA.md) · [AMENAZAS.md](AMENAZAS.md) · [ADR](adr/) · [TESTING.md](TESTING.md) · [SENTRY.md](SENTRY.md) · [HOGAR.md](HOGAR.md) · [CATEGORIZE.md](CATEGORIZE.md) · [AGENTS.md](../AGENTS.md)
