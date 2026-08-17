@@ -152,9 +152,18 @@ run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "apk:prep"], {
 });
 
 step("assembleRelease");
-const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
+/* RUTA ABSOLUTA A PROPÓSITO (2026-08-17). Con `shell:true` en Windows esto lo lanza `cmd.exe`, y
+   Git Bash deja puesta `NoDefaultCurrentDirectoryInExePath=1` en el entorno — con esa variable,
+   cmd NO busca el ejecutable en el directorio actual, así que un `gradlew.bat` a secas peta con
+   «no se reconoce como un comando interno o externo» aunque el fichero esté ahí y el `cwd` sea
+   correcto. Pasaba tanto desde Git Bash como desde PowerShell (heredan la variable). Se cita la
+   ruta porque «Mi cartera» lleva espacio. */
+const androidDir = path.join(root, "android");
+const gradlew = process.platform === "win32"
+  ? `"${path.join(androidDir, "gradlew.bat")}"`
+  : "./gradlew";
 run(gradlew, ["assembleRelease", "--no-daemon"], {
-  cwd: path.join(root, "android"),
+  cwd: androidDir,
   env,
   shell: true,
   fail: "assembleRelease falló (¿guardián WEBDEBUG? ¿keystore?)",
@@ -192,7 +201,14 @@ ok(`aapt: ${pkg[1]} ${pkg[3]} (${pkg[2]})`);
 
 const apksigner = findTool(sdkDir, ["apksigner.bat", "apksigner"]);
 if (apksigner) {
-  const certs = runCapture(apksigner, ["verify", "--print-certs", apkSrc], {
+  /* `apksigner` es un .bat en Windows, así que Node lo lanza por `cmd` sí o sí — y por el camino
+     se pierden las comillas: la ruta «E:\Mi cartera\…» llegaba partida por el espacio y apksigner
+     respondía «Unexpected parameter(s) after APK» sobre una APK perfectamente firmada
+     (2026-08-17). Se citan tool y ruta a mano. `aapt` es .exe y no le pasa. */
+  const esBat = /\.bat$/i.test(apksigner);
+  const certs = runCapture(esBat ? `"${apksigner}"` : apksigner,
+    ["verify", "--print-certs", esBat ? `"${apkSrc}"` : apkSrc], {
+    shell: esBat,
     fail: "apksigner verify falló — APK sin firmar o firma rara",
     shell: process.platform === "win32",
   });
