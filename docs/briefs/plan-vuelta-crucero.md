@@ -1,5 +1,41 @@
 # Plan — Vuelta del crucero (2026-08-17)
 
+## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8, tras la beta 4.17.0)
+
+Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin preguntar a nadie.
+
+| Tanda | Estado | Notas |
+|---|---|---|
+| 0 · Pages | ⏸ **A PROPÓSITO SIN LANZAR** | Decisión suya: la familia salta de golpe al promocionar. Live sigue 4.15.0 / apk.json 4.12.0 |
+| 1a · Widget coherente | 🧪 **EN BETA, sin veredicto** | 4.16.2 · **APK 40** · probó 2 de 6 puntos; los 3 que faltan piden un pago real (lo hará mañana en el desayuno) |
+| 1b · Revolut −204 del padre | 🔴 **BLOQUEADA** | Su padre corre el NATIVO de 4.12.0: no se puede diagnosticar hasta que promocionemos |
+| 2 · Gastos: qué cuenta / «Movimiento» / banco | 🧪 **EN BETA, sin veredicto** | 4.17.0 · **sin APK** (web + migración 0021) |
+| 3 · Filtro en `+` y editar + calendario propio | ⬜ Siguiente candidata | No depende de nada |
+| 4 · Más categorías + IA | ⬜ Libre | Buena para Cursor: anchura mecánica × 3 idiomas |
+| 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`, que es lo que estabiliza la 1a. Esperar a que la 1a esté aprobada |
+| 6 · Efectivo | ⬜ Libre | |
+| 7 · Import histórico | ⬜ Plan sellado | `plan-import-historico-seguro.md`, tanda 1 motor |
+| 8 · Parpadeo tabs / overscroll | ⬜ Libre | Necesita que él grabe |
+
+**Estado del repo:** `beta` = **4.17.0** (por delante de `main` = 4.16.1). APK publicada: **40 / 4.16.2**.
+Migración **0021** (`ob_name`) en el repo — ⚠ las Edge Functions y las migraciones **solo se
+despliegan al pushear a `main`**; `ingest` se desplegó a mano el 17/8 con
+`gh workflow run supabase.yml --ref beta`, pero **la 0021 NO está aplicada todavía**: el cliente
+reintenta sin la columna (`_isMissingObNameCol`), así que el renombrado funciona pero sin la
+protección anti-duplicado hasta que se aplique.
+
+**Dos flakes de e2e cerrados el 17/8** (los arreglaron dos sesiones aparte, verificados y traídos a
+`beta`): `rendimiento.spec.mjs` (la pasada «fría» usaba fechas que la app ya había parseado → medía
+caliente contra caliente) y `bancos-acordeon.spec.mjs` (la app premonta las pestañas ocultas a los
+3,2 s y `getByText(...).first()` cogía la copia escondida). Lección reutilizable en
+`docs/memoria/e2e-getbytext-pestanas-premontadas.md`.
+
+**Lo que queda decidido POR ÉL, no por nosotros:** ampliar `settings.expenseBanks` para que los
+gastos de otros bancos cuenten en el presupuesto. Hoy no cuentan **por diseño** (evitar doble
+conteo con los Fijos modelados), pero él lo vive como bug («no sale ni uno»). Tiene coste real.
+La tanda 2 ya hace que al menos **se vea** cuáles son y por qué. **No elegir por él.**
+
+
 **Para:** Cursor (coordinación + tandas de código) y Claude personal (diseño / chicha de dinero).  
 **Repo:** `E:/Mi cartera` · trabajo en **`beta`** · **de uno en uno** · nada a `main` sin su OK.  
 **No fable.** Cursor no lanza Claude: él pega el brief en Claude Code / Claude personal.

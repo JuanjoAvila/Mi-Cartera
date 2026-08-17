@@ -29,15 +29,26 @@ async function abrirMisBancos(page) {
   // banco enfocado el acordeón lo abre a propósito, y eso se prueba aparte.
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("mc-open-banks", { detail: { focus: null } })));
   await expect(page.locator("[data-aspsp]")).toHaveCount(links.length, { timeout: 10_000 });
+  // Y que el panel esté PINTADO, no solo montado: existir en el DOM y ocupar pantalla son dos
+  // estados distintos, y con la máquina cargada se separan. Cada test daba por hecho el segundo.
+  await expect(page.locator("[data-aspsp]").first()).toBeVisible({ timeout: 10_000 });
 }
 
 test("Mis bancos: los tres bancos salen, pero SIN el muro de botones", async ({ page }) => {
   await abrirMisBancos(page);
 
   // Los tres bancos siguen ahí: plegar no puede hacer desaparecer una lista (bug 4.7.1).
+  // El nombre se busca DENTRO de su fila, no suelto por la pantalla: `getByText("Sabadell")` a
+  // pelo casa también con las pestañas que la app premonta en un hueco libre a los 3,2 s
+  // (Cartera: la cuenta sembrada es `ent:"sabadell"`; Plan: «te quedarán 1000 € en Sabadell»),
+  // y esas copias están OCULTAS y van ANTES en el DOM. Con la máquina cargada el premontaje
+  // llegaba antes que esta línea, `.first()` pasaba a ser la copia escondida y el test caía
+  // por mucho timeout que le dieras: no era lentitud, era el elemento equivocado (2026-08-17).
   await expect(page.locator("[data-aspsp]")).toHaveCount(3);
-  await expect(page.getByText("Sabadell", { exact: false }).first()).toBeVisible();
-  await expect(page.getByText("CaixaBank", { exact: false }).first()).toBeVisible();
+  await expect(page.locator('[data-aspsp="Sabadell"]').getByText("Sabadell", { exact: false }).first())
+    .toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-aspsp="CaixaBank"]').getByText("CaixaBank", { exact: false }).first())
+    .toBeVisible({ timeout: 10_000 });
 
   // Antes se pintaban 3 botones por banco (9 en total) de salida. Ahora, ninguno.
   await expect(page.locator("[data-aspsp] .bk-actions")).toHaveCount(0);

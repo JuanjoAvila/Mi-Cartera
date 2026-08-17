@@ -96,17 +96,60 @@ test("parseDate cachea: repetir el trabajo del histórico no cuesta lo mismo la 
   await expect(page.locator(".botnav")).toBeVisible({ timeout: 20_000 });
   await dismissNews(page);
 
-  // Mide dentro de la página: primera pasada (caché fría) vs segunda (caché caliente). Es la
-  // comprobación directa de que la caché de fechas existe y funciona; si alguien la quita, las
-  // dos pasadas cuestan lo mismo y esto lo canta.
-  const { fria, caliente } = await page.evaluate(() => {
+  // Mide dentro de la página: fechas ya vistas (caché caliente) contra fechas nuevas (caché fría).
+  // Es la comprobación directa de que la caché de fechas existe y funciona; si alguien la quita,
+  // las dos pasadas cuestan lo mismo y esto lo canta.
+  //
+  // Dos cosas que este test tuvo mal hasta el 2026-08-17 y que hay que respetar al tocarlo:
+  //
+  // 1) La pasada "fría" NO puede usar las fechas del histórico sembrado: al pintar la pantalla la
+  //    app ya las ha parseado todas, así que la caché llegaba aquí LLENA y las dos pasadas medían
+  //    lo mismo (aciertos de caché contra aciertos de caché). Pasaba de milagro, por ruido. Las
+  //    fechas frías se generan aquí, distintas por construcción y que no ha visto nadie.
+  //
+  // 2) Chromium redondea `performance.now()` a ~0,1 ms (mitigación Spectre). Una sola pasada de
+  //    2.000 fechas cabe entera en un tick, y con la suite completa a varios workers las dos
+  //    medidas salían IDÉNTICAS: `caliente < fría` era falso por empate, no porque la caché
+  //    fallara. Por eso cada pasada se repite VUELTAS veces dentro de la medición.
+  //
+  // Ojo al orden y al volumen: la caché se vacía sola al pasar de 5.000 entradas (`_pdCache`, en
+  // public/index.html), así que la caliente se mide ANTES —con solo las 2.000 del histórico
+  // dentro— y las frías van después, cuando ya da igual que la desborden. Medir la caliente
+  // primero deja además el JIT caliente para las dos: lo que quede de diferencia es la caché, no
+  // el calentamiento del motor.
+  const VUELTAS = 20;
+  const { fria, caliente, llamadas } = await page.evaluate((VUELTAS) => {
     // Los gastos viven en su propia clave desde 4.8.0 (guardado partido).
     const fechas = JSON.parse(localStorage.getItem("micartera_v3_exp") || "[]").map((e) => e.date);
-    const pasada = () => { const t = performance.now(); for (const f of fechas) dateMs(f); return performance.now() - t; };
-    const fria = pasada();
-    let caliente = Infinity;
-    for (let i = 0; i < 3; i++) caliente = Math.min(caliente, pasada());
-    return { fria, caliente };
-  });
-  expect(caliente, `fría ${fria.toFixed(1)} ms · caliente ${caliente.toFixed(1)} ms`).toBeLessThan(fria);
+    const pasada = (arr) => { for (const f of arr) dateMs(f); };
+
+    pasada(fechas);                                   // caché llena, medimos a partir de aquí
+    const t1 = performance.now();
+    for (let i = 0; i < VUELTAS; i++) pasada(fechas);
+    const caliente = performance.now() - t1;
+
+    // Fechas nuevas: un minuto de separación desde 1990, así que ni se repiten entre sí ni chocan
+    // con las del histórico. Se construyen FUERA de la medición (crear las cadenas cuesta más que
+    // parsearlas).
+    const lotes = [];
+    let k = 0;
+    for (let v = 0; v < VUELTAS; v++) {
+      const lote = [];
+      for (let i = 0; i < fechas.length; i++) lote.push(new Date(Date.UTC(1990, 0, 1) + (k++) * 60_000).toISOString());
+      lotes.push(lote);
+    }
+    const t2 = performance.now();
+    for (const lote of lotes) pasada(lote);
+    const fria = performance.now() - t2;
+
+    return { fria, caliente, llamadas: fechas.length * VUELTAS };
+  }, VUELTAS);
+
+  const detalle = `${llamadas} fechas · fría ${fria.toFixed(1)} ms · caliente ${caliente.toFixed(1)} ms`;
+  // Premisa de la medida: con 40.000 llamadas la fría ronda los 13 ms. Si baja de 2 ms es que el
+  // volumen se ha quedado corto y estaríamos comparando ruido con ruido otra vez; que cante aquí.
+  expect(fria, `la pasada fría no es medible, sube VUELTAS (${detalle})`).toBeGreaterThan(2);
+  // Con caché la caliente va ~13x más rápida; sin caché las dos cuestan igual (ratio ~1). El x3
+  // deja sitio de sobra para una máquina cargada sin dejarle pasar una caché desaparecida.
+  expect(caliente, `la 2ª pasada no sale más barata que la 1ª (${detalle})`).toBeLessThan(fria / 3);
 });
