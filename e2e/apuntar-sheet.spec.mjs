@@ -18,8 +18,12 @@ test("Apuntar (+): chips de banco y cierre tirando hacia abajo", async ({ page }
   // Esperar sheetup (.3s): si mides/arrastras a mitad de animación el gesto no cierra (flaky).
   await page.waitForTimeout(450);
 
-  // Banco del apunte: sale el banco de la cuenta sembrada (Sabadell) + «Sin banco».
-  await expect(sheet.getByRole("button", { name: /Sabadell/ })).toBeVisible();
+  // Banco del apunte: un cuadradito (como filtros en Gastos). Cerrado enseña el banco
+  // de la cuenta sembrada (Sabadell); al tocarlo se despliegan «Sin banco» y el resto.
+  await expect(sheet.locator('[data-testid="ap-bank"]')).toContainText(/Sabadell/);
+  await expect(sheet.locator('[data-testid="ap-bank-list"]')).toHaveCount(0);
+  await sheet.locator('[data-testid="ap-bank"]').click();
+  await expect(sheet.locator('[data-testid="ap-bank-list"]')).toBeVisible();
   await expect(sheet.getByRole("button", { name: /Sin banco|No bank|Sense banc/ })).toBeVisible();
 
   // Tirar hacia abajo desde la zona del importe → el sheet se va (mismo gesto que editar gasto).

@@ -11,11 +11,25 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { categorizar } from "../_shared/ingest_logic.ts";
 import { withCors } from "../_shared/cors.ts";
 
+// Misma lista que CATEGORIES en src/modules/00-core.js (más "otros").
+// Si añades una categoría y no está aquí, la IA no puede devolverla — el test
+// `categories` aborta si falta alguna.
 const ALLOWED = [
-  "super", "pan", "bares", "cine", "padel", "ocio", "viajes", "transporte", "parking",
-  "energia", "tasas", "compras", "educacion", "salud", "pelu", "mascotas", "hogar",
-  "regalos", "otros",
+  "super", "pan", "bares", "cine", "padel", "heladeria", "ocio", "gaming", "viajes",
+  "transporte", "parking", "energia", "tasas", "recibos", "compras", "educacion",
+  "salud", "pelu", "mascotas", "hogar", "regalos", "joyeria", "otros",
 ] as const;
+
+const HINTS =
+  "super=supermercado; pan=panadería; bares=restaurantes y comida a domicilio; " +
+  "cine=cines y entradas; padel=pádel; heladeria=helados; " +
+  "ocio=streaming, gym, ocio (Netflix, Movistar Plus, Spotify); gaming=videojuegos (Steam); " +
+  "viajes=hoteles, vuelos, cruceros; transporte=metro, taxi, gasolina; parking=aparcamiento; " +
+  "energia=luz, gas y agua; tasas=impuestos y multas; " +
+  "recibos=facturas periódicas: teléfono, internet, seguro NO médico, alquiler, comunidad, alarma; " +
+  "compras=ropa y tiendas; educacion=cursos y colegios; salud=farmacia, médico, seguro médico; " +
+  "pelu=peluquería y estética; mascotas=veterinario y pienso; hogar=IKEA, bricolaje; " +
+  "regalos=flores y regalos; joyeria=joyas; otros=solo si no encaja ninguna.";
 
 // El origen permitido lo pone `withCors` en la respuesta (lista blanca, ../_shared/cors.ts).
 const cors = { "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type" };
@@ -60,10 +74,11 @@ Deno.serve(withCors(async (req: Request) => {
 
   try {
     const prompt =
-      "Eres un clasificador de gastos personales en España. " +
-      "Devuelve SOLO un JSON {\"category\":\"id\"} con uno de: " +
+      "Clasifica este comercio de un gasto personal en España. " +
+      "Devuelve SOLO un JSON {\"category\":\"id\"}. Ids: " +
       ALLOWED.join(", ") +
-      ". Comercio: " + JSON.stringify(merchant);
+      ". Significado: " + HINTS +
+      " Prefiere una categoría real a otros. Comercio: " + JSON.stringify(merchant);
 
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",

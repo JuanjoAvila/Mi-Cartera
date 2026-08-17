@@ -1,6 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.18.0** — **EN `beta`**. Tandas 3 y 4: Gastos enseña todos los bancos
+> Estado a 2026-08-17 · **v4.18.1** — **EN `beta`**. Tras aprobar las tandas 3 y 4: categoría Recibos, sugerir categoría en cualquier gasto (la IA ya conoce todas las categorías) y el banco al apuntar es una pastilla que se despliega, como los filtros de Gastos. Producción sigue en **4.17.1**. El widget de 4.17.2 **no entra**.
+>
+> Anterior: 2026-08-17 · **v4.18.0** — **EN `beta`**. Tandas 3 y 4: Gastos enseña todos los bancos
 > marcados como gasto diario (no solo el principal), fecha al apuntar/editar con calendario de la
 > casa, y categorías nuevas (heladería, joyería, videojuegos). Producción sigue en **4.17.1**.
 > El widget de 4.17.2 **no entra** en esta tanda (sigue parado hasta que él compre y re-pruebe).
@@ -79,8 +81,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.18.0** (en `beta`) · **live en Pages: 4.17.1** |
-| APK (`versionName` / `versionCode`) | Repo: **4.16.2 / 40**. Live en su móvil: **4.17.1 / 41** (tanda 2). La 4.18.0 no toca nativo: va por OTA. |
+| Web / OTA (`VERSION`) | **4.18.1** (en `beta`) · **live en Pages: 4.17.1** |
+| APK (`versionName` / `versionCode`) | Repo: **4.16.2 / 40**. Live en su móvil: **4.17.1 / 41** (tanda 2). La 4.18.x no toca nativo: va por OTA. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | repo **40** / 4.16.2 (esta rama no ha corrido `release:apk`) |
 

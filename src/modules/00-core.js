@@ -145,6 +145,7 @@ const CATEGORIES = [
   { id:"parking",    name:"Parking",             color:"#8AA0B8", icon:"🅿️" },
   { id:"energia",    name:"Luz, gas y agua",     color:"#E8C547", icon:"⚡" },
   { id:"tasas",      name:"Impuestos y multas",  color:"#C97D5F", icon:"🏛️" },
+  { id:"recibos",    name:"Recibos",             color:"#8FB8C9", icon:"🧾" },
   { id:"compras",    name:"Compras",             color:"#C9A0E0", icon:"🛍️" },
   { id:"educacion",  name:"Educación",           color:"#6A9FD8", icon:"📚" },
   { id:"salud",      name:"Salud",               color:"#6FD6C9", icon:"💊" },
@@ -195,7 +196,8 @@ const USO_OK=[
 ];
 /* Orden del objeto = prioridad al clasificar. Cosas finas ANTES que el cajón (pan/cine
    antes que bares; padel DESPUÉS de bares —«restaurante de pádel» es comida; viajes antes
-   que ocio; mascotas/energía antes que hogar). Alineado con ingest_logic.ts.
+   que ocio; mascotas/energía antes que hogar; recibos DESPUÉS de ocio —«movistar plus» es
+   streaming, el teléfono Movistar no). Alineado con ingest_logic.ts.
 
    «bar» va SIN espacio detrás (2026-08-06): con `"bar "` sólo picaban los nombres que siguen con
    algo («BAR PEPE»), y los que ACABAN en bar —«1331 BAR», «SNACK BAR»— caían en «otros». Sin
@@ -221,6 +223,9 @@ const KW = {
   // Videojuegos ANTES que ocio/compras: Steam e Instant Gaming no son «Netflix» ni «Amazon».
   gaming:["steam","instant gaming","instantgaming","instant-gaming","g2a","eneba","cdkeys","humble bundle","epic games","battle.net","vs gamers","versus gamers","playstation store","xbox store","nintendo eshop","nintendo e-shop"],
   ocio:["spotify","netflix","hbo","disney","playstation","xbox","nintendo","fnac","museo","teatro","concierto","decathlon","gym","gimnasio","sport","bolera","anthropic","claude","claude.ai","openai","chatgpt","gpt-","google one","google play","googleplay","play store","playstore","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","cursor","midjourney","perplexity","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio","basic fit","basic-fit","dir ","metropolitan","synergym","fitness park","puregym","mcfit","crossfit","bowling","karaoke","laser tag","minigolf","parque de atracciones","portaventura","ferrari land","tibidabo"],
+  // Recibos DESPUÉS de ocio: «movistar plus» es streaming; el teléfono Movistar, no.
+  // Luz/gas/agua se quedan en energia; impuestos en tasas; Sanitas/Adeslas en salud.
+  recibos:["vodafone","yoigo","masmovil","mas movil","pepephone","jazztel","finetwork","simyo","lowi","parlem","digi espa","digi mobil","digi mov","movistar","orange es","orange espana","orange spain","orange fibra","orange movil","o2 es","o2 espa","telefonia","telefonica","fibra optica","factura movil","recibo movil","mapfre","allianz","axa ","axa.","pelayo","zurich","genesis seguro","direct seguros","mutua madrilena","linea directa","reale seguro","helvetia","alquiler","comunidad de prop","administracion de finca","adm fincas","cuota comunidad","prosegur","securitas direct"],
   compras:["zara","mango","primark","stradivarius","bershka","pull &","pull&","el corte","amazon","amzn","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis","papeleria","papelería","copisteria","copistería","liberia","libreria","druni","primor","sephora","perfumeria","fnac ","game ","app store","apple store","samsung store","xiaomi store","coolmod","uniqlo","h&m","hm ","pull and bear","bimba y lola","swatch"],
   salud:["farmacia","clinica","clínica","medico","médico","doctor","dra.","dr.","consulta","ambulatorio","urgencias","hospital","optica","óptica","fisio","fisioterapia","masaje","podologo","podólogo","psicologo","psicólogo","psiquiatra","sanitas","adeslas","asisa","dkv","mutua","quiron","quirón","cima","cap ","centro medico","centro médico","laboratorio","analisis","análisis","radiologia","radiología","dentista","dental","ortodoncia","oculista","oftalmo","cruz verde","procare","vitaldent","vital dent","donte","dental company","general optic","multiopticas","multioptics","promofarma","dosfarma","atida","pocoyofarma"],
   pelu:["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion","depilación","corte de pelo","tinte pelo","balayage"],

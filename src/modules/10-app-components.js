@@ -1424,6 +1424,34 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.1", d:"17 ago 2026",
+   t:{es:"Recibos, sugerir categoría en cualquier gasto, y el banco al apuntar sin el lío",
+      en:"Bills, suggest a category on any payment, and a tidier bank picker",
+      ca:"Rebuts, suggerir categoria en qualsevol despesa, i el banc en apuntar sense el embolic"},
+   tandas:[
+     {id:"recibos-ia-banco", t:"🧾 Recibos, sugerir categoría y banco al apuntar", items:[
+       "Hay categoría Recibos: un Vodafone, un Mapfre o el alquiler ya no se quedan en Otros.",
+       "Movistar Plus sigue en ocio (es la tele). El teléfono Movistar va a Recibos.",
+       "Abres un gasto que NO está en Otros y también sale «Sugerir categoría».",
+       "Al apuntar con +, el banco es una pastilla. Al tocarla se despliegan los bancos, no hay una fila de chips.",
+     ]},
+   ],
+   items:{
+   es:[
+    "🧾 Recibos es una categoría propia: teléfono, internet, seguro o el alquiler ya no se quedan en Otros.",
+    "✨ En cualquier movimiento puedes pedir una sugerencia de categoría, no solo si está en Otros.",
+    "🏦 Al apuntar un gasto, el banco es una pastilla que se despliega, como los filtros de Gastos.",
+   ],
+   en:[
+    "🧾 Bills is its own category: phone, internet, insurance or rent no longer sit in Other.",
+    "✨ On any payment you can ask for a category suggestion, not only if it is in Other.",
+    "🏦 When adding a payment, the bank is a pill that expands, like the filters in Spending.",
+   ],
+   ca:[
+    "🧾 Rebuts és una categoria pròpia: telèfon, internet, assegurança o el lloguer ja no es queden a Altres.",
+    "✨ En qualsevol moviment pots demanar un suggeriment de categoria, no només si és a Altres.",
+    "🏦 En apuntar una despesa, el banc és una pastilla que es desplega, com els filtres de Despeses.",
+   ]}},
   {v:"4.18.0", d:"17 ago 2026",
    t:{es:"Gastos de todos tus bancos del día a día, y más categorías",
       en:"Spending from every day-to-day bank, plus extra categories",

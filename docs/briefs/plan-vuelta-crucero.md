@@ -1,17 +1,17 @@
 # Plan — Vuelta del crucero (2026-08-17)
 
-## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.18.0 en beta)
+## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.18.1)
 
 Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin preguntar a nadie.
 
 | Tanda | Estado | Notas |
 |---|---|---|
 | 0 · Pages / familia | ✅ **Prod 4.17.1** · APK **41** | Él: «subió perfecta a prod». Widget NO entra. |
-| 1a · Widget coherente | ⏸ **PARADA** — hasta que compre y re-pruebe | Rechazada 4.16.2 (907 vs 709). Arreglo ingest **4.17.2** sigue en `beta`, **no** va en 4.18.0. Causa real más abajo. |
+| 1a · Widget coherente | ⏸ **PARADA** — hasta que compre y re-pruebe | Rechazada 4.16.2 (907 vs 709). Arreglo ingest **4.17.2** sigue en `beta`, **no** va en 4.18.x. Causa real más abajo. |
 | 1b · Revolut −204 del padre | 🟡 **Se puede mirar** con APK 41 | Dejaba el nativo de 4.12.0 |
 | 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 |
-| 3 · Fecha en `+`/editar + calendario + filtro gasto diario | 🔧 **EN 4.18.0 beta** (esta tanda) | Default = **todos** los marcados como gasto diario (Revolut+TR), no solo el principal. Calendario de la casa. |
-| 4 · Más categorías + KW | 🔧 **EN 4.18.0 beta** (esta tanda) | Heladería, joyería, videojuegos (Steam / Instant Gaming) |
+| 3 · Fecha en `+`/editar + calendario + filtro gasto diario | 🔧 **EN 4.18.1 beta** (re-revisión) | Aprobó el filtro y el calendario. Extra: el banco al apuntar es pastilla que se despliega (como filtros de Gastos), no la fila de chips. |
+| 4 · Más categorías + KW | 🔧 **EN 4.18.1 beta** (re-revisión) | Aprobó heladería/joyería/videojuegos. Extra: **Recibos** + IA en cualquier gasto (ALLOWED completo). |
 | 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`. Esperar a que la 1a esté aprobada |
 | 6 · Efectivo | ⬜ Libre | Opus 1 página, Cursor v1 |
 | 7 · Import histórico 3 meses | ⬜ Plan sellado | `plan-import-historico-seguro.md`. La 3 deja Gastos listo para que entre como un banco más. |
@@ -28,7 +28,7 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 
 **Play Store no se mueve de última.** Pedido 17/8 noche. Sideload / APK de GitHub sigue valiendo.
 
-**Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.18.0** (tandas 3+4). El ingest/widget **4.17.2** sigue en el historial de `beta` pero **no se promociona** con esta tanda (misma trampa que la 2: cherry-pick, no `beta` entera).
+**Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.18.1** (tandas 3+4 + Recibos/IA/banco del +). El ingest/widget **4.17.2** sigue en el historial de `beta` pero **no se promociona** con esta tanda (misma trampa que la 2: cherry-pick, no `beta` entera).
 Migración **0021** (`ob_name`) entra con el push a `main` (ya en 4.17.1). El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
 
 ### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
@@ -134,12 +134,13 @@ Causa ya conocida a medias (no inventar otra):
 - OB de TR: poder **renombrar** el comercio «Movimiento» (y que el override se recuerde).
 - Detectar **banco del ingreso/pago** (ya hay `ent`; UI debe enseñarlo y al apuntar a mano no perderlo).
 
-### 3. Filtro guapo también en + y al editar + calendario propio — **HECHO en 4.18.0**
+### 3. Filtro guapo también en + y al editar + calendario propio — **HECHO en 4.18.0 / pulido 4.18.1**
 Calendario de la casa (`McCal`), no el nativo de Android. Fecha al apuntar y al editar.
 **Y** el filtro de Gastos arranca con **todos** los marcados como gasto diario (`expenseBankEnts`), no solo el principal. Decisión suya 17/8.
+En 4.18.1 el banco al apuntar es una pastilla que se despliega (como el cuadradito de filtros), no la fila de chips.
 
-### 4. Más categorías + KW — **HECHO en 4.18.0**
-Heladería, joyería, videojuegos. Tres idiomas. `autoCategory` / KW cliente + `ingest_logic.ts`. Crucero se queda en Viajes (un crucero es un viaje). IA (`categorize`) solo si él tiene la clave; si no, KW primero.
+### 4. Más categorías + KW — **HECHO en 4.18.0 / Recibos+IA 4.18.1**
+Heladería, joyería, videojuegos, **Recibos**. Tres idiomas. `autoCategory` / KW cliente + `ingest_logic.ts`. Crucero se queda en Viajes. IA (`categorize`): ALLOWED = todas las categorías; botón en cualquier gasto, no solo Otros. KW primero; IA solo si cae en otros y hay clave.
 
 ### 5. Meta ahorrada = gasto del mes (temporal) — **Claude Opus diseña**
 Palabras suyas: la meta marcada sustituye **temporalmente** el «gasto del mes»; gastar de esa hucha **no es** gasto corriente. Varios bancos ligados → al gastar de esos bancos se elige esa meta **sola**. Al llegar a **0**, vuelve el presupuesto normal.

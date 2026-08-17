@@ -1923,6 +1923,7 @@ const CATEGORIES = [
   { id:"parking",    name:"Parking",             color:"#8AA0B8", icon:"🅿️" },
   { id:"energia",    name:"Luz, gas y agua",     color:"#E8C547", icon:"⚡" },
   { id:"tasas",      name:"Impuestos y multas",  color:"#C97D5F", icon:"🏛️" },
+  { id:"recibos",    name:"Recibos",             color:"#8FB8C9", icon:"🧾" },
   { id:"compras",    name:"Compras",             color:"#C9A0E0", icon:"🛍️" },
   { id:"educacion",  name:"Educación",           color:"#6A9FD8", icon:"📚" },
   { id:"salud",      name:"Salud",               color:"#6FD6C9", icon:"💊" },
@@ -1973,7 +1974,8 @@ const USO_OK=[
 ];
 /* Orden del objeto = prioridad al clasificar. Cosas finas ANTES que el cajón (pan/cine
    antes que bares; padel DESPUÉS de bares —«restaurante de pádel» es comida; viajes antes
-   que ocio; mascotas/energía antes que hogar). Alineado con ingest_logic.ts.
+   que ocio; mascotas/energía antes que hogar; recibos DESPUÉS de ocio —«movistar plus» es
+   streaming, el teléfono Movistar no). Alineado con ingest_logic.ts.
 
    «bar» va SIN espacio detrás (2026-08-06): con `"bar "` sólo picaban los nombres que siguen con
    algo («BAR PEPE»), y los que ACABAN en bar —«1331 BAR», «SNACK BAR»— caían en «otros». Sin
@@ -1999,6 +2001,9 @@ const KW = {
   // Videojuegos ANTES que ocio/compras: Steam e Instant Gaming no son «Netflix» ni «Amazon».
   gaming:["steam","instant gaming","instantgaming","instant-gaming","g2a","eneba","cdkeys","humble bundle","epic games","battle.net","vs gamers","versus gamers","playstation store","xbox store","nintendo eshop","nintendo e-shop"],
   ocio:["spotify","netflix","hbo","disney","playstation","xbox","nintendo","fnac","museo","teatro","concierto","decathlon","gym","gimnasio","sport","bolera","anthropic","claude","claude.ai","openai","chatgpt","gpt-","google one","google play","googleplay","play store","playstore","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","cursor","midjourney","perplexity","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio","basic fit","basic-fit","dir ","metropolitan","synergym","fitness park","puregym","mcfit","crossfit","bowling","karaoke","laser tag","minigolf","parque de atracciones","portaventura","ferrari land","tibidabo"],
+  // Recibos DESPUÉS de ocio: «movistar plus» es streaming; el teléfono Movistar, no.
+  // Luz/gas/agua se quedan en energia; impuestos en tasas; Sanitas/Adeslas en salud.
+  recibos:["vodafone","yoigo","masmovil","mas movil","pepephone","jazztel","finetwork","simyo","lowi","parlem","digi espa","digi mobil","digi mov","movistar","orange es","orange espana","orange spain","orange fibra","orange movil","o2 es","o2 espa","telefonia","telefonica","fibra optica","factura movil","recibo movil","mapfre","allianz","axa ","axa.","pelayo","zurich","genesis seguro","direct seguros","mutua madrilena","linea directa","reale seguro","helvetia","alquiler","comunidad de prop","administracion de finca","adm fincas","cuota comunidad","prosegur","securitas direct"],
   compras:["zara","mango","primark","stradivarius","bershka","pull &","pull&","el corte","amazon","amzn","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis","papeleria","papelería","copisteria","copistería","liberia","libreria","druni","primor","sephora","perfumeria","fnac ","game ","app store","apple store","samsung store","xiaomi store","coolmod","uniqlo","h&m","hm ","pull and bear","bimba y lola","swatch"],
   salud:["farmacia","clinica","clínica","medico","médico","doctor","dra.","dr.","consulta","ambulatorio","urgencias","hospital","optica","óptica","fisio","fisioterapia","masaje","podologo","podólogo","psicologo","psicólogo","psiquiatra","sanitas","adeslas","asisa","dkv","mutua","quiron","quirón","cima","cap ","centro medico","centro médico","laboratorio","analisis","análisis","radiologia","radiología","dentista","dental","ortodoncia","oculista","oftalmo","cruz verde","procare","vitaldent","vital dent","donte","dental company","general optic","multiopticas","multioptics","promofarma","dosfarma","atida","pocoyofarma"],
   pelu:["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion","depilación","corte de pelo","tinte pelo","balayage"],
@@ -4189,7 +4194,7 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_heladeria:"Heladería", cat_ocio:"Ocio", cat_gaming:"Videojuegos", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_joyeria:"Joyería", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_heladeria:"Heladería", cat_ocio:"Ocio", cat_gaming:"Videojuegos", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_recibos:"Recibos", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_joyeria:"Joyería", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -4284,7 +4289,7 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_heladeria:"Ice cream", cat_ocio:"Leisure", cat_gaming:"Games", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_joyeria:"Jewellery", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_heladeria:"Ice cream", cat_ocio:"Leisure", cat_gaming:"Games", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_recibos:"Bills", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_joyeria:"Jewellery", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -4378,7 +4383,7 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_heladeria:"Gelateria", cat_ocio:"Oci", cat_gaming:"Videojocs", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_joyeria:"Joieria", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_heladeria:"Gelateria", cat_ocio:"Oci", cat_gaming:"Videojocs", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_recibos:"Rebuts", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_joyeria:"Joieria", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -7331,8 +7336,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   },[state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
-    if(!cloud.enabled()||!ex||aiBusy) return;
     if(!(state.settings&&state.settings.aiCat)){ showToast(t("ai_cat_off")); return; }
+    if(!ex||aiBusy) return;
+    // KW locales primero (mismas que ingest): Recibos/heladería/… no esperan a desplegar la Edge.
+    const local=autoCategory(ex.merchant||"");
+    if(local && local!=="otros" && CAT[local]){
+      setCat(ex,local);
+      showToast(tf("ai_cat_ok",{c:catName(local)}));
+      return;
+    }
+    if(!cloud.enabled()){ showToast(t("ai_cat_none")); return; }
     setAiBusy(true);
     cloud.suggestCategory(ex.merchant||"").then(function(res){
       const cat=res&&res.category;
@@ -7872,7 +7885,8 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
               )
             );
           })(),
-          exp.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
+          // En cualquier categoría (no solo Otros): KW + IA si el interruptor está on.
+          cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
         ),
         React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_type")),
         React.createElement("div",{className:"v4-toggle"},
@@ -14127,6 +14141,34 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.1", d:"17 ago 2026",
+   t:{es:"Recibos, sugerir categoría en cualquier gasto, y el banco al apuntar sin el lío",
+      en:"Bills, suggest a category on any payment, and a tidier bank picker",
+      ca:"Rebuts, suggerir categoria en qualsevol despesa, i el banc en apuntar sense el embolic"},
+   tandas:[
+     {id:"recibos-ia-banco", t:"🧾 Recibos, sugerir categoría y banco al apuntar", items:[
+       "Hay categoría Recibos: un Vodafone, un Mapfre o el alquiler ya no se quedan en Otros.",
+       "Movistar Plus sigue en ocio (es la tele). El teléfono Movistar va a Recibos.",
+       "Abres un gasto que NO está en Otros y también sale «Sugerir categoría».",
+       "Al apuntar con +, el banco es una pastilla. Al tocarla se despliegan los bancos, no hay una fila de chips.",
+     ]},
+   ],
+   items:{
+   es:[
+    "🧾 Recibos es una categoría propia: teléfono, internet, seguro o el alquiler ya no se quedan en Otros.",
+    "✨ En cualquier movimiento puedes pedir una sugerencia de categoría, no solo si está en Otros.",
+    "🏦 Al apuntar un gasto, el banco es una pastilla que se despliega, como los filtros de Gastos.",
+   ],
+   en:[
+    "🧾 Bills is its own category: phone, internet, insurance or rent no longer sit in Other.",
+    "✨ On any payment you can ask for a category suggestion, not only if it is in Other.",
+    "🏦 When adding a payment, the bank is a pill that expands, like the filters in Spending.",
+   ],
+   ca:[
+    "🧾 Rebuts és una categoria pròpia: telèfon, internet, assegurança o el lloguer ja no es queden a Altres.",
+    "✨ En qualsevol moviment pots demanar un suggeriment de categoria, no només si és a Altres.",
+    "🏦 En apuntar una despesa, el banc és una pastilla que es desplega, com els filtres de Despeses.",
+   ]}},
   {v:"4.18.0", d:"17 ago 2026",
    t:{es:"Gastos de todos tus bancos del día a día, y más categorías",
       en:"Spending from every day-to-day bank, plus extra categories",
@@ -16822,6 +16864,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   // Banco del apunte (petición 2026-07-18: «poder elegir el banco si apuntas un gasto manual»).
   // Opciones = los bancos de tus cuentas; por defecto la de gasto diario (lo que ya hacía Gastos).
   const [bank,setBank]=useState(null);
+  const [bankOpen,setBankOpen]=useState(false);
   const [date,setDate]=useState(function(){ return isoLocal(); });
   const [calOpen,setCalOpen]=useState(false);
   const bankOpts=useMemo(function(){
@@ -16832,7 +16875,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   useEffect(function(){
     if(open){
       setKind("gasto"); setRaw(""); setNote(""); setCat("super");
-      setDate(isoLocal()); setCalOpen(false);
+      setDate(isoLocal()); setCalOpen(false); setBankOpen(false);
       const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
       setBank((daily&&daily.ent)||null);
       // Arranca en la moneda de pantalla (o la última que usó al apuntar en este viaje).
@@ -16913,21 +16956,26 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
         React.createElement("input",{className:"v4-input",placeholder:t("v4_apuntar_ph"),value:note,onChange:function(e){ setNote(e.target.value); }}),
         React.createElement("div",{className:"v4-chips"},
           React.createElement("button",{type:"button",className:"v4-chip"+(calOpen?" on":""),"data-testid":"ap-date",
-            onClick:function(){ setCalOpen(function(v){ return !v; }); }},
-            "📅 "+fmtIsoCorto(date))
+            onClick:function(){ setCalOpen(function(v){ return !v; }); setBankOpen(false); }},
+            "📅 "+fmtIsoCorto(date)),
+          // Mismo gesto que el cuadradito de filtros en Gastos: cerrado = una pastilla,
+          // tocas y se despliegan los bancos (sin la fila infinita que tapaba el teclado).
+          bankOpts.length>0 && React.createElement("button",{type:"button",className:"v4-chip"+(bankOpen?" on":""),"data-testid":"ap-bank",
+            onClick:function(){ setBankOpen(function(v){ return !v; }); setCalOpen(false); }},
+            "🏦 "+(bank==null?t("ap_bank_none"):entOf(bank).label))
         ),
         calOpen && React.createElement(McCal,{value:date, onPick:function(iso){ setDate(iso); setCalOpen(false); }}),
+        bankOpen && bankOpts.length>0 && React.createElement("div",{className:"v4-chips wrap","data-testid":"ap-bank-list"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(bank==null?" on":""),onClick:function(){ setBank(null); setBankOpen(false); }}, t("ap_bank_none")),
+          bankOpts.map(function(b){
+            return React.createElement("button",{key:b,type:"button",className:"v4-chip"+(bank===b?" on":""),onClick:function(){ setBank(b); setBankOpen(false); }},
+              "🏦 "+entOf(b).label);
+          })
+        ),
         kind==="gasto" && React.createElement("div",{className:"v4-chips"},
           cats.map(function(c){
             return React.createElement("button",{key:c.id,className:"v4-chip"+(cat===c.id?" on":""),onClick:function(){ setCat(c.id); }},
               c.icon+" "+catName(c.id));
-          })
-        ),
-        bankOpts.length>0 && React.createElement("div",{className:"v4-chips"},
-          React.createElement("button",{className:"v4-chip"+(bank==null?" on":""),onClick:function(){ setBank(null); }}, t("ap_bank_none")),
-          bankOpts.map(function(b){
-            return React.createElement("button",{key:b,className:"v4-chip"+(bank===b?" on":""),onClick:function(){ setBank(b); }},
-              "🏦 "+entOf(b).label);
           })
         ),
         React.createElement("div",{className:"v4-keys"},

@@ -372,8 +372,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   },[state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
-    if(!cloud.enabled()||!ex||aiBusy) return;
     if(!(state.settings&&state.settings.aiCat)){ showToast(t("ai_cat_off")); return; }
+    if(!ex||aiBusy) return;
+    // KW locales primero (mismas que ingest): Recibos/heladería/… no esperan a desplegar la Edge.
+    const local=autoCategory(ex.merchant||"");
+    if(local && local!=="otros" && CAT[local]){
+      setCat(ex,local);
+      showToast(tf("ai_cat_ok",{c:catName(local)}));
+      return;
+    }
+    if(!cloud.enabled()){ showToast(t("ai_cat_none")); return; }
     setAiBusy(true);
     cloud.suggestCategory(ex.merchant||"").then(function(res){
       const cat=res&&res.category;
@@ -913,7 +921,8 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
               )
             );
           })(),
-          exp.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
+          // En cualquier categoría (no solo Otros): KW + IA si el interruptor está on.
+          cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
         ),
         React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_type")),
         React.createElement("div",{className:"v4-toggle"},

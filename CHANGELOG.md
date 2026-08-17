@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.1] — 2026-08-17
+### Recibos + IA en cualquier gasto + banco del `+` como los filtros
+
+Tanda 4: lo que es un recibo de verdad (teléfono, internet, seguro no médico, alquiler, comunidad, alarma) caía en **Otros**. Categoría `recibos` + KW en cliente e `ingest_logic.ts`. Luz/gas siguen en `energia`; impuestos en `tasas`; Movistar Plus en `ocio` (el teléfono Movistar, no).
+
+La Edge `categorize` no tenía en `ALLOWED` heladería, gaming, joyería ni recibos: la IA **no podía** devolverlas. Lista alineada con `CATEGORIES` (el test `categories` aborta si falta una) y el prompt lleva pistas de qué es cada id. El botón «Sugerir categoría» sale en **cualquier** movimiento, no solo Otros.
+
+Al apuntar (`+`), los bancos eran una fila de chips que tapaba el teclado. Misma idea que el cuadradito de filtros en Gastos: una pastilla con el banco actual; al tocarla se despliegan.
+
 ## [4.18.0] — 2026-08-17
 ### Tanda 3 — filtro de gasto diario + fecha al apuntar/editar
 
