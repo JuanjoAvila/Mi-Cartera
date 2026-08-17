@@ -98,10 +98,13 @@ móvil: *«Mira docs/briefs/brief-crucero-verificar-pages.md y comprueba Pages 4
 - 4.16.0/4.16.1 en `main`: notis Google Wallet, migración 0020, presupuesto servidor=app, APK 39.
 - Guardián WEBDEBUG + `npm run release:apk` (para que el próximo deploy no sea otro calvario).
 
-### Al volver del crucero (semana siguiente)
+### Al volver del crucero (2026-08-17)
 
-Inventario único: [`docs/memoria/mi-cartera-backlog-2026-08.md`](docs/memoria/mi-cartera-backlog-2026-08.md)
-+ foto en `docs/ROADMAP.md`. MyInvestor nativo y el resto **no** se tocan en el viaje.
+Plan de tandas + reparto Cursor/Claude:
+[`docs/briefs/plan-vuelta-crucero.md`](docs/briefs/plan-vuelta-crucero.md).
+Inventario largo: [`docs/memoria/mi-cartera-backlog-2026-08.md`](docs/memoria/mi-cartera-backlog-2026-08.md).
+Import histórico (ya diseñado): [`docs/briefs/plan-import-historico-seguro.md`](docs/briefs/plan-import-historico-seguro.md).
+Pages live puede seguir en 4.15.0 aunque el repo esté en 4.16.1 — relanzar deploy.
 
 ⚠ `docs/memoria/pendiente-manana-4-12-0.md` es espejo viejo (**no editar a mano**).
 **La foto de ahora es `docs/ROADMAP.md`.**

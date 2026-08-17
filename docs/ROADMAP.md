@@ -1,8 +1,9 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.17.0** — **EN PRODUCCIÓN** (tanda `gastos-orden` aprobada en el
-> móvil, 10 ok / 0 fallos). Qué cuenta y qué no en Gastos, y renombrar el «Movimiento» de TR
-> sin duplicar. **Solo web + migración 0021.** La tanda del widget se queda en `beta`.
+> Estado a 2026-08-17 · **v4.17.1** — **EN PRODUCCIÓN** (tanda `gastos-orden` aprobada en el
+> móvil, 10 ok / 0 fallos). Qué cuenta y qué no en Gastos, renombrar el «Movimiento» de TR
+> sin duplicar, y el bloqueo de pantalla al guardar (venía de la v3.108.0). **Web + migración
+> 0021.** La tanda del widget se queda en `beta` hasta que él compre y la re-pruebe.
 >
 > Anterior: 2026-08-06 · **v4.16.1** — en `main`, nunca llegó a la familia por el outage de
 > Actions. APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae
@@ -68,8 +69,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.17.0** (producción) |
-| APK (`versionName` / `versionCode`) | **4.16.1** / **39** — release `v4.16.1`. Arranque sin franja bajo la cámara + Wallet nativo. Firma `CN=Mi Cartera`. La 4.17.0 no toca nativo: va por OTA. |
+| Web / OTA (`VERSION`) | **4.17.1** (producción) |
+| APK (`versionName` / `versionCode`) | **4.16.1** / **39** — release `v4.16.1`. Arranque sin franja bajo la cámara + Wallet nativo. Firma `CN=Mi Cartera`. La 4.17.1 no toca nativo: va por OTA. |
 | Anterior | **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | **39** / 4.16.1 → release `v4.16.1` / `Mi-Cartera-4.16.1.apk` |
 

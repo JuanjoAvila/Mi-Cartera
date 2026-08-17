@@ -7127,7 +7127,22 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(amt<=0){ showToast(t("g_invalid")); return; }
     const signed=editExp.income? -amt : amt;
     const merch=(editExp.merchant||"").trim()||orig.merchant;
-    if(signed===orig.amount && merch===(orig.merchant||"")){ setEditExp(null); return; }   // sin cambios
+    /* NO se pone `editExp` a null: eso CONGELABA LA PANTALLA (bug suyo 2026-08-17, «al modificarlo
+       y guardarlo se bloquea, solo si tiras para atrás puedes seguir»). El sheet decide si pintarse
+       con `!exp || !editExp`, pero sus candados (`useSheetSwipe`, que pone `overflow:hidden` y se
+       come TODOS los `touchmove` de fuera del sheet) van con `!!exp` a secas. Al vaciar `editExp`
+       el sheet dejaba de pintarse, `sheetRef` pasaba a null —así que ningún toque contaba como
+       «dentro»— y el candado se quedaba puesto sobre una pantalla vacía. Atrás lo liberaba porque
+       ahí sí se cierra de verdad.
+       Viene de la v3.108.0, no de esta tanda; saltaba con cualquier blur del importe o del nombre.
+       Además, el comentario de `closeSave` dice que al perder el foco se GUARDA pero NO se cierra:
+       vaciar el estado de edición era justo lo contrario. Ahora se deja sincronizado con lo
+       guardado, que es lo que ese comentario prometía. */
+    const sincroniza=function(e){
+      setEditExp({ id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','),
+        income:e.amount<0, note:e.note||"" });
+    };
+    if(signed===orig.amount && merch===(orig.merchant||"")){ sincroniza(orig); return; }   // sin cambios
     const cat = editExp.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
     const upd=Object.assign({},orig,{merchant:merch, amount:signed, category:cat});
     /* Al renombrar un movimiento del banco, guardar CÓMO LO LLAMABA ÉL (2026-08-17). El dedup de
@@ -7147,7 +7162,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       deleted:pushDeleted(s.deleted, keyOfE(orig))
     }); });
     if(cloud.enabled()){ cloud.deleteExpense(orig).catch(function(){}); cloud.addExpense(upd).catch(function(){}); }
-    setEditExp(null); showToast(t("g_edited"));
+    sincroniza(upd); showToast(t("g_edited"));
   };
 
   const cycle=useMemo(()=>lastPaydayOf(expensesDef),[expensesDef]);
@@ -7608,7 +7623,14 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, buc
         React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_bk_title")),
         React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
           React.createElement("button",{type:"button",className:"v4-chip"+(bucketSel.length===0?" on":""),onClick:function(){ setBucketSel([]); }}, t("g_bk_all")),
-          [["cuenta","💸"],["ingreso","💰"],["neutra","📈"],["otrobanco","🏦"]].map(function(p){
+          /* SIN chip «De otros bancos» (rechazo suyo, 2026-08-17): «no hace nada y tampoco se ve
+             para qué está dado que ya puedes elegir los bancos abajo». Las dos cosas ciertas.
+             No hacía nada porque el filtro de bancos arranca preseleccionado en la cuenta de gasto
+             diario, y «de otros bancos» significa justo «que NO es esa» → el cruce salía siempre
+             vacío. Y aunque no arrancara así, es el único de los cuatro que se puede pedir ya con
+             los chips de banco de abajo. El cajón `otrobanco` sigue existiendo: es el que hace que
+             la fila diga «no es del día a día», que es la parte que sí servía. */
+          [["cuenta","💸"],["ingreso","💰"],["neutra","📈"]].map(function(p){
             const on=bucketSel.indexOf(p[0])!==-1;
             return React.createElement("button",{key:p[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBucket(p[0]); }},
               p[1]+" "+t("g_bk_"+p[0]));
@@ -7662,9 +7684,15 @@ function PeriodMoreSheet({open, onClose, preset, setPreset}){
 
 /* Sheet detalle/edición de un movimiento. Layout alineado con Apuntar/Cartera (feedback 2026-07-17). */
 function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardFlag, setBank, delExpense, saveEdit, saveNote, showToast, aiBusy, suggestAi, state}){
-  useBackClose(!!exp, onClose);
-  const swipe=useSheetSwipe(!!exp, onClose);
-  if(!exp || !editExp) return null;
+  /* UNA SOLA CONDICIÓN para pintarse y para los candados. Iban por separado (`!!exp` en los hooks,
+     `!exp || !editExp` para pintar) y en cuanto se separaban el sheet desaparecía dejando el
+     `overflow:hidden` y el bloqueo de `touchmove` puestos sobre una pantalla vacía: nada respondía
+     hasta darle a atrás (bug 2026-08-17). La causa concreta ya está arreglada en `saveEdit`; esto
+     es para que ninguna otra vía que vacíe `editExp` pueda volver a dejar la app muerta. */
+  const abierto=!!exp && !!editExp;
+  useBackClose(abierto, onClose);
+  const swipe=useSheetSwipe(abierto, onClose);
+  if(!abierto) return null;
   const c=catOf(exp.category);
   const isIncome=exp.amount<0 || !!editExp.income;
   const bk=expenseBankOf(exp);
@@ -13985,7 +14013,7 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.17.0", d:"17 ago 2026",
+  {v:"4.17.1", d:"17 ago 2026",
    t:{es:"Orden en Gastos: qué cuenta, qué no, y de qué banco sale",
       en:"Order in Spending: what counts, what doesn't, and which bank it came from",
       ca:"Ordre a Despeses: què compta, què no, i de quin banc surt"},
@@ -14007,9 +14035,10 @@ var RELEASE_NOTES=[
        "Un ingreso NO sale apagado: se ve en verde con su «+», porque entra dinero.",
        "Cada movimiento dice de qué banco sale, también los que apuntas a mano.",
        "Filtros (🎛️) → arriba del todo hay «Qué contar»: elige «Inversión y traspasos» y solo quedan esos.",
-       "Prueba también «Ingresos» y «De otros bancos»; con «Todo» vuelves a verlo entero.",
+       "Prueba también «Ingresos»; con «Todo» vuelves a verlo entero. Ya no está «De otros bancos»: lo quitamos porque para eso valen los chips de banco de abajo.",
        "«Limpiar» quita también ese filtro, no solo las categorías y los bancos.",
-       "Abre un movimiento de Trade Republic que ponga «Movimiento», cámbiale el nombre y guarda.",
+       "★ Abre un movimiento, cámbiale el nombre y guarda: la pantalla SIGUE respondiendo (antes se quedaba muerta hasta darle a atrás).",
+       "Con el nombre ya cambiado, cierra la ficha y vuelve a abrirla: el nombre nuevo sigue puesto.",
        "★ Sincroniza los bancos después de renombrarlo: el gasto NO puede aparecer duplicado (ese era el fallo).",
      ]},
    ],

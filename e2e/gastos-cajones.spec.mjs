@@ -88,6 +88,35 @@ test("el filtro «Qué contar» deja ver un cajón a solas", async ({ page }) =>
   await expect(fila(page, "Aporte FTSE")).toHaveCount(1);
 });
 
+test("★ guardar un cambio NO deja la pantalla muerta", async ({ page }) => {
+  /* Rechazo suyo de la 4.17.0.1: «al modificarlo y guardarlo se bloquea la pantalla, no deja hacer
+     nada, solo si tiras para atrás ahí puedes seguir». El sheet decidía pintarse con
+     `!exp || !editExp` pero sus candados iban con `!!exp`: al guardar se vaciaba `editExp`, el
+     sheet dejaba de pintarse y el `overflow:hidden` + el bloqueo de `touchmove` se quedaban
+     puestos sobre una pantalla vacía. Venía de la v3.108.0 y saltaba con cualquier blur del
+     importe o del nombre; se destapó al pedirle que renombrara un «Movimiento». */
+  await seedLoggedInDashboard(page, { accounts, settings, expenses, budget: 1000 });
+  await abreGastos(page);
+
+  await fila(page, "Mercadona").click();
+  const nombre = page.locator(".v4-exp-name");
+  await expect(nombre).toBeVisible();
+  await nombre.fill("Mercadona centro");
+  await nombre.blur();                                   // el blur es el que guarda
+
+  // El sheet sigue en pie con lo guardado dentro: «al perder el foco se guarda, no se cierra».
+  await expect(nombre).toHaveValue("Mercadona centro");
+
+  // Y al cerrarlo de verdad, la app tiene que quedar viva: sin candado de scroll y respondiendo.
+  await cierraSheet(page);
+  await expect(page.locator("html")).not.toHaveClass(/sheet-open/);
+  await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
+  // La prueba de que se puede seguir usando: cambiar de pestaña y volver.
+  await page.locator('.botnav-tab[data-tour="plan"]').click();
+  await page.locator('.botnav-tab[data-tour="gastos"]').click();
+  await expect(fila(page, "Mercadona centro")).toHaveCount(1);
+});
+
 test("y se puede volver a verlo todo sin dejar el filtro pegado", async ({ page }) => {
   await seedLoggedInDashboard(page, { accounts, settings, expenses, budget: 1000 });
   await abreGastos(page);
