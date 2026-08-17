@@ -36,7 +36,7 @@ import {
 } from "../_shared/ingest_logic.ts";
 import { aEuros, parseWallet } from "../_shared/wallet.ts";
 import { bucketKey, callerIp, rateLimit } from "../_shared/ratelimit.ts";
-import { bancosDeGastoDiario, cuentaParaPresupuesto, statsDelMes } from "../_shared/presupuesto.ts";
+import { bancosDeGastoDiario, cuentaParaPresupuesto, filasComoLaApp, statsDelMes } from "../_shared/presupuesto.ts";
 
 /**
  * Comparación en tiempo CONSTANTE del token (2026-07-24).
@@ -210,6 +210,21 @@ Deno.serve(async (req) => {
     .limit(1);
   if (dupRows && dupRows.length) return json({ ok: true, tipo, skipped: true, dup: true });
 
+  // Misma compra, avisos a HORAS distintas (2026-08-17). Wallet avisó a las 11:31 y Trade Republic
+  // a las 13:08: 97 min, fuera de la ventana de 10. El banco solo tenía UN cargo; la nube guardó
+  // dos y el widget los sumó. La app ya los junta por día|importe|comercio — ingest tiene que
+  // hacer lo mismo al INSERTAR, no solo al contar, o la tabla sigue criando gemelos.
+  const dia = String(fecha).slice(0, 10);
+  const { data: dupDia } = await supabase
+    .from("expenses").select("fecha")
+    .eq("user_id", userId)
+    .eq("comercio", comercio)
+    .gte("importe", importe - 0.02).lte("importe", importe + 0.02)
+    .gte("fecha", dia + "T00:00:00.000Z")
+    .lte("fecha", dia + "T23:59:59.999Z")
+    .limit(1);
+  if (dupDia && dupDia.length) return json({ ok: true, tipo, skipped: true, dup: true, dupDay: true });
+
   const fila: Record<string, unknown> = {
     user_id: userId, fecha, importe, comercio, cat, source: "macrodroid", no_card: noCard, nota: nota || null,
   };
@@ -246,9 +261,12 @@ Deno.serve(async (req) => {
     // `cat` y `source` hacen falta para contar como cuenta la app: sin ellos esto sumaba TODO
     // —los recibos del banco de fijos y las inversiones— y el aviso salía por las nubes.
     const { data: rows } = await supabase
-      .from("expenses").select("importe,cat,source")
+      .from("expenses").select("importe,cat,source,fecha,comercio")
       .eq("user_id", userId).gte("fecha", desde);
-    const stats = statsDelMes(rows || [], st?.data, desdeMs);
+    // Igual que la app al pintar Gastos: lápidas + una fila por día|importe|comercio.
+    // Sin esto el widget suma gastos que él ya borró y notis gemelas (bug 907 vs 709, 2026-08-17).
+    const visibles = filasComoLaApp(rows || [], st?.data?.deleted);
+    const stats = statsDelMes(visibles, st?.data, desdeMs);
     const budget = stats.budget;
     const after = stats.against;
     // Y si el gasto recién apuntado NO cuenta para el presupuesto —banco de recibos, inversión,

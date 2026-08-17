@@ -2,6 +2,32 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.17.2] — 2026-08-17
+### El widget sumaba el mismo pago dos veces (tanda `widget-coherente`, segunda vuelta)
+
+Rechazo de la 4.16.2: el widget ya no se contradecía por dentro (907 · quedan 93 · puedes gastar 93)
+pero seguía diciendo **907 €** contra **709 €** en la app.
+
+La fórmula era la misma. Lo que difería era lo que cada lado **veía**. `ingest` sumaba la tabla
+`expenses` a pelo. La app, al bajarla, tira las lápidas de `state.deleted` y junta por
+`día|importe|comercio` (sin hora).
+
+Caso medido con el extracto de Trade Republic delante: el 13/8 hay **un** APOLLON GALLERY de 230 €
+y **otro** de 115 €. En la nube había **dos** filas de 230 € (11:31 `regalos` y 13:08 `bares`), las
+dos `macrodroid`. Wallet avisó a una hora y TR a otra (97 min, fuera de la ventana anti-dup de 10).
+No eran dos compras. Un diagnóstico intermedio tomó las horas distintas por «dos cargos reales» y
+proponía meter la hora en la clave de fusión: eso habría hecho **mentir también a la app**.
+
+Arreglo, todo en el servidor (sin APK):
+
+1. `filasComoLaApp` en `presupuesto.ts`: respeta lápidas y deja una fila por clave, igual que
+   `syncCloudExpenses`. `ingest` pasa eso a `statsDelMes` (y ahora selecciona `fecha`/`comercio`).
+2. Al insertar, además de la ventana de 10 min, se ignora un segundo aviso **el mismo día + mismo
+   comercio + mismo euro**, para no criar más gemelos Wallet/TR.
+
+Tests en `presupuesto-servidor`: las dos notis de 230 cuentan una vez; una lápida también la
+respeta el servidor. Para probarlo en el móvil hace falta redesplegar `ingest` desde `beta`.
+
 ## [4.17.1] — 2026-08-17
 ### Los dos fallos de su rechazo de la 4.17.0.1 (7 ok / 2 fallos)
 

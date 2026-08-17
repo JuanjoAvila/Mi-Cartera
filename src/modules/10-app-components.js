@@ -1424,6 +1424,43 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.17.2", d:"17 ago 2026",
+   t:{es:"El widget deja de sumar un pago dos veces",
+      en:"The widget stops counting the same payment twice",
+      ca:"El widget deixa de sumar un pagament dues vegades"},
+   tandas:[
+     {id:"widget-coherente", t:"📊 El widget dice la verdad con la app cerrada", items:[
+       "Mira el widget y abre la app: «gastado este mes» es el mismo número en los dos sitios.",
+       "En el widget, «te quedan X» y «✅ Puedes gastar Y» tienen que cuadrar entre ellos (Y nunca puede ser mayor que X).",
+       "Cierra la app del todo, haz un pago con la tarjeta y espera a la noti: el widget se actualiza y las tres cifras siguen cuadrando.",
+       "Vuelve a mirar el widget un rato después, sin abrir la app: NO debe haber vuelto a descuadrarse (ese era el fallo).",
+       "Haz un pago que no cuente para el presupuesto (una inversión o un traspaso): el gasto del mes del widget no se mueve.",
+       "El saldo de la cuenta de gasto que sale abajo en el widget también baja con cada pago, sin esperar a abrir la app.",
+       "★ Si una compra te avisó dos veces (el banco y la cartera), el widget no la suma dos veces: dice lo mismo que Gastos.",
+     ]},
+     {id:"gastos-orden", t:"🧾 En Gastos se ve qué cuenta y qué no", items:[
+       "En Gastos, una inversión o un traspaso salen apagados y ponen «no es un gasto».",
+       "Un recibo de un banco que no es el del día a día sale apagado y pone «no es del día a día» (antes los dos decían lo mismo).",
+       "Un ingreso NO sale apagado: se ve en verde con su «+», porque entra dinero.",
+       "Cada movimiento dice de qué banco sale, también los que apuntas a mano.",
+       "Filtros (🎛️) → arriba del todo hay «Qué contar»: elige «Inversión y traspasos» y solo quedan esos.",
+       "Prueba también «Ingresos»; con «Todo» vuelves a verlo entero. Ya no está «De otros bancos»: lo quitamos porque para eso valen los chips de banco de abajo.",
+       "«Limpiar» quita también ese filtro, no solo las categorías y los bancos.",
+       "★ Abre un movimiento, cámbiale el nombre y guarda: la pantalla SIGUE respondiendo (antes se quedaba muerta hasta darle a atrás).",
+       "Con el nombre ya cambiado, cierra la ficha y vuelve a abrirla: el nombre nuevo sigue puesto.",
+       "★ Sincroniza los bancos después de renombrarlo: el gasto NO puede aparecer duplicado (ese era el fallo).",
+     ]},
+   ],
+   items:{
+   es:[
+    "📊 El gasto del mes del widget ya es el mismo que el de la app: si una compra te avisó dos veces (el banco y la cartera), no la suma dos veces, y lo que ya habías borrado deja de contarlo.",
+   ],
+   en:[
+    "📊 The widget's month spending now matches the app: if a purchase pinged you twice (the bank and the wallet), it isn't added twice, and anything you already deleted stops counting.",
+   ],
+   ca:[
+    "📊 La despesa del mes del widget ja és la mateixa que la de l'app: si una compra t'ha avisat dues vegades (el banc i la cartera), no la suma dues vegades, i el que ja havies esborrat deixa de comptar-lo.",
+   ]}},
   {v:"4.17.1", d:"17 ago 2026",
    t:{es:"Orden en Gastos: qué cuenta, qué no, y de qué banco sale",
       en:"Order in Spending: what counts, what doesn't, and which bank it came from",

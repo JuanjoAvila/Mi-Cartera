@@ -1,13 +1,13 @@
 # Plan — Vuelta del crucero (2026-08-17)
 
-## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8, tras la beta 4.17.0)
+## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.17.2)
 
 Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin preguntar a nadie.
 
 | Tanda | Estado | Notas |
 |---|---|---|
 | 0 · Pages | ⏸ **A PROPÓSITO SIN LANZAR** | Decisión suya: la familia salta de golpe al promocionar. Live sigue 4.15.0 / apk.json 4.12.0 |
-| 1a · Widget coherente | 🔁 **RECHAZADA (17/8 noche)** — arregló la incoherencia interna pero NO el desfase | 4.16.2 · APK 40. Widget 907 · app 709. **Causa raíz ya diagnosticada abajo, con sus datos reales** |
+| 1a · Widget coherente | 🔁 **RECHAZADA (17/8 noche)** — incoherencia interna OK; desfase 907 vs 709 | 4.16.2 APK 40. **Causa REAL abajo** (no eran dos compras). Arreglo en **4.17.2** (ingest) |
 | 1b · Revolut −204 del padre | 🔴 **BLOQUEADA** | Su padre corre el NATIVO de 4.12.0: no se puede diagnosticar hasta que promocionemos |
 | 2 · Gastos: qué cuenta / «Movimiento» / banco | 🔁 **RECHAZADA 4.17.0.1** (7 ok / 2 fallos) → arreglada en **4.17.1**, esperando re-prueba | Sin APK (web + migración 0021) |
 | 3 · Filtro en `+` y editar + calendario propio | ⬜ Siguiente candidata | No depende de nada |
@@ -17,37 +17,33 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | 7 · Import histórico | ⬜ Plan sellado | `plan-import-historico-seguro.md`, tanda 1 motor |
 | 8 · Parpadeo tabs / overscroll | ⬜ Libre | Necesita que él grabe |
 
-**Estado del repo:** `beta` = **4.17.0** (por delante de `main` = 4.16.1). APK publicada: **40 / 4.16.2**.
+**Estado del repo:** `beta` = **4.17.2** (por delante de `main` = 4.16.1). APK publicada: **40 / 4.16.2**.
 Migración **0021** (`ob_name`) en el repo — ⚠ las Edge Functions y las migraciones **solo se
-despliegan al pushear a `main`**; `ingest` se desplegó a mano el 17/8 con
-`gh workflow run supabase.yml --ref beta`, pero **la 0021 NO está aplicada todavía**: el cliente
+despliegan al pushear a `main`**; `ingest` hay que redesplegarlo a mano desde `beta` para que el
+widget coja el arreglo de las notis gemelas. La 0021 **NO está aplicada todavía**: el cliente
 reintenta sin la columna (`_isMissingObNameCol`), así que el renombrado funciona pero sin la
 protección anti-duplicado hasta que se aplique.
 
-### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — cerrado el 17/8 con sus datos reales
+### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
 
-Medido con `node scripts/diag-widget.mjs` (lee su nube y pasa LAS MISMAS filas por las dos
-implementaciones). **No hace falta volver a investigarlo, solo arreglarlo.**
+Medido con `node scripts/diag-widget.mjs` (lee su nube) **y con el extracto de Trade Republic**.
 
-1. **La fórmula NO es el problema.** Servidor 914,96 € y cliente 914,96 € con la misma entrada.
-   Que nadie toque `statsDelMes` ni `monthBudgetStats` buscando aquí.
-2. **El widget cuenta filas que la app ya descartó** → widget MÁS ALTO. Dos vías:
-   - **9 filas con lápida** en `state.deleted` siguen vivas en la tabla `expenses`. `ingest`
-     consulta la tabla y **no sabe nada de las lápidas**; la app las filtra al bajar
-     (`syncCloudExpenses`, 11-app-main.js ~297). `cloud.deleteExpense` traga los fallos con
-     `.catch(()=>{})`, así que un borrado que no llegó a la nube no deja rastro.
-   - Gemelos que `reconcileObDupes` quita en local y en la nube se quedan.
-3. **Y al revés: la app esconde cargos de verdad** → app MÁS BAJA. Fusiona con
-   `keyOf = día|importe|comercio` (sin hora) mientras la nube guarda por `fecha` completa (su
-   clave única es `user_id,fecha,importe,comercio`). Caso medido: **230 € a las 11:31 y otros
-   230 € a las 13:08 en el mismo sitio el 13/8** — dos compras reales, una sola fila en el móvil.
+1. **La fórmula NO es el problema.** Servidor y cliente dan lo mismo con la misma entrada.
+2. **El widget cuenta filas que la app ya no ve.** Ingest leía la tabla `expenses` a pelo:
+   - lápidas en `state.deleted` que siguen vivas en la nube (`deleteExpense` traga errores);
+   - **notis gemelas del mismo cargo.** Caso medido: dos filas de 230 € APOLLON GALLERY el 13/8
+     (11:31 `regalos` y 13:08 `bares`), las DOS `macrodroid`. El extracto de TR tiene **un** 230
+     y **un** 115. Wallet avisó a una hora y TR a otra (97 min, fuera de la ventana de 10 min).
+     Claude tomó las horas distintas por «dos compras reales». El banco dice que no.
+3. **NO meter la hora en la clave de fusión.** Eso haría que la app también sumara el gemelo
+   y mentiría igual que el widget. La app ya hace bien: `día|importe|comercio`.
 
-**Arreglo propuesto (pendiente de su OK, son dos tandas distintas):**
-- **1b-A, barata y cierra el síntoma:** que `ingest` respete las lápidas. Ya carga `app_state`,
-  así que solo tiene que descartar las filas cuya clave esté en `data.deleted`. Aparte, limpieza
-  puntual de la nube para las que debieron borrarse ⚠ **una limpieza de datos no lleva flag**.
-- **1b-B, delicada:** meter la hora en la clave de fusión del cliente. Toca el camino por el que
-  entran TODOS los gastos, así que va sola, con su OK y con pruebas contra sus datos.
+**Arreglo (4.17.2, ingest, sin APK):** `filasComoLaApp` (lápidas + una fila por clave) antes de
+`statsDelMes`, y al insertar se ignora un segundo aviso el mismo día / mismo comercio / mismo
+euro. Desplegar `ingest` desde `beta` para probarlo. No borrar filas de la nube a mano: el
+conteo ya las ignora; el insert deja de criar más.
+
+**Descartado:** «1b-B meter la hora en la clave». Era el arreglo al revés.
 
 **Su rechazo de la 4.17.0.1 y qué se hizo** (`node scripts/errores.mjs --kind=beta`):
 

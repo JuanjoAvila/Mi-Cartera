@@ -17,14 +17,14 @@
  *
  * Uso:  node scripts/diag-widget.mjs   (necesita SUPABASE_SERVICE_ROLE_KEY en .env.local)
  *
- * HALLAZGO DEL 2026-08-17, para no repetir el camino:
+ * HALLAZGO DEL 2026-08-17 (corregido la misma noche: el «dos compras reales» era FALSO).
  *   · Las dos fórmulas dan EXACTAMENTE lo mismo con la misma entrada. No toques el cálculo.
- *   · El widget cuenta filas que la app ya descartó: 9 con lápida en `state.deleted` que siguen
- *     vivas en la tabla `expenses` (ingest consulta la tabla y no sabe nada de lápidas), más los
- *     gemelos que `reconcileObDupes` quita en local y en la nube no.
- *   · Y al revés: la app FUSIONA por `día|importe|comercio` mientras la nube guarda por `fecha`
- *     con hora, así que dos cargos de verdad del mismo importe el mismo día en el mismo sitio se
- *     ven como uno solo en el móvil (caso medido: 230 € a las 11:31 y otros 230 € a las 13:08).
+ *   · El widget cuenta filas que la app ya descartó: lápidas en `state.deleted` que siguen
+ *     vivas en la tabla (ingest no las miraba) + notis gemelas del MISMO cargo.
+ *   · Caso medido: 230 € APOLLON a las 11:31 y 230 € a las 13:08, AMBAS `macrodroid`. El extracto
+ *     de Trade Republic tiene UN 230 y UN 115. Wallet avisó a una hora y TR a otra (97 min, fuera
+ *     de la ventana de 10). NO son dos compras. Meter la hora en la clave de fusión haría que la
+ *     app también mintiera. Ingest ahora junta como la app (`filasComoLaApp`) y no inserta la 2ª.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -137,12 +137,9 @@ for (const { user_id, data } of estados) {
   }
 
   /* 5) LA PRUEBA DE FUEGO: reproducir lo que ve la APP.
-     `syncCloudExpenses` (11-app-main.js ~297) fusiona lo que baja de la nube con
-     `keyOf = dia|importe|comercio` — DÍA, sin hora— y descarta lo que tenga lápida en
-     `state.deleted`. La nube, en cambio, guarda una fila por `fecha` COMPLETA (con hora): su clave
-     única es `user_id,fecha,importe,comercio`. O sea que dos cargos del mismo importe, el mismo
-     día y en el mismo sitio son DOS filas en la nube y UNA sola en el móvil. El widget cuenta las
-     dos; la app, una. Ahí es donde puede nacer el desfase. */
+     `syncCloudExpenses` fusiona con `keyOf = dia|importe|comercio` (SIN hora) y descarta lápidas.
+     Si ingest no hace lo mismo, el widget suma de más. Horas distintas ≠ dos compras: el 13/8 los
+     dos 230 de APOLLON eran Wallet y TR del mismo cargo (el banco solo tiene uno). */
   const claveApp = (f) => String(f.fecha).slice(0, 10) + "|" + (Number(f.importe) || 0) + "|" + (f.comercio || "");
   const lapidas = new Set(data?.deleted || []);
   const vistas = new Set();
@@ -164,8 +161,9 @@ for (const { user_id, data } of estados) {
   console.log(`    gastado(shown) ${eur(cApp.shown)}   ← esto deberia ser lo que enseña la pantalla`);
   console.log(`    frente a ${eur(s.shown)} del widget  ⇒ desfase ${eur(s.shown - cApp.shown)}`);
 
-  // Y las horas de los gemelos: si son minutos, es la MISMA compra entrando dos veces; si son
-  // horas, son dos compras de verdad y la que se esconde es la app.
+  // Horas de cada gemelo. ⚠ Horas de diferencia NO prueba dos compras: Wallet y TR del mismo
+  // cargo pueden avisarte con más de una hora de margen (13/8: 11:31 vs 13:08, y el banco
+  // solo tenía uno). La prueba de verdad es el extracto del banco, no el reloj de la noti.
   if (gemelos.length) {
     console.log(`\n  horas de cada gemelo (para saber si son la misma compra o dos):`);
     gemelos.slice(0, 6).forEach(([k, v]) => {

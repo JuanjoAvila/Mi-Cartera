@@ -1,9 +1,9 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.17.1** — **EN `beta`**. Dos tandas, cada una con su veredicto:
-> `widget-coherente` (el widget ya no se contradice con la app cerrada, **necesita la APK 40**,
-> sin veredicto) y `gastos-orden` (**rechazada en 4.17.0.1** con 7 ok / 2 fallos; los dos
-> arreglados en la 4.17.1 — solo web + migración 0021, sin APK nueva).
+> Estado a 2026-08-17 · **v4.17.2** — **EN `beta`**. El widget de la 4.16.2 ya no se contradecía
+> por dentro, pero seguía sumando de más (907 vs 709): ingest no respetaba lápidas ni juntaba las
+> dos notis del mismo cargo (Wallet + TR). Arreglo en el servidor, **sin APK nueva**. La tanda
+> `gastos-orden` sigue en 4.17.1 esperando re-prueba.
 >
 > ⚠ El fallo del **bloqueo de pantalla al guardar** que encontró NO era de la tanda: venía de la
 > v3.108.0 y saltaba con cualquier edición de importe o nombre. El sheet de detalle tenía dos
@@ -78,8 +78,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.17.1** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
-| APK (`versionName` / `versionCode`) | **4.16.2** / **40** — widget coherente con la app cerrada. Firma `CN=Mi Cartera`. La 4.17.0 no toca nativo: va por OTA sobre esta misma APK. |
+| Web / OTA (`VERSION`) | **4.17.2** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
+| APK (`versionName` / `versionCode`) | **4.16.2** / **40** — widget coherente con la app cerrada. Firma `CN=Mi Cartera`. La 4.17.x no toca nativo: va por OTA sobre esta misma APK. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | repo **40** / 4.16.2 · **live: 35 / 4.12.0** ⚠ — no se movió desde el outage del 6/8 |
 

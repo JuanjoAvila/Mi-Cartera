@@ -26,7 +26,50 @@
 /** Igual que `CAT_NEUTRAS` en el cliente: ni suman gasto ni suman ingreso. */
 const CAT_NEUTRAS: Record<string, number> = { inversion: 1, traspaso: 1 };
 
-export type FilaGasto = { importe: number | string; cat?: string | null; source?: string | null };
+export type FilaGasto = {
+  importe: number | string;
+  cat?: string | null;
+  source?: string | null;
+  fecha?: string | null;
+  comercio?: string | null;
+};
+
+/**
+ * La misma clave que usa la app al bajar gastos (`keyOf` en `syncCloudExpenses` /
+ * `pushDeleted`): día UTC | importe | comercio. SIN la hora, a propósito.
+ *
+ * 2026-08-17: una compra en APOLLON GALLERY disparó DOS notis (Wallet 11:31 y TR 13:08,
+ * 97 min — fuera de la ventana de 10 min de ingest). El banco solo tiene UN cargo de 230 €
+ * y otro de 115 €. La nube guardó los dos 230 porque la clave única lleva la fecha completa.
+ * La app los junta. Si el widget cuenta las dos, miente. Meter la hora en esta clave haría
+ * que la app también mintiera: mostraría dos compras que el banco no tiene.
+ */
+export function claveComoLaApp(f: {
+  fecha?: string | null;
+  importe?: number | string;
+  comercio?: string | null;
+}): string {
+  return String(f.fecha || "").slice(0, 10) + "|" + (Number(f.importe) || 0) + "|" + (f.comercio || "");
+}
+
+/**
+ * Lo que la app ve de la tabla: sin las lápidas de `state.deleted` y una sola fila por clave.
+ * `ingest` tiene que pasar ESTO a `statsDelMes`, no el volcado crudo: si no, el widget suma
+ * gastos que él ya borró y notis gemelas que la lista ya fusionó.
+ */
+export function filasComoLaApp<T extends FilaGasto>(filas: T[] | null | undefined, deleted: string[] | null | undefined): T[] {
+  const lap = new Set(deleted || []);
+  const vistas = new Set<string>();
+  const out: T[] = [];
+  for (const f of filas || []) {
+    const k = claveComoLaApp(f);
+    if (lap.has(k)) continue;
+    if (vistas.has(k)) continue;
+    vistas.add(k);
+    out.push(f);
+  }
+  return out;
+}
 
 /**
  * El banco (`ent`) de un gasto a partir de su `source`. Espejo de `expenseBankOf()`.

@@ -23,7 +23,8 @@ import { loadPureLogicFromFile } from "../scripts/load-pure-logic.mjs";
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const src = fs.readFileSync(path.join(root, "supabase/functions/_shared/presupuesto.ts"), "utf8");
 const js = transformSync(src, { loader: "ts", format: "esm" }).code;
-const { statsDelMes, bancosDeGastoDiario, cuentaParaPresupuesto, bancoDeSource } =
+const { statsDelMes, bancosDeGastoDiario, cuentaParaPresupuesto, bancoDeSource,
+  claveComoLaApp, filasComoLaApp } =
   await import("data:text/javascript;base64," + Buffer.from(js).toString("base64"));
 
 const cli = loadPureLogicFromFile();
@@ -136,6 +137,49 @@ t("sin presupuesto puesto no se inventa ninguno", () => {
   const { movs } = escenario();
   const srv = statsDelMes(movs.map(paraServidor), { budget: 0 }, desdeMs);
   assert.equal(srv.budget, 0);
+});
+
+t("★ dos notis del mismo cargo el mismo día cuentan UNA vez — no son dos compras", () => {
+  /* Caso real 13/8: Wallet 11:31 y TR 13:08, ambos 230 € APOLLON GALLERY. El extracto del banco
+     tiene UN 230 y UN 115. Meter la hora en la clave haría que la app también mintiera. */
+  const data = {
+    budget: 1000,
+    accounts: [{ ent: "trade_republic", role: "diario" }],
+    settings: { expenseBanks: ["trade_republic"], gTotalMode: "net" },
+  };
+  const gemelas = [
+    { fecha: ym + "-13T11:31:14.000Z", importe: 230, cat: "regalos", source: "macrodroid", comercio: "APOLLON GALLERY" },
+    { fecha: ym + "-13T13:08:12.000Z", importe: 230, cat: "bares", source: "macrodroid", comercio: "APOLLON GALLERY" },
+    { fecha: ym + "-13T12:34:17.000Z", importe: 115, cat: "regalos", source: "macrodroid", comercio: "APOLLON GALLERY" },
+  ];
+  assert.equal(claveComoLaApp(gemelas[0]), claveComoLaApp(gemelas[1]), "misma clave: el banco es uno");
+  const visibles = filasComoLaApp(gemelas, []);
+  assert.equal(visibles.length, 2, "los dos 230 se juntan; el 115 se queda");
+  const srv = statsDelMes(visibles, data, desdeMs);
+  assert.equal(srv.spent, 345);
+  const crudo = statsDelMes(gemelas, data, desdeMs);
+  assert.equal(crudo.spent, 575, "sin juntar, el widget mentía sumando 230 de más");
+});
+
+t("★ las lápidas de la app también las respeta el servidor (gastos que él ya borró)", () => {
+  const data = {
+    budget: 1000,
+    accounts: [{ ent: "trade_republic", role: "diario" }],
+    settings: { expenseBanks: ["trade_republic"], gTotalMode: "split" },
+  };
+  const filas = [
+    { fecha: d(2), importe: 88.11, cat: "transporte", source: "macrodroid", comercio: "Movimiento" },
+    { fecha: d(3), importe: 12.6, cat: "cine", source: "macrodroid", comercio: "Cafe" },
+  ];
+  const k = claveComoLaApp(filas[0]);
+  const visibles = filasComoLaApp(filas, [k]);
+  const srv = statsDelMes(visibles, data, desdeMs);
+  const app = cli.monthBudgetStats(Object.assign({}, data, {
+    expenses: visibles.map((f) => ({ date: f.fecha, amount: f.importe, category: f.cat, source: f.source })),
+    deleted: [k],
+  }));
+  assert.equal(srv.spent, 12.6);
+  assert.equal(srv.spent, c(app.spent));
 });
 
 t("el banco sale del source igual que en el cliente", () => {
