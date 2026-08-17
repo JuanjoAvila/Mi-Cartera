@@ -1,5 +1,40 @@
 # Brief Claude personal — destello temporada (Mi Cartera)
 
+> ## ⚠ LEE ESTO ANTES DE PEGARLO (añadido 2026-08-17)
+>
+> **Este brief se escribió el 2026-08-05 contra `beta` en 4.15.0.12. La mitad de su «estado» ya
+> es falso.** Lo que sigue valiendo es el **forense**; lo que hay que ignorar es el **punto de
+> partida**.
+>
+> | Lo que dice el brief | Lo que hay de verdad hoy |
+> |---|---|
+> | «Tip remoto (roto): `3f9d6572` → 4.15.0.12» | `beta` va por **4.18.0.1**. Ese commit es de hace 12 días. |
+> | «Hay cambios **sin commit** de un intento .13 — NO descartar a ciegas» | **No existen.** El árbol está limpio. No busques ese WIP. |
+> | «Cómo empezar: `git diff src/shell.html src/modules/11-app-main.js`» | Devolverá vacío. |
+> | «Done criteria 7: CI stamp **4.15.0.13+**» | Sería un bump hacia atrás. Parte de `VERSION` real. |
+> | El .12 dejó al usuario furioso, sin arreglar | **Se arregló y él lo aprobó.** El 6/8 a las 00:14, en 4.15.0.19, cinco tandas de season con **0 fallos**: `fix-season-portal` («Destello y barra — arreglo definitivo», 3 ok), `fix-season-glow-steady` («Destello que no cambia nunca», 9 ok), `fix-season-glow`, `fix-season-glow-soft`, `fix-season-tabs` («Pestañas sin mezclarse», 4 ok). Compruébalo tú: `node scripts/errores.mjs --kind=beta`. |
+>
+> **Entonces, ¿qué es la tanda 8?** Una queja **posterior y distinta**, de la vuelta del crucero
+> (commits `2babedb2` y `aeec4ad9`, 6/8 por la noche, en
+> [`brief-crucero-verificar-pages.md`](brief-crucero-verificar-pages.md)):
+>
+> 1. **Parpadeo al cambiar de pestaña** en 4.15+ — se nota MÁS con temporada, **pero también sin**.
+>    Confirmar con Temática **Ninguna** antes de tocar nada de season.
+> 2. **Capa negra al tirar de Cartera más a la derecha** (overscroll) — sospecha del clamp del
+>    gesto al volver.
+>
+> Misma familia (host transparente / compositing del WebView), **no el mismo bug** que el flash
+> del .12. No empieces reproduciendo el .12: ya no pasa.
+>
+> **Lo que de este brief sigue siendo oro y hay que leer entero:** la línea temporal de intentos,
+> los **9 descartados con evidencia** (sobre todo el 5: host transparente → Inicio+Gastos
+> solapados), las causas reales demostradas, y las trampas de ADB/CDP (el `>` de PowerShell
+> corrompe el PNG; `adb shell input swipe` no dispara el gesto de tabs). Eso no ha caducado.
+>
+> Y ojo con la lección de [`season-destello-saga`](../memoria/season-destello-saga.md): el Δ del
+> píxel a secas mide el CONTENIDO, no el efecto. Hay que congelar el gesto con el dedo puesto y
+> restar dos capturas.
+
 **Modelo:** Claude **Opus** a potencia **alta / Ultra** (Code max si lo tienes).  
 No uses Sonnet para esto: ya hubo varios “fixes” que pasaron tests/CSS y fallaron en el Oppo. Necesita razonar compositing WebView + no inventar otra cinta.  
 **No uses fable.**
