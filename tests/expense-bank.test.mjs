@@ -59,6 +59,19 @@ t("expenseBankEnts: sin duplicar si el banco diario ya está en expenseBanks", (
   assert.equal(out[1], "caixabank");
 });
 
+t("expenseBankEnts: Revolut + TR marcados salen los dos (el filtro de Gastos arranca con esta lista)", () => {
+  const s = {
+    accounts: [
+      { id: "tr", ent: "trade_republic", role: "diario", spendFrom: true },
+      { id: "rv", ent: "revolut", role: "fijos" },
+    ],
+    settings: { expenseBanks: ["trade_republic", "revolut"] },
+  };
+  const out = ctx.expenseBankEnts(s);
+  assert.ok(out.indexOf("trade_republic") >= 0);
+  assert.ok(out.indexOf("revolut") >= 0);
+});
+
 t("expenseFromRow: recupera banco tras pull", () => {
   const tr = ctx.expenseFromRow({ id: "1", fecha: "2026-07-01T12:00:00.000Z", importe: 12, comercio: "X", cat: "otros", source: "macrodroid" });
   assert.equal(tr.ent, "trade_republic");

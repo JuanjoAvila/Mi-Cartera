@@ -127,7 +127,7 @@ test("y se puede volver a verlo todo sin dejar el filtro pegado", async ({ page 
   await expect(lista(page)).toHaveCount(1);
 
   /* «Limpiar» tiene que llevarse también este, no solo categorías y bancos. Deja el filtro como
-     al entrar —y al entrar viene preseleccionado el banco de gasto diario—, así que vuelven los
+     al entrar —y al entrar vienen preseleccionados TODOS los de gasto diario—, así que vuelven los
      tres de Trade Republic; el recibo de Sabadell sigue fuera hasta que pidas todos los bancos. */
   await page.locator('button.v4-chip:has-text("Limpiar")').first().click();
   await expect(lista(page)).toHaveCount(3);

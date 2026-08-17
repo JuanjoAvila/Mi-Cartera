@@ -832,6 +832,18 @@
   .v4-chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:8px;}
   .v4-chip{flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:22px;background:var(--sur);border:1px solid var(--line-soft);font-size:13.5px;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;box-sizing:border-box;}
   .v4-chip.on{background:rgba(95,208,138,.16);border-color:var(--mint-deep);color:var(--mint);}
+  /* Calendario propio: el nativo de Android es gris y en inglés (tanda 3, 2026-08-17). */
+  .mc-cal{margin:4px 0 12px;padding:10px 8px 8px;background:var(--sur);border:1px solid var(--line-soft);border-radius:14px;}
+  .mc-cal-nav{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .mc-cal-nav button{width:44px;height:44px;border-radius:12px;background:var(--bg-2);border:1px solid var(--line-soft);font-size:20px;font-weight:700;color:var(--text);}
+  .mc-cal-title{flex:1;text-align:center;font-size:14.5px;font-weight:800;text-transform:capitalize;}
+  .mc-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+  .mc-cal-wd{margin-bottom:4px;}
+  .mc-cal-wd div{text-align:center;font-size:11px;font-weight:800;color:var(--muted-2);padding:4px 0;}
+  .mc-cal-day{min-height:44px;border-radius:10px;border:0;background:transparent;color:var(--text);font-size:14px;font-weight:700;}
+  .mc-cal-day.hoy{box-shadow:inset 0 0 0 1px var(--line-soft);}
+  .mc-cal-day.on{background:rgba(95,208,138,.16);color:var(--mint);box-shadow:inset 0 0 0 1px var(--mint-deep);}
+  .range .v4-chip{flex:1;min-width:0;}
   .v4-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:6px 0 12px;}
   .v4-keys button{height:46px;border-radius:12px;background:var(--sur);border:1px solid var(--line-soft);font-size:18px;font-weight:600;}
   .v4-keys button:active{transform:scale(.96);background:var(--sur2);}
@@ -1903,7 +1915,9 @@ const CATEGORIES = [
   { id:"bares",      name:"Bares y restaurantes", color:"#E6C36A", icon:"🍽️" },
   { id:"cine",       name:"Cine",                color:"#E8A0C8", icon:"🍿" },
   { id:"padel",      name:"Pádel",               color:"#6BCB77", icon:"🎾" },
-  { id:"ocio",       name:"Ocio",                color:"#9BD0E0", icon:"🎮" },
+  { id:"heladeria",  name:"Heladería",           color:"#F5A3C7", icon:"🍦" },
+  { id:"ocio",       name:"Ocio",                color:"#9BD0E0", icon:"🎭" },
+  { id:"gaming",     name:"Videojuegos",         color:"#7B8CDE", icon:"🎮" },
   { id:"viajes",     name:"Viajes",              color:"#5B8DEF", icon:"✈️" },
   { id:"transporte", name:"Transporte",          color:"#7FB5E8", icon:"🚇" },
   { id:"parking",    name:"Parking",             color:"#8AA0B8", icon:"🅿️" },
@@ -1916,6 +1930,7 @@ const CATEGORIES = [
   { id:"mascotas",   name:"Mascotas",            color:"#C4A574", icon:"🐾" },
   { id:"hogar",      name:"Hogar",               color:"#B7C98A", icon:"🏠" },
   { id:"regalos",    name:"Regalos",             color:"#E89CB0", icon:"🎁" },
+  { id:"joyeria",    name:"Joyería",             color:"#D4AF37", icon:"💍" },
   { id:"otros",      name:"Otros",               color:"#8FA89A", icon:"📦" },
 ];
 const CAT = Object.fromEntries(CATEGORIES.map(c=>[c.id,c]));
@@ -1967,7 +1982,9 @@ const USO_OK=[
 const KW = {
   pan:["panaderia","pasteleria","pastisseria","fleca","forn de pa","forn ","obrador","croissant","boulangerie","bakery","granier","santagloria","santa gloria","panificadora","brioche","horno de pan","horno artesano","panaria","el forn","viena ","entpan","panetteria"],
   cine:["cinema","cine","cinesa","yelmo","kinepolis","odeon","mk2","renoir","multicines","entradas.com","atrapalo","ticketmaster","imax","cinemes","filmotech"],
-  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","heladeria","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans &","pans ","wok ","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub ","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","vending","expendedor","deliveroo","too good to go","toogoodtogo","mcdonalds","mcdonald's","burger king","hamburgues","cervecer","cerveseria","fosters hollywood","ladydiana","100 montaditos","comida a domicilio"],
+  // Heladería ANTES que bares: si no, «heladería X» caía en restaurantes.
+  heladeria:["heladeria","gelateria","ice cream","llaollao","llao llao","ocool","frosti","haagen","ben & jerry","ben and jerry","grom ","amorino"],
+  bares:["restaurante","bar","cafe","cafeteria","mcdonald","burger","pizza","sushi","tapas","cerveceria","bodega","bocadillo","kebab","pollo","grill","braseria","taberna","comida","food","lunch","dinner","brunch","desayuno","telepizza","glovo","just eat","uber eats","kfc","five guys","fiveguys","goiko","tgb","taco bell","tacobell","domino","papa john","subway","starbucks","vips","foster","montadito","rodilla","pans &","pans ","wok ","ramen","poke","taco","churreria","churros","asador","brasa","marisqueria","mariscos","pub ","shawarma","doner","döner","nandos","popeyes","dunkin","donut","tim hortons","cien montaditos","la sureña","sureña","muerde la pasta","ginos","la tagliatella","tagliatella","udon","wagamama","honest greens","croqueteria","tortilleria","gastrobar","vermuteria","coctel","cocktail","vending","expendedor","deliveroo","too good to go","toogoodtogo","mcdonalds","mcdonald's","burger king","hamburgues","cervecer","cerveseria","fosters hollywood","ladydiana","100 montaditos","comida a domicilio"],
   // Pádel DESPUÉS de bares: «restaurante de pádel» debe ser comida (feedback histórico).
   padel:["padel","pádel","playtomic","paddle","club de padel","club padel","pista padel","padel pro","world padel","premier padel","indoor padel"],
   super:["mercadona","lidl","aldi","carrefour","dia ","bonpreu","bon preu","consum","eroski","spar","alcampo","simply","supermercado","market","fresco","verduleria","fruteria","hipercor","caprabo","condis","ahorramas","ahorramás","gadis","froiz","bm supermarket","family cash","supeco","costco","makro","amazon fresh","glovo market","compra online mercadona"],
@@ -1979,14 +1996,17 @@ const KW = {
   energia:["endesa","iberdrola","naturgy","repsol luz","holaluz","octopus energy","octopus ","totalenergies","total energies","factor energia","factor energía","lucera","pepeenergy","pepe energy","energia ","energía ","gas natural","canal de isabel","aigues de barcelona","aigües de barcelona","agbar","aqualia","sorea","suministro electric","suministro eléctric","factura luz","factura gas","factura agua","factura aigua","tarifas luz","potencia contratada"],
   tasas:["gencat","generalitat","atc ","agencia tributaria","aeat","ajuntament","ayuntamiento","diputacio","diputación","dgt","multa","multa transit","sancion","sanción","tribut","impost","impuesto","tax agency","taxes","ibi","ivtm","basura","residus","residuos","canon agua","canon de l'aigua","tasa","taxa","registro mercantil","registro civil","notaria","notaría","gestoria","gestoría","procurador","abogado","lexnet","catastro","seguretat social","seguridad social","tgss","recaudacion","recaudación","zona bajas emisiones","zbe","hacienda","hisenda","modelo 100","modelo 303","autoliquidacion","autoliquidación","plusvalia","plusvalía","impuesto circulacion"],
   educacion:["universidad","universitat","uab ","upc ","upf ","ub ","uoc ","uned","campus","matricula","matrícula","academia","academía","curso ","cursos","formacion","formación","master ","máster","mba ","udemy","coursera","domestika","linkedin learning","skillshare","colegio","escola","guarderia","guardería","escuela infantil","libro de texto","libreria universitaria","openenglish","open english","british council","oxford house","academia de ingles","academia d'angles","autoescuela","autoescola","dgt examen","permiso conducir"],
-  ocio:["spotify","netflix","hbo","disney","steam","playstation","xbox","nintendo","fnac","museo","teatro","concierto","decathlon","gym","gimnasio","sport","bolera","anthropic","claude","claude.ai","openai","chatgpt","gpt-","google one","google play","googleplay","play store","playstore","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","cursor","midjourney","perplexity","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio","basic fit","basic-fit","dir ","metropolitan","synergym","fitness park","puregym","mcfit","crossfit","bowling","karaoke","laser tag","minigolf","parque de atracciones","portaventura","ferrari land","tibidabo"],
-  compras:["zara","mango","primark","stradivarius","bershka","pull &","pull&","el corte","amazon","amzn","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis","papeleria","papelería","copisteria","copistería","liberia","libreria","druni","primor","sephora","perfumeria","fnac ","game ","xbox store","playstation store","app store","apple store","samsung store","xiaomi store","coolmod","versus gamers","uniqlo","h&m","hm ","pull and bear","bimba y lola","tous ","pandora","swatch"],
+  // Videojuegos ANTES que ocio/compras: Steam e Instant Gaming no son «Netflix» ni «Amazon».
+  gaming:["steam","instant gaming","instantgaming","instant-gaming","g2a","eneba","cdkeys","humble bundle","epic games","battle.net","vs gamers","versus gamers","playstation store","xbox store","nintendo eshop","nintendo e-shop"],
+  ocio:["spotify","netflix","hbo","disney","playstation","xbox","nintendo","fnac","museo","teatro","concierto","decathlon","gym","gimnasio","sport","bolera","anthropic","claude","claude.ai","openai","chatgpt","gpt-","google one","google play","googleplay","play store","playstore","icloud","apple.com","apple servic","youtube premium","youtube music","prime video","amazon prime","twitch","crunchyroll","dazn","filmin","movistar plus","rakuten","audible","deezer","tidal","dropbox","notion","canva","duolingo","cursor","midjourney","perplexity","atraccion","atracción","parque tematico","zoologic","zoológico","aquarium","aquari","escape room","ocio","basic fit","basic-fit","dir ","metropolitan","synergym","fitness park","puregym","mcfit","crossfit","bowling","karaoke","laser tag","minigolf","parque de atracciones","portaventura","ferrari land","tibidabo"],
+  compras:["zara","mango","primark","stradivarius","bershka","pull &","pull&","el corte","amazon","amzn","aliexpress","pccomponentes","mediamarkt","worten","nike","adidas","foot locker","alehop","ale hop","ale-hop","tiger","flying tiger","normal ","tedi","action","casa ","muy mucho","sostrene","søstrene","kiabi","lefties","springfield","cortefiel","jd sports","sprinter","shein","temu","massimo","oysho","cyrillus","calzedonia","intimissimi","clas ohlson","veritas","douglas perfum","cofidis","papeleria","papelería","copisteria","copistería","liberia","libreria","druni","primor","sephora","perfumeria","fnac ","game ","app store","apple store","samsung store","xiaomi store","coolmod","uniqlo","h&m","hm ","pull and bear","bimba y lola","swatch"],
   salud:["farmacia","clinica","clínica","medico","médico","doctor","dra.","dr.","consulta","ambulatorio","urgencias","hospital","optica","óptica","fisio","fisioterapia","masaje","podologo","podólogo","psicologo","psicólogo","psiquiatra","sanitas","adeslas","asisa","dkv","mutua","quiron","quirón","cima","cap ","centro medico","centro médico","laboratorio","analisis","análisis","radiologia","radiología","dentista","dental","ortodoncia","oculista","oftalmo","cruz verde","procare","vitaldent","vital dent","donte","dental company","general optic","multiopticas","multioptics","promofarma","dosfarma","atida","pocoyofarma"],
   pelu:["peluqueria","perruqueria","barberia","barber","estilis","hair","salon de belleza","nails","manicura","pedicura","lash","cejas","estetica","belleza","depilacion","depilación","corte de pelo","tinte pelo","balayage"],
   // Mascotas ANTES que hogar.
   mascotas:["zooplus","kivet","tiendanimal","miscota","animalis","kiwoko","pienso","veterinario","veterinari","clinica veterinaria","clínica veterinaria","peluqueria canina","peluquería canina","petsia","dogfy","affinity pet","royal canin","hills pet","purina","advance dog","advance cat","gos ","gat ","perro","gato","mascota"],
   hogar:["ikea","leroy","bricomart","bauhaus","ferreteria","muebles","sofa","sofá","lampara","lámpara","tintoreria","tintorería","lavanderia","lavandería","mrw","seur","correos","amazon locker","bricodepot","bricodépôt","aki ","aki.","ferretería","manitas","limpieza hogar","limpiapro","blink ","dyson","rowenta","bosch electro","balay","teka"],
-  regalos:["regalo","flores","floristeria","floristería","joyeria","joyería","perfumeria","perfumería","interflora","teleflorist","rosas ","ramo "],
+  regalos:["regalo","flores","floristeria","floristería","perfumeria","perfumería","interflora","teleflorist","rosas ","ramo "],
+  joyeria:["joyeria","joyeros","tiffany","cartier","swarovski","tous ","pandora"],
 };
 function autoCategory(merchant){
   const c=(merchant||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
@@ -3013,7 +3033,8 @@ const LANG = {
     v4_inv_tools:"Herramientas de inversión", v4_inv_tools_h:"Precios, redondeo, proyección y edición manual — lo que antes llenaba Cartera.",
     v4_sync_banks:"Sincronizar bancos", v4_sync_banks_done:"✓ Bancos sincronizados",
     v4_sync_brokers_ok:"📈 Brókers al día (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sesión caducada · reconecta en Ajustes → Bancos",
-    ap_bank:"Banco", ap_bank_none:"Sin banco",
+    ap_bank:"Banco", ap_bank_none:"Sin banco", ap_date:"Fecha",
+    cal_today:"Hoy", cal_prev:"Mes anterior", cal_next:"Mes siguiente",
     bk_issue:"⚠ {bank} necesita tu permiso otra vez", bk_issue_sub:"El permiso de lectura caducó (obligatorio cada ~3 meses): el saldo puede estar desfasado. Un toque y listo.",
     bk_issue_cta:"🔓 Reconectar {bank}", bk_tr_dead:"⚠ Trade Republic está desconectado",
     // Aviso al sincronizar con algún banco caído (petición 2026-07-24): sale como notificación de
@@ -3171,7 +3192,8 @@ const LANG = {
     v4_inv_tools:"Investment tools", v4_inv_tools_h:"Prices, round-ups, projections and manual edit — what used to clutter Portfolio.",
     v4_sync_banks:"Sync banks", v4_sync_banks_done:"✓ Banks synced",
     v4_sync_brokers_ok:"📈 Brokers up to date (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: session expired · reconnect in Settings → Banks",
-    ap_bank:"Bank", ap_bank_none:"No bank",
+    ap_bank:"Bank", ap_bank_none:"No bank", ap_date:"Date",
+    cal_today:"Today", cal_prev:"Previous month", cal_next:"Next month",
     bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
     bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
     bk_notif_title:"A bank needs reconnecting",
@@ -3316,7 +3338,8 @@ const LANG = {
     v4_inv_tools:"Eines d’inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
     v4_sync_banks:"Sincronitza els bancs", v4_sync_banks_done:"✓ Bancs sincronitzats",
     v4_sync_brokers_ok:"📈 Brókers al dia (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sessió caducada · reconnecta a Ajustos → Bancs",
-    ap_bank:"Banc", ap_bank_none:"Sense banc",
+    ap_bank:"Banc", ap_bank_none:"Sense banc", ap_date:"Data",
+    cal_today:"Avui", cal_prev:"Mes anterior", cal_next:"Mes següent",
     bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
     bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
     bk_notif_title:"Un banc necessita que el reconnectis",
@@ -4144,7 +4167,7 @@ Object.assign(LANG.es,{
   g_bk_neutra:"Inversión y traspasos", g_bk_otrobanco:"De otros bancos",
   g_bk_title:"Qué contar", g_bk_all:"Todo",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
-  g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo (el banco de gasto diario viene marcado por defecto).",
+  g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo. Por defecto salen todos los que tienes marcados como gasto diario.",
   g_filters_search:"Buscar categoría…", g_filters_cats:"categorías", g_filters_banks:"bancos",
   g_filters_clear:"Limpiar", g_filters_done:"Listo",
   ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
@@ -4166,7 +4189,7 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_heladeria:"Heladería", cat_ocio:"Ocio", cat_gaming:"Videojuegos", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_joyeria:"Joyería", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -4239,7 +4262,7 @@ Object.assign(LANG.en,{
   g_bk_neutra:"Investing and transfers", g_bk_otrobanco:"From other banks",
   g_bk_title:"What to count", g_bk_all:"Everything",
   g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
-  g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all (your daily-spending bank is pre-selected).",
+  g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all. By default you see every bank marked as day-to-day spending.",
   g_filters_search:"Search category…", g_filters_cats:"categories", g_filters_banks:"banks",
   g_filters_clear:"Clear", g_filters_done:"Done",
   ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
@@ -4261,7 +4284,7 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_heladeria:"Ice cream", cat_ocio:"Leisure", cat_gaming:"Games", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_joyeria:"Jewellery", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -4333,7 +4356,7 @@ Object.assign(LANG.ca,{
   g_bk_neutra:"Inversió i traspassos", g_bk_otrobanco:"D'altres bancs",
   g_bk_title:"Què comptar", g_bk_all:"Tot",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
-  g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot (el banc de despesa diària ve marcat per defecte).",
+  g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot. Per defecte surten tots els que tens marcats com a despesa diària.",
   g_filters_search:"Cerca categoria…", g_filters_cats:"categories", g_filters_banks:"bancs",
   g_filters_clear:"Netejar", g_filters_done:"Fet",
   ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
@@ -4355,7 +4378,7 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_heladeria:"Gelateria", cat_ocio:"Oci", cat_gaming:"Videojocs", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_joyeria:"Joieria", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -5098,10 +5121,18 @@ function expenseBankEnts(s){
   if(daily&&daily.ent&&out.indexOf(daily.ent)<0) out.push(daily.ent);
   return out;
 }
+/* Misma lista, da igual el orden. El filtro de Gastos arranca con `expenseBankEnts`, no con
+   la cuenta diaria a solas (2026-08-17: Revolut+TR marcados y solo se veía TR). */
+function sameEntList(a,b){
+  if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
+  const sa=a.slice().sort(), sb=b.slice().sort();
+  for(let i=0;i<sa.length;i++) if(sa[i]!==sb[i]) return false;
+  return true;
+}
 /* ¿Cuenta este movimiento para el EFECTIVO de la cuenta de gasto diario (saldo / round-up)?
-   Vista de Gastos: se ven TODOS los bancos. Contabilidad: solo los marcados como gasto diario
-   (`expenseBankEnts` = diaria + extras en settings.expenseBanks). A mano (sin ent) sí cuenta.
-   Pedido 2026-08-05: «que entre todo, pero que solo reste el de gasto diario». */
+   Vista de Gastos: por defecto se filtra a los marcados como gasto diario (`expenseBankEnts`);
+   «Todos los bancos» enseña el extracto entero. Contabilidad: solo los marcados. A mano (sin
+   ent) sí cuenta. Pedido 2026-08-17: Revolut+TR marcados → los dos se ven y cuentan. */
 function expenseCountsCash(e, s){
   if(!e) return false;
   const ent=expenseBankOf(e);
@@ -6589,6 +6620,69 @@ function bkBrand({logo, logoStyle, title, sub, badge, open, onToggle}){
   );
 }
 
+/* Calendario de la casa (2026-08-17). El `input type="date"` abre el picker nativo de Android
+   (gris, en inglés, tipografía ajena) — el mismo rechazo que se llevó a prompt/confirm en la
+   v3.100.0. Aquí se elige el día con la misma pinta que el resto de sheets. Fecha LOCAL, no
+   UTC: `toISOString().slice(0,10)` a las 23h en España ya es el día siguiente. */
+function isoLocal(d){
+  d=d||new Date();
+  const y=d.getFullYear(), m=d.getMonth()+1, day=d.getDate();
+  return y+"-"+(m<10?"0":"")+m+"-"+(day<10?"0":"")+day;
+}
+function fmtIsoCorto(iso){
+  if(!iso) return "—";
+  const d=parseDate(String(iso).slice(0,10));
+  if(!d||isNaN(d.getTime())) return String(iso).slice(0,10);
+  return d.toLocaleDateString(loc(),{weekday:"short",day:"numeric",month:"short"});
+}
+function McCal({value, onPick}){
+  const hoy=isoLocal();
+  const sel=String(value||hoy).slice(0,10);
+  const [view,setView]=useState(function(){
+    const p=sel.split("-");
+    return {y:+p[0]||new Date().getFullYear(), m:(+(p[1]||1))-1};
+  });
+  const first=new Date(view.y, view.m, 1);
+  const startDow=(first.getDay()+6)%7;   // lunes = 0
+  const daysIn=new Date(view.y, view.m+1, 0).getDate();
+  const cells=[];
+  for(let i=0;i<startDow;i++) cells.push(null);
+  for(let d=1;d<=daysIn;d++) cells.push(d);
+  const wd=[];
+  for(let i=0;i<7;i++){
+    wd.push(new Date(2023,0,2+i).toLocaleDateString(loc(),{weekday:"short"}).replace(/\./g,"").slice(0,2));
+  }
+  const isoOf=function(d){
+    const m=view.m+1;
+    return view.y+"-"+(m<10?"0":"")+m+"-"+(d<10?"0":"")+d;
+  };
+  return React.createElement("div",{className:"mc-cal","data-testid":"mc-cal"},
+    React.createElement("div",{className:"mc-cal-nav"},
+      React.createElement("button",{type:"button","aria-label":t("cal_prev"),onClick:function(){
+        setView(function(v){ const m=v.m-1; return m<0?{y:v.y-1,m:11}:{y:v.y,m:m}; });
+      }},"‹"),
+      React.createElement("div",{className:"mc-cal-title"}, first.toLocaleDateString(loc(),{month:"long",year:"numeric"})),
+      React.createElement("button",{type:"button","aria-label":t("cal_next"),onClick:function(){
+        setView(function(v){ const m=v.m+1; return m>11?{y:v.y+1,m:0}:{y:v.y,m:m}; });
+      }},"›")
+    ),
+    React.createElement("div",{className:"mc-cal-grid mc-cal-wd"},
+      wd.map(function(w,i){ return React.createElement("div",{key:i}, w); })
+    ),
+    React.createElement("div",{className:"mc-cal-grid"},
+      cells.map(function(d,i){
+        if(!d) return React.createElement("div",{key:"e"+i});
+        const iso=isoOf(d);
+        return React.createElement("button",{key:iso,type:"button",
+          className:"mc-cal-day"+(iso===sel?" on":"")+(iso===hoy?" hoy":""),
+          onClick:function(){ onPick(iso); }}, d);
+      })
+    ),
+    React.createElement("button",{type:"button",className:"v4-chip"+(sel===hoy?" on":""),style:{marginTop:8},
+      onClick:function(){ onPick(hoy); }}, t("cal_today"))
+  );
+}
+
 /* ============================================================
    TAB: INICIO (v4) — SPEC-v4.md §3
    ============================================================ */
@@ -6945,16 +7039,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // curso, y "Este mes" las tapaba en silencio (feedback 2026-08-01).
   useEffect(function(){ if(forceAllTs) setPreset("all"); },[forceAllTs]);
   const [range,setRange]=useState({from:"",to:""});
+  const [calPick,setCalPick]=useState(null);   // "from" | "to" | null — rango a medida, calendario de la casa
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
-  // Por defecto, el banco de gasto diario (petición 2026-08-03: «que por defecto esté marcado el
-  // banco de gasto diario, no un filtro de Todo» — así el que tenga un banco puesto ve solo lo
-  // suyo nada más entrar, en vez de todo mezclado). Sin banco diario configurado, [] = todos.
-  // Solo se calcula UNA vez al montar (igual que heavyOk): si luego cambia el banco diario no
-  // reordena el filtro que el usuario ya esté usando.
-  const [bankSel,setBankSel]=useState(function(){
-    const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
-    return daily&&daily.ent ? [daily.ent] : [];
-  }); // ents o "_manual"; [] = todos los bancos
+  // Por defecto, TODOS los bancos marcados como gasto diario (2026-08-17): no solo el
+  // principal. Él tiene Revolut + Trade Republic y el filtro arrancaba solo en TR, así que
+  // Revolut desaparecía de la lista aunque sí contara en el presupuesto. Vacío = todos.
+  // Solo se calcula UNA vez al montar: si luego cambia el marcado no reordena el filtro
+  // que el usuario ya esté usando.
+  const [bankSel,setBankSel]=useState(function(){ return expenseBankEnts(state).slice(); });
   /* Filtro por cajón (2026-08-17): «cuenta», «ingreso», «neutra», «otrobanco». Es lo que le deja
      separar el caos que describió al volver del crucero. Arranca VACÍO = se ve todo: la lista
      sigue siendo el histórico completo por defecto, esto es para explorar, no un modo nuevo. */
@@ -7107,7 +7199,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return true;
     }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); });
     if(cands[0]){
-      setDetailId(cands[0].id); setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0});
+      setDetailId(cands[0].id); setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0, date:String(cands[0].date||"").slice(0,10)});
       if(clearFocus) clearFocus();
       return;
     }
@@ -7117,16 +7209,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // pareja 2026-07-10, punto 8). Si en 12s no aparece, abrimos el más reciente como antes.
     const tm=setTimeout(function(){
       const e=(state.expenses||[]).slice().sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
-      if(e){ setDetailId(e.id); setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0}); }
+      if(e){ setDetailId(e.id); setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, date:String(e.date||"").slice(0,10)}); }
       if(clearFocus) clearFocus();
     }, 12000);
     return function(){ clearTimeout(tm); };
   },[focusExp, state.expenses]);
-  const saveEdit=function(orig){
-    const amt=parseFloat(String(editExp.amount).replace(',','.'))||0;
+  const saveEdit=function(orig, extra){
+    const ed=Object.assign({}, editExp, extra||{});
+    const amt=parseFloat(String(ed.amount).replace(',','.'))||0;
     if(amt<=0){ showToast(t("g_invalid")); return; }
-    const signed=editExp.income? -amt : amt;
-    const merch=(editExp.merchant||"").trim()||orig.merchant;
+    const signed=ed.income? -amt : amt;
+    const merch=(ed.merchant||"").trim()||orig.merchant;
     /* NO se pone `editExp` a null: eso CONGELABA LA PANTALLA (bug suyo 2026-08-17, «al modificarlo
        y guardarlo se bloquea, solo si tiras para atrás puedes seguir»). El sheet decide si pintarse
        con `!exp || !editExp`, pero sus candados (`useSheetSwipe`, que pone `overflow:hidden` y se
@@ -7140,11 +7233,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
        guardado, que es lo que ese comentario prometía. */
     const sincroniza=function(e){
       setEditExp({ id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','),
-        income:e.amount<0, note:e.note||"" });
+        income:e.amount<0, note:e.note||"", date:String(e.date||"").slice(0,10) });
     };
-    if(signed===orig.amount && merch===(orig.merchant||"")){ sincroniza(orig); return; }   // sin cambios
-    const cat = editExp.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
+    const origDay=String(orig.date||"").slice(0,10);
+    const newDay=String(ed.date||origDay).slice(0,10);
+    if(signed===orig.amount && merch===(orig.merchant||"") && newDay===origDay){ sincroniza(orig); return; }   // sin cambios
+    const cat = ed.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
     const upd=Object.assign({},orig,{merchant:merch, amount:signed, category:cat});
+    if(newDay!==origDay) upd.date=newDay;
     /* Al renombrar un movimiento del banco, guardar CÓMO LO LLAMABA ÉL (2026-08-17). El dedup de
        Open Banking casa por día|importe|comercio, así que sin esto el siguiente sync no reconoce
        la fila renombrada y vuelve a meter el gasto — el caso de «Movimiento» de Trade Republic,
@@ -7152,7 +7248,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
        cubre las que YA tiene en el móvil, que se sellan la primera vez que las toca. */
     const esDeBanco=orig.source==="ob"||orig.source==="ob-hist";
     if(esDeBanco && upd.obName==null && merch!==(orig.merchant||"")) upd.obName=orig.merchant||"";
-    if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
+    if(ed.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
     /* Si toca el importe en euros a mano, el rastro «eran 1.520 ₺» deja de corresponderse: se
        borra en vez de arrastrarlo. Un dato viejo al lado de uno nuevo no es media verdad, es una
        mentira — y en el detalle se leerían juntos como si fueran el mismo pago. */
@@ -7175,7 +7271,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // enseñaría el mes pasado. Antes no pasaba porque el cálculo se rehacía en cada render.
   const todayKey=new Date().toDateString();
   const bounds=useMemo(function(){ return presetBoundsMs(preset,range,cycle&&cycle.start); },[preset,range,cycle,todayKey]);
-  const dailyEnt=useMemo(function(){ const d=(state.accounts||[]).find(function(a){ return accDaily(a); }); return d&&d.ent||null; },[state.accounts]);
+  const diarioEnts=useMemo(function(){ return expenseBankEnts(state); },[state.accounts, state.settings]);
   const bankOpts=useMemo(function(){
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
@@ -7279,7 +7375,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
   const openDetail=useCallback(function(e){
     setDetailId(e.id);
-    setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, note:e.note||""});
+    setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, note:e.note||"", date:String(e.date||"").slice(0,10)});
     setCatEdit(null);
   },[]);
   // Invalida las filas memoizadas cuando cambia el idioma o la moneda de visualización (las leen
@@ -7289,9 +7385,9 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Resumen de filtros activos, para el botón "Filtros" (badge) y la línea de chips debajo.
   // Se calcula aquí (no memoizado: sel/bankSel son arrays cortos) porque lo usan dos sitios:
   // el botón junto al buscador y la línea de resumen + "Borrar filtros".
-  const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+  const bankSelIsDefault=sameEntList(bankSel, diarioEnts);
   const nCatSel=sel.length;
-  const nBankSel=bankSelIsDefault?0:bankSel.length;
+  const nBankSel=bankSelIsDefault?0:(bankSel.length||1);
   const nFilters=nCatSel+nBankSel+bucketSel.length;
   const filterParts=[];
   if(bucketSel.length===1) filterParts.push(t("g_bk_"+bucketSel[0]));
@@ -7299,10 +7395,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   if(nCatSel===1) filterParts.push(catName(sel[0]));
   else if(nCatSel>1) filterParts.push(nCatSel+" "+t("g_filters_cats"));
   if(!bankSelIsDefault){
-    if(bankSel.length===1){
+    if(bankSel.length===0) filterParts.push(t("g_allbanks"));
+    else if(bankSel.length===1){
       const b=bankSel[0];
       filterParts.push(b==="_manual"?t("g_bank_manual"):(entOf(b).label||b));
-    } else if(bankSel.length>1) filterParts.push(bankSel.length+" "+t("g_filters_banks"));
+    } else filterParts.push(bankSel.length+" "+t("g_filters_banks"));
   }
 
   const shown=filtered.slice(0,visible);
@@ -7441,10 +7538,18 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               React.createElement("strong",null,t("g_cycle_none_t")),
               t("g_cycle_none"))
       ),
-      preset==="custom" && React.createElement("div",Object.assign({className:"range"},stopSwipe),
-        React.createElement("input",{type:"date",value:range.from,onChange:e=>setRange(Object.assign({},range,{from:e.target.value}))}),
-        React.createElement("span",null,"→"),
-        React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
+      preset==="custom" && React.createElement("div",null,
+        React.createElement("div",Object.assign({className:"range"},stopSwipe),
+          React.createElement("button",{type:"button",className:"v4-chip"+(calPick==="from"?" on":""),onClick:function(){ setCalPick(calPick==="from"?null:"from"); }},
+            range.from?fmtIsoCorto(range.from):t("g_custom")),
+          React.createElement("span",null,"→"),
+          React.createElement("button",{type:"button",className:"v4-chip"+(calPick==="to"?" on":""),onClick:function(){ setCalPick(calPick==="to"?null:"to"); }},
+            range.to?fmtIsoCorto(range.to):t("g_custom"))
+        ),
+        calPick && React.createElement(McCal,{value:calPick==="from"?range.from:range.to, onPick:function(iso){
+          setRange(function(r){ const n=Object.assign({},r); n[calPick]=iso; return n; });
+          setCalPick(null);
+        }})
       ),
       // Resumen de los filtros activos (categorías/bancos) + botón para quitarlos. El botón que
       // ABRE el sheet ya no vive aquí: se movió junto al buscador (ver arriba).
@@ -7453,7 +7558,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
           setSel([]);
           setBucketSel([]);
-          setBankSel(dailyEnt?[dailyEnt]:[]);
+          setBankSel(diarioEnts.slice());
         },style:{padding:"8px 12px"}}, t("g_filters_clear"))
       )
     ),
@@ -7490,8 +7595,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // el filtro" (feedback 2026-08-01). Solo si hay histórico real en OTRO período y
               // no hay ningún filtro activo (búsqueda/categoría/banco) es "vacío por normal";
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
-              // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
-              // (2026-08-03), no algo que el usuario haya elegido a mano.
+              // bankSel igual a los de gasto diario cuenta como "sin filtro": es la
+              // preselección automática (2026-08-17: todos los marcados, no solo el principal).
               const sinFiltros=!q.trim() && !sel.length && !bucketSel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
@@ -7511,7 +7616,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       open:filterOpen, onClose:function(){ setFilterOpen(false); },
       sel:sel, setSel:setSel, bankSel:bankSel, setBankSel:setBankSel,
       bucketSel:bucketSel, setBucketSel:setBucketSel,
-      bankOpts:bankOpts, dailyEnt:dailyEnt
+      bankOpts:bankOpts, diarioEnts:diarioEnts
     }),
     detailId && React.createElement(ExpenseDetailSheet,{
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
@@ -7572,7 +7677,7 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen, bucket}){
 
 /* Sheet de filtros (2026-08-05): categorías + bancos con buscador, sin la fila infinita de chips.
    Misma mecánica que PeriodMoreSheet (swipe abajo + atrás). */
-function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bucketSel, setBucketSel, bankOpts, dailyEnt}){
+function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bucketSel, setBucketSel, bankOpts, diarioEnts}){
   useBackClose(!!open, onClose);
   const swipe=useSheetSwipe(!!open, onClose);
   const [qCat,setQCat]=useState("");
@@ -7598,7 +7703,7 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, buc
   const clearAll=function(){
     setSel([]);
     setBucketSel([]);
-    setBankSel(dailyEnt?[dailyEnt]:[]);
+    setBankSel((diarioEnts||[]).slice());
   };
   const toggleBucket=function(b){
     setBucketSel(function(prev){
@@ -7625,11 +7730,11 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, buc
           React.createElement("button",{type:"button",className:"v4-chip"+(bucketSel.length===0?" on":""),onClick:function(){ setBucketSel([]); }}, t("g_bk_all")),
           /* SIN chip «De otros bancos» (rechazo suyo, 2026-08-17): «no hace nada y tampoco se ve
              para qué está dado que ya puedes elegir los bancos abajo». Las dos cosas ciertas.
-             No hacía nada porque el filtro de bancos arranca preseleccionado en la cuenta de gasto
-             diario, y «de otros bancos» significa justo «que NO es esa» → el cruce salía siempre
-             vacío. Y aunque no arrancara así, es el único de los cuatro que se puede pedir ya con
-             los chips de banco de abajo. El cajón `otrobanco` sigue existiendo: es el que hace que
-             la fila diga «no es del día a día», que es la parte que sí servía. */
+             Antes no hacía nada porque el filtro arrancaba en UN solo banco diario y «de otros
+             bancos» era exactamente lo contrario → cruce vacío. Ahora arranca en TODOS los de
+             gasto diario, y aun así el chip sobra: los chips de banco de abajo ya hacen eso.
+             El cajón `otrobanco` sigue existiendo: es el que hace que la fila diga «no es del
+             día a día». */
           [["cuenta","💸"],["ingreso","💰"],["neutra","📈"]].map(function(p){
             const on=bucketSel.indexOf(p[0])!==-1;
             return React.createElement("button",{key:p[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBucket(p[0]); }},
@@ -7692,15 +7797,14 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
   const abierto=!!exp && !!editExp;
   useBackClose(abierto, onClose);
   const swipe=useSheetSwipe(abierto, onClose);
+  const [calOpen,setCalOpen]=useState(false);
+  useEffect(function(){ if(!abierto) setCalOpen(false); },[abierto, exp&&exp.id]);
   if(!abierto) return null;
   const c=catOf(exp.category);
   const isIncome=exp.amount<0 || !!editExp.income;
   const bk=expenseBankOf(exp);
   const auto=exp.source && exp.source!=="manual";
-  const d=parseDate(exp.date);
-  const dateLbl=d&&!isNaN(d.getTime())
-    ? d.toLocaleDateString(loc(),{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})
-    : "—";
+  const dateIso=String(editExp.date||exp.date||"").slice(0,10);
   const closeSave=function(){ saveEdit(exp); };   // blur solo guarda; no cierra (cerrar al cambiar cat saltaba de pantalla — feedback 2026-07-17)
   const doSaveClose=function(){ saveEdit(exp); onClose(); };
   const doDel=function(){
@@ -7714,7 +7818,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
   const origLbl=(exp.origCur && exp.origAmount>0)
     ? NF.format(Math.abs(exp.origAmount))+" "+(CUR_SYM[exp.origCur]||exp.origCur)
     : null;
-  const metaBits=[dateLbl, origLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
+  const metaBits=[origLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
       React.createElement("div",Object.assign({className:"v4-sheet v4-exp-sheet",style:{maxHeight:"90dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
@@ -7725,6 +7829,16 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
           React.createElement("input",{className:"v4-exp-name",value:editExp.merchant,placeholder:t("v4_exp_merchant_ph"),onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
           React.createElement("div",{className:"v4-exp-meta"}, metaBits.join(" · "))
         ),
+        React.createElement("div",{className:"v4-exp-sec",style:{marginTop:12}}, t("ap_date")),
+        React.createElement("div",{className:"v4-chips"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(calOpen?" on":""),"data-testid":"exp-date",
+            onClick:function(){ setCalOpen(function(v){ return !v; }); }},
+            "📅 "+fmtIsoCorto(dateIso))
+        ),
+        calOpen && React.createElement(McCal,{value:dateIso, onPick:function(iso){
+          setCalOpen(false);
+          saveEdit(exp, {date:iso});
+        }}),
         // CONCEPTO (2026-07-24): lo que trae el banco/el bizum, y editable para poder apuntar lo
         // que sea («comida con los del trabajo»). Se guarda con nota_edit para que el siguiente
         // sync del banco no pise lo que ha escrito el usuario.
@@ -14013,6 +14127,41 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.0", d:"17 ago 2026",
+   t:{es:"Gastos de todos tus bancos del día a día, y más categorías",
+      en:"Spending from every day-to-day bank, plus extra categories",
+      ca:"Despeses de tots els teus bancs del dia a dia, i més categories"},
+   tandas:[
+     {id:"filtro-apuntar", t:"📅 Fecha al apuntar y todos los bancos del día a día", items:[
+       "En Gastos, si tienes varios bancos marcados como gasto diario, salen los movimientos de TODOS ellos (no solo el principal).",
+       "Un recibo de un banco que NO está marcado como gasto diario sigue sin contar para el presupuesto.",
+       "Una inversión o un traspaso no cuenta aunque salga de un banco del día a día.",
+       "Al apuntar un gasto con + puedes elegir el día, no solo hoy.",
+       "Al abrir un movimiento puedes cambiarle la fecha.",
+       "Si eliges un rango de fechas a medida, el calendario es el de la app (no el gris de Android).",
+     ]},
+     {id:"mas-categorias", t:"🍦 Heladería, joyería y videojuegos", items:[
+       "Hay categorías nuevas: heladería, joyería y videojuegos.",
+       "Un cargo de Steam o Instant Gaming cae en videojuegos, no en ocio.",
+       "Una heladería ya no se mezcla con bares y restaurantes.",
+     ]},
+   ],
+   items:{
+   es:[
+    "🏦 Si usas más de un banco para el día a día, Gastos enseña los movimientos de todos ellos. Un recibo de otro banco sigue sin contar, y una inversión tampoco.",
+    "📅 Al apuntar un gasto o al editarlo puedes elegir el día. El calendario es el de la app.",
+    "🍦 Heladería, joyería y videojuegos son categorías propias: Steam e Instant Gaming ya no se van a ocio.",
+   ],
+   en:[
+    "🏦 If you use more than one bank for day-to-day spending, Spending shows movements from all of them. A bill from another bank still doesn't count, and neither does an investment.",
+    "📅 When you add or edit a payment you can pick the day. The calendar is the app's own.",
+    "🍦 Ice cream, jewellery and games are their own categories: Steam and Instant Gaming no longer land in leisure.",
+   ],
+   ca:[
+    "🏦 Si uses més d'un banc per al dia a dia, Despeses ensenya els moviments de tots. Un rebut d'un altre banc continua sense comptar, i una inversió tampoc.",
+    "📅 En apuntar una despesa o en editar-la pots triar el dia. El calendari és el de l'app.",
+    "🍦 Gelateria, joieria i videojocs són categories pròpies: Steam i Instant Gaming ja no se'n van a oci.",
+   ]}},
   {v:"4.17.2", d:"17 ago 2026",
    t:{es:"El widget deja de sumar un pago dos veces",
       en:"The widget stops counting the same payment twice",
@@ -16673,6 +16822,8 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   // Banco del apunte (petición 2026-07-18: «poder elegir el banco si apuntas un gasto manual»).
   // Opciones = los bancos de tus cuentas; por defecto la de gasto diario (lo que ya hacía Gastos).
   const [bank,setBank]=useState(null);
+  const [date,setDate]=useState(function(){ return isoLocal(); });
+  const [calOpen,setCalOpen]=useState(false);
   const bankOpts=useMemo(function(){
     const seen={}; const out=[];
     (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&!seen[a.ent]){ seen[a.ent]=1; out.push(a.ent); } });
@@ -16681,6 +16832,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   useEffect(function(){
     if(open){
       setKind("gasto"); setRaw(""); setNote(""); setCat("super");
+      setDate(isoLocal()); setCalOpen(false);
       const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
       setBank((daily&&daily.ent)||null);
       // Arranca en la moneda de pantalla (o la última que usó al apuntar en este viaje).
@@ -16724,7 +16876,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
     // Guardamos en € (base de la app); lo tecleado iba en entryCur.
     const amtEur=+toEurAmt(amt, entryCur, state).toFixed(2);
     const e={
-      id:uid(), date:new Date().toISOString().slice(0,10),
+      id:uid(), date:date||isoLocal(),
       amount:isIn?-Math.abs(amtEur):Math.abs(amtEur),
       merchant:note.trim()||(isIn?t("cat_ingreso"):catName(cat)),
       category:isIn?"ingreso":cat, source:"manual", card:!isIn
@@ -16759,6 +16911,12 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
           })
         ),
         React.createElement("input",{className:"v4-input",placeholder:t("v4_apuntar_ph"),value:note,onChange:function(e){ setNote(e.target.value); }}),
+        React.createElement("div",{className:"v4-chips"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(calOpen?" on":""),"data-testid":"ap-date",
+            onClick:function(){ setCalOpen(function(v){ return !v; }); }},
+            "📅 "+fmtIsoCorto(date))
+        ),
+        calOpen && React.createElement(McCal,{value:date, onPick:function(iso){ setDate(iso); setCalOpen(false); }}),
         kind==="gasto" && React.createElement("div",{className:"v4-chips"},
           cats.map(function(c){
             return React.createElement("button",{key:c.id,className:"v4-chip"+(cat===c.id?" on":""),onClick:function(){ setCat(c.id); }},

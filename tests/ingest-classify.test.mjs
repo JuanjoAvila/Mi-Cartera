@@ -162,4 +162,9 @@ t("el comercio limpio sigue categorizando igual", () => {
   assert.equal(categorizar(extraerComercio("Has gastado 3,20 € en PANADERIA" + CTRL + " LA ESQUINA", "")), "pan");
 });
 
+t("Steam / Instant Gaming caen en videojuegos", () => {
+  assert.equal(categorizar("Steam Purchase"), "gaming");
+  assert.equal(categorizar("Instant Gaming"), "gaming");
+});
+
 console.log("\ningest-classify: OK");

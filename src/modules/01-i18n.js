@@ -26,7 +26,8 @@ const LANG = {
     v4_inv_tools:"Herramientas de inversión", v4_inv_tools_h:"Precios, redondeo, proyección y edición manual — lo que antes llenaba Cartera.",
     v4_sync_banks:"Sincronizar bancos", v4_sync_banks_done:"✓ Bancos sincronizados",
     v4_sync_brokers_ok:"📈 Brókers al día (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sesión caducada · reconecta en Ajustes → Bancos",
-    ap_bank:"Banco", ap_bank_none:"Sin banco",
+    ap_bank:"Banco", ap_bank_none:"Sin banco", ap_date:"Fecha",
+    cal_today:"Hoy", cal_prev:"Mes anterior", cal_next:"Mes siguiente",
     bk_issue:"⚠ {bank} necesita tu permiso otra vez", bk_issue_sub:"El permiso de lectura caducó (obligatorio cada ~3 meses): el saldo puede estar desfasado. Un toque y listo.",
     bk_issue_cta:"🔓 Reconectar {bank}", bk_tr_dead:"⚠ Trade Republic está desconectado",
     // Aviso al sincronizar con algún banco caído (petición 2026-07-24): sale como notificación de
@@ -184,7 +185,8 @@ const LANG = {
     v4_inv_tools:"Investment tools", v4_inv_tools_h:"Prices, round-ups, projections and manual edit — what used to clutter Portfolio.",
     v4_sync_banks:"Sync banks", v4_sync_banks_done:"✓ Banks synced",
     v4_sync_brokers_ok:"📈 Brokers up to date (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: session expired · reconnect in Settings → Banks",
-    ap_bank:"Bank", ap_bank_none:"No bank",
+    ap_bank:"Bank", ap_bank_none:"No bank", ap_date:"Date",
+    cal_today:"Today", cal_prev:"Previous month", cal_next:"Next month",
     bk_issue:"⚠ {bank} needs your permission again", bk_issue_sub:"The read consent expired (required every ~3 months): the balance may be stale. One tap fixes it.",
     bk_issue_cta:"🔓 Reconnect {bank}", bk_tr_dead:"⚠ Trade Republic is disconnected",
     bk_notif_title:"A bank needs reconnecting",
@@ -329,7 +331,8 @@ const LANG = {
     v4_inv_tools:"Eines d’inversió", v4_inv_tools_h:"Preus, arrodoniment, projecció i edició manual — el que abans omplia Cartera.",
     v4_sync_banks:"Sincronitza els bancs", v4_sync_banks_done:"✓ Bancs sincronitzats",
     v4_sync_brokers_ok:"📈 Brókers al dia (TR/MyInvestor)", v4_sync_broker_exp:"⚠ {b}: sessió caducada · reconnecta a Ajustos → Bancs",
-    ap_bank:"Banc", ap_bank_none:"Sense banc",
+    ap_bank:"Banc", ap_bank_none:"Sense banc", ap_date:"Data",
+    cal_today:"Avui", cal_prev:"Mes anterior", cal_next:"Mes següent",
     bk_issue:"⚠ {bank} necessita el teu permís altra vegada", bk_issue_sub:"El permís de lectura ha caducat (obligatori cada ~3 mesos): el saldo pot estar desfasat. Un toc i llest.",
     bk_issue_cta:"🔓 Reconnecta {bank}", bk_tr_dead:"⚠ Trade Republic està desconnectat",
     bk_notif_title:"Un banc necessita que el reconnectis",
@@ -1157,7 +1160,7 @@ Object.assign(LANG.es,{
   g_bk_neutra:"Inversión y traspasos", g_bk_otrobanco:"De otros bancos",
   g_bk_title:"Qué contar", g_bk_all:"Todo",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
-  g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo (el banco de gasto diario viene marcado por defecto).",
+  g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo. Por defecto salen todos los que tienes marcados como gasto diario.",
   g_filters_search:"Buscar categoría…", g_filters_cats:"categorías", g_filters_banks:"bancos",
   g_filters_clear:"Limpiar", g_filters_done:"Listo",
   ai_cat_btn:"✨ Sugerir categoría", ai_cat_busy:"Pensando…", ai_cat_ok:"✓ Categoría: {c}", ai_cat_none:"No hay sugerencia clara — elige a mano", ai_cat_off:"Activa «Sugerir categoría (IA)» en Ajustes → Notificaciones",
@@ -1179,7 +1182,7 @@ Object.assign(LANG.es,{
   g_empty_t:"No hay gastos aquí", g_empty_d:"Cambia el filtro, sincroniza o apunta uno.", g_loadmore:"Cargando más…",
   g_empty_period_t:"Aún no hay gastos en este período", g_empty_period_d:"Es normal si acaba de empezar el mes o tu ciclo — irán apareciendo según sincronices o apuntes alguno.",
   g_today:"Hoy", g_yesterday:"Ayer", g_invalid:"Pon un importe válido", g_saved_g:"✓ Gasto apuntado", g_saved_i:"✓ Ingreso apuntado", g_deleted:"Eliminado", g_changecat:"Cambiar categoría",
-  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_ocio:"Ocio", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
+  cat_super:"Supermercado", cat_pan:"Panadería", cat_bares:"Bares y restaurantes", cat_cine:"Cine", cat_padel:"Pádel", cat_heladeria:"Heladería", cat_ocio:"Ocio", cat_gaming:"Videojuegos", cat_viajes:"Viajes", cat_transporte:"Transporte", cat_parking:"Parking", cat_energia:"Luz, gas y agua", cat_tasas:"Impuestos y multas", cat_compras:"Compras", cat_educacion:"Educación", cat_salud:"Salud", cat_pelu:"Peluquería", cat_mascotas:"Mascotas", cat_hogar:"Hogar", cat_regalos:"Regalos", cat_joyeria:"Joyería", cat_otros:"Otros", cat_ingreso:"Ingreso", cat_inversion:"Inversión", cat_traspaso:"Traspaso",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   // Fijos
   fj_monthly:"Gasto fijo mensual", fj_peryear:"{x}/año", fj_top_a:"Tu mayor gasto fijo es ", fj_top_b:" ({x}/mes)",
@@ -1252,7 +1255,7 @@ Object.assign(LANG.en,{
   g_bk_neutra:"Investing and transfers", g_bk_otrobanco:"From other banks",
   g_bk_title:"What to count", g_bk_all:"Everything",
   g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
-  g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all (your daily-spending bank is pre-selected).",
+  g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all. By default you see every bank marked as day-to-day spending.",
   g_filters_search:"Search category…", g_filters_cats:"categories", g_filters_banks:"banks",
   g_filters_clear:"Clear", g_filters_done:"Done",
   ai_cat_btn:"✨ Suggest category", ai_cat_busy:"Thinking…", ai_cat_ok:"✓ Category: {c}", ai_cat_none:"No clear suggestion — pick by hand", ai_cat_off:"Turn on “Suggest category (AI)” in Settings → Notifications",
@@ -1274,7 +1277,7 @@ Object.assign(LANG.en,{
   g_empty_t:"No expenses here", g_empty_d:"Change the filter, sync or add one.", g_loadmore:"Loading more…",
   g_empty_period_t:"No expenses yet this period", g_empty_period_d:"That's normal if the month or your cycle just started — they'll show up as you sync or add one.",
   g_today:"Today", g_yesterday:"Yesterday", g_invalid:"Enter a valid amount", g_saved_g:"✓ Expense added", g_saved_i:"✓ Income added", g_deleted:"Deleted", g_changecat:"Change category",
-  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_ocio:"Leisure", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
+  cat_super:"Groceries", cat_pan:"Bakery", cat_bares:"Bars & restaurants", cat_cine:"Cinema", cat_padel:"Padel", cat_heladeria:"Ice cream", cat_ocio:"Leisure", cat_gaming:"Games", cat_viajes:"Travel", cat_transporte:"Transport", cat_parking:"Parking", cat_energia:"Power, gas & water", cat_tasas:"Taxes & fines", cat_compras:"Shopping", cat_educacion:"Education", cat_salud:"Health", cat_pelu:"Hair & beauty", cat_mascotas:"Pets", cat_hogar:"Home", cat_regalos:"Gifts", cat_joyeria:"Jewellery", cat_otros:"Other", cat_ingreso:"Income", cat_inversion:"Investment", cat_traspaso:"Transfer",
   freq_mes:"monthly", freq_bimestral:"bimonthly", freq_trimestral:"quarterly", freq_semestral:"biannual", "freq_año":"yearly",
   fj_monthly:"Monthly fixed cost", fj_peryear:"{x}/year", fj_top_a:"Your biggest fixed cost is ", fj_top_b:" ({x}/mo)",
   fj_prox:"Upcoming charges · {m}", fj_prox_sub:"{x} this month",
@@ -1346,7 +1349,7 @@ Object.assign(LANG.ca,{
   g_bk_neutra:"Inversió i traspassos", g_bk_otrobanco:"D'altres bancs",
   g_bk_title:"Què comptar", g_bk_all:"Tot",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
-  g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot (el banc de despesa diària ve marcat per defecte).",
+  g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot. Per defecte surten tots els que tens marcats com a despesa diària.",
   g_filters_search:"Cerca categoria…", g_filters_cats:"categories", g_filters_banks:"bancs",
   g_filters_clear:"Netejar", g_filters_done:"Fet",
   ai_cat_btn:"✨ Suggerir categoria", ai_cat_busy:"Pensant…", ai_cat_ok:"✓ Categoria: {c}", ai_cat_none:"No hi ha suggeriment clar — tria a mà", ai_cat_off:"Activa «Suggerir categoria (IA)» a Ajustos → Notificacions",
@@ -1368,7 +1371,7 @@ Object.assign(LANG.ca,{
   g_empty_t:"No hi ha despeses aquí", g_empty_d:"Canvia el filtre, sincronitza o apunta'n una.", g_loadmore:"Carregant més…",
   g_empty_period_t:"Encara no hi ha despeses en aquest període", g_empty_period_d:"És normal si acaba de començar el mes o el teu cicle — aniran sortint a mesura que sincronitzis o n'apuntis alguna.",
   g_today:"Avui", g_yesterday:"Ahir", g_invalid:"Posa un import vàlid", g_saved_g:"✓ Despesa apuntada", g_saved_i:"✓ Ingrés apuntat", g_deleted:"Eliminat", g_changecat:"Canvia la categoria",
-  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_ocio:"Oci", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
+  cat_super:"Supermercat", cat_pan:"Fleca", cat_bares:"Bars i restaurants", cat_cine:"Cinema", cat_padel:"Pàdel", cat_heladeria:"Gelateria", cat_ocio:"Oci", cat_gaming:"Videojocs", cat_viajes:"Viatges", cat_transporte:"Transport", cat_parking:"Pàrquing", cat_energia:"Llum, gas i aigua", cat_tasas:"Impostos i multes", cat_compras:"Compres", cat_educacion:"Educació", cat_salud:"Salut", cat_pelu:"Perruqueria", cat_mascotas:"Mascotes", cat_hogar:"Llar", cat_regalos:"Regals", cat_joyeria:"Joieria", cat_otros:"Altres", cat_ingreso:"Ingrés", cat_inversion:"Inversió", cat_traspaso:"Traspàs",
   freq_mes:"mensual", freq_bimestral:"bimestral", freq_trimestral:"trimestral", freq_semestral:"semestral", "freq_año":"anual",
   fj_monthly:"Despesa fixa mensual", fj_peryear:"{x}/any", fj_top_a:"La teva despesa fixa més gran és ", fj_top_b:" ({x}/mes)",
   fj_prox:"Pròxims càrrecs · {m}", fj_prox_sub:"{x} aquest mes",
@@ -2111,10 +2114,18 @@ function expenseBankEnts(s){
   if(daily&&daily.ent&&out.indexOf(daily.ent)<0) out.push(daily.ent);
   return out;
 }
+/* Misma lista, da igual el orden. El filtro de Gastos arranca con `expenseBankEnts`, no con
+   la cuenta diaria a solas (2026-08-17: Revolut+TR marcados y solo se veía TR). */
+function sameEntList(a,b){
+  if(!Array.isArray(a)||!Array.isArray(b)||a.length!==b.length) return false;
+  const sa=a.slice().sort(), sb=b.slice().sort();
+  for(let i=0;i<sa.length;i++) if(sa[i]!==sb[i]) return false;
+  return true;
+}
 /* ¿Cuenta este movimiento para el EFECTIVO de la cuenta de gasto diario (saldo / round-up)?
-   Vista de Gastos: se ven TODOS los bancos. Contabilidad: solo los marcados como gasto diario
-   (`expenseBankEnts` = diaria + extras en settings.expenseBanks). A mano (sin ent) sí cuenta.
-   Pedido 2026-08-05: «que entre todo, pero que solo reste el de gasto diario». */
+   Vista de Gastos: por defecto se filtra a los marcados como gasto diario (`expenseBankEnts`);
+   «Todos los bancos» enseña el extracto entero. Contabilidad: solo los marcados. A mano (sin
+   ent) sí cuenta. Pedido 2026-08-17: Revolut+TR marcados → los dos se ven y cuentan. */
 function expenseCountsCash(e, s){
   if(!e) return false;
   const ent=expenseBankOf(e);

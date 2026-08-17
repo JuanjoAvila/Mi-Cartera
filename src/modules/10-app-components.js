@@ -1424,6 +1424,41 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.0", d:"17 ago 2026",
+   t:{es:"Gastos de todos tus bancos del día a día, y más categorías",
+      en:"Spending from every day-to-day bank, plus extra categories",
+      ca:"Despeses de tots els teus bancs del dia a dia, i més categories"},
+   tandas:[
+     {id:"filtro-apuntar", t:"📅 Fecha al apuntar y todos los bancos del día a día", items:[
+       "En Gastos, si tienes varios bancos marcados como gasto diario, salen los movimientos de TODOS ellos (no solo el principal).",
+       "Un recibo de un banco que NO está marcado como gasto diario sigue sin contar para el presupuesto.",
+       "Una inversión o un traspaso no cuenta aunque salga de un banco del día a día.",
+       "Al apuntar un gasto con + puedes elegir el día, no solo hoy.",
+       "Al abrir un movimiento puedes cambiarle la fecha.",
+       "Si eliges un rango de fechas a medida, el calendario es el de la app (no el gris de Android).",
+     ]},
+     {id:"mas-categorias", t:"🍦 Heladería, joyería y videojuegos", items:[
+       "Hay categorías nuevas: heladería, joyería y videojuegos.",
+       "Un cargo de Steam o Instant Gaming cae en videojuegos, no en ocio.",
+       "Una heladería ya no se mezcla con bares y restaurantes.",
+     ]},
+   ],
+   items:{
+   es:[
+    "🏦 Si usas más de un banco para el día a día, Gastos enseña los movimientos de todos ellos. Un recibo de otro banco sigue sin contar, y una inversión tampoco.",
+    "📅 Al apuntar un gasto o al editarlo puedes elegir el día. El calendario es el de la app.",
+    "🍦 Heladería, joyería y videojuegos son categorías propias: Steam e Instant Gaming ya no se van a ocio.",
+   ],
+   en:[
+    "🏦 If you use more than one bank for day-to-day spending, Spending shows movements from all of them. A bill from another bank still doesn't count, and neither does an investment.",
+    "📅 When you add or edit a payment you can pick the day. The calendar is the app's own.",
+    "🍦 Ice cream, jewellery and games are their own categories: Steam and Instant Gaming no longer land in leisure.",
+   ],
+   ca:[
+    "🏦 Si uses més d'un banc per al dia a dia, Despeses ensenya els moviments de tots. Un rebut d'un altre banc continua sense comptar, i una inversió tampoc.",
+    "📅 En apuntar una despesa o en editar-la pots triar el dia. El calendari és el de l'app.",
+    "🍦 Gelateria, joieria i videojocs són categories pròpies: Steam i Instant Gaming ja no se'n van a oci.",
+   ]}},
   {v:"4.17.2", d:"17 ago 2026",
    t:{es:"El widget deja de sumar un pago dos veces",
       en:"The widget stops counting the same payment twice",

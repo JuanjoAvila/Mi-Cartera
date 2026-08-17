@@ -527,6 +527,8 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   // Banco del apunte (petición 2026-07-18: «poder elegir el banco si apuntas un gasto manual»).
   // Opciones = los bancos de tus cuentas; por defecto la de gasto diario (lo que ya hacía Gastos).
   const [bank,setBank]=useState(null);
+  const [date,setDate]=useState(function(){ return isoLocal(); });
+  const [calOpen,setCalOpen]=useState(false);
   const bankOpts=useMemo(function(){
     const seen={}; const out=[];
     (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&!seen[a.ent]){ seen[a.ent]=1; out.push(a.ent); } });
@@ -535,6 +537,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   useEffect(function(){
     if(open){
       setKind("gasto"); setRaw(""); setNote(""); setCat("super");
+      setDate(isoLocal()); setCalOpen(false);
       const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
       setBank((daily&&daily.ent)||null);
       // Arranca en la moneda de pantalla (o la última que usó al apuntar en este viaje).
@@ -578,7 +581,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
     // Guardamos en € (base de la app); lo tecleado iba en entryCur.
     const amtEur=+toEurAmt(amt, entryCur, state).toFixed(2);
     const e={
-      id:uid(), date:new Date().toISOString().slice(0,10),
+      id:uid(), date:date||isoLocal(),
       amount:isIn?-Math.abs(amtEur):Math.abs(amtEur),
       merchant:note.trim()||(isIn?t("cat_ingreso"):catName(cat)),
       category:isIn?"ingreso":cat, source:"manual", card:!isIn
@@ -613,6 +616,12 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
           })
         ),
         React.createElement("input",{className:"v4-input",placeholder:t("v4_apuntar_ph"),value:note,onChange:function(e){ setNote(e.target.value); }}),
+        React.createElement("div",{className:"v4-chips"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(calOpen?" on":""),"data-testid":"ap-date",
+            onClick:function(){ setCalOpen(function(v){ return !v; }); }},
+            "📅 "+fmtIsoCorto(date))
+        ),
+        calOpen && React.createElement(McCal,{value:date, onPick:function(iso){ setDate(iso); setCalOpen(false); }}),
         kind==="gasto" && React.createElement("div",{className:"v4-chips"},
           cats.map(function(c){
             return React.createElement("button",{key:c.id,className:"v4-chip"+(cat===c.id?" on":""),onClick:function(){ setCat(c.id); }},

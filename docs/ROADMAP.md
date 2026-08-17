@@ -1,22 +1,23 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.17.2** — **EN `beta`**. El widget de la 4.16.2 ya no se contradecía
+> Estado a 2026-08-17 · **v4.18.0** — **EN `beta`**. Tandas 3 y 4: Gastos enseña todos los bancos
+> marcados como gasto diario (no solo el principal), fecha al apuntar/editar con calendario de la
+> casa, y categorías nuevas (heladería, joyería, videojuegos). Producción sigue en **4.17.1**.
+> El widget de 4.17.2 **no entra** en esta tanda (sigue parado hasta que él compre y re-pruebe).
+>
+> Anterior: 2026-08-17 · **v4.17.2** — **EN `beta`**. El widget de la 4.16.2 ya no se contradecía
 > por dentro, pero seguía sumando de más (907 vs 709): ingest no respetaba lápidas ni juntaba las
-> dos notis del mismo cargo (Wallet + TR). Arreglo en el servidor, **sin APK nueva**. La tanda
-> `gastos-orden` sigue en 4.17.1 esperando re-prueba.
+> dos notis del mismo cargo (Wallet + TR). Arreglo en el servidor, **sin APK nueva**.
 >
 > ⚠ El fallo del **bloqueo de pantalla al guardar** que encontró NO era de la tanda: venía de la
 > v3.108.0 y saltaba con cualquier edición de importe o nombre. El sheet de detalle tenía dos
 > nociones de «abierto» que discrepaban y dejaba el candado de `touchmove` puesto.
 >
-> ⚠ **Pages sigue sirviendo 4.15.0 y `apk.json` live apunta a 4.12.0 / código 35**: los tres deploys
-> del 6/8 murieron en el outage de Actions (`job was not acquired by Runner`), no en un build roto.
-> Padre y pareja están en **4.15.0 web + nativo de 4.12.0** — sin lector de Google Wallet. Se
-> relanza `deploy.yml` al promocionar la 4.16.2, y con eso saltan de 4.15.0 a 4.16.2 de una vez.
+> Anterior: 2026-08-17 · **v4.17.1** — **EN PRODUCCIÓN**. Tanda `gastos-orden` (qué cuenta / qué no,
+> «Movimiento» sin duplicar al sync). APK **41**. El widget no entra.
 >
-> Anterior: 2026-08-06 · **v4.16.1** — en `main`, nunca llegó a la familia por lo de arriba. APK
-> limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae presupuesto que cuadra,
-> divisa en la nube (migración 0020) y notis de Google Wallet.
+> Anterior: 2026-08-06 · **v4.16.1** — APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara.
+> La 4.16.0 trae presupuesto que cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
 >
 > Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
 > presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
@@ -78,10 +79,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.17.2** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
-| APK (`versionName` / `versionCode`) | **4.16.2** / **40** — widget coherente con la app cerrada. Firma `CN=Mi Cartera`. La 4.17.x no toca nativo: va por OTA sobre esta misma APK. |
-| Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
-| `public/apk.json` | repo **40** / 4.16.2 · **live: 35 / 4.12.0** ⚠ — no se movió desde el outage del 6/8 |
+| Web / OTA (`VERSION`) | **4.18.0** (en `beta`) · **live en Pages: 4.17.1** |
+| APK (`versionName` / `versionCode`) | Repo: **4.16.2 / 40**. Live en su móvil: **4.17.1 / 41** (tanda 2). La 4.18.0 no toca nativo: va por OTA. |
+| Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
+| `public/apk.json` | repo **40** / 4.16.2 (esta rama no ha corrido `release:apk`) |
 
 ## Pendiente / limitaciones conocidas
 

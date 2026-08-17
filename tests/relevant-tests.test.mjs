@@ -49,6 +49,7 @@ t("Gastos acota a sus e2e, no a los 139", () => {
   assert.equal(p.steps, "all");
   assert.ok(Array.isArray(p.e2e));
   assert.ok(p.e2e.includes("e2e/gastos-cajones.spec.mjs"));
+  assert.ok(p.e2e.includes("e2e/gastos-diario-filtro.spec.mjs"));
   assert.ok(p.e2e.includes("e2e/persistencia.spec.mjs"), "transversal va con cualquier src");
   assert.ok(!p.e2e.includes("e2e/splash.spec.mjs"), "splash no es de Gastos");
   assert.equal(p.e2e.includes("all"), false);

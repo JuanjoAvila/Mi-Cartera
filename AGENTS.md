@@ -360,6 +360,7 @@ e2e en `listas-render.spec.mjs`). El suite pasó de 10 a 34 pruebas. Mapa de lo 
 | `cartera-inversiones` | bloques de brókers (regresión de 4.7.1) |
 | `listas-render` | Deudas, Metas, Recibos y cuentas + banner de bancos caídos |
 | `gastos-concepto` | concepto del movimiento en lista, ficha y buscador |
+| `gastos-cajones` · `gastos-diario-filtro` | qué cuenta / no cuenta, y que el filtro arranque con TODOS los bancos de gasto diario |
 | `persistencia` | guardado partido, migración del formato viejo y que volver a primer plano no reescriba el histórico |
 | `modo-pruebas` | que el banco de pruebas NO toque la cartera real |
 | `csp` | que la política de seguridad no bloquee nada de la app (rompe en silencio) |

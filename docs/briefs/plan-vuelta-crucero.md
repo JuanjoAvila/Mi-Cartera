@@ -1,24 +1,32 @@
 # Plan — Vuelta del crucero (2026-08-17)
 
-## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.17.1 a prod)
+## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.18.0 en beta)
 
 Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin preguntar a nadie.
 
 | Tanda | Estado | Notas |
 |---|---|---|
-| 0 · Pages | 🚀 **4.17.1 subiendo a producción** | Familia: 4.15.0 → 4.17.1. APK **41**. Widget NO entra. |
-| 1a · Widget coherente | ⏸ **PARADA** — compra mañana | Rechazada 4.16.2 (907 vs 709). Arreglo ingest **4.17.2** sigue en `beta`. **Causa REAL abajo** |
-| 1b · Revolut −204 del padre | 🟡 **Ya se puede mirar** cuando instale APK 41 | Deja el nativo de 4.12.0 |
-| 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 (10 ok / 0 fallos) |
-| 3 · Filtro en `+` y editar + calendario propio | 🔧 **SIGUIENTE** (Cursor) | Reutilizar sheet de Gastos; calendario de la casa, no el nativo |
-| 4 · Más categorías + IA | ⬜ Libre | Buena para Cursor: anchura mecánica × 3 idiomas |
+| 0 · Pages / familia | ✅ **Prod 4.17.1** · APK **41** | Él: «subió perfecta a prod». Widget NO entra. |
+| 1a · Widget coherente | ⏸ **PARADA** — hasta que compre y re-pruebe | Rechazada 4.16.2 (907 vs 709). Arreglo ingest **4.17.2** sigue en `beta`, **no** va en 4.18.0. Causa real más abajo. |
+| 1b · Revolut −204 del padre | 🟡 **Se puede mirar** con APK 41 | Dejaba el nativo de 4.12.0 |
+| 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 |
+| 3 · Fecha en `+`/editar + calendario + filtro gasto diario | 🔧 **EN 4.18.0 beta** (esta tanda) | Default = **todos** los marcados como gasto diario (Revolut+TR), no solo el principal. Calendario de la casa. |
+| 4 · Más categorías + KW | 🔧 **EN 4.18.0 beta** (esta tanda) | Heladería, joyería, videojuegos (Steam / Instant Gaming) |
 | 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`. Esperar a que la 1a esté aprobada |
-| 6 · Efectivo | ⬜ Libre | |
-| 7 · Import histórico | ⬜ Plan sellado | `plan-import-historico-seguro.md`, tanda 1 motor |
-| 8 · Parpadeo tabs / overscroll / destello | 📌 **NO OLVIDAR** (después de la 3) | Se nota MÁS con temporada, **también SIN**. Flash al scroll + capa rara. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. No mezclar con la 3 |
+| 6 · Efectivo | ⬜ Libre | Opus 1 página, Cursor v1 |
+| 7 · Import histórico 3 meses | ⬜ Plan sellado | `plan-import-historico-seguro.md`. La 3 deja Gastos listo para que entre como un banco más. |
+| 8 · Destello / scroll / overscroll | 📌 **Después de probar la 3** | Se nota MÁS con temporada, **también SIN**. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. |
+| 9 · Ajustes → Dinero | ✅ **HECHO en 4.14.0** | No hay tanda. El plan viejo estaba rancio: presupuesto y bancos de gasto diario ya salieron de Ajustes (viven en Resumen / Cartera); comparar monedas es el conversor. |
+| 10 · MyInvestor nativo | ⬜ Más adelante | WebView nativa si el reCAPTCHA OTA no cuela (ver ROADMAP) |
+| 11 · Hogar · diseño | ⬜ Más adelante | Funciona; falta diseño OK (Claude Design) |
+| 12 · Push FCM | ⬜ Más adelante | Notis reales con la app cerrada, no solo el listener de Wallet |
+| 13 · Pensiones | ⬜ Más adelante | |
+| 14 · Informe mensual | ⬜ Más adelante | Favorito de la pareja. Ya hay imagen WhatsApp; pulir / automatizar |
+| 15 · Splash nativo | ⬜ Más adelante | APK: el hueco antes del icono en Android 12+ |
+| 16 · Play Store | ⬜ Más adelante | Data safety + justificar NotificationListener |
 
-**Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.17.2** (widget ingest, tanda 1 parada).
-Migración **0021** (`ob_name`) entra con el push a `main`. El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
+**Estado del repo:** `main` = **4.17.1** (producción, APK 41). `beta` = **4.18.0** (tandas 3+4). El ingest/widget **4.17.2** sigue en el historial de `beta` pero **no se promociona** con esta tanda (misma trampa que la 2: cherry-pick, no `beta` entera).
+Migración **0021** (`ob_name`) entra con el push a `main` (ya en 4.17.1). El ingest 4.17.2 **NO** se redespliega a prod hasta que él re-pruebe el widget.
 
 ### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
 
@@ -44,7 +52,7 @@ conteo ya las ignora; el insert deja de criar más.
 **Su rechazo de la 4.17.0.1 y qué se hizo** (`node scripts/errores.mjs --kind=beta`):
 
 1. *«De otros bancos no hace nada y tampoco se ve para qué está, dado que ya puedes elegir los
-   bancos abajo»* → **chip retirado**. No hacía nada porque el filtro de bancos arranca
+   bancos abajo»* → **chip retirado**. No hacía nada porque el filtro de bancos arrancaba
    preseleccionado en la cuenta diaria y «de otros bancos» es justo lo contrario: cruce vacío
    siempre. El cajón `otrobanco` sigue vivo (es el que pinta «no es del día a día» en la fila).
 2. *«Al modificarlo y guardarlo se bloquea la pantalla… solo si tiras para atrás puedes seguir»* →
@@ -60,11 +68,10 @@ caliente contra caliente) y `bancos-acordeon.spec.mjs` (la app premonta las pest
 3,2 s y `getByText(...).first()` cogía la copia escondida). Lección reutilizable en
 `docs/memoria/e2e-getbytext-pestanas-premontadas.md`.
 
-**Lo que queda decidido POR ÉL, no por nosotros:** ampliar `settings.expenseBanks` para que los
-gastos de otros bancos cuenten en el presupuesto. Hoy no cuentan **por diseño** (evitar doble
-conteo con los Fijos modelados), pero él lo vive como bug («no sale ni uno»). Tiene coste real.
-La tanda 2 ya hace que al menos **se vea** cuáles son y por qué. **No elegir por él.**
-
+**Decisión suya 17/8 (ya no está abierta):** si un banco está **marcado como gasto diario**, sus
+movimientos cuentan en el presupuesto **siempre** (Revolut + Trade Republic, no solo el
+principal), **salvo** inversión/traspaso (`CAT_NEUTRAS`). Un banco que no está marcado (Sabadell)
+se ve al pedirlo y no come el techo. Así el import de 3 meses entra como un banco normal.
 
 **Para:** Cursor (coordinación + tandas de código) y Claude personal (diseño / chicha de dinero).  
 **Repo:** `E:/Mi cartera` · trabajo en **`beta`** · **de uno en uno** · nada a `main` sin su OK.  
@@ -72,17 +79,15 @@ La tanda 2 ya hace que al menos **se vea** cuáles son y por qué. **No elegir p
 
 ---
 
-## Foto al volver
+## Foto ahora (17/8 noche)
 
 | Qué | Estado real |
 |-----|-------------|
-| `VERSION` en repo | **4.16.1** (`main` = `beta` tip `aeec4ad9`) |
-| Pages live | **AÚN 4.15.0** / `apk.json` **35** — OTA de familia parada (outage de agosto; hay que relanzar deploy) |
-| Su móvil | APK **4.16.0 (38)** o 4.16.1 (39). Wallet/divisa/presupuesto servidor = código 4.16 |
-| Pareja / padre | Siguen en **4.15** por Pages |
-| Crucero | Multidivisa + Wallet hechos. Pendiente: parpadeo tabs + overscroll Cartera |
-
-**Primera higiene (Cursor, 10 min, sin Claude):** `gh workflow run deploy.yml --ref main` y comprobar `version.json` = 4.16.1. Sin eso, la familia no tiene 4.16 y el widget de ellos sigue con ingest viejo.
+| `VERSION` en esta rama | **4.18.0** (`beta`, tandas 3+4) |
+| Pages live / familia | **4.17.1** · APK **41** |
+| Widget 4.17.2 | En historial de `beta`, **no** promocionar con la 4.18.0 |
+| Pareja / padre | 4.17.1 por OTA |
+| Crucero pendiente | Destello/overscroll = tanda 8 |
 
 ---
 
@@ -126,11 +131,12 @@ Causa ya conocida a medias (no inventar otra):
 - OB de TR: poder **renombrar** el comercio «Movimiento» (y que el override se recuerde).
 - Detectar **banco del ingreso/pago** (ya hay `ent`; UI debe enseñarlo y al apuntar a mano no perderlo).
 
-### 3. Filtro guapo también en + y al editar + calendario propio — Cursor
-Reutilizar el sheet de `04-tab-gastos.js` (no `alert`/date nativo de Android). Categoría + banco + fecha con el teclado/calendario de la casa.
+### 3. Filtro guapo también en + y al editar + calendario propio — **HECHO en 4.18.0**
+Calendario de la casa (`McCal`), no el nativo de Android. Fecha al apuntar y al editar.
+**Y** el filtro de Gastos arranca con **todos** los marcados como gasto diario (`expenseBankEnts`), no solo el principal. Decisión suya 17/8.
 
-### 4. Más categorías + IA más lista — Cursor (cats) + Claude Sonnet (diccionario KW)
-Heladería, joyería, crucero, Steam, Instant Gaming, etc. Tres idiomas. Ampliar `autoCategory` / KW. IA (`categorize`) solo si él tiene la clave; si no, KW primero.
+### 4. Más categorías + KW — **HECHO en 4.18.0**
+Heladería, joyería, videojuegos. Tres idiomas. `autoCategory` / KW cliente + `ingest_logic.ts`. Crucero se queda en Viajes (un crucero es un viaje). IA (`categorize`) solo si él tiene la clave; si no, KW primero.
 
 ### 5. Meta ahorrada = gasto del mes (temporal) — **Claude Opus diseña**
 Palabras suyas: la meta marcada sustituye **temporalmente** el «gasto del mes»; gastar de esa hucha **no es** gasto corriente. Varios bancos ligados → al gastar de esos bancos se elige esa meta **sola**. Al llegar a **0**, vuelve el presupuesto normal.
@@ -150,10 +156,31 @@ Qué tienes, qué entra, qué sale, acorde con la app (cuenta `familia` / rol, n
 **Cursor tanda motor** (tests rojo→verde, sin UI). Claude Opus solo si aparece un bloqueante nuevo. **No** destello/`shell.html`.
 
 ### 8. Parpadeo tabs / overscroll Cartera — Cursor cuando él esté para grabar
-Pista: capa negra al tirar Cartera a la derecha; host transparente season. A/B temática Ninguna. No es de la APK Wallet (también 4.15).
+Pista: capa negra al tirar Cartera a la derecha; host transparente season. A/B temática Ninguna. No es de la APK Wallet (también 4.15). Brief: `brief-claude-destello.md`. **Opus/Ultra**.
 
-### 9. Más adelante (no esta semana)
-MyInvestor nativo, Hogar diseño OK, push FCM, pensiones, informe mensual (favorito pareja), splash nativo, Play Store.
+### 9. Ajustes → Dinero — **HECHO en 4.14.0** (no hay tanda)
+El plan del 4/8 pedía quitar «Presupuesto mensual» y «Bancos de gasto diario» (duplicados) y que «Comparar monedas» no saliera vacío. Ya está: presupuesto vive en Resumen, bancos de gasto diario en Cartera, comparar monedas es el conversor (`st_cur_convert`). Si Ajustes → Dinero se ve raro, es otra cosa: se mira entonces, no se reabre esta limpieza.
+
+### 10. MyInvestor nativo — más adelante
+Si el intento OTA de reCAPTCHA (4.6.4) no cuela, WebView nativa que cargue myinvestor.es. APK nueva.
+
+### 11. Hogar · diseño — más adelante
+La función existe (Perfil → Tu gente). Falta que se vea bien. Claude Design, no Cursor a ciegas.
+
+### 12. Push FCM — más adelante
+Notis de verdad con la app cerrada (presupuesto, bancos caídos), no solo el listener de Wallet/TR.
+
+### 13. Pensiones — más adelante
+Aún no hay diseño. Claude Opus una página antes de codear.
+
+### 14. Informe mensual — más adelante (favorito pareja)
+Ya hay imagen para WhatsApp (Ajustes → Avanzado + popup día 1). Pulir / que salga solo / que se pueda reenviar.
+
+### 15. Splash nativo — más adelante
+El hueco «algo raro antes del icono» con la app cerrada es `Theme.SplashScreen` en Android 12+. No viaja por OTA → APK.
+
+### 16. Play Store — más adelante
+Formulario Data safety + justificar NotificationListener.
 
 ---
 
@@ -287,14 +314,9 @@ del estado local del móvil. Eso se cierra simulando contra su nube, no leyendo 
 
 ### 4. Cosas pedidas que el plan se deja fuera
 
-- **Ajustes → «Dinero» a medio limpiar** (petición suya del 4/8, sigue viva): quitar «Presupuesto
-  mensual» y «Bancos de gasto diario» (duplicados), «Comparar monedas» sale vacío. Barato y se ve.
-- **La decisión de fondo detrás de «gastos que no cuentan»** — la tanda 2 arregla cómo se *pintan*,
-  pero su queja «todos los malditos gastos que no sale ni uno» es **qué bancos alimentan el
-  presupuesto** (`settings.expenseBanks`). Eso es **una decisión suya con coste de doble conteo**,
-  no un bug. Ver [`brief-gastos-que-no-entran.md`](brief-gastos-que-no-entran.md). Hay que
-  preguntárselo, no elegir por él.
-- **RELEASE_NOTES por tanda** — no aparece en el plan y es regla de la casa.
+- **Ajustes → «Dinero» a medio limpiar** — **ya no**. Hecho en 4.14.0 (ver tanda 9). El plan del crucero estaba rancio.
+- **Qué bancos alimentan el presupuesto** — **decidido 17/8**: marcado como gasto diario → cuenta, salvo neutras. Implementado en la tanda 3 (filtro UI = `expenseBankEnts`).
+- **RELEASE_NOTES por tanda** — regla de la casa; 4.18.0 lleva `filtro-apuntar` y `mas-categorias`.
 - **Tanda 5 (meta = gasto del mes) depende de la 1.** Reescribe `monthBudgetStats`, que es justo lo
   que la 1 estabiliza, y tiene que aterrizar en **tres** sitios (cliente, ingest, widget). No
   empezarla hasta que la 1 esté aprobada.

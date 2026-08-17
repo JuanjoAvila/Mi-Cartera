@@ -56,6 +56,21 @@ t("Consulta médica cae en salud", () => {
   assert.equal(ctx.autoCategory("Consulta medico Dr Lopez"), "salud");
 });
 
+t("Heladería ya no cae en bares", () => {
+  assert.equal(ctx.autoCategory("Heladeria Llao Llao"), "heladeria");
+  assert.equal(ctx.autoCategory("Amorino Gelato"), "heladeria");
+});
+
+t("Steam / Instant Gaming caen en videojuegos (no ocio)", () => {
+  assert.equal(ctx.autoCategory("Steam Purchase"), "gaming");
+  assert.equal(ctx.autoCategory("Instant Gaming"), "gaming");
+});
+
+t("Joyería tiene categoría propia", () => {
+  assert.equal(ctx.autoCategory("Joyeria Tous"), "joyeria");
+  assert.equal(ctx.autoCategory("Pandora Store"), "joyeria");
+});
+
 t("Claude / Google Play cae en ocio", () => {
   assert.equal(ctx.autoCategory("Claude Anthropic"), "ocio");
   assert.equal(ctx.autoCategory("Google Play"), "ocio");

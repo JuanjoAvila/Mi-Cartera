@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.0] — 2026-08-17
+### Tanda 3 — filtro de gasto diario + fecha al apuntar/editar
+
+El filtro de Gastos arrancaba con **un** banco: `accDaily` (el rol «gasto diario» principal).
+`settings.expenseBanks` ya alimentaba el presupuesto (`expenseCountsBudget`), así que Revolut
+podía contar en el techo y **no salir en la lista**. Pedido suyo: todos los marcados como gasto
+diario se ven y cuentan (salvo neutras: inversión/traspaso); Sabadell y compañía siguen a mano
+en «Todos los bancos», listos para el import histórico de 3 meses.
+
+El `input type="date"` del rango a medida (y la fecha fija a hoy en Apuntar) abrían el picker
+nativo de Android. Calendario propio (`McCal` en `02-ui-shared.js`): grid del mes, sin nativo.
+
+### Tanda 4 — heladería, joyería, videojuegos
+
+Categorías nuevas + KW (cliente e `ingest_logic.ts`). Steam/Instant Gaming salen de ocio;
+heladería sale de bares; joyería (Tous, Pandora) sale de regalos/compras.
+
 ## [4.17.2] — 2026-08-17
 ### El widget sumaba el mismo pago dos veces (tanda `widget-coherente`, segunda vuelta)
 

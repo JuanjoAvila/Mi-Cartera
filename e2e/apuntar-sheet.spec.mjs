@@ -122,3 +122,19 @@ test("Gastos › Más… (períodos): cierra tirando hacia abajo", async ({ page
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await expect(sheet).toHaveCount(0, { timeout: 3_000 });
 });
+
+test("Apuntar (+): el calendario es de la casa, no el nativo de Android", async ({ page }) => {
+  await seedLoggedInDashboard(page);
+  await page.goto("/");
+  await expect(page.locator(".botnav")).toBeVisible({ timeout: 15_000 });
+  const dismissNews = page.getByRole("button", { name: /Entendido|Got it/i });
+  if (await dismissNews.count()) await dismissNews.first().click();
+
+  await page.locator(".botnav-fab").click();
+  const sheet = page.locator(".v4-sheet");
+  await expect(sheet).toBeVisible();
+  await expect(page.locator('input[type="date"]')).toHaveCount(0);
+  await page.locator('[data-testid="ap-date"]').click();
+  await expect(page.locator('[data-testid="mc-cal"]')).toBeVisible();
+  await expect(page.locator('[data-testid="mc-cal"] .mc-cal-day').first()).toBeVisible();
+});
