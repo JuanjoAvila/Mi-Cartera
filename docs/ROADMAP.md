@@ -1,10 +1,16 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-06 · **v4.16.1** — **EN `main` / APK 39**. Si Pages aún enseña 4.15.0, es
-> outage de GitHub (no cuota de minutos): verificar con
-> [`docs/briefs/brief-crucero-verificar-pages.md`](briefs/brief-crucero-verificar-pages.md).
-> APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae presupuesto que
-> cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
+> Estado a 2026-08-17 · **v4.16.2** — **EN `beta` / APK 40**, pendiente de su veredicto. El widget
+> de la pantalla de inicio ya no se contradice con la app cerrada (tanda `widget-coherente`).
+>
+> ⚠ **Pages sigue sirviendo 4.15.0 y `apk.json` live apunta a 4.12.0 / código 35**: los tres deploys
+> del 6/8 murieron en el outage de Actions (`job was not acquired by Runner`), no en un build roto.
+> Padre y pareja están en **4.15.0 web + nativo de 4.12.0** — sin lector de Google Wallet. Se
+> relanza `deploy.yml` al promocionar la 4.16.2, y con eso saltan de 4.15.0 a 4.16.2 de una vez.
+>
+> Anterior: 2026-08-06 · **v4.16.1** — en `main`, nunca llegó a la familia por lo de arriba. APK
+> limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae presupuesto que cuadra,
+> divisa en la nube (migración 0020) y notis de Google Wallet.
 >
 > Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
 > presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
@@ -66,10 +72,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.16.1** (producción) |
-| APK (`versionName` / `versionCode`) | **4.16.1** / **39** — release `v4.16.1`. Arranque sin franja bajo la cámara + Wallet nativo. Firma `CN=Mi Cartera`. |
-| Anterior | **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
-| `public/apk.json` | **39** / 4.16.1 → release `v4.16.1` / `Mi-Cartera-4.16.1.apk` |
+| Web / OTA (`VERSION`) | **4.16.2** (en `beta`) · **live en Pages: 4.15.0** ⚠ |
+| APK (`versionName` / `versionCode`) | **4.16.2** / **40** — widget coherente con la app cerrada. Firma `CN=Mi Cartera`. |
+| Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
+| `public/apk.json` | repo **40** / 4.16.2 · **live: 35 / 4.12.0** ⚠ — no se movió desde el outage del 6/8 |
 
 ## Pendiente / limitaciones conocidas
 

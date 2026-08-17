@@ -1,6 +1,6 @@
 {
-  "versionCode": 39,
-  "versionName": "4.16.1",
-  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.16.1/Mi-Cartera-4.16.1.apk",
-  "notes": "APK 4.16.1 (39): se quita una franja que podía quedar bajo la cámara al abrir la app. Las compras con Google Pay se apuntan solas. Se instala encima sin desinstalar ni perder datos."
+  "versionCode": 40,
+  "versionName": "4.16.2",
+  "url": "https://github.com/JuanjoAvila/Mi-Cartera/releases/download/v4.16.2/Mi-Cartera-4.16.2.apk",
+  "notes": "APK 4.16.2 (40): el widget de la pantalla de inicio ya no se contradice — lo gastado y lo que puedes gastar se actualizan juntos, también con la app cerrada. Incluye las compras con Google Pay, que se apuntan solas, y el arranque sin franja bajo la cámara. Se instala encima sin desinstalar ni perder datos."
 }

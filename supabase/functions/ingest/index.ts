@@ -251,14 +251,32 @@ Deno.serve(async (req) => {
     const stats = statsDelMes(rows || [], st?.data, desdeMs);
     const budget = stats.budget;
     const after = stats.against;
-    // `spent` va con la cifra que PINTA la app (shown), no con el bruto: el widget y la cabecera
-    // de Gastos tienen que decir lo mismo («misma cifra en todos sitios», 2026-08-05).
-    month = { spent: stats.shown, budget, against: after };
     // Y si el gasto recién apuntado NO cuenta para el presupuesto —banco de recibos, inversión,
     // traspaso— la cifra no se ha movido: avisar sería avisar por algo que él no ve subir.
     const mueveElPresupuesto = cuentaParaPresupuesto(
       { importe, cat, source: "macrodroid" }, bancosDeGastoDiario(st?.data),
     );
+    // `spent` va con la cifra que PINTA la app (shown), no con el bruto: el widget y la cabecera
+    // de Gastos tienen que decir lo mismo («misma cifra en todos sitios», 2026-08-05).
+    //
+    // `budgetLeft` y `counts` son para el WIDGET con la app cerrada (bug 2026-08-17: el widget
+    // decía «891 gastado · quedan 109» y a la vez «✅ Puedes gastar 324 €»). El widget necesita
+    // DOS topes: lo que deja el presupuesto (esto) y la liquidez segura de la cuenta de gasto
+    // (`safeLiq`), que solo sabe la app porque sale de simular el mes día a día con fijos, deudas
+    // y traspasos. Aquí se manda el que el servidor SÍ puede calcular exacto; el nativo baja el
+    // otro por su cuenta con `counts` y se queda con el mínimo de los dos. Deliberadamente NO se
+    // reimplementa `safeLiq` en el servidor: sería la tercera copia de la misma regla, y de esa
+    // duplicación ya salieron los dos últimos bugs de presupuesto.
+    month = {
+      spent: stats.shown,
+      budget,
+      against: after,
+      // −1 = «no hay dato», y así el nativo distingue esto de un `budgetLeft` de 0 € de verdad.
+      // Importa porque la APK puede llegar antes que el despliegue de esta función: sin sentinela,
+      // un widget nuevo contra un ingest viejo leería 0 y pintaría «Puedes gastar 0 €».
+      budgetLeft: budget > 0 ? +Math.max(0, budget - after).toFixed(2) : -1,
+      counts: mueveElPresupuesto ? 1 : 0,
+    };
     if (tipo === "gasto" && budget > 0 && mueveElPresupuesto) {
       const before = after - importe;
       // Umbrales 50/95 añadidos 2026-07-18 (petición: avisos aunque la app esté cerrada —

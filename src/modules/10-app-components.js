@@ -1424,6 +1424,33 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.16.2", d:"17 ago 2026",
+   t:{es:"El widget de la pantalla de inicio deja de contradecirse",
+      en:"The home screen widget stops contradicting itself",
+      ca:"El widget de la pantalla d'inici deixa de contradir-se"},
+   tandas:[
+     {id:"widget-coherente", t:"📊 El widget dice la verdad con la app cerrada", items:[
+       "Mira el widget y abre la app: «gastado este mes» es el mismo número en los dos sitios.",
+       "En el widget, «te quedan X» y «✅ Puedes gastar Y» tienen que cuadrar entre ellos (Y nunca puede ser mayor que X).",
+       "Cierra la app del todo, haz un pago con la tarjeta y espera a la noti: el widget se actualiza y las tres cifras siguen cuadrando.",
+       "Vuelve a mirar el widget un rato después, sin abrir la app: NO debe haber vuelto a descuadrarse (ese era el fallo).",
+       "Haz un pago que no cuente para el presupuesto (una inversión o un traspaso): el gasto del mes del widget no se mueve.",
+       "El saldo de la cuenta de gasto que sale abajo en el widget también baja con cada pago, sin esperar a abrir la app.",
+     ]},
+   ],
+   items:{
+   es:[
+    "📊 El widget de la pantalla de inicio se contradecía: podía decir que te quedaban 109 € y justo debajo que podías gastar 324 €. Pasaba con la app cerrada, cuando entraba un pago: actualizaba lo gastado pero se dejaba el resto de cifras del rato anterior. Ahora se actualizan todas juntas y siempre cuadran entre ellas.",
+    "💳 El saldo de la cuenta de gasto que sale en el widget también se pone al día con cada pago, sin tener que abrir la app.",
+   ],
+   en:[
+    "📊 The home screen widget was contradicting itself: it could say you had 109 € left and right below that you could spend 324 €. It happened with the app closed, when a payment came in: it updated the amount spent but kept the other figures from earlier. Now they all update together and always add up.",
+    "💳 The spending account balance shown on the widget also keeps up with each payment, without having to open the app.",
+   ],
+   ca:[
+    "📊 El widget de la pantalla d'inici es contradeia: podia dir que et quedaven 109 € i just a sota que podies gastar-ne 324 €. Passava amb l'app tancada, quan entrava un pagament: actualitzava el que s'havia gastat però es deixava la resta de xifres d'abans. Ara s'actualitzen totes juntes i sempre quadren.",
+    "💳 El saldo del compte de despesa que surt al widget també es posa al dia amb cada pagament, sense haver d'obrir l'app.",
+   ]}},
   {v:"4.16.1", d:"6 ago 2026",
    t:{es:"Arranque limpio, sin franja bajo la cámara",
       en:"Clean launch, no strip under the camera",

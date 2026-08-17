@@ -2,6 +2,44 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.16.2] — 2026-08-17
+### El widget se contradecía a sí mismo (tanda `widget-coherente`)
+
+Reportado al volver del crucero, con captura: el widget decía «891 € de 1.000 · te quedan 109» y
+justo debajo «✅ Puedes gastar 324 €». Al abrir la app se ponía bien y **al rato volvía a mentir**.
+
+No era un cálculo malo: eran **dos escritores de las prefs del widget que no escribían lo mismo**.
+`MiCarteraPlugin.updateWidget` (app abierta) empujaba las cinco cifras a la vez;
+`MiCarteraWidget.saveMonth` (lector de notis, **app cerrada**) escribía solo `spent` y `budget` y
+dejaba `afford` y `cash` del push anterior. `build()` los pintaba juntos como si fueran del mismo
+momento — de ahí las dos líneas incompatibles, y el «se arregla al abrir y al rato vuelve».
+
+Arreglo, en tres piezas:
+
+1. **`build()` calcula «puedes gastar», ya no lo recibe hecho.** Los dos escritores mantienen las
+   mismas PRIMITIVAS (`budgetLeft`, `safeLiq`) y la fórmula (`min` de las dos) vive en un solo
+   sitio. Da igual quién escribió el último: el número siempre es coherente.
+2. **`ingest` manda `budgetLeft` y `counts`** en `month`. `budgetLeft` sale de la misma
+   `statsDelMes` que ya alinea servidor y app, así que la noti trae la cifra exacta.
+   Sentinela `-1` = «este ingest no lo manda», para que una APK nueva contra una función sin
+   desplegar no pinte «Puedes gastar 0 €».
+3. **`saveMonth` mantiene `safeLiq` y `cash`** restando el importe del gasto. Un cargo de la
+   cuenta diaria hunde el saldo de hoy y el del resto del mes en la misma cantidad, así que restar
+   es exacto **sin resimular el mes en el servidor**. Deliberado: `safeLiq` sale de recorrer fijos,
+   deudas, puntuales y traspasos día a día, y reimplementar eso en Deno sería la tercera copia de
+   la misma regla — de esa duplicación salieron los dos últimos bugs de presupuesto.
+
+Test nuevo `widget-coherente`: carga las dos implementaciones de presupuesto y exige el mismo
+`budgetLeft`, y **lee el Java de verdad** para exigir que todo lo que `build()` pinta lo mantengan
+los dos caminos. Verificado que el guardián se pone rojo con el código anterior.
+
+APK **40 / 4.16.2** (cambia código nativo).
+
+**Pendiente, no cerrado en esta tanda:** el salto 891 vs 686 (Δ 205 €) entre la cifra de la noti y
+la de la app. Cliente y servidor comparten fórmula, así que la diferencia viene de datos de
+entrada distintos (sospecha: `ingest` calcula sobre el `app_state` de la nube, que puede ir por
+detrás del móvil). Se cierra simulando contra su nube real, no leyendo código.
+
 ## [4.16.1] — 2026-08-06
 ### Arranque sin franja bajo la cámara (APK)
 
