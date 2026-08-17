@@ -14,7 +14,7 @@ git fetch --all --prune && git log --oneline -5 refs/heads/beta && cat VERSION
 suele ir una versión por detrás. Si cortas una rama de `main` estás trabajando sobre código viejo:
 tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versión a la gente.
 
-## 2. Las cinco trampas que más caro salen
+## 2. Las siete trampas que más caro salen
 
 1. **`beta` es rama Y tag a la vez.** El tag lo usa el workflow del canal de pruebas para publicar
    los assets, así que **no se borra** aunque apunte a un commit viejo. Efecto diario:
@@ -28,8 +28,21 @@ tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versi�
    Es la excepción por diseño («no hay código publicable sin subir VERSION»), no es tu commit.
 5. **En un portátil no se ven los problemas de rendimiento del móvil.** Cero tareas largas hasta
    estrangular la CPU x6 por CDP. Método completo y trampas en `AGENTS.md` §7 y §7 bis.
+6. **En `beta` los tests se recortan.** Un `e2e/*.spec.mjs` nuevo va a `E2E_MAP` o `CROSSCUTTING`
+   en `scripts/relevant-tests.mjs`; un unitario, a `steps` en `run-tests.mjs`. Si te olvidas, el
+   CI aborta (no se duerme). Promote y `main` siguen corriendo la suite entera.
+   ⚠ El guardián caza el spec **huérfano**, no el **mal colgado**: si `gastos-cajones` se pone
+   bajo otro módulo, `beta` sale verde sin abrir Gastos. Un verde en `beta` no pesa lo mismo
+   que un verde en `main`.
+7. **No afirmar como hecho lo que solo está en el disco.** «En beta», «subido», «EN 4.18.0 beta»
+   en una tabla de estado = el commit está en `origin/beta` (y el móvil lo puede bajar cuando
+   Actions publique). Codeado en esta sesión, sin push, se dice **sin commit / sin push**. Pasó
+   el 17/8 con las tandas 3 y 4: la tabla mentía y él lo cazó. **Un brief también es una
+   afirmación:** el mismo día se subió `brief-claude-destello.md` del 5/8 como si el WIP .13
+   existiera; no existía, y el .12 ya estaba aprobado. Si el forense vale, se deja; el estado
+   caducado se marca arriba. Piénsalo dos veces antes de afirmárselo.
 
-> **Atajo para las cinco de golpe: `npm run salud`** (desde 4.13.0). Contesta en veinte segundos
+> **Atajo para las de golpe: `npm run salud`** (desde 4.13.0). Contesta en veinte segundos
 > lo que si no se comprueba a mano: si los cuatro sitios donde vive la versión cuadran, si la APK
 > anunciada existe de verdad, **qué sirve producción ahora mismo** (preguntándole a Pages, no
 > leyendo el repo), si la beta va por delante o por detrás, y qué commits hay en `beta` sin
@@ -54,6 +67,10 @@ Circuito corto y trampas: **[`docs/RELEASE.md`](docs/RELEASE.md)**. Resumen:
 El veredicto se lee con `node scripts/errores.mjs --kind=beta`, y las sugerencias que escribe la
 familia desde la app con `npm run sugerencias`. **Míralas al empezar**: dos de su pareja pasaron
 diez días sin que las leyera nadie, y una era un bug de verdad.
+
+**Play Store es lo último de lo último** (17/8). Sideload sí; publicar en Google no, hasta que él
+diga que está hiper pulida. Si aparece una tanda nueva, va **antes** de Play Store, nunca después.
+Si se implementa Play Store pronto, se tienta de colgarla y no quiere.
 
 ## 4. Cómo se escribe para él
 
@@ -82,8 +99,7 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy (2026-08-06, noche — sale de crucero):** `VERSION` = **4.16.1** en `main` (Wallet + divisa +
-aviso de presupuesto + APK sin franja bajo la cámara). Circuito de release: [`docs/RELEASE.md`](docs/RELEASE.md).
+**Hoy:** `VERSION` = **4.18.2** en `beta`. El widget con la app cerrada va por `ingest` (un solo Supabase), no por el canal. Circuito: [`docs/RELEASE.md`](docs/RELEASE.md).
 Antes de tocar nada, **`npm run salud`**.
 
 ### Si él escribe desde el viaje («¿ya está Pages?»)
@@ -102,9 +118,10 @@ móvil: *«Mira docs/briefs/brief-crucero-verificar-pages.md y comprueba Pages 4
 
 Plan de tandas + reparto Cursor/Claude:
 [`docs/briefs/plan-vuelta-crucero.md`](docs/briefs/plan-vuelta-crucero.md).
+**Tanda 17 = diseño** (mock Claude Design, `docs/design/handoff/`). No mezclar con dinero ni destello.
+Play Store sigue **la última**. Widget 4.17.2 **no** está en `main`.
 Inventario largo: [`docs/memoria/mi-cartera-backlog-2026-08.md`](docs/memoria/mi-cartera-backlog-2026-08.md).
 Import histórico (ya diseñado): [`docs/briefs/plan-import-historico-seguro.md`](docs/briefs/plan-import-historico-seguro.md).
-Pages live puede seguir en 4.15.0 aunque el repo esté en 4.16.1 — relanzar deploy.
 
 ⚠ `docs/memoria/pendiente-manana-4-12-0.md` es espejo viejo (**no editar a mano**).
 **La foto de ahora es `docs/ROADMAP.md`.**

@@ -1,18 +1,28 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.18.1** — **EN PRODUCCIÓN**. Tandas 3 y 4: Gastos enseña todos los
-> bancos de gasto diario, fecha al apuntar/editar con calendario de la casa, Recibos + heladería /
-> joyería / videojuegos, sugerir categoría en cualquier gasto, y el banco del `+` en pastilla.
-> APK **41**. El widget **4.17.2 no entra** (ingest no se toca).
+> Estado a 2026-08-17 · **v4.18.2** — **EN `beta`**, ingest del widget a producción. El canal beta
+> no prueba el widget con la app cerrada (un solo Supabase). APK sigue **41 / 4.17.1**.
 >
-> Anterior: 2026-08-17 · **v4.17.1** — **EN PRODUCCIÓN** (tanda `gastos-orden` aprobada en el
-> móvil, 10 ok / 0 fallos). Qué cuenta y qué no en Gastos, renombrar el «Movimiento» de TR
-> sin duplicar, y el bloqueo de pantalla al guardar (venía de la v3.108.0). APK **41**.
-> La tanda del widget se queda en `beta` hasta que él compre y la re-pruebe.
+> Anterior: 2026-08-17 · **v4.18.1** — **EN PRODUCCIÓN**. Tandas 3 y 4: Gastos enseña todos los bancos de gasto diario, calendario al apuntar, Recibos, sugerir categoría en cualquier gasto, banco del `+` en pastilla. El widget de 4.17.2 **no entra** (sigue solo en `beta`).
 >
-> Anterior: 2026-08-06 · **v4.16.1** — en `main`, nunca llegó a la familia por el outage de
-> Actions. APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae
-> presupuesto que cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
+> Anterior: 2026-08-17 · **v4.18.0** — **EN `beta`**. Tandas 3 y 4: Gastos enseña todos los bancos
+> marcados como gasto diario (no solo el principal), fecha al apuntar/editar con calendario de la
+> casa, y categorías nuevas (heladería, joyería, videojuegos). Producción sigue en **4.17.1**.
+> El widget de 4.17.2 **no entra** en esta tanda (sigue parado hasta que él compre y re-pruebe).
+>
+> Anterior: 2026-08-17 · **v4.17.2** — **EN `beta`**. El widget de la 4.16.2 ya no se contradecía
+> por dentro, pero seguía sumando de más (907 vs 709): ingest no respetaba lápidas ni juntaba las
+> dos notis del mismo cargo (Wallet + TR). Arreglo en el servidor, **sin APK nueva**.
+>
+> ⚠ El fallo del **bloqueo de pantalla al guardar** que encontró NO era de la tanda: venía de la
+> v3.108.0 y saltaba con cualquier edición de importe o nombre. El sheet de detalle tenía dos
+> nociones de «abierto» que discrepaban y dejaba el candado de `touchmove` puesto.
+>
+> Anterior: 2026-08-17 · **v4.17.1** — **EN PRODUCCIÓN**. Tanda `gastos-orden` (qué cuenta / qué no,
+> «Movimiento» sin duplicar al sync). APK **41**. El widget no entra.
+>
+> Anterior: 2026-08-06 · **v4.16.1** — APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara.
+> La 4.16.0 trae presupuesto que cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
 >
 > Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
 > presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
@@ -74,10 +84,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.18.1** (producción) |
-| APK (`versionName` / `versionCode`) | **4.17.1** / **41** — release `v4.17.1`. Misma app que la web: Gastos (qué cuenta / qué no) + Wallet + arranque sin franja. Firma `CN=Mi Cartera`. |
-| Anterior | **4.16.1 / 39** (sin franja), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
-| `public/apk.json` | **41** / 4.17.1 → release `v4.17.1` / `Mi-Cartera-4.17.1.apk` |
+| Web / OTA (`VERSION`) | **4.18.2** (en `beta`; ingest a producción) · Pages aún **4.18.1** hasta que Actions acabe |
+| APK (`versionName` / `versionCode`) | Repo: **4.16.2 / 40**. Live en su móvil: **4.17.1 / 41** (tanda 2). La 4.18.x no toca nativo: va por OTA. |
+| Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
+| `public/apk.json` | repo **40** / 4.16.2 (esta rama no ha corrido `release:apk`) |
 
 ## Pendiente / limitaciones conocidas
 
@@ -85,9 +95,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 |------|--------|
 | **MyInvestor reCAPTCHA** | **4.6.4:** intento OTA — la app carga el reCAPTCHA de Google bajo demanda con el **site key de MyInvestor** (que el usuario pega en la tarjeta MI; su web va tras Incapsula y no se puede extraer desde el CI), ejecuta la acción, y reintenta el login con `X-Recaptcha-Token`. **Riesgo:** reCAPTCHA v3 suele atar el token al dominio registrado (`myinvestor.es`); si MI valida el origen, rechazará el token de nuestra WebView → entonces el único camino es una **WebView nativa** que cargue la web de MI (APK). El intento OTA se prueba en 1 min: si el token cuela, resuelto sin tocar nativo. Palancas previas: `x-myinvestor-app`=3.150.0, mensaje humano, `captchaToken` en cabeceras (plumbing listo). |
 | **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
-| **Widget «Puedes gastar»** | El código va en el APK 30 (verificado: strings `Puedes gastar`/`te quedan` en `classes.dex`). Si en el móvil sigue saliendo solo el gasto: el widget se alimenta de `updateWidget` (app → plugin) y MIUI/HyperOS a veces no lo re-pinta. 4.6.2 re-empuja al volver a primer plano; si aún falla, **quitar y re-añadir el widget**. No es bug de código OTA. |
-| **Play Store** | Formulario Data safety + justificar NotificationListener |
-| **Pulido de diseño** | Claude Design (no tocar aquí a ciegas) |
+| **Widget «Puedes gastar»** | 4.18.2: ingest cuenta como la app (`filasComoLaApp`). Prueba: pago con la app cerrada. Si el widget no se re-pinta en MIUI, quitar y re-añadir. |
+| **Limpieza del repo (tanda 16)** | Basura, docs rancio, código muerto. **No visual, no es rendimiento, no es Clean Code de libro.** El monolito es a propósito (`docs/adr/0002-monolito.md`). Alcance en `docs/briefs/plan-vuelta-crucero.md` §16. |
+| **Play Store** | **Lo último.** Data safety + NotificationListener. No adelantar: si se implementa, se tienta de publicar antes de que esté pulida a su criterio. Cualquier tanda nueva va **antes**. |
+| **Pulido de diseño (tanda 17)** | Mock Claude Design: `docs/design/handoff/` (SPEC-v4 + mockup HTML). **No tocar a ciegas.** Hogar, Apuntar, Gastos, el look. Tanda propia, no mezclar con dinero. |
 | **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
 
 ## Lo que apuntó él el 2026-07-26 — HECHO en la 4.12.0
@@ -188,7 +199,7 @@ la elección es suya. El registro real lo confirma un agente de la propiedad ind
 
 | Tema | Notas |
 |------|--------|
-| **Play Store** | Cuando quieras publicar |
+| **Play Store** | **Lo último**, cuando él diga que está hiper pulida. No adelantar. |
 | **Pulido visual gordo** | SPEC-v4 / handoff en `docs/design/` |
 | **Logos de banco reales** | Idea 2026-07-18: sustituir el monograma (Sb/Cx…) por el logo del banco. Regla de la casa: cero CDNs → habría que auto-hospedar los ~8 logos habituales en `public/vendor/banks/` (los de Enable Banking vienen de fuera y solo se usan en el picker). |
 | **Freemium / suscripciones** | Idea 2026-07-18 (medio en broma, medio en serio): gratis = cuentas manuales (importe editable a mano); plan de pago = sync bancaria automática. El nombre editable en ambos. La 4.1.0 ya deja la semántica lista (manual = saldo editable; conectada = solo nombre/rol). Para monetizar de verdad faltan pasarela de pago + entitlements en Supabase — se diseña cuando lo pidas, no se mete de tapadillo. |
@@ -212,6 +223,6 @@ Muestra gasto del mes vs presupuesto + saldo de la cuenta diaria.
 1. Bugs en uso (feedback real)  
 2. Features pedidas  
 3. **Cada release:** alinear `VERSION` + `package.json` + `CHANGELOG` + `RELEASE_NOTES` + APK (`build.gradle` + `apk.json` + release GitHub) + `docs/ROADMAP.md`  
-4. Preparación Play Store (cuando quieras)
+4. Play Store: **siempre lo último**. Si se añade algo, va antes. Sideload/APK GitHub no esperan.
 
 Ver [CHANGELOG.md](../CHANGELOG.md) · [ARQUITECTURA.md](ARQUITECTURA.md) · [AMENAZAS.md](AMENAZAS.md) · [ADR](adr/) · [TESTING.md](TESTING.md) · [SENTRY.md](SENTRY.md) · [HOGAR.md](HOGAR.md) · [CATEGORIZE.md](CATEGORIZE.md) · [AGENTS.md](../AGENTS.md)

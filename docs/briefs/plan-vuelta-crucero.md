@@ -1,29 +1,67 @@
 # Plan — Vuelta del crucero (2026-08-17)
 
-## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.17.1 a prod)
+## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.18.1)
 
 Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin preguntar a nadie.
 
 | Tanda | Estado | Notas |
 |---|---|---|
-| 0 · Pages | ✅ **4.17.1 en producción** (esta noche) | Familia salta 4.15.0 → 4.17.1. APK **41**. |
-| 1a · Widget coherente | ⏸ **PARADA** — él compra mañana | 4.16.2/4.17.2 siguen en `beta`. No promocionar. |
-| 1b · Revolut −204 del padre | 🟡 **YA se puede mirar** | Al instalar APK 41 el padre deja el nativo de 4.12.0 |
-| 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 (10 ok / 0 fallos) |
-| 3 · Filtro en `+` y editar + calendario propio | 🔧 **SIGUIENTE** | Cursor. Reutilizar sheet de Gastos; calendario de la casa |
-| 4 · Más categorías + IA | ⬜ Libre | Buena para Cursor: anchura mecánica × 3 idiomas |
+| 0 · Pages / familia | ✅ **Prod 4.18.1** · APK **41** | Pages `version.json` = 4.18.1. Widget NO entra. |
+| 1a · Widget coherente | ⏳ **4.18.2 a prod** (ingest) | Un solo Supabase: el canal beta NO prueba el widget con la app cerrada. Mañana un pago con la app cerrada es la prueba. |
+| 1b · Revolut −204 del padre | 🟡 **Se puede mirar** con APK 41 | Dejaba el nativo de 4.12.0 |
+| 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 |
+| 3 · Fecha en `+`/editar + calendario + filtro gasto diario | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Calendario de la casa. Default = todos los de gasto diario. |
+| 4 · Más categorías + KW | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Heladería, joyería, videojuegos, Recibos. IA en cualquier gasto. |
 | 5 · Meta = gasto del mes | ⛔ **NO EMPEZAR** | Reescribe `monthBudgetStats`. Esperar a que la 1a esté aprobada |
-| 6 · Efectivo | ⬜ Libre | |
-| 7 · Import histórico | ⬜ Plan sellado | `plan-import-historico-seguro.md`, tanda 1 motor |
-| 8 · Parpadeo tabs / overscroll / destello | 📌 **NO OLVIDAR** (después de la 3) | Se nota MÁS con temporada, también SIN. Flash al scroll + capa rara. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. No mezclar con la tanda 3 |
+| 6 · Efectivo | ⬜ Libre | Opus 1 página, Cursor v1 |
+| 7 · Import histórico 3 meses | ⬜ Plan sellado | `plan-import-historico-seguro.md`. La 3 deja Gastos listo para que entre como un banco más. |
+| 8 · Destello / scroll / overscroll | 📌 **Después de probar la 3** | Se nota MÁS con temporada, **también SIN**. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. |
+| 9 · Ajustes → Dinero | ✅ **HECHO en 4.14.0** | No hay tanda. El plan viejo estaba rancio: presupuesto y bancos de gasto diario ya salieron de Ajustes (viven en Resumen / Cartera); comparar monedas es el conversor. |
+| 10 · MyInvestor nativo | ⬜ Más adelante | WebView nativa si el reCAPTCHA OTA no cuela (ver ROADMAP) |
+| 11 · Hogar · diseño | ⬜ Va en la **17** | Funciona; el look entra en la tanda de diseño (mock Claude Design). |
+| 12 · Push FCM | ⬜ Más adelante | Notis reales con la app cerrada, no solo el listener de Wallet |
+| 13 · Pensiones | ⬜ Más adelante | |
+| 14 · Informe mensual | ⬜ Más adelante | Favorito de la pareja. Ya hay imagen WhatsApp; pulir / automatizar |
+| 15 · Splash nativo | ⬜ Más adelante | APK: el hueco antes del icono en Android 12+ |
+| 16 · Limpieza del repo | ⬜ Otra tanda, no visual | Basura + docs rancio. **No** es Clean Code de libro ni va a hacer la app más rápida. Alcance abajo. |
+| 17 · Diseño (mock Claude Design) | ⬜ **Tanda propia** | `docs/design/handoff/` (SPEC-v4 + mockup HTML). No Cursor a ciegas. Lo que no convenza del `+` / Gastos / Hogar. |
+| ∞ · Play Store | ⬜ **LO ÚLTIMO** | Data safety + NotificationListener. **Nunca se adelanta.** Si entra algo nuevo, se inserta ANTES. Si se implementa, él se tienta de publicar, y no quiere hasta que esté hiper pulida a su criterio. |
 
-**Estado del repo:** `main` = **4.17.1** (producción). `beta` = **4.17.2** (widget ingest, tanda 1 parada).
-Migración **0021** (`ob_name`) entra al pushear a `main`. El widget 4.17.2 NO se redespliega a prod.
+**Play Store no se mueve de última.** Pedido 17/8 noche. Sideload / APK de GitHub sigue valiendo.
+
+**Estado del repo:** `beta` = **4.18.2** (ingest del widget + APK de `beta` alineada a **41 / 4.17.1**). `origin/main` / Pages aún **4.18.1** hasta que este ingest esté en `main` y Actions despliegue. El canal beta no prueba el widget con la app cerrada: hay un proyecto Supabase y la noti habla con `ingest`, no con el bundle OTA.
+
+### ⚠ NO PULSAR «Promocionar beta» VACÍO
+
+El widget **sí** va a prod en **4.18.2**, pero por cherry-pick de `ingest/index.ts` + `presupuesto.ts`, no con el botón vacío. Un promote vacío sigue siendo peligroso: `-X theirs` se traga lo que solo esté en `beta` (y el 17/8 `beta` tenía `apk.json` **40** contra **41** en `main` — eso ya está alineado). `promote-beta.yml` aborta si el `versionCode` o la `VERSION` de beta son menores que los de main.
+
+Hay **un** proyecto Supabase. El canal beta no prueba el widget con la app cerrada: la noti habla con `ingest`, no con el bundle OTA. Por eso esta tanda sube a prod.
+
+### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
+
+Medido con `node scripts/diag-widget.mjs` (lee su nube) **y con el extracto de Trade Republic**.
+
+1. **La fórmula NO es el problema.** Servidor y cliente dan lo mismo con la misma entrada.
+2. **El widget cuenta filas que la app ya no ve.** Ingest leía la tabla `expenses` a pelo:
+   - lápidas en `state.deleted` que siguen vivas en la nube (`deleteExpense` traga errores);
+   - **notis gemelas del mismo cargo.** Caso medido: dos filas de 230 € APOLLON GALLERY el 13/8
+     (11:31 `regalos` y 13:08 `bares`), las DOS `macrodroid`. El extracto de TR tiene **un** 230
+     y **un** 115. Wallet avisó a una hora y TR a otra (97 min, fuera de la ventana de 10 min).
+     Claude tomó las horas distintas por «dos compras reales». El banco dice que no.
+3. **NO meter la hora en la clave de fusión.** Eso haría que la app también sumara el gemelo
+   y mentiría igual que el widget. La app ya hace bien: `día|importe|comercio`.
+
+**Arreglo (4.17.2 en beta, **4.18.2** en prod, ingest, sin APK):** `filasComoLaApp` (lápidas + una fila por clave) antes de
+`statsDelMes`, y al insertar se ignora un segundo aviso el mismo día / mismo comercio / mismo
+euro. Desplegar `ingest` desde `beta` para probarlo. No borrar filas de la nube a mano: el
+conteo ya las ignora; el insert deja de criar más.
+
+**Descartado:** «1b-B meter la hora en la clave». Era el arreglo al revés.
 
 **Su rechazo de la 4.17.0.1 y qué se hizo** (`node scripts/errores.mjs --kind=beta`):
 
 1. *«De otros bancos no hace nada y tampoco se ve para qué está, dado que ya puedes elegir los
-   bancos abajo»* → **chip retirado**. No hacía nada porque el filtro de bancos arranca
+   bancos abajo»* → **chip retirado**. No hacía nada porque el filtro de bancos arrancaba
    preseleccionado en la cuenta diaria y «de otros bancos» es justo lo contrario: cruce vacío
    siempre. El cajón `otrobanco` sigue vivo (es el que pinta «no es del día a día» en la fila).
 2. *«Al modificarlo y guardarlo se bloquea la pantalla… solo si tiras para atrás puedes seguir»* →
@@ -39,11 +77,10 @@ caliente contra caliente) y `bancos-acordeon.spec.mjs` (la app premonta las pest
 3,2 s y `getByText(...).first()` cogía la copia escondida). Lección reutilizable en
 `docs/memoria/e2e-getbytext-pestanas-premontadas.md`.
 
-**Lo que queda decidido POR ÉL, no por nosotros:** ampliar `settings.expenseBanks` para que los
-gastos de otros bancos cuenten en el presupuesto. Hoy no cuentan **por diseño** (evitar doble
-conteo con los Fijos modelados), pero él lo vive como bug («no sale ni uno»). Tiene coste real.
-La tanda 2 ya hace que al menos **se vea** cuáles son y por qué. **No elegir por él.**
-
+**Decisión suya 17/8 (ya no está abierta):** si un banco está **marcado como gasto diario**, sus
+movimientos cuentan en el presupuesto **siempre** (Revolut + Trade Republic, no solo el
+principal), **salvo** inversión/traspaso (`CAT_NEUTRAS`). Un banco que no está marcado (Sabadell)
+se ve al pedirlo y no come el techo. Así el import de 3 meses entra como un banco normal.
 
 **Para:** Cursor (coordinación + tandas de código) y Claude personal (diseño / chicha de dinero).  
 **Repo:** `E:/Mi cartera` · trabajo en **`beta`** · **de uno en uno** · nada a `main` sin su OK.  
@@ -51,17 +88,15 @@ La tanda 2 ya hace que al menos **se vea** cuáles son y por qué. **No elegir p
 
 ---
 
-## Foto al volver
+## Foto ahora (17/8 noche)
 
 | Qué | Estado real |
 |-----|-------------|
-| `VERSION` en repo | **4.16.1** (`main` = `beta` tip `aeec4ad9`) |
-| Pages live | **AÚN 4.15.0** / `apk.json` **35** — OTA de familia parada (outage de agosto; hay que relanzar deploy) |
-| Su móvil | APK **4.16.0 (38)** o 4.16.1 (39). Wallet/divisa/presupuesto servidor = código 4.16 |
-| Pareja / padre | Siguen en **4.15** por Pages |
-| Crucero | Multidivisa + Wallet hechos. Pendiente: parpadeo tabs + overscroll Cartera |
-
-**Primera higiene (Cursor, 10 min, sin Claude):** `gh workflow run deploy.yml --ref main` y comprobar `version.json` = 4.16.1. Sin eso, la familia no tiene 4.16 y el widget de ellos sigue con ingest viejo.
+| `VERSION` en `beta` | **4.18.2** |
+| `origin/main` | **4.18.1** hasta el push del ingest · APK **41** |
+| Pages live / familia | **4.18.1** hasta que Actions publique 4.18.2 |
+| Widget 4.17.2 / 4.18.2 | Ingest a producción (no se puede probar solo en canal beta) |
+| Crucero pendiente | Destello = tanda 8. Diseño (mock) = tanda **17**. Play Store = última. |
 
 ---
 
@@ -105,11 +140,13 @@ Causa ya conocida a medias (no inventar otra):
 - OB de TR: poder **renombrar** el comercio «Movimiento» (y que el override se recuerde).
 - Detectar **banco del ingreso/pago** (ya hay `ent`; UI debe enseñarlo y al apuntar a mano no perderlo).
 
-### 3. Filtro guapo también en + y al editar + calendario propio — Cursor
-Reutilizar el sheet de `04-tab-gastos.js` (no `alert`/date nativo de Android). Categoría + banco + fecha con el teclado/calendario de la casa.
+### 3. Filtro guapo también en + y al editar + calendario propio — **HECHO en 4.18.0 / pulido 4.18.1**
+Calendario de la casa (`McCal`), no el nativo de Android. Fecha al apuntar y al editar.
+**Y** el filtro de Gastos arranca con **todos** los marcados como gasto diario (`expenseBankEnts`), no solo el principal. Decisión suya 17/8.
+En 4.18.1 el banco al apuntar es una pastilla que se despliega (como el cuadradito de filtros), no la fila de chips.
 
-### 4. Más categorías + IA más lista — Cursor (cats) + Claude Sonnet (diccionario KW)
-Heladería, joyería, crucero, Steam, Instant Gaming, etc. Tres idiomas. Ampliar `autoCategory` / KW. IA (`categorize`) solo si él tiene la clave; si no, KW primero.
+### 4. Más categorías + KW — **HECHO en 4.18.0 / Recibos+IA 4.18.1**
+Heladería, joyería, videojuegos, **Recibos**. Tres idiomas. `autoCategory` / KW cliente + `ingest_logic.ts`. Crucero se queda en Viajes. IA (`categorize`): ALLOWED = todas las categorías; botón en cualquier gasto, no solo Otros. KW primero; IA solo si cae en otros y hay clave.
 
 ### 5. Meta ahorrada = gasto del mes (temporal) — **Claude Opus diseña**
 Palabras suyas: la meta marcada sustituye **temporalmente** el «gasto del mes»; gastar de esa hucha **no es** gasto corriente. Varios bancos ligados → al gastar de esos bancos se elige esa meta **sola**. Al llegar a **0**, vuelve el presupuesto normal.
@@ -129,10 +166,62 @@ Qué tienes, qué entra, qué sale, acorde con la app (cuenta `familia` / rol, n
 **Cursor tanda motor** (tests rojo→verde, sin UI). Claude Opus solo si aparece un bloqueante nuevo. **No** destello/`shell.html`.
 
 ### 8. Parpadeo tabs / overscroll Cartera — Cursor cuando él esté para grabar
-Pista: capa negra al tirar Cartera a la derecha; host transparente season. A/B temática Ninguna. No es de la APK Wallet (también 4.15).
+Pista: capa negra al tirar Cartera a la derecha; host transparente season. A/B temática Ninguna. No es de la APK Wallet (también 4.15). Brief: `brief-claude-destello.md`. **Opus/Ultra**.
 
-### 9. Más adelante (no esta semana)
-MyInvestor nativo, Hogar diseño OK, push FCM, pensiones, informe mensual (favorito pareja), splash nativo, Play Store.
+### 9. Ajustes → Dinero — **HECHO en 4.14.0** (no hay tanda)
+El plan del 4/8 pedía quitar «Presupuesto mensual» y «Bancos de gasto diario» (duplicados) y que «Comparar monedas» no saliera vacío. Ya está: presupuesto vive en Resumen, bancos de gasto diario en Cartera, comparar monedas es el conversor (`st_cur_convert`). Si Ajustes → Dinero se ve raro, es otra cosa: se mira entonces, no se reabre esta limpieza.
+
+### 10. MyInvestor nativo — más adelante
+Si el intento OTA de reCAPTCHA (4.6.4) no cuela, WebView nativa que cargue myinvestor.es. APK nueva.
+
+### 11. Hogar · diseño — entra en la tanda **17**
+La función existe (Perfil → Tu gente). El look no se improvisa aquí: va con el mock.
+
+### 12. Push FCM — más adelante
+Notis de verdad con la app cerrada (presupuesto, bancos caídos), no solo el listener de Wallet/TR.
+
+### 13. Pensiones — más adelante
+Aún no hay diseño. Claude Opus una página antes de codear.
+
+### 14. Informe mensual — más adelante (favorito pareja)
+Ya hay imagen para WhatsApp (Ajustes → Avanzado + popup día 1). Pulir / que salga solo / que se pueda reenviar.
+
+### 15. Splash nativo — más adelante
+El hueco «algo raro antes del icono» con la app cerrada es `Theme.SplashScreen` en Android 12+. No viaja por OTA → APK.
+
+### 16. Limpieza del repo — otra tanda, **no visual**, **no es rendimiento**
+Pedido 17/8 noche: «limpiarme toda la basura, organizarmelo y Clean Code, es un caos a simple vista».
+
+**Qué es (y qué no).** A simple vista parece un caos porque la fuente son 16 JS concatenados a un HTML, i18n a paladas y `10`/`11` gordos. Eso **no es suciedad**: está decidido ([`docs/adr/0002-monolito.md`](../adr/0002-monolito.md)) para que Pages + offline + cualquier IA toquen el mismo repo. Las prácticas de *esta* casa están en `AGENTS.md` (sin JSX, sin deps nuevas, tres idiomas, no inventar euros, tests que abortan si nadie los corre). Un Clean Code de libro (capas, TypeScript, JSX, renombrar módulos por dominio) **rompería** eso y no entra en esta tanda. El ROADMAP ya dice: se reagrupa por dominio **cuando duela**, no antes.
+
+Borrar docs y volcados **no acelera el móvil**. Si un día duele el tamaño, eso es el presupuesto gzip (`tests/presupuesto-rendimiento`) y JS muerto que *sí* se ensambla — otra pasada, con medida, no «organizar carpetas».
+
+**Sí entra (higiene de lo acumulado):**
+- Restos de depurar: `tools/movil/_uidump*`, `_flicker_frames/` (los de esta noche ya fuera + gitignore). Barrer si queda más.
+- Briefs y planes que **mienten** (foto de Pages 4.15, «Dinero a medio limpiar», decisiones ya cerradas). Un doc que afirma algo tiene que ser verdad hoy.
+- Código muerto y comentarios del *qué* / de una versión anterior (norma §3 bis). Flags siempre a `false`.
+- Scripts de un solo uso que se quedaron (`_algo.mjs` en raíz, sondas).
+- ⚠ Ramas y worktrees: **preguntar antes**. Puede haber trabajo sin subir.
+
+**No entra:** reescribir Gastos/Cartera «bonito», extraer servicios, prettier masivo, tocar fórmulas de dinero «de paso». Eso visual es la tanda **17**.
+
+Ya había un 1-BIS en `docs/memoria/mi-cartera-backlog-2026-08.md`. Esta tanda es esa, con el corte de arriba. Cursor o Claude barato; **no** Opus. **No** mezclar con destello (8) ni con import (7) ni con diseño (17).
+
+### 17. Diseño — tanda propia, **el mock manda**
+Pedido 17/8 noche: lo que no convenza del `+` / filtros / pantallas **es diseño**, no se mezcla con las tandas de Gastos. Hay mucha chicha ya maquetada:
+
+- Spec: [`docs/design/handoff/SPEC-v4.md`](../design/handoff/SPEC-v4.md) (30 secciones).
+- Mock interactivo: [`docs/design/handoff/mockup-mi-cartera-v4.html`](../design/handoff/mockup-mi-cartera-v4.html) (abrir en el navegador).
+- Capturas de referencia en `docs/design/handoff/capturas/` (gitignoreadas: llevan datos reales).
+
+**Quién:** Claude Design, no Cursor a ciegas. Criterio: pantalla al lado de su captura → indistinguible. Incluye Hogar (tanda 11), el sheet de Apuntar, Gastos, Plan, Cartera, Ajustes.
+
+**No entra:** lógica de dinero, ingest, widget, Play Store.
+
+### ∞. Play Store — **lo último de lo último**
+Formulario Data safety + justificar NotificationListener. Nombre nuevo (ya hay otra «Mi Cartera» en Play) — ver ROADMAP.
+
+**No se implementa hasta que él diga que la app está hiper pulida**, a su criterio. Si se hace antes, se tienta de publicar. Cualquier tanda nueva (limpieza, destello, lo que salga) se inserta **delante**, nunca detrás. El sideload / la APK de GitHub no esperan a esto.
 
 ---
 
@@ -266,14 +355,9 @@ del estado local del móvil. Eso se cierra simulando contra su nube, no leyendo 
 
 ### 4. Cosas pedidas que el plan se deja fuera
 
-- **Ajustes → «Dinero» a medio limpiar** (petición suya del 4/8, sigue viva): quitar «Presupuesto
-  mensual» y «Bancos de gasto diario» (duplicados), «Comparar monedas» sale vacío. Barato y se ve.
-- **La decisión de fondo detrás de «gastos que no cuentan»** — la tanda 2 arregla cómo se *pintan*,
-  pero su queja «todos los malditos gastos que no sale ni uno» es **qué bancos alimentan el
-  presupuesto** (`settings.expenseBanks`). Eso es **una decisión suya con coste de doble conteo**,
-  no un bug. Ver [`brief-gastos-que-no-entran.md`](brief-gastos-que-no-entran.md). Hay que
-  preguntárselo, no elegir por él.
-- **RELEASE_NOTES por tanda** — no aparece en el plan y es regla de la casa.
+- **Ajustes → «Dinero» a medio limpiar** — **ya no**. Hecho en 4.14.0 (ver tanda 9). El plan del crucero estaba rancio.
+- **Qué bancos alimentan el presupuesto** — **decidido 17/8**: marcado como gasto diario → cuenta, salvo neutras. Implementado en la tanda 3 (filtro UI = `expenseBankEnts`).
+- **RELEASE_NOTES por tanda** — regla de la casa; 4.18.0 lleva `filtro-apuntar` y `mas-categorias`.
 - **Tanda 5 (meta = gasto del mes) depende de la 1.** Reescribe `monthBudgetStats`, que es justo lo
   que la 1 estabiliza, y tiene que aterrizar en **tres** sitios (cliente, ingest, widget). No
   empezarla hasta que la 1 esté aprobada.

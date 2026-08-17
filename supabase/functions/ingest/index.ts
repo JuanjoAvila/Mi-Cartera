@@ -36,7 +36,7 @@ import {
 } from "../_shared/ingest_logic.ts";
 import { aEuros, parseWallet } from "../_shared/wallet.ts";
 import { bucketKey, callerIp, rateLimit } from "../_shared/ratelimit.ts";
-import { bancosDeGastoDiario, cuentaParaPresupuesto, statsDelMes } from "../_shared/presupuesto.ts";
+import { bancosDeGastoDiario, cuentaParaPresupuesto, filasComoLaApp, statsDelMes } from "../_shared/presupuesto.ts";
 
 /**
  * Comparación en tiempo CONSTANTE del token (2026-07-24).
@@ -210,6 +210,21 @@ Deno.serve(async (req) => {
     .limit(1);
   if (dupRows && dupRows.length) return json({ ok: true, tipo, skipped: true, dup: true });
 
+  // Misma compra, avisos a HORAS distintas (2026-08-17). Wallet avisó a las 11:31 y Trade Republic
+  // a las 13:08: 97 min, fuera de la ventana de 10. El banco solo tenía UN cargo; la nube guardó
+  // dos y el widget los sumó. La app ya los junta por día|importe|comercio — ingest tiene que
+  // hacer lo mismo al INSERTAR, no solo al contar, o la tabla sigue criando gemelos.
+  const dia = String(fecha).slice(0, 10);
+  const { data: dupDia } = await supabase
+    .from("expenses").select("fecha")
+    .eq("user_id", userId)
+    .eq("comercio", comercio)
+    .gte("importe", importe - 0.02).lte("importe", importe + 0.02)
+    .gte("fecha", dia + "T00:00:00.000Z")
+    .lte("fecha", dia + "T23:59:59.999Z")
+    .limit(1);
+  if (dupDia && dupDia.length) return json({ ok: true, tipo, skipped: true, dup: true, dupDay: true });
+
   const fila: Record<string, unknown> = {
     user_id: userId, fecha, importe, comercio, cat, source: "macrodroid", no_card: noCard, nota: nota || null,
   };
@@ -246,19 +261,40 @@ Deno.serve(async (req) => {
     // `cat` y `source` hacen falta para contar como cuenta la app: sin ellos esto sumaba TODO
     // —los recibos del banco de fijos y las inversiones— y el aviso salía por las nubes.
     const { data: rows } = await supabase
-      .from("expenses").select("importe,cat,source")
+      .from("expenses").select("importe,cat,source,fecha,comercio")
       .eq("user_id", userId).gte("fecha", desde);
-    const stats = statsDelMes(rows || [], st?.data, desdeMs);
+    // Igual que la app al pintar Gastos: lápidas + una fila por día|importe|comercio.
+    // Sin esto el widget suma gastos que él ya borró y notis gemelas (bug 907 vs 709, 2026-08-17).
+    const visibles = filasComoLaApp(rows || [], st?.data?.deleted);
+    const stats = statsDelMes(visibles, st?.data, desdeMs);
     const budget = stats.budget;
     const after = stats.against;
-    // `spent` va con la cifra que PINTA la app (shown), no con el bruto: el widget y la cabecera
-    // de Gastos tienen que decir lo mismo («misma cifra en todos sitios», 2026-08-05).
-    month = { spent: stats.shown, budget, against: after };
     // Y si el gasto recién apuntado NO cuenta para el presupuesto —banco de recibos, inversión,
     // traspaso— la cifra no se ha movido: avisar sería avisar por algo que él no ve subir.
     const mueveElPresupuesto = cuentaParaPresupuesto(
       { importe, cat, source: "macrodroid" }, bancosDeGastoDiario(st?.data),
     );
+    // `spent` va con la cifra que PINTA la app (shown), no con el bruto: el widget y la cabecera
+    // de Gastos tienen que decir lo mismo («misma cifra en todos sitios», 2026-08-05).
+    //
+    // `budgetLeft` y `counts` son para el WIDGET con la app cerrada (bug 2026-08-17: el widget
+    // decía «891 gastado · quedan 109» y a la vez «✅ Puedes gastar 324 €»). El widget necesita
+    // DOS topes: lo que deja el presupuesto (esto) y la liquidez segura de la cuenta de gasto
+    // (`safeLiq`), que solo sabe la app porque sale de simular el mes día a día con fijos, deudas
+    // y traspasos. Aquí se manda el que el servidor SÍ puede calcular exacto; el nativo baja el
+    // otro por su cuenta con `counts` y se queda con el mínimo de los dos. Deliberadamente NO se
+    // reimplementa `safeLiq` en el servidor: sería la tercera copia de la misma regla, y de esa
+    // duplicación ya salieron los dos últimos bugs de presupuesto.
+    month = {
+      spent: stats.shown,
+      budget,
+      against: after,
+      // −1 = «no hay dato», y así el nativo distingue esto de un `budgetLeft` de 0 € de verdad.
+      // Importa porque la APK puede llegar antes que el despliegue de esta función: sin sentinela,
+      // un widget nuevo contra un ingest viejo leería 0 y pintaría «Puedes gastar 0 €».
+      budgetLeft: budget > 0 ? +Math.max(0, budget - after).toFixed(2) : -1,
+      counts: mueveElPresupuesto ? 1 : 0,
+    };
     if (tipo === "gasto" && budget > 0 && mueveElPresupuesto) {
       const before = after - importe;
       // Umbrales 50/95 añadidos 2026-07-18 (petición: avisos aunque la app esté cerrada —

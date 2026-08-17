@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.2] — 2026-08-17
+### El widget cuenta como la app (ingest, sin APK)
+
+El canal beta no sirve para probar el widget con la app cerrada: hay un solo proyecto Supabase
+y `TrExpenseListener` pide el mes a `ingest`, no al bundle OTA. Esta es la 4.17.2 que se quedó
+en `beta` (`e282ec59`): `filasComoLaApp` (lápidas + una fila por `día|importe|comercio`) y no
+insertar un segundo aviso el mismo día / mismo comercio / mismo euro (Wallet + TR).
+
+También se alinea `apk.json` / `versionCode` de `beta` con producción (**41 / 4.17.1**). Un
+promote vacío `-X theirs` habría pintado APK **40 / 4.16.2** encima de la 41 que ya tiene la
+familia (`d7fac794` nunca volvió a `beta`). `promote-beta.yml` aborta si el `versionCode` de
+beta es menor que el de main.
+
 ## [4.18.1] — 2026-08-17
 ### Recibos + IA en cualquier gasto + banco del `+` como los filtros
 
@@ -27,6 +40,32 @@ nativo de Android. Calendario propio (`McCal` en `02-ui-shared.js`): grid del me
 
 Categorías nuevas + KW (cliente e `ingest_logic.ts`). Steam/Instant Gaming salen de ocio;
 heladería sale de bares; joyería (Tous, Pandora) sale de regalos/compras.
+
+## [4.17.2] — 2026-08-17
+### El widget sumaba el mismo pago dos veces (tanda `widget-coherente`, segunda vuelta)
+
+Rechazo de la 4.16.2: el widget ya no se contradecía por dentro (907 · quedan 93 · puedes gastar 93)
+pero seguía diciendo **907 €** contra **709 €** en la app.
+
+La fórmula era la misma. Lo que difería era lo que cada lado **veía**. `ingest` sumaba la tabla
+`expenses` a pelo. La app, al bajarla, tira las lápidas de `state.deleted` y junta por
+`día|importe|comercio` (sin hora).
+
+Caso medido con el extracto de Trade Republic delante: el 13/8 hay **un** APOLLON GALLERY de 230 €
+y **otro** de 115 €. En la nube había **dos** filas de 230 € (11:31 `regalos` y 13:08 `bares`), las
+dos `macrodroid`. Wallet avisó a una hora y TR a otra (97 min, fuera de la ventana anti-dup de 10).
+No eran dos compras. Un diagnóstico intermedio tomó las horas distintas por «dos cargos reales» y
+proponía meter la hora en la clave de fusión: eso habría hecho **mentir también a la app**.
+
+Arreglo, todo en el servidor (sin APK):
+
+1. `filasComoLaApp` en `presupuesto.ts`: respeta lápidas y deja una fila por clave, igual que
+   `syncCloudExpenses`. `ingest` pasa eso a `statsDelMes` (y ahora selecciona `fecha`/`comercio`).
+2. Al insertar, además de la ventana de 10 min, se ignora un segundo aviso **el mismo día + mismo
+   comercio + mismo euro**, para no criar más gemelos Wallet/TR.
+
+Tests en `presupuesto-servidor`: las dos notis de 230 cuentan una vez; una lápida también la
+respeta el servidor. Para probarlo en el móvil hace falta redesplegar `ingest` desde `beta`.
 
 ## [4.17.1] — 2026-08-17
 ### Los dos fallos de su rechazo de la 4.17.0.1 (7 ok / 2 fallos)
@@ -59,14 +98,12 @@ Test e2e nuevo `★ guardar un cambio NO deja la pantalla muerta`: comprueba que
 sheet sigue en pie con lo escrito dentro, y que al cerrarlo la app responde (sin `sheet-open`, sin
 `overflow:hidden`, y se puede cambiar de pestaña). Verificado que **cae** con el código anterior.
 
-APK **41 / 4.17.1** para alinear a la familia (padre y pareja seguían en nativo 4.12.0 / Pages
-4.15.0). No hay Java nuevo del widget: esa tanda se queda en `beta`.
-
 ## [4.17.0] — 2026-08-17
 ### Orden en Gastos (tanda `gastos-orden`)
 
 Tres de las doce cosas que apuntó en el crucero. Sale sin APK nueva: todo es web + una migración.
-La tanda `widget-coherente` se queda en `beta` (no sube en esta promoción).
+La tanda `widget-coherente` de la 4.16.2 sigue en el panel sin aprobar, con sus puntos escritos
+igual para que hereden los ✓ que ya tenía.
 
 1. **La lista metía en el mismo saco cosas que no se parecen.** Sus palabras: «hay bastante caos
    entre gastos que cuentan, ingresos y movimientos que no cuentan sean inversiones o movimientos
@@ -92,6 +129,44 @@ La tanda `widget-coherente` se queda en `beta` (no sube en esta promoción).
 Tests: `ob-renombrar` (6 casos, incluido que dos cargos iguales de verdad siguen entrando los dos y
 que el gemelo de MacroDroid sigue tapado) y e2e `gastos-cajones` (4 casos sobre el DOM real).
 Comprobado que el duplicado ocurre con el código anterior y no con este.
+
+## [4.16.2] — 2026-08-17
+### El widget se contradecía a sí mismo (tanda `widget-coherente`)
+
+Reportado al volver del crucero, con captura: el widget decía «891 € de 1.000 · te quedan 109» y
+justo debajo «✅ Puedes gastar 324 €». Al abrir la app se ponía bien y **al rato volvía a mentir**.
+
+No era un cálculo malo: eran **dos escritores de las prefs del widget que no escribían lo mismo**.
+`MiCarteraPlugin.updateWidget` (app abierta) empujaba las cinco cifras a la vez;
+`MiCarteraWidget.saveMonth` (lector de notis, **app cerrada**) escribía solo `spent` y `budget` y
+dejaba `afford` y `cash` del push anterior. `build()` los pintaba juntos como si fueran del mismo
+momento — de ahí las dos líneas incompatibles, y el «se arregla al abrir y al rato vuelve».
+
+Arreglo, en tres piezas:
+
+1. **`build()` calcula «puedes gastar», ya no lo recibe hecho.** Los dos escritores mantienen las
+   mismas PRIMITIVAS (`budgetLeft`, `safeLiq`) y la fórmula (`min` de las dos) vive en un solo
+   sitio. Da igual quién escribió el último: el número siempre es coherente.
+2. **`ingest` manda `budgetLeft` y `counts`** en `month`. `budgetLeft` sale de la misma
+   `statsDelMes` que ya alinea servidor y app, así que la noti trae la cifra exacta.
+   Sentinela `-1` = «este ingest no lo manda», para que una APK nueva contra una función sin
+   desplegar no pinte «Puedes gastar 0 €».
+3. **`saveMonth` mantiene `safeLiq` y `cash`** restando el importe del gasto. Un cargo de la
+   cuenta diaria hunde el saldo de hoy y el del resto del mes en la misma cantidad, así que restar
+   es exacto **sin resimular el mes en el servidor**. Deliberado: `safeLiq` sale de recorrer fijos,
+   deudas, puntuales y traspasos día a día, y reimplementar eso en Deno sería la tercera copia de
+   la misma regla — de esa duplicación salieron los dos últimos bugs de presupuesto.
+
+Test nuevo `widget-coherente`: carga las dos implementaciones de presupuesto y exige el mismo
+`budgetLeft`, y **lee el Java de verdad** para exigir que todo lo que `build()` pinta lo mantengan
+los dos caminos. Verificado que el guardián se pone rojo con el código anterior.
+
+APK **40 / 4.16.2** (cambia código nativo).
+
+**Pendiente, no cerrado en esta tanda:** el salto 891 vs 686 (Δ 205 €) entre la cifra de la noti y
+la de la app. Cliente y servidor comparten fórmula, así que la diferencia viene de datos de
+entrada distintos (sospecha: `ingest` calcula sobre el `app_state` de la nube, que puede ir por
+detrás del móvil). Se cierra simulando contra su nube real, no leyendo código.
 
 ## [4.16.1] — 2026-08-06
 ### Arranque sin franja bajo la cámara (APK)
