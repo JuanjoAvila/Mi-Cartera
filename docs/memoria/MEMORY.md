@@ -5,6 +5,7 @@
 # Memoria — Mi Cartera
 
 - [Memoria SIEMPRE al repo](feedback-memoria-siempre-al-repo.md) — ⚠ `npm run memoria` tras escribir aquí; él trabaja también desde el móvil y con otras IAs, y el repo es PÚBLICO (el script tacha datos personales).
+- [⚠ NO dar nada por hecho sin verlo](feedback-no-dar-por-hecho.md) — ⚠ 17/8: dije «test verificado» de dos guardianes que el runner **no ejecutaba**; lo pilló Cursor. Antes de decir «lo cubre el CI», enseñar el nombre del test en la salida y el código de salida REAL. **Un grep vacío es un hallazgo.**
 - [Y el plan compartido también](feedback-traspaso-a-cursor.md) — ⚠ al cerrar cada tanda, dejar en el brief del repo qué está hecho / en beta / bloqueado, para que **Cursor pueda retomar sin preguntarle**. Cursor NO es el que pica lo fácil: en bugs duros me ha superado (cerró `gestos` tras estrellarme yo).
 
 - [★ INVENTARIO ÚNICO Y COMPLETO](mi-cartera-backlog-2026-08.md) — ⚠ **EMPEZAR POR AQUÍ. ES LA LISTA ÚNICA: lo nuevo va ahí.** Reúne las 3 fuentes que estaban sueltas (sus veredictos + backlog histórico/ChatGPT + lo nuevo), fácil→difícil. **§0-BIS = las 12 cosas del crucero (17/8)**; el orden de ataque vive en `docs/briefs/plan-vuelta-crucero.md`. Lo que más le importa: **import histórico seguro** (hoy NO lo es, 4 agujeros auditados).

@@ -39,6 +39,30 @@ qué falta.
   y `public/fonts/` porque la app funciona **offline completa**. Si crees que necesitas una
   librería, pregunta antes.
 
+### 3 bis. No dejes restos: se recoge en la MISMA tanda (norma suya, 2026-08-17)
+
+Todo lo que montas para depurar se desmonta antes de cerrar. No «ya lo limpiaré»: si se queda, se
+acumula, y dentro de tres meses nadie sabe si ese fichero hace algo o no y no se atreve a tocarlo.
+
+Antes de dar una tanda por terminada, repasa que no dejas:
+
+- **Sondas y andamios**: scripts de un solo uso, ficheros `_algo.mjs` en la raíz, specs de captura,
+  volcados (`_uidump*.xml`, `_flicker_frames/`), `console.log` de investigación.
+- **Código muerto**: la función que sustituiste, la rama del `if` que ya no entra, el flag que
+  quedó siempre a `false`. Si de verdad hace falta guardarlo, se borra igual — está en el historial.
+- **Comentarios que ya no dicen nada**: el que describe *el qué* (lo dice el código), el que
+  explica una versión anterior, el `// TODO` de hace un año. El estilo de la casa es comentar el
+  **porqué**, y un porqué caducado engaña más que la ausencia de comentario.
+- **Ramas y worktrees**: la `tanda/<id>` fusionada, el worktree de un agente que ya entregó.
+  ⚠ **Esto sí se pregunta antes de borrar** — puede haber trabajo sin subir de otra sesión.
+- **Un test que nadie ejecuta.** Si escribes `tests/x.test.mjs`, va a `steps` en
+  `scripts/run-tests.mjs`. El runner ya lo comprueba solo y **aborta** si encuentra huérfanos
+  (pasó con `widget-coherente` y `ob-renombrar`: dos guardianes de bugs de dinero publicados sin
+  que nadie los corriera; el verde de Actions decía que vigilaban y no vigilaban nada).
+
+La limpieza a fondo de lo ya acumulado es una tarea aparte, apuntada en el inventario. Esta norma
+es para que esa tarea no haga falta una segunda vez.
+
 ## 4. Textos: SIEMPRE en tres idiomas
 
 Hay tres bloques de idioma: `LANG.es`, `LANG.en`, `LANG.ca`. **Cada clave nueva va en los tres.**

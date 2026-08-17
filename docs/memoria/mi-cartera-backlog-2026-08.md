@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d6ae387e-f9d4-460d-b8dc-c43511bd8b4c
-  modified: 2026-08-17T15:15:21.349Z
+  modified: 2026-08-17T16:26:21.919Z
 ---
 
 **⚠ ESTE FICHERO ES LA LISTA ÚNICA. Si aparece algo nuevo, va aquí.** Se armó porque el 4/8 le di un
@@ -100,6 +100,22 @@ además de Excel), `reservar`, `temporada`.
 Aprobadas en rondas previas: `import`, `arranque`, `canal`.
 ⚠ Al aprobar+subir una tanda **se BORRA del array `tandas`**, no se marca hecha
 ([[feedback-tandas-desaparecen-al-subir]]).
+
+---
+
+# 🧹 1-BIS. LIMPIEZA MASIVA DEL REPO — tarea propia, pedida el 2026-08-17
+**Todo backend, no toca nada que él vea.** Nace de encontrar `tools/movil/_uidump*.xml` y
+`_flicker_frames/` sueltos, worktrees de agentes ya entregados, y **dos tests que existían pero que
+el runner no ejecutaba** (`widget-coherente`, `ob-renombrar`: guardianes de bugs de dinero
+publicados en beta sin que nadie los corriera).
+
+Alcance: restos de depuración, ramas muertas, worktrees, código muerto, comentarios que ya no
+dicen nada, flags que quedaron fijos. ⚠ **Ramas y worktrees se preguntan antes de borrar** — puede
+haber trabajo sin subir de otra sesión.
+
+**La norma preventiva YA ESTÁ ESCRITA** en `AGENTS.md` §3 bis («No dejes restos: se recoge en la
+MISMA tanda»), que es lo que Cursor lee solo. Y el runner ya **aborta** si encuentra un test que
+nadie ejecuta. Esta tarea es para lo YA acumulado; la norma es para que no haga falta repetirla.
 
 ---
 

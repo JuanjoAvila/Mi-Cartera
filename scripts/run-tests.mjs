@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,6 +31,8 @@ const steps = [
   ["reserva-dinero", ["node", "tests/reserva-dinero.test.mjs"]],
   ["month-budget-stats", ["node", "tests/month-budget-stats.test.mjs"]],
   ["presupuesto-servidor", ["node", "tests/presupuesto-servidor.test.mjs"]],
+  ["widget-coherente", ["node", "tests/widget-coherente.test.mjs"]],
+  ["ob-renombrar", ["node", "tests/ob-renombrar.test.mjs"]],
   ["divisa-original", ["node", "tests/divisa-original.test.mjs"]],
   ["wallet-notis", ["node", "tests/wallet-notis.test.mjs"]],
   ["invest-category", ["node", "tests/invest-category.test.mjs"]],
@@ -57,6 +60,29 @@ const steps = [
   ["financing", ["node", "tests/financing.test.mjs"]],
   ["updates", ["node", "tests/updates.test.mjs"]],
 ];
+
+/* UN TEST QUE NO ESTÁ EN ESTA LISTA NO EXISTE (2026-08-17).
+   La lista se mantiene a mano, así que escribir un `tests/loquesea.test.mjs` y olvidarse de
+   añadirlo aquí deja un fichero que se ve en el repo, se puede lanzar a mano y pasa… y que ni
+   `npm test` ni el CI ejecutan jamás. Pasó con `widget-coherente` y `ob-renombrar`: dos guardianes
+   de bugs de dinero (el widget que se contradecía y el gasto duplicado al renombrar) publicados en
+   beta sin que nadie los corriera. Un guardián dormido es peor que ninguno, porque el verde de
+   Actions te dice que están vigilando.
+   Esto se comprueba ANTES de correr nada: si falta uno, no hay informe que valga. */
+const testsEnDisco = fs.readdirSync(path.join(root, "tests"))
+  .filter((f) => f.endsWith(".test.mjs")).map((f) => "tests/" + f)
+  .concat(fs.existsSync(path.join(root, "tests", "parsers"))
+    ? fs.readdirSync(path.join(root, "tests", "parsers"))
+        .filter((f) => f.endsWith(".test.mjs")).map((f) => "tests/parsers/" + f)
+    : []);
+const enLaLista = new Set(steps.flatMap(([, cmd]) => cmd.slice(1)));
+const huerfanos = testsEnDisco.filter((p) => !enLaLista.has(p));
+if (huerfanos.length) {
+  console.error("\n✕ tests que existen pero NADIE ejecuta:\n" +
+    huerfanos.map((p) => "    · " + p).join("\n") +
+    "\n  Añádelos a `steps` en scripts/run-tests.mjs (o bórralos si ya no sirven).");
+  process.exit(1);
+}
 
 let failed = false;
 for (const [name, cmd] of steps) {
