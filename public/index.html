@@ -2220,15 +2220,29 @@ function _isMissingDivisaCol(err){
   return (m.indexOf("importe_orig")>=0 || m.indexOf("divisa")>=0) &&
          (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
 }
+/* Y lo mismo para `ob_name` (migración 0021, 2026-08-17): cómo llamaba el banco al movimiento
+   antes de que él lo renombrara. Sin ella el renombrado sigue funcionando a la vista; lo que se
+   pierde es la protección contra que el siguiente sync recree el gasto. Molesto, no grave: nunca
+   vale la pena tirar el apunte por esto. */
+var _mcObNameCol=true;
+function _isMissingObNameCol(err){
+  const m=String((err&&err.message)||err||"").toLowerCase();
+  return m.indexOf("ob_name")>=0 &&
+         (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
+}
 async function withNotaFallback(run){
-  let r=await run(_mcNotaCols, _mcDivisaCols);
+  let r=await run(_mcNotaCols, _mcDivisaCols, _mcObNameCol);
   if(r && r.error && _mcNotaCols && _isMissingNotaCol(r.error)){
     _mcNotaCols=false;                       // esta sesión ya no lo intenta más
-    r=await run(false, _mcDivisaCols);
+    r=await run(false, _mcDivisaCols, _mcObNameCol);
   }
   if(r && r.error && _mcDivisaCols && _isMissingDivisaCol(r.error)){
     _mcDivisaCols=false;
-    r=await run(_mcNotaCols, false);
+    r=await run(_mcNotaCols, false, _mcObNameCol);
+  }
+  if(r && r.error && _mcObNameCol && _isMissingObNameCol(r.error)){
+    _mcObNameCol=false;
+    r=await run(_mcNotaCols, _mcDivisaCols, false);
   }
   if(r && r.error) throw r.error;
   return r;
@@ -2297,11 +2311,15 @@ const cloud = (function(){
       // el euro convertido —la app cuenta en euros— pero sin esto, en cuanto el gasto daba la
       // vuelta por la nube ya no constaba que fueran liras: un viaje entero en € pelados.
       const divisa={ importe_orig:(e.origCur?Math.abs(Number(e.origAmount)||0):null), divisa:(e.origCur||null) };
+      // Cómo lo llamaba el banco (migración 0021). Sin esto, renombrar el «Movimiento» de Trade
+      // Republic hacía que el siguiente sync no reconociera la fila y metiera el gasto otra vez.
+      const obn={ ob_name:(e.obName!=null?String(e.obName).slice(0,160):null) };
       await withNotaFallback(
-        function(conNota, conDivisa){
+        function(conNota, conDivisa, conObName){
           let fila=base;
           if(conNota) fila=Object.assign({},fila,nota);
           if(conDivisa) fila=Object.assign({},fila,divisa);
+          if(conObName) fila=Object.assign({},fila,obn);
           return sb.from('expenses').upsert(
             fila,
             { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
@@ -2833,6 +2851,10 @@ function expenseFromRow(r){
     // el primer pull: se escribía al subir y nadie lo bajaba.
     origAmount: r.importe_orig!=null ? Number(r.importe_orig) : undefined,
     origCur: r.divisa || undefined,
+    // Cómo lo llamaba el banco antes de que él lo renombrara (columna 0021). Se lee de vuelta a
+    // propósito: es EXACTAMENTE lo que le pasó a la divisa —se escribía al subir y nadie lo
+    // bajaba—, y aquí perderlo significa que el siguiente sync duplica el gasto renombrado.
+    obName: r.ob_name!=null ? String(r.ob_name) : undefined,
   };
 }
 
@@ -4115,6 +4137,12 @@ Object.assign(LANG.es,{
   // Gastos
   g_month:"Este mes", g_last:"Mes pasado", g_cycle:"Mi ciclo", g_3m:"Últimos 3 meses", g_all:"Todo", g_custom:"Rango…", g_allcats:"Todas",
   g_no_budget:"no afecta",
+  // Por qué un movimiento no se come el presupuesto (2026-08-17). Van en la línea pequeña de la
+  // fila, así que cortos; el filtro usa los mismos cajones con nombre largo (g_bk_*).
+  g_skip_neutra:"no es un gasto", g_skip_otrobanco:"no es del día a día",
+  g_bk_cuenta:"Gastos que cuentan", g_bk_ingreso:"Ingresos",
+  g_bk_neutra:"Inversión y traspasos", g_bk_otrobanco:"De otros bancos",
+  g_bk_title:"Qué contar", g_bk_all:"Todo",
   g_allbanks:"Todos los bancos", g_bank_manual:"A mano", g_bank_ob:"del banco",
   g_filters:"Filtros", g_filters_hint:"Elige categorías y bancos. Vacío = ver todo (el banco de gasto diario viene marcado por defecto).",
   g_filters_search:"Buscar categoría…", g_filters_cats:"categorías", g_filters_banks:"bancos",
@@ -4206,6 +4234,10 @@ Object.assign(LANG.en,{
   w_fixed:"fixed", w_hide:"Hide", w_show:"Show",
   g_month:"This month", g_last:"Last month", g_cycle:"My cycle", g_3m:"Last 3 months", g_all:"All", g_custom:"Range…", g_allcats:"All",
   g_no_budget:"doesn't count",
+  g_skip_neutra:"not spending", g_skip_otrobanco:"not day-to-day",
+  g_bk_cuenta:"Spending that counts", g_bk_ingreso:"Income",
+  g_bk_neutra:"Investing and transfers", g_bk_otrobanco:"From other banks",
+  g_bk_title:"What to count", g_bk_all:"Everything",
   g_allbanks:"All banks", g_bank_manual:"Manual", g_bank_ob:"from the bank",
   g_filters:"Filters", g_filters_hint:"Pick categories and banks. Empty = show all (your daily-spending bank is pre-selected).",
   g_filters_search:"Search category…", g_filters_cats:"categories", g_filters_banks:"banks",
@@ -4296,6 +4328,10 @@ Object.assign(LANG.ca,{
   w_fixed:"fix", w_hide:"Amaga", w_show:"Mostra",
   g_month:"Aquest mes", g_last:"Mes passat", g_cycle:"El meu cicle", g_3m:"Últims 3 mesos", g_all:"Tot", g_custom:"Rang…", g_allcats:"Totes",
   g_no_budget:"no afecta",
+  g_skip_neutra:"no és una despesa", g_skip_otrobanco:"no és del dia a dia",
+  g_bk_cuenta:"Despeses que compten", g_bk_ingreso:"Ingressos",
+  g_bk_neutra:"Inversió i traspassos", g_bk_otrobanco:"D'altres bancs",
+  g_bk_title:"Què comptar", g_bk_all:"Tot",
   g_allbanks:"Tots els bancs", g_bank_manual:"A mà", g_bank_ob:"del banc",
   g_filters:"Filtres", g_filters_hint:"Tria categories i bancs. Buit = veure-ho tot (el banc de despesa diària ve marcat per defecte).",
   g_filters_search:"Cerca categoria…", g_filters_cats:"categories", g_filters_banks:"bancs",
@@ -5076,6 +5112,26 @@ function expenseCountsCash(e, s){
 function expenseCountsBudget(e, s){
   if(!e || CAT_NEUTRAS[e.category]) return false;
   return expenseCountsCash(e, s);
+}
+/* EN QUÉ CAJÓN VA CADA MOVIMIENTO (2026-08-17).
+   Su queja al volver del crucero: «hay bastante caos entre gastos que cuentan, ingresos y
+   movimientos que no cuentan, sean inversiones o movimientos sin más». Y tenía razón: la lista
+   marcaba con un «no afecta» genérico tanto una inversión como un recibo de Sabadell, que no se
+   parecen en nada. Uno es dinero tuyo cambiando de sitio; el otro es un gasto de verdad que
+   simplemente no sale del banco del día a día.
+   Cuatro cajones, excluyentes y en este orden:
+     "ingreso"   → entra dinero.
+     "neutra"    → inversión o traspaso: se mueve, no se gasta.
+     "otrobanco" → gasto real, pero de un banco que no es de gasto diario (los recibos).
+     "cuenta"    → lo que de verdad se come el presupuesto del mes.
+   Devuelve una etiqueta, no un booleano: la fila necesita decir POR QUÉ, y el filtro necesita
+   agrupar por lo mismo. Una sola función para las dos cosas, para que no se separen. */
+function expenseBucket(e, s){
+  if(!e) return "cuenta";
+  if((e.amount||0)<0) return "ingreso";
+  if(CAT_NEUTRAS[e.category]) return "neutra";
+  if(!expenseCountsCash(e, s)) return "otrobanco";
+  return "cuenta";
 }
 // Cambia el ROL de una cuenta re-anclando `value` para que el saldo mostrado no cambie (se
 // despeja value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario: si
@@ -6899,6 +6955,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
     return daily&&daily.ent ? [daily.ent] : [];
   }); // ents o "_manual"; [] = todos los bancos
+  /* Filtro por cajón (2026-08-17): «cuenta», «ingreso», «neutra», «otrobanco». Es lo que le deja
+     separar el caos que describió al volver del crucero. Arranca VACÍO = se ve todo: la lista
+     sigue siendo el histórico completo por defecto, esto es para explorar, no un modo nuevo. */
+  const [bucketSel,setBucketSel]=useState([]);
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [morePeriods,setMorePeriods]=useState(false);
   const [filterOpen,setFilterOpen]=useState(false);
@@ -7070,6 +7130,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(signed===orig.amount && merch===(orig.merchant||"")){ setEditExp(null); return; }   // sin cambios
     const cat = editExp.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
     const upd=Object.assign({},orig,{merchant:merch, amount:signed, category:cat});
+    /* Al renombrar un movimiento del banco, guardar CÓMO LO LLAMABA ÉL (2026-08-17). El dedup de
+       Open Banking casa por día|importe|comercio, así que sin esto el siguiente sync no reconoce
+       la fila renombrada y vuelve a meter el gasto — el caso de «Movimiento» de Trade Republic,
+       que es justo el que él quiere poder renombrar. Las filas nuevas ya nacen con `obName`; esto
+       cubre las que YA tiene en el móvil, que se sellan la primera vez que las toca. */
+    const esDeBanco=orig.source==="ob"||orig.source==="ob-hist";
+    if(esDeBanco && upd.obName==null && merch!==(orig.merchant||"")) upd.obName=orig.merchant||"";
     if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
     /* Si toca el importe en euros a mano, el rastro «eran 1.520 ₺» deja de corresponderse: se
        borra en vez de arrastrarlo. Un dato viejo al lado de uno nuevo no es media verdad, es una
@@ -7113,6 +7180,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     const needle=q.trim().toLowerCase();
     const catSet=sel.length? new Set(sel) : null;         // indexOf en cada gasto era O(n·m)
     const bankSet=bankSel.length? new Set(bankSel) : null;
+    const bkSet=bucketSel.length? new Set(bucketSel) : null;
     const out=[];
     const src=expensesDef||[];
     for(let i=0;i<src.length;i++){
@@ -7120,6 +7188,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       if(!inBounds(dateMs(e.date),bounds)) continue;
       if(catSet && !catSet.has(e.category)) continue;
       if(bankSet && !bankSet.has(expenseBankOf(e)||"_manual")) continue;
+      if(bkSet && !bkSet.has(expenseBucket(e, state))) continue;
       if(needle){
         // El concepto también se busca: si tu padre busca «alquiler» tiene que salir el bizum
         // cuyo mensaje lo dice, aunque el título sea solo el nombre de la persona (2026-07-24).
@@ -7131,7 +7200,9 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       out.push(e);
     }
     return out.sort((a,b)=>dateMs(b.date)-dateMs(a.date));
-  },[expensesDef,bounds,sel,bankSel,q]);
+    // `state.settings`/`state.accounts` van en las dependencias porque `expenseBucket` los lee
+    // (qué bancos son de gasto diario): cambiar eso tiene que re-filtrar la lista.
+  },[expensesDef,bounds,sel,bankSel,bucketSel,q,state.settings,state.accounts]);
 
   // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
@@ -7159,7 +7230,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       showToast(tf("ai_cat_ok",{c:catName(cat)}));
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
   };
-  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
+  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,bucketSel,q]);
   /* LA PAGINACIÓN DE LA LISTA — sus fallos, y el de 2026-07-27.
      1. «Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.» El centinela
         se vigilaba con `rootMargin:120px`, o sea que la tanda siguiente no se pedía hasta tenerlo
@@ -7206,8 +7277,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
   const nCatSel=sel.length;
   const nBankSel=bankSelIsDefault?0:bankSel.length;
-  const nFilters=nCatSel+nBankSel;
+  const nFilters=nCatSel+nBankSel+bucketSel.length;
   const filterParts=[];
+  if(bucketSel.length===1) filterParts.push(t("g_bk_"+bucketSel[0]));
+  else if(bucketSel.length>1) filterParts.push(bucketSel.length+" "+t("g_bk_title").toLowerCase());
   if(nCatSel===1) filterParts.push(catName(sel[0]));
   else if(nCatSel>1) filterParts.push(nCatSel+" "+t("g_filters_cats"));
   if(!bankSelIsDefault){
@@ -7364,6 +7437,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.35,flex:"1 1 120px"}}, filterParts.join(" · ")),
         React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
           setSel([]);
+          setBucketSel([]);
           setBankSel(dailyEnt?[dailyEnt]:[]);
         },style:{padding:"8px 12px"}}, t("g_filters_clear"))
       )
@@ -7403,7 +7477,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
               // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
               // (2026-08-03), no algo que el usuario haya elegido a mano.
-              const sinFiltros=!q.trim() && !sel.length && bankSelIsDefault;
+              const sinFiltros=!q.trim() && !sel.length && !bucketSel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
               return React.createElement("div",{className:"empty"},
@@ -7413,7 +7487,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
               : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey,
-                  countsBudget:expenseCountsBudget(g.e, state)}); }),
+                  bucket:expenseBucket(g.e, state)}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
@@ -7421,6 +7495,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement(GastosFilterSheet,{
       open:filterOpen, onClose:function(){ setFilterOpen(false); },
       sel:sel, setSel:setSel, bankSel:bankSel, setBankSel:setBankSel,
+      bucketSel:bucketSel, setBucketSel:setBucketSel,
       bankOpts:bankOpts, dailyEnt:dailyEnt
     }),
     detailId && React.createElement(ExpenseDetailSheet,{
@@ -7443,16 +7518,20 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen, bucket}){
   // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
   // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
-  // `countsBudget` (bool) lo pasa el padre: si se pasara `state` entero, el memo no acertaría nunca.
+  // `bucket` (string) lo pasa el padre: si se pasara `state` entero, el memo no acertaría nunca.
   const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);
   const note=expenseNote(e);   // concepto del bizum / descripción del banco (2026-07-24)
-  const skip=countsBudget===false;
+  // Un ingreso NO va apagado: entra dinero, no es un gasto que se descarta. Solo se atenúan los
+  // dos cajones que no mueven el presupuesto, y cada uno dice el suyo en vez de un «no afecta»
+  // genérico que hacía que una inversión y un recibo de Sabadell parecieran lo mismo.
+  const skip=bucket==="neutra"||bucket==="otrobanco";
+  const skipTxt=skip?t("g_skip_"+bucket):"";
   return React.createElement("button",{type:"button",className:"v4-mov"+(skip?" v4-mov-skip":""),onClick:function(){ onOpen(e); },
       style:skip?{opacity:.72}:null},
     React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
@@ -7468,7 +7547,7 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
         ):null,
         skip?React.createElement(React.Fragment,null,
           React.createElement("span",{className:"sep"},"·"),
-          React.createElement("span",{style:{color:"var(--muted-2)"}}, t("g_no_budget"))
+          React.createElement("span",{style:{color:"var(--muted-2)"}}, skipTxt)
         ):null
       )
     ),
@@ -7478,7 +7557,7 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
 
 /* Sheet de filtros (2026-08-05): categorías + bancos con buscador, sin la fila infinita de chips.
    Misma mecánica que PeriodMoreSheet (swipe abajo + atrás). */
-function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bankOpts, dailyEnt}){
+function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bucketSel, setBucketSel, bankOpts, dailyEnt}){
   useBackClose(!!open, onClose);
   const swipe=useSheetSwipe(!!open, onClose);
   const [qCat,setQCat]=useState("");
@@ -7503,7 +7582,14 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, ban
   };
   const clearAll=function(){
     setSel([]);
+    setBucketSel([]);
     setBankSel(dailyEnt?[dailyEnt]:[]);
+  };
+  const toggleBucket=function(b){
+    setBucketSel(function(prev){
+      const has=prev.indexOf(b)!==-1;
+      return has?prev.filter(function(x){ return x!==b; }):prev.concat([b]);
+    });
   };
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
@@ -7515,6 +7601,18 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, ban
           React.createElement("span",{className:"searchbar-ic"},"🔍"),
           React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_filters_search"),value:qCat,onChange:function(e){ setQCat(e.target.value); }}),
           qCat && React.createElement("button",{className:"searchbar-x",type:"button",onClick:function(){ setQCat(""); }},"✕")
+        ),
+        /* «Qué contar» va PRIMERO y sin buscador: son cuatro y es lo que él vino a separar
+           («hay bastante caos entre gastos que cuentan, ingresos y movimientos que no cuentan»).
+           Las categorías y los bancos siguen debajo, igual que siempre. */
+        React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_bk_title")),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+          React.createElement("button",{type:"button",className:"v4-chip"+(bucketSel.length===0?" on":""),onClick:function(){ setBucketSel([]); }}, t("g_bk_all")),
+          [["cuenta","💸"],["ingreso","💰"],["neutra","📈"],["otrobanco","🏦"]].map(function(p){
+            const on=bucketSel.indexOf(p[0])!==-1;
+            return React.createElement("button",{key:p[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBucket(p[0]); }},
+              p[1]+" "+t("g_bk_"+p[0]));
+          })
         ),
         React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_cats")),
         React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
@@ -9944,7 +10042,18 @@ function importObExpenses(s, txs){
      (mismo importe ±3 días contra lo que entró por otra vía) más el dedup por ext_id y clave. */
   const som=new Date(startOfMonth().getTime() - 8*86400000);
   const seen={}; (s.expenses||[]).forEach(function(e){ if(e.extId) seen[e.extId]=1; });
-  const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+(e.merchant||""); };
+  /* EL DEDUP USA EL NOMBRE DEL BANCO, NO EL QUE VE EL USUARIO (2026-08-17).
+     Petición suya: poder renombrar el «Movimiento» que deja Trade Republic, que «queda feo». El
+     problema es que renombrar rompía LAS TRES capas de dedup a la vez y el siguiente sync recreaba
+     la fila: TR no manda `ext_id` (todo null, verificado), la clave día|importe|comercio deja de
+     casar en cuanto cambias el comercio, y la red de «sin nombre ±3 días» solo mira gastos de OTRA
+     fuente — el renombrado sigue siendo `ob`. Resultado: el gasto duplicado.
+     Por eso la fila guarda `obName` = lo que dijo el banco, y la clave se calcula con eso. El
+     usuario cambia `merchant` (lo que se lee en pantalla) y el dedup sigue viendo lo de siempre.
+     Las filas de antes de este cambio no tienen `obName`: caen a `merchant`, que en ellas todavía
+     es lo que puso el banco porque nadie las había podido renombrar sin romperlo. */
+  const nameForKey=function(e){ return e.obName!=null ? e.obName : (e.merchant||""); };
+  const kOf=function(e){ return String(e.date).slice(0,10)+"|"+e.amount+"|"+nameForKey(e); };
   const keys={}; (s.expenses||[]).forEach(function(e){ keys[kOf(e)]=1; });
   /* EL MISMO GASTO, CONTADO DOS VECES POR DOS CAMINOS (2026-08-04, caso real medido).
      Sus gastos de Trade Republic YA entran por las notificaciones del móvil (MacroDroid) con el
@@ -9995,6 +10104,7 @@ function importObExpenses(s, txs){
       const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
         merchant:tx.merchant||"Ingreso", amount:tx.amount,
         category: esTraspasoPropio(s, tx) ? TRASPASO_CAT.id : INGRESO_CAT.id, source:"ob", ent:tx.ent };
+      e.obName=e.merchant;   // lo que dijo el banco: el dedup se queda con esto aunque él lo renombre
       // Ingresos fuera de gasto diario: se ven (Mi ciclo) pero no mueven el presupuesto «gastado».
       if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
       if(tx.id) e.extId=tx.id;
@@ -10013,6 +10123,7 @@ function importObExpenses(s, txs){
     const e={ id:uid(), date:new Date(tx.date+"T12:00:00").toISOString(),
       merchant:tx.merchant||"Compra", amount:tx.amount,
       category: esAporteInv ? "inversion" : autoCategory(tx.merchant||""), source:"ob", ent:tx.ent };
+    e.obName=e.merchant;   // lo que dijo el banco: el dedup se queda con esto aunque él lo renombre
     if(tx.ent && !allow[tx.ent]) e.budgetSkip=true;
     if(tx.id) e.extId=tx.id;
     const nt=cleanNote(tx.note, e.merchant); if(nt) e.note=nt;
@@ -13874,6 +13985,67 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.17.0", d:"17 ago 2026",
+   t:{es:"Orden en Gastos: qué cuenta, qué no, y de qué banco sale",
+      en:"Order in Spending: what counts, what doesn't, and which bank it came from",
+      ca:"Ordre a Despeses: què compta, què no, i de quin banc surt"},
+   /* La tanda del widget sigue AQUÍ y con los puntos escritos IGUAL que en la 4.16.2 a propósito:
+      el panel hereda los ✓/✗ de una compilación anterior casando por el TEXTO del punto, así que
+      lo que él ya probó se conserva y solo le quedan los que faltaban. */
+   tandas:[
+     {id:"widget-coherente", t:"📊 El widget dice la verdad con la app cerrada", items:[
+       "Mira el widget y abre la app: «gastado este mes» es el mismo número en los dos sitios.",
+       "En el widget, «te quedan X» y «✅ Puedes gastar Y» tienen que cuadrar entre ellos (Y nunca puede ser mayor que X).",
+       "Cierra la app del todo, haz un pago con la tarjeta y espera a la noti: el widget se actualiza y las tres cifras siguen cuadrando.",
+       "Vuelve a mirar el widget un rato después, sin abrir la app: NO debe haber vuelto a descuadrarse (ese era el fallo).",
+       "Haz un pago que no cuente para el presupuesto (una inversión o un traspaso): el gasto del mes del widget no se mueve.",
+       "El saldo de la cuenta de gasto que sale abajo en el widget también baja con cada pago, sin esperar a abrir la app.",
+     ]},
+     {id:"gastos-orden", t:"🧾 En Gastos se ve qué cuenta y qué no", items:[
+       "En Gastos, una inversión o un traspaso salen apagados y ponen «no es un gasto».",
+       "Un recibo de un banco que no es el del día a día sale apagado y pone «no es del día a día» (antes los dos decían lo mismo).",
+       "Un ingreso NO sale apagado: se ve en verde con su «+», porque entra dinero.",
+       "Cada movimiento dice de qué banco sale, también los que apuntas a mano.",
+       "Filtros (🎛️) → arriba del todo hay «Qué contar»: elige «Inversión y traspasos» y solo quedan esos.",
+       "Prueba también «Ingresos» y «De otros bancos»; con «Todo» vuelves a verlo entero.",
+       "«Limpiar» quita también ese filtro, no solo las categorías y los bancos.",
+       "Abre un movimiento de Trade Republic que ponga «Movimiento», cámbiale el nombre y guarda.",
+       "★ Sincroniza los bancos después de renombrarlo: el gasto NO puede aparecer duplicado (ese era el fallo).",
+     ]},
+   ],
+   items:{
+   es:[
+    "🧾 En Gastos ahora se distingue de un vistazo lo que cuenta de lo que no: una inversión o un traspaso dicen «no es un gasto», y un recibo de otro banco dice «no es del día a día». Antes los dos ponían lo mismo y costaba saber por qué.",
+    "🎛️ En los filtros hay un apartado nuevo, «Qué contar», para ver por separado los gastos que cuentan, los ingresos, las inversiones y traspasos, o lo que viene de otros bancos.",
+    "✏️ Los movimientos que llegan del banco sin nombre (los que ponen «Movimiento») ya se pueden renombrar sin que la siguiente sincronización los vuelva a meter duplicados.",
+   ],
+   en:[
+    "🧾 Spending now shows at a glance what counts and what doesn't: an investment or a transfer says «not spending», and a bill from another bank says «not day-to-day». Before, both said the same thing and it was hard to tell why.",
+    "🎛️ The filters have a new section, «What to count», to look separately at spending that counts, income, investing and transfers, or whatever comes from other banks.",
+    "✏️ Movements that arrive from the bank with no name (the ones saying «Movement») can now be renamed without the next sync bringing them back in duplicate.",
+   ],
+   ca:[
+    "🧾 A Despeses ara es distingeix d'un cop d'ull el que compta del que no: una inversió o un traspàs diuen «no és una despesa», i un rebut d'un altre banc diu «no és del dia a dia». Abans tots dos deien el mateix i costava saber per què.",
+    "🎛️ Als filtres hi ha un apartat nou, «Què comptar», per veure per separat les despeses que compten, els ingressos, les inversions i traspassos, o el que ve d'altres bancs.",
+    "✏️ Els moviments que arriben del banc sense nom (els que posen «Moviment») ja es poden reanomenar sense que la següent sincronització els torni a posar duplicats.",
+   ]}},
+  {v:"4.16.2", d:"17 ago 2026",
+   t:{es:"El widget de la pantalla de inicio deja de contradecirse",
+      en:"The home screen widget stops contradicting itself",
+      ca:"El widget de la pantalla d'inici deixa de contradir-se"},
+   items:{
+   es:[
+    "📊 El widget de la pantalla de inicio se contradecía: podía decir que te quedaban 109 € y justo debajo que podías gastar 324 €. Pasaba con la app cerrada, cuando entraba un pago: actualizaba lo gastado pero se dejaba el resto de cifras del rato anterior. Ahora se actualizan todas juntas y siempre cuadran entre ellas.",
+    "💳 El saldo de la cuenta de gasto que sale en el widget también se pone al día con cada pago, sin tener que abrir la app.",
+   ],
+   en:[
+    "📊 The home screen widget was contradicting itself: it could say you had 109 € left and right below that you could spend 324 €. It happened with the app closed, when a payment came in: it updated the amount spent but kept the other figures from earlier. Now they all update together and always add up.",
+    "💳 The spending account balance shown on the widget also keeps up with each payment, without having to open the app.",
+   ],
+   ca:[
+    "📊 El widget de la pantalla d'inici es contradeia: podia dir que et quedaven 109 € i just a sota que podies gastar-ne 324 €. Passava amb l'app tancada, quan entrava un pagament: actualitzava el que s'havia gastat però es deixava la resta de xifres d'abans. Ara s'actualitzen totes juntes i sempre quadren.",
+    "💳 El saldo del compte de despesa que surt al widget també es posa al dia amb cada pagament, sense haver d'obrir l'app.",
+   ]}},
   {v:"4.16.1", d:"6 ago 2026",
    t:{es:"Arranque limpio, sin franja bajo la cámara",
       en:"Clean launch, no strip under the camera",
@@ -18318,15 +18490,23 @@ function App(){
   // «Lo que te puedes permitir» (petición 2026-07-18): lo que puedes gastar SIN pasarte ni quedarte
   // en rojo = mínimo entre lo que te deja el presupuesto y la liquidez segura de la cuenta de gasto
   // (su peor saldo del mes; no puedes gastar lo que no tienes). Nunca negativo.
-  const widgetAfford=(function(){
-    const budgetLeft = budW.remaining!=null ? Math.max(0, budW.remaining)
+  //
+  // Se mandan las DOS PIEZAS por separado, sin combinar (2026-08-17). Antes se empujaba el mínimo
+  // ya hecho y el widget lo guardaba tal cual; con la app cerrada, una noti de TR/Wallet
+  // actualizaba el gasto pero NO esto, así que el widget acababa diciendo «te quedan 109» y
+  // «puedes gastar 324» a la vez. Ahora la resta la hace el widget con las piezas frescas:
+  // `budgetLeft` se lo recalcula el servidor en cada noti, y `safeLiq` lo baja él restando el
+  // importe. Aquí se sigue calculando igual — esta es la referencia de la que copia el nativo.
+  const widgetBudgetLeft=(function(){
+    const bl = budW.remaining!=null ? Math.max(0, budW.remaining)
       : ((state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null);
+    return bl!=null ? Math.round(bl*100)/100 : null;
+  })();
+  const widgetSafeLiq=(function(){
     const dailyEnt = trAccW && trAccW.ent;
-    const safeLiq = dailyEnt!=null
-      ? Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0))
-      : null;
-    let a = budgetLeft!=null && safeLiq!=null ? Math.min(budgetLeft, safeLiq) : (budgetLeft!=null?budgetLeft:safeLiq);
-    return a!=null ? Math.round(a*100)/100 : null;
+    if(dailyEnt==null) return null;
+    const sl = Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0));
+    return Math.round(sl*100)/100;
   })();
   useEffect(function(){
     const nat=natPlugin();
@@ -18336,7 +18516,8 @@ function App(){
       budget:budW.budget!=null?budW.budget:(state.budget||0)
     };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
-    if(widgetAfford!=null) data.afford=widgetAfford;
+    if(widgetBudgetLeft!=null) data.budgetLeft=widgetBudgetLeft;
+    if(widgetSafeLiq!=null) data.safeLiq=widgetSafeLiq;
     const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
     push();
     // Re-empuja al VOLVER a primer plano (feedback 2026-07-20: el widget de MIUI/HyperOS no
@@ -18345,7 +18526,7 @@ function App(){
     const onVis=function(){ if(document.visibilityState==="visible") push(); };
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
-  },[budW.shown,budW.budget,state.budget,widgetCash,widgetAfford]);
+  },[budW.shown,budW.budget,state.budget,widgetCash,widgetBudgetLeft,widgetSafeLiq]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos

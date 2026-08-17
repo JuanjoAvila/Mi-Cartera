@@ -454,15 +454,29 @@ function _isMissingDivisaCol(err){
   return (m.indexOf("importe_orig")>=0 || m.indexOf("divisa")>=0) &&
          (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
 }
+/* Y lo mismo para `ob_name` (migración 0021, 2026-08-17): cómo llamaba el banco al movimiento
+   antes de que él lo renombrara. Sin ella el renombrado sigue funcionando a la vista; lo que se
+   pierde es la protección contra que el siguiente sync recree el gasto. Molesto, no grave: nunca
+   vale la pena tirar el apunte por esto. */
+var _mcObNameCol=true;
+function _isMissingObNameCol(err){
+  const m=String((err&&err.message)||err||"").toLowerCase();
+  return m.indexOf("ob_name")>=0 &&
+         (m.indexOf("column")>=0 || m.indexOf("does not exist")>=0 || m.indexOf("schema cache")>=0);
+}
 async function withNotaFallback(run){
-  let r=await run(_mcNotaCols, _mcDivisaCols);
+  let r=await run(_mcNotaCols, _mcDivisaCols, _mcObNameCol);
   if(r && r.error && _mcNotaCols && _isMissingNotaCol(r.error)){
     _mcNotaCols=false;                       // esta sesión ya no lo intenta más
-    r=await run(false, _mcDivisaCols);
+    r=await run(false, _mcDivisaCols, _mcObNameCol);
   }
   if(r && r.error && _mcDivisaCols && _isMissingDivisaCol(r.error)){
     _mcDivisaCols=false;
-    r=await run(_mcNotaCols, false);
+    r=await run(_mcNotaCols, false, _mcObNameCol);
+  }
+  if(r && r.error && _mcObNameCol && _isMissingObNameCol(r.error)){
+    _mcObNameCol=false;
+    r=await run(_mcNotaCols, _mcDivisaCols, false);
   }
   if(r && r.error) throw r.error;
   return r;
@@ -531,11 +545,15 @@ const cloud = (function(){
       // el euro convertido —la app cuenta en euros— pero sin esto, en cuanto el gasto daba la
       // vuelta por la nube ya no constaba que fueran liras: un viaje entero en € pelados.
       const divisa={ importe_orig:(e.origCur?Math.abs(Number(e.origAmount)||0):null), divisa:(e.origCur||null) };
+      // Cómo lo llamaba el banco (migración 0021). Sin esto, renombrar el «Movimiento» de Trade
+      // Republic hacía que el siguiente sync no reconociera la fila y metiera el gasto otra vez.
+      const obn={ ob_name:(e.obName!=null?String(e.obName).slice(0,160):null) };
       await withNotaFallback(
-        function(conNota, conDivisa){
+        function(conNota, conDivisa, conObName){
           let fila=base;
           if(conNota) fila=Object.assign({},fila,nota);
           if(conDivisa) fila=Object.assign({},fila,divisa);
+          if(conObName) fila=Object.assign({},fila,obn);
           return sb.from('expenses').upsert(
             fila,
             { onConflict:'user_id,fecha,importe,comercio', ignoreDuplicates:true }
@@ -1067,6 +1085,10 @@ function expenseFromRow(r){
     // el primer pull: se escribía al subir y nadie lo bajaba.
     origAmount: r.importe_orig!=null ? Number(r.importe_orig) : undefined,
     origCur: r.divisa || undefined,
+    // Cómo lo llamaba el banco antes de que él lo renombrara (columna 0021). Se lee de vuelta a
+    // propósito: es EXACTAMENTE lo que le pasó a la divisa —se escribía al subir y nadie lo
+    // bajaba—, y aquí perderlo significa que el siguiente sync duplica el gasto renombrado.
+    obName: r.ob_name!=null ? String(r.ob_name) : undefined,
   };
 }
 

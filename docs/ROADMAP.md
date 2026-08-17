@@ -1,10 +1,12 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-06 · **v4.16.1** — **EN `main` / APK 39**. Si Pages aún enseña 4.15.0, es
-> outage de GitHub (no cuota de minutos): verificar con
-> [`docs/briefs/brief-crucero-verificar-pages.md`](briefs/brief-crucero-verificar-pages.md).
-> APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae presupuesto que
-> cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
+> Estado a 2026-08-17 · **v4.17.0** — **EN PRODUCCIÓN** (tanda `gastos-orden` aprobada en el
+> móvil, 10 ok / 0 fallos). Qué cuenta y qué no en Gastos, y renombrar el «Movimiento» de TR
+> sin duplicar. **Solo web + migración 0021.** La tanda del widget se queda en `beta`.
+>
+> Anterior: 2026-08-06 · **v4.16.1** — en `main`, nunca llegó a la familia por el outage de
+> Actions. APK limpia **39 / 4.16.1**: sin franja nativa bajo la cámara. La 4.16.0 trae
+> presupuesto que cuadra, divisa en la nube (migración 0020) y notis de Google Wallet.
 >
 > Anterior: 2026-08-05 · **v4.15.0** — **EN PRODUCCIÓN**. Ambientación suave, conversor FX,
 > presupuesto alineado en Resumen/Gastos/widget y extracto de todos los bancos. Aprobada en el
@@ -66,8 +68,8 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.16.1** (producción) |
-| APK (`versionName` / `versionCode`) | **4.16.1** / **39** — release `v4.16.1`. Arranque sin franja bajo la cámara + Wallet nativo. Firma `CN=Mi Cartera`. |
+| Web / OTA (`VERSION`) | **4.17.0** (producción) |
+| APK (`versionName` / `versionCode`) | **4.16.1** / **39** — release `v4.16.1`. Arranque sin franja bajo la cámara + Wallet nativo. Firma `CN=Mi Cartera`. La 4.17.0 no toca nativo: va por OTA. |
 | Anterior | **4.16.0 / 36–38** (Wallet; builds intermedias con WEB_DEBUG / sin postSplash — sustituidas). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | **39** / 4.16.1 → release `v4.16.1` / `Mi-Cartera-4.16.1.apk` |
 

@@ -1,0 +1,33 @@
+-- ============================================================
+-- 0021: cómo llamaba el BANCO a un movimiento (`ob_name`)
+--
+-- Petición suya del 2026-08-17, al volver del crucero: «que los que entran como movimientos de
+-- TRADE republic mediante open banking que se pueda cambiar lo de "movimiento" que queda feo».
+--
+-- Renombrar ya se podía. Lo que no se podía era renombrar SIN QUE EL GASTO SE DUPLICARA, y por eso
+-- esto necesita una columna. El dedup de Open Banking (`importObExpenses`, 08-motor-bank.js) tiene
+-- tres capas y renombrar las rompía las tres a la vez:
+--
+--   1. `ext_id`                     → Trade Republic no manda ninguno (payload crudo: todo null
+--                                     salvo importe, signo y fecha). Inservible para TR.
+--   2. `día | importe | comercio`   → deja de casar en cuanto cambias el comercio.
+--   3. «sin nombre, ±3 días»        → solo compara contra gastos de OTRA fuente, y la fila
+--                                     renombrada sigue siendo `ob`.
+--
+-- Resultado antes de esto: renombrabas «Movimiento» → el siguiente sync no reconocía la fila →
+-- el mismo gasto entraba otra vez. Justo el tipo de duplicado que ya costó una saga entera.
+--
+-- `comercio` → sigue siendo lo que se LEE: lo que él escriba manda en la lista, en la búsqueda y
+--              en el aprendizaje de categorías. Una sola verdad para el nombre.
+-- `ob_name`  → lo que dijo el banco cuando entró. No se enseña en ninguna pantalla; existe para
+--              que el dedup siga reconociendo la fila. NULL = nadie la ha renombrado (o es un
+--              apunte que no viene de un banco), y entonces el dedup usa `comercio`, como siempre.
+--
+-- Additiva y sin default: las filas de siempre se quedan con NULL y nada cambia de comportamiento.
+-- El cliente sabe reintentar sin la columna si la migración va por detrás del bundle
+-- (`_isMissingObNameCol` en 00-core.js), con la misma prioridad de siempre: perder la protección
+-- del renombrado es una molestia; perder el gasto sería inaceptable.
+-- ============================================================
+
+alter table public.expenses
+  add column if not exists ob_name text;
