@@ -37,8 +37,10 @@ tus arreglos ya pueden estar hechos, y tu bump de versión le BAJARÍA la versi�
 7. **No afirmar como hecho lo que solo está en el disco.** «En beta», «subido», «EN 4.18.0 beta»
    en una tabla de estado = el commit está en `origin/beta` (y el móvil lo puede bajar cuando
    Actions publique). Codeado en esta sesión, sin push, se dice **sin commit / sin push**. Pasó
-   el 17/8 con las tandas 3 y 4: la tabla mentía y él lo cazó. Piénsalo dos veces antes de
-   afirmárselo.
+   el 17/8 con las tandas 3 y 4: la tabla mentía y él lo cazó. **Un brief también es una
+   afirmación:** el mismo día se subió `brief-claude-destello.md` del 5/8 como si el WIP .13
+   existiera; no existía, y el .12 ya estaba aprobado. Si el forense vale, se deja; el estado
+   caducado se marca arriba. Piénsalo dos veces antes de afirmárselo.
 
 > **Atajo para las de golpe: `npm run salud`** (desde 4.13.0). Contesta en veinte segundos
 > lo que si no se comprueba a mano: si los cuatro sitios donde vive la versión cuadran, si la APK

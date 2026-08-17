@@ -17,7 +17,14 @@ con las tandas 3 y 4 sin commit y sin push.
 | «lo puede bajar el móvil» | además, Actions de `beta.yml` publicó `version.json` de esa VERSION |
 | «en producción» / «en Pages» | `main` + Pages, no el disco |
 | «EN vX.Y.Z beta» en un plan o tabla | lo de arriba, no «lo acabo de codear en esta sesión» |
+| Un brief de `docs/briefs/` | su WIP / tip / done cuadra con `origin/beta` **hoy**, no con el día que se redactó |
 
 Si está solo en el disco: **«en el working tree, sin commit / sin push»**. Nunca lo disfraces de
-canal. Un plan, un ROADMAP o una tabla de tandas **son afirmaciones**: si no lo has comprobado
-hace un momento, no lo des por sentado.
+canal. Un plan, un ROADMAP, una tabla de tandas **o un brief** son afirmaciones: si no lo has
+comprobado hace un momento, no lo des por sentado.
+
+Un brief de `docs/briefs/` no se sube «verbatim del disco» si su «WIP / tip / done» ya no es
+cierto. Pasó el 17/8 con `brief-claude-destello.md`: se escribió el 5/8 contra 4.15.0.12 y se
+commiteó diciendo que había un intento .13 sin commit. El árbol estaba limpio y el .12 ya estaba
+aprobado en 4.15.0.19. La siguiente sesión habría ido a cazar un bug que ya no pasa. Si el
+forense sigue valiendo, se deja — y se pone **arriba** qué está caducado y cuál es la tanda real.
