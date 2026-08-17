@@ -7,7 +7,7 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | Tanda | Estado | Notas |
 |---|---|---|
 | 0 · Pages / familia | ✅ **Prod 4.18.1** · APK **41** | Pages `version.json` = 4.18.1. Widget NO entra. |
-| 1a · Widget coherente | ⏸ **PARADA** — hasta que compre y re-pruebe | Rechazada 4.16.2 (907 vs 709). Arreglo ingest **4.17.2** sigue en `beta`, **no** va en 4.18.x. Causa real más abajo. |
+| 1a · Widget coherente | ⏳ **4.18.2 a prod** (ingest) | Un solo Supabase: el canal beta NO prueba el widget con la app cerrada. Mañana un pago con la app cerrada es la prueba. |
 | 1b · Revolut −204 del padre | 🟡 **Se puede mirar** con APK 41 | Dejaba el nativo de 4.12.0 |
 | 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 |
 | 3 · Fecha en `+`/editar + calendario + filtro gasto diario | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Calendario de la casa. Default = todos los de gasto diario. |
@@ -29,22 +29,13 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 
 **Play Store no se mueve de última.** Pedido 17/8 noche. Sideload / APK de GitHub sigue valiendo.
 
-**Estado del repo:** `origin/main` + Pages = **4.18.1** (`c2e74dc7`, tandas 3+4 **sin** widget). `beta` = **4.18.1** + ingest/widget **4.17.2** en el historial (sigue parado). El ingest 4.17.2 **NO** se redesplegó: el push de `main` llevó `ingest_logic.ts` y `categorize` (Recibos / IA), **no** `ingest/index.ts` ni `presupuesto.ts`.
-Migración **0021** (`ob_name`) ya está en `main` (4.17.0).
+**Estado del repo:** `beta` = **4.18.2** (ingest del widget + APK de `beta` alineada a **41 / 4.17.1**). `origin/main` / Pages aún **4.18.1** hasta que este ingest esté en `main` y Actions despliegue. El canal beta no prueba el widget con la app cerrada: hay un proyecto Supabase y la noti habla con `ingest`, no con el bundle OTA.
 
-### ⚠ NO PULSAR «Promocionar beta» VACÍO (17/8 noche, Claude asustó con razón)
+### ⚠ NO PULSAR «Promocionar beta» VACÍO
 
-`e282ec59` (widget 4.17.2: `presupuesto.ts` + `ingest/index.ts`) está **solo en `beta`**, no en `main`. Comprobado: `git merge-base --is-ancestor e282ec59 origin/main` falla.
+El widget **sí** va a prod en **4.18.2**, pero por cherry-pick de `ingest/index.ts` + `presupuesto.ts`, no con el botón vacío. Un promote vacío sigue siendo peligroso: `-X theirs` se traga lo que solo esté en `beta` (y el 17/8 `beta` tenía `apk.json` **40** contra **41** en `main` — eso ya está alineado). `promote-beta.yml` aborta si el `versionCode` o la `VERSION` de beta son menores que los de main.
 
-Si Actions → Promocionar beta se lanza **sin** `tandas` ni `commits`, hace `merge -X theirs origin/beta`. Eso **sí** mete el widget en `main`.
-
-Matices que Claude mezcló:
-
-1. Ese merge **no despliega Edge Functions al momento.** El push del promote usa `GITHUB_TOKEN` y GitHub no dispara otros workflows (por eso el promote lanza `deploy.yml` a mano para Pages). **No** lanza `supabase.yml`.
-2. El susto de verdad es el **siguiente** `supabase functions deploy` (push humano a `supabase/**` o «Run workflow» de Deploy Supabase): despliega **todas** las funciones del árbol de `main`. Si el widget ya está en `main`, se va a prod aunque nadie lo haya aprobado.
-3. Hay **un** proyecto Supabase. La app en canal beta habla con las mismas funciones que la familia. El widget con la app **cerrada** no se puede re-probar de verdad sin desplegar ingest, y eso lo ven todos.
-
-**3+4 ya están en `origin/main`** (`c2e74dc7`, rama `promote/4.18.1` desde `main`, no el botón vacío). Siguen **fuera** `ingest/index.ts` y `presupuesto.ts`. **Sigue sin pulsar Promocionar beta vacío:** eso metería `e282ec59`. **No** dejar que una IA lo pulse «porque prod ya está mal».
+Hay **un** proyecto Supabase. El canal beta no prueba el widget con la app cerrada: la noti habla con `ingest`, no con el bundle OTA. Por eso esta tanda sube a prod.
 
 ### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — 17/8, corregido la misma noche
 
@@ -60,7 +51,7 @@ Medido con `node scripts/diag-widget.mjs` (lee su nube) **y con el extracto de T
 3. **NO meter la hora en la clave de fusión.** Eso haría que la app también sumara el gemelo
    y mentiría igual que el widget. La app ya hace bien: `día|importe|comercio`.
 
-**Arreglo (4.17.2, ingest, sin APK):** `filasComoLaApp` (lápidas + una fila por clave) antes de
+**Arreglo (4.17.2 en beta, **4.18.2** en prod, ingest, sin APK):** `filasComoLaApp` (lápidas + una fila por clave) antes de
 `statsDelMes`, y al insertar se ignora un segundo aviso el mismo día / mismo comercio / mismo
 euro. Desplegar `ingest` desde `beta` para probarlo. No borrar filas de la nube a mano: el
 conteo ya las ignora; el insert deja de criar más.
@@ -101,10 +92,10 @@ se ve al pedirlo y no come el techo. Así el import de 3 meses entra como un ban
 
 | Qué | Estado real |
 |-----|-------------|
-| `VERSION` en `beta` | **4.18.1** |
-| `origin/main` | **4.18.1** (`c2e74dc7`) · APK **41** |
-| Pages live / familia | **4.18.1** (`version.json` comprobado) · APK **41** |
-| Widget 4.17.2 | En historial de `beta`, **no** está en `main` |
+| `VERSION` en `beta` | **4.18.2** |
+| `origin/main` | **4.18.1** hasta el push del ingest · APK **41** |
+| Pages live / familia | **4.18.1** hasta que Actions publique 4.18.2 |
+| Widget 4.17.2 / 4.18.2 | Ingest a producción (no se puede probar solo en canal beta) |
 | Crucero pendiente | Destello = tanda 8. Diseño (mock) = tanda **17**. Play Store = última. |
 
 ---

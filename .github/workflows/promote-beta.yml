@@ -96,6 +96,36 @@ jobs:
           npx playwright install chromium --with-deps
           node scripts/run-tests.mjs
 
+      # 2026-08-17: `d7fac794` (APK 41) se hizo en `main` y no volvió a `beta`. Un promote vacío
+      # hace `merge -X theirs origin/beta` y habría pintado apk.json 40 / 4.16.2 encima de la 41
+      # que ya tiene la familia (el «apk.json fantasma» de 4.9.2, al revés: bajar en vez de
+      # publicar un APK que no existe). Esto PARA antes de tocar `main`.
+      - name: No bajar el APK ni VERSION de la familia
+        if: ${{ inputs.commits == '' }}
+        run: |
+          git fetch origin main beta
+          main_code=$(git show origin/main:android/app/build.gradle | grep -m1 'versionCode' | grep -oE '[0-9]+')
+          beta_code=$(git show origin/beta:android/app/build.gradle | grep -m1 'versionCode' | grep -oE '[0-9]+')
+          main_ver=$(git show origin/main:VERSION | tr -d '[:space:]')
+          beta_ver=$(git show origin/beta:VERSION | tr -d '[:space:]')
+          echo "APK versionCode  main=$main_code  beta=$beta_code"
+          echo "VERSION          main=$main_ver  beta=$beta_ver"
+          if [ -z "$main_code" ] || [ -z "$beta_code" ]; then
+            echo "::error::no pude leer versionCode de build.gradle"
+            exit 1
+          fi
+          if [ "$beta_code" -lt "$main_code" ]; then
+            echo "::error::beta APK versionCode $beta_code < main $main_code. Un promote vacío bajaría el APK. Alinea public/apk.json y android/app/build.gradle en beta al de main."
+            exit 1
+          fi
+          if [ "$beta_ver" != "$main_ver" ]; then
+            lowest=$(printf '%s\n%s\n' "$beta_ver" "$main_ver" | sort -V | head -1)
+            if [ "$lowest" = "$beta_ver" ]; then
+              echo "::error::VERSION de beta ($beta_ver) es menor que main ($main_ver). El promote bajaría la versión de Pages."
+              exit 1
+            fi
+          fi
+
       # SUBIR SOLO LAS TANDAS APROBADAS (petición suya 2026-07-29: «que se pudieran implementar
       # varias betas a la vez y que me des la opción de aprobarlas por separado»).
       #

@@ -99,7 +99,7 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy:** `VERSION` = **4.18.1** en `main` y en Pages (tandas 3+4, sin widget). Circuito: [`docs/RELEASE.md`](docs/RELEASE.md).
+**Hoy:** `VERSION` = **4.18.2** en `beta`. El widget con la app cerrada va por `ingest` (un solo Supabase), no por el canal. Circuito: [`docs/RELEASE.md`](docs/RELEASE.md).
 Antes de tocar nada, **`npm run salud`**.
 
 ### Si él escribe desde el viaje («¿ya está Pages?»)

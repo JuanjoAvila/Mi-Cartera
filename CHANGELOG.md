@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.2] — 2026-08-17
+### El widget cuenta como la app (ingest, sin APK)
+
+El canal beta no sirve para probar el widget con la app cerrada: hay un solo proyecto Supabase
+y `TrExpenseListener` pide el mes a `ingest`, no al bundle OTA. Esta es la 4.17.2 que se quedó
+en `beta` (`e282ec59`): `filasComoLaApp` (lápidas + una fila por `día|importe|comercio`) y no
+insertar un segundo aviso el mismo día / mismo comercio / mismo euro (Wallet + TR).
+
+También se alinea `apk.json` / `versionCode` de `beta` con producción (**41 / 4.17.1**). Un
+promote vacío `-X theirs` habría pintado APK **40 / 4.16.2** encima de la 41 que ya tiene la
+familia (`d7fac794` nunca volvió a `beta`). `promote-beta.yml` aborta si el `versionCode` de
+beta es menor que el de main.
+
 ## [4.18.1] — 2026-08-17
 ### Recibos + IA en cualquier gasto + banco del `+` como los filtros
 

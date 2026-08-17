@@ -1,6 +1,9 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.18.1** — **EN PRODUCCIÓN**. Tandas 3 y 4: Gastos enseña todos los bancos de gasto diario, calendario al apuntar, Recibos, sugerir categoría en cualquier gasto, banco del `+` en pastilla. El widget de 4.17.2 **no entra** (sigue solo en `beta`).
+> Estado a 2026-08-17 · **v4.18.2** — **EN `beta`**, ingest del widget a producción. El canal beta
+> no prueba el widget con la app cerrada (un solo Supabase). APK sigue **41 / 4.17.1**.
+>
+> Anterior: 2026-08-17 · **v4.18.1** — **EN PRODUCCIÓN**. Tandas 3 y 4: Gastos enseña todos los bancos de gasto diario, calendario al apuntar, Recibos, sugerir categoría en cualquier gasto, banco del `+` en pastilla. El widget de 4.17.2 **no entra** (sigue solo en `beta`).
 >
 > Anterior: 2026-08-17 · **v4.18.0** — **EN `beta`**. Tandas 3 y 4: Gastos enseña todos los bancos
 > marcados como gasto diario (no solo el principal), fecha al apuntar/editar con calendario de la
@@ -81,7 +84,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.18.1** (producción / Pages) · `beta` sigue en 4.18.1 con el widget 4.17.2 **sin** promocionar |
+| Web / OTA (`VERSION`) | **4.18.2** (en `beta`; ingest a producción) · Pages aún **4.18.1** hasta que Actions acabe |
 | APK (`versionName` / `versionCode`) | Repo: **4.16.2 / 40**. Live en su móvil: **4.17.1 / 41** (tanda 2). La 4.18.x no toca nativo: va por OTA. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | repo **40** / 4.16.2 (esta rama no ha corrido `release:apk`) |
@@ -92,7 +95,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 |------|--------|
 | **MyInvestor reCAPTCHA** | **4.6.4:** intento OTA — la app carga el reCAPTCHA de Google bajo demanda con el **site key de MyInvestor** (que el usuario pega en la tarjeta MI; su web va tras Incapsula y no se puede extraer desde el CI), ejecuta la acción, y reintenta el login con `X-Recaptcha-Token`. **Riesgo:** reCAPTCHA v3 suele atar el token al dominio registrado (`myinvestor.es`); si MI valida el origen, rechazará el token de nuestra WebView → entonces el único camino es una **WebView nativa** que cargue la web de MI (APK). El intento OTA se prueba en 1 min: si el token cuela, resuelto sin tocar nativo. Palancas previas: `x-myinvestor-app`=3.150.0, mensaje humano, `captchaToken` en cabeceras (plumbing listo). |
 | **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
-| **Widget «Puedes gastar»** | El código va en el APK 30 (verificado: strings `Puedes gastar`/`te quedan` en `classes.dex`). Si en el móvil sigue saliendo solo el gasto: el widget se alimenta de `updateWidget` (app → plugin) y MIUI/HyperOS a veces no lo re-pinta. 4.6.2 re-empuja al volver a primer plano; si aún falla, **quitar y re-añadir el widget**. No es bug de código OTA. |
+| **Widget «Puedes gastar»** | 4.18.2: ingest cuenta como la app (`filasComoLaApp`). Prueba: pago con la app cerrada. Si el widget no se re-pinta en MIUI, quitar y re-añadir. |
 | **Limpieza del repo (tanda 16)** | Basura, docs rancio, código muerto. **No visual, no es rendimiento, no es Clean Code de libro.** El monolito es a propósito (`docs/adr/0002-monolito.md`). Alcance en `docs/briefs/plan-vuelta-crucero.md` §16. |
 | **Play Store** | **Lo último.** Data safety + NotificationListener. No adelantar: si se implementa, se tienta de publicar antes de que esté pulida a su criterio. Cualquier tanda nueva va **antes**. |
 | **Pulido de diseño (tanda 17)** | Mock Claude Design: `docs/design/handoff/` (SPEC-v4 + mockup HTML). **No tocar a ciegas.** Hogar, Apuntar, Gastos, el look. Tanda propia, no mezclar con dinero. |
