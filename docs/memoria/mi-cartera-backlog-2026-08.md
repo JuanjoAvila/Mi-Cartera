@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d6ae387e-f9d4-460d-b8dc-c43511bd8b4c
-  modified: 2026-08-05T01:26:59.519Z
+  modified: 2026-08-17T15:15:21.349Z
 ---
 
 **⚠ ESTE FICHERO ES LA LISTA ÚNICA. Si aparece algo nuevo, va aquí.** Se armó porque el 4/8 le di un
@@ -23,7 +23,47 @@ Fuentes que alimentan esto: `node scripts/errores.mjs --kind=beta` (sus veredict
 
 ---
 
-# ⏰ 0. CON FECHA DURA — el crucero sale el VIERNES 7/8/2026
+# 🚢 0-BIS. LO QUE APUNTÓ EN EL CRUCERO (2026-08-17) — 12 cosas de golpe
+Orden y detalle en el repo: [`docs/briefs/plan-vuelta-crucero.md`] (10 tandas, uno en uno).
+Aquí solo el inventario, para que no se pierda ninguna.
+
+**Bugs**
+1. **Widget vs app: cifras distintas.** «Sale un valor en el widget y otro en la app; al cerrar se
+   actualiza bien y al cabo de un rato vuelve a salir otro». → **ARREGLADO en 4.16.2 / APK 40**
+   (tanda `widget-coherente`, en beta el 17/8, pendiente de su veredicto). ⚠ Queda abierto el
+   **Δ 205 €** entre la cifra de la noti y la de la app: ver [[mi-cartera-roadmap]].
+2. **Revolut del padre a −204,54 € de la nada.** Sincroniza y se arregla. «Quizás son dos cosas
+   diferentes» (suyo, y tenía razón: es otra tanda). Candidato: `pickBankBalance` cae a
+   `balances[0]` a ciegas. ⚠ **No diagnosticable hasta que su padre salga del nativo 4.12.0.**
+3. **Al actualizar Open Banking, el dinero del banco no cuadra en Cartera** — con la integración
+   DIRECTA de Trade Republic sí cuadra. (Se refería a TR todo el rato.)
+
+**Gastos**
+4. **Detectar el banco** del que sale un ingreso o un pago, y que se vea.
+5. **Clasificar lo que NO cuenta**: «hay bastante caos entre gastos que cuentan, ingresos y
+   movimientos que no cuentan, sean inversiones o movimientos sin más».
+6. **Renombrar «Movimiento»** en lo que entra de TR por Open Banking: «queda feo». (Enable Banking
+   no manda nombre de comercio de TR — es un override manual que hay que recordar.)
+7. **Más tipos de gasto**: heladería, joyería, crucero, Steam, Instant Gaming «y muchos más».
+8. **Mejorar la «IA» que elige el tipo de gasto.**
+
+**Interfaz**
+9. **El filtro guapo de Gastos, también en el `+` y al editar** un gasto.
+10. **El filtro de rango de fechas saca una ventana de Android** — quiere calendario propio.
+
+**Nuevo**
+11. **Meta ahorrada que sustituye TEMPORALMENTE el «gasto del mes»**: gastar de la hucha de una meta
+    no es gasto corriente. Si marcas varios bancos en la meta, un gasto de esos bancos elige la meta
+    solo. Al llegar a 0 €, vuelve el presupuesto normal. ⚠ Toca `monthBudgetStats` en TRES sitios
+    (cliente, ingest, widget) → **no empezar hasta que la 1 esté aprobada**.
+12. **Controlar el dinero en EFECTIVO**: lo que tienes, lo que entra y lo que sale.
+
+⚠ Mandó **3 capturas** de los bugs 1–2 (widget, y la foto azul del Revolut del padre) a Cursor;
+Claude Code trabajó con las cifras transcritas. Si hace falta afinar, pedírselas otra vez.
+
+---
+
+# ⏰ 0. CON FECHA DURA — el crucero sale el VIERNES 7/8/2026 ✅ PASADO
 **Multidivisa real (liras turcas).** Paga con Revolut, que permite cambiar EUR→TRY. Quiere que detecte
 la moneda, haga el cambio solo y que **los gastos en lira salgan bien**, «pulidísimo». Hoy
 `settings.moneda` («moneda de visualización») **existe pero NO hace nada** y la lira ni está en la
