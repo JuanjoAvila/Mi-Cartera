@@ -7,7 +7,7 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | Tanda | Estado | Notas |
 |---|---|---|
 | 0 · Pages | ⏸ **A PROPÓSITO SIN LANZAR** | Decisión suya: la familia salta de golpe al promocionar. Live sigue 4.15.0 / apk.json 4.12.0 |
-| 1a · Widget coherente | 🧪 **EN BETA, sin veredicto** | 4.16.2 · **APK 40** · probó 2 de 6 puntos; los 3 que faltan piden un pago real (lo hará mañana en el desayuno) |
+| 1a · Widget coherente | 🔁 **RECHAZADA (17/8 noche)** — arregló la incoherencia interna pero NO el desfase | 4.16.2 · APK 40. Widget 907 · app 709. **Causa raíz ya diagnosticada abajo, con sus datos reales** |
 | 1b · Revolut −204 del padre | 🔴 **BLOQUEADA** | Su padre corre el NATIVO de 4.12.0: no se puede diagnosticar hasta que promocionemos |
 | 2 · Gastos: qué cuenta / «Movimiento» / banco | 🔁 **RECHAZADA 4.17.0.1** (7 ok / 2 fallos) → arreglada en **4.17.1**, esperando re-prueba | Sin APK (web + migración 0021) |
 | 3 · Filtro en `+` y editar + calendario propio | ⬜ Siguiente candidata | No depende de nada |
@@ -23,6 +23,31 @@ despliegan al pushear a `main`**; `ingest` se desplegó a mano el 17/8 con
 `gh workflow run supabase.yml --ref beta`, pero **la 0021 NO está aplicada todavía**: el cliente
 reintenta sin la columna (`_isMissingObNameCol`), así que el renombrado funciona pero sin la
 protección anti-duplicado hasta que se aplique.
+
+### ★ POR QUÉ EL WIDGET Y LA APP NO CUADRAN — cerrado el 17/8 con sus datos reales
+
+Medido con `node scripts/diag-widget.mjs` (lee su nube y pasa LAS MISMAS filas por las dos
+implementaciones). **No hace falta volver a investigarlo, solo arreglarlo.**
+
+1. **La fórmula NO es el problema.** Servidor 914,96 € y cliente 914,96 € con la misma entrada.
+   Que nadie toque `statsDelMes` ni `monthBudgetStats` buscando aquí.
+2. **El widget cuenta filas que la app ya descartó** → widget MÁS ALTO. Dos vías:
+   - **9 filas con lápida** en `state.deleted` siguen vivas en la tabla `expenses`. `ingest`
+     consulta la tabla y **no sabe nada de las lápidas**; la app las filtra al bajar
+     (`syncCloudExpenses`, 11-app-main.js ~297). `cloud.deleteExpense` traga los fallos con
+     `.catch(()=>{})`, así que un borrado que no llegó a la nube no deja rastro.
+   - Gemelos que `reconcileObDupes` quita en local y en la nube se quedan.
+3. **Y al revés: la app esconde cargos de verdad** → app MÁS BAJA. Fusiona con
+   `keyOf = día|importe|comercio` (sin hora) mientras la nube guarda por `fecha` completa (su
+   clave única es `user_id,fecha,importe,comercio`). Caso medido: **230 € a las 11:31 y otros
+   230 € a las 13:08 en el mismo sitio el 13/8** — dos compras reales, una sola fila en el móvil.
+
+**Arreglo propuesto (pendiente de su OK, son dos tandas distintas):**
+- **1b-A, barata y cierra el síntoma:** que `ingest` respete las lápidas. Ya carga `app_state`,
+  así que solo tiene que descartar las filas cuya clave esté en `data.deleted`. Aparte, limpieza
+  puntual de la nube para las que debieron borrarse ⚠ **una limpieza de datos no lleva flag**.
+- **1b-B, delicada:** meter la hora en la clave de fusión del cliente. Toca el camino por el que
+  entran TODOS los gastos, así que va sola, con su OK y con pruebas contra sus datos.
 
 **Su rechazo de la 4.17.0.1 y qué se hizo** (`node scripts/errores.mjs --kind=beta`):
 
