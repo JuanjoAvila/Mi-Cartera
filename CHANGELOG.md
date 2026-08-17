@@ -33,6 +33,9 @@ Test e2e nuevo `★ guardar un cambio NO deja la pantalla muerta`: comprueba que
 sheet sigue en pie con lo escrito dentro, y que al cerrarlo la app responde (sin `sheet-open`, sin
 `overflow:hidden`, y se puede cambiar de pestaña). Verificado que **cae** con el código anterior.
 
+APK **41 / 4.17.1** para alinear a la familia (padre y pareja seguían en nativo 4.12.0 / Pages
+4.15.0). No hay Java nuevo del widget: esa tanda se queda en `beta`.
+
 ## [4.17.0] — 2026-08-17
 ### Orden en Gastos (tanda `gastos-orden`)
 

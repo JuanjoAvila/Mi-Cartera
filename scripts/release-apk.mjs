@@ -192,7 +192,13 @@ ok(`aapt: ${pkg[1]} ${pkg[3]} (${pkg[2]})`);
 
 const apksigner = findTool(sdkDir, ["apksigner.bat", "apksigner"]);
 if (apksigner) {
-  const certs = runCapture(apksigner, ["verify", "--print-certs", apkSrc], {
+  /* `apksigner` es un .bat en Windows, así que Node lo lanza por `cmd` sí o sí — y por el camino
+     se pierden las comillas: la ruta «E:\Mi cartera\…» llegaba partida por el espacio y apksigner
+     respondía «Unexpected parameter(s) after APK» sobre una APK perfectamente firmada
+     (2026-08-17). Se citan tool y ruta a mano. `aapt` es .exe y no le pasa. */
+  const esBat = /\.bat$/i.test(apksigner);
+  const certs = runCapture(esBat ? `"${apksigner}"` : apksigner,
+    ["verify", "--print-certs", esBat ? `"${apkSrc}"` : apkSrc], {
     fail: "apksigner verify falló — APK sin firmar o firma rara",
     shell: process.platform === "win32",
   });
