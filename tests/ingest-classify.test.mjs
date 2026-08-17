@@ -162,4 +162,16 @@ t("el comercio limpio sigue categorizando igual", () => {
   assert.equal(categorizar(extraerComercio("Has gastado 3,20 € en PANADERIA" + CTRL + " LA ESQUINA", "")), "pan");
 });
 
+t("Steam / Instant Gaming caen en videojuegos", () => {
+  assert.equal(categorizar("Steam Purchase"), "gaming");
+  assert.equal(categorizar("Instant Gaming"), "gaming");
+});
+
+t("teléfono / seguro caen en Recibos; Movistar Plus sigue en ocio", () => {
+  assert.equal(categorizar("Vodafone España"), "recibos");
+  assert.equal(categorizar("Mapfre Seguros"), "recibos");
+  assert.equal(categorizar("MOVISTAR ES"), "recibos");
+  assert.equal(categorizar("Movistar Plus"), "ocio");
+});
+
 console.log("\ningest-classify: OK");

@@ -1424,6 +1424,46 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.1", d:"17 ago 2026",
+   t:{es:"Recibos, sugerir categoría en cualquier gasto, y el banco al apuntar sin el lío",
+      en:"Bills, suggest a category on any payment, and a tidier bank picker",
+      ca:"Rebuts, suggerir categoria en qualsevol despesa, i el banc en apuntar sense el embolic"},
+   items:{
+   es:[
+    "🧾 Recibos es una categoría propia: teléfono, internet, seguro o el alquiler ya no se quedan en Otros.",
+    "✨ En cualquier movimiento puedes pedir una sugerencia de categoría, no solo si está en Otros.",
+    "🏦 Al apuntar un gasto, el banco es una pastilla que se despliega, como los filtros de Gastos.",
+   ],
+   en:[
+    "🧾 Bills is its own category: phone, internet, insurance or rent no longer sit in Other.",
+    "✨ On any payment you can ask for a category suggestion, not only if it is in Other.",
+    "🏦 When adding a payment, the bank is a pill that expands, like the filters in Spending.",
+   ],
+   ca:[
+    "🧾 Rebuts és una categoria pròpia: telèfon, internet, assegurança o el lloguer ja no es queden a Altres.",
+    "✨ En qualsevol moviment pots demanar un suggeriment de categoria, no només si és a Altres.",
+    "🏦 En apuntar una despesa, el banc és una pastilla que es desplega, com els filtres de Despeses.",
+   ]}},
+  {v:"4.18.0", d:"17 ago 2026",
+   t:{es:"Gastos de todos tus bancos del día a día, y más categorías",
+      en:"Spending from every day-to-day bank, plus extra categories",
+      ca:"Despeses de tots els teus bancs del dia a dia, i més categories"},
+   items:{
+   es:[
+    "🏦 Si usas más de un banco para el día a día, Gastos enseña los movimientos de todos ellos. Un recibo de otro banco sigue sin contar, y una inversión tampoco.",
+    "📅 Al apuntar un gasto o al editarlo puedes elegir el día. El calendario es el de la app.",
+    "🍦 Heladería, joyería y videojuegos son categorías propias: Steam e Instant Gaming ya no se van a ocio.",
+   ],
+   en:[
+    "🏦 If you use more than one bank for day-to-day spending, Spending shows movements from all of them. A bill from another bank still doesn't count, and neither does an investment.",
+    "📅 When you add or edit a payment you can pick the day. The calendar is the app's own.",
+    "🍦 Ice cream, jewellery and games are their own categories: Steam and Instant Gaming no longer land in leisure.",
+   ],
+   ca:[
+    "🏦 Si uses més d'un banc per al dia a dia, Despeses ensenya els moviments de tots. Un rebut d'un altre banc continua sense comptar, i una inversió tampoc.",
+    "📅 En apuntar una despesa o en editar-la pots triar el dia. El calendari és el de l'app.",
+    "🍦 Gelateria, joieria i videojocs són categories pròpies: Steam i Instant Gaming ja no se'n van a oci.",
+   ]}},
   {v:"4.17.1", d:"17 ago 2026",
    t:{es:"Orden en Gastos: qué cuenta, qué no, y de qué banco sale",
       en:"Order in Spending: what counts, what doesn't, and which bank it came from",
@@ -1468,6 +1508,23 @@ var RELEASE_NOTES=[
     "🧾 A Despeses ara es distingeix d'un cop d'ull el que compta del que no: una inversió o un traspàs diuen «no és una despesa», i un rebut d'un altre banc diu «no és del dia a dia». Abans tots dos deien el mateix i costava saber per què.",
     "🎛️ Als filtres hi ha un apartat nou, «Què comptar», per veure per separat les despeses que compten, els ingressos, les inversions i traspassos, o el que ve d'altres bancs.",
     "✏️ Els moviments que arriben del banc sense nom (els que posen «Moviment») ja es poden reanomenar sense que la següent sincronització els torni a posar duplicats.",
+   ]}},
+  {v:"4.16.2", d:"17 ago 2026",
+   t:{es:"El widget de la pantalla de inicio deja de contradecirse",
+      en:"The home screen widget stops contradicting itself",
+      ca:"El widget de la pantalla d'inici deixa de contradir-se"},
+   items:{
+   es:[
+    "📊 El widget de la pantalla de inicio se contradecía: podía decir que te quedaban 109 € y justo debajo que podías gastar 324 €. Pasaba con la app cerrada, cuando entraba un pago: actualizaba lo gastado pero se dejaba el resto de cifras del rato anterior. Ahora se actualizan todas juntas y siempre cuadran entre ellas.",
+    "💳 El saldo de la cuenta de gasto que sale en el widget también se pone al día con cada pago, sin tener que abrir la app.",
+   ],
+   en:[
+    "📊 The home screen widget was contradicting itself: it could say you had 109 € left and right below that you could spend 324 €. It happened with the app closed, when a payment came in: it updated the amount spent but kept the other figures from earlier. Now they all update together and always add up.",
+    "💳 The spending account balance shown on the widget also keeps up with each payment, without having to open the app.",
+   ],
+   ca:[
+    "📊 El widget de la pantalla d'inici es contradeia: podia dir que et quedaven 109 € i just a sota que podies gastar-ne 324 €. Passava amb l'app tancada, quan entrava un pagament: actualitzava el que s'havia gastat però es deixava la resta de xifres d'abans. Ara s'actualitzen totes juntes i sempre quadren.",
+    "💳 El saldo del compte de despesa que surt al widget també es posa al dia amb cada pagament, sense haver d'obrir l'app.",
    ]}},
   {v:"4.16.1", d:"6 ago 2026",
    t:{es:"Arranque limpio, sin franja bajo la cámara",

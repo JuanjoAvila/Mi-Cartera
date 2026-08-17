@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadPureLogicFromFile } from "../scripts/load-pure-logic.mjs";
 
 const ctx = loadPureLogicFromFile();
@@ -56,6 +59,36 @@ t("Consulta médica cae en salud", () => {
   assert.equal(ctx.autoCategory("Consulta medico Dr Lopez"), "salud");
 });
 
+t("Heladería ya no cae en bares", () => {
+  assert.equal(ctx.autoCategory("Heladeria Llao Llao"), "heladeria");
+  assert.equal(ctx.autoCategory("Amorino Gelato"), "heladeria");
+});
+
+t("Steam / Instant Gaming caen en videojuegos (no ocio)", () => {
+  assert.equal(ctx.autoCategory("Steam Purchase"), "gaming");
+  assert.equal(ctx.autoCategory("Instant Gaming"), "gaming");
+});
+
+t("Joyería tiene categoría propia", () => {
+  assert.equal(ctx.autoCategory("Joyeria Tous"), "joyeria");
+  assert.equal(ctx.autoCategory("Pandora Store"), "joyeria");
+});
+
+t("Teléfono / seguro / alquiler caen en Recibos, no en otros", () => {
+  assert.equal(ctx.autoCategory("Vodafone España"), "recibos");
+  assert.equal(ctx.autoCategory("Mapfre Seguros"), "recibos");
+  assert.equal(ctx.autoCategory("Alquiler piso"), "recibos");
+  assert.equal(ctx.autoCategory("MOVISTAR ES"), "recibos");
+});
+
+t("Movistar Plus se queda en ocio (no Recibos)", () => {
+  assert.equal(ctx.autoCategory("Movistar Plus"), "ocio");
+});
+
+t("Endesa sigue en energía, no Recibos", () => {
+  assert.equal(ctx.autoCategory("Endesa Factura"), "energia");
+});
+
 t("Claude / Google Play cae en ocio", () => {
   assert.equal(ctx.autoCategory("Claude Anthropic"), "ocio");
   assert.equal(ctx.autoCategory("Google Play"), "ocio");
@@ -80,6 +113,19 @@ for (const nombre of ["1331 BAR", "SNACK BAR", "EL RACO BAR", "LA BOMBETA BAR", 
 
 t("Barcelona no cae en bares por el substring «bar»", () => {
   assert.notEqual(ctx.autoCategory("Parking Barcelona Centro"), "bares");
+});
+
+t("la IA (categorize) conoce todas las categorías del cliente", () => {
+  const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const core = fs.readFileSync(path.join(root, "src/modules/00-core.js"), "utf8");
+  const block = core.match(/const CATEGORIES = \[([\s\S]*?)\];/);
+  assert.ok(block, "CATEGORIES en 00-core.js");
+  const ids = [...block[1].matchAll(/id:"([a-z]+)"/g)].map(function(m){ return m[1]; });
+  assert.ok(ids.indexOf("recibos")>=0, "CATEGORIES tiene Recibos");
+  const src = fs.readFileSync(path.join(root, "supabase/functions/categorize/index.ts"), "utf8");
+  ids.forEach(function(id){
+    assert.ok(src.indexOf('"'+id+'"')>=0, "categorize ALLOWED falta "+id);
+  });
 });
 
 console.log("\ncategories: OK");

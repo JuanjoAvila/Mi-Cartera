@@ -2,6 +2,32 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.1] — 2026-08-17
+### Recibos + IA en cualquier gasto + banco del `+` como los filtros
+
+Tanda 4: lo que es un recibo de verdad (teléfono, internet, seguro no médico, alquiler, comunidad, alarma) caía en **Otros**. Categoría `recibos` + KW en cliente e `ingest_logic.ts`. Luz/gas siguen en `energia`; impuestos en `tasas`; Movistar Plus en `ocio` (el teléfono Movistar, no).
+
+La Edge `categorize` no tenía en `ALLOWED` heladería, gaming, joyería ni recibos: la IA **no podía** devolverlas. Lista alineada con `CATEGORIES` (el test `categories` aborta si falta una) y el prompt lleva pistas de qué es cada id. El botón «Sugerir categoría» sale en **cualquier** movimiento, no solo Otros.
+
+Al apuntar (`+`), los bancos eran una fila de chips que tapaba el teclado. Misma idea que el cuadradito de filtros en Gastos: una pastilla con el banco actual; al tocarla se despliegan.
+
+## [4.18.0] — 2026-08-17
+### Tanda 3 — filtro de gasto diario + fecha al apuntar/editar
+
+El filtro de Gastos arrancaba con **un** banco: `accDaily` (el rol «gasto diario» principal).
+`settings.expenseBanks` ya alimentaba el presupuesto (`expenseCountsBudget`), así que Revolut
+podía contar en el techo y **no salir en la lista**. Pedido suyo: todos los marcados como gasto
+diario se ven y cuentan (salvo neutras: inversión/traspaso); Sabadell y compañía siguen a mano
+en «Todos los bancos», listos para el import histórico de 3 meses.
+
+El `input type="date"` del rango a medida (y la fecha fija a hoy en Apuntar) abrían el picker
+nativo de Android. Calendario propio (`McCal` en `02-ui-shared.js`): grid del mes, sin nativo.
+
+### Tanda 4 — heladería, joyería, videojuegos
+
+Categorías nuevas + KW (cliente e `ingest_logic.ts`). Steam/Instant Gaming salen de ocio;
+heladería sale de bares; joyería (Tous, Pandora) sale de regalos/compras.
+
 ## [4.17.1] — 2026-08-17
 ### Los dos fallos de su rechazo de la 4.17.0.1 (7 ok / 2 fallos)
 

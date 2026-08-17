@@ -1,6 +1,11 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-17 · **v4.17.1** — **EN PRODUCCIÓN** (tanda `gastos-orden` aprobada en el
+> Estado a 2026-08-17 · **v4.18.1** — **EN PRODUCCIÓN**. Tandas 3 y 4: Gastos enseña todos los
+> bancos de gasto diario, fecha al apuntar/editar con calendario de la casa, Recibos + heladería /
+> joyería / videojuegos, sugerir categoría en cualquier gasto, y el banco del `+` en pastilla.
+> APK **41**. El widget **4.17.2 no entra** (ingest no se toca).
+>
+> Anterior: 2026-08-17 · **v4.17.1** — **EN PRODUCCIÓN** (tanda `gastos-orden` aprobada en el
 > móvil, 10 ok / 0 fallos). Qué cuenta y qué no en Gastos, renombrar el «Movimiento» de TR
 > sin duplicar, y el bloqueo de pantalla al guardar (venía de la v3.108.0). APK **41**.
 > La tanda del widget se queda en `beta` hasta que él compre y la re-pruebe.
@@ -69,7 +74,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.17.1** (producción) |
+| Web / OTA (`VERSION`) | **4.18.1** (producción) |
 | APK (`versionName` / `versionCode`) | **4.17.1** / **41** — release `v4.17.1`. Misma app que la web: Gastos (qué cuenta / qué no) + Wallet + arranque sin franja. Firma `CN=Mi Cartera`. |
 | Anterior | **4.16.1 / 39** (sin franja), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | **41** / 4.17.1 → release `v4.17.1` / `Mi-Cartera-4.17.1.apk` |

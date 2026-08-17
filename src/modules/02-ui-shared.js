@@ -783,3 +783,66 @@ function bkBrand({logo, logoStyle, title, sub, badge, open, onToggle}){
   );
 }
 
+/* Calendario de la casa (2026-08-17). El `input type="date"` abre el picker nativo de Android
+   (gris, en inglés, tipografía ajena) — el mismo rechazo que se llevó a prompt/confirm en la
+   v3.100.0. Aquí se elige el día con la misma pinta que el resto de sheets. Fecha LOCAL, no
+   UTC: `toISOString().slice(0,10)` a las 23h en España ya es el día siguiente. */
+function isoLocal(d){
+  d=d||new Date();
+  const y=d.getFullYear(), m=d.getMonth()+1, day=d.getDate();
+  return y+"-"+(m<10?"0":"")+m+"-"+(day<10?"0":"")+day;
+}
+function fmtIsoCorto(iso){
+  if(!iso) return "—";
+  const d=parseDate(String(iso).slice(0,10));
+  if(!d||isNaN(d.getTime())) return String(iso).slice(0,10);
+  return d.toLocaleDateString(loc(),{weekday:"short",day:"numeric",month:"short"});
+}
+function McCal({value, onPick}){
+  const hoy=isoLocal();
+  const sel=String(value||hoy).slice(0,10);
+  const [view,setView]=useState(function(){
+    const p=sel.split("-");
+    return {y:+p[0]||new Date().getFullYear(), m:(+(p[1]||1))-1};
+  });
+  const first=new Date(view.y, view.m, 1);
+  const startDow=(first.getDay()+6)%7;   // lunes = 0
+  const daysIn=new Date(view.y, view.m+1, 0).getDate();
+  const cells=[];
+  for(let i=0;i<startDow;i++) cells.push(null);
+  for(let d=1;d<=daysIn;d++) cells.push(d);
+  const wd=[];
+  for(let i=0;i<7;i++){
+    wd.push(new Date(2023,0,2+i).toLocaleDateString(loc(),{weekday:"short"}).replace(/\./g,"").slice(0,2));
+  }
+  const isoOf=function(d){
+    const m=view.m+1;
+    return view.y+"-"+(m<10?"0":"")+m+"-"+(d<10?"0":"")+d;
+  };
+  return React.createElement("div",{className:"mc-cal","data-testid":"mc-cal"},
+    React.createElement("div",{className:"mc-cal-nav"},
+      React.createElement("button",{type:"button","aria-label":t("cal_prev"),onClick:function(){
+        setView(function(v){ const m=v.m-1; return m<0?{y:v.y-1,m:11}:{y:v.y,m:m}; });
+      }},"‹"),
+      React.createElement("div",{className:"mc-cal-title"}, first.toLocaleDateString(loc(),{month:"long",year:"numeric"})),
+      React.createElement("button",{type:"button","aria-label":t("cal_next"),onClick:function(){
+        setView(function(v){ const m=v.m+1; return m>11?{y:v.y+1,m:0}:{y:v.y,m:m}; });
+      }},"›")
+    ),
+    React.createElement("div",{className:"mc-cal-grid mc-cal-wd"},
+      wd.map(function(w,i){ return React.createElement("div",{key:i}, w); })
+    ),
+    React.createElement("div",{className:"mc-cal-grid"},
+      cells.map(function(d,i){
+        if(!d) return React.createElement("div",{key:"e"+i});
+        const iso=isoOf(d);
+        return React.createElement("button",{key:iso,type:"button",
+          className:"mc-cal-day"+(iso===sel?" on":"")+(iso===hoy?" hoy":""),
+          onClick:function(){ onPick(iso); }}, d);
+      })
+    ),
+    React.createElement("button",{type:"button",className:"v4-chip"+(sel===hoy?" on":""),style:{marginTop:8},
+      onClick:function(){ onPick(hoy); }}, t("cal_today"))
+  );
+}
+

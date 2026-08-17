@@ -527,6 +527,9 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   // Banco del apunte (petición 2026-07-18: «poder elegir el banco si apuntas un gasto manual»).
   // Opciones = los bancos de tus cuentas; por defecto la de gasto diario (lo que ya hacía Gastos).
   const [bank,setBank]=useState(null);
+  const [bankOpen,setBankOpen]=useState(false);
+  const [date,setDate]=useState(function(){ return isoLocal(); });
+  const [calOpen,setCalOpen]=useState(false);
   const bankOpts=useMemo(function(){
     const seen={}; const out=[];
     (state.accounts||[]).forEach(function(a){ if(a&&a.ent&&!seen[a.ent]){ seen[a.ent]=1; out.push(a.ent); } });
@@ -535,6 +538,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
   useEffect(function(){
     if(open){
       setKind("gasto"); setRaw(""); setNote(""); setCat("super");
+      setDate(isoLocal()); setCalOpen(false); setBankOpen(false);
       const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
       setBank((daily&&daily.ent)||null);
       // Arranca en la moneda de pantalla (o la última que usó al apuntar en este viaje).
@@ -578,7 +582,7 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
     // Guardamos en € (base de la app); lo tecleado iba en entryCur.
     const amtEur=+toEurAmt(amt, entryCur, state).toFixed(2);
     const e={
-      id:uid(), date:new Date().toISOString().slice(0,10),
+      id:uid(), date:date||isoLocal(),
       amount:isIn?-Math.abs(amtEur):Math.abs(amtEur),
       merchant:note.trim()||(isIn?t("cat_ingreso"):catName(cat)),
       category:isIn?"ingreso":cat, source:"manual", card:!isIn
@@ -613,17 +617,28 @@ function ApuntarSheet({open, onClose, state, set, showToast, goGastos}){
           })
         ),
         React.createElement("input",{className:"v4-input",placeholder:t("v4_apuntar_ph"),value:note,onChange:function(e){ setNote(e.target.value); }}),
+        React.createElement("div",{className:"v4-chips"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(calOpen?" on":""),"data-testid":"ap-date",
+            onClick:function(){ setCalOpen(function(v){ return !v; }); setBankOpen(false); }},
+            "📅 "+fmtIsoCorto(date)),
+          // Mismo gesto que el cuadradito de filtros en Gastos: cerrado = una pastilla,
+          // tocas y se despliegan los bancos (sin la fila infinita que tapaba el teclado).
+          bankOpts.length>0 && React.createElement("button",{type:"button",className:"v4-chip"+(bankOpen?" on":""),"data-testid":"ap-bank",
+            onClick:function(){ setBankOpen(function(v){ return !v; }); setCalOpen(false); }},
+            "🏦 "+(bank==null?t("ap_bank_none"):entOf(bank).label))
+        ),
+        calOpen && React.createElement(McCal,{value:date, onPick:function(iso){ setDate(iso); setCalOpen(false); }}),
+        bankOpen && bankOpts.length>0 && React.createElement("div",{className:"v4-chips wrap","data-testid":"ap-bank-list"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(bank==null?" on":""),onClick:function(){ setBank(null); setBankOpen(false); }}, t("ap_bank_none")),
+          bankOpts.map(function(b){
+            return React.createElement("button",{key:b,type:"button",className:"v4-chip"+(bank===b?" on":""),onClick:function(){ setBank(b); setBankOpen(false); }},
+              "🏦 "+entOf(b).label);
+          })
+        ),
         kind==="gasto" && React.createElement("div",{className:"v4-chips"},
           cats.map(function(c){
             return React.createElement("button",{key:c.id,className:"v4-chip"+(cat===c.id?" on":""),onClick:function(){ setCat(c.id); }},
               c.icon+" "+catName(c.id));
-          })
-        ),
-        bankOpts.length>0 && React.createElement("div",{className:"v4-chips"},
-          React.createElement("button",{className:"v4-chip"+(bank==null?" on":""),onClick:function(){ setBank(null); }}, t("ap_bank_none")),
-          bankOpts.map(function(b){
-            return React.createElement("button",{key:b,className:"v4-chip"+(bank===b?" on":""),onClick:function(){ setBank(b); }},
-              "🏦 "+entOf(b).label);
           })
         ),
         React.createElement("div",{className:"v4-keys"},

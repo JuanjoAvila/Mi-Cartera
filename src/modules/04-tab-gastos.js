@@ -80,16 +80,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // curso, y "Este mes" las tapaba en silencio (feedback 2026-08-01).
   useEffect(function(){ if(forceAllTs) setPreset("all"); },[forceAllTs]);
   const [range,setRange]=useState({from:"",to:""});
+  const [calPick,setCalPick]=useState(null);   // "from" | "to" | null — rango a medida, calendario de la casa
   const [sel,setSel]=useState([]);   // categorías seleccionadas; [] = todas
-  // Por defecto, el banco de gasto diario (petición 2026-08-03: «que por defecto esté marcado el
-  // banco de gasto diario, no un filtro de Todo» — así el que tenga un banco puesto ve solo lo
-  // suyo nada más entrar, en vez de todo mezclado). Sin banco diario configurado, [] = todos.
-  // Solo se calcula UNA vez al montar (igual que heavyOk): si luego cambia el banco diario no
-  // reordena el filtro que el usuario ya esté usando.
-  const [bankSel,setBankSel]=useState(function(){
-    const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
-    return daily&&daily.ent ? [daily.ent] : [];
-  }); // ents o "_manual"; [] = todos los bancos
+  // Por defecto, TODOS los bancos marcados como gasto diario (2026-08-17): no solo el
+  // principal. Él tiene Revolut + Trade Republic y el filtro arrancaba solo en TR, así que
+  // Revolut desaparecía de la lista aunque sí contara en el presupuesto. Vacío = todos.
+  // Solo se calcula UNA vez al montar: si luego cambia el marcado no reordena el filtro
+  // que el usuario ya esté usando.
+  const [bankSel,setBankSel]=useState(function(){ return expenseBankEnts(state).slice(); });
   /* Filtro por cajón (2026-08-17): «cuenta», «ingreso», «neutra», «otrobanco». Es lo que le deja
      separar el caos que describió al volver del crucero. Arranca VACÍO = se ve todo: la lista
      sigue siendo el histórico completo por defecto, esto es para explorar, no un modo nuevo. */
@@ -242,7 +240,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       return true;
     }).sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); });
     if(cands[0]){
-      setDetailId(cands[0].id); setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0});
+      setDetailId(cands[0].id); setEditExp({id:cands[0].id, merchant:cands[0].merchant||"", amount:String(Math.abs(cands[0].amount)).replace('.',','), income:cands[0].amount<0, date:String(cands[0].date||"").slice(0,10)});
       if(clearFocus) clearFocus();
       return;
     }
@@ -252,16 +250,17 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     // pareja 2026-07-10, punto 8). Si en 12s no aparece, abrimos el más reciente como antes.
     const tm=setTimeout(function(){
       const e=(state.expenses||[]).slice().sort(function(a,b){ return dateMs(b.date)-dateMs(a.date); })[0];
-      if(e){ setDetailId(e.id); setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0}); }
+      if(e){ setDetailId(e.id); setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, date:String(e.date||"").slice(0,10)}); }
       if(clearFocus) clearFocus();
     }, 12000);
     return function(){ clearTimeout(tm); };
   },[focusExp, state.expenses]);
-  const saveEdit=function(orig){
-    const amt=parseFloat(String(editExp.amount).replace(',','.'))||0;
+  const saveEdit=function(orig, extra){
+    const ed=Object.assign({}, editExp, extra||{});
+    const amt=parseFloat(String(ed.amount).replace(',','.'))||0;
     if(amt<=0){ showToast(t("g_invalid")); return; }
-    const signed=editExp.income? -amt : amt;
-    const merch=(editExp.merchant||"").trim()||orig.merchant;
+    const signed=ed.income? -amt : amt;
+    const merch=(ed.merchant||"").trim()||orig.merchant;
     /* NO se pone `editExp` a null: eso CONGELABA LA PANTALLA (bug suyo 2026-08-17, «al modificarlo
        y guardarlo se bloquea, solo si tiras para atrás puedes seguir»). El sheet decide si pintarse
        con `!exp || !editExp`, pero sus candados (`useSheetSwipe`, que pone `overflow:hidden` y se
@@ -275,11 +274,14 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
        guardado, que es lo que ese comentario prometía. */
     const sincroniza=function(e){
       setEditExp({ id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','),
-        income:e.amount<0, note:e.note||"" });
+        income:e.amount<0, note:e.note||"", date:String(e.date||"").slice(0,10) });
     };
-    if(signed===orig.amount && merch===(orig.merchant||"")){ sincroniza(orig); return; }   // sin cambios
-    const cat = editExp.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
+    const origDay=String(orig.date||"").slice(0,10);
+    const newDay=String(ed.date||origDay).slice(0,10);
+    if(signed===orig.amount && merch===(orig.merchant||"") && newDay===origDay){ sincroniza(orig); return; }   // sin cambios
+    const cat = ed.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
     const upd=Object.assign({},orig,{merchant:merch, amount:signed, category:cat});
+    if(newDay!==origDay) upd.date=newDay;
     /* Al renombrar un movimiento del banco, guardar CÓMO LO LLAMABA ÉL (2026-08-17). El dedup de
        Open Banking casa por día|importe|comercio, así que sin esto el siguiente sync no reconoce
        la fila renombrada y vuelve a meter el gasto — el caso de «Movimiento» de Trade Republic,
@@ -287,7 +289,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
        cubre las que YA tiene en el móvil, que se sellan la primera vez que las toca. */
     const esDeBanco=orig.source==="ob"||orig.source==="ob-hist";
     if(esDeBanco && upd.obName==null && merch!==(orig.merchant||"")) upd.obName=orig.merchant||"";
-    if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
+    if(ed.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
     /* Si toca el importe en euros a mano, el rastro «eran 1.520 ₺» deja de corresponderse: se
        borra en vez de arrastrarlo. Un dato viejo al lado de uno nuevo no es media verdad, es una
        mentira — y en el detalle se leerían juntos como si fueran el mismo pago. */
@@ -310,7 +312,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // enseñaría el mes pasado. Antes no pasaba porque el cálculo se rehacía en cada render.
   const todayKey=new Date().toDateString();
   const bounds=useMemo(function(){ return presetBoundsMs(preset,range,cycle&&cycle.start); },[preset,range,cycle,todayKey]);
-  const dailyEnt=useMemo(function(){ const d=(state.accounts||[]).find(function(a){ return accDaily(a); }); return d&&d.ent||null; },[state.accounts]);
+  const diarioEnts=useMemo(function(){ return expenseBankEnts(state); },[state.accounts, state.settings]);
   const bankOpts=useMemo(function(){
     const seen={}; const order=[];
     const add=function(k){ if(!k||seen[k]) return; seen[k]=1; order.push(k); };
@@ -370,8 +372,16 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   },[state.expenses,state.budget,state.reservaLog,state.settings&&state.settings.gTotalMode]);
   const subs=useMemo(function(){ return heavyOk?detectSubscriptions(expensesDef):[]; },[heavyOk,expensesDef]);
   const suggestAi=function(ex){
-    if(!cloud.enabled()||!ex||aiBusy) return;
     if(!(state.settings&&state.settings.aiCat)){ showToast(t("ai_cat_off")); return; }
+    if(!ex||aiBusy) return;
+    // KW locales primero (mismas que ingest): Recibos/heladería/… no esperan a desplegar la Edge.
+    const local=autoCategory(ex.merchant||"");
+    if(local && local!=="otros" && CAT[local]){
+      setCat(ex,local);
+      showToast(tf("ai_cat_ok",{c:catName(local)}));
+      return;
+    }
+    if(!cloud.enabled()){ showToast(t("ai_cat_none")); return; }
     setAiBusy(true);
     cloud.suggestCategory(ex.merchant||"").then(function(res){
       const cat=res&&res.category;
@@ -414,7 +424,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // el React.memo de MovRow no serviría para nada y volveríamos al problema de siempre.
   const openDetail=useCallback(function(e){
     setDetailId(e.id);
-    setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, note:e.note||""});
+    setEditExp({id:e.id, merchant:e.merchant||"", amount:String(Math.abs(e.amount)).replace('.',','), income:e.amount<0, note:e.note||"", date:String(e.date||"").slice(0,10)});
     setCatEdit(null);
   },[]);
   // Invalida las filas memoizadas cuando cambia el idioma o la moneda de visualización (las leen
@@ -424,9 +434,9 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   // Resumen de filtros activos, para el botón "Filtros" (badge) y la línea de chips debajo.
   // Se calcula aquí (no memoizado: sel/bankSel son arrays cortos) porque lo usan dos sitios:
   // el botón junto al buscador y la línea de resumen + "Borrar filtros".
-  const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
+  const bankSelIsDefault=sameEntList(bankSel, diarioEnts);
   const nCatSel=sel.length;
-  const nBankSel=bankSelIsDefault?0:bankSel.length;
+  const nBankSel=bankSelIsDefault?0:(bankSel.length||1);
   const nFilters=nCatSel+nBankSel+bucketSel.length;
   const filterParts=[];
   if(bucketSel.length===1) filterParts.push(t("g_bk_"+bucketSel[0]));
@@ -434,10 +444,11 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   if(nCatSel===1) filterParts.push(catName(sel[0]));
   else if(nCatSel>1) filterParts.push(nCatSel+" "+t("g_filters_cats"));
   if(!bankSelIsDefault){
-    if(bankSel.length===1){
+    if(bankSel.length===0) filterParts.push(t("g_allbanks"));
+    else if(bankSel.length===1){
       const b=bankSel[0];
       filterParts.push(b==="_manual"?t("g_bank_manual"):(entOf(b).label||b));
-    } else if(bankSel.length>1) filterParts.push(bankSel.length+" "+t("g_filters_banks"));
+    } else filterParts.push(bankSel.length+" "+t("g_filters_banks"));
   }
 
   const shown=filtered.slice(0,visible);
@@ -576,10 +587,18 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               React.createElement("strong",null,t("g_cycle_none_t")),
               t("g_cycle_none"))
       ),
-      preset==="custom" && React.createElement("div",Object.assign({className:"range"},stopSwipe),
-        React.createElement("input",{type:"date",value:range.from,onChange:e=>setRange(Object.assign({},range,{from:e.target.value}))}),
-        React.createElement("span",null,"→"),
-        React.createElement("input",{type:"date",value:range.to,onChange:e=>setRange(Object.assign({},range,{to:e.target.value}))})
+      preset==="custom" && React.createElement("div",null,
+        React.createElement("div",Object.assign({className:"range"},stopSwipe),
+          React.createElement("button",{type:"button",className:"v4-chip"+(calPick==="from"?" on":""),onClick:function(){ setCalPick(calPick==="from"?null:"from"); }},
+            range.from?fmtIsoCorto(range.from):t("g_custom")),
+          React.createElement("span",null,"→"),
+          React.createElement("button",{type:"button",className:"v4-chip"+(calPick==="to"?" on":""),onClick:function(){ setCalPick(calPick==="to"?null:"to"); }},
+            range.to?fmtIsoCorto(range.to):t("g_custom"))
+        ),
+        calPick && React.createElement(McCal,{value:calPick==="from"?range.from:range.to, onPick:function(iso){
+          setRange(function(r){ const n=Object.assign({},r); n[calPick]=iso; return n; });
+          setCalPick(null);
+        }})
       ),
       // Resumen de los filtros activos (categorías/bancos) + botón para quitarlos. El botón que
       // ABRE el sheet ya no vive aquí: se movió junto al buscador (ver arriba).
@@ -588,7 +607,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
           setSel([]);
           setBucketSel([]);
-          setBankSel(dailyEnt?[dailyEnt]:[]);
+          setBankSel(diarioEnts.slice());
         },style:{padding:"8px 12px"}}, t("g_filters_clear"))
       )
     ),
@@ -625,8 +644,8 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // el filtro" (feedback 2026-08-01). Solo si hay histórico real en OTRO período y
               // no hay ningún filtro activo (búsqueda/categoría/banco) es "vacío por normal";
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
-              // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
-              // (2026-08-03), no algo que el usuario haya elegido a mano.
+              // bankSel igual a los de gasto diario cuenta como "sin filtro": es la
+              // preselección automática (2026-08-17: todos los marcados, no solo el principal).
               const sinFiltros=!q.trim() && !sel.length && !bucketSel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
@@ -646,7 +665,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       open:filterOpen, onClose:function(){ setFilterOpen(false); },
       sel:sel, setSel:setSel, bankSel:bankSel, setBankSel:setBankSel,
       bucketSel:bucketSel, setBucketSel:setBucketSel,
-      bankOpts:bankOpts, dailyEnt:dailyEnt
+      bankOpts:bankOpts, diarioEnts:diarioEnts
     }),
     detailId && React.createElement(ExpenseDetailSheet,{
       exp:(state.expenses||[]).find(function(e){ return e.id===detailId; }),
@@ -707,7 +726,7 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen, bucket}){
 
 /* Sheet de filtros (2026-08-05): categorías + bancos con buscador, sin la fila infinita de chips.
    Misma mecánica que PeriodMoreSheet (swipe abajo + atrás). */
-function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bucketSel, setBucketSel, bankOpts, dailyEnt}){
+function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bucketSel, setBucketSel, bankOpts, diarioEnts}){
   useBackClose(!!open, onClose);
   const swipe=useSheetSwipe(!!open, onClose);
   const [qCat,setQCat]=useState("");
@@ -733,7 +752,7 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, buc
   const clearAll=function(){
     setSel([]);
     setBucketSel([]);
-    setBankSel(dailyEnt?[dailyEnt]:[]);
+    setBankSel((diarioEnts||[]).slice());
   };
   const toggleBucket=function(b){
     setBucketSel(function(prev){
@@ -760,11 +779,11 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, buc
           React.createElement("button",{type:"button",className:"v4-chip"+(bucketSel.length===0?" on":""),onClick:function(){ setBucketSel([]); }}, t("g_bk_all")),
           /* SIN chip «De otros bancos» (rechazo suyo, 2026-08-17): «no hace nada y tampoco se ve
              para qué está dado que ya puedes elegir los bancos abajo». Las dos cosas ciertas.
-             No hacía nada porque el filtro de bancos arranca preseleccionado en la cuenta de gasto
-             diario, y «de otros bancos» significa justo «que NO es esa» → el cruce salía siempre
-             vacío. Y aunque no arrancara así, es el único de los cuatro que se puede pedir ya con
-             los chips de banco de abajo. El cajón `otrobanco` sigue existiendo: es el que hace que
-             la fila diga «no es del día a día», que es la parte que sí servía. */
+             Antes no hacía nada porque el filtro arrancaba en UN solo banco diario y «de otros
+             bancos» era exactamente lo contrario → cruce vacío. Ahora arranca en TODOS los de
+             gasto diario, y aun así el chip sobra: los chips de banco de abajo ya hacen eso.
+             El cajón `otrobanco` sigue existiendo: es el que hace que la fila diga «no es del
+             día a día». */
           [["cuenta","💸"],["ingreso","💰"],["neutra","📈"]].map(function(p){
             const on=bucketSel.indexOf(p[0])!==-1;
             return React.createElement("button",{key:p[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBucket(p[0]); }},
@@ -827,15 +846,14 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
   const abierto=!!exp && !!editExp;
   useBackClose(abierto, onClose);
   const swipe=useSheetSwipe(abierto, onClose);
+  const [calOpen,setCalOpen]=useState(false);
+  useEffect(function(){ if(!abierto) setCalOpen(false); },[abierto, exp&&exp.id]);
   if(!abierto) return null;
   const c=catOf(exp.category);
   const isIncome=exp.amount<0 || !!editExp.income;
   const bk=expenseBankOf(exp);
   const auto=exp.source && exp.source!=="manual";
-  const d=parseDate(exp.date);
-  const dateLbl=d&&!isNaN(d.getTime())
-    ? d.toLocaleDateString(loc(),{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})
-    : "—";
+  const dateIso=String(editExp.date||exp.date||"").slice(0,10);
   const closeSave=function(){ saveEdit(exp); };   // blur solo guarda; no cierra (cerrar al cambiar cat saltaba de pantalla — feedback 2026-07-17)
   const doSaveClose=function(){ saveEdit(exp); onClose(); };
   const doDel=function(){
@@ -849,7 +867,7 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
   const origLbl=(exp.origCur && exp.origAmount>0)
     ? NF.format(Math.abs(exp.origAmount))+" "+(CUR_SYM[exp.origCur]||exp.origCur)
     : null;
-  const metaBits=[dateLbl, origLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
+  const metaBits=[origLbl, bk?entOf(bk).label:null, auto?t("v4_exp_auto"):t("v4_exp_manual")].filter(Boolean);
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
       React.createElement("div",Object.assign({className:"v4-sheet v4-exp-sheet",style:{maxHeight:"90dvh"},ref:swipe.sheetRef,onClick:function(e){ e.stopPropagation(); }}, swipe.sheetTouch),
@@ -860,6 +878,16 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
           React.createElement("input",{className:"v4-exp-name",value:editExp.merchant,placeholder:t("v4_exp_merchant_ph"),onChange:function(e){ const v=e.target.value; setEditExp(function(p){ return Object.assign({},p,{merchant:v}); }); },onBlur:closeSave}),
           React.createElement("div",{className:"v4-exp-meta"}, metaBits.join(" · "))
         ),
+        React.createElement("div",{className:"v4-exp-sec",style:{marginTop:12}}, t("ap_date")),
+        React.createElement("div",{className:"v4-chips"},
+          React.createElement("button",{type:"button",className:"v4-chip"+(calOpen?" on":""),"data-testid":"exp-date",
+            onClick:function(){ setCalOpen(function(v){ return !v; }); }},
+            "📅 "+fmtIsoCorto(dateIso))
+        ),
+        calOpen && React.createElement(McCal,{value:dateIso, onPick:function(iso){
+          setCalOpen(false);
+          saveEdit(exp, {date:iso});
+        }}),
         // CONCEPTO (2026-07-24): lo que trae el banco/el bizum, y editable para poder apuntar lo
         // que sea («comida con los del trabajo»). Se guarda con nota_edit para que el siguiente
         // sync del banco no pise lo que ha escrito el usuario.
@@ -893,7 +921,8 @@ function ExpenseDetailSheet({exp, editExp, setEditExp, onClose, setCat, setCardF
               )
             );
           })(),
-          exp.category==="otros" && cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
+          // En cualquier categoría (no solo Otros): KW + IA si el interruptor está on.
+          cloud.enabled() && React.createElement("button",{type:"button",className:"btn btn-ghost btn-block",style:{marginTop:8},disabled:aiBusy,onClick:function(){ suggestAi(exp); }}, aiBusy?t("ai_cat_busy"):t("ai_cat_btn"))
         ),
         React.createElement("div",{className:"v4-exp-sec",style:{marginTop:14}}, t("v4_exp_type")),
         React.createElement("div",{className:"v4-toggle"},
