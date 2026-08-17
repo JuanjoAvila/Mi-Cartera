@@ -91,7 +91,8 @@ npx playwright install chromium
 ### Ejecutar tests
 
 ```powershell
-npm test          # build + unit + E2E
+npm test          # build + unit + E2E (suite entera; lo que corre main y el promote)
+npm run test:relevant  # como la rama beta: solo lo que toca el último commit
 npm run test:e2e  # solo Playwright (más rápido)
 npm run build     # solo ensamblar src → public/index.html
 # Sueltos, cuando solo tocas una zona:
@@ -115,8 +116,12 @@ Tras v3.108.0 la lógica vive en **`src/modules/*.js`**. No edites `public/index
 
 ## CI
 
-- `.github/workflows/test.yml` — push/PR
-- `.github/workflows/deploy.yml` — job `test` antes de publicar Pages
+- `.github/workflows/test.yml` — push/PR a **main**: suite **entera**
+- `.github/workflows/promote-beta.yml` — al subir a producción: suite **entera**
+- `.github/workflows/beta.yml` — push a **beta**: recorte por carpetas (`scripts/relevant-tests.mjs`).
+  Docs → sin Chromium. Ingest → Deno, sin e2e. Gastos → sus specs. Núcleo (motor, i18n, shell,
+  runner) o un workflow → todo. El mapa e2e se mantiene a mano; un módulo nuevo sin línea en
+  `E2E_MAP`/`CORE` obliga la suite entera a propósito.
 
 ## Playwright en modo visual (opcional)
 
@@ -140,7 +145,7 @@ Por eso la beta no va por Pages, sino como assets de una **release fija con la e
 
 ```
 rama `beta`  ──push──►  .github/workflows/beta.yml
-                          ├─ npm test (los mismos que producción)
+                          ├─ relevant-tests (docs/ingest se saltan Chromium; núcleo = todo)
                           ├─ build + stamp + minify
                           └─ sube bundle.zip + version.json a la release `beta`
                                      │

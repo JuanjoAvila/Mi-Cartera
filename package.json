@@ -7,6 +7,7 @@
     "build": "node scripts/build-app.mjs",
     "build:sentry": "node scripts/bundle-sentry.mjs",
     "test": "node scripts/run-tests.mjs",
+    "test:relevant": "node scripts/relevant-tests.mjs --git && node scripts/run-tests.mjs --plan relevant-plan.json",
     "test:syntax": "node scripts/check-syntax.mjs",
     "test:privacy": "node scripts/guard-privacy.mjs",
     "test:e2e": "npx playwright test --config=playwright.config.mjs",

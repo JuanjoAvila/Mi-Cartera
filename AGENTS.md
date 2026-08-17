@@ -229,7 +229,7 @@ otra IA, eso **no existe**.
 
 ## 7. Verificar de verdad (no «debería funcionar»)
 
-- **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre en CI (`.github/workflows/test.yml`).
+- **Tests automáticos:** `npm test` (sintaxis del monolito con `vm.Script` + lógica financiera, parsers Revolut e ingest). Corre **entero** en CI de `main` y al promocionar. En la rama `beta`, `relevant-tests` recorta por carpetas (docs sin Chromium, ingest sin e2e, Gastos solo sus specs); si se toca el núcleo o un workflow, corre todo igual. El mapa vive en `scripts/relevant-tests.mjs`.
 - Sintaxis del monolito: extrae los `<script>` y pásalos por `new vm.Script(...)`. Un `node --check`
   del HTML no vale.
 - Pruébalo **en el navegador** con datos reales antes de cantar victoria. En la v3.100.0, el parser

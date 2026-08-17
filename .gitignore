@@ -52,3 +52,6 @@ test-results/
 /tools/movil/_vid/
 /tools/movil/verify_*.png
 /tools/movil/diag-*.mjs
+# Plan de tests recortados (lo escribe scripts/relevant-tests.mjs en local y en CI)
+relevant-plan.json
+
