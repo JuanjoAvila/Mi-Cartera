@@ -1424,10 +1424,13 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
-  {v:"4.16.2", d:"17 ago 2026",
-   t:{es:"El widget de la pantalla de inicio deja de contradecirse",
-      en:"The home screen widget stops contradicting itself",
-      ca:"El widget de la pantalla d'inici deixa de contradir-se"},
+  {v:"4.17.0", d:"17 ago 2026",
+   t:{es:"Orden en Gastos: qué cuenta, qué no, y de qué banco sale",
+      en:"Order in Spending: what counts, what doesn't, and which bank it came from",
+      ca:"Ordre a Despeses: què compta, què no, i de quin banc surt"},
+   /* La tanda del widget sigue AQUÍ y con los puntos escritos IGUAL que en la 4.16.2 a propósito:
+      el panel hereda los ✓/✗ de una compilación anterior casando por el TEXTO del punto, así que
+      lo que él ya probó se conserva y solo le quedan los que faltaban. */
    tandas:[
      {id:"widget-coherente", t:"📊 El widget dice la verdad con la app cerrada", items:[
        "Mira el widget y abre la app: «gastado este mes» es el mismo número en los dos sitios.",
@@ -1437,7 +1440,38 @@ var RELEASE_NOTES=[
        "Haz un pago que no cuente para el presupuesto (una inversión o un traspaso): el gasto del mes del widget no se mueve.",
        "El saldo de la cuenta de gasto que sale abajo en el widget también baja con cada pago, sin esperar a abrir la app.",
      ]},
+     {id:"gastos-orden", t:"🧾 En Gastos se ve qué cuenta y qué no", items:[
+       "En Gastos, una inversión o un traspaso salen apagados y ponen «no es un gasto».",
+       "Un recibo de un banco que no es el del día a día sale apagado y pone «no es del día a día» (antes los dos decían lo mismo).",
+       "Un ingreso NO sale apagado: se ve en verde con su «+», porque entra dinero.",
+       "Cada movimiento dice de qué banco sale, también los que apuntas a mano.",
+       "Filtros (🎛️) → arriba del todo hay «Qué contar»: elige «Inversión y traspasos» y solo quedan esos.",
+       "Prueba también «Ingresos» y «De otros bancos»; con «Todo» vuelves a verlo entero.",
+       "«Limpiar» quita también ese filtro, no solo las categorías y los bancos.",
+       "Abre un movimiento de Trade Republic que ponga «Movimiento», cámbiale el nombre y guarda.",
+       "★ Sincroniza los bancos después de renombrarlo: el gasto NO puede aparecer duplicado (ese era el fallo).",
+     ]},
    ],
+   items:{
+   es:[
+    "🧾 En Gastos ahora se distingue de un vistazo lo que cuenta de lo que no: una inversión o un traspaso dicen «no es un gasto», y un recibo de otro banco dice «no es del día a día». Antes los dos ponían lo mismo y costaba saber por qué.",
+    "🎛️ En los filtros hay un apartado nuevo, «Qué contar», para ver por separado los gastos que cuentan, los ingresos, las inversiones y traspasos, o lo que viene de otros bancos.",
+    "✏️ Los movimientos que llegan del banco sin nombre (los que ponen «Movimiento») ya se pueden renombrar sin que la siguiente sincronización los vuelva a meter duplicados.",
+   ],
+   en:[
+    "🧾 Spending now shows at a glance what counts and what doesn't: an investment or a transfer says «not spending», and a bill from another bank says «not day-to-day». Before, both said the same thing and it was hard to tell why.",
+    "🎛️ The filters have a new section, «What to count», to look separately at spending that counts, income, investing and transfers, or whatever comes from other banks.",
+    "✏️ Movements that arrive from the bank with no name (the ones saying «Movement») can now be renamed without the next sync bringing them back in duplicate.",
+   ],
+   ca:[
+    "🧾 A Despeses ara es distingeix d'un cop d'ull el que compta del que no: una inversió o un traspàs diuen «no és una despesa», i un rebut d'un altre banc diu «no és del dia a dia». Abans tots dos deien el mateix i costava saber per què.",
+    "🎛️ Als filtres hi ha un apartat nou, «Què comptar», per veure per separat les despeses que compten, els ingressos, les inversions i traspassos, o el que ve d'altres bancs.",
+    "✏️ Els moviments que arriben del banc sense nom (els que posen «Moviment») ja es poden reanomenar sense que la següent sincronització els torni a posar duplicats.",
+   ]}},
+  {v:"4.16.2", d:"17 ago 2026",
+   t:{es:"El widget de la pantalla de inicio deja de contradecirse",
+      en:"The home screen widget stops contradicting itself",
+      ca:"El widget de la pantalla d'inici deixa de contradir-se"},
    items:{
    es:[
     "📊 El widget de la pantalla de inicio se contradecía: podía decir que te quedaban 109 € y justo debajo que podías gastar 324 €. Pasaba con la app cerrada, cuando entraba un pago: actualizaba lo gastado pero se dejaba el resto de cifras del rato anterior. Ahora se actualizan todas juntas y siempre cuadran entre ellas.",

@@ -90,6 +90,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     const daily=(state.accounts||[]).find(function(a){ return accDaily(a); });
     return daily&&daily.ent ? [daily.ent] : [];
   }); // ents o "_manual"; [] = todos los bancos
+  /* Filtro por cajón (2026-08-17): «cuenta», «ingreso», «neutra», «otrobanco». Es lo que le deja
+     separar el caos que describió al volver del crucero. Arranca VACÍO = se ve todo: la lista
+     sigue siendo el histórico completo por defecto, esto es para explorar, no un modo nuevo. */
+  const [bucketSel,setBucketSel]=useState([]);
   const [q,setQ]=useState("");        // búsqueda por texto (comercio/categoría)
   const [morePeriods,setMorePeriods]=useState(false);
   const [filterOpen,setFilterOpen]=useState(false);
@@ -261,6 +265,13 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     if(signed===orig.amount && merch===(orig.merchant||"")){ setEditExp(null); return; }   // sin cambios
     const cat = editExp.income ? "ingreso" : (orig.category==="ingreso" ? autoCategory(merch) : orig.category);
     const upd=Object.assign({},orig,{merchant:merch, amount:signed, category:cat});
+    /* Al renombrar un movimiento del banco, guardar CÓMO LO LLAMABA ÉL (2026-08-17). El dedup de
+       Open Banking casa por día|importe|comercio, así que sin esto el siguiente sync no reconoce
+       la fila renombrada y vuelve a meter el gasto — el caso de «Movimiento» de Trade Republic,
+       que es justo el que él quiere poder renombrar. Las filas nuevas ya nacen con `obName`; esto
+       cubre las que YA tiene en el móvil, que se sellan la primera vez que las toca. */
+    const esDeBanco=orig.source==="ob"||orig.source==="ob-hist";
+    if(esDeBanco && upd.obName==null && merch!==(orig.merchant||"")) upd.obName=orig.merchant||"";
     if(editExp.income) upd.noCard=true;   // un ingreso nunca alimenta el round-up
     /* Si toca el importe en euros a mano, el rastro «eran 1.520 ₺» deja de corresponderse: se
        borra en vez de arrastrarlo. Un dato viejo al lado de uno nuevo no es media verdad, es una
@@ -304,6 +315,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     const needle=q.trim().toLowerCase();
     const catSet=sel.length? new Set(sel) : null;         // indexOf en cada gasto era O(n·m)
     const bankSet=bankSel.length? new Set(bankSel) : null;
+    const bkSet=bucketSel.length? new Set(bucketSel) : null;
     const out=[];
     const src=expensesDef||[];
     for(let i=0;i<src.length;i++){
@@ -311,6 +323,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       if(!inBounds(dateMs(e.date),bounds)) continue;
       if(catSet && !catSet.has(e.category)) continue;
       if(bankSet && !bankSet.has(expenseBankOf(e)||"_manual")) continue;
+      if(bkSet && !bkSet.has(expenseBucket(e, state))) continue;
       if(needle){
         // El concepto también se busca: si tu padre busca «alquiler» tiene que salir el bizum
         // cuyo mensaje lo dice, aunque el título sea solo el nombre de la persona (2026-07-24).
@@ -322,7 +335,9 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       out.push(e);
     }
     return out.sort((a,b)=>dateMs(b.date)-dateMs(a.date));
-  },[expensesDef,bounds,sel,bankSel,q]);
+    // `state.settings`/`state.accounts` van en las dependencias porque `expenseBucket` los lee
+    // (qué bancos son de gasto diario): cambiar eso tiene que re-filtrar la lista.
+  },[expensesDef,bounds,sel,bankSel,bucketSel,q,state.settings,state.accounts]);
 
   // La cabecera es siempre el mes natural: los filtros sirven para explorar, pero no deben hacer
   // que el presupuesto parezca cambiar al mirar otro período o una categoría.
@@ -350,7 +365,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
       showToast(tf("ai_cat_ok",{c:catName(cat)}));
     }).catch(function(e){ showToast("⚠ "+((e&&e.message)||e)); }).finally(function(){ setAiBusy(false); });
   };
-  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,q]);
+  useEffect(()=>{ setVisible(CONFIG.PAGE_SIZE); },[preset,range,sel,bankSel,bucketSel,q]);
   /* LA PAGINACIÓN DE LA LISTA — sus fallos, y el de 2026-07-27.
      1. «Cuando bajas hacia abajo RAPIDÍSIMO deslizando se para cada cierto tiempo.» El centinela
         se vigilaba con `rootMargin:120px`, o sea que la tanda siguiente no se pedía hasta tenerlo
@@ -397,8 +412,10 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
   const bankSelIsDefault=bankSel.length===0 || (dailyEnt && bankSel.length===1 && bankSel[0]===dailyEnt);
   const nCatSel=sel.length;
   const nBankSel=bankSelIsDefault?0:bankSel.length;
-  const nFilters=nCatSel+nBankSel;
+  const nFilters=nCatSel+nBankSel+bucketSel.length;
   const filterParts=[];
+  if(bucketSel.length===1) filterParts.push(t("g_bk_"+bucketSel[0]));
+  else if(bucketSel.length>1) filterParts.push(bucketSel.length+" "+t("g_bk_title").toLowerCase());
   if(nCatSel===1) filterParts.push(catName(sel[0]));
   else if(nCatSel>1) filterParts.push(nCatSel+" "+t("g_filters_cats"));
   if(!bankSelIsDefault){
@@ -555,6 +572,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
         React.createElement("span",{style:{fontSize:12.5,color:"var(--muted)",lineHeight:1.35,flex:"1 1 120px"}}, filterParts.join(" · ")),
         React.createElement("button",{type:"button",className:"v4-chip",onClick:function(){
           setSel([]);
+          setBucketSel([]);
           setBankSel(dailyEnt?[dailyEnt]:[]);
         },style:{padding:"8px 12px"}}, t("g_filters_clear"))
       )
@@ -594,7 +612,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
               // si además hay un filtro puesto, el mensaje de siempre sigue siendo el correcto.
               // bankSel==[dailyEnt] cuenta como "sin filtro": es la preselección automática
               // (2026-08-03), no algo que el usuario haya elegido a mano.
-              const sinFiltros=!q.trim() && !sel.length && bankSelIsDefault;
+              const sinFiltros=!q.trim() && !sel.length && !bucketSel.length && bankSelIsDefault;
               const hayHistorico=(expensesDef||[]).length>0;
               const esVacioNormal=sinFiltros && hayHistorico && (preset==="month"||preset==="cycle");
               return React.createElement("div",{className:"empty"},
@@ -604,7 +622,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
           : groups.map(function(g,i){ return g.sep
               ? React.createElement("div",{className:"day-sep",key:"s"+i},g.sep)
               : React.createElement(MovRow,{key:g.e.id||i, e:g.e, ms:g.ms, onOpen:openDetail, l10n:l10nKey,
-                  countsBudget:expenseCountsBudget(g.e, state)}); }),
+                  bucket:expenseBucket(g.e, state)}); }),
         visible<filtered.length && React.createElement("div",{className:"sentinel",ref:sentinelRefCb},t("g_loadmore"))
       )
     ),
@@ -612,6 +630,7 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
     React.createElement(GastosFilterSheet,{
       open:filterOpen, onClose:function(){ setFilterOpen(false); },
       sel:sel, setSel:setSel, bankSel:bankSel, setBankSel:setBankSel,
+      bucketSel:bucketSel, setBucketSel:setBucketSel,
       bankOpts:bankOpts, dailyEnt:dailyEnt
     }),
     detailId && React.createElement(ExpenseDetailSheet,{
@@ -634,16 +653,20 @@ function Expenses({state, set, onSync, syncing, syncStatus, showToast, stopSwipe
    `l10n` (idioma|símbolo de moneda) es un prop a posta: catName/entOf/eur leen globales que memo
    no puede ver, así que sin él cambiar de idioma o de moneda dejaría las filas en el idioma viejo.
    `onOpen` tiene que ser ESTABLE (useCallback) o el memo no sirve de nada. */
-const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
+const MovRow=React.memo(function MovRow({e, ms, onOpen, bucket}){
   // `ms` y no un `Date`: ver el porqué donde se construyen los grupos. El objeto se crea aquí,
   // que es la única línea que lo necesita, y solo cuando la fila se pinta de verdad.
-  // `countsBudget` (bool) lo pasa el padre: si se pasara `state` entero, el memo no acertaría nunca.
+  // `bucket` (string) lo pasa el padre: si se pasara `state` entero, el memo no acertaría nunca.
   const d=new Date(ms);
   const c=catOf(e.category);
   const isIncome=e.amount<0;
   const bk=expenseBankOf(e);
   const note=expenseNote(e);   // concepto del bizum / descripción del banco (2026-07-24)
-  const skip=countsBudget===false;
+  // Un ingreso NO va apagado: entra dinero, no es un gasto que se descarta. Solo se atenúan los
+  // dos cajones que no mueven el presupuesto, y cada uno dice el suyo en vez de un «no afecta»
+  // genérico que hacía que una inversión y un recibo de Sabadell parecieran lo mismo.
+  const skip=bucket==="neutra"||bucket==="otrobanco";
+  const skipTxt=skip?t("g_skip_"+bucket):"";
   return React.createElement("button",{type:"button",className:"v4-mov"+(skip?" v4-mov-skip":""),onClick:function(){ onOpen(e); },
       style:skip?{opacity:.72}:null},
     React.createElement("div",{className:"tile",style:{borderColor:c.color+"55",color:c.color,background:c.color+"18"}},c.icon),
@@ -659,7 +682,7 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
         ):null,
         skip?React.createElement(React.Fragment,null,
           React.createElement("span",{className:"sep"},"·"),
-          React.createElement("span",{style:{color:"var(--muted-2)"}}, t("g_no_budget"))
+          React.createElement("span",{style:{color:"var(--muted-2)"}}, skipTxt)
         ):null
       )
     ),
@@ -669,7 +692,7 @@ const MovRow=React.memo(function MovRow({e, ms, onOpen, countsBudget}){
 
 /* Sheet de filtros (2026-08-05): categorías + bancos con buscador, sin la fila infinita de chips.
    Misma mecánica que PeriodMoreSheet (swipe abajo + atrás). */
-function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bankOpts, dailyEnt}){
+function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, bucketSel, setBucketSel, bankOpts, dailyEnt}){
   useBackClose(!!open, onClose);
   const swipe=useSheetSwipe(!!open, onClose);
   const [qCat,setQCat]=useState("");
@@ -694,7 +717,14 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, ban
   };
   const clearAll=function(){
     setSel([]);
+    setBucketSel([]);
     setBankSel(dailyEnt?[dailyEnt]:[]);
+  };
+  const toggleBucket=function(b){
+    setBucketSel(function(prev){
+      const has=prev.indexOf(b)!==-1;
+      return has?prev.filter(function(x){ return x!==b; }):prev.concat([b]);
+    });
   };
   return ReactDOM.createPortal(
     React.createElement("div",{className:"v4-sheet-back",onClick:onClose},
@@ -706,6 +736,18 @@ function GastosFilterSheet({open, onClose, sel, setSel, bankSel, setBankSel, ban
           React.createElement("span",{className:"searchbar-ic"},"🔍"),
           React.createElement("input",{className:"searchbar-in",type:"search",placeholder:t("g_filters_search"),value:qCat,onChange:function(e){ setQCat(e.target.value); }}),
           qCat && React.createElement("button",{className:"searchbar-x",type:"button",onClick:function(){ setQCat(""); }},"✕")
+        ),
+        /* «Qué contar» va PRIMERO y sin buscador: son cuatro y es lo que él vino a separar
+           («hay bastante caos entre gastos que cuentan, ingresos y movimientos que no cuentan»).
+           Las categorías y los bancos siguen debajo, igual que siempre. */
+        React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_bk_title")),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
+          React.createElement("button",{type:"button",className:"v4-chip"+(bucketSel.length===0?" on":""),onClick:function(){ setBucketSel([]); }}, t("g_bk_all")),
+          [["cuenta","💸"],["ingreso","💰"],["neutra","📈"],["otrobanco","🏦"]].map(function(p){
+            const on=bucketSel.indexOf(p[0])!==-1;
+            return React.createElement("button",{key:p[0],type:"button",className:"v4-chip"+(on?" on":""),onClick:function(){ toggleBucket(p[0]); }},
+              p[1]+" "+t("g_bk_"+p[0]));
+          })
         ),
         React.createElement("div",{style:{fontSize:12,fontWeight:800,color:"var(--muted-2)",letterSpacing:".04em",textTransform:"uppercase",marginBottom:8}}, t("g_filters_cats")),
         React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}},
