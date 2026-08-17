@@ -4,12 +4,12 @@
 
 ---
 name: feedback-no-dar-por-hecho
-description: "⚠ No afirmar que algo está cubierto/verificado sin haber VISTO la evidencia concreta. Un grep que vuelve vacío es un hallazgo, no un silencio. Y usar a Cursor de contraste a propósito: él paga las dos."
+description: "⚠ No afirmar que algo está cubierto/verificado/subido sin haber VISTO la evidencia. Un grep vacío es un hallazgo. Una tabla de estado es una AFIRMACIÓN: en el disco ≠ en beta. Y usar a Cursor de contraste: él paga las dos."
 metadata: 
   node_type: memory
   type: feedback
   originSessionId: c3a6b0a3-82cd-40b5-8be7-6aec293a2f8c
-  modified: 2026-08-17T16:29:43.298Z
+  modified: 2026-08-17T19:47:11.104Z
 ---
 
 **El fallo (2026-08-17, el que más le quemó de la sesión).** Escribí `tests/widget-coherente.test.mjs`
@@ -40,3 +40,11 @@ desconfianza sana que le habría hecho comprobarlo.
 4. **Usar a Cursor de contraste a propósito**, no esperar a que le pille los fallos de rebote: él
    paga las dos y quiere que se aprovechen. Ver [[feedback-traspaso-a-cursor]] — en bugs duros
    Cursor me ha superado más de una vez.
+5. **Una tabla de estado, un plan o un ROADMAP son AFIRMACIONES** — segunda vez el mismo día
+   (17/8 noche): la tanda 3+4 se pintó como «EN 4.18.0 beta» estando solo en el working tree, sin
+   commit y sin push. Norma de Cursor en `.cursor/rules/no-afirmar-sin-comprobar.mdc` +
+   `EMPIEZA-AQUI.md`. **Cuatro escalones, y no se colapsan:** disco → `origin/beta` tiene el commit
+   → `beta.yml` publicó `version.json` de ESA versión → `main`/Pages. Si solo está en el disco se
+   dice **«en el working tree, sin commit»**, nunca disfrazado de canal. ⚠ Matiz mío: **push OK ≠
+   CI OK** — el commit puede estar en `origin/beta` con `beta.yml` caído, y entonces su móvil sigue
+   con lo viejo. Comprobar `gh run list --branch beta` antes de decir «lo puedes bajar».
