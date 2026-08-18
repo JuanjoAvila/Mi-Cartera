@@ -8,7 +8,7 @@
 >
 > | Lo que dice el brief | Lo que hay de verdad hoy |
 > |---|---|
-> | «Tip remoto (roto): `3f9d6572` → 4.15.0.12» | `beta` va por **4.18.0.1**. Ese commit es de hace 12 días. |
+> | «Tip remoto (roto): `3f9d6572` → 4.15.0.12» | Producción y `beta` van por **4.18.3**. Ese commit es de hace 13 días. |
 > | «Hay cambios **sin commit** de un intento .13 — NO descartar a ciegas» | **No existen.** El árbol está limpio. No busques ese WIP. |
 > | «Cómo empezar: `git diff src/shell.html src/modules/11-app-main.js`» | Devolverá vacío. |
 > | «Done criteria 7: CI stamp **4.15.0.13+**» | Sería un bump hacia atrás. Parte de `VERSION` real. |
@@ -19,7 +19,8 @@
 > [`brief-crucero-verificar-pages.md`](brief-crucero-verificar-pages.md)):
 >
 > 1. **Parpadeo al cambiar de pestaña** en 4.15+ — se nota MÁS con temporada, **pero también sin**.
->    Confirmar con Temática **Ninguna** antes de tocar nada de season.
+>    **CONFIRMADO 18/8 por él:** también pasa con Temática **Ninguna**. No toques season a ciegas:
+>    es compositor / WebView.
 > 2. **Capa negra al tirar de Cartera más a la derecha** (overscroll) — sospecha del clamp del
 >    gesto al volver.
 >

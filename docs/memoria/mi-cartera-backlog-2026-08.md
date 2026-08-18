@@ -9,7 +9,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: d6ae387e-f9d4-460d-b8dc-c43511bd8b4c
-  modified: 2026-08-17T16:26:21.919Z
+  modified: 2026-08-18T19:35:55.816Z
 ---
 
 **⚠ ESTE FICHERO ES LA LISTA ÚNICA. Si aparece algo nuevo, va aquí.** Se armó porque el 4/8 le di un
@@ -54,9 +54,13 @@ Aquí solo el inventario, para que no se pierda ninguna.
 **Nuevo**
 11. **Meta ahorrada que sustituye TEMPORALMENTE el «gasto del mes»**: gastar de la hucha de una meta
     no es gasto corriente. Si marcas varios bancos en la meta, un gasto de esos bancos elige la meta
-    solo. Al llegar a 0 €, vuelve el presupuesto normal. ⚠ Toca `monthBudgetStats` en TRES sitios
-    (cliente, ingest, widget) → **no empezar hasta que la 1 esté aprobada**.
-12. **Controlar el dinero en EFECTIVO**: lo que tienes, lo que entra y lo que sale.
+    solo. Al llegar a 0 €, vuelve el presupuesto normal. **Diseño cerrado 18/8** en
+    `docs/briefs/plan-tanda-5-meta-gasto-mes.md`. El aviso de reescribir `monthBudgetStats` **queda
+    derogado** (entra por `expenseCountsBudget`, sin Java). Sus 2 metas están al 0% → no urge.
+    Va **después** del saldo cruzado (§2-BIS).
+12. **Controlar el dinero en EFECTIVO**: lo que tienes, lo que entra y lo que sale. **Diseño cerrado
+    18/8** en `docs/briefs/plan-tanda-6-efectivo.md`. Es una cuenta manual más, no un módulo.
+    **Bloqueada por el saldo cruzado** (§2-BIS): si no, cada gasto en efectivo bajaría Trade Republic.
 
 ⚠ Mandó **3 capturas** de los bugs 1–2 (widget, y la foto azul del Revolut del padre) a Cursor;
 Claude Code trabajó con las cifras transcritas. Si hace falta afinar, pedírselas otra vez.
@@ -118,6 +122,18 @@ MISMA tanda»), que es lo que Cursor lee solo. Y el runner ya **aborta** si encu
 nadie ejecuta. Esta tarea es para lo YA acumulado; la norma es para que no haga falta repetirla.
 
 ---
+
+# 🐛 2-BIS. NUEVO (2026-08-18) — un gasto de Revolut baja el saldo de Trade Republic
+**Medido en su nube, no deducido: 257,17 € de desfase HOY.** `dynBal()` resta al saldo de la
+cuenta diaria (TR) el `thisMonthSpent` **entero**, que desde que `expenseBanks` tiene tres bancos
+(`myinvestor`, `trade_republic`, `revolut`) ya no es «lo que salió de TR». Y las cuentas no-diarias
+no lo compensan: su saldo solo lleva fijos/flujos, no gastos. El patrimonio TOTAL cuadra; el
+reparto entre bancos no. Afecta a Cartera, a `safeLiq` (el «Puedes gastar» del widget) y a las
+alertas de saldo mínimo. **No confundir con el Δ 205 del widget** (ese era `spent`, ya cerrado).
+⚠ La fórmula del saldo de la cuenta de gasto y su INVERSA están escritas en **cinco** sitios
+(`11-app-main:1453`, `01-i18n:2167` y `:2173`, `07-tab-patri-fijos:12` y `:20`, `06-sync-brokers:468`):
+cambiar solo unas cuantas hace que editar el saldo a mano guarde un número torcido. Plan sellado en
+`docs/briefs/bug-saldo-cruzado-gasto-diario.md`. OTA, sin APK. Va ANTES de las tandas 5 y 6.
 
 # 🐛 2. BUGS VIVOS (de más fácil a más difícil)
 
