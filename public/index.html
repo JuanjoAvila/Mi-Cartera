@@ -9847,14 +9847,32 @@ function entFromAspsp(name){
 }
 // Elige el saldo "de hoy" de la lista de balances del banco. Preferimos el disponible/esperado
 // (lo que ves en la app del banco) y caemos al contable. Devuelve número o null.
+//
+// 2026-08-18: el Revolut del padre salió a −204,54 € («del banco») y al sincronizar pasó a
+// 22,06 €. `pickBankBalance` caía a `balances[0]` si no reconocía el tipo, y un ITAV/XPCD
+// negativo ganaba aunque hubiera un CLBD positivo. Un saldo en rojo inventado es peor que
+// dejar el de antes: si no hay tipo conocido, o si el elegido es <0 y hay otro ≥0, no se pinta.
 function pickBankBalance(balances){
   if(!Array.isArray(balances) || !balances.length) return null;
   const pri=["ITAV","XPCD","CLBD","OTHR","PRCD"];
-  for(let p=0;p<pri.length;p++){
-    const b=balances.find(function(x){ return String(x&&x.type).toUpperCase()===pri[p]; });
-    if(b && b.amount!=null) return Number(b.amount);
+  const num=function(x){ const n=Number(x&&x.amount); return isFinite(n) ? n : null; };
+  const known=function(list){
+    for(let p=0;p<pri.length;p++){
+      const b=list.find(function(x){ return String(x&&x.type).toUpperCase()===pri[p]; });
+      const n=b ? num(b) : null;
+      if(n!=null) return n;
+    }
+    return null;
+  };
+  const picked=known(balances);
+  if(picked==null) return null;
+  if(picked<0){
+    const pos=balances.filter(function(x){ return num(x)>=0; });
+    if(!pos.length) return null;
+    const better=known(pos);
+    return better!=null ? better : num(pos[0]);
   }
-  return Number(balances[0].amount);
+  return picked;
 }
 // Construye una "cuenta extra" (obAccount) = saldo puro de una cuenta secundaria del banco
 // (p.ej. Revolut compartida). NO participa en el motor de cash-flow; solo suma al patrimonio.
@@ -14141,6 +14159,30 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.3", d:"18 ago 2026",
+   t:{es:"El saldo del banco ya no salta a un número raro, y el widget deja de esconder lo que puedes gastar",
+      en:"Bank balances no longer jump to a bogus figure, and the widget keeps showing what you can spend",
+      ca:"El saldo del banc ja no salta a un número rar, i el widget deixa d'amagar el que pots gastar"},
+   tandas:[
+     {id:"ob-saldo-widget-apk", t:"🏦 Saldo del banco y widget", items:[
+       "Si Revolut (u otro banco) salía en rojo inventado y al sincronizar se arreglaba, ya no debería pintar ese rojo: se queda el último saldo bueno.",
+       "Abre la app: en el widget vuelve a verse «Puedes gastar».",
+       "Cierra la app, paga, espera la noti: gastado del mes = Gastos. «Puedes gastar» solo se mueve con la app nueva instalada (no basta recargar).",
+     ]},
+   ],
+   items:{
+   es:[
+    "🏦 El saldo de un banco ya no salta a un número en rojo inventado: si llega un dato raro, se queda el último bueno.",
+    "📊 En el widget vuelve a verse «Puedes gastar». Para que se actualice también con la app cerrada, instala la actualización de la app.",
+   ],
+   en:[
+    "🏦 A bank balance no longer jumps to a made-up negative: if a bad figure arrives, the last good one stays.",
+    "📊 The widget shows «you can spend» again. For it to update with the app closed, install the app update.",
+   ],
+   ca:[
+    "🏦 El saldo d'un banc ja no salta a un número en vermell inventat: si arriba una dada rara, es queda l'últim bo.",
+    "📊 Al widget torna a veure's «Pots gastar». Perquè s'actualitzi amb l'app tancada, instal·la l'actualització de l'app.",
+   ]}},
   {v:"4.18.2", d:"17 ago 2026",
    t:{es:"El widget ya dice el mismo gasto del mes que la app",
       en:"The widget now shows the same monthly spend as the app",
@@ -18787,15 +18829,23 @@ function App(){
   // «Lo que te puedes permitir» (petición 2026-07-18): lo que puedes gastar SIN pasarte ni quedarte
   // en rojo = mínimo entre lo que te deja el presupuesto y la liquidez segura de la cuenta de gasto
   // (su peor saldo del mes; no puedes gastar lo que no tienes). Nunca negativo.
-  const widgetAfford=(function(){
-    const budgetLeft = budW.remaining!=null ? Math.max(0, budW.remaining)
+  //
+  // Se mandan las DOS PIEZAS por separado, sin combinar (2026-08-17). Antes se empujaba el mínimo
+  // ya hecho y el widget lo guardaba tal cual; con la app cerrada, una noti de TR/Wallet
+  // actualizaba el gasto pero NO esto, así que el widget acababa diciendo «te quedan 109» y
+  // «puedes gastar 324» a la vez. Ahora la resta la hace el widget con las piezas frescas:
+  // `budgetLeft` se lo recalcula el servidor en cada noti, y `safeLiq` lo baja él restando el
+  // importe. Aquí se sigue calculando igual — esta es la referencia de la que copia el nativo.
+  const widgetBudgetLeft=(function(){
+    const bl = budW.remaining!=null ? Math.max(0, budW.remaining)
       : ((state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null);
+    return bl!=null ? Math.round(bl*100)/100 : null;
+  })();
+  const widgetSafeLiq=(function(){
     const dailyEnt = trAccW && trAccW.ent;
-    const safeLiq = dailyEnt!=null
-      ? Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0))
-      : null;
-    let a = budgetLeft!=null && safeLiq!=null ? Math.min(budgetLeft, safeLiq) : (budgetLeft!=null?budgetLeft:safeLiq);
-    return a!=null ? Math.round(a*100)/100 : null;
+    if(dailyEnt==null) return null;
+    const sl = Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0));
+    return Math.round(sl*100)/100;
   })();
   useEffect(function(){
     const nat=natPlugin();
@@ -18805,6 +18855,13 @@ function App(){
       budget:budW.budget!=null?budW.budget:(state.budget||0)
     };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
+    if(widgetBudgetLeft!=null) data.budgetLeft=widgetBudgetLeft;
+    if(widgetSafeLiq!=null) data.safeLiq=widgetSafeLiq;
+    // APK 41 (la de producción) todavía lee `afford` y si no llega BORRA «Puedes gastar».
+    // Las piezas nuevas son para la APK 42. Mandar las dos: 41 usa afford, 42 usa las piezas.
+    const widgetAfford=widgetBudgetLeft!=null && widgetSafeLiq!=null
+      ? Math.round(Math.min(widgetBudgetLeft, widgetSafeLiq)*100)/100
+      : (widgetBudgetLeft!=null ? widgetBudgetLeft : widgetSafeLiq);
     if(widgetAfford!=null) data.afford=widgetAfford;
     const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
     push();
@@ -18814,7 +18871,7 @@ function App(){
     const onVis=function(){ if(document.visibilityState==="visible") push(); };
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
-  },[budW.shown,budW.budget,state.budget,widgetCash,widgetAfford]);
+  },[budW.shown,budW.budget,state.budget,widgetCash,widgetBudgetLeft,widgetSafeLiq]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos

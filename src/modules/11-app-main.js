@@ -1634,15 +1634,23 @@ function App(){
   // «Lo que te puedes permitir» (petición 2026-07-18): lo que puedes gastar SIN pasarte ni quedarte
   // en rojo = mínimo entre lo que te deja el presupuesto y la liquidez segura de la cuenta de gasto
   // (su peor saldo del mes; no puedes gastar lo que no tienes). Nunca negativo.
-  const widgetAfford=(function(){
-    const budgetLeft = budW.remaining!=null ? Math.max(0, budW.remaining)
+  //
+  // Se mandan las DOS PIEZAS por separado, sin combinar (2026-08-17). Antes se empujaba el mínimo
+  // ya hecho y el widget lo guardaba tal cual; con la app cerrada, una noti de TR/Wallet
+  // actualizaba el gasto pero NO esto, así que el widget acababa diciendo «te quedan 109» y
+  // «puedes gastar 324» a la vez. Ahora la resta la hace el widget con las piezas frescas:
+  // `budgetLeft` se lo recalcula el servidor en cada noti, y `safeLiq` lo baja él restando el
+  // importe. Aquí se sigue calculando igual — esta es la referencia de la que copia el nativo.
+  const widgetBudgetLeft=(function(){
+    const bl = budW.remaining!=null ? Math.max(0, budW.remaining)
       : ((state.budget>0) ? Math.max(0, state.budget - (totals.thisMonthSpent||0)) : null);
+    return bl!=null ? Math.round(bl*100)/100 : null;
+  })();
+  const widgetSafeLiq=(function(){
     const dailyEnt = trAccW && trAccW.ent;
-    const safeLiq = dailyEnt!=null
-      ? Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0))
-      : null;
-    let a = budgetLeft!=null && safeLiq!=null ? Math.min(budgetLeft, safeLiq) : (budgetLeft!=null?budgetLeft:safeLiq);
-    return a!=null ? Math.round(a*100)/100 : null;
+    if(dailyEnt==null) return null;
+    const sl = Math.max(0, (totals.minByBank && totals.minByBank[dailyEnt]!=null) ? totals.minByBank[dailyEnt] : (totals.bankBal[dailyEnt]||0));
+    return Math.round(sl*100)/100;
   })();
   useEffect(function(){
     const nat=natPlugin();
@@ -1652,6 +1660,13 @@ function App(){
       budget:budW.budget!=null?budW.budget:(state.budget||0)
     };
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
+    if(widgetBudgetLeft!=null) data.budgetLeft=widgetBudgetLeft;
+    if(widgetSafeLiq!=null) data.safeLiq=widgetSafeLiq;
+    // APK 41 (la de producción) todavía lee `afford` y si no llega BORRA «Puedes gastar».
+    // Las piezas nuevas son para la APK 42. Mandar las dos: 41 usa afford, 42 usa las piezas.
+    const widgetAfford=widgetBudgetLeft!=null && widgetSafeLiq!=null
+      ? Math.round(Math.min(widgetBudgetLeft, widgetSafeLiq)*100)/100
+      : (widgetBudgetLeft!=null ? widgetBudgetLeft : widgetSafeLiq);
     if(widgetAfford!=null) data.afford=widgetAfford;
     const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
     push();
@@ -1661,7 +1676,7 @@ function App(){
     const onVis=function(){ if(document.visibilityState==="visible") push(); };
     document.addEventListener("visibilitychange", onVis);
     return function(){ document.removeEventListener("visibilitychange", onVis); };
-  },[budW.shown,budW.budget,state.budget,widgetCash,widgetAfford]);
+  },[budW.shown,budW.budget,state.budget,widgetCash,widgetBudgetLeft,widgetSafeLiq]);
   // Tour de bienvenida: 1ª vez tras el onboarding (tourSeen=false), con la app ya pintada
   useEffect(function(){
     // No arrancar el tour encima del login (showAuth) ni con el cajón abierto: causaba el caos

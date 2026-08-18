@@ -13,14 +13,32 @@ function entFromAspsp(name){
 }
 // Elige el saldo "de hoy" de la lista de balances del banco. Preferimos el disponible/esperado
 // (lo que ves en la app del banco) y caemos al contable. Devuelve número o null.
+//
+// 2026-08-18: el Revolut del padre salió a −204,54 € («del banco») y al sincronizar pasó a
+// 22,06 €. `pickBankBalance` caía a `balances[0]` si no reconocía el tipo, y un ITAV/XPCD
+// negativo ganaba aunque hubiera un CLBD positivo. Un saldo en rojo inventado es peor que
+// dejar el de antes: si no hay tipo conocido, o si el elegido es <0 y hay otro ≥0, no se pinta.
 function pickBankBalance(balances){
   if(!Array.isArray(balances) || !balances.length) return null;
   const pri=["ITAV","XPCD","CLBD","OTHR","PRCD"];
-  for(let p=0;p<pri.length;p++){
-    const b=balances.find(function(x){ return String(x&&x.type).toUpperCase()===pri[p]; });
-    if(b && b.amount!=null) return Number(b.amount);
+  const num=function(x){ const n=Number(x&&x.amount); return isFinite(n) ? n : null; };
+  const known=function(list){
+    for(let p=0;p<pri.length;p++){
+      const b=list.find(function(x){ return String(x&&x.type).toUpperCase()===pri[p]; });
+      const n=b ? num(b) : null;
+      if(n!=null) return n;
+    }
+    return null;
+  };
+  const picked=known(balances);
+  if(picked==null) return null;
+  if(picked<0){
+    const pos=balances.filter(function(x){ return num(x)>=0; });
+    if(!pos.length) return null;
+    const better=known(pos);
+    return better!=null ? better : num(pos[0]);
   }
-  return Number(balances[0].amount);
+  return picked;
 }
 // Construye una "cuenta extra" (obAccount) = saldo puro de una cuenta secundaria del banco
 // (p.ej. Revolut compartida). NO participa en el motor de cash-flow; solo suma al patrimonio.

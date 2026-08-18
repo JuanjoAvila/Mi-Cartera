@@ -152,11 +152,19 @@ public class MiCarteraPlugin extends Plugin {
         Double spent = call.getDouble("spent");
         Double budget = call.getDouble("budget");
         Double cash = call.getDouble("cash");
-        Double afford = call.getDouble("afford");   // «lo que te puedes permitir» (gasto seguro)
+        // Las DOS piezas de «lo que te puedes permitir», por separado: lo que deja el presupuesto
+        // y la liquidez segura de la cuenta de gasto. Antes se mandaba ya combinado (`afford`) y
+        // el lector de notis no sabía rehacerlo con la app cerrada → el widget se contradecía
+        // (2026-08-17). Ahora las combina `MiCarteraWidget.build()`, que es el único sitio donde
+        // vive la fórmula. `safeLiq` sale de simular el mes día a día: eso solo lo sabe la app.
+        Double budgetLeft = call.getDouble("budgetLeft");
+        Double safeLiq = call.getDouble("safeLiq");
         ed.putFloat("spent", spent != null ? spent.floatValue() : 0f);
         ed.putFloat("budget", budget != null ? budget.floatValue() : 0f);
         if (cash != null) ed.putFloat("cash", cash.floatValue()); else ed.remove("cash");
-        if (afford != null) ed.putFloat("afford", afford.floatValue()); else ed.remove("afford");
+        if (budgetLeft != null) ed.putFloat("budgetLeft", budgetLeft.floatValue()); else ed.remove("budgetLeft");
+        if (safeLiq != null) ed.putFloat("safeLiq", safeLiq.floatValue()); else ed.remove("safeLiq");
+        ed.remove("afford");   // resto de la versión anterior: ya no se lee, que no quede basura
         String label = call.getString("cashLabel");
         ed.putString("cashLabel", label != null ? label : "");
         ed.putLong("updated", System.currentTimeMillis());

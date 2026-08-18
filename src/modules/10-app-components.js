@@ -1424,6 +1424,30 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.3", d:"18 ago 2026",
+   t:{es:"El saldo del banco ya no salta a un número raro, y el widget deja de esconder lo que puedes gastar",
+      en:"Bank balances no longer jump to a bogus figure, and the widget keeps showing what you can spend",
+      ca:"El saldo del banc ja no salta a un número rar, i el widget deixa d'amagar el que pots gastar"},
+   tandas:[
+     {id:"ob-saldo-widget-apk", t:"🏦 Saldo del banco y widget", items:[
+       "Si Revolut (u otro banco) salía en rojo inventado y al sincronizar se arreglaba, ya no debería pintar ese rojo: se queda el último saldo bueno.",
+       "Abre la app: en el widget vuelve a verse «Puedes gastar».",
+       "Cierra la app, paga, espera la noti: gastado del mes = Gastos. «Puedes gastar» solo se mueve con la app nueva instalada (no basta recargar).",
+     ]},
+   ],
+   items:{
+   es:[
+    "🏦 El saldo de un banco ya no salta a un número en rojo inventado: si llega un dato raro, se queda el último bueno.",
+    "📊 En el widget vuelve a verse «Puedes gastar». Para que se actualice también con la app cerrada, instala la actualización de la app.",
+   ],
+   en:[
+    "🏦 A bank balance no longer jumps to a made-up negative: if a bad figure arrives, the last good one stays.",
+    "📊 The widget shows «you can spend» again. For it to update with the app closed, install the app update.",
+   ],
+   ca:[
+    "🏦 El saldo d'un banc ja no salta a un número en vermell inventat: si arriba una dada rara, es queda l'últim bo.",
+    "📊 Al widget torna a veure's «Pots gastar». Perquè s'actualitzi amb l'app tancada, instal·la l'actualització de l'app.",
+   ]}},
   {v:"4.18.2", d:"17 ago 2026",
    t:{es:"El widget ya dice el mismo gasto del mes que la app",
       en:"The widget now shows the same monthly spend as the app",

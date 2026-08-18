@@ -2,6 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.3] — 2026-08-18
+### Saldo OB inventado + widget APK 41/42
+
+El Revolut del padre salió a **−204,54 €** (captura 18/8, «del banco») y al sincronizar pasó a
+22,06 €. `pickBankBalance` prefería un ITAV/XPCD negativo y, si no reconocía el tipo, caía a
+`balances[0]`. Ahora: tipo desconocido → `null` (se queda el saldo de antes); si el elegido es
+<0 y hay otro ≥0, se usa el ≥0. Tests en `finance-core`.
+
+El widget con la app cerrada **no podía** cuadrar «Puedes gastar» en la APK 41: el Java de
+producción solo lee `afford`, y el OTA de `beta` ya mandaba `budgetLeft`/`safeLiq` y el plugin
+41 borra `afford` → la línea desaparece. El cliente vuelve a mandar **las dos** (41 y 42).
+La APK **42** lleva el Java que recalcula con la noti (`saveMonth` + `budgetLeft`).
+`apk:prep` ya no llama `npx cap` (npm resolvía el paquete vacío `cap@0.2.1`).
+`apksigner.bat` hereda `JAVA_HOME` del script (si no, verify moría con «JAVA_HOME is not set»).
+
 ## [4.18.2] — 2026-08-17
 ### El widget cuenta como la app (ingest, sin APK)
 

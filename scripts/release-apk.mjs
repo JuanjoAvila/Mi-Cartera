@@ -152,9 +152,18 @@ run(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "apk:prep"], {
 });
 
 step("assembleRelease");
-const gradlew = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
+/* RUTA ABSOLUTA A PROPÓSITO (2026-08-17). Con `shell:true` en Windows esto lo lanza `cmd.exe`, y
+   Git Bash deja puesta `NoDefaultCurrentDirectoryInExePath=1` en el entorno — con esa variable,
+   cmd NO busca el ejecutable en el directorio actual, así que un `gradlew.bat` a secas peta con
+   «no se reconoce como un comando interno o externo» aunque el fichero esté ahí y el `cwd` sea
+   correcto. Pasaba tanto desde Git Bash como desde PowerShell (heredan la variable). Se cita la
+   ruta porque «Mi cartera» lleva espacio. */
+const androidDir = path.join(root, "android");
+const gradlew = process.platform === "win32"
+  ? `"${path.join(androidDir, "gradlew.bat")}"`
+  : "./gradlew";
 run(gradlew, ["assembleRelease", "--no-daemon"], {
-  cwd: path.join(root, "android"),
+  cwd: androidDir,
   env,
   shell: true,
   fail: "assembleRelease falló (¿guardián WEBDEBUG? ¿keystore?)",
@@ -199,8 +208,9 @@ if (apksigner) {
   const esBat = /\.bat$/i.test(apksigner);
   const certs = runCapture(esBat ? `"${apksigner}"` : apksigner,
     ["verify", "--print-certs", esBat ? `"${apkSrc}"` : apkSrc], {
-    fail: "apksigner verify falló — APK sin firmar o firma rara",
+    env,
     shell: process.platform === "win32",
+    fail: "apksigner verify falló — APK sin firmar o firma rara",
   });
   if (!/CN=Mi Cartera/i.test(certs)) {
     die("La firma no dice CN=Mi Cartera.\n" + certs.slice(0, 400));
