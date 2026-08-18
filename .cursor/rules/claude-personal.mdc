@@ -1,0 +1,26 @@
+---
+description: Cuando haga falta Claude, no quemar tokens de Cursor — brief para Claude personal
+alwaysApply: true
+---
+
+# Claude personal (no gastar Cursor)
+
+El dueño paga Claude aparte (reset cada ~5 h + semanal). Cursor se resetea ~1 vez al mes.
+
+## Flujo obligatorio
+
+Si una tarea **pide Claude** (Opus/Sonnet a cualquier potencia, incluido ultra/code alto):
+
+1. **NO** lances un subagente Claude en Cursor sin avisar.
+2. Prepara un **brief listo para pegar** (repo path, commit tip, síntomas, archivos, criterios de done, canal `beta`).
+3. Indica el **modelo recomendado** (Opus o Sonnet; potencia). **Nunca pidas `fable`** — no lo puede usar.
+4. Espera a que él abra su Claude personal, apunte al mismo repo y pegue el brief.
+5. Mientras tanto, en Cursor usa Composer/GPT u otros baratos solo para coordinación, checks o trabajo ligero.
+
+## Qué SÍ puede hacer Cursor sin avisar
+
+Coordinación, status, commits/push si lo pide, tests/build ligeros, fixes triviales, lectura de logs — con modelos no-Claude.
+
+## Repo compartido
+
+Mismo path: `E:/Mi cartera`. Misma rama de trabajo (normalmente `beta`). No pelear commits: si Claude personal está en el arreglo, no edites los mismos ficheros en paralelo.

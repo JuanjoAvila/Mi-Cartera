@@ -6,15 +6,32 @@ import { fileURLToPath } from "node:url";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-console.log("── build-app ──");
-const build = spawnSync("node", ["scripts/build-app.mjs"], { cwd: root, stdio: "inherit", shell: process.platform === "win32" });
-if (build.status !== 0) process.exit(1);
+function loadPlan() {
+  const i = process.argv.indexOf("--plan");
+  if (i < 0) {
+    return { build: true, deno: true, playwright: true, e2e: "all", steps: "all", reason: "suite entera" };
+  }
+  const p = process.argv[i + 1];
+  if (!p) { console.error("uso: node scripts/run-tests.mjs --plan relevant-plan.json"); process.exit(2); }
+  return JSON.parse(fs.readFileSync(path.resolve(root, p), "utf8"));
+}
+const plan = loadPlan();
+if (plan.reason) console.log("── plan: " + plan.reason + " ──");
+
+if (plan.build !== false) {
+  console.log("── build-app ──");
+  const build = spawnSync("node", ["scripts/build-app.mjs"], { cwd: root, stdio: "inherit", shell: process.platform === "win32" });
+  if (build.status !== 0) process.exit(1);
+} else {
+  console.log("── build-app ── (omitido)");
+}
 
 const steps = [
   ["guard-privacy", ["node", "scripts/guard-privacy.mjs"]],
   ["check-syntax", ["node", "scripts/check-syntax.mjs"]],
   ["i18n-keys", ["node", "tests/i18n-keys.test.mjs"]],
   ["docs-frescura", ["node", "tests/docs-frescura.test.mjs"]],
+  ["relevant-tests", ["node", "tests/relevant-tests.test.mjs"]],
   // El espejo de la memoria en docs/memoria/ tiene que ir al día: es lo único que ve una sesión
   // que no corra en este PC (móvil, Cursor, otra IA). En una máquina sin memoria local —el CI—
   // el script sale en verde sin hacer nada, así que esto solo pincha aquí, que es donde se arregla.
@@ -31,6 +48,7 @@ const steps = [
   ["reserva-dinero", ["node", "tests/reserva-dinero.test.mjs"]],
   ["month-budget-stats", ["node", "tests/month-budget-stats.test.mjs"]],
   ["presupuesto-servidor", ["node", "tests/presupuesto-servidor.test.mjs"]],
+  ["widget-coherente", ["node", "tests/widget-coherente.test.mjs"]],
   ["ob-renombrar", ["node", "tests/ob-renombrar.test.mjs"]],
   ["divisa-original", ["node", "tests/divisa-original.test.mjs"]],
   ["wallet-notis", ["node", "tests/wallet-notis.test.mjs"]],
@@ -83,8 +101,28 @@ if (huerfanos.length) {
   process.exit(1);
 }
 
+const denoEnLista = [
+  "supabase/functions/ingest/ingest.test.ts",
+  "supabase/functions/_shared/crypto.test.ts",
+  "supabase/functions/_shared/enablebanking.test.ts",
+  "supabase/functions/delete-account/delete-account.test.ts",
+];
+const buscaDeno = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true })
+  .flatMap((d) => d.isDirectory() ? buscaDeno(dir + "/" + d.name)
+    : (d.name.endsWith(".test.ts") ? [dir + "/" + d.name] : []));
+const denoHuerfanos = buscaDeno("supabase").filter((p) => !denoEnLista.includes(p));
+if (denoHuerfanos.length) {
+  console.error("\n✕ tests Deno que existen pero NADIE ejecuta:\n" +
+    denoHuerfanos.map((p) => "    · " + p).join("\n") +
+    "\n  Añádelos a `denoTests` en scripts/run-tests.mjs.");
+  process.exit(1);
+}
+
 let failed = false;
-for (const [name, cmd] of steps) {
+const runSteps = plan.steps === "all" || !plan.steps
+  ? steps
+  : steps.filter(([name]) => plan.steps.includes(name));
+for (const [name, cmd] of runSteps) {
   console.log(`\n── ${name} ──`);
   const r = spawnSync(cmd[0], cmd.slice(1), { cwd: root, stdio: "inherit", shell: process.platform === "win32" });
   if (r.status !== 0) {
@@ -93,42 +131,44 @@ for (const [name, cmd] of steps) {
   }
 }
 
-console.log("\n── ingest-deno ──");
-const denoTests = [
-  "supabase/functions/ingest/ingest.test.ts",
-  "supabase/functions/_shared/crypto.test.ts",
-  "supabase/functions/_shared/enablebanking.test.ts",
-  "supabase/functions/delete-account/delete-account.test.ts",
-];
-for (const testFile of denoTests) {
-  const denoArgs = testFile.includes("crypto.test")
-    ? ["test", "--allow-env", testFile]
-    : ["test", testFile];
-  const deno = spawnSync("deno", denoArgs, {
-    cwd: root, stdio: "pipe", shell: process.platform === "win32",
-  });
-  const denoOut = (deno.stderr?.toString() || "") + (deno.stdout?.toString() || "");
-  if (deno.status === 0) {
-    console.log(`  ✓ ${testFile}`);
-  } else if (deno.error?.code === "ENOENT" || /not found|no se reconoce|not recognized/i.test(denoOut)) {
-    console.log("  ⊘ deno no instalado, omitido");
-    break;
-  } else {
-    if (denoOut) process.stderr.write(denoOut);
-    failed = true;
-    console.error(`FAILED: ${testFile}`);
+if (plan.deno !== false) {
+  console.log("\n── ingest-deno ──");
+  const denoTests = denoEnLista;
+  for (const testFile of denoTests) {
+    const denoArgs = testFile.includes("crypto.test")
+      ? ["test", "--allow-env", testFile]
+      : ["test", testFile];
+    const deno = spawnSync("deno", denoArgs, {
+      cwd: root, stdio: "pipe", shell: process.platform === "win32",
+    });
+    const denoOut = (deno.stderr?.toString() || "") + (deno.stdout?.toString() || "");
+    if (deno.status === 0) {
+      console.log(`  ✓ ${testFile}`);
+    } else if (deno.error?.code === "ENOENT" || /not found|no se reconoce|not recognized/i.test(denoOut)) {
+      console.log("  ⊘ deno no instalado, omitido");
+      break;
+    } else {
+      if (denoOut) process.stderr.write(denoOut);
+      failed = true;
+      console.error(`FAILED: ${testFile}`);
+    }
   }
+} else {
+  console.log("\n── ingest-deno ── (omitido)");
 }
 
-if (!failed) {
+if (!failed && plan.playwright !== false && plan.e2e !== "none") {
   console.log("\n── playwright-e2e ──");
-  const pw = spawnSync("npx", ["playwright", "test", "--config=playwright.config.mjs"], {
+  const specs = plan.e2e === "all" || !plan.e2e ? [] : plan.e2e;
+  const pw = spawnSync("npx", ["playwright", "test", "--config=playwright.config.mjs"].concat(specs), {
     cwd: root, stdio: "inherit", shell: process.platform === "win32",
   });
   if (pw.status !== 0) {
     failed = true;
     console.error("\nFAILED: playwright-e2e");
   }
+} else if (plan.e2e === "none" || plan.playwright === false) {
+  console.log("\n── playwright-e2e ── (omitido)");
 }
 
 process.exit(failed ? 1 : 0);

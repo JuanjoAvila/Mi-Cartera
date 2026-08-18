@@ -4,13 +4,58 @@
 
 ---
 name: mi-cartera-roadmap
-description: Estado actual y backlog de Mi Cartera (2026-08-03 tarde: producción = 4.12.4 —import de hoja Excel/CSV—; beta = 4.13.0 con gestos/bancos pendientes de re-probar tras arreglos grandes. ⚠ HALLAZGO GORDO: las Edge Functions NUNCA se habían desplegado desde beta —solo despliegan al pushear a main—, así que el fix del signo de TR llevaba 3 días inerte; desplegado hoy directo a main. Splash con DOS renders distintos sin unificar. Rebote de pestañas = mecanismo nativo del navegador, cerrado. Pendiente: MyInvestor nativo + validar entrada de Edge Functions)
+description: "Estado actual y backlog de Mi Cartera. ⚠ 2026-08-17 (vuelta del crucero): lo que la FAMILIA tiene NO es lo que dice el repo — Pages sirve 4.15.0 y apk.json live apunta a 4.12.0/código 35 desde el outage de Actions del 6/8. Beta = 4.16.2 / APK 40 (widget coherente), pendiente de su veredicto. Histórico largo debajo, sesión a sesión. ⚠ Las Edge Functions solo se despliegan al pushear a main: un fix en beta está INERTE."
 metadata:
   node_type: memory
   type: project
   originSessionId: e1dc0ffc-f316-4885-bf7c-1e694f8b4d24
-  modified: 2026-08-03T18:40:00.416Z
+  modified: 2026-08-17T15:14:57.676Z
 ---
+
+**★ 2026-08-17 — VUELTA DEL CRUCERO. Lo primero: lo que la familia tiene ≠ lo que dice el repo.**
+
+Medido con `curl` al empezar, no supuesto:
+
+| | Repo | **Live (Pages)** |
+|---|---|---|
+| `version.json` | 4.16.2 | **4.15.0** |
+| `apk.json` | 40 / 4.16.2 | **35 / 4.12.0** |
+
+Los 3 runs de `deploy.yml` del 6/8 murieron con `The job was not acquired by Runner of type hosted`
+— **outage de Actions, no un build roto**: relanzar basta, no hay nada que arreglar en el workflow.
+⚠ Consecuencia que cambia diagnósticos: **el móvil del padre corre el NATIVO de 4.12.0**, sin lector
+de Google Wallet y con el widget/`TrExpenseListener` viejos. Cualquier bug suyo medido contra eso es
+un fantasma. Se relanza Pages al promocionar la 4.16.2.
+
+**Tanda `widget-coherente` (4.16.2 / APK 40) en `beta`, pendiente de su veredicto.** Su bug del
+crucero: el widget decía «891 € de 1.000 · te quedan 109» y debajo «Puedes gastar 324 €»; al abrir
+la app se arreglaba y al rato volvía. **No era un cálculo malo: eran DOS ESCRITORES de las prefs del
+widget que no escribían lo mismo** — `updateWidget` (app abierta) ponía las cinco cifras a la vez y
+`saveMonth` (lector de notis, app CERRADA) solo `spent`+`budget`, dejando `afford`/`cash` del push
+anterior. Arreglo: `build()` calcula `min(budgetLeft, safeLiq)` desde primitivas que mantienen LOS
+DOS caminos; `ingest` manda `budgetLeft`+`counts`; `saveMonth` baja `safeLiq`/`cash` restando el
+importe. **Deliberado NO portar `safeLiq` al servidor** (sale de simular el mes con fijos/deudas/
+traspasos): sería la tercera copia de la misma regla — ver [[misma-regla-en-dos-sitios]].
+
+⚠ **Sin cerrar: el salto 891 vs 686 (Δ 205 €).** Cliente y servidor comparten fórmula (verificado),
+así que viene de **datos de entrada distintos**. Sospecha: `ingest` calcula sobre el `app_state` de
+la NUBE, que puede ir por detrás del móvil. Se cierra simulando contra su nube real, no leyendo
+código. El Revolut −204,54 € del padre va aparte (tanda 1b): `pickBankBalance`
+(`08-motor-bank.js`) recorre `ITAV→XPCD→CLBD→OTHR→PRCD` y **cae a `balances[0]` a ciegas** si no
+casa ninguno, sin mirar tipo ni fecha.
+
+**Trampas de tooling que costaron media hora (ya arregladas en `scripts/release-apk.mjs`):** Git
+Bash deja `NoDefaultCurrentDirectoryInExePath=1` en el entorno, y **lo heredan también los procesos
+lanzados desde PowerShell** — con esa variable `cmd.exe` NO busca ejecutables en el cwd, así que
+`gradlew.bat` a secas peta con «no se reconoce como un comando interno o externo» aunque el fichero
+esté ahí. Y `apksigner.bat`, al ir por `cmd` sí o sí, perdía las comillas y partía «E:\Mi cartera»
+por el espacio, dando por NO firmada una APK con `CN=Mi Cartera` perfectamente válida. Los dos:
+ruta absoluta + comillas a mano.
+
+**El plan de la vuelta vive en el repo**, no aquí: [`docs/briefs/plan-vuelta-crucero.md`] — 10
+tandas ordenadas (lo escribió Cursor, revisado y corregido por Claude Code el 17/8) con el reparto
+Claude Code (dinero/nativo/nube de punta a punta) vs Cursor (anchura mecánica: categorías × 3
+idiomas, i18n, reutilizar UI).
 
 **★ SESIÓN 2026-08-03 TARDE — segunda vuelta tras probarlo TODO, hallazgos gordos.**
 Reabrió con los veredictos de su prueba real (`node scripts/errores.mjs --kind=beta`): aprobó

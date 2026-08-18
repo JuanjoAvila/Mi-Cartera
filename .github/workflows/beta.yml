@@ -28,14 +28,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Una beta que no arranca no sirve de nada para probar: mismos tests que producción.
-      - name: Tests + privacidad
-        run: npm ci && npx playwright install chromium --with-deps && node scripts/run-tests.mjs
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Una beta que no arranca no sirve de nada para probar. PERO no hace falta la suite
+      # de 139 e2e para un commit de documentación: `relevant-tests` recorta por carpetas
+      # (docs → sin Chromium; ingest → Deno; Gastos → sus specs). Si se toca el núcleo
+      # (motor, i18n, shell, el runner) o un workflow, corre TODO. Promote y test.yml
+      # de main NO usan esto — ahí la red de seguridad es la suite entera.
+      - name: Plan de tests
+        id: plan
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/relevant-tests.mjs --ci
+
+      - uses: denoland/setup-deno@v2
+        if: steps.plan.outputs.deno == 'true'
+        with:
+          deno-version: v2.x
+
+      - name: Chromium (Playwright)
+        if: steps.plan.outputs.playwright == 'true'
+        run: npx playwright install chromium --with-deps
+
+      - name: Tests
+        run: node scripts/run-tests.mjs --plan relevant-plan.json
 
       # El número de la beta se calcula ANTES de sellar: el bundle tiene que llevar dentro
       # exactamente la misma versión que va a anunciar el manifiesto (ver más abajo).

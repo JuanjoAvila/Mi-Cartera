@@ -48,7 +48,12 @@ test-results/
 # Capturas/scripts de depuración del móvil (destello, gestos, A/B visual…). Un `git add -A`
 # se los tragó enteros el 2026-08-06 (~500 PNG) y hubo que rehacer el commit. No son código.
 /tools/movil/_*.png
+/tools/movil/_*.xml
 /tools/movil/_*.mjs
 /tools/movil/_vid/
+/tools/movil/_flicker_frames/
 /tools/movil/verify_*.png
 /tools/movil/diag-*.mjs
+# Plan de tests recortados (lo escribe scripts/relevant-tests.mjs en local y en CI)
+relevant-plan.json
+
