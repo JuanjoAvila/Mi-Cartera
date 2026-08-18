@@ -16,7 +16,8 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | 5 · Meta = gasto del mes | ⬜ **Plan sellado 18/8** | `plan-tanda-5-meta-gasto-mes.md`. ⚠ El aviso «reescribe `monthBudgetStats`» **queda derogado**: se hace por `expenseCountsBudget`, sin tocar la fórmula ni Java. Sus 2 metas están al 0% → no le urge. |
 | 6 · Efectivo | ⬜ **Plan sellado 18/8** | `plan-tanda-6-efectivo.md`. Es una cuenta más, no un módulo. **Depende de la 1c.** OTA. |
 | 7 · Import histórico 3 meses | ⬜ Plan sellado | `plan-import-historico-seguro.md`. La 3 deja Gastos listo para que entre como un banco más. |
-| 8 · Destello / scroll / overscroll | 📌 **Listo para Opus** | **CONFIRMADO 18/8:** el parpadeo **también pasa con Temática Ninguna** → compositor / WebView, no (solo) season. La 3 ya está en prod. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. Necesita su Oppo. |
+| 8 · Destello / parpadeo de tabs | ✅ **CERRADO 4.18.5** · aprobado por él EN LA APK | El «refuerzo opaco» del gesto tapaba el degradado del `body` (−16 medidos a 120 fps, 12/12, también sin temporada). *«va fluidísima, 20 de 10»*. ⬜ **Queda el «stopper» al scrollear: otro bicho, ya venía de antes, sin diagnóstico.** Entorno en vivo montado en `brief-claude-destello.md`. |
+| 8-BIS · Gestos muertos al estrenar | ✅ **CERRADO 4.18.5** | `App` salía por `return` antes del `.viewport` en onboarding/candado → el efecto ataba 0 listeners y con `[]` no lo reintentaba. Mordía a su padre y su pareja **su primer día**. |
 | 9 · Ajustes → Dinero | ✅ **HECHO en 4.14.0** | No hay tanda. El plan viejo estaba rancio: presupuesto y bancos de gasto diario ya salieron de Ajustes (viven en Resumen / Cartera); comparar monedas es el conversor. |
 | 10 · MyInvestor nativo | ⬜ Más adelante | WebView nativa si el reCAPTCHA OTA no cuela (ver ROADMAP) |
 | 11 · Hogar · diseño | ⬜ Va en la **17** | Funciona; el look entra en la tanda de diseño (mock Claude Design). |

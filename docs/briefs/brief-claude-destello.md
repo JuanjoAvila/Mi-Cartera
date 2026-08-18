@@ -1,5 +1,51 @@
 # Brief Claude personal — destello temporada (Mi Cartera)
 
+> ## ✅✅ CERRADO EL 2026-08-18 — aprobado por él EN LA APK, no solo en Chrome
+>
+> *«se subió bien y ya no hay lo negro… y va fluidísima toda la app, solo con eso iría 20 de 10 en
+> fluidez»* — 4.18.5.
+>
+> **Causa:** el «refuerzo opaco» del gesto pintaba `.page` con el fondo **plano** `var(--bg)` y eso
+> tapaba el `radial-gradient(… at 85% -8% …)` del **`body`**. −16 niveles de luminancia arriba a la
+> derecha, −8 a la izquierda; 12 gestos de 12 a 120 fps. La **proporción** entre esos dos números es
+> la forma del degradado, y fue lo que lo delató.
+>
+> **Por qué duró nueve intentos:** el degradado es del **tema base**, no de temporada. Se veía
+> también con Temática Ninguna, y todos los intentos anteriores tocaban `.season-glow` — que nunca
+> fue el culpable. Por eso «se arreglaba» y volvía.
+>
+> ### ⬜ LO QUE QUEDA: el «stopper» al scrollear
+>
+> **Es otro bicho, y él confirma que YA VENÍA DE ANTES.** Lo que se ganó el 18/8 es **separarlo del
+> parpadeo**: hasta esa noche se vivían como el mismo fallo, y por eso ninguno se dejaba cazar.
+> No hay diagnóstico aún. Empezar por reproducirlo en el entorno de abajo.
+>
+> ### 🛠 EL ENTORNO EN VIVO — móntalo antes de tocar nada (11 min → segundos por hipótesis)
+>
+> Lo que hizo posible cerrar esto. Sin él, cada hipótesis costaba: commit → CI 11 min → él actualiza
+> → graba vídeo → analizar. Con él: cambias CSS y lo ve al instante.
+>
+> ```bash
+> # 1) servir el bundle (o preview_start con la config "micartera" de .claude/launch.json)
+> npx serve public -l 4173
+> # 2) que el móvil vea el portátil, y que el portátil vea el Chrome del móvil
+> adb reverse tcp:4173 tcp:4173
+> adb forward tcp:9222 localabstract:chrome_devtools_remote
+> # 3) en el móvil: Chrome → localhost:4173     (CDP queda en http://127.0.0.1:9222/json/list)
+> ```
+>
+> ⚠ **Trampas del entorno, todas pisadas el 18/8:**
+> - **El Service Worker sirve la copia vieja.** Una recarga normal NO trae tu cambio y parece que el
+>   arreglo no funciona. Desregistrar SW + `caches.delete()` antes de dar nada por bueno.
+> - **La app de release no tiene CDP** (`MICARTERA_WEBDEBUG` está apagado a propósito). Por eso se
+>   prueba en **Chrome**, no en la WebView. El veredicto final, siempre en la APK.
+> - **CDP `Page.screencast` NO capta el parpadeo** (pico −2,8 contra −16 reales): fotografía lo que
+>   la página dibuja, no lo que el compositor pinta. Para medir hace falta el **grabador nativo** del
+>   móvil a 120 fps + `ffmpeg`. Para iterar hipótesis, basta el ojo de él.
+> - **No cites reglas CSS literales en los comentarios**: el guardián de `season-detalle` y los
+>   `grep` las encuentran en el comentario y creen que el código sigue ahí. Costó una vuelta en falso.
+
+
 > ## ✅ MEDIDO Y CARACTERIZADO — 2026-08-18, en su móvil real
 >
 > ### ⚠ ANTES DE NADA: NUNCA FUE UN OPPO
