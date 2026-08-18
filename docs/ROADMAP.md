@@ -1,7 +1,9 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-18 · **v4.18.4** — **EN `beta`**. Cada banco descuenta lo suyo: un gasto de
-> Revolut ya no baja el saldo de Trade Republic (257 € medidos). OTA, sin APK. Producción sigue
+> Estado a 2026-08-18 · **v4.18.5** — **EN `beta`**. El fondo ya no parpadea al cambiar de pestaña:
+> el «refuerzo opaco» del gesto tapaba el degradado del `body` (−16 niveles medidos a 120 fps en su
+> OnePlus 13, 12 gestos de 12, y también sin temporada). Y los gestos funcionan al estrenar la app.
+> OTA, sin APK. Anterior: **4.18.4** (cada banco descuenta lo suyo, 257 € medidos). Producción sigue
 > en **4.18.3** · APK **42**.
 >
 > Anterior: 2026-08-18 · **v4.18.3** — **EN PRODUCCIÓN**. El saldo OB ya no pinta un negativo inventado
@@ -90,7 +92,7 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.18.4** (en `beta`) |
+| Web / OTA (`VERSION`) | **4.18.5** (en `beta`) |
 | APK (`versionName` / `versionCode`) | Repo: **4.18.3 / 42**. Live hasta instalarla: **4.17.1 / 41**. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
 | `public/apk.json` | **42** / 4.18.3 |

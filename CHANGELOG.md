@@ -2,6 +2,35 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.5] — 2026-08-18
+### El fondo dejó de parpadear al cambiar de pestaña (y los gestos de quien estrena la app)
+
+**El parpadeo.** Al arrancar el gesto de pestañas, una regla pintaba `.page` con el fondo **plano**
+`var(--bg)` («refuerzo opaco», para que no se fusionaran las tabs). Ese plano tapaba el
+`radial-gradient(130% 55% at 85% -8%, …)` del `body`, que es lo que ilumina la esquina superior
+derecha — y el fondo se oscurecía de golpe.
+
+Medido en su OnePlus 13 a 120 fps con el grabador nativo, **12 gestos de 12**: −16 niveles de
+luminancia arriba-derecha, −8 a la izquierda, durante 1–3 frames (8–25 ms), y con el movimiento en
+pantalla a **0,00** en el frame anterior (o sea, antes de que nada se moviera). La proporción entre
+esos dos números es la forma del degradado, y fue lo que lo delató.
+
+Explica por qué la saga duró nueve intentos: el degradado es del **tema base**, no de temporada, así
+que se veía **también con Temática Ninguna** — y cada arreglo tocaba `.season-glow`, que nunca fue el
+culpable. La antifusión que la regla decía proteger la dan `visibility:hidden` en reposo y que las
+páginas son hermanas `flex` (no superpuestas) durante el arrastre. Guardián invertido en
+`season-detalle` para que no vuelva.
+
+**Descartado por el camino, con medida:** promover la capa del track en `touchstart`
+(`will-change:transform`) no cambió nada (−16 antes, −16 después) **y rompió el scroll**, porque
+`will-change:transform` crea el mismo containing block que `transform` y el `position:fixed` del
+host pasó a referirse al track. Ya estaba avisado en el propio fichero desde el 5/8.
+
+**Los gestos de quien estrena la app.** `App` sale por `return` antes del `.viewport` si arranca en
+el candado o el onboarding, así que el efecto que ata los listeners encontraba `null` y, con `[]`,
+no lo reintentaba nunca: la app quedaba **sin un solo listener de gestos** hasta cerrarla y reabrirla.
+Medido con CDP (`.viewport` con 0 listeners). Mordía a su padre y a su pareja su primer día.
+
 ## [4.18.4] — 2026-08-18
 ### Cada banco descuenta lo suyo (saldo cruzado)
 

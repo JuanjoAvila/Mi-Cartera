@@ -2568,7 +2568,17 @@ function App(){
       el.removeEventListener("touchend", t);
       el.removeEventListener("touchcancel", c);
     };
-  },[]);
+  /* ⚠ LAS DEPS NO SON DECORACIÓN (bug encontrado y reproducido el 2026-08-18).
+     `App` sale por `return` ANTES del `.viewport` en dos casos —candado (`locked`) y onboarding
+     (`state.onboarded===false`)—, así que en esos arranques `viewportRef.current` es `null`, este
+     efecto se rinde en el `if(!el)` y, con `[]`, NO SE VOLVÍA A EJECUTAR NUNCA. Al desbloquear o
+     al terminar el onboarding la app se pintaba entera pero **sin un solo listener de gestos**:
+     medido con CDP, `.viewport` con 0 listeners, y los toques llegaban al documento sin que nadie
+     los recogiera. Los gestos de pestañas no volvían hasta cerrar y reabrir la app.
+     A quien mordía: cualquiera que ESTRENA la app (su padre y su pareja, su primer día).
+     El efecto de la tabbar de aquí al lado ya llevaba estas mismas deps por este mismo motivo
+     —«si la app arranca en el candado o el onboarding, la tabbar aún no existe»—; aquí faltaban. */
+  },[locked, state.onboarded]);
   // Toque en la barra inferior (y cualquier setTab que no venga del gesto): mismo asentamiento
   // por rAF. Si el gesto ya lo arrancó hacia este índice, asentarTrack no reinicia.
   // Mismo apagado de desenfoque que ya tiene el swipe, aquí también (2026-08-03, bug 1 «la rayita

@@ -1424,6 +1424,18 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.5", d:"18 ago 2026",
+   t:{es:"El fondo ya no parpadea al cambiar de pestaña",
+      en:"No more flicker when switching tabs",
+      ca:"El fons ja no parpelleja en canviar de pestanya"},
+   tandas:[
+     {id:"destello-tabs", t:"✨ Cambio de pestaña limpio", items:[
+       "Al deslizar entre pestañas ya no se ve ese oscurecimiento del fondo.",
+       "Pasaba con cualquier temática, también sin ninguna.",
+       "Si estrenas la app, los gestos funcionan desde el primer momento (antes había que cerrarla y volver a abrirla).",
+     ]},
+   ],
+  },
   {v:"4.18.4", d:"18 ago 2026",
    t:{es:"Cada banco descuenta lo suyo",
       en:"Each bank now subtracts only its own spending",
