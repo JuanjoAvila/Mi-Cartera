@@ -1,7 +1,8 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-18 · **v4.18.3** — **EN `beta`**. El saldo OB ya no pinta un negativo inventado
-> (Revolut −204 del padre). El widget manda `afford` y `budgetLeft` (APK 41 y 42). APK **42**.
+> Estado a 2026-08-18 · **v4.18.3** — **EN PRODUCCIÓN**. El saldo OB ya no pinta un negativo inventado
+> (Revolut −204 del padre). El widget manda `afford` y `budgetLeft` (APK 41 y 42). APK **42** publicada
+> (instalar en el móvil: OTA no lleva el Java). Cola de tandas en [`briefs/plan-vuelta-crucero.md`](briefs/plan-vuelta-crucero.md).
 >
 > Anterior: 2026-08-17 · **v4.18.2** — ingest del widget a producción. El canal beta no prueba el widget con la app cerrada (un solo Supabase). APK seguía **41 / 4.17.1**.
 >
@@ -86,22 +87,31 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.18.3** (en `beta`) |
-| APK (`versionName` / `versionCode`) | Repo: **4.18.3 / 42**. Live hasta instalarla: **4.17.1 / 41**. |
+| Web / OTA (`VERSION`) | **4.18.3** (producción) |
+| APK (`versionName` / `versionCode`) | **4.18.3 / 42** publicada. Hasta instalarla el móvil puede seguir en **4.17.1 / 41**. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
-| `public/apk.json` | repo **40** / 4.16.2 (esta rama no ha corrido `release:apk`) |
+| `public/apk.json` | **42** / 4.18.3 · asset vivo |
 
 ## Pendiente / limitaciones conocidas
 
-| Tema | Notas |
-|------|--------|
-| **MyInvestor reCAPTCHA** | **4.6.4:** intento OTA — la app carga el reCAPTCHA de Google bajo demanda con el **site key de MyInvestor** (que el usuario pega en la tarjeta MI; su web va tras Incapsula y no se puede extraer desde el CI), ejecuta la acción, y reintenta el login con `X-Recaptcha-Token`. **Riesgo:** reCAPTCHA v3 suele atar el token al dominio registrado (`myinvestor.es`); si MI valida el origen, rechazará el token de nuestra WebView → entonces el único camino es una **WebView nativa** que cargue la web de MI (APK). El intento OTA se prueba en 1 min: si el token cuela, resuelto sin tocar nativo. Palancas previas: `x-myinvestor-app`=3.150.0, mensaje humano, `captchaToken` en cabeceras (plumbing listo). |
-| **Open Banking: sync solo a demanda** | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). |
-| **Widget «Puedes gastar»** | 4.18.2: ingest cuenta como la app (`filasComoLaApp`). Prueba: pago con la app cerrada. Si el widget no se re-pinta en MIUI, quitar y re-añadir. |
-| **Limpieza del repo (tanda 16)** | Basura, docs rancio, código muerto. **No visual, no es rendimiento, no es Clean Code de libro.** El monolito es a propósito (`docs/adr/0002-monolito.md`). Alcance en `docs/briefs/plan-vuelta-crucero.md` §16. |
-| **Play Store** | **Lo último.** Data safety + NotificationListener. No adelantar: si se implementa, se tienta de publicar antes de que esté pulida a su criterio. Cualquier tanda nueva va **antes**. |
-| **Pulido de diseño (tanda 17)** | Mock Claude Design: `docs/design/handoff/` (SPEC-v4 + mockup HTML). **No tocar a ciegas.** Hogar, Apuntar, Gastos, el look. Tanda propia, no mezclar con dinero. |
-| **OPENAI_API_KEY** | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md) |
+Cola numerada: [`briefs/plan-vuelta-crucero.md`](briefs/plan-vuelta-crucero.md). Lo de abajo es el detalle; ya no es «más adelante».
+
+| Tema | Tanda | Notas |
+|------|-------|--------|
+| **MyInvestor reCAPTCHA** | **10** | **4.6.4:** intento OTA — la app carga el reCAPTCHA de Google bajo demanda con el **site key de MyInvestor** (que el usuario pega en la tarjeta MI; su web va tras Incapsula y no se puede extraer desde el CI), ejecuta la acción, y reintenta el login con `X-Recaptcha-Token`. **Paso 1 (1 min):** si el token cuela, resuelto sin tocar nativo. **Paso 2:** reCAPTCHA v3 suele atar el token al dominio `myinvestor.es` → WebView nativa (APK). Palancas previas: `x-myinvestor-app`=3.150.0, mensaje humano, `captchaToken` en cabeceras (plumbing listo). |
+| **Splash nativo (hueco antes del icono)** | **15** | Lo OTA ya está (nombre Georgia→Fraunces). Si lo que ve es con la app cerrada, antes de la marca, es `Theme.SplashScreen` de Android 12+ → APK. **Confirmar con él** que es ese hueco antes de tocar nativo. |
+| **Validar body de las Edge Functions** | **18** | AMENAZAS #8, la única en rojo. Tipos/tamaños/rangos; test que mande basura y espere 400, no 500. |
+| **Rate limit resto de funciones** | **19** | AMENAZAS #7. Ya en `ingest` y `myinvestor-connect`. Falta `prices` / `categorize` / `bank-*`, o dejar escrito por qué no. |
+| **Logs sin datos personales** | **20** | AMENAZAS #9. Auditar `app_events` y Sentry; limpiar importes/IBAN/correos en origen. |
+| **Push FCM** | **12** | Notis nuestras con la app cerrada (presupuesto, bancos caídos), no solo el listener de Wallet. |
+| **Pensiones** | **13** | Sin diseño. Opus una página antes de codear. |
+| **Informe mensual** | **14** | Favorito de la pareja. Ya hay imagen WhatsApp; pulir / automatizar. |
+| **Open Banking: sync solo a demanda** | — | Desde 4.1.0 NO hay auto-sync al abrir/volver (caducaba consentimientos de Caixa/Sabadell por «uso robótico»). Syncs vivos: botón «↻ Sincronizar bancos» en Cartera, «Actualizar» en Mis bancos, tras autorizar (`?bank=ok`), bootstrap 1ª vez, y noti del banco (ajuste). Si aun así caducan, el problema es otro (límite 90 días PSD2 = normal). **No es tanda:** es una regla, no un trabajo pendiente. |
+| **Widget «Puedes gastar»** | **1a** | 4.18.3 + APK 42. Prueba: pago con la app cerrada. Si el widget no se re-pinta en MIUI, quitar y re-añadir. |
+| **Limpieza del repo** | **16** | Basura, docs rancio, código muerto. **No visual, no es rendimiento, no es Clean Code de libro.** El monolito es a propósito (`docs/adr/0002-monolito.md`). |
+| **Pulido de diseño** | **17** | Mock Claude Design: `docs/design/handoff/` (SPEC-v4 + mockup HTML). **No tocar a ciegas.** Hogar, Apuntar, Gastos, el look. |
+| **Play Store** | **∞** | **Lo último.** Data safety + NotificationListener. No adelantar. Cualquier tanda nueva va **antes**. |
+| **OPENAI_API_KEY** | — | Opcional en Supabase Secrets → Edge `categorize`. Ver [CATEGORIZE.md](CATEGORIZE.md). No es tanda. |
 
 ## Lo que apuntó él el 2026-07-26 — HECHO en la 4.12.0
 
@@ -117,20 +127,19 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 ## Lo siguiente
 
-> **4.15.0** en `beta`: ambientación suave + conversor FX + presupuesto alineado + extracto de
-> todos los bancos + filtros de Gastos + fix Novedades + fix destello/lluvia al swipe.
-> Producción = **4.14.1**. APK = **35 / 4.12.0**.
-> Probar checklist de las tandas; promote cuando las apruebe.
+Cola viva: [`docs/briefs/plan-vuelta-crucero.md`](briefs/plan-vuelta-crucero.md). Producción = **4.18.3**. APK **42** publicada.
 
-1. En el móvil (canal beta): Mis bancos / Ajustes → ver **v4.15.0.N**.
-2. Revisar las tandas del panel (incluye `fix-season-glow`: destello fijo bajo el + y lluvia
-   que no se reinicia al cambiar de pestaña; y `fix-novedades-nag`).
+1. En el móvil: Mis bancos → **v4.18.3**. Si la fila de la app sigue en 41, instalar la APK 42.
+2. Probar widget con la app cerrada (1a) y el Revolut del padre (1b).
+3. **No empezar la tanda 5** (meta = gasto del mes) hasta que la 1a esté OK.
+
+Huecos que ahora son tanda, no «más adelante»: **10** MyInvestor, **12** Push FCM, **13** pensiones, **14** informe mensual, **15** splash nativo, **18–20** amenazas del servidor.
 
 ### Pendiente de respuesta suya
 
 | Qué | Por qué hace falta preguntarlo |
 |-----|-------------------------------|
-| **Lo raro del arranque** | Pidió quitar «algo raro que aparece antes del icono». Se ha arreglado lo que **sí** se puede arreglar por OTA y estaba mal: el nombre del splash cambiaba de forma a media carga (fallback de Georgia → Fraunces). Si lo que él ve es ANTES de eso —con la app cerrada del todo— entonces es el **splash NATIVO**, que no viaja por OTA: `styles.xml` usa `Theme.SplashScreen` con solo `android:background`, sin `windowSplashScreenBackground` ni `windowSplashScreenAnimatedIcon`, así que Android 12+ mete su propia pantalla antes. Arreglarlo es nativo → **APK nueva**. No se ha tocado sin confirmarlo. |
+| **Lo raro del arranque** | Tanda **15**. Pidió quitar «algo raro que aparece antes del icono». Se ha arreglado lo que **sí** se puede arreglar por OTA (el nombre del splash cambiaba de Georgia → Fraunces). Si lo que él ve es ANTES de eso —con la app cerrada del todo— es el splash nativo de Android 12+. **Confirmar que es ese hueco** antes de tocar nativo. |
 
 ### Abierto, con lo medido
 
@@ -152,9 +161,9 @@ existe se deja anotado con su prueba: si mañana alguien vuelve a proponerlo, aq
 | Feedback dentro de la app | **Ya está.** Ajustes → App → «Enviar sugerencia» (4.1.0) + `betaReport` del panel de beta. | — |
 | Crash reporting | **Ya está.** Sentry en producción ([SENTRY.md](SENTRY.md)) + `app_events` propio, con `window.onerror` y `unhandledrejection` enganchados. | — |
 | Analytics de uso | **HECHO (4.13.0).** `cloud.logUso(etiqueta)` con **vocabulario cerrado** (`USO_OK` en 00-core): pestañas y acciones, agregado y sin un solo dato personal. Instrumentadas las cuatro pestañas y el importador. | Una vista SQL que agregue `kind='use'` por etiqueta y semana. El dato ya se está guardando, que era lo que no se recuperaba hacia atrás. |
-| Rate limiting | **A medias.** Migración `0019` + `_shared/ratelimit.ts`, aplicado en `ingest` y `myinvestor-connect` (4.10.0). Documentado como hueco #7 en [AMENAZAS.md](AMENAZAS.md). | Extenderlo al resto de funciones (`prices`, `categorize`, `bank-*`) o dejar por escrito por qué no hace falta. |
-| Validar TODO lo que entra | **Sin auditar** — es el único hueco en ROJO de [AMENAZAS.md](AMENAZAS.md) (#8) y la tarea que sale primera de allí. | Pasada por las diez Edge Functions: tipos, tamaños y rangos de cada campo del `body`, con test que mande basura y espere un 400 (no un 500). |
-| Logs sin información sensible | **A medias.** `guard-privacy` vigila el cliente; las métricas nuevas nacen cerradas (`USO_OK`). Hueco #9 de [AMENAZAS.md](AMENAZAS.md). | Auditar qué acaba en `app_events` y en Sentry (mensajes de error con importes, correos o IBAN) y limpiarlo en origen. |
+| Rate limiting | **A medias.** Migración `0019` + `_shared/ratelimit.ts`, aplicado en `ingest` y `myinvestor-connect` (4.10.0). Documentado como hueco #7 en [AMENAZAS.md](AMENAZAS.md). | **Tanda 19:** extenderlo al resto (`prices`, `categorize`, `bank-*`) o dejar por escrito por qué no hace falta. |
+| Validar TODO lo que entra | **Sin auditar** — único hueco en ROJO de [AMENAZAS.md](AMENAZAS.md) (#8). | **Tanda 18:** pasada por las diez Edge Functions: tipos, tamaños y rangos de cada campo del `body`, con test que mande basura y espere un 400 (no un 500). |
+| Logs sin información sensible | **A medias.** `guard-privacy` vigila el cliente; las métricas nuevas nacen cerradas (`USO_OK`). Hueco #9 de [AMENAZAS.md](AMENAZAS.md). | **Tanda 20:** auditar qué acaba en `app_events` y en Sentry (mensajes de error con importes, correos o IBAN) y limpiarlo en origen. |
 | Virtualización de listas | **Ya está.** La lista pagina — `e2e/rendimiento.spec.mjs`: 3.000 movimientos no son 3.000 nodos. | — |
 | Memoización / no repetir trabajo | **Ya está** (4.8.0): estado partido, `totals` con dependencias reales, `parseDate` cacheado, filas en `React.memo`, presupuesto de rendimiento en `npm test`. | — |
 | Lógica financiera independiente de React | **A medias.** La lógica pura se extrae y se testea sin React (`scripts/load-pure-logic.mjs`, 15 suites), pero convive en el mismo fichero que la UI. | Separar de verdad los servicios (cartera, movimientos, dividendos, precios) a módulos sin un solo `React.createElement`, y que la UI solo los llame. Sin prisa: es refactor, no arreglo. |
@@ -176,7 +185,7 @@ queda escrito para no volver a discutirlas.
 | **Métricas funcionales** (usuarios activos, syncs OK/KO, imports, tiempo medio de sync, bancos más usados, errores por banco, funciones más usadas) | **Repetido** — es la fila «Analytics de uso». Lo nuevo es la lista de qué medir. **Más barato de lo que parece**: `Core.logEvent(kind,message,detail)` (`00-core.js`) ya existe con RLS solo-admin, tope de 20/sesión y dedupe. | Un `kind` nuevo (`use`) + una vista SQL agregada. **Agregado y anónimo**: son datos financieros, `guard-privacy` vigila el cliente. Instrumentar **ahora** aunque haya 3 usuarios: el histórico de uso no se recupera hacia atrás. |
 | **Health check** (versiones, migraciones pendientes, última release, errores 24h/7d, último backup) | **HECHO (4.13.0).** `npm run salud` — script, no pantalla, por lo que ya estaba escrito aquí. | Nada. Da alineación de versiones + APK viva, qué sirve Pages **de verdad**, si la beta va por delante o por detrás, commits sin promocionar, migraciones y errores a 24 h / 7 días. |
 | **ADR** (`docs/adr/`, una página por decisión) | **HECHO (4.13.0).** [`docs/adr/`](adr/) con las cinco: Supabase, monolito, cero CDNs, OTA propio y Capacitor. | Nada. Cada una dice qué se descartó y qué haría cambiar de opinión; la del OTA lleva pegada la lección de las dos causas con el mismo síntoma. |
-| **Threat model** (XSS, inyección, token robado, noti falsa, replay, función pública, acceso indebido) con ✅ mitigado / ⚠ pendiente | **HECHO (4.13.0).** [`docs/AMENAZAS.md`](AMENAZAS.md): 13 amenazas cruzadas con lo que ya hay. | Lo que sale de ahí, por orden: **validar la entrada de las diez Edge Functions** (la única en rojo), **auditar `app_events`/Sentry**, y **extender el rate limit**. |
+| **Threat model** (XSS, inyección, token robado, noti falsa, replay, función pública, acceso indebido) con ✅ mitigado / ⚠ pendiente | **HECHO (4.13.0).** [`docs/AMENAZAS.md`](AMENAZAS.md): 13 amenazas cruzadas con lo que ya hay. | Tandas **18** (validar body, la única en rojo), **20** (auditar `app_events`/Sentry) y **19** (rate limit). |
 | **Observabilidad** (duración de Edge Functions, consultas SQL más caras, tiempo de carga) | **A medias, y la mayor parte NO se construye.** Las duraciones de Edge Functions y el SQL caro ya los da el panel de Supabase (Logs + Query Performance); rehacerlo es trabajo tirado. | **HECHO (4.13.0):** `cloud.logPerf` mide justo eso —lo que pasa en el móvil— redondeado a medio segundo. Las duraciones de Edge Functions y el SQL caro se siguen mirando en el panel de Supabase, que ya los da. |
 | **Feature flags** por usuario | **No ahora.** Ya hay dos ejes de gating: el canal beta y `profiles.is_admin`. Meter flags en el monolito = ramas de código muertas conviviendo en los ficheros que ya crecen sin parar (`10`/`11`). | Se recupera **el día que la beta tenga varios móviles** (fila «Beta cerrada» de arriba). Entonces sí es una maravilla; antes, no. |
 | **Tercer canal «Experimental»** (Experimental/Beta/Stable) | **No.** Repite la fila «Beta cerrada» y multiplica por tres la matriz de release (OTA + manifiesto + APK), que es exactamente la que reventó dos veces seguidas en 4.10.1 y 4.10.2. | Lo que falta no es un canal más: son **más móviles en el que ya existe**. |
@@ -201,8 +210,8 @@ la elección es suya. El registro real lo confirma un agente de la propiedad ind
 
 | Tema | Notas |
 |------|--------|
-| **Play Store** | **Lo último**, cuando él diga que está hiper pulida. No adelantar. |
-| **Pulido visual gordo** | SPEC-v4 / handoff en `docs/design/` |
+| **Play Store** | Tanda **∞**. Lo último, cuando él diga que está hiper pulida. No adelantar. |
+| **Pulido visual gordo** | Tanda **17**. SPEC-v4 / handoff en `docs/design/` |
 | **Logos de banco reales** | Idea 2026-07-18: sustituir el monograma (Sb/Cx…) por el logo del banco. Regla de la casa: cero CDNs → habría que auto-hospedar los ~8 logos habituales en `public/vendor/banks/` (los de Enable Banking vienen de fuera y solo se usan en el picker). |
 | **Freemium / suscripciones** | Idea 2026-07-18 (medio en broma, medio en serio): gratis = cuentas manuales (importe editable a mano); plan de pago = sync bancaria automática. El nombre editable en ambos. La 4.1.0 ya deja la semántica lista (manual = saldo editable; conectada = solo nombre/rol). Para monetizar de verdad faltan pasarela de pago + entitlements en Supabase — se diseña cuando lo pidas, no se mete de tapadillo. |
 

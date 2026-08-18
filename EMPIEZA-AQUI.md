@@ -99,7 +99,7 @@ La norma completa está en `AGENTS.md` §6 ter.
 `CHANGELOG.md` es el porqué de cada cosa. `AGENTS.md` son las reglas de la casa.
 Los tres se mantienen al día en cada tanda — si no cuadran con `VERSION`, `npm test` te lo dice.
 
-**Hoy:** `VERSION` = **4.18.2** en `beta`. El widget con la app cerrada va por `ingest` (un solo Supabase), no por el canal. Circuito: [`docs/RELEASE.md`](docs/RELEASE.md).
+**Hoy:** `VERSION` = **4.18.3** en producción (Pages). APK **42** publicada; hay que instalarla (el OTA no lleva el Java del widget). Circuito: [`docs/RELEASE.md`](docs/RELEASE.md).
 Antes de tocar nada, **`npm run salud`**.
 
 ### Si él escribe desde el viaje («¿ya está Pages?»)
@@ -119,7 +119,8 @@ móvil: *«Mira docs/briefs/brief-crucero-verificar-pages.md y comprueba Pages 4
 Plan de tandas + reparto Cursor/Claude:
 [`docs/briefs/plan-vuelta-crucero.md`](docs/briefs/plan-vuelta-crucero.md).
 **Tanda 17 = diseño** (mock Claude Design, `docs/design/handoff/`). No mezclar con dinero ni destello.
-Play Store sigue **la última**. Widget 4.17.2 **no** está en `main`.
+Play Store sigue **la última**. MyInvestor, splash nativo, FCM, pensiones, informe y las tres
+amenazas del servidor (**18–20**) son tandas, no «más adelante».
 Inventario largo: [`docs/memoria/mi-cartera-backlog-2026-08.md`](docs/memoria/mi-cartera-backlog-2026-08.md).
 Import histórico (ya diseñado): [`docs/briefs/plan-import-historico-seguro.md`](docs/briefs/plan-import-historico-seguro.md).
 

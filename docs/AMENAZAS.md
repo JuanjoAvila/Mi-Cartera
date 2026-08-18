@@ -40,14 +40,15 @@ seguridad no puede depender de que nadie mire el código.
 
 ## Lo que sale de aquí (y va al ROADMAP)
 
-1. **Validar la entrada de las diez Edge Functions** (#8) — tipos, tamaños y rangos de cada campo,
-   con un test que mande basura y espere un **400**, no un 500.
-2. **Auditar qué acaba en `app_events` y en Sentry** (#9) y limpiarlo **en origen**, no al leerlo.
-3. **Extender el rate limit** a `prices`, `categorize` y `bank-*` (#7) — o dejar escrito aquí por
+Las tres son **tandas**, no «más adelante». Cola: [`briefs/plan-vuelta-crucero.md`](briefs/plan-vuelta-crucero.md).
+
+1. **Tanda 18 — Validar la entrada de las diez Edge Functions** (#8) — tipos, tamaños y rangos de cada campo,
+   con un test que mande basura y espere un **400**, no un 500. La #8 va primera porque es la única en rojo.
+2. **Tanda 20 — Auditar qué acaba en `app_events` y en Sentry** (#9) y limpiarlo **en origen**, no al leerlo.
+3. **Tanda 19 — Extender el rate limit** a `prices`, `categorize` y `bank-*` (#7) — o dejar escrito aquí por
    qué no hace falta en cada una, que también es una respuesta válida.
 
-Las tres estaban ya en la tabla de la review; lo que añade esta página es **por qué** importan y
-en qué orden. La #8 va primera porque es la única marcada en rojo.
+Las tres estaban ya en la tabla de la review; lo que añade esta página es **por qué** importan.
 
 ## Cómo se mantiene
 

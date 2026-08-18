@@ -1,13 +1,13 @@
 # Plan — Vuelta del crucero (2026-08-17)
 
-## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 17/8 noche, 4.18.1)
+## 📍 DÓNDE ESTAMOS — mirar esto primero (última actualización: 18/8, 4.18.3)
 
 Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin preguntar a nadie.
 
 | Tanda | Estado | Notas |
 |---|---|---|
-| 0 · Pages / familia | ✅ **Prod 4.18.1** · APK **41** | Pages `version.json` = 4.18.1. Widget NO entra. |
-| 1a · Widget coherente | ⏳ **4.18.3** · hace falta **APK 42** | Ingest ya en prod. Con APK 41 el desayuno no puede cuadrar «Puedes gastar» (Java viejo). |
+| 0 · Pages / familia | ✅ **Prod 4.18.3** · APK **42** publicada | Pages sirve 4.18.3. Instalar la APK 42 en el móvil (OTA no lleva el Java del widget). |
+| 1a · Widget coherente | ⏳ **4.18.3** · probar con **APK 42** | Ingest en prod. Con APK 41 el desayuno no puede cuadrar «Puedes gastar» (Java viejo). |
 | 1b · Revolut −204 del padre | ⏳ **4.18.3** OTA | `pickBankBalance` ya no pinta un negativo inventado. Capturas 18/8: −204,54 → 22,06 al sync. |
 | 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 |
 | 3 · Fecha en `+`/editar + calendario + filtro gasto diario | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Calendario de la casa. Default = todos los de gasto diario. |
@@ -17,19 +17,22 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | 7 · Import histórico 3 meses | ⬜ Plan sellado | `plan-import-historico-seguro.md`. La 3 deja Gastos listo para que entre como un banco más. |
 | 8 · Destello / scroll / overscroll | 📌 **Después de probar la 3** | Se nota MÁS con temporada, **también SIN**. Brief: `brief-claude-destello.md`. **Opus/Ultra**, no Sonnet. |
 | 9 · Ajustes → Dinero | ✅ **HECHO en 4.14.0** | No hay tanda. El plan viejo estaba rancio: presupuesto y bancos de gasto diario ya salieron de Ajustes (viven en Resumen / Cartera); comparar monedas es el conversor. |
-| 10 · MyInvestor nativo | ⬜ Más adelante | WebView nativa si el reCAPTCHA OTA no cuela (ver ROADMAP) |
+| 10 · MyInvestor | ⬜ **Tanda** | Primero el reCAPTCHA OTA (1 min). Si el origen no cuela → WebView nativa (APK). Alcance abajo. |
 | 11 · Hogar · diseño | ⬜ Va en la **17** | Funciona; el look entra en la tanda de diseño (mock Claude Design). |
-| 12 · Push FCM | ⬜ Más adelante | Notis reales con la app cerrada, no solo el listener de Wallet |
-| 13 · Pensiones | ⬜ Más adelante | |
-| 14 · Informe mensual | ⬜ Más adelante | Favorito de la pareja. Ya hay imagen WhatsApp; pulir / automatizar |
-| 15 · Splash nativo | ⬜ Más adelante | APK: el hueco antes del icono en Android 12+ |
-| 16 · Limpieza del repo | ⬜ Otra tanda, no visual | Basura + docs rancio. **No** es Clean Code de libro ni va a hacer la app más rápida. Alcance abajo. |
+| 12 · Push FCM | ⬜ Tanda | Notis reales con la app cerrada, no solo el listener de Wallet. Alcance abajo. |
+| 13 · Pensiones | ⬜ Tanda | Aún no hay diseño. Opus una página antes de codear. |
+| 14 · Informe mensual | ⬜ Tanda | Favorito de la pareja. Ya hay imagen WhatsApp; pulir / automatizar. |
+| 15 · Splash nativo | ⬜ **Tanda** | APK: el hueco antes del icono en Android 12+. Confirmar con él que es ESE hueco. Alcance abajo. |
+| 16 · Limpieza del repo | ⬜ Tanda, no visual | Basura + docs rancio. **No** es Clean Code de libro ni va a hacer la app más rápida. Alcance abajo. |
 | 17 · Diseño (mock Claude Design) | ⬜ **Tanda propia** | `docs/design/handoff/` (SPEC-v4 + mockup HTML). No Cursor a ciegas. Lo que no convenza del `+` / Gastos / Hogar. |
+| 18 · Validar Edge Functions | ⬜ **Tanda** | AMENAZAS #8, la única en rojo. Types/tamaños/rangos + test que mande basura y espere 400. |
+| 19 · Rate limit resto de funciones | ⬜ Tanda | AMENAZAS #7. Extender a `prices` / `categorize` / `bank-*`, o dejar escrito por qué no. |
+| 20 · Logs sin datos personales | ⬜ Tanda | AMENAZAS #9. Auditar `app_events` y Sentry; limpiar importes/IBAN/correos **en origen**. |
 | ∞ · Play Store | ⬜ **LO ÚLTIMO** | Data safety + NotificationListener. **Nunca se adelanta.** Si entra algo nuevo, se inserta ANTES. Si se implementa, él se tienta de publicar, y no quiere hasta que esté hiper pulida a su criterio. |
 
 **Play Store no se mueve de última.** Pedido 17/8 noche. Sideload / APK de GitHub sigue valiendo.
 
-**Estado del repo:** `beta` = **4.18.2** (ingest del widget + APK de `beta` alineada a **41 / 4.17.1**). `origin/main` / Pages aún **4.18.1** hasta que este ingest esté en `main` y Actions despliegue. El canal beta no prueba el widget con la app cerrada: hay un proyecto Supabase y la noti habla con `ingest`, no con el bundle OTA.
+**Estado del repo (18/8):** `origin/main` y Pages sirven **4.18.3**. Canal beta = **4.18.3.1** (nada pendiente de promote). APK **42** publicada. El canal beta no prueba el widget con la app cerrada: hay un proyecto Supabase y la noti habla con `ingest`, no con el bundle OTA.
 
 ### ⚠ NO PULSAR «Promocionar beta» VACÍO
 
@@ -88,15 +91,15 @@ se ve al pedirlo y no come el techo. Así el import de 3 meses entra como un ban
 
 ---
 
-## Foto ahora (17/8 noche)
+## Foto ahora (18/8)
 
 | Qué | Estado real |
 |-----|-------------|
-| `VERSION` en `beta` | **4.18.2** |
-| `origin/main` | **4.18.1** hasta el push del ingest · APK **41** |
-| Pages live / familia | **4.18.1** hasta que Actions publique 4.18.2 |
-| Widget 4.17.2 / 4.18.2 | Ingest a producción (no se puede probar solo en canal beta) |
-| Crucero pendiente | Destello = tanda 8. Diseño (mock) = tanda **17**. Play Store = última. |
+| `VERSION` / Pages | **4.18.3** en producción |
+| Canal beta | **4.18.3.1** · nada pendiente de promote |
+| APK | **42 / 4.18.3** publicada · instalar en el móvil (OTA no lleva el Java) |
+| Widget / Revolut −204 | Código en prod; falta su prueba con APK 42 y el padre |
+| Crucero pendiente | 5 (meta) parada. Luego 6–8, 10, 12–20. Play Store = última. |
 
 ---
 
@@ -108,7 +111,7 @@ Regla: **Claude diseña / cierra trampas de dinero; Cursor implementa tandas ya 
 |-------|--------|-----|
 | **Tú** | — | OK entre tandas, pruebas en el móvil, no mezclar 4 frentes |
 | **Claude personal** | **Opus / Ultra** | 3 briefs de diseño (abajo). No codear import ni widget hasta el veredicto |
-| **Cursor** (Composer / GPT) | barato | Higiene Pages, tandas 1–N ya diseñadas, cats+i18n, filtro UI, «Movimiento», efectivo v1, tests/build/beta |
+| **Cursor** (Composer / GPT) | barato | Higiene Pages, tandas ya diseñadas, 10 paso 1 (reCAPTCHA OTA), 16, **18–20** (no se notan en el móvil), tests/build/beta |
 | **Claude Code** (Sonnet / code) | si Cursor se atasca | Solo **una** tanda a la vez, mismos paths, **después** del diseño Opus |
 
 No hace falta que Claude Code «planee el universo»: el plan ya está aquí. Claude Code entra cuando una tanda es gorda (import tanda 1, widget nativo) y Cursor no debe quemar el mes.
@@ -117,7 +120,7 @@ No hace falta que Claude Code «planee el universo»: el plan ya está aquí. Cl
 
 ## Orden de tandas (uno en uno)
 
-Cada fila = una beta que él prueba. No empezar la siguiente sin OK (o «no lo puedo probar»).
+Cada fila = una tanda. Las que él nota (UI, cifras, APK) salen por `beta` y las prueba. Las **18–20** no se notan en el móvil: pueden ir a `main`. No empezar la siguiente de dinero/UI sin OK (o «no lo puedo probar»).
 
 ### 0. Higiene — Cursor ahora
 Relanzar Pages. Confirmar Mis bancos → v4.16.1 en su móvil (OTA o ya la APK).
@@ -171,23 +174,35 @@ Pista: capa negra al tirar Cartera a la derecha; host transparente season. A/B t
 ### 9. Ajustes → Dinero — **HECHO en 4.14.0** (no hay tanda)
 El plan del 4/8 pedía quitar «Presupuesto mensual» y «Bancos de gasto diario» (duplicados) y que «Comparar monedas» no saliera vacío. Ya está: presupuesto vive en Resumen, bancos de gasto diario en Cartera, comparar monedas es el conversor (`st_cur_convert`). Si Ajustes → Dinero se ve raro, es otra cosa: se mira entonces, no se reabre esta limpieza.
 
-### 10. MyInvestor nativo — más adelante
-Si el intento OTA de reCAPTCHA (4.6.4) no cuela, WebView nativa que cargue myinvestor.es. APK nueva.
+### 10. MyInvestor — tanda, no «más adelante»
+Login de MyInvestor. Hoy choca con reCAPTCHA v3: la web de MI va tras Incapsula y el token suele ir atado al dominio `myinvestor.es`.
+
+**Paso 1 (1 minuto, sin APK).** Ya está el intento OTA de la 4.6.4: la app carga el reCAPTCHA de Google con el **site key de MyInvestor** (él lo pega en la tarjeta MI; desde el CI no se extrae), ejecuta la acción y reintenta el login con `X-Recaptcha-Token`. Palancas listas: `x-myinvestor-app`=3.150.0, mensaje humano, `captchaToken` en cabeceras. Si el token cuela, tanda cerrada sin tocar nativo.
+
+**Paso 2 (solo si el 1 falla).** WebView nativa que cargue `myinvestor.es` de verdad, para que Google emita un token del dominio que MI espera. Eso es Java → **APK nueva**. No mezclar con el splash (15) ni con el widget: otra APK, otro día.
+
+No es diseño (17) ni dinero (5–7). Cursor o Claude barato en el paso 1; nativo en el 2.
 
 ### 11. Hogar · diseño — entra en la tanda **17**
 La función existe (Perfil → Tu gente). El look no se improvisa aquí: va con el mock.
 
-### 12. Push FCM — más adelante
-Notis de verdad con la app cerrada (presupuesto, bancos caídos), no solo el listener de Wallet/TR.
+### 12. Push FCM — tanda
+Notis de verdad con la app cerrada (presupuesto, bancos caídos), no solo el listener de Wallet/TR. Hoy el widget y el lector de notis cubren el caso «pagó y la app estaba cerrada»; esto es el otro sentido: **nosotros** avisamos a él.
 
-### 13. Pensiones — más adelante
-Aún no hay diseño. Claude Opus una página antes de codear.
+Hace falta diseño corto (qué se notifica, con qué frecuencia, cómo se apaga) antes de codear. APK: Firebase / canal de notis. No adelantar a Play Store: el listener de notis ya es el escollo de Data safety; FCM suma otro.
 
-### 14. Informe mensual — más adelante (favorito pareja)
-Ya hay imagen para WhatsApp (Ajustes → Avanzado + popup día 1). Pulir / que salga solo / que se pueda reenviar.
+### 13. Pensiones — tanda
+Aún no hay diseño. Claude Opus una página antes de codear: qué cuenta (plan, rescate, fiscalidad), de dónde sale el saldo, qué no se inventa. Sin esa página no se toca `src/`.
 
-### 15. Splash nativo — más adelante
-El hueco «algo raro antes del icono» con la app cerrada es `Theme.SplashScreen` en Android 12+. No viaja por OTA → APK.
+### 14. Informe mensual — tanda (favorito pareja)
+Ya hay imagen para WhatsApp (Ajustes → Avanzado + popup día 1). Pulir / que salga solo / que se pueda reenviar. No es el import histórico (7) ni el diseño del mock (17).
+
+### 15. Splash nativo — tanda
+Pedido suyo: quitar «algo raro que aparece antes del icono». Lo que se podía arreglar por OTA ya está (4.12.3: el nombre del splash cambiaba de Georgia → Fraunces a media carga).
+
+Si lo que ve es **con la app cerrada del todo, antes de la marca**, es el splash de Android 12+: `styles.xml` usa `Theme.SplashScreen` con solo `android:background`, sin `windowSplashScreenBackground` ni `windowSplashScreenAnimatedIcon`, así que el sistema mete su propia pantalla. Eso **no viaja por OTA** → APK.
+
+**Primer paso de la tanda:** que él confirme que es ESE hueco. Sin ese sí, no se toca nativo. Luego APK, no mezclada con MyInvestor (10).
 
 ### 16. Limpieza del repo — otra tanda, **no visual**, **no es rendimiento**
 Pedido 17/8 noche: «limpiarme toda la basura, organizarmelo y Clean Code, es un caos a simple vista».
@@ -218,10 +233,27 @@ Pedido 17/8 noche: lo que no convenza del `+` / filtros / pantallas **es diseño
 
 **No entra:** lógica de dinero, ingest, widget, Play Store.
 
+### 18. Validar el cuerpo de las Edge Functions — tanda (AMENAZAS #8)
+Única amenaza en **rojo** de [`docs/AMENAZAS.md`](../AMENAZAS.md). Ninguna de las diez funciones valida tipos, tamaños ni rangos de forma sistemática: un campo inesperado da **500** en vez de **400**. No es robo de datos; es la puerta por la que se cuelan los problemas de verdad.
+
+**Done:** cada función rechaza basura con 400; un test manda basura y no pasa un 500. Orden: las públicas primero (`ingest`, `myinvestor-keepalive`), luego `prices` / `categorize` / `bank-*`.
+
+No se nota en el móvil → puede ir a `main` (docs/tests/tooling). Cursor/barato. No mezclar con MyInvestor ni splash.
+
+### 19. Rate limit en el resto de funciones — tanda (AMENAZAS #7)
+`ingest` y `myinvestor-connect` ya tienen tope (migración `0019`). Falta `prices`, `categorize` y las `bank-*`, **o** dejar escrito en AMENAZAS por qué no hace falta en cada una (también vale).
+
+Misma disciplina que la 18: no visual, puede ir a `main`. No empezar si la 18 está a medias en los mismos ficheros.
+
+### 20. Logs sin datos personales — tanda (AMENAZAS #9)
+`guard-privacy` vigila el cliente. Lo que acaba en `app_events` y en Sentry **no está auditado**: un mensaje de error puede arrastrar un importe, un correo o un IBAN. Limpiar **en origen**, no al leerlo. Las métricas `USO_OK` (4.13.0) sí nacen cerradas.
+
+Pasada por los `Core.logEvent` / `cloud.log*` / `Sentry.capture*` del monolito y de las Edge Functions. Test o `guard-privacy` ampliado para que no se cuele otra vez.
+
 ### ∞. Play Store — **lo último de lo último**
 Formulario Data safety + justificar NotificationListener. Nombre nuevo (ya hay otra «Mi Cartera» en Play) — ver ROADMAP.
 
-**No se implementa hasta que él diga que la app está hiper pulida**, a su criterio. Si se hace antes, se tienta de publicar. Cualquier tanda nueva (limpieza, destello, lo que salga) se inserta **delante**, nunca detrás. El sideload / la APK de GitHub no esperan a esto.
+**No se implementa hasta que él diga que la app está hiper pulida**, a su criterio. Si se hace antes, se tienta de publicar. Cualquier tanda nueva (limpieza, destello, MyInvestor, lo que salga) se inserta **delante**, nunca detrás. El sideload / la APK de GitHub no esperan a esto.
 
 ---
 
