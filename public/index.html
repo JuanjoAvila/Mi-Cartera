@@ -19316,7 +19316,6 @@ function App(){
     el.classList.add("scroll-host-park");
     el.style.transform="none";
     el.style.left=toX+"px";
-    el.style.willChange="";   // suelta la capa que pidió `onStart` (el porqué, allí)
     const pgs=el.children;
     for(let k=0;k<pgs.length;k++){
       if(!pgs[k]||!pgs[k].classList) continue;
@@ -19454,22 +19453,18 @@ function App(){
       if(appShellRef.current && appShellRef.current.classList.contains("gesture-freeze")) freezeShell(false);
     }catch(e){}
     ensureScrollHost();
-    /* LA CAPA DEL CARRUSEL SE PIDE AQUÍ, CON EL DEDO TODAVÍA QUIETO (2026-08-18).
-       Medido en su OnePlus 13 a 120 fps (12 gestos de 12): en el PRIMER fotograma del gesto de
-       pestañas el destello se apaga 1–3 frames —−16 niveles de luminancia en la esquina del glow,
-       −8 en el fondo— y vuelve solo. Oscurece el DOBLE donde vive el destello que donde no, así
-       que no es la pantalla bajando de brillo: es algo que daba luz y desaparece un frame.
-       Y el movimiento en pantalla en el frame anterior es 0,00: la pantalla está QUIETA, o sea
-       que no es el desliz ni el compositor arrastrando páginas. Es el cambio de modo de
-       `leaveScrollHost()`, que en un solo bloque síncrono destruye la capa `position:fixed` del
-       host y crea la del track (`will-change:auto` → `transform`).
-       Pedirla antes no mueve un píxel: `will-change` no cambia layout ni pintado, solo avisa al
-       compositor. Es el mismo criterio ya medido para los segmentos de Plan en `shell.html`
-       («el coste existe; lo único que se puede elegir es CUÁNDO se paga») — y con el dedo quieto
-       no se ve. Se suelta en `enterScrollHost`: una capa permanente cuesta memoria de vídeo.
-       ⚠ Si esto no baja los picos de −16, la hipótesis del compositor es falsa: NO acumular otro
-       parche encima, medir de nuevo. Método y criterio de verde en `docs/briefs/brief-claude-destello.md`. */
-    try{ if(trackRef.current) trackRef.current.style.willChange="transform"; }catch(e){}
+    /* ⛔ NO PROMOVER AQUÍ LA CAPA DEL TRACK — PROBADO Y REVERTIDO EL 2026-08-18.
+       Se intentó `trackRef.current.style.willChange="transform"` en el touchstart, para que el
+       compositor creara la capa del carrusel con el dedo aún quieto en vez de a mitad del gesto.
+       Resultado medido en su OnePlus 13: el parpadeo **siguió igual** Y además apareció un fallo
+       nuevo que él vio al instante — «se baja todo un poco hacia abajo al scrollear».
+       La causa está escrita 200 líneas más abajo, en `ensureScrollHost`: «el track aparca con
+       `left` SIN transform — un ancestro con transform mata el overscroll nativo». **`will-change:
+       transform` crea el MISMO containing block que `transform`**, así que el `position:fixed` de
+       `.page-scroll-host` deja de referirse a la pantalla y pasa a referirse al track: todo el
+       contenido se desplaza al scrollear.
+       Regla que deja esto: en este carrusel, NADA de `transform`/`will-change:transform`/`filter`/
+       `perspective` en el track ni en ningún ancestro del host mientras el host sea `fixed`. */
     dragging.current=true; axis.current=null; dx.current=0; startT.current=Date.now(); gestureMode.current=null;
     // El ancho del track, UNA vez y aquí: el layout todavía está limpio (no se ha congelado nada
     // ni añadido clases), así que esta lectura no fuerza reflow. Ver el porqué largo en `onMove`.
