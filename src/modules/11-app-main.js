@@ -1662,6 +1662,12 @@ function App(){
     if(widgetCash!=null){ data.cash=widgetCash; data.cashLabel=entOf(trAccW.ent).label; }
     if(widgetBudgetLeft!=null) data.budgetLeft=widgetBudgetLeft;
     if(widgetSafeLiq!=null) data.safeLiq=widgetSafeLiq;
+    // APK 41 (la de producción) todavía lee `afford` y si no llega BORRA «Puedes gastar».
+    // Las piezas nuevas son para la APK 42. Mandar las dos: 41 usa afford, 42 usa las piezas.
+    const widgetAfford=widgetBudgetLeft!=null && widgetSafeLiq!=null
+      ? Math.round(Math.min(widgetBudgetLeft, widgetSafeLiq)*100)/100
+      : (widgetBudgetLeft!=null ? widgetBudgetLeft : widgetSafeLiq);
+    if(widgetAfford!=null) data.afford=widgetAfford;
     const push=function(){ try{ nat.updateWidget(data).catch(function(){}); }catch(e){} };
     push();
     // Re-empuja al VOLVER a primer plano (feedback 2026-07-20: el widget de MIUI/HyperOS no

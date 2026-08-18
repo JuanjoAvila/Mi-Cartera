@@ -73,6 +73,25 @@ t("pickBankBalance: prefiere ITAV sobre CLBD", () => {
   assert.equal(bal, 87.5);
 });
 
+t("pickBankBalance: ITAV negativo no pisa un CLBD positivo (Revolut −204 del padre)", () => {
+  assert.equal(ctx.pickBankBalance([
+    { type: "ITAV", amount: -204.54 },
+    { type: "CLBD", amount: 22.06 },
+  ]), 22.06);
+});
+
+t("pickBankBalance: tipo desconocido en [0] no inventa un negativo", () => {
+  assert.equal(ctx.pickBankBalance([
+    { type: "FOO", amount: -204.54 },
+    { type: "CLBD", amount: 22.06 },
+  ]), 22.06);
+});
+
+t("pickBankBalance: solo basura negativa → null (se queda el saldo de antes)", () => {
+  assert.equal(ctx.pickBankBalance([{ type: "ITAV", amount: -204.54 }]), null);
+  assert.equal(ctx.pickBankBalance([{ type: "ZZZ", amount: -1 }]), null);
+});
+
 t("entFromAspsp: mapea Sabadell", () => {
   assert.equal(ctx.entFromAspsp("Banco de Sabadell"), "sabadell");
 });

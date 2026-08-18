@@ -1,6 +1,6 @@
 {
   "name": "mi-cartera",
-  "version": "4.18.2",
+  "version": "4.18.3",
   "private": true,
   "description": "Mi Cartera — PWA de finanzas personales (+ envoltorio Android con Capacitor)",
   "scripts": {
@@ -15,7 +15,7 @@
     "memoria": "node scripts/sync-memoria.mjs",
     "errores": "node scripts/errores.mjs",
     "sugerencias": "node scripts/errores.mjs --kind=feedback --limit=50",
-    "apk:prep": "node scripts/guard-webdebug.mjs && node scripts/build-app.mjs && node scripts/build-www.mjs && npx cap sync android",
+    "apk:prep": "node scripts/guard-webdebug.mjs && node scripts/build-app.mjs && node scripts/build-www.mjs && node node_modules/@capacitor/cli/bin/capacitor sync android",
     "release:apk": "node scripts/release-apk.mjs",
     "android:add": "cap add android",
     "android:sync": "cap sync android",

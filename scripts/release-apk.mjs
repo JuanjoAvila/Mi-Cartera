@@ -208,9 +208,9 @@ if (apksigner) {
   const esBat = /\.bat$/i.test(apksigner);
   const certs = runCapture(esBat ? `"${apksigner}"` : apksigner,
     ["verify", "--print-certs", esBat ? `"${apkSrc}"` : apkSrc], {
-    shell: esBat,
-    fail: "apksigner verify falló — APK sin firmar o firma rara",
+    env,
     shell: process.platform === "win32",
+    fail: "apksigner verify falló — APK sin firmar o firma rara",
   });
   if (!/CN=Mi Cartera/i.test(certs)) {
     die("La firma no dice CN=Mi Cartera.\n" + certs.slice(0, 400));
