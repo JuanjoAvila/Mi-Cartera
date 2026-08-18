@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y versionado [SemVer](https://semver.org/lang/es/).
 
+## [4.18.4] — 2026-08-18
+### Cada banco descuenta lo suyo (saldo cruzado)
+
+`dynBal` restaba `thisMonthSpent` entero (todos los bancos de gasto diario) al saldo de la
+cuenta diaria. Al marcar Revolut + TR, un cargo de Revolut bajaba Trade Republic y no se
+descontaba de Revolut: **257,17 €** medidos en su nube el 18/8. El patrimonio pintado salía
+bajo; el widget «Puedes gastar» (`safeLiq`) también.
+
+Arreglo estrecho: la diaria resta solo lo suyo (`gastoDelMesPorBanco` + `saldoCuentaGasto`).
+Las cuentas ancladas por IBAN no se tocan — el banco ya descontó. A mano sin banco sigue
+saliendo de la diaria. La fórmula y su inversa (`valueDesdeSaldo`) viven en `00-core.js`;
+los cinco sitios (dynBal, applyAccountRole, Cartera editar, sync TR) llaman ahí. Si se
+cambia solo dynBal, teclear el saldo guarda un número torcido.
+
+`thisMonthSpent` no se toca (Hogar / fallback de presupuesto). OTA, sin APK.
+Tests: `tests/saldo-por-banco.test.mjs`.
+
 ## [4.18.3] — 2026-08-18
 ### Saldo OB inventado + widget APK 41/42
 

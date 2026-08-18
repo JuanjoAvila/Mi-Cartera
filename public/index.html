@@ -2851,6 +2851,33 @@ function expenseBankOf(e){
   if(s.indexOf("manual:")===0) return s.slice(7)||null;
   return null;
 }
+/* Gasto del mes partido por banco de origen. A mano (sin banco) → cuenta diaria.
+   Por qué: dynBal restaba thisMonthSpent ENTERO al principal cuando expenseBanks tiene
+   varios — un cargo de Revolut se comía Trade Republic (257,17 € el 2026-08-18). */
+function gastoDelMesPorBanco(gastosDelMes, dailyEnt){
+  const map={};
+  (gastosDelMes||[]).forEach(function(e){
+    const b=expenseBankOf(e)||dailyEnt||null;
+    if(!b) return;
+    map[b]=(map[b]||0)+(e.amount||0);
+  });
+  return map;
+}
+/* Saldo mostrado de la cuenta de gasto diario, y su inversa al editar / sincronizar.
+   Vivían copiadas en cinco sitios; si se cambia dynBal y no las inversas, teclear el
+   saldo guarda un número torcido — peor que el bug (brief 2026-08-18). */
+function saldoCuentaGasto(o){
+  o=o||{};
+  var v=(o.value||0)+(o.injTR||0)-(o.spentOwn||0)-(o.roundup||0)-(o.monthlyInvest||0);
+  if(o.ambos) v+=(o.paidNet||0);
+  return v;
+}
+function valueDesdeSaldo(o){
+  o=o||{};
+  var v=(o.shown||0)-(o.injTR||0)+(o.spentOwn||0)+(o.roundup||0)+(o.monthlyInvest||0);
+  if(o.ambos) v-=(o.paidNet||0);
+  return +v.toFixed(2);
+}
 /* Convierte una fila de la tabla `expenses` al formato interno de la app. */
 function expenseFromRow(r){
   const raw=String(r.source||"manual");
@@ -5176,13 +5203,14 @@ function expenseBucket(e, s){
 function applyAccountRole(s, totals, id, r){
   const pn=function(i){ return (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0; };
   const ruM=totals.roundupThisMonth||0, miM=totals.monthlyInvestThisMonth||0;
-  const spendBal=function(i){ return i.value + totals.injTR - totals.thisMonthSpent - ruM - miM + (accRole(i)==="ambos"?pn(i):0); };
+  const spentOwn=function(i){ return (totals.spentByBank&&i.ent&&totals.spentByBank[i.ent])||0; };
+  const spendBal=function(i){ return saldoCuentaGasto({value:i.value, injTR:totals.injTR||0, spentOwn:spentOwn(i), roundup:ruM, monthlyInvest:miM, ambos:accRole(i)==="ambos", paidNet:pn(i)}); };
   const ruOfA=function(a){ return (a.roundupManual!=null)?a.roundupManual:(a.roundup?ruM:0); };
   const injOfA=function(a){ return nominaYaEntro()? accInject(a):0; };
   const shownOf=function(a){ return accDaily(a)? spendBal(a) : ((a.value||0) + pn(a)); };
   const valueForRole=function(a,rr,shown){
     if(rr==="fijos") return +(shown - pn(a)).toFixed(2);
-    return +((shown - injOfA(a) + (totals.thisMonthSpent||0) + ruOfA(a) + (a.monthlyInvest||0) - (rr==="ambos"?pn(a):0))).toFixed(2);
+    return valueDesdeSaldo({shown:shown, injTR:injOfA(a), spentOwn:spentOwn(a), roundup:ruOfA(a), monthlyInvest:a.monthlyInvest||0, ambos:rr==="ambos", paidNet:pn(a)});
   };
   return Object.assign({},s,{accounts:s.accounts.map(function(a){
     if(a.id===id){ if(accRole(a)===r) return a; return Object.assign({},a,{role:r, spendFrom:r!=="fijos", value:valueForRole(a,r,shownOf(a))}); }
@@ -8942,8 +8970,9 @@ function TRSync({state, set, totals, open, onToggle}){
           ? s.accounts.map(function(a){
               if(a.ent!=="trade_republic") return a;
               const pn=(totals.paidNetByBank&&totals.paidNetByBank[a.ent])||0;
+              const spentOwn=(totals.spentByBank&&totals.spentByBank[a.ent])||0;
               const stored = accDaily(a)
-                ? trCash-(totals.injTR||0)+(totals.thisMonthSpent||0)+(totals.roundupThisMonth||0)+(totals.monthlyInvestThisMonth||0)-(accRole(a)==="ambos"?pn:0)
+                ? valueDesdeSaldo({shown:trCash, injTR:totals.injTR||0, spentOwn:spentOwn, roundup:totals.roundupThisMonth||0, monthlyInvest:totals.monthlyInvestThisMonth||0, ambos:accRole(a)==="ambos", paidNet:pn})
                 : trCash-pn;
               return Object.assign({},a,{value:+stored.toFixed(2)});
             })
@@ -9414,7 +9443,8 @@ function Wealth({state, set, totals, v4Embed, parte}){
   const pn=(i)=> (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0;   // movimientos ya ocurridos este mes
   const ruM=totals.roundupThisMonth||0;                                     // round-up del mes (sale del efectivo de gasto)
   const miM=totals.monthlyInvestThisMonth||0;                               // aporte periódico del mes (idem)
-  const spendBal=(i)=> i.value + totals.injTR - totals.thisMonthSpent - ruM - miM + (accRole(i)==="ambos"?pn(i):0);
+  const spentOwn=(i)=> (totals.spentByBank&&i.ent&&totals.spentByBank[i.ent])||0;
+  const spendBal=(i)=> saldoCuentaGasto({value:i.value, injTR:totals.injTR||0, spentOwn:spentOwn(i), roundup:ruM, monthlyInvest:miM, ambos:accRole(i)==="ambos", paidNet:pn(i)});
   // ROLES DE CUENTA: al cambiar el rol se RE-ANCLA `value` para que el saldo mostrado no cambie
   // (despejamos value de la fórmula del rol nuevo). Solo puede haber UNA cuenta de gasto diario.
   const setRole=(id,r)=>{ set(function(s){ return applyAccountRole(s, totals, id, r); }); };   // lógica compartida (applyAccountRole)
@@ -9422,7 +9452,7 @@ function Wealth({state, set, totals, v4Embed, parte}){
     // Editas el SALDO REAL de hoy; por dentro se guarda la base (inicio de mes) correcta.
     display:  i => accDaily(i) ? spendBal(i) : (i.value + pn(i)),
     // editar a mano re-ancla: typed = spendBal(nuevo value) → despeja value (incluye miM, que faltaba)
-    toStored: (i,typed) => accDaily(i) ? (typed - totals.injTR + totals.thisMonthSpent + ruM + miM - (accRole(i)==="ambos"?pn(i):0)) : (typed - pn(i))
+    toStored: (i,typed) => accDaily(i) ? valueDesdeSaldo({shown:typed, injTR:totals.injTR||0, spentOwn:spentOwn(i), roundup:ruM, monthlyInvest:miM, ambos:accRole(i)==="ambos", paidNet:pn(i)}) : (typed - pn(i))
   });
   const astEd=useEditable(state.assets,it=>set(s=>Object.assign({},s,{assets:it})));
   const accSum=totals.liquid;
@@ -14159,6 +14189,27 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.4", d:"18 ago 2026",
+   t:{es:"Cada banco descuenta lo suyo",
+      en:"Each bank now subtracts only its own spending",
+      ca:"Cada banc descompta el que és seu"},
+   tandas:[
+     {id:"saldo-cruzado", t:"🏦 Saldos por banco", items:[
+       "Si pagabas con un banco que no era el del día a día, el gasto ya no se le resta al principal.",
+       "El dinero total no cambia de sitio inventado: cada euro queda en su cuenta.",
+       "Editar el saldo a mano y volver a mirarlo tiene que dar el mismo número.",
+     ]},
+   ],
+   items:{
+   es:[
+    "🏦 Si pagabas con un banco que no era el del día a día, el gasto se le restaba por error al saldo del principal. El dinero total siempre fue correcto; el reparto entre cuentas, no. Ya está cada euro en su sitio.",
+   ],
+   en:[
+    "🏦 Spending from a bank that wasn't your day-to-day account was wrongly taken off the main balance. The total was always right; the split between accounts wasn't. Each euro is in its place now.",
+   ],
+   ca:[
+    "🏦 Si pagaves amb un banc que no era el del dia a dia, la despesa es restava per error al saldo del principal. El total sempre va ser correcte; el repartiment entre comptes, no. Cada euro ja és al seu lloc.",
+   ]}},
   {v:"4.18.3", d:"18 ago 2026",
    t:{es:"El saldo del banco ya no salta a un número raro, y el widget deja de esconder lo que puedes gastar",
       en:"Bank balances no longer jump to a bogus figure, and the widget keeps showing what you can spend",
@@ -18640,14 +18691,20 @@ function App(){
     const today=new Date().getDate();                    // día de hoy (para separar pagado/pendiente)
     // SALDO DINÁMICO: cada banco = base (inicio de mes) + movimientos YA ocurridos este mes
     // (ingresos/nómina/bizums − fijos − cuotas − puntuales − transfers). El de gasto (TR) usa su inyección.
+    // La diaria resta SOLO lo suyo (`spentByBank[ent]`), no thisMonthSpent entero: si no, un
+    // cargo de Revolut se come TR (257 € el 2026-08-18). thisMonthSpent se queda para Hogar / fallback.
     const paidNetByBank={};
     state.accounts.forEach(function(a){ if(accFixed(a)) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
+    const dailyEnt=trAcc&&trAcc.ent;
+    const spentByBank=gastoDelMesPorBanco(thisMonthExp, dailyEnt);
     // el round-up y el aporte periódico del mes ya salieron del efectivo de gasto (TR) hacia la inversión (en tránsito)
     const dynBal=function(a){
       if(!accDaily(a)) return (a.value||0)+(paidNetByBank[a.ent]||0);
-      let v=a.value+injTR-thisMonthSpent-roundupThisMonth-monthlyInvestThisMonth;
-      if(accRole(a)==="ambos") v+=(paidNetByBank[a.ent]||0);   // una cuenta para todo: también lleva sus fijos/nómina
-      return v;
+      return saldoCuentaGasto({
+        value:a.value, injTR:injTR, spentOwn:spentByBank[a.ent]||0,
+        roundup:roundupThisMonth, monthlyInvest:monthlyInvestThisMonth,
+        ambos:accRole(a)==="ambos", paidNet:paidNetByBank[a.ent]||0
+      });
     };
     // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
     const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + toEurAmt(o.value||0, o.cur||"EUR", state), 0);
@@ -18724,7 +18781,7 @@ function App(){
     /* DEPENDENCIAS: ojo al tocar este bloque — la lista de abajo tiene que incluir TODO
        `state.loQueSea` que se lea aquí dentro (incluidos los que leen las funciones auxiliares:
        monthNetForAccount → fixed/debts/oneoffs/flows; toEurAmt/invValueEur → fx y fxRates). */
-    return {liquid,invested,investedCost,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
+    return {liquid,invested,investedCost,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,spentByBank,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
   // Antes esto dependía de `[state]` entero. Como `set()` sella `_savedAt` en CADA cambio, el
   // objeto de estado es nuevo siempre → el memo NUNCA acertaba y este cálculo (que recorre gastos,
   // fijos, deudas, flujos y simula el mes día a día) se rehacía al abrir una ficha, al escribir en

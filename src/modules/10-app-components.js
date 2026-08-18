@@ -1424,6 +1424,27 @@ function AutoBackupsPanel({state, set, showToast, uid, onClose}){
 function rnT(x,lg){ if(!x) return ""; if(typeof x==="string") return x; return x[lg||CURLANG]||x.es||""; }
 function rnItems(r,lg){ var it=r&&r.items; if(!it) return []; if(Array.isArray(it)) return it; return it[lg||CURLANG]||it.es||[]; }
 var RELEASE_NOTES=[
+  {v:"4.18.4", d:"18 ago 2026",
+   t:{es:"Cada banco descuenta lo suyo",
+      en:"Each bank now subtracts only its own spending",
+      ca:"Cada banc descompta el que és seu"},
+   tandas:[
+     {id:"saldo-cruzado", t:"🏦 Saldos por banco", items:[
+       "Si pagabas con un banco que no era el del día a día, el gasto ya no se le resta al principal.",
+       "El dinero total no cambia de sitio inventado: cada euro queda en su cuenta.",
+       "Editar el saldo a mano y volver a mirarlo tiene que dar el mismo número.",
+     ]},
+   ],
+   items:{
+   es:[
+    "🏦 Si pagabas con un banco que no era el del día a día, el gasto se le restaba por error al saldo del principal. El dinero total siempre fue correcto; el reparto entre cuentas, no. Ya está cada euro en su sitio.",
+   ],
+   en:[
+    "🏦 Spending from a bank that wasn't your day-to-day account was wrongly taken off the main balance. The total was always right; the split between accounts wasn't. Each euro is in its place now.",
+   ],
+   ca:[
+    "🏦 Si pagaves amb un banc que no era el del dia a dia, la despesa es restava per error al saldo del principal. El total sempre va ser correcte; el repartiment entre comptes, no. Cada euro ja és al seu lloc.",
+   ]}},
   {v:"4.18.3", d:"18 ago 2026",
    t:{es:"El saldo del banco ya no salta a un número raro, y el widget deja de esconder lo que puedes gastar",
       en:"Bank balances no longer jump to a bogus figure, and the widget keeps showing what you can spend",

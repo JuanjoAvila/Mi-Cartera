@@ -1,6 +1,10 @@
 # Roadmap — Mi Cartera
 
-> Estado a 2026-08-18 · **v4.18.3** — **EN `beta`**. El saldo OB ya no pinta un negativo inventado
+> Estado a 2026-08-18 · **v4.18.4** — **EN `beta`**. Cada banco descuenta lo suyo: un gasto de
+> Revolut ya no baja el saldo de Trade Republic (257 € medidos). OTA, sin APK. Producción sigue
+> en **4.18.3** · APK **42**.
+>
+> Anterior: 2026-08-18 · **v4.18.3** — **EN PRODUCCIÓN**. El saldo OB ya no pinta un negativo inventado
 > (Revolut −204 del padre). El widget manda `afford` y `budgetLeft` (APK 41 y 42). APK **42**.
 >
 > Anterior: 2026-08-17 · **v4.18.2** — ingest del widget a producción. El canal beta no prueba el widget con la app cerrada (un solo Supabase). APK seguía **41 / 4.17.1**.
@@ -86,10 +90,10 @@ Multi-cuenta, ingest TR, OTA/APK, gamificación, onboarding, inversiones, deudas
 
 | Qué | Valor |
 |-----|--------|
-| Web / OTA (`VERSION`) | **4.18.3** (en `beta`) |
+| Web / OTA (`VERSION`) | **4.18.4** (en `beta`) |
 | APK (`versionName` / `versionCode`) | Repo: **4.18.3 / 42**. Live hasta instalarla: **4.17.1 / 41**. |
 | Anterior | **4.16.1 / 39** (sin franja bajo la cámara), **4.16.0 / 36–38** (Wallet). Antes: **4.12.0 / 35**. |
-| `public/apk.json` | repo **40** / 4.16.2 (esta rama no ha corrido `release:apk`) |
+| `public/apk.json` | **42** / 4.18.3 |
 
 ## Pendiente / limitaciones conocidas
 

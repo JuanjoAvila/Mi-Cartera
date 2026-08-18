@@ -12,7 +12,7 @@ Cualquiera (Cursor, Claude, él desde el móvil) puede retomar desde aquí sin p
 | 2 · Gastos: qué cuenta / «Movimiento» / banco | ✅ **EN PRODUCCIÓN 4.17.1** | Aprobada 17/8 |
 | 3 · Fecha en `+`/editar + calendario + filtro gasto diario | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Calendario de la casa. Default = todos los de gasto diario. |
 | 4 · Más categorías + KW | ✅ **EN PRODUCCIÓN 4.18.1** (sin widget) | Heladería, joyería, videojuegos, Recibos. IA en cualquier gasto. |
-| 1c · **Saldo cruzado entre bancos** | 🐛 **NUEVO 18/8 · plan sellado** | Un gasto de Revolut baja el saldo de TR: **257,17 € hoy**, medido en su nube. `bug-saldo-cruzado-gasto-diario.md`. OTA, sin APK. **Va antes que la 5 y la 6.** |
+| 1c · **Saldo cruzado entre bancos** | ⏳ **4.18.4** OTA | Cada banco descuenta lo suyo. Pendiente de su prueba en Cartera. Va antes que la 5 y la 6. |
 | 5 · Meta = gasto del mes | ⬜ **Plan sellado 18/8** | `plan-tanda-5-meta-gasto-mes.md`. ⚠ El aviso «reescribe `monthBudgetStats`» **queda derogado**: se hace por `expenseCountsBudget`, sin tocar la fórmula ni Java. Sus 2 metas están al 0% → no le urge. |
 | 6 · Efectivo | ⬜ **Plan sellado 18/8** | `plan-tanda-6-efectivo.md`. Es una cuenta más, no un módulo. **Depende de la 1c.** OTA. |
 | 7 · Import histórico 3 meses | ⬜ Plan sellado | `plan-import-historico-seguro.md`. La 3 deja Gastos listo para que entre como un banco más. |

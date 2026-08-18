@@ -1445,14 +1445,20 @@ function App(){
     const today=new Date().getDate();                    // día de hoy (para separar pagado/pendiente)
     // SALDO DINÁMICO: cada banco = base (inicio de mes) + movimientos YA ocurridos este mes
     // (ingresos/nómina/bizums − fijos − cuotas − puntuales − transfers). El de gasto (TR) usa su inyección.
+    // La diaria resta SOLO lo suyo (`spentByBank[ent]`), no thisMonthSpent entero: si no, un
+    // cargo de Revolut se come TR (257 € el 2026-08-18). thisMonthSpent se queda para Hogar / fallback.
     const paidNetByBank={};
     state.accounts.forEach(function(a){ if(accFixed(a)) paidNetByBank[a.ent]=(paidNetByBank[a.ent]||0)+monthNetForAccount(state,a.ent,curYear,curMonth,today); });
+    const dailyEnt=trAcc&&trAcc.ent;
+    const spentByBank=gastoDelMesPorBanco(thisMonthExp, dailyEnt);
     // el round-up y el aporte periódico del mes ya salieron del efectivo de gasto (TR) hacia la inversión (en tránsito)
     const dynBal=function(a){
       if(!accDaily(a)) return (a.value||0)+(paidNetByBank[a.ent]||0);
-      let v=a.value+injTR-thisMonthSpent-roundupThisMonth-monthlyInvestThisMonth;
-      if(accRole(a)==="ambos") v+=(paidNetByBank[a.ent]||0);   // una cuenta para todo: también lleva sus fijos/nómina
-      return v;
+      return saldoCuentaGasto({
+        value:a.value, injTR:injTR, spentOwn:spentByBank[a.ent]||0,
+        roundup:roundupThisMonth, monthlyInvest:monthlyInvestThisMonth,
+        ambos:accRole(a)==="ambos", paidNet:paidNetByBank[a.ent]||0
+      });
     };
     // cuentas extra de Open Banking (2ª cuenta de un banco, compartidas…): saldo puro, suma al líquido
     const obLiquid=(state.obAccounts||[]).reduce((a,o)=> a + toEurAmt(o.value||0, o.cur||"EUR", state), 0);
@@ -1529,7 +1535,7 @@ function App(){
     /* DEPENDENCIAS: ojo al tocar este bloque — la lista de abajo tiene que incluir TODO
        `state.loQueSea` que se lea aquí dentro (incluidos los que leen las funciones auxiliares:
        monthNetForAccount → fixed/debts/oneoffs/flows; toEurAmt/invValueEur → fx y fxRates). */
-    return {liquid,invested,investedCost,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
+    return {liquid,invested,investedCost,assetsTotal,debtTotal,activos,netWorth,delta,deltaPct,thisMonthSpent,spentByBank,injTR,fijosMensual,ahorroMensual,cargosMes,fijosEsteMes,liquidTrasFijos,curMonth,curYear,today,sinProgramar,bankBal,chargesByBank,pendingByBank,paidThisMonth,pendingThisMonth,mainBank,mainBal,mainCharges,mainPending,bankAlerts,incomeInByBank,transferOutByBank,pendingIncome,pendingTransferOut,projectedByBank,mainIncome,mainTransferOut,mainProjected,minByBank,minDayByBank,mainMin,mainMinDay,roundupThisMonth,savebackThisMonth,monthlyInvestThisMonth,trRewardsTotal,paidNetByBank};
   // Antes esto dependía de `[state]` entero. Como `set()` sella `_savedAt` en CADA cambio, el
   // objeto de estado es nuevo siempre → el memo NUNCA acertaba y este cálculo (que recorre gastos,
   // fijos, deudas, flujos y simula el mes día a día) se rehacía al abrir una ficha, al escribir en

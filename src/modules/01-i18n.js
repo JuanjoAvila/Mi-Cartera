@@ -2164,13 +2164,14 @@ function expenseBucket(e, s){
 function applyAccountRole(s, totals, id, r){
   const pn=function(i){ return (totals.paidNetByBank&&totals.paidNetByBank[i.ent])||0; };
   const ruM=totals.roundupThisMonth||0, miM=totals.monthlyInvestThisMonth||0;
-  const spendBal=function(i){ return i.value + totals.injTR - totals.thisMonthSpent - ruM - miM + (accRole(i)==="ambos"?pn(i):0); };
+  const spentOwn=function(i){ return (totals.spentByBank&&i.ent&&totals.spentByBank[i.ent])||0; };
+  const spendBal=function(i){ return saldoCuentaGasto({value:i.value, injTR:totals.injTR||0, spentOwn:spentOwn(i), roundup:ruM, monthlyInvest:miM, ambos:accRole(i)==="ambos", paidNet:pn(i)}); };
   const ruOfA=function(a){ return (a.roundupManual!=null)?a.roundupManual:(a.roundup?ruM:0); };
   const injOfA=function(a){ return nominaYaEntro()? accInject(a):0; };
   const shownOf=function(a){ return accDaily(a)? spendBal(a) : ((a.value||0) + pn(a)); };
   const valueForRole=function(a,rr,shown){
     if(rr==="fijos") return +(shown - pn(a)).toFixed(2);
-    return +((shown - injOfA(a) + (totals.thisMonthSpent||0) + ruOfA(a) + (a.monthlyInvest||0) - (rr==="ambos"?pn(a):0))).toFixed(2);
+    return valueDesdeSaldo({shown:shown, injTR:injOfA(a), spentOwn:spentOwn(a), roundup:ruOfA(a), monthlyInvest:a.monthlyInvest||0, ambos:rr==="ambos", paidNet:pn(a)});
   };
   return Object.assign({},s,{accounts:s.accounts.map(function(a){
     if(a.id===id){ if(accRole(a)===r) return a; return Object.assign({},a,{role:r, spendFrom:r!=="fijos", value:valueForRole(a,r,shownOf(a))}); }
