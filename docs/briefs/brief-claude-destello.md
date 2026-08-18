@@ -1,5 +1,76 @@
 # Brief Claude personal — destello temporada (Mi Cartera)
 
+> ## ✅ MEDIDO Y CARACTERIZADO — 2026-08-18, en su móvil real
+>
+> ### ⚠ ANTES DE NADA: NUNCA FUE UN OPPO
+>
+> Su móvil es un **OnePlus 13 (CPH2653)**, **Android 16**, OxygenOS **V16.1.0**, WebView
+> **Chromium 150.0.7871.181**. Siempre lo fue. Todo este brief (y ~35 sitios del repo, incluidos
+> comentarios en `src/shell.html`, `11-app-main.js` y `02-ui-shared.js`) dice «Oppo» / «ColorOS»,
+> y es **falso**. Se dio por hecho —probablemente por el `OplusTransitionAnimationManager`, que es
+> común a OPPO/OnePlus/realme— y **nadie lo comprobó nunca**, cuando comprobarlo era
+> `adb shell getprop ro.product.brand`. Hipótesis descartadas «con evidencia» se razonaron contra
+> el sistema equivocado. Corregir las menciones al tocar cada fichero.
+>
+> ### La firma del parpadeo, medida
+>
+> Vídeo del grabador nativo a **120 fps**, 3.047 frames, 25 s, con él haciendo muchos cambios de
+> pestaña. Método: cada región se reduce a un píxel promedio por frame (`ffmpeg crop+scale=1:1`),
+> y se buscan frames que se salgan de la mediana local (detector de picos aislados).
+>
+> **12 eventos en 25 s. Uno por cada arranque de gesto de pestañas. 12 de 12.**
+>
+> | | Valor |
+> |---|---|
+> | Signo | **Siempre oscurece**, nunca ilumina (12/12) |
+> | Duración | **8–25 ms** = 1–3 frames a 120 Hz |
+> | Esquina del destello (sup-der) | **−16,0 a −17,2** niveles de luminancia |
+> | Fondo (sup-izq) | **−8,2 a −8,9** |
+> | Movimiento en pantalla justo antes | **0,00** — la pantalla está QUIETA |
+>
+> Dos cosas que esto demuestra:
+>
+> 1. **Oscurece el doble donde vive el destello que donde no.** No es la pantalla bajando de
+>    brillo: es **algo que aportaba luz y desaparece un frame**, y ese algo tiene la forma del glow.
+> 2. **Ocurre ANTES de que nada se mueva.** No es el desliz ni el compositor arrastrando: es el
+>    instante en que se decide que el gesto es «tab» → `leaveScrollHost()`
+>    ([11-app-main.js:2034](../../src/modules/11-app-main.js#L2034), llamado desde
+>    [:2268](../../src/modules/11-app-main.js#L2268)), donde en un solo bloque síncrono se quita
+>    `page-scroll-host` (destruye una capa `position:fixed`), se saca el track de
+>    `scroll-host-park` (`will-change:auto` → `transform`, crea capa) y las hermanas dejan de
+>    estar `visibility:hidden` con `content-visibility:auto` sin pintar.
+>
+> ### Descartado con evidencia en esta sesión (no volver a proponer)
+>
+> 10. **El tono del notch / barra de estado** — `36,36,25` **constante** en 110 capturas, incluidas
+>     las de transición. **No se reproduce.** La queja de la .12 está resuelta.
+> 11. **Que el cambio de modo apague el glow de forma sostenida** — con el **gesto congelado** (dedo
+>     puesto, 67 frames estables) el fondo es **idéntico** al reposo, Δ = 0. El efecto es
+>     **puramente transitorio**: 1–3 frames y vuelve solo. Cualquier arreglo que ataque el estado
+>     estable está atacando algo que no está roto.
+> 12. **`screencap` para cazar esto** — saca ~2 fotogramas/s contra un efecto de 8 ms. Imposible por
+>     construcción. Hace falta vídeo a 120 fps. (Y `adb shell screenrecord` está **bloqueado** en su
+>     Android 16: «Permission denied» en `/sdcard` y en `/data/local/tmp`, y a stdout se cuelga →
+>     usar el **grabador nativo** del móvil y sacar el fichero de `/sdcard/Movies`.)
+>
+> ⚠ **Trampa en la que YO caí y que hay que evitar** (es la lección de
+> [`season-destello-saga`](../memoria/season-destello-saga.md), otra vez): medir una región fija
+> mientras el contenido se desplaza por debajo **mide el contenido, no el efecto**. Una primera
+> tanda dio «±13 niveles» que resultaron ser la cabecera de Gastos entrando en el recuadro. Solo
+> valen: (a) el **gesto congelado**, o (b) regiones que son **fondo puro en las dos pestañas**.
+>
+> ### Arreglo candidato — SIN PROBAR
+>
+> Pagar el peaje **un paso antes**: promover la capa y despertar a las hermanas en el `touchstart`,
+> no en el `touchmove` que decide el eje. Si la capa ya existe cuando llega el cambio de modo, no
+> hay frame perdido. Es la misma jugada ya medida y documentada para los segmentos de Plan en
+> [`shell.html:511`](../../src/shell.html#L511): *«el coste existe; lo único que se puede elegir es
+> CUÁNDO se paga»*.
+>
+> **Criterio de verde, ya medible:** repetir el vídeo a 120 fps y que los 12 picos de −16 bajen de
+> −4. Antes/después con el mismo método, o no vale.
+
+
 > ## ⚠ LEE ESTO ANTES DE PEGARLO (añadido 2026-08-17)
 >
 > **Este brief se escribió el 2026-08-05 contra `beta` en 4.15.0.12. La mitad de su «estado» ya

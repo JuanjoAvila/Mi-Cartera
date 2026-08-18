@@ -54,13 +54,9 @@ Aquí solo el inventario, para que no se pierda ninguna.
 **Nuevo**
 11. **Meta ahorrada que sustituye TEMPORALMENTE el «gasto del mes»**: gastar de la hucha de una meta
     no es gasto corriente. Si marcas varios bancos en la meta, un gasto de esos bancos elige la meta
-    solo. Al llegar a 0 €, vuelve el presupuesto normal. **Diseño cerrado 18/8** en
-    `docs/briefs/plan-tanda-5-meta-gasto-mes.md`. El aviso de reescribir `monthBudgetStats` **queda
-    derogado** (entra por `expenseCountsBudget`, sin Java). Sus 2 metas están al 0% → no urge.
-    Va **después** del saldo cruzado (§2-BIS).
-12. **Controlar el dinero en EFECTIVO**: lo que tienes, lo que entra y lo que sale. **Diseño cerrado
-    18/8** en `docs/briefs/plan-tanda-6-efectivo.md`. Es una cuenta manual más, no un módulo.
-    **Bloqueada por el saldo cruzado** (§2-BIS): si no, cada gasto en efectivo bajaría Trade Republic.
+    solo. Al llegar a 0 €, vuelve el presupuesto normal. ⚠ Toca `monthBudgetStats` en TRES sitios
+    (cliente, ingest, widget) → **no empezar hasta que la 1 esté aprobada**.
+12. **Controlar el dinero en EFECTIVO**: lo que tienes, lo que entra y lo que sale.
 
 ⚠ Mandó **3 capturas** de los bugs 1–2 (widget, y la foto azul del Revolut del padre) a Cursor;
 Claude Code trabajó con las cifras transcritas. Si hace falta afinar, pedírselas otra vez.
