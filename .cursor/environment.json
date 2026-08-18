@@ -1,0 +1,15 @@
+{
+  "name": "Mi Cartera",
+  "user": "ubuntu",
+  "install": "./.cursor/install.sh",
+  "terminals": [
+    {
+      "name": "serve",
+      "command": "npx --yes serve public -l 4173",
+      "description": "Sirve el bundle ya construido (public/) en http://127.0.0.1:4173. Es la misma URL que usan los e2e de Playwright; abre ahí la PWA para probarla a mano. Tras editar src/, relanza `npm run build`."
+    }
+  ],
+  "ports": [
+    { "name": "web", "port": 4173 }
+  ]
+}
